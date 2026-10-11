@@ -1,0 +1,28 @@
+# Local credentials and user data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/data/wardrobe.json
+/private/
+
+# Dependencies and generated outputs
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+dist/
+shots/
+*.log
+/blender/web/
+/blender/tex/
+
+# Preserve original handoff locally; stage curated documents explicitly.
+/docs/archive/
+/docs/HANDOFF.md
+/docs/프로젝트-*.md
+/docs/*PRD*v0.1.md
+/docs/*PRD*v0.2*.md
+/docs/*PRD*v0.3.md
+/prototypes/
