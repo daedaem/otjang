@@ -55,6 +55,8 @@ export const demoItems = [
   demoItem('demo-denim-blue', '인디고 스트레이트 데님', 'bottom', 'denim', 'navy'),
   demoItem('demo-jacket-brown', '브라운 캐주얼 재킷', 'outer', 'jacket', 'brown'),
   demoItem('demo-loafer-brown', '브라운 페니 로퍼', 'shoes', 'loafer', 'brown'),
+  demoItem('demo-shirt-white', '화이트 옥스퍼드 셔츠', 'top', 'shirt', 'white'),
+  demoItem('demo-field-olive', '올리브 필드 재킷', 'outer', 'fieldjacket', 'olive'),
   demoItem('demo-sneaker-white', '화이트 로우 스니커즈', 'shoes', 'sneaker', 'white'),
 ];
 const demoProduct = (id, name, category, kind, color, price, text, topic) => ({
@@ -185,15 +187,17 @@ function contextReason(profile) {
 }
 const byScore = (scoreFn) => (a, b) => scoreFn(b) - scoreFn(a) || a.id.localeCompare(b.id);
 
-export function getOutfits(state, limit = 3) {
+export function getOutfits(state, limit = 3, anchorId = null) {
   const items = activeItems(state);
   const profile = state.profile || {};
+  const anchor = anchorId ? items.find(item => item.id === anchorId) : null;
+  if (anchorId && !anchor) return [];
   const tops = items.filter((item) => item.category === 'top');
   const bottoms = items.filter((item) => item.category === 'bottom');
-  const shoe = items
+  const shoe = anchor?.category === 'shoes' ? anchor : items
     .filter((item) => item.category === 'shoes')
     .sort(byScore((item) => relevance(item, profile)))[0];
-  const outer =
+  const outer = anchor?.category === 'outer' ? anchor :
     profile.occasion === 'work'
       ? items
           .filter((item) => item.category === 'outer')
@@ -203,6 +207,7 @@ export function getOutfits(state, limit = 3) {
   for (const top of tops)
     for (const bottom of bottoms) {
       const selected = [top, bottom, ...(outer ? [outer] : []), ...(shoe ? [shoe] : [])];
+      if (anchor && !selected.some(item => item.id === anchorId)) continue;
       const reasons = [
         contextReason(profile),
         `${top.name}와 ${bottom.name}를 등록된 보유 옷에서 골랐습니다.`,
@@ -220,7 +225,7 @@ export function getOutfits(state, limit = 3) {
         cautions.push('색 정보가 부족해 색의 어울림을 판단하지 않았습니다.');
       if (outer)
         cautions.push(
-          '재킷은 선택한 출근 상황을 위한 제안입니다. 날씨·실내 온도는 반영하지 않았습니다.',
+          '겉옷은 선택한 옷 또는 상황에 따른 제안입니다. 날씨·실내 온도는 반영하지 않았습니다.',
         );
       if (!shoe) cautions.push('신발은 등록된 정보가 없어 포함하지 않았습니다.');
       cautions.push('실측·착용감을 확인한 코디가 아닙니다.');

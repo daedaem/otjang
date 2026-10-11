@@ -2,3 +2,11 @@ node_modules/
 dist/
 shots/
 *.zip
+
+scene/work/
+*.blend1
+__pycache__/
+blender/.venv/
+scene/assets/room-preview.*
+scene/assets/garment-preview.png
+scene/assets/garments.blend

@@ -10,7 +10,7 @@ const url = process.env.PROTOTYPE_URL || 'http://127.0.0.1:4173/';
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}),
-  args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
 await mkdir(path.join(root, 'shots'), { recursive: true });
 let checks = 0;
@@ -40,14 +40,18 @@ try {
     await page.waitForFunction(() => window.__wearnext?.ready);
     await page.screenshot({ path: path.join(root, `shots/${mode}-welcome.png`), fullPage: true });
     await page.click('[data-action="start-demo"]');
+    await page.waitForSelector('.room-shell');
+    await page.click('[data-action="room-list"]');
     await page.waitForSelector('.garment-card');
-    ok((await page.locator('.garment-card').count()) === 8, `${mode}: eight sample garments`);
+    const initialItemCount = (await page.evaluate(() => window.__wearnext.snapshot())).items.length;
+    ok(initialItemCount === 10 && (await page.locator('.garment-card').count()) === initialItemCount,
+      `${mode}: ten sample garments in the secondary list`);
     ok(
       (await page.locator('main').innerText()).includes('샘플 옷장'),
       `${mode}: sample provenance visible`,
     );
     await page.click('[data-action="filter"][data-id="top"]');
-    ok((await page.locator('.garment-card').count()) === 3, `${mode}: category filtering`);
+    ok((await page.locator('.garment-card').count()) === 4, `${mode}: category filtering`);
     await page.fill('#closet-search', '니트');
     ok((await page.locator('.garment-card').count()) === 1, `${mode}: text search`);
     await page.fill('#closet-search', '');
@@ -122,11 +126,12 @@ try {
     );
     await page.click('[data-action="mark-owned"]');
     await page.click('[data-action="confirm-owned"]');
-    await page.waitForFunction(() => window.__wearnext.snapshot().items.length === 9);
+    await page.waitForFunction((count) => window.__wearnext.snapshot().items.length === count,
+      initialItemCount + 1);
     await page.reload();
     await page.waitForFunction(() => window.__wearnext?.ready);
     ok(
-      (await page.evaluate(() => window.__wearnext.snapshot())).items.length === 9,
+      (await page.evaluate(() => window.__wearnext.snapshot())).items.length === initialItemCount + 1,
       `${mode}: purchase ownership persists after reload`,
     );
     await page.goto(url + '#saved');
@@ -136,7 +141,7 @@ try {
     ]);
     const backup = JSON.parse(await readFile(await download.path(), 'utf8'));
     ok(
-      backup.state.items.length === 9 && backup.state.decisions.length === 2,
+      backup.state.items.length === initialItemCount + 1 && backup.state.decisions.length === 2,
       `${mode}: downloadable backup includes actual current state`,
     );
     for (const route of ['closet', 'outfits', 'discover', 'saved', 'onboarding']) {

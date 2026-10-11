@@ -1,6 +1,9 @@
 import * as Model from './model.js';
 import * as Photo from './photo.js';
 import * as Art from './art.js';
+import { createRoom } from './room.js';
+import roomModelURL from '../scene/assets/wardrobe.glb';
+import roomPosterURL from '../scene/assets/room-front.webp';
 
 const $ = (selector) => document.querySelector(selector);
 const e = (value) =>
@@ -40,6 +43,8 @@ const KINDS = {
   tshirt: '티셔츠',
   sweatshirt: '스웨트셔츠',
   jacket: '재킷',
+  blazer: '블레이저',
+  fieldjacket: '필드 재킷',
   chore: '워크 재킷',
   denim: '데님',
   chino: '치노',
@@ -49,6 +54,12 @@ const KINDS = {
   sneaker: '스니커즈',
   boots: '부츠',
 };
+const KIND_CATEGORIES = Object.fromEntries([
+  ...['shirt','knit','tshirt','sweatshirt'].map(kind => [kind, 'top']),
+  ...['jacket','blazer','fieldjacket','chore'].map(kind => [kind, 'outer']),
+  ...['denim','chino','trouser','cargo'].map(kind => [kind, 'bottom']),
+  ...['loafer','sneaker','boots'].map(kind => [kind, 'shoes']),
+]);
 const OCCASIONS = { daily: '일상', work: '출근', weekend: '주말' };
 const FITS = { regular: '레귤러 핏', relaxed: '여유 있는 핏', slim: '슬림 핏' };
 const nav = [
@@ -111,6 +122,9 @@ let state,
   stateEpoch = 0;
 const ui = {
   route: 'closet',
+  closetView: 'room',
+  roomItem: null,
+  outfitItem: null,
   filter: 'all',
   search: '',
   step: 1,
@@ -158,7 +172,7 @@ async function mutate(change, message = '') {
     return false;
   }
 }
-async function replaceState(next) {
+async function replaceState(next, route = null) {
   const epoch = ++stateEpoch;
   abortController?.abort();
   ui.processing = false;
@@ -168,6 +182,10 @@ async function replaceState(next) {
     await Model.saveState(next);
     state = next;
     welcome = false;
+    if (route) history.replaceState(null, '', `#${route}`);
+    ui.closetView = 'room';
+    ui.roomItem = null;
+    ui.outfitItem = null;
     ui.filter = 'all';
     ui.search = '';
     ui.outfitOffset = 0;
@@ -199,7 +217,12 @@ function empty(title, text, action = 'photos', label = '옷 사진 추가하기'
 function navLink(n, mobile = false) {
   return `<a class="${mobile ? '' : 'nav-link '}${ui.route === n.id ? 'active' : ''}" href="#${n.id}" ${ui.route === n.id ? 'aria-current="page"' : ''}>${icon(n.icon)}<span>${n.label}</span>${!mobile && n.id === 'closet' ? `<span class="count">${state.items.length}</span>` : ''}</a>`;
 }
+let roomController = null;
+let roomGeneration = 0;
 function render() {
+  roomGeneration++;
+  roomController?.dispose();
+  roomController = null;
   ui.route = location.hash.slice(1) || 'closet';
   if (!['closet', 'onboarding', 'outfits', 'discover', 'saved'].includes(ui.route))
     ui.route = 'closet';
@@ -207,19 +230,77 @@ function render() {
     $('#app').innerHTML = renderWelcome();
     return;
   }
+  if (ui.route === 'closet' && ui.closetView === 'room') {
+    $('#app').innerHTML = renderRoom();
+    mountRoom();
+    return;
+  }
   const current = nav.find((n) => n.id === ui.route)?.label || '첫 옷장 만들기';
   $('#app').innerHTML =
     `<aside class="sidebar">${brand()}<div class="brand-caption">YOUR PERSONAL WARDROBE</div><div class="nav-section">MY SPACE</div><nav class="nav" aria-label="주 메뉴">${nav.map((n) => navLink(n)).join('')}</nav><div class="sidebar-bottom"><div class="mini-panel" style="padding:14px;background:#f1f3eb;border:0"><div class="eyebrow" style="font-size:8px">MAKE IT YOURS</div><p style="font-size:11px;margin:8px 0">매일 입는 옷에서<br>나다운 스타일이 시작돼요.</p><button class="text-link small" data-action="photos">옷 사진 추가하기 ${icon('arrow')}</button></div><div class="profile-link"><div class="avatar">W</div><div><b class="small">${state.mode === 'demo' ? '샘플 옷장' : '나의 개인 옷장'}</b><div style="font-size:10px;color:var(--muted)">${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</div></div><button class="icon-btn" data-action="profile" aria-label="스타일 설정" style="margin-left:auto;width:28px;height:28px;border:0">${icon('more')}</button></div><div class="local-status" style="margin-top:18px"><span class="dot"></span>이 브라우저에 저장됨</div></div></aside><div class="layout"><header class="topbar"><div class="breadcrumb">My space <span style="padding:0 12px;color:#bbc0b4">/</span> <b>${current}</b></div><div class="mobile-brand">${brand()}</div><div class="topbar-right"><span class="top-date">${new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date()).toUpperCase()}</span><span class="badge outline">${state.mode === 'demo' ? '샘플 체험' : '개인 옷장'}</span><button class="icon-btn" data-action="profile" aria-label="스타일 설정">${icon('more')}</button></div></header><main class="main" id="main">${ui.route === 'closet' ? renderCloset() : ui.route === 'onboarding' ? renderOnboarding() : ui.route === 'outfits' ? renderOutfits() : ui.route === 'discover' ? renderDiscover() : renderSaved()}<p class="footnote">${icon('shield')}사진과 기록은 이 브라우저에만 보관돼요. · WearNext prototype</p></main></div><nav class="bottom-nav" aria-label="모바일 메뉴">${nav.map((n) => navLink(n, true)).join('')}</nav>`;
 }
 function renderWelcome() {
-  return `<main class="welcome-shell" id="main"><header class="welcome-top">${brand()}<span class="badge outline">PERSONAL PROTOTYPE · 01</span></header><section class="welcome-hero"><div class="welcome-copy"><div class="eyebrow">LESS GUESSING. MORE YOU.</div><h1>내 옷장에서 시작하는,<br><em>나다운 다음 한 벌.</em></h1><p>가지고 있는 옷은 더 잘 입고,<br>새로운 옷은 더 나답게 고르세요.<br>사진 몇 장으로 당신의 옷장을 만들어 볼까요?</p><div class="welcome-buttons">${btn('start-personal', '내 옷 사진으로 시작', { style: 'primary', ico: 'camera' })}${btn('start-demo', '샘플 옷장 둘러보기', { ico: 'arrow' })}</div><p class="small muted">가입 없이 · 사진 외부 전송 없이 · 이 브라우저에 저장</p>${loadError ? `<div class="mt">${notice(e(loadError) + ' 기존 데이터는 덮어쓰지 않았습니다. 백업을 불러오거나 저장 가능한 브라우저로 다시 열어 주세요.', 'error')}${btn('import', '백업 불러오기', { style: 'small' })}</div>` : ''}</div><div class="welcome-visual">${Art.wardrobeSceneSVG()}<div class="floating-label">A LITTLE MORE INTENTIONAL.<b>더 사기 전에, 더 잘 입기.</b><span style="font-size:9px;color:var(--muted)">샘플 옷장 · 일러스트</span></div></div></section><section class="welcome-steps"><div class="welcome-step"><span class="step-number">01</span><div><h3>사진으로 가볍게 시작</h3><p>옷 사진에서 찾은 영역을 확인하고 내 옷장에 담아요.</p></div></div><div class="welcome-step"><span class="step-number">02</span><div><h3>이미 가진 옷의 새로운 조합</h3><p>원하는 스타일과 오늘의 상황에 맞춰 함께 입을 옷을 찾아요.</p></div></div><div class="welcome-step"><span class="step-number">03</span><div><h3>다음 한 벌은 이유 있게</h3><p>보유 옷, 후기, 예산을 함께 놓고 구매할지 판단해요.</p></div></div></section><p class="footnote">샘플 체험의 옷·상품·가격·후기는 흐름을 보여 주기 위한 예시입니다.</p></main>`;
+  return `<main class="room-welcome" id="main"><img class="welcome-room-image" src="${roomPosterURL}" alt="따뜻한 오크 옷장에 셔츠와 재킷이 걸린 드레스룸"><div class="welcome-room-shade"></div><header class="room-header">${brand()}<span class="room-edition">A SPACE FOR YOUR EVERYDAY</span></header><section class="room-welcome-copy"><div class="eyebrow">YOUR WARDROBE, REIMAGINED</div><h1>문을 열면,<br>나만의 옷장.</h1><p>좋아하는 옷을 꺼내 보고, 함께 입어 보고.<br>당신의 옷장에서 다음 한 벌을 찾아보세요.</p><div class="welcome-buttons">${btn('start-demo', '먼저 둘러보기', { style: 'primary', ico: 'arrow' })}${btn('start-personal', '내 옷으로 시작', { ico: 'camera' })}</div><p class="room-private">가입 없이 · 사진은 이 브라우저에만 저장</p>${loadError ? `<div class="mt">${notice(e(loadError) + ' 기존 데이터는 덮어쓰지 않았습니다.', 'error')}${btn('import', '백업 불러오기')}</div>` : ''}</section><footer class="room-welcome-footer"><span>01 — THE PERSONAL WARDROBE</span><span>Blender로 만든 공간 · 샘플 옷장 미리보기</span></footer></main>`;
+}
+function renderRoom() {
+  return `<main class="room-shell" id="main"><header class="room-header">${brand()}<nav class="room-nav" aria-label="주 메뉴">${nav.map(n => `<a href="#${n.id}" class="${n.id === 'closet' ? 'active' : ''}">${n.label}</a>`).join('')}</nav><button class="room-profile" data-action="profile" aria-label="스타일과 옷장 설정">${icon('more')}</button></header><section class="room-stage" aria-label="직접 둘러보는 3D 옷장"><div class="room-backdrop"><img src="${roomPosterURL}" alt="샘플 의류가 놓인 옷장 공간 미리보기"></div><canvas id="room-canvas" aria-label="옷을 눌러 꺼내고 드래그해서 둘러보세요. 아래 옷 선택 메뉴로도 이용할 수 있어요."></canvas><div class="room-intro"><span class="eyebrow">THE EVERYDAY ROOM</span><h1>${state.mode === 'demo' ? '취향이 머무는 곳.' : '나의 작은 드레스룸.'}</h1><p>${state.mode === 'demo' ? '샘플 옷장' : '나의 옷장'} <span>·</span> ${state.items.length}벌 <span>·</span> ${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</p></div><div class="room-top-actions">${btn('room-list', '목록', { style: 'room-button', ico: 'layers' })}${btn('photos', '옷 추가', { style: 'primary', ico: 'plus' })}</div><div id="room-status" class="room-status" role="status" data-ready="false"><span class="spinner"></span>옷장 문을 여는 중이에요. <small>배경은 샘플 공간 미리보기입니다.</small></div><div class="room-view-controls" role="group" aria-label="옷장 시점"><button data-action="room-view" data-id="front" aria-label="전체 옷장 보기">전체</button><button data-action="room-view" data-id="left">셔츠</button><button data-action="room-view" data-id="center">재킷</button><button data-action="room-view" data-id="right">선반</button><button data-action="room-reset" aria-label="옷을 제자리에 넣고 처음 시점으로">↺</button></div><div id="room-inspector" aria-live="polite"></div><div class="room-guide">드래그로 둘러보기 <span>·</span> 스크롤로 가까이 <span>·</span> 옷을 눌러 꺼내기</div>${!state.items.length ? `<div class="room-empty"><h2>첫 번째 옷을 걸어 볼까요?</h2><p>사진을 확인해 등록하면 이 공간에 담겨요.</p>${btn('photos', '내 옷 사진 추가', { style: 'primary', ico: 'camera' })}${btn('manual', '직접 기록', { style: 'ghost' })}</div>` : ''}</section><footer class="room-dock"><div class="room-dock-label"><span class="eyebrow">IN YOUR WARDROBE</span><b>오늘은 어떤 옷부터?</b></div><div class="room-items" aria-label="옷 선택">${state.items.map(item => `<button class="room-item" data-action="room-item" data-id="${e(item.id)}" aria-pressed="false"><span class="room-item-art">${imageOnly(item)}</span><span>${e(item.name)}</span></button>`).join('')}<button class="room-item room-item-add" data-action="photos"><span class="room-item-art">${icon('plus')}</span><span>새로운 옷</span></button></div><div class="room-footer-note"><span id="room-unplaced"></span><span>종류별 3D 모형 · 실제 옷 사진은 상세에서 확인</span>${state.mode === 'demo' ? '<button class="text-link" data-action="switch-personal">내 옷장 만들기 →</button>' : ''}</div></footer><nav class="room-mobile-nav" aria-label="모바일 메뉴">${nav.map(n => navLink(n, true)).join('')}</nav></main>`;
+}
+function mountRoom() {
+  const generation = roomGeneration;
+  const stage = $('.room-stage');
+  const status = $('#room-status');
+  const canvas = $('#room-canvas');
+  roomController = createRoom({
+    canvas, modelURL: roomModelURL,
+    onSelect: id => selectRoomItem(id, false),
+    onReady: controller => {
+      if (generation !== roomGeneration) return;
+      controller.setItems(state.items.filter(item => state.mode !== 'personal' || item.source !== 'demo'));
+      stage.classList.add('room-loaded');
+      status.dataset.ready = 'true';
+      $('.room-shell').dataset.ready = 'true';
+      status.hidden = true;
+      const unplaced = controller.unplacedItems.length;
+      $('#room-unplaced').innerHTML = unplaced ? `<button class="text-link" data-action="room-list">이 공간에 놓이지 않은 옷 ${unplaced}벌은 목록에서 확인 →</button>` : '';
+      if (ui.roomItem && state.items.some(i => i.id === ui.roomItem)) selectRoomItem(ui.roomItem);
+    },
+    onError: () => {
+      if (generation !== roomGeneration) return;
+      stage.classList.remove('room-loaded');
+      stage.classList.add('room-fallback');
+      $('.room-shell').dataset.error = 'webgl';
+      status.hidden = false;
+      status.dataset.ready = 'false';
+      status.innerHTML = `이 기기에서 3D 화면을 열지 못했어요.<small>배경은 샘플 공간 이미지이며, 내 옷은 목록에 저장돼 있어요.</small>${btn('room-list', '내 옷 목록 열기', { style: 'primary' })}`;
+    },
+  });
+}
+function selectRoomItem(id, focus = true) {
+  const item = state.items.find(i => i.id === id);
+  if (!item || !$('#room-inspector')) return;
+  ui.roomItem = id;
+  const represented = roomController?.slots.some(slot => slot.itemId === id);
+  if (focus && roomController?.isReady) {
+    if (represented) roomController.focusItem(id);
+    else roomController.reset();
+  }
+  $('#room-inspector').innerHTML = `<aside class="room-detail"><button class="room-detail-close icon-btn" data-action="room-reset" aria-label="옷을 제자리에 넣기">${icon('close')}</button><span class="eyebrow">${item.source === 'demo' ? 'SAMPLE WARDROBE' : e(item.brand || 'MY WARDROBE')}</span><h2>${e(item.name)}</h2><p class="room-detail-meta"><span class="swatch" style="background:${COLOR[item.color] || COLOR.unknown}"></span>${e(COLORS[item.color] || '미확인')} · ${e(KINDS[item.kind] || Model.CATEGORY_LABELS[item.category])}</p>${item.image ? `<img class="room-own-photo" src="${e(item.image)}" alt="등록한 실제 옷 사진">` : ''}<p class="room-detail-note">${represented ? '옷의 종류와 색을 반영한 모형이에요. 실제 제품의 형태·핏과는 다를 수 있어요.' : '이 공간에 놓이지 않은 옷이에요. 기록과 사진으로 코디에 활용할 수 있어요.'}</p>${item.available === false ? '<span class="badge sand">오늘의 코디에서 제외 중</span>' : ''}<div class="room-detail-actions">${btn('room-outfit', '이 옷으로 코디', { id, style: 'primary wide', ico: 'layers' })}${btn('edit-item', '사진 · 정보 수정', { id, style: 'wide', ico: 'edit' })}${btn('room-reset', '옷장에 다시 넣기', { style: 'ghost wide' })}</div></aside>`;
+  $('.room-stage').classList.add('has-selection');
+  document.querySelectorAll('.room-item[data-id]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.id === id)));
+}
+function resetRoom() {
+  ui.roomItem = null;
+  roomController?.reset();
+  if ($('#room-inspector')) $('#room-inspector').innerHTML = '';
+  $('.room-stage')?.classList.remove('has-selection');
+  document.querySelectorAll('.room-item[data-id]').forEach(button => button.setAttribute('aria-pressed', 'false'));
 }
 function renderCloset() {
   const items = state.items;
   const outfits = Model.getOutfits(state);
   const top = items.find((i) => i.category === 'top') || Model.demoItems[0];
   const bottom = items.find((i) => i.category === 'bottom') || Model.demoItems[3];
-  return `${heading('MY WARDROBE', '나의 옷장', '좋아하는 옷을 모아, 더 나다운 매일을 만들어 가요.', btn('photos', '옷 추가하기', { style: 'primary', ico: 'plus' }))}${state.mode === 'demo' ? notice('지금은 샘플 옷장이에요. 내 옷으로 시작하려면 <button class="text-link" style="font-size:inherit;padding:0" data-action="switch-personal">개인 옷장 만들기 →</button>', 'demo') : ''}<section class="dashboard-hero ${state.mode === 'demo' ? 'mt' : ''}"><div class="hero-copy"><div class="eyebrow">YOUR WARDROBE, REIMAGINED</div><h2>${outfits.length ? '옷은 충분해요.<br>새로운 조합을 만나 보세요.' : items.length ? '옷장에 첫걸음을 뗐어요.<br>함께 입을 옷을 더해 보세요.' : '아직 비어 있는 옷장,<br>첫 번째 옷을 담아 볼까요?'}</h2><p>${outfits.length ? '익숙한 옷들 사이에, 아직 입어 보지 않은 조합.' : '한 번에 전부 등록하지 않아도 괜찮아요. 그림은 구성 예시예요.'}</p><button class="text-link" data-action="${items.length ? 'outfits' : 'photos'}">${items.length ? '오늘의 코디 살펴보기' : '사진으로 내 옷장 만들기'} ${icon('arrow')}</button></div><div class="hero-visual"><div class="hero-garment">${imageOnly(top)}</div><div class="hero-garment">${imageOnly(bottom)}</div><span class="hero-note">${items.some((i) => i.category === 'top') && items.some((i) => i.category === 'bottom') ? 'FROM YOUR WARDROBE' : 'ILLUSTRATION PREVIEW'}</span></div></section><section class="insights"><div class="insight"><div class="insight-icon">${icon('closet')}</div><div><div class="value">${items.length}<span style="font:10px var(--font);margin-left:4px">벌</span></div><div class="label">옷장에 담긴 옷</div></div></div><div class="insight"><div class="insight-icon">${icon('layers')}</div><div><div class="value">${outfits.length}<span style="font:10px var(--font);margin-left:4px">가지</span></div><div class="label">지금 제안하는 코디</div></div></div><div class="insight"><div class="insight-icon">${icon('bookmark')}</div><div><div class="value">${state.savedOutfits.length + state.savedProducts.length}<span style="font:10px var(--font);margin-left:4px">개</span></div><div class="label">내가 저장한 발견</div></div></div></section>${state.drafts.length ? `<div class="notice mb">${icon('camera')}<span>확인을 기다리는 사진 초안 ${state.drafts.length}개가 있어요. <button class="text-link" data-action="resume">이어서 정리하기 →</button></span></div>` : ''}<div class="section-heading"><h2>내가 가진 옷 <span class="muted">${items.length}</span></h2><button class="text-link small" data-action="manual">${icon('edit')}직접 기록</button></div><div class="filters"><div class="filter-tabs" role="group" aria-label="옷 분류">${Object.entries(
+  return `${heading('MY WARDROBE', '나의 옷장', '좋아하는 옷을 모아, 더 나다운 매일을 만들어 가요.', btn('room-open', '옷장으로 돌아가기', { ico: 'closet' }) + btn('photos', '옷 추가하기', { style: 'primary', ico: 'plus' }))}${state.mode === 'demo' ? notice('지금은 샘플 옷장이에요. 내 옷으로 시작하려면 <button class="text-link" style="font-size:inherit;padding:0" data-action="switch-personal">개인 옷장 만들기 →</button>', 'demo') : ''}<section class="dashboard-hero ${state.mode === 'demo' ? 'mt' : ''}"><div class="hero-copy"><div class="eyebrow">YOUR WARDROBE, REIMAGINED</div><h2>${outfits.length ? '옷은 충분해요.<br>새로운 조합을 만나 보세요.' : items.length ? '옷장에 첫걸음을 뗐어요.<br>함께 입을 옷을 더해 보세요.' : '아직 비어 있는 옷장,<br>첫 번째 옷을 담아 볼까요?'}</h2><p>${outfits.length ? '익숙한 옷들 사이에, 아직 입어 보지 않은 조합.' : '한 번에 전부 등록하지 않아도 괜찮아요. 그림은 구성 예시예요.'}</p><button class="text-link" data-action="${items.length ? 'outfits' : 'photos'}">${items.length ? '오늘의 코디 살펴보기' : '사진으로 내 옷장 만들기'} ${icon('arrow')}</button></div><div class="hero-visual"><div class="hero-garment">${imageOnly(top)}</div><div class="hero-garment">${imageOnly(bottom)}</div><span class="hero-note">${items.some((i) => i.category === 'top') && items.some((i) => i.category === 'bottom') ? 'FROM YOUR WARDROBE' : 'ILLUSTRATION PREVIEW'}</span></div></section><section class="insights"><div class="insight"><div class="insight-icon">${icon('closet')}</div><div><div class="value">${items.length}<span style="font:10px var(--font);margin-left:4px">벌</span></div><div class="label">옷장에 담긴 옷</div></div></div><div class="insight"><div class="insight-icon">${icon('layers')}</div><div><div class="value">${outfits.length}<span style="font:10px var(--font);margin-left:4px">가지</span></div><div class="label">지금 제안하는 코디</div></div></div><div class="insight"><div class="insight-icon">${icon('bookmark')}</div><div><div class="value">${state.savedOutfits.length + state.savedProducts.length}<span style="font:10px var(--font);margin-left:4px">개</span></div><div class="label">내가 저장한 발견</div></div></div></section>${state.drafts.length ? `<div class="notice mb">${icon('camera')}<span>확인을 기다리는 사진 초안 ${state.drafts.length}개가 있어요. <button class="text-link" data-action="resume">이어서 정리하기 →</button></span></div>` : ''}<div class="section-heading"><h2>내가 가진 옷 <span class="muted">${items.length}</span></h2><button class="text-link small" data-action="manual">${icon('edit')}직접 기록</button></div><div class="filters"><div class="filter-tabs" role="group" aria-label="옷 분류">${Object.entries(
     { all: '전체', top: '상의', bottom: '하의', outer: '아우터', shoes: '신발' },
   )
     .map(
@@ -246,7 +327,7 @@ function uploadStep() {
 }
 function reviewStep() {
   const selected = state.drafts.filter((d) => d.selected !== false);
-  return `<div class="section-heading"><div><h2>내 옷이 맞는지 가볍게 확인해 주세요.</h2><p class="muted small" style="margin-top:8px">종류와 이름을 확인하고, 중복된 사진은 하나만 남겨 주세요.</p></div>${btn('upload-step', '사진 더 담기', { style: 'small', ico: 'plus' })}</div>${ui.errors.length ? notice(ui.errors.map((x) => e(x.name) + ': ' + e(x.message)).join('<br>'), 'error') : ''}<div class="row wrap mb mt"><span class="badge">${selected.length}개 선택됨</span>${btn('merge-drafts', '선택한 초안을 같은 옷으로 묶기', { style: 'small' })}${btn('delete-drafts', '선택 초안 삭제', { style: 'small danger' })}${ui.mergeUndo ? btn('undo-merge', '묶기 취소', { style: 'small' }) : ''}<span class="muted small">서로 다른 옷은 따로 남겨 주세요.</span></div><div class="draft-grid">${state.drafts.map((d) => `<article class="draft-card ${d.selected === false ? 'excluded' : ''}"><div class="draft-top"><label><input type="checkbox" data-draft-select="${e(d.id)}" ${d.selected !== false ? 'checked' : ''}>옷장에 담기</label>${d.duplicateOf ? '<span class="badge warn">중복 가능</span>' : '<span class="badge outline">초안</span>'}</div>${picture(d)}<div class="draft-fields"><label class="field"><span>옷 이름</span><input data-draft-field="name" data-id="${e(d.id)}" value="${e(d.name)}" maxlength="300"></label><label class="field"><span>종류</span><select data-draft-field="category" data-id="${e(d.id)}">${options(Model.CATEGORY_LABELS, d.category)}</select></label><label class="field"><span>색</span><select data-draft-field="color" data-id="${e(d.id)}">${options(COLORS, d.color)}</select></label></div><p class="draft-note">${e(d.analysisNote || '사진에서 만든 초안이에요. 종류와 색을 확인해 주세요.')}</p><div class="row wrap">${d.sourceImage ? btn('crop-draft', '영역 수정', { id: d.id, style: 'small' }) : ''}${btn('remove-draft', '제외', { id: d.id, style: 'small ghost' })}</div></article>`).join('')}</div>${!state.drafts.length ? empty('확인할 초안이 없어요', '사진을 추가하거나 직접 한 벌을 기록해 보세요.') : ''}<div class="sticky-actions"><div><strong class="small">${selected.length}개의 옷으로 시작</strong><p class="muted" style="font-size:10px">모르는 속성은 나중에 채워도 괜찮아요.</p></div>${btn('confirm-drafts', '선택한 옷 확정하기', { style: 'primary', ico: 'check', extra: selected.length ? '' : 'disabled' })}</div>`;
+  return `<div class="section-heading"><div><h2>내 옷이 맞는지 가볍게 확인해 주세요.</h2><p class="muted small" style="margin-top:8px">종류와 이름을 확인하고, 중복된 사진은 하나만 남겨 주세요.</p></div>${btn('upload-step', '사진 더 담기', { style: 'small', ico: 'plus' })}</div>${ui.errors.length ? notice(ui.errors.map((x) => e(x.name) + ': ' + e(x.message)).join('<br>'), 'error') : ''}<div class="row wrap mb mt"><span class="badge">${selected.length}개 선택됨</span>${btn('merge-drafts', '선택한 초안을 같은 옷으로 묶기', { style: 'small' })}${btn('delete-drafts', '선택 초안 삭제', { style: 'small danger' })}${ui.mergeUndo ? btn('undo-merge', '묶기 취소', { style: 'small' }) : ''}<span class="muted small">서로 다른 옷은 따로 남겨 주세요.</span></div><div class="draft-grid">${state.drafts.map((d) => `<article class="draft-card ${d.selected === false ? 'excluded' : ''}"><div class="draft-top"><label><input type="checkbox" data-draft-select="${e(d.id)}" ${d.selected !== false ? 'checked' : ''}>옷장에 담기</label>${d.duplicateOf ? '<span class="badge warn">중복 가능</span>' : '<span class="badge outline">초안</span>'}</div>${picture(d)}<div class="draft-fields"><label class="field"><span>옷 이름</span><input data-draft-field="name" data-id="${e(d.id)}" value="${e(d.name)}" maxlength="300"></label><label class="field"><span>분류</span><select data-draft-field="category" data-id="${e(d.id)}">${options(Model.CATEGORY_LABELS, d.category)}</select></label><label class="field"><span>옷 종류 · 모형 연결</span><select data-draft-field="kind" data-id="${e(d.id)}">${options(KINDS, d.kind || 'unknown')}</select></label><label class="field"><span>색</span><select data-draft-field="color" data-id="${e(d.id)}">${options(COLORS, d.color)}</select></label></div><p class="draft-note">${e(d.analysisNote || '사진에서 만든 초안이에요. 종류와 색을 확인해 주세요.')}</p><div class="row wrap">${d.sourceImage ? btn('crop-draft', '영역 수정', { id: d.id, style: 'small' }) : ''}${btn('remove-draft', '제외', { id: d.id, style: 'small ghost' })}</div></article>`).join('')}</div>${!state.drafts.length ? empty('확인할 초안이 없어요', '사진을 추가하거나 직접 한 벌을 기록해 보세요.') : ''}<div class="sticky-actions"><div><strong class="small">${selected.length}개의 옷으로 시작</strong><p class="muted" style="font-size:10px">모르는 속성은 나중에 채워도 괜찮아요.</p></div>${btn('confirm-drafts', '선택한 옷 확정하기', { style: 'primary', ico: 'check', extra: selected.length ? '' : 'disabled' })}</div>`;
 }
 function styleFields() {
   return `<div class="style-grid">${Object.entries(Model.STYLE_LABELS)
@@ -286,7 +367,7 @@ function outfitCard(outfit, index) {
     )}</ul>${btn('outfit-detail', '조합 자세히 보기', { id: outfit.id, style: 'wide small', ico: 'arrow' })}</div></article>`;
 }
 function getVisibleOutfits() {
-  const all = Model.getOutfits(state, 20);
+  const all = Model.getOutfits(state, 20, ui.outfitItem);
   return all.length
     ? Array.from(
         { length: Math.min(3, all.length) },
@@ -296,7 +377,7 @@ function getVisibleOutfits() {
 }
 function renderOutfits() {
   const outfits = getVisibleOutfits();
-  return `${heading('THE EVERYDAY EDIT', '오늘, 이렇게 입어 볼까요?', '새로 사지 않아도 좋아요. 등록된 옷에서 조합을 찾아봤어요.', btn('more-outfits', '다른 조합 보기', { style: 'ghost', ico: 'layers' }))}${contextBar()}${state.mode === 'demo' ? `<div class="mb">${notice('샘플 옷으로 조합을 체험하고 있어요. 저장과 착용 기록도 직접 남겨 보세요.', 'demo')}</div>` : ''}${outfits.length ? `<div class="outfit-grid">${outfits.map(outfitCard).join('')}</div><p class="small muted mt">등록된 종류·스타일·상황에 따른 규칙 제안이에요. 날씨, 실제 실측과 착용감은 확인하지 않았어요.</p>` : empty('함께 입을 옷을 조금 더 알려 주세요', '확정된 상의와 하의가 각각 한 벌 이상 필요해요. 오늘 제외한 옷은 코디에 넣지 않아요.')}`;
+  return `${heading('THE EVERYDAY EDIT', '오늘, 이렇게 입어 볼까요?', '새로 사지 않아도 좋아요. 등록된 옷에서 조합을 찾아봤어요.', btn('more-outfits', '다른 조합 보기', { style: 'ghost', ico: 'layers' }))}${contextBar()}${ui.outfitItem ? notice(e(state.items.find(i => i.id === ui.outfitItem)?.name || '선택한 옷') + '을 포함한 조합이에요. <button class="text-link" data-action="clear-outfit-item">전체 조합 보기</button>') : ''}${state.mode === 'demo' ? `<div class="mb">${notice('샘플 옷으로 조합을 체험하고 있어요. 저장과 착용 기록도 직접 남겨 보세요.', 'demo')}</div>` : ''}${outfits.length ? `<div class="outfit-grid">${outfits.map(outfitCard).join('')}</div><p class="small muted mt">등록된 종류·스타일·상황에 따른 규칙 제안이에요. 날씨, 실제 실측과 착용감은 확인하지 않았어요.</p>` : empty('함께 입을 옷을 조금 더 알려 주세요', '확정된 상의와 하의가 각각 한 벌 이상 필요해요. 오늘 제외한 옷은 코디에 넣지 않아요.')}`;
 }
 function renderDiscover() {
   const products = Model.rankProducts(state);
@@ -366,7 +447,7 @@ function productForm() {
 }
 function outfitDetail(id) {
   const outfit =
-    Model.getOutfits(state, 20).find((o) => o.id === id) ||
+    Model.getOutfits(state, 20, ui.outfitItem).find((o) => o.id === id) ||
     state.savedOutfits.find((o) => o.id === id);
   if (!outfit) return toast('현재 옷장에서는 이 조합을 찾지 못했어요.');
   ui.currentOutfit = outfit;
@@ -552,19 +633,29 @@ function profileDialog() {
   openDialog('나의 스타일과 상황', styleFields());
 }
 async function handleAction(action, id) {
+  if (action === 'room-list' || action === 'room-open') {
+    ui.closetView = action === 'room-list' ? 'list' : 'room';
+    ui.roomItem = null;
+    render();
+    return;
+  }
+  if (action === 'room-item') { selectRoomItem(id); return; }
+  if (action === 'room-reset') { resetRoom(); return; }
+  if (action === 'room-view') { resetRoom(); roomController?.setView(id); return; }
+  if (action === 'room-outfit') { ui.outfitItem = id; ui.outfitOffset = 0; go('outfits'); return; }
+  if (action === 'clear-outfit-item') { ui.outfitItem = null; ui.outfitOffset = 0; render(); return; }
+
   if (action === 'close-dialog') {
     closeDialog();
     return;
   }
   if (action === 'start-demo') {
-    await replaceState(Model.createState('demo'));
-    go('closet');
+    await replaceState(Model.createState('demo'), 'closet');
     return;
   }
   if (action === 'start-personal') {
-    await replaceState(Model.createState('personal'));
     ui.step = 1;
-    go('onboarding');
+    await replaceState(Model.createState('personal'), 'onboarding');
     return;
   }
   if (action === 'switch-personal') {
@@ -578,9 +669,8 @@ async function handleAction(action, id) {
   }
   if (action === 'confirm-personal') {
     closeDialog();
-    await replaceState(Model.createState('personal'));
     ui.step = 1;
-    go('onboarding');
+    await replaceState(Model.createState('personal'), 'onboarding');
     return;
   }
   if (['closet', 'outfits', 'discover', 'saved'].includes(action)) {
@@ -763,7 +853,7 @@ async function handleAction(action, id) {
   }
   if (action === 'save-outfit') {
     const outfit =
-      Model.getOutfits(state, 20).find((x) => x.id === id) ||
+      Model.getOutfits(state, 20, ui.outfitItem).find((x) => x.id === id) ||
       state.savedOutfits.find((x) => x.id === id) ||
       ui.currentOutfit;
     if (!outfit) return;
@@ -785,7 +875,7 @@ async function handleAction(action, id) {
   }
   if (action === 'wear') {
     const outfit =
-      Model.getOutfits(state, 20).find((x) => x.id === id) ||
+      Model.getOutfits(state, 20, ui.outfitItem).find((x) => x.id === id) ||
       state.savedOutfits.find((x) => x.id === id) ||
       ui.currentOutfit;
     if (
@@ -954,14 +1044,8 @@ document.addEventListener('change', async (event) => {
       const d = s.drafts.find((x) => x.id === target.dataset.id);
       if (d) {
         d[target.dataset.draftField] = value || '이름 없는 옷';
-        if (target.dataset.draftField === 'category')
-          d.kind = {
-            top: 'shirt',
-            bottom: 'chino',
-            outer: 'jacket',
-            shoes: 'sneaker',
-            unknown: 'unknown',
-          }[value];
+        if (target.dataset.draftField === 'kind' && KIND_CATEGORIES[value]) d.category = KIND_CATEGORIES[value];
+        if (target.dataset.draftField === 'category' && KIND_CATEGORIES[d.kind] !== value) d.kind = 'unknown';
       }
     });
   }
@@ -1127,6 +1211,7 @@ $('#dialog').addEventListener('click', (event) => {
   }
 });
 window.addEventListener('hashchange', render);
+async function initialize() {
 try {
   state = await Model.loadState();
   welcome = !state;
@@ -1139,4 +1224,6 @@ try {
 ui.step = state.drafts.length ? 2 : 1;
 render();
 // Read-only snapshots for reproducible browser tests; never exposes live mutable state.
-window.__wearnext = { snapshot: () => clone(state), ready: true };
+window.__wearnext = { snapshot: () => clone(state), ready: true, roomSnapshot: () => ({ ready: roomController?.isReady || false, slots: (roomController?.slots || []).map(s => ({ slotKey:s.slotKey,itemId:s.itemId,visible:s.visible,screen:roomController.getScreenPosition(s.slotKey) })), selectedId:ui.roomItem,view:roomController?.view, unplacedIds:roomController?.unplacedItems.map(i => i.id) || [], unplaced:roomController?.unplacedItems.map(i => i.id) || [] }) };
+}
+initialize();

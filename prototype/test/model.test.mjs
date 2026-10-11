@@ -271,3 +271,23 @@ test('IndexedDB waits for transaction commit and a quota abort preserves previou
     else globalThis.indexedDB = previous;
   }
 });
+
+test('selected wardrobe item is included in every anchored outfit, including alternate shoes and outerwear', () => {
+  const state = createState('demo');
+  for (const item of state.items) {
+    const outfits = getOutfits(state, 20, item.id);
+    assert.ok(outfits.length > 0, `${item.id} should support an outfit`);
+    assert.ok(outfits.every(outfit => outfit.items.includes(item.id)));
+  }
+});
+
+test('missing, unconfirmed or unavailable anchor cannot produce a misleading outfit', () => {
+  const state = createState('demo');
+  const anchor = state.items[0];
+  anchor.available = false;
+  assert.deepEqual(getOutfits(state, 20, anchor.id), []);
+  anchor.available = true;
+  anchor.confirmed = false;
+  assert.deepEqual(getOutfits(state, 20, anchor.id), []);
+  assert.deepEqual(getOutfits(state, 20, 'missing'), []);
+});

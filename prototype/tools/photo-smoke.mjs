@@ -10,7 +10,7 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch({
   headless: true,
-  args: ['--disable-dev-shm-usage'],
+  args: ['--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}),
 });
 const context = await browser.newContext({
@@ -88,7 +88,9 @@ try {
   await page.locator(`[data-draft-field="category"][data-id="${first}"]`).selectOption('top');
   await wait((s) => s.drafts[0].category === 'top');
   assert.equal(await page.evaluate(() => window.XSS_RAN), undefined);
-  console.log('PASS draft name XSS escaped and classification persists');
+  await page.locator(`[data-draft-field="kind"][data-id="${first}"]`).selectOption('shirt');
+  await wait((s, id) => s.drafts.find(d => d.id === id).kind === 'shirt', first);
+  console.log('PASS draft name XSS escaped and explicit garment kind persists');
   await page.locator(`[data-action="crop-draft"][data-id="${first}"]`).click();
   for (const [name, value] of Object.entries({ x: 0, y: 0, width: 45, height: 100 }))
     await page.locator(`#crop-form [name="${name}"]`).evaluate((el, value) => {
@@ -119,6 +121,11 @@ try {
   await page.locator('#profile-form button[type="submit"]').click();
   await page.waitForURL((url) => url.hash === '#closet');
   await page.reload();
+  await page.waitForSelector('.room-shell[data-ready="true"]', { timeout: 60000 });
+  const placed = await page.evaluate(() => window.__wearnext.roomSnapshot().slots.filter(slot => slot.visible));
+  assert.equal(placed.length, 1);
+  assert.equal(placed[0].itemId, (await state()).items[0].id);
+  await click('room-list');
   await page.locator('.garment-card').first().waitFor();
   stored = await state();
   assert.equal(stored.items.length, 1);

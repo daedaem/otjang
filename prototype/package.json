@@ -7,9 +7,14 @@
     "build": "node tools/build.mjs",
     "start": "node tools/serve.mjs",
     "test": "node --test test/*.test.mjs",
-    "test:browser": "node tools/smoke.mjs"
+    "test:browser": "node tools/smoke.mjs",
+    "test:room": "node tools/room-smoke.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.25.11",
     "playwright": "1.56.1"
+  },
+  "dependencies": {
+    "three": "0.160.1"
   }
 }

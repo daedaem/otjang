@@ -1,0 +1,396 @@
+{
+  "version": 1,
+  "producer": "Blender 5.2.2 LTS",
+  "asset": "wardrobe.glb",
+  "representation": "Original type-based room and clothing geometry. Not scans or exact product replicas.",
+  "poster": "room-front.webp",
+  "preview": "room-preview.webp",
+  "posterSize": [
+    1600,
+    1050
+  ],
+  "camera": {
+    "position": [
+      -0.05999999865889549,
+      2.049999952316284,
+      7.849999904632568
+    ],
+    "target": [
+      0.0,
+      1.4299999475479126,
+      0.03999999910593033
+    ],
+    "fov": 30.7215305651332,
+    "lens": 43.0
+  },
+  "slots": [
+    {
+      "id": "slot_01",
+      "category": "top",
+      "kind": "shirt",
+      "supportedKinds": [
+        "shirt"
+      ],
+      "color": "white",
+      "gltfCenter": [
+        -1.89122,
+        2.04391,
+        0.24908
+      ],
+      "blenderCenter": [
+        -1.8912198543548584,
+        -0.24908050894737244,
+        2.043914794921875
+      ],
+      "poster": {
+        "x": 0.20159,
+        "y": 0.356984
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          -2.14676,
+          1.58513,
+          0.14924
+        ],
+        "max": [
+          -1.63568,
+          2.5027,
+          0.34892
+        ]
+      }
+    },
+    {
+      "id": "slot_02",
+      "category": "top",
+      "kind": "shirt",
+      "supportedKinds": [
+        "shirt"
+      ],
+      "color": "blue",
+      "gltfCenter": [
+        -1.18122,
+        2.04391,
+        0.24908
+      ],
+      "blenderCenter": [
+        -1.1812198162078857,
+        -0.24908050894737244,
+        2.043914794921875
+      ],
+      "poster": {
+        "x": 0.313848,
+        "y": 0.356983
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          -1.43676,
+          1.58513,
+          0.14924
+        ],
+        "max": [
+          -0.92568,
+          2.5027,
+          0.34892
+        ]
+      }
+    },
+    {
+      "id": "slot_03",
+      "category": "outer",
+      "kind": "blazer",
+      "supportedKinds": [
+        "blazer",
+        "jacket"
+      ],
+      "color": "navy",
+      "gltfCenter": [
+        -0.35516,
+        2.05147,
+        0.26116
+      ],
+      "blenderCenter": [
+        -0.35516226291656494,
+        -0.2611600160598755,
+        2.051466464996338
+      ],
+      "poster": {
+        "x": 0.444174,
+        "y": 0.35516
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          -0.66307,
+          1.5999,
+          0.18892
+        ],
+        "max": [
+          -0.04725,
+          2.50303,
+          0.3334
+        ]
+      }
+    },
+    {
+      "id": "slot_04",
+      "category": "outer",
+      "kind": "fieldjacket",
+      "supportedKinds": [
+        "fieldjacket",
+        "chore",
+        "jacket"
+      ],
+      "color": "olive",
+      "gltfCenter": [
+        0.35484,
+        2.06646,
+        0.26361
+      ],
+      "blenderCenter": [
+        0.35483771562576294,
+        -0.26360809803009033,
+        2.0664641857147217
+      ],
+      "poster": {
+        "x": 0.556301,
+        "y": 0.351541
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          0.04693,
+          1.62989,
+          0.18892
+        ],
+        "max": [
+          0.66275,
+          2.50303,
+          0.3383
+        ]
+      }
+    },
+    {
+      "id": "slot_05",
+      "category": "bottom",
+      "kind": "chino",
+      "supportedKinds": [
+        "chino",
+        "trouser"
+      ],
+      "color": "beige",
+      "gltfCenter": [
+        1.5,
+        2.10086,
+        0.16
+      ],
+      "blenderCenter": [
+        1.5,
+        -0.1599999964237213,
+        2.100858688354492
+      ],
+      "poster": {
+        "x": 0.733622,
+        "y": 0.343413
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.34687,
+          2.06677,
+          -0.0775
+        ],
+        "max": [
+          1.65313,
+          2.13495,
+          0.3975
+        ]
+      }
+    },
+    {
+      "id": "slot_06",
+      "category": "bottom",
+      "kind": "denim",
+      "supportedKinds": [
+        "denim"
+      ],
+      "color": "navy",
+      "gltfCenter": [
+        1.5,
+        1.63229,
+        0.16
+      ],
+      "blenderCenter": [
+        1.5,
+        -0.1599999964237213,
+        1.6322870254516602
+      ],
+      "poster": {
+        "x": 0.732498,
+        "y": 0.454426
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.34687,
+          1.59677,
+          -0.0775
+        ],
+        "max": [
+          1.65313,
+          1.66781,
+          0.3975
+        ]
+      }
+    },
+    {
+      "id": "slot_07",
+      "category": "top",
+      "kind": "knit",
+      "supportedKinds": [
+        "knit"
+      ],
+      "color": "cream",
+      "gltfCenter": [
+        1.5,
+        1.18089,
+        0.16
+      ],
+      "blenderCenter": [
+        1.5,
+        -0.1599999964237213,
+        1.1808936595916748
+      ],
+      "poster": {
+        "x": 0.731426,
+        "y": 0.560364
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.302,
+          1.12666,
+          -0.062
+        ],
+        "max": [
+          1.698,
+          1.23513,
+          0.382
+        ]
+      }
+    },
+    {
+      "id": "slot_08",
+      "category": "top",
+      "kind": "tshirt",
+      "supportedKinds": [
+        "tshirt",
+        "tee"
+      ],
+      "color": "white",
+      "gltfCenter": [
+        1.5,
+        0.69493,
+        0.16
+      ],
+      "blenderCenter": [
+        1.5,
+        -0.1599999964237213,
+        0.6949253082275391
+      ],
+      "poster": {
+        "x": 0.730283,
+        "y": 0.67333
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.302,
+          0.66666,
+          -0.062
+        ],
+        "max": [
+          1.698,
+          0.72319,
+          0.382
+        ]
+      }
+    },
+    {
+      "id": "slot_09",
+      "category": "shoes",
+      "kind": "loafer",
+      "supportedKinds": [
+        "loafer"
+      ],
+      "color": "brown",
+      "gltfCenter": [
+        1.14,
+        0.27945,
+        0.1925
+      ],
+      "blenderCenter": [
+        1.1399999856948853,
+        -0.19249999523162842,
+        0.2794497609138489
+      ],
+      "poster": {
+        "x": 0.675138,
+        "y": 0.770895
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          1.01343,
+          0.2286,
+          0.05615
+        ],
+        "max": [
+          1.26657,
+          0.3303,
+          0.32885
+        ]
+      }
+    },
+    {
+      "id": "slot_10",
+      "category": "shoes",
+      "kind": "sneaker",
+      "supportedKinds": [
+        "sneaker"
+      ],
+      "color": "white",
+      "gltfCenter": [
+        1.89,
+        0.27585,
+        0.1925
+      ],
+      "blenderCenter": [
+        1.8899999856948853,
+        -0.19249999523162842,
+        0.2758495807647705
+      ],
+      "poster": {
+        "x": 0.790018,
+        "y": 0.771418
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          1.76343,
+          0.2286,
+          0.05615
+        ],
+        "max": [
+          2.01657,
+          0.3231,
+          0.32885
+        ]
+      }
+    }
+  ],
+  "trianglesBeforeExport": 166888,
+  "meshCount": 138,
+  "draft": false
+}

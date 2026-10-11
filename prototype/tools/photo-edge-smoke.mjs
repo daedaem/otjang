@@ -9,7 +9,7 @@ const prototypeURL = new URL(process.env.PROTOTYPE_URL || 'http://127.0.0.1:4173
 import assert from 'node:assert/strict';
 const browser = await chromium.launch({
   headless: true,
-  args: ['--disable-dev-shm-usage'],
+  args: ['--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}),
 });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -26,6 +26,12 @@ await page.addInitScript(() => {
   window.decodeCount = 0;
   window.blockAt = Infinity;
   window.createImageBitmap = async (...args) => {
+    // GLB textures also use this browser API; pause only the uploaded photos.
+    if (!(args[0] instanceof Blob)) return original(...args);
+    const header = await args[0].slice(0, 24).arrayBuffer();
+    const view = new DataView(header);
+    if (header.byteLength < 24 || view.getUint32(0) !== 0x89504e47
+      || view.getUint32(16) !== 400 || view.getUint32(20) !== 300) return original(...args);
     window.decodeCount++;
     if (window.decodeCount === window.blockAt)
       await new Promise((resolve) => {
