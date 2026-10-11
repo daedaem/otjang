@@ -209,6 +209,57 @@ box('Floor substructure',(0,-1.35,-.05),(6.5,4.5,.09),pale_wood,0)
 for n in range(35):
     x=-3.15+n*.185
     box(f'Oak floor board {n:02d}',(x,-1.35,-.003),(.184,4.5,.012),pale_wood,.0005)
+
+# Portrait overview steps back beyond the close-view set. Continue only its
+# floor and ceiling surfaces so their front cut edges never reveal a floating
+# miniature. These separate, unbaked planes preserve the original CabinetAO
+# atlas allocation and metre-space grain, with no enlarged cabinet/wall UVs.
+continuation_root=bpy.data.objects.new('room_continuation',None)
+scene.collection.objects.link(continuation_root)
+continuation_root['assetType']='Unbaked continuation of the near-view room'
+continuation_floor=pale_wood.copy()
+continuation_floor.name='Pale oak floor continuation'
+continuation_ceiling=ceiling_mat.copy()
+continuation_ceiling.name='Soft ivory ceiling continuation'
+
+def continuation_plane(name,verts,mat,uv_source,shadow=True):
+    data=bpy.data.meshes.new(name)
+    data.from_pydata(verts,[],[(0,1,2,3)])
+    data.update()
+    uv=data.uv_layers.new(name='UVMap')
+    # Match the existing board's world UVs including its per-board offset.
+    offset=(sum(ord(c) for c in uv_source)%131)/131
+    for loop in data.loops:
+        point=data.vertices[loop.vertex_index].co
+        uv.data[loop.index].uv=(point.x*2+offset,point.y*.5+offset*.37)
+    obj=bpy.data.objects.new(name,data)
+    scene.collection.objects.link(obj)
+    obj.parent=continuation_root
+    data.materials.append(mat)
+    obj['shadowCaster']=shadow
+    obj.visible_shadow=shadow
+    return obj
+
+continuation_front=-24.0
+continuation_floors=[continuation_plane('Floor continuation below plank joints',
+    [(-3.25,continuation_front,-.005), (3.25,continuation_front,-.005),
+     (3.25,-3.6,-.005), (-3.25,-3.6,-.005)],
+    continuation_floor,'Floor substructure')]
+for n in range(35):
+    x=-3.15+n*.185
+    continuation_floors.append(continuation_plane(f'Oak floor board continuation {n:02d}',
+        [(x-.092,continuation_front,.003),(x+.092,continuation_front,.003),
+         (x+.092,-3.6,.003),(x-.092,-3.6,.003)],
+        continuation_floor,f'Oak floor board {n:02d}'))
+bpy.ops.object.select_all(action='DESELECT')
+for obj in continuation_floors: obj.select_set(True)
+bpy.context.view_layer.objects.active=continuation_floors[0]
+bpy.ops.object.join()
+continuation_floors[0].name='Floor continuation with aligned oak planks'
+continuation_plane('Ceiling continuation without light occlusion',
+    [(-3.2,continuation_front,3.17),(-3.2,-2.85,3.17),
+     (3.2,-2.85,3.17),(3.2,continuation_front,3.17)],
+    continuation_ceiling,'Ceiling',shadow=False)
 box('Recessed wall skirting',(0,.31,.042),(6,.024,.083),smoked,.002)
 
 # A real opening and slender mullions cast the directional window light.
@@ -638,6 +689,7 @@ metadata={'version':1,'producer':'Blender '+bpy.app.version_string,'asset':'ward
     'slots':slots,'staticAO':{'image':'room-static-ao.png','size':1024,'uv':'CabinetAO','strength':.8,'distance':.55,'includesGarments':False},
     'cabinetBounds':{'min':[-1.94,.06,-.36],'max':[1.94,2.49,.41]},
     'zones':{'shirts':[-1.155,1.66,.23],'outerwear':[.36,1.64,.23],'shelves':[1.515,1.24,.065]},
+    'roomContinuation':{'front':continuation_front,'bakedAO':False,'ceilingCastsShadow':False},
     'trianglesBeforeExport':triangles,
     'meshCount':sum(obj.type=='MESH' for obj in scene.objects),'draft':DRAFT}
 (OUT/'scene-meta.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')

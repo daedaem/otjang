@@ -83,7 +83,7 @@ async function verifyColorChange(page, mode, itemId) {
   await page.click('#item-form [type="submit"]');
   // A click finishes before IndexedDB's asynchronous save does. The old viewer
   // can still be ready then: wait for the committed record and closed form
-  // before waiting for the replacement viewer to finish rendering.
+  // before checking the retained viewer's updated material bindings.
   await page.waitForFunction(id => window.__wearnext.snapshot().items.find(item => item.id === id)?.color === 'pink'
     && document.querySelector('#dialog')?.open === false, itemId);
   await ready(page);
@@ -133,6 +133,10 @@ try {
     ok((await page.locator('#room-canvas').boundingBox()).width > 300,
       `${mode}: the primary wardrobe is a visible interactive canvas`);
     ok(await fitsViewport(page), `${mode}: room fits the viewport`);
+    if (mode === 'mobile') {
+      ok(initial.slots.every(slot => slot.screen?.visible),
+        'mobile: the overview includes every occupied wardrobe location');
+    }
     const screenshot = await page.screenshot({ path: path.join(root, `shots/${mode}-room.png`), fullPage: true, timeout: 90000 });
     ok(await sceneColorCount(page, screenshot) > 12,
       `${mode}: ready state contains rendered cabinet pixels rather than a blank canvas`);
@@ -173,6 +177,9 @@ try {
     ok(projected?.visible && projected.width > 30 && projected.height > 50,
       `${mode}: selected garment has visible projected geometry`);
     if (mode === 'mobile') {
+      ok(await page.locator('.room-dock').isHidden()
+        && await page.locator('.room-top-actions').isHidden(),
+        'mobile: inspection removes duplicate menus and reserves space for the garment');
       const garmentRect = { left: detailCanvas.x + projected.left, top: detailCanvas.y + projected.top,
         right: detailCanvas.x + projected.right, bottom: detailCanvas.y + projected.bottom };
       const overlap = Math.min(garmentRect.right, panel.x + panel.width) - Math.max(garmentRect.left, panel.x) > 1
@@ -234,6 +241,7 @@ try {
       `${mode}: a saved outfit created from the room contains the selected garment`);
     await page.locator('a[href="#closet"]:visible').first().click();
     await ready(page);
+    if (mode === 'mobile') await click(page, 'room-reset');
     await click(page, 'room-list');
     await page.waitForSelector('.garment-card');
     ok((await page.locator('.garment-card').count()) === 10, `${mode}: list shares the same ten stored items`);
@@ -268,10 +276,14 @@ try {
     ok(/3/.test(unplaced), `${mode}: unplaced garment count is shown to the user`);
     await click(page, 'room-item', 'personal-blue');
     await page.waitForFunction(() => window.__wearnext.roomSnapshot().view === 'detail');
+    // Mobile inspection reserves the stage for one garment. Return it before
+    // choosing another record from the wardrobe selector.
+    await click(page, 'room-reset');
     await click(page, 'room-item', 'personal-unknown');
     await page.waitForFunction(() => window.__wearnext.roomSnapshot().view === 'room');
     ok((await roomState(page)).selectedId === 'personal-unknown',
       `${mode}: selecting an unplaced item returns the previous garment and opens the correct record`);
+    await click(page, 'room-reset');
     await click(page, 'room-list');
     await page.waitForSelector('.garment-card');
     ok((await page.locator('.garment-card').count()) === 5,

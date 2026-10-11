@@ -164,10 +164,13 @@ def hanger(root, width=.42, bar=False):
 
 
 def _pressed_shirt_cache():
-    """Rest-preserving low-pass of the supplied simulation, without re-simulating.
+    """Keep the supplied simulation's drape on a clean sewn rest surface.
 
-    The handoff cache remains immutable. Only its simulated displacement is
-    smoothed, avoiding mesh shrinkage, and broad gravity folds are retained.
+    The archival rest mesh contains per-vertex simulation perturbations. They
+    must not survive as bumps all over an otherwise pressed shirt. Smooth only
+    displacement (not the garment surface), then add it to the pristine sewn
+    mesh so shoulders, sleeves and hem keep their designed dimensions. The
+    handoff file, connectivity, UVs and fixed neck/shoulder vertices are intact.
     """
     global _pressed
     if _pressed is not None:
@@ -175,7 +178,10 @@ def _pressed_shirt_cache():
     with (HERE / 'vendor' / 'shirt-3.pkl').open('rb') as handle:
         data = pickle.load(handle)
     rest = np.asarray(data['rest'], dtype=np.float64)
-    displacement = np.asarray(data['pos'], dtype=np.float64) - rest
+    simulated = np.asarray(data['pos'], dtype=np.float64)
+    _, sim = _load_vendor()
+    sewn, _, info = sim.build(data['S'])
+    displacement = simulated - rest
     edges = set()
     for face in data['faces']:
         for a, b in zip(face, (*face[1:], face[0])):
@@ -184,21 +190,61 @@ def _pressed_shirt_cache():
     source = np.concatenate((pairs[:, 0], pairs[:, 1]))
     target = np.concatenate((pairs[:, 1], pairs[:, 0]))
     degree = np.bincount(source, minlength=len(rest))[:, None]
-    for _ in range(20):
+    for _ in range(72):
         mean = np.stack([np.bincount(source, weights=displacement[target, axis],
                          minlength=len(rest)) for axis in range(3)], axis=1) / np.maximum(1, degree)
         displacement = displacement * .35 + mean * .65
-    pressed = rest + displacement * .52
-    # Sparse, low-amplitude folds read as pressed Oxford cotton, not crumpled foil.
-    x, height, depth = rest.T
-    fall = np.clip((-height - .13) / .58, 0, 1)
-    edge = np.clip(1 - (np.abs(x) / .28) ** 4, 0, 1)
-    fold = .0045 * fall * edge * (.7 * np.sin(x * math.tau / .19 + .7) + .3 * np.sin(x * math.tau / .13))
-    pressed[:, 2] += fold * np.sign(depth)
-    pressed[data['pins']] = np.asarray(data['pos'])[data['pins']]
+    pressed = sewn + displacement * np.array([.52, .52, .40])
+    # Two broad folds fall from the chest toward the hem; leave most of each
+    # panel quiet. Their differing path/strength avoids a repeated noise field.
+    for side in 'FB':
+        indices = np.unique(info['grid'][side])
+        x, height, depth = sewn[indices].T
+        fall = np.clip((-height - .18) / .55, 0, 1)
+        fall = fall * fall * (3 - 2 * fall)
+        fold = np.zeros(len(indices))
+        for center, drift, width, amplitude in [(-.15, -.023, .034, .0048), (.17, .013, .027, .0032)]:
+            distance = (x - center - drift * fall) / width
+            fold += amplitude * (1 - distance * distance) * np.exp(-.5 * distance * distance)
+        pressed[indices, 2] += fold * fall * np.sign(depth)
+        # A shallow armhole tension fold is local to the upper side panel.
+        # It does not repeat over the chest like the archival perturbations.
+        along = np.abs(x) - .205
+        cross = (height + .25 - .52 * along) / .012
+        support = np.exp(-.5 * (along / .050) ** 4)
+        ridge = np.exp(-.5 * cross * cross) - .35 * np.exp(-.125 * cross * cross)
+        pressed[indices, 2] += .0034 * ridge * support * np.sign(depth)
+    # Light compression immediately above each cuff: two irregularly angled
+    # folds, not all-over crumpling. The cuff itself remains quiet and aligned.
+    for rings in info['sleeves'].values():
+        for row, ring in enumerate(rings[1:], 1):
+            indices = np.asarray(ring)
+            t = row / (len(rings) - 1)
+            theta = np.arange(len(ring)) * math.tau / len(ring)
+            envelope = np.clip((.91 - t) / .08, 0, 1)
+            front = .35 + .65 * np.maximum(0, np.sin(theta))
+            radial = pressed[indices] - pressed[indices].mean(axis=0)
+            radial /= np.maximum(1e-8, np.linalg.norm(radial, axis=1))[:, None]
+            crease = np.zeros(len(ring))
+            for center, tilt, width, amplitude in [(.81, .018, .022, .0032), (.70, -.013, .024, .0018)]:
+                cross = (t - center - tilt * np.cos(theta)) / width
+                crease += amplitude * (np.exp(-.5 * cross * cross) - .45 * np.exp(-.125 * cross * cross))
+            pressed[indices] += radial * (crease * envelope * front)[:, None]
+    # Pins remain exactly where the cached hanger simulation put them. Blend
+    # their correction into the first neighbouring rows to avoid a hard seam.
+    correction = simulated - pressed
+    influence = np.zeros(len(rest))
+    influence[data['pins']] = 1
+    for _ in range(8):
+        neighbour = np.bincount(source, weights=influence[target], minlength=len(rest)) / np.maximum(1, degree[:, 0])
+        influence = np.maximum(influence, neighbour * .82)
+        influence[data['pins']] = 1
+    pressed += correction * influence[:, None]
+    pressed[data['pins']] = simulated[data['pins']]
+    data['rest'] = sewn
     data['pos'] = pressed
     WORK.mkdir(parents=True, exist_ok=True)
-    path = WORK / 'pressed-shirt-v2.pkl'
+    path = WORK / 'pressed-shirt-v3.pkl'
     with path.open('wb') as handle:
         pickle.dump(data, handle)
     _pressed = path, data
@@ -224,13 +270,19 @@ def _simulated_shirt(color, name, stripe=False, knit=False):
     root.name = name
     root['kind'] = 'knit' if knit else 'shirt'
     root['representation'] = 'garment type illustration; pressed simulated cloth'
-    root['geometryVersion'] = 'pressed-cloth-v2'
+    root['geometryVersion'] = 'pressed-cloth-v3'
     root['origin'] = 'collar; Z up; front -Y'
     # Neutral, packed PBR maps survive both glTF export and browser tint edits.
     touched = set()
     for obj in root.children:
         if obj.type != 'MESH':
             continue
+        if obj.name.startswith(('stand', 'leaf')):
+            # Two sewn layers are thin fabric, not a thick moulded rim. Keep
+            # the existing collar roll, tip geometry and button positions.
+            for modifier in obj.modifiers:
+                if modifier.type == 'SOLIDIFY':
+                    modifier.thickness = .00085
         for mat in obj.data.materials:
             if not mat or not mat.name.startswith('cloth-'):
                 continue

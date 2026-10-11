@@ -2259,17 +2259,17 @@ textarea.ai-input,.ai-input textarea { display:block; min-height:150px; width:10
 .room-detail-close .icon { width:16px; height:16px; }
 .room-detail .eyebrow { display:block; max-width:calc(100% - 18px); font-size:8px; line-height:1.7; letter-spacing:1.5px; color:#8b795d; }
 .room-detail h2 { font-family:Georgia,'Noto Serif CJK KR','AppleMyungjo',serif; font-size:24px; line-height:1.45; font-weight:400; margin:12px 0 9px; letter-spacing:-.7px; overflow-wrap:anywhere; }
-.room-detail-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:10px; color:#716654; }
+.room-detail-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:12px; color:#665b4a; }
 .room-detail-meta .swatch { width:7px; height:7px; }
-.room-detail-note { font-size:10px; color:#7d725f; line-height:1.75; border-top:1px solid #8b795d25; margin-top:17px; padding-top:13px; }
+.room-detail-note { font-size:12px; color:#6d624f; line-height:1.65; border-top:1px solid #8b795d25; margin-top:17px; padding-top:13px; }
 .room-detail-actions { display:flex; flex-direction:column; gap:6px; margin-top:19px; }
-.room-detail-actions .btn { font-size:11px; font-weight:500; padding:10px; min-height:40px; border-radius:2px; }
+.room-detail-actions .btn { font-size:12px; font-weight:500; padding:10px; min-height:44px; border-radius:2px; }
 .room-detail-actions .btn.primary { background:#394634; border-color:#394634; }
 .room-detail-actions .btn:not(.primary) { background:transparent; border-color:#80715435; color:#5c614f; }
-.room-detail-actions .btn:last-child { border:0; min-height:34px; font-size:10px; }
+.room-detail-actions .btn:last-child { border:0; min-height:40px; font-size:11px; }
 .room-own-photo { display:block; width:100%; height:112px; object-fit:contain; background:#e8e1d369; border:1px solid #897b601c; margin-top:16px; border-radius:1px; }
-.room-detail .identity-status { margin-top:11px; font-size:9px; }
-.room-detail .identity-reference { display:block; margin-top:7px; font-size:10px; }
+.room-detail .identity-status { margin-top:11px; font-size:11px; }
+.room-detail .identity-reference { display:block; margin-top:7px; font-size:12px; }
 .room-empty { position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); background:#f7f4ede8; border:1px solid #8c7a5830; backdrop-filter:blur(16px); padding:27px 32px; border-radius:2px; text-align:center; min-width:300px; }
 .room-empty h2 { font-family:Georgia,'Noto Serif CJK KR','AppleMyungjo',serif; font-size:21px; font-weight:400; }
 .room-empty p { font-size:11px; color:#776a55; margin:12px 0 20px; }
@@ -2316,43 +2316,45 @@ textarea.ai-input,.ai-input textarea { display:block; min-height:150px; width:10
  .room-profile { width:38px; height:38px; }
  .room-stage { min-height:0; }
  .room-intro { left:17px; top:18px; }
- .room-intro p { display:inline-flex; align-items:center; font-size:9px; max-width:235px; padding:4px 7px; border-radius:2px; background:#f7f4eded; }
+ .room-intro p { display:block; font-size:11px; line-height:1.6; max-width:calc(100vw - 128px); padding:5px 8px; border-radius:2px; background:#f7f4eded; }
  .room-intro p span { margin:0 4px; }
  .room-top-actions { right:17px; top:16px; flex-direction:row; gap:6px; }
- .room-top-actions .btn { padding:8px; font-size:10px; min-height:36px; gap:4px; }
+ .room-top-actions .btn { padding:9px; font-size:11px; min-height:44px; gap:4px; }
  .room-top-actions .icon { width:13px; height:13px; }
- .room-top-actions .room-button { position:absolute; top:42px; right:0; min-width:58px; }
+ .room-top-actions .room-button { position:absolute; top:50px; right:0; min-width:68px; }
+ .has-selection .room-top-actions { display:none; }
  .room-view-controls { bottom:15px; left:50%; transform:translateX(-50%); white-space:nowrap; }
- .room-view-controls button { padding:8px 13px; min-height:40px; min-width:42px; font-size:10px; }
+ .room-view-controls button { padding:8px 12px; min-height:44px; min-width:44px; font-size:12px; }
  .room-guide { display:none; }
- .has-selection .room-guide { display:block; top:23px; bottom:auto; left:50%; right:auto; transform:translateX(-50%); max-width:calc(100% - 145px); font-size:9px; color:#7b6e58; text-align:center; white-space:nowrap; }
+ .has-selection .room-guide { display:block; top:21px; bottom:auto; left:50%; right:auto; transform:translateX(-50%); max-width:calc(100% - 36px); font-size:11px; color:#685e4d; text-align:center; white-space:nowrap; }
  .room-dock { padding:5px 0 7px; grid-template-columns:minmax(0,1fr); grid-template-rows:44px auto; min-height:73px; }
+ .room-shell.has-selection .room-dock { display:none; }
  .room-dock-label { display:none; }
- .room-items { padding:0 13px 3px; gap:0; }
- .room-item { max-width:145px; min-height:40px; padding:5px 9px 3px; font-size:10px; gap:6px; }
+ .room-items { padding:0 13px; gap:0; }
+ .room-item { max-width:165px; min-height:44px; padding:5px 9px 3px; font-size:12px; gap:6px; }
  .room-item-art { width:26px; height:29px; }
  .room-item-art svg:not(.icon) { width:24px; height:28px; }
- .room-item > span:last-child { max-width:98px; }
- .room-footer-note { padding:0 18px; min-height:16px; gap:8px; font-size:8px; line-height:16px; flex-wrap:wrap; }
- .room-footer-note .text-link { font-size:8px; }
+ .room-item > span:last-child { max-width:118px; }
+ .room-footer-note { padding:0 18px; min-height:16px; gap:8px; font-size:9px; line-height:16px; flex-wrap:wrap; }
+ .room-footer-note .text-link { font-size:9px; }
  .room-footer-note #room-unplaced { width:100%; }
  .room-mobile-nav { height:calc(52px + env(safe-area-inset-bottom)); padding:0 14px env(safe-area-inset-bottom); display:flex; background:#f7f4ed; border-top:1px solid #8c7a5824; justify-content:space-around; align-items:center; flex-shrink:0; }
- .room-mobile-nav a { min-height:44px; padding:4px 9px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; text-decoration:none; font-size:9px; color:#837a67; }
+ .room-mobile-nav a { min-height:44px; padding:4px 9px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; text-decoration:none; font-size:10px; color:#746b59; }
  .room-mobile-nav .icon { width:16px; height:16px; }
  .room-mobile-nav .active { color:#374931; }
- .room-detail { top:auto; bottom:10px; right:12px; left:12px; width:auto; padding:17px 17px 10px; max-height:36%; border-radius:2px; box-shadow:0 10px 40px #3527140c; }
- .room-detail-close { top:3px; right:3px; }
- .room-detail h2 { font-size:19px; margin:5px 0 6px; max-width:calc(100% - 19px); line-height:1.4; }
- .room-detail-meta { font-size:9px; }
- .room-detail .eyebrow { font-size:7px; letter-spacing:1.3px; }
- .room-detail-note { margin-top:10px; padding-top:9px; font-size:10px; line-height:1.65; }
- .room-detail-actions { margin-top:12px; flex-direction:row; flex-wrap:wrap; gap:6px; }
- .room-detail-actions .btn { flex:1; min-width:110px; font-size:10px; padding:8px; min-height:38px; }
- .room-detail-actions .btn:last-child { flex-basis:100%; min-height:32px; padding:4px; font-size:10px; }
+ .room-detail { top:auto; bottom:12px; right:12px; left:12px; width:auto; padding:16px 16px 10px; max-height:36%; border-radius:2px; background:#f7f4ed; box-shadow:0 10px 40px #3527140c; }
+ .room-detail-close { top:0; right:0; width:44px; height:44px; }
+ .room-detail h2 { font-size:21px; margin:4px 0 5px; max-width:calc(100% - 25px); line-height:1.4; }
+ .room-detail-meta { font-size:11px; }
+ .room-detail .eyebrow { font-size:9px; letter-spacing:1.3px; }
+ .room-detail-note { margin-top:9px; padding-top:8px; font-size:11px; line-height:1.6; }
+ .room-detail-actions { margin-top:10px; flex-direction:row; flex-wrap:wrap; gap:6px; }
+ .room-detail-actions .btn { flex:1; min-width:110px; font-size:12px; padding:8px; min-height:44px; }
+ .room-detail-actions .btn:last-child { flex-basis:100%; min-height:40px; padding:6px; font-size:11px; }
  .room-own-photo { height:72px; width:64px; float:right; margin:0 0 7px 12px; }
  .room-detail-actions { clear:both; }
- .room-detail .identity-status { margin-top:7px; font-size:9px; }
- .room-detail .identity-reference { font-size:10px; }
+ .room-detail .identity-status { margin-top:7px; font-size:11px; }
+ .room-detail .identity-reference { font-size:11px; }
  .has-selection .room-view-controls { visibility:hidden; }
  .room-empty { min-width:270px; max-width:calc(100% - 36px); padding:23px; }
  .room-empty h2 { font-size:18px; }

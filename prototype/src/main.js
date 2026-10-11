@@ -6,6 +6,7 @@ import { getPreparedAIOutfits } from './ai-samples.js';
 import { createRoom } from './room.js';
 import roomModelURL from '../scene/assets/wardrobe.glb';
 import roomPosterURL from '../scene/assets/room-front.webp';
+import roomSceneMetadata from '../scene/assets/scene-meta.json';
 
 const $ = (selector) => document.querySelector(selector);
 const e = (value) =>
@@ -263,22 +264,36 @@ function navLink(n, mobile = false) {
 }
 let roomController = null;
 let roomGeneration = 0;
-function render() {
+let roomItemsSignature = '';
+let roomItemsUpdates = 0;
+let roomStateEpoch = 0;
+function disposeRoom() {
   roomGeneration++;
   roomController?.dispose();
   roomController = null;
+  roomItemsSignature = '';
+  roomItemsUpdates = 0;
+}
+function render() {
   ui.route = location.hash.slice(1) || 'closet';
   if (!['closet', 'onboarding', 'outfits', 'discover', 'saved'].includes(ui.route))
     ui.route = 'closet';
   if (welcome) {
+    disposeRoom();
     $('#app').innerHTML = renderWelcome();
     return;
   }
   if (ui.route === 'closet' && ui.closetView === 'room') {
+    if (roomController && $('#room-canvas') && $('.room-shell')) {
+      updateRoom();
+      return;
+    }
+    disposeRoom();
     $('#app').innerHTML = renderRoom();
     mountRoom();
     return;
   }
+  disposeRoom();
   const current = nav.find((n) => n.id === ui.route)?.label || '첫 옷장 만들기';
   $('#app').innerHTML =
     `<aside class="sidebar">${brand()}<div class="brand-caption">YOUR PERSONAL WARDROBE</div><div class="nav-section">MY SPACE</div><nav class="nav" aria-label="주 메뉴">${nav.map((n) => navLink(n)).join('')}</nav><div class="sidebar-bottom"><div class="mini-panel" style="padding:14px;background:#f1f3eb;border:0"><div class="eyebrow" style="font-size:8px">MAKE IT YOURS</div><p style="font-size:11px;margin:8px 0">매일 입는 옷에서<br>나다운 스타일이 시작돼요.</p><button class="text-link small" data-action="photos">옷 사진 추가하기 ${icon('arrow')}</button></div><div class="profile-link"><div class="avatar">W</div><div><b class="small">${state.mode === 'demo' ? '샘플 옷장' : '나의 개인 옷장'}</b><div style="font-size:10px;color:var(--muted)">${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</div></div><button class="icon-btn" data-action="profile" aria-label="스타일 설정" style="margin-left:auto;width:28px;height:28px;border:0">${icon('more')}</button></div><div class="local-status" style="margin-top:18px"><span class="dot"></span>이 브라우저에 저장됨</div></div></aside><div class="layout"><header class="topbar"><div class="breadcrumb">My space <span style="padding:0 12px;color:#bbc0b4">/</span> <b>${current}</b></div><div class="mobile-brand">${brand()}</div><div class="topbar-right"><span class="top-date">${new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date()).toUpperCase()}</span><span class="badge outline">${state.mode === 'demo' ? '샘플 체험' : '개인 옷장'}</span><button class="icon-btn" data-action="profile" aria-label="스타일 설정">${icon('more')}</button></div></header><main class="main" id="main">${ui.route === 'closet' ? renderCloset() : ui.route === 'onboarding' ? renderOnboarding() : ui.route === 'outfits' ? renderOutfits() : ui.route === 'discover' ? renderDiscover() : renderSaved()}<p class="footnote">${icon('shield')}사진과 기록은 이 브라우저에만 보관돼요. · WearNext prototype</p></main></div><nav class="bottom-nav" aria-label="모바일 메뉴">${nav.map((n) => navLink(n, true)).join('')}</nav>`;
@@ -287,26 +302,102 @@ function renderWelcome() {
   return `<main class="room-welcome" id="main"><img class="welcome-room-image" src="${roomPosterURL}" alt="따뜻한 오크 옷장에 셔츠와 재킷이 걸린 드레스룸"><div class="welcome-room-shade"></div><header class="room-header">${brand()}<span class="room-edition">A SPACE FOR YOUR EVERYDAY</span></header><section class="room-welcome-copy"><div class="eyebrow">YOUR WARDROBE, REIMAGINED</div><h1>문을 열면,<br>나만의 옷장.</h1><p>좋아하는 옷을 꺼내 보고, 함께 입어 보고.<br>당신의 옷장에서 다음 한 벌을 찾아보세요.</p><div class="welcome-buttons">${btn('start-demo', '먼저 둘러보기', { style: 'primary', ico: 'arrow' })}${btn('start-personal', '내 옷으로 시작', { ico: 'camera' })}</div><p class="room-private">가입 없이 · 사진은 이 브라우저에만 저장</p>${loadError ? `<div class="mt">${notice(e(loadError) + ' 기존 데이터는 덮어쓰지 않았습니다.', 'error')}${btn('import', '백업 불러오기')}</div>` : ''}</section><footer class="room-welcome-footer"><span>01 — THE PERSONAL WARDROBE</span><span>Blender로 만든 공간 · 샘플 옷장 미리보기</span></footer></main>`;
 }
 function renderRoom() {
-  return `<main class="room-shell" id="main"><header class="room-header">${brand()}<nav class="room-nav" aria-label="주 메뉴">${nav.map(n => `<a href="#${n.id}" class="${n.id === 'closet' ? 'active' : ''}">${n.label}</a>`).join('')}</nav><button class="room-profile" data-action="profile" aria-label="스타일과 옷장 설정">${icon('more')}</button></header><section class="room-stage" aria-label="직접 둘러보는 3D 옷장"><div class="room-backdrop"><img src="${roomPosterURL}" alt="샘플 의류가 놓인 옷장 공간 미리보기"></div><canvas id="room-canvas" aria-label="옷을 눌러 꺼내고 드래그해서 둘러보세요. 아래 옷 선택 메뉴로도 이용할 수 있어요."></canvas><div class="room-intro"><span class="eyebrow">THE EVERYDAY ROOM</span><h1>${state.mode === 'demo' ? '취향이 머무는 곳.' : '나의 작은 드레스룸.'}</h1><p>${state.mode === 'demo' ? '샘플 옷장' : '나의 옷장'} <span>·</span> ${state.items.length}벌 <span>·</span> ${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</p></div><div class="room-top-actions">${btn('room-list', '목록', { style: 'room-button', ico: 'layers' })}${btn('photos', '옷 추가', { style: 'primary', ico: 'plus' })}</div><div id="room-status" class="room-status" role="status" data-ready="false"><span class="spinner"></span>옷장 문을 여는 중이에요. <small>배경은 샘플 공간 미리보기입니다.</small></div><div class="room-view-controls" role="group" aria-label="옷장 시점"><button data-action="room-view" data-id="front" aria-label="처음 옷장 시점으로">처음</button><button data-action="room-view" data-id="left">셔츠</button><button data-action="room-view" data-id="center">재킷</button><button data-action="room-view" data-id="right">선반</button><button data-action="room-reset" aria-label="옷을 제자리에 넣고 처음 시점으로">↺</button></div><div id="room-inspector" aria-live="polite"></div><div class="room-guide">드래그로 둘러보기 <span>·</span> 스크롤로 가까이 <span>·</span> 옷을 눌러 꺼내기</div>${!state.items.length ? `<div class="room-empty"><h2>첫 번째 옷을 걸어 볼까요?</h2><p>사진을 확인해 등록하면 이 공간에 담겨요.</p>${btn('photos', '내 옷 사진 추가', { style: 'primary', ico: 'camera' })}${btn('manual', '직접 기록', { style: 'ghost' })}</div>` : ''}</section><footer class="room-dock"><div class="room-dock-label"><span class="eyebrow">IN YOUR WARDROBE</span><b>오늘은 어떤 옷부터?</b></div><div class="room-items" aria-label="옷 선택">${state.items.map(item => `<button class="room-item" data-action="room-item" data-id="${e(item.id)}" aria-pressed="false"><span class="room-item-art">${imageOnly(item)}</span><span>${e(item.name)}</span></button>`).join('')}<button class="room-item room-item-add" data-action="photos"><span class="room-item-art">${icon('plus')}</span><span>새로운 옷</span></button></div><div class="room-footer-note"><span id="room-unplaced"></span><span>종류별 3D 모형 · 실제 옷 사진은 상세에서 확인</span>${state.mode === 'demo' ? '<button class="text-link" data-action="switch-personal">내 옷장 만들기 →</button>' : ''}</div></footer><nav class="room-mobile-nav" aria-label="모바일 메뉴">${nav.map(n => navLink(n, true)).join('')}</nav></main>`;
+  return `<main class="room-shell" id="main"><header class="room-header">${brand()}<nav class="room-nav" aria-label="주 메뉴">${nav.map(n => `<a href="#${n.id}" class="${n.id === 'closet' ? 'active' : ''}">${n.label}</a>`).join('')}</nav><button class="room-profile" data-action="profile" aria-label="스타일과 옷장 설정">${icon('more')}</button></header><section class="room-stage" aria-label="직접 둘러보는 3D 옷장"><div class="room-backdrop"><img src="${roomPosterURL}" alt="샘플 의류가 놓인 옷장 공간 미리보기"></div><canvas id="room-canvas" aria-label="옷을 눌러 꺼내고 드래그해서 둘러보세요. 아래 옷 선택 메뉴로도 이용할 수 있어요."></canvas><div class="room-intro"><span class="eyebrow">THE EVERYDAY ROOM</span><h1>${state.mode === 'demo' ? '취향이 머무는 곳.' : '나의 작은 드레스룸.'}</h1><p>${state.mode === 'demo' ? '샘플 옷장' : '나의 옷장'} <span>·</span> ${state.items.length}벌 <span>·</span> ${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</p></div><div class="room-top-actions">${btn('room-list', '목록', { style: 'room-button', ico: 'layers' })}${btn('photos', '옷 추가', { style: 'primary', ico: 'plus' })}</div><div id="room-status" class="room-status" role="status" data-ready="false"><span class="spinner"></span>옷장 문을 여는 중이에요. <small>배경은 샘플 공간 미리보기입니다.</small></div><div class="room-view-controls" role="group" aria-label="옷장 시점"><button data-action="room-view" data-id="front" aria-label="옷장 전체 보기">전체</button><button data-action="room-view" data-id="left">셔츠</button><button data-action="room-view" data-id="center">재킷</button><button data-action="room-view" data-id="right">선반</button><button data-action="room-reset" aria-label="옷을 제자리에 넣고 처음 시점으로">↺</button></div><div id="room-inspector" aria-live="polite"></div><div class="room-guide">드래그로 둘러보기 <span>·</span> 스크롤로 가까이 <span>·</span> 옷을 눌러 꺼내기</div>${!state.items.length ? `<div class="room-empty"><h2>첫 번째 옷을 걸어 볼까요?</h2><p>사진을 확인해 등록하면 이 공간에 담겨요.</p>${btn('photos', '내 옷 사진 추가', { style: 'primary', ico: 'camera' })}${btn('manual', '직접 기록', { style: 'ghost' })}</div>` : ''}</section><footer class="room-dock"><div class="room-dock-label"><span class="eyebrow">IN YOUR WARDROBE</span><b>오늘은 어떤 옷부터?</b></div><div class="room-items" aria-label="옷 선택">${state.items.map(item => `<button class="room-item" data-action="room-item" data-id="${e(item.id)}" aria-pressed="false"><span class="room-item-art">${imageOnly(item)}</span><span>${e(item.name)}</span></button>`).join('')}<button class="room-item room-item-add" data-action="photos"><span class="room-item-art">${icon('plus')}</span><span>새로운 옷</span></button></div><div class="room-footer-note"><span id="room-unplaced"></span><span>종류별 3D 모형 · 실제 옷 사진은 상세에서 확인</span>${state.mode === 'demo' ? '<button class="text-link" data-action="switch-personal">내 옷장 만들기 →</button>' : ''}</div></footer><nav class="room-mobile-nav" aria-label="모바일 메뉴">${nav.map(n => navLink(n, true)).join('')}</nav></main>`;
+}
+function roomItems() {
+  return state.items.filter(item => state.mode !== 'personal' || item.source !== 'demo');
+}
+function syncRoomItems({ preserveSlots = true } = {}) {
+  if (!roomController) return false;
+  const items = roomItems();
+  // Only data used to bind geometry belongs in this key. Brand, photos, notes,
+  // profile and a name with an explicit kind can update without rebinding meshes.
+  const signature = JSON.stringify(items.map(item => [item.id, item.kind || '',
+    item.kind ? '' : item.name, item.category, item.color, item.available !== false,
+    item.slotKey || '', item.slot || '']));
+  if (signature === roomItemsSignature) return false;
+  const previousSlots = preserveSlots ? new Map(roomController.slots
+    .filter(slot => slot.itemId).map(slot => [slot.itemId, slot.slotKey])) : new Map();
+  // Keep a recorded item in its existing compatible location when recoloring.
+  // This preference is presentation data; it never changes the saved wardrobe.
+  roomController.setItems(items.map(item => !item.slotKey && !item.slot && previousSlots.has(item.id)
+    ? { ...item, slotKey: previousSlots.get(item.id) } : item));
+  roomItemsSignature = signature;
+  roomItemsUpdates++;
+  updateRoomUnplaced();
+  return true;
+}
+function updateRoomUnplaced() {
+  const note = $('#room-unplaced');
+  if (!note) return;
+  const unplaced = roomController?.unplacedItems.length || 0;
+  note.innerHTML = unplaced ? `<button class="text-link" data-action="room-list">이 공간에 놓이지 않은 옷 ${unplaced}벌은 목록에서 확인 →</button>` : '';
+}
+function syncRoomViewControls() {
+  const view = roomController?.view || 'room';
+  document.querySelectorAll('.room-view-controls [data-action="room-view"]').forEach(button => {
+    const target = button.dataset.id === 'front' ? 'room' : button.dataset.id;
+    button.setAttribute('aria-pressed', String(target === view));
+  });
+}
+function updateRoom() {
+  const replaced = roomStateEpoch !== stateEpoch;
+  if (replaced) {
+    resetRoom(false);
+    roomStateEpoch = stateEpoch;
+  }
+  const selectedId = ui.roomItem;
+  const previousSlot = roomController?.slots.find(slot => slot.itemId === selectedId)?.slotKey;
+  // Refresh the HTML around the room, leaving its canvas, observers, renderer,
+  // camera and ongoing garment rotation attached to the same DOM nodes.
+  const template = document.createElement('template');
+  template.innerHTML = renderRoom();
+  const dockScroll = $('.room-items')?.scrollLeft || 0;
+  for (const selector of ['.room-header', '.room-intro', '.room-dock', '.room-mobile-nav']) {
+    const current = $(selector);
+    const next = template.content.querySelector(selector);
+    if (current && next && current.innerHTML !== next.innerHTML) current.innerHTML = next.innerHTML;
+  }
+  if ($('.room-items')) $('.room-items').scrollLeft = dockScroll;
+  $('.room-empty')?.remove();
+  const empty = template.content.querySelector('.room-empty');
+  if (empty) $('.room-stage')?.append(empty);
+  const rebound = syncRoomItems({ preserveSlots: !replaced });
+  const selected = state.items.find(item => item.id === selectedId);
+  if (!selected) {
+    if (selectedId || roomController?.view === 'detail') resetRoom(false);
+  } else {
+    const nextSlot = roomController?.slots.find(slot => slot.itemId === selectedId)?.slotKey;
+    if (rebound && previousSlot !== nextSlot && roomController?.isReady) {
+      roomController.reset();
+      if (nextSlot) roomController.focusItem(selectedId);
+    }
+    selectRoomItem(selectedId, false, false);
+  }
+  updateRoomUnplaced();
+  syncRoomViewControls();
 }
 function mountRoom() {
   const generation = roomGeneration;
+  roomStateEpoch = stateEpoch;
   const stage = $('.room-stage');
   const status = $('#room-status');
   const canvas = $('#room-canvas');
   roomController = createRoom({
-    canvas, modelURL: roomModelURL,
+    canvas, modelURL: roomModelURL, roomBounds: roomSceneMetadata.cabinetBounds,
     onSelect: id => selectRoomItem(id, false),
+    onDeselect: () => resetRoom(),
     onReady: controller => {
       if (generation !== roomGeneration) return;
-      controller.setItems(state.items.filter(item => state.mode !== 'personal' || item.source !== 'demo'));
+      // Model loading is asynchronous; bind the latest committed wardrobe once.
+      syncRoomItems();
       stage.classList.add('room-loaded');
       status.dataset.ready = 'true';
       $('.room-shell').dataset.ready = 'true';
       status.hidden = true;
-      const unplaced = controller.unplacedItems.length;
-      $('#room-unplaced').innerHTML = unplaced ? `<button class="text-link" data-action="room-list">이 공간에 놓이지 않은 옷 ${unplaced}벌은 목록에서 확인 →</button>` : '';
-      if (ui.roomItem && state.items.some(i => i.id === ui.roomItem)) selectRoomItem(ui.roomItem);
+      updateRoomUnplaced();
+      if (ui.roomItem && state.items.some(i => i.id === ui.roomItem)) selectRoomItem(ui.roomItem, true, false);
+      syncRoomViewControls();
     },
     onError: () => {
       if (generation !== roomGeneration) return;
@@ -318,8 +409,9 @@ function mountRoom() {
       status.innerHTML = `이 기기에서 3D 화면을 열지 못했어요.<small>배경은 샘플 공간 이미지이며, 내 옷은 목록에 저장돼 있어요.</small>${btn('room-list', '내 옷 목록 열기', { style: 'primary' })}`;
     },
   });
+  syncRoomViewControls();
 }
-function selectRoomItem(id, focus = true) {
+function selectRoomItem(id, focus = true, moveFocus = true) {
   const item = state.items.find(i => i.id === id);
   if (!item || !$('#room-inspector')) return;
   ui.roomItem = id;
@@ -330,16 +422,27 @@ function selectRoomItem(id, focus = true) {
   }
   $('#room-inspector').innerHTML = `<aside class="room-detail"><button class="room-detail-close icon-btn" data-action="room-reset" aria-label="옷을 제자리에 넣기">${icon('close')}</button><span class="eyebrow">${item.source === 'demo' ? 'SAMPLE WARDROBE' : e(item.brand || 'MY WARDROBE')}</span><h2>${e(item.name)}</h2><p class="room-detail-meta"><span class="swatch" style="background:${COLOR[item.color] || COLOR.unknown}"></span>${e(COLORS[item.color] || '미확인')} · ${e(KINDS[item.kind] || Model.CATEGORY_LABELS[item.category])}</p>${item.image ? `<img class="room-own-photo" src="${e(item.image)}" alt="등록한 실제 옷 사진">` : ''}<p class="room-detail-note">${represented ? '옷의 종류와 색을 반영한 모형이에요. 실제 제품의 형태·핏과는 다를 수 있어요.' : '이 공간에 놓이지 않은 옷이에요. 기록과 사진으로 코디에 활용할 수 있어요.'}</p>${identityDetails(item)}${item.available === false ? '<span class="badge sand">오늘의 코디에서 제외 중</span>' : ''}<div class="room-detail-actions">${btn('room-outfit', '이 옷으로 코디', { id, style: 'primary wide', ico: 'layers' })}${btn('edit-item', '사진 · 정보 수정', { id, style: 'wide', ico: 'edit' })}${btn('room-reset', '옷장에 다시 넣기', { style: 'ghost wide' })}</div></aside>`;
   $('.room-stage').classList.add('has-selection');
+  $('.room-shell')?.classList.add('has-selection');
   if ($('.room-guide')) $('.room-guide').textContent = represented ? '드래그해서 옷을 돌려 보세요' : '드래그로 둘러보기 · 옷을 눌러 꺼내기';
   document.querySelectorAll('.room-item[data-id]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.id === id)));
+  syncRoomViewControls();
+  if (moveFocus && !$('#dialog')?.open) $('.room-detail-close')?.focus({ preventScroll: true });
 }
-function resetRoom() {
+function resetRoom(restoreFocus = true) {
+  const previousId = ui.roomItem;
   ui.roomItem = null;
   roomController?.reset();
   if ($('#room-inspector')) $('#room-inspector').innerHTML = '';
   $('.room-stage')?.classList.remove('has-selection');
+  $('.room-shell')?.classList.remove('has-selection');
   if ($('.room-guide')) $('.room-guide').textContent = '드래그로 둘러보기 · 옷을 눌러 꺼내기';
   document.querySelectorAll('.room-item[data-id]').forEach(button => button.setAttribute('aria-pressed', 'false'));
+  syncRoomViewControls();
+  if (restoreFocus && previousId && !$('#dialog')?.open) {
+    const previous = [...document.querySelectorAll('.room-item[data-id]')]
+      .find(button => button.dataset.id === previousId);
+    (previous || $('.room-view-controls [data-id="front"]'))?.focus({ preventScroll: true });
+  }
 }
 function renderCloset() {
   const items = state.items;
@@ -714,7 +817,7 @@ function downloadBackup(includeImages) {
   }
 }
 function profileDialog() {
-  openDialog('나의 스타일과 상황', styleFields());
+  openDialog('나의 스타일과 상황', `${styleFields()}<div class="divider"></div><h3>내 옷장 보관하기</h3><p class="storage-note">사진과 기록은 이 브라우저에 저장돼요. 개인 백업으로 보관하거나 다른 기기에서 이어갈 수 있어요.</p><div class="data-buttons">${btn('export', '사진 포함 개인 백업', { ico: 'download' })}${btn('import', '백업 불러오기', { ico: 'upload', style: 'ghost' })}</div>`);
 }
 async function importAIResponse(text) {
   ui.aiOpen = true;
@@ -800,7 +903,7 @@ async function handleAction(action, id) {
   }
   if (action === 'room-item') { selectRoomItem(id); return; }
   if (action === 'room-reset') { resetRoom(); return; }
-  if (action === 'room-view') { resetRoom(); roomController?.setView(id); return; }
+  if (action === 'room-view') { resetRoom(false); roomController?.setView(id); syncRoomViewControls(); return; }
   if (action === 'room-outfit') { ui.outfitItem = id; ui.outfitOffset = 0; go('outfits'); return; }
   if (action === 'clear-outfit-item') { ui.outfitItem = null; ui.outfitOffset = 0; render(); return; }
 
@@ -1369,6 +1472,10 @@ document.addEventListener('submit', async (event) => {
   }
 });
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && ui.roomItem && !$('#dialog')?.open) {
+    event.preventDefault();
+    resetRoom();
+  }
   if ((event.key === 'Enter' || event.key === ' ') && event.target.id === 'dropzone') {
     event.preventDefault();
     $('#photo-files')?.click();
@@ -1424,6 +1531,8 @@ window.__wearnext = {
     const diagnostics = roomController?.diagnostics;
     return {
       ready: roomController?.isReady || false,
+      generation: roomGeneration,
+      itemUpdates: roomItemsUpdates,
       slots: (roomController?.slots || []).map(slot => {
         const diagnostic = diagnostics?.slots?.find(entry => entry.slotKey === slot.slotKey);
         return { slotKey: slot.slotKey, itemId: slot.itemId, visible: slot.visible,

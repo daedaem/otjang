@@ -1,0 +1,81 @@
+{
+  "recordedAtUTC": "2026-10-11T13:02:30.786831+00:00",
+  "timezoneForDocuments": "Asia/Seoul",
+  "comparisonBaseline": "8c20afa7cb12626dbdb17d40e8a8b5444e1b06b1",
+  "artifacts": [
+    {
+      "path": "prototype/WearNext.html",
+      "bytes": 17072078,
+      "sha256": "6646e1cdb244657e1eb4cb7dd30ab329e541421171a4eedc14fb5fe169e9556e"
+    },
+    {
+      "path": "prototype/scene/assets/wardrobe.glb",
+      "bytes": 12036380,
+      "sha256": "a9cde40c70a241e290781838ed2819a54c419c60256133e08e25ecbf683b5112"
+    },
+    {
+      "path": "prototype/scene/assets/WearNext-wardrobe.blend",
+      "bytes": 5891429,
+      "sha256": "34a60535c89f206db6e2a8e346c2ecaa46907e35ae2a76192f193021bb7234a9"
+    }
+  ],
+  "screens": [
+    {
+      "path": "prototype/preview.png",
+      "bytes": 829124,
+      "sha256": "0aadce49963f53cdae604c5a9df0f6eec79da77b037b00d1afac60d567927444"
+    },
+    {
+      "path": "prototype/preview-detail.png",
+      "bytes": 227953,
+      "sha256": "7f8f5b1a56c080ccf14a2279da5e3267c49aa1e22059fc676a897d7c6fc4e7e0"
+    },
+    {
+      "path": "prototype/preview-mobile.png",
+      "bytes": 191647,
+      "sha256": "2e0b6e8458d53d8d391d382db4342d601d89899c863ad5176299eacbf4dbdc65"
+    },
+    {
+      "path": "prototype/preview-mobile-detail.png",
+      "bytes": 81840,
+      "sha256": "ce3a6e80497a85fd9029874c9aeafbb317fb20b9d7e9dfa2c3a0f7ad8089415e"
+    }
+  ],
+  "browser": {
+    "engine": "Chromium",
+    "rendering": "SwiftShader",
+    "viewports": {
+      "desktop": [
+        1440,
+        1000
+      ],
+      "mobile": [
+        390,
+        844
+      ]
+    }
+  },
+  "checks": {
+    "build": "passed",
+    "unit": 52,
+    "identityAI": 50,
+    "basicFlow": 46,
+    "roomDesktop": 39,
+    "roomMobile": 41,
+    "roomFallbackRepeated": 3,
+    "roomUnique": 77,
+    "roomPersistence": 52,
+    "photoScenarios": 8,
+    "photoEdgeScenarios": 4,
+    "failedFinalChecks": 0,
+    "browserExecutionErrors": 0,
+    "automaticExternalHTTPRequests": 0
+  },
+  "sequence": "Identity/AI and basic flow passed after UI/state changes. The final environment continuation and garment raycast corrections were then built and checked through room, persistence and photo suites.",
+  "limitations": [
+    "Synthetic wardrobe/photo fixtures only",
+    "Physical-device FPS and loading time unmeasured",
+    "Garment-type models, not real product reconstruction",
+    "Virtual fitting not implemented"
+  ]
+}

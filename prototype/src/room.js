@@ -111,7 +111,7 @@ function disposeTree(object, additionalMaterials = []) {
  * Keep the photographic fallback visible until onReady, and restore it onError.
  * Calls made before loading (including setItems([])) are applied when ready.
  */
-export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}) {
+export function createRoom({ canvas, modelURL, roomBounds, onSelect, onDeselect, onReady, onError } = {}) {
   if (!canvas || typeof canvas.getContext !== 'function') {
     throw new TypeError('createRoom requires a canvas element.');
   }
@@ -149,10 +149,18 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
   const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 30);
   camera.position.set(0, 1.6, 6.4);
   const raycaster = new THREE.Raycaster();
+  // Inspection meshes use layer 1 for their separate light rig; they must
+  // remain hittable so a tap on the garment does not count as empty space.
+  raycaster.layers.enable(1);
   const pointer = new THREE.Vector2();
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const originalMaterials = new Set();
   const observerCleanups = [];
+  const overviewBounds = isRecord(roomBounds)
+    && ['min', 'max'].every(key => Array.isArray(roomBounds[key]) && roomBounds[key].length === 3
+      && roomBounds[key].every(Number.isFinite))
+    && roomBounds.min.every((value, index) => value < roomBounds.max[index])
+    ? new THREE.Box3(new THREE.Vector3(...roomBounds.min), new THREE.Vector3(...roomBounds.max)) : null;
   const scrimScene = new THREE.Scene();
   const scrimCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
   const scrimMaterial = new THREE.MeshBasicMaterial({ color: '#eae5db',
@@ -348,14 +356,27 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     animateGarments('', instant);
     updateHighlight();
     if (!controls) return true;
-    controls.minDistance = 2.0;
-    controls.maxDistance = 7.2;
     const portrait = size.width < 700;
-    const x = view === 'left' ? -1.20 : view === 'right' ? 1.54 : view === 'center' ? .34 : portrait ? -1.18 : -.25;
-    const distance = view === 'room' && !portrait ? 5.3 : portrait ? 3.45 : 3.25;
-    const target = new THREE.Vector3(x, portrait ? 1.48 : 1.32, .02);
-    const angle = view === 'room' && !portrait ? -.34 : -.04;
-    moveCamera(new THREE.Vector3(x + Math.sin(angle) * distance, portrait ? 1.60 : 1.72, Math.cos(angle) * distance), target, instant);
+    const overview = portrait && view === 'room';
+    const boundsCenter = overviewBounds?.getCenter(new THREE.Vector3());
+    const x = view === 'left' ? -1.20 : view === 'right' ? 1.54 : view === 'center' ? .34
+      : overview ? boundsCenter?.x || 0 : -.25;
+    let distance = view === 'room' && !portrait ? 5.3 : portrait ? 3.45 : 3.25;
+    if (overview) {
+      // Start with the complete wardrobe; section controls then approach a
+      // bay. The authored cabinet bounds exclude walls, ceiling and floor.
+      const extent = overviewBounds?.getSize(new THREE.Vector3()) || new THREE.Vector3(3.88, 2.43, .77);
+      const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      distance = Math.max(extent.x / (2 * halfFov * camera.aspect * .90),
+        extent.y / (2 * halfFov * .76)) + extent.z / 2;
+    }
+    controls.minDistance = 2.0;
+    controls.maxDistance = Math.max(7.2, distance * 1.2);
+    const target = new THREE.Vector3(x, overview ? boundsCenter?.y || 1.275 : portrait ? 1.48 : 1.32,
+      overview ? boundsCenter?.z || .02 : .02);
+    const angle = view === 'room' && !portrait ? -.34 : overview ? -.10 : -.04;
+    moveCamera(target.clone().add(new THREE.Vector3(Math.sin(angle) * distance,
+      overview ? .18 : portrait ? .12 : .40, Math.cos(angle) * distance)), target, instant);
     return true;
   }
 
@@ -550,7 +571,13 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     pointerDown = null;
     dragging = false;
     canvas.style.cursor = 'grab';
-    if (selectedKey) return;
+    if (selectedKey) {
+      if (wasClick && hitSlot(event)?.key !== selectedKey) {
+        if (typeof onDeselect === 'function') onDeselect();
+        else setView('room');
+      }
+      return;
+    }
     if (!wasClick) return;
     const slot = hitSlot(event);
     if (slot) {
@@ -742,7 +769,9 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
         model.traverse(object => {
           if (object.isLight) object.visible = false;
           if (object.isMesh) {
-            object.castShadow = true;
+            // The distant ceiling continuation fills wide overview frames
+            // without blocking the existing window light rig.
+            object.castShadow = object.userData.shadowCaster !== false;
             object.receiveShadow = true;
             const materials = Array.isArray(object.material) ? object.material : [object.material];
             materials.forEach(material => {
