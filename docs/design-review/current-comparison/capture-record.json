@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-11",
+  "timezone": "Asia/Seoul",
+  "wearnextCommit": "8c20afa7cb12626dbdb17d40e8a8b5444e1b06b1",
+  "environment": "Chromium / SwiftShader, desktop 1440x1000 / mobile 390x844",
+  "method": "Native initial view followed by blue shirt selection via visible controls. No crop, retouch or postprocessing. Uniform 80px pointer drag after detail capture.",
+  "sources": [
+    {
+      "path": "prototypes/otjang-sian4.html",
+      "bytes": 564826,
+      "sha256": "00b32295085db88b58d03299edc10c569ad4744a8f1a641eb0cc7af6d916339b"
+    },
+    {
+      "path": "prototypes/otjang-sian4-src.zip",
+      "bytes": 28254,
+      "sha256": "f2c421b7c15339457dddd7dd657a58f807cec73c94ff8fa7d89a4c2582e476d8"
+    },
+    {
+      "path": "prototype/WearNext.html",
+      "bytes": 17058956,
+      "sha256": "c328e84a466e3e3287a2ea377fda583dc2d5700f670ac56508f01824d857ce69"
+    }
+  ],
+  "images": [
+    {
+      "file": "claude-desktop-room.png",
+      "sha256": "b56855f9011e1a29008eecf1bef7b86f5366cb5e094b3fa10d68728e0e49d5a7"
+    },
+    {
+      "file": "claude-desktop-detail.png",
+      "sha256": "c1ce0d3356ce7117d9201cc74bd3926e41077bedb20b43f517583e405e3381e4"
+    },
+    {
+      "file": "claude-mobile-room.png",
+      "sha256": "5c93285130613f5ab975da6bcdf16ab90768d1031802c027d456b0b9897b09b1"
+    },
+    {
+      "file": "claude-mobile-detail.png",
+      "sha256": "ea1572b112e3dfe9c45073923c0831143403b10d363bed66ee0db0cc5af2afb3"
+    },
+    {
+      "file": "wearnext-desktop-room.png",
+      "sha256": "e643ba0f7df7e0f9cf62d1e0532b24775d7bca5f6dd3f474752cf439801948e9"
+    },
+    {
+      "file": "wearnext-desktop-detail.png",
+      "sha256": "b5ef8abfec6d9d8ff91c4163186290b60a995071a830a442fcd2c1a0bc525810"
+    },
+    {
+      "file": "wearnext-mobile-room.png",
+      "sha256": "b8762e3f29723f0bb4acbb5a5a51003050f52e37497dd74b358da9fcadeac98d"
+    },
+    {
+      "file": "wearnext-mobile-detail.png",
+      "sha256": "7ed97355cb7b2ed4e308cf3ab37c504fa26fc6d6f65a5daf68358a250123bce0"
+    }
+  ],
+  "observations": [
+    {
+      "name": "claude",
+      "viewport": "desktop",
+      "count": 6,
+      "selected": "ocbd-blue",
+      "rotationBefore": 0,
+      "rotationAfter": 0.8799999999999999,
+      "errors": [],
+      "external": []
+    },
+    {
+      "name": "claude",
+      "viewport": "mobile",
+      "count": 6,
+      "selected": "ocbd-blue",
+      "rotationBefore": 0,
+      "rotationAfter": 0.8799999999999999,
+      "errors": [],
+      "external": []
+    },
+    {
+      "name": "wearnext",
+      "viewport": "desktop",
+      "count": 10,
+      "selected": "demo-shirt-blue",
+      "rotationBefore": 0,
+      "rotationAfter": 0.72,
+      "errors": [],
+      "external": []
+    },
+    {
+      "name": "wearnext",
+      "viewport": "mobile",
+      "count": 10,
+      "selected": "demo-shirt-blue",
+      "rotationBefore": 0,
+      "rotationAfter": 0.72,
+      "errors": [],
+      "external": []
+    }
+  ]
+}
