@@ -1,0 +1,438 @@
+{
+  "version": 1,
+  "producer": "Blender 5.2.2 LTS",
+  "asset": "wardrobe.glb",
+  "representation": "Original type-based room and clothing geometry. Not scans or exact product replicas.",
+  "poster": "room-front.webp",
+  "preview": "room-preview.webp",
+  "posterSize": [
+    1600,
+    1050
+  ],
+  "camera": {
+    "position": [
+      -1.25,
+      1.9299999475479126,
+      5.599999904632568
+    ],
+    "target": [
+      -0.15000000596046448,
+      1.4199999570846558,
+      0.03999999910593033
+    ],
+    "fov": 30.7215305651332,
+    "lens": 43.0
+  },
+  "slots": [
+    {
+      "id": "slot_01",
+      "category": "top",
+      "kind": "shirt",
+      "supportedKinds": [
+        "shirt"
+      ],
+      "color": "white",
+      "gltfCenter": [
+        -1.54362,
+        1.73793,
+        0.2409
+      ],
+      "blenderCenter": [
+        -1.5436222553253174,
+        -0.2408953458070755,
+        1.7379345893859863
+      ],
+      "poster": {
+        "x": 0.194721,
+        "y": 0.403766
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          -1.87299,
+          1.28707,
+          0.17634
+        ],
+        "max": [
+          -1.21425,
+          2.1888,
+          0.30545
+        ]
+      }
+    },
+    {
+      "id": "slot_02",
+      "category": "top",
+      "kind": "shirt",
+      "supportedKinds": [
+        "shirt"
+      ],
+      "color": "blue",
+      "gltfCenter": [
+        -0.83362,
+        1.73793,
+        0.2409
+      ],
+      "blenderCenter": [
+        -0.8336223363876343,
+        -0.2408953458070755,
+        1.7379345893859863
+      ],
+      "poster": {
+        "x": 0.358551,
+        "y": 0.402028
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          -1.16299,
+          1.28707,
+          0.17634
+        ],
+        "max": [
+          -0.50425,
+          2.1888,
+          0.30545
+        ]
+      }
+    },
+    {
+      "id": "slot_03",
+      "category": "outer",
+      "kind": "blazer",
+      "supportedKinds": [
+        "blazer",
+        "jacket"
+      ],
+      "color": "navy",
+      "gltfCenter": [
+        -0.01999,
+        1.74301,
+        0.23804
+      ],
+      "blenderCenter": [
+        -0.01999126374721527,
+        -0.23804226517677307,
+        1.7430109977722168
+      ],
+      "poster": {
+        "x": 0.536088,
+        "y": 0.398427
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          -0.34972,
+          1.29899,
+          0.18206
+        ],
+        "max": [
+          0.30974,
+          2.18703,
+          0.29403
+        ]
+      }
+    },
+    {
+      "id": "slot_04",
+      "category": "outer",
+      "kind": "fieldjacket",
+      "supportedKinds": [
+        "fieldjacket",
+        "chore",
+        "jacket"
+      ],
+      "color": "olive",
+      "gltfCenter": [
+        0.70001,
+        1.72051,
+        0.24208
+      ],
+      "blenderCenter": [
+        0.7000085711479187,
+        -0.2420770227909088,
+        1.7205137014389038
+      ],
+      "poster": {
+        "x": 0.685207,
+        "y": 0.404213
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          0.35272,
+          1.25399,
+          0.18206
+        ],
+        "max": [
+          1.0473,
+          2.18703,
+          0.30209
+        ]
+      }
+    },
+    {
+      "id": "slot_05",
+      "category": "bottom",
+      "kind": "chino",
+      "supportedKinds": [
+        "chino",
+        "trouser"
+      ],
+      "color": "beige",
+      "gltfCenter": [
+        1.335,
+        1.07667,
+        0.085
+      ],
+      "blenderCenter": [
+        1.3350000381469727,
+        -0.08499999344348907,
+        1.0766663551330566
+      ],
+      "poster": {
+        "x": 0.793478,
+        "y": 0.597674
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.2076,
+          1.0483,
+          -0.1126
+        ],
+        "max": [
+          1.4624,
+          1.10503,
+          0.2826
+        ]
+      }
+    },
+    {
+      "id": "slot_06",
+      "category": "bottom",
+      "kind": "denim",
+      "supportedKinds": [
+        "denim"
+      ],
+      "color": "navy",
+      "gltfCenter": [
+        1.695,
+        1.07785,
+        0.085
+      ],
+      "blenderCenter": [
+        1.6950000524520874,
+        -0.08499999344348907,
+        1.077854871749878
+      ],
+      "poster": {
+        "x": 0.860006,
+        "y": 0.594303
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.5676,
+          1.0483,
+          -0.1126
+        ],
+        "max": [
+          1.8224,
+          1.10741,
+          0.2826
+        ]
+      }
+    },
+    {
+      "id": "slot_07",
+      "category": "top",
+      "kind": "knit",
+      "supportedKinds": [
+        "knit"
+      ],
+      "color": "cream",
+      "gltfCenter": [
+        1.515,
+        1.516,
+        0.065
+      ],
+      "blenderCenter": [
+        1.5149999856948853,
+        -0.06499999761581421,
+        1.5159971714019775
+      ],
+      "poster": {
+        "x": 0.827241,
+        "y": 0.46275
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.3236,
+          1.46357,
+          -0.1496
+        ],
+        "max": [
+          1.7064,
+          1.56843,
+          0.2796
+        ]
+      }
+    },
+    {
+      "id": "slot_08",
+      "category": "top",
+      "kind": "tshirt",
+      "supportedKinds": [
+        "tshirt",
+        "tee"
+      ],
+      "color": "white",
+      "gltfCenter": [
+        1.515,
+        1.89089,
+        0.065
+      ],
+      "blenderCenter": [
+        1.5149999856948853,
+        -0.06499999761581421,
+        1.8908944129943848
+      ],
+      "poster": {
+        "x": 0.82909,
+        "y": 0.348241
+      },
+      "variant": "folded",
+      "bounds": {
+        "min": [
+          1.3236,
+          1.86357,
+          -0.1496
+        ],
+        "max": [
+          1.7064,
+          1.91822,
+          0.2796
+        ]
+      }
+    },
+    {
+      "id": "slot_09",
+      "category": "shoes",
+      "kind": "loafer",
+      "supportedKinds": [
+        "loafer"
+      ],
+      "color": "brown",
+      "gltfCenter": [
+        1.52679,
+        0.2692,
+        0.03781
+      ],
+      "blenderCenter": [
+        1.5267928838729858,
+        -0.037814751267433167,
+        0.2692030668258667
+      ],
+      "poster": {
+        "x": 0.820952,
+        "y": 0.832139
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          1.37023,
+          0.212,
+          -0.12747
+        ],
+        "max": [
+          1.68335,
+          0.32641,
+          0.2031
+        ]
+      }
+    },
+    {
+      "id": "slot_10",
+      "category": "shoes",
+      "kind": "sneaker",
+      "supportedKinds": [
+        "sneaker"
+      ],
+      "color": "white",
+      "gltfCenter": [
+        1.5269,
+        0.69721,
+        0.03784
+      ],
+      "blenderCenter": [
+        1.5268995761871338,
+        -0.03784135729074478,
+        0.6972053050994873
+      ],
+      "poster": {
+        "x": 0.822998,
+        "y": 0.706659
+      },
+      "variant": null,
+      "bounds": {
+        "min": [
+          1.37023,
+          0.632,
+          -0.12747
+        ],
+        "max": [
+          1.68357,
+          0.76241,
+          0.20315
+        ]
+      }
+    }
+  ],
+  "staticAO": {
+    "image": "room-static-ao.png",
+    "size": 1024,
+    "uv": "CabinetAO",
+    "strength": 0.8,
+    "distance": 0.55,
+    "includesGarments": false
+  },
+  "cabinetBounds": {
+    "min": [
+      -1.94,
+      0.06,
+      -0.36
+    ],
+    "max": [
+      1.94,
+      2.49,
+      0.41
+    ]
+  },
+  "zones": {
+    "shirts": [
+      -1.155,
+      1.66,
+      0.23
+    ],
+    "outerwear": [
+      0.36,
+      1.64,
+      0.23
+    ],
+    "shelves": [
+      1.515,
+      1.24,
+      0.065
+    ]
+  },
+  "roomContinuation": {
+    "front": -24.0,
+    "bakedAO": false,
+    "ceilingCastsShadow": false
+  },
+  "trianglesBeforeExport": 229625,
+  "meshCount": 142,
+  "draft": false
+}
