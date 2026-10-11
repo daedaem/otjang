@@ -12,7 +12,10 @@ import pickle
 import sys
 
 import bpy
+import numpy as np
 from mathutils import Vector
+from tailoring import build_jacket
+from textiles import apply_textile, family_for
 
 HERE = Path(__file__).resolve().parent
 WORK = HERE.parent / 'scene' / 'work'
@@ -22,6 +25,7 @@ PALETTE = {'white': '#f0eee5', 'blue': '#8daecb', 'navy': '#202f48',
            'green': '#58634b', 'brown': '#78634f', 'black': '#292a2b',
            'gray': '#777b7b', 'denim': '#354f6e', 'red': '#974a40'}
 _vendor = None
+_pressed = None
 
 
 def _load_vendor():
@@ -46,9 +50,9 @@ def _load_vendor():
 
 
 def _rgb(color):
-    color = PALETTE.get(color, color or '#8daecb')
     if isinstance(color, (tuple, list)):
         return tuple(color[:3])
+    color = PALETTE.get(color, color or '#8daecb')
     return tuple(int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
 
 
@@ -64,21 +68,13 @@ def material(name, color, roughness=.75, metal=0, knit=False):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = (*_linear(_rgb(color)), 1)
     mat.use_nodes = True
+    if name.startswith('cloth') and not metal:
+        return apply_textile(mat, _linear(_rgb(color)), family_for(name, knit), roughness)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
     bsdf = nodes.get('Principled BSDF')
     bsdf.inputs['Base Color'].default_value = mat.diffuse_color
     bsdf.inputs['Roughness'].default_value = roughness
     bsdf.inputs['Metallic'].default_value = metal
-    if not metal:
-        bsdf.inputs['Sheen Weight'].default_value = .3 if knit else .18
-        noise = nodes.new('ShaderNodeTexNoise')
-        noise.inputs['Scale'].default_value = 240 if knit else 420
-        noise.inputs['Detail'].default_value = 2
-        bump = nodes.new('ShaderNodeBump')
-        bump.inputs['Strength'].default_value = .24 if knit else .12
-        bump.inputs['Distance'].default_value = .0014 if knit else .0005
-        links.new(noise.outputs['Fac'], bump.inputs['Height'])
-        links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
     return mat
 
 
@@ -97,10 +93,17 @@ def _root(name, kind):
     return root
 
 
-def mesh(name, verts, faces, mat, parent, thickness=0, subsurf=0, bevel=0):
+def mesh(name, verts, faces, mat, parent, thickness=0, subsurf=0, bevel=0, uvs=None):
     data = bpy.data.meshes.new(name)
     data.from_pydata(verts, [], faces)
     data.update()
+    # Metre-space UVs keep the same physical weave density across asset types.
+    if uvs is None:
+        axes = (0, 1) if parent.get('origin', '').startswith('folded') else (0, 2)
+        uvs = [(v[axes[0]], v[axes[1]]) for v in verts]
+    layer = data.uv_layers.new(name='UVMap')
+    for loop in data.loops:
+        layer.data[loop.index].uv = uvs[loop.vertex_index]
     obj = _link(bpy.data.objects.new(name, data))
     obj.parent = parent
     obj.data.materials.append(mat)
@@ -160,6 +163,48 @@ def hanger(root, width=.42, bar=False):
         curve('Trouser hanger bar', [(-width / 2, .005, -.075), (-width / 2, .005, -.17), (width / 2, .005, -.17), (width / 2, .005, -.075)], .0085, wood, root)
 
 
+def _pressed_shirt_cache():
+    """Rest-preserving low-pass of the supplied simulation, without re-simulating.
+
+    The handoff cache remains immutable. Only its simulated displacement is
+    smoothed, avoiding mesh shrinkage, and broad gravity folds are retained.
+    """
+    global _pressed
+    if _pressed is not None:
+        return _pressed
+    with (HERE / 'vendor' / 'shirt-3.pkl').open('rb') as handle:
+        data = pickle.load(handle)
+    rest = np.asarray(data['rest'], dtype=np.float64)
+    displacement = np.asarray(data['pos'], dtype=np.float64) - rest
+    edges = set()
+    for face in data['faces']:
+        for a, b in zip(face, (*face[1:], face[0])):
+            edges.add((min(a, b), max(a, b)))
+    pairs = np.asarray(sorted(edges), dtype=np.int32)
+    source = np.concatenate((pairs[:, 0], pairs[:, 1]))
+    target = np.concatenate((pairs[:, 1], pairs[:, 0]))
+    degree = np.bincount(source, minlength=len(rest))[:, None]
+    for _ in range(20):
+        mean = np.stack([np.bincount(source, weights=displacement[target, axis],
+                         minlength=len(rest)) for axis in range(3)], axis=1) / np.maximum(1, degree)
+        displacement = displacement * .35 + mean * .65
+    pressed = rest + displacement * .52
+    # Sparse, low-amplitude folds read as pressed Oxford cotton, not crumpled foil.
+    x, height, depth = rest.T
+    fall = np.clip((-height - .13) / .58, 0, 1)
+    edge = np.clip(1 - (np.abs(x) / .28) ** 4, 0, 1)
+    fold = .0045 * fall * edge * (.7 * np.sin(x * math.tau / .19 + .7) + .3 * np.sin(x * math.tau / .13))
+    pressed[:, 2] += fold * np.sign(depth)
+    pressed[data['pins']] = np.asarray(data['pos'])[data['pins']]
+    data['pos'] = pressed
+    WORK.mkdir(parents=True, exist_ok=True)
+    path = WORK / 'pressed-shirt-v2.pkl'
+    with path.open('wb') as handle:
+        pickle.dump(data, handle)
+    _pressed = path, data
+    return _pressed
+
+
 def _simulated_shirt(color, name, stripe=False, knit=False):
     scene, sim = _load_vendor()
     # Legacy builder parents every free scene mesh: capture and restore all old
@@ -171,27 +216,27 @@ def _simulated_shirt(color, name, stripe=False, knit=False):
     base = _hex(color)
     scene.PRESETS[key] = dict(weave='stripe' if stripe else 'oxford', c1=base, c2='#eeeae2' if stripe else base,
                              s1='#647e9d', s2='#98acc4', pitch=.007)
-    root, specs = scene.build_shirt(str(HERE / 'vendor' / 'shirt-3.pkl'), key)
+    cache_path, cached = _pressed_shirt_cache()
+    root, specs = scene.build_shirt(str(cache_path), key)
     for obj, (parent, matrix) in existing.items():
         obj.parent = parent
         obj.matrix_world = matrix
     root.name = name
     root['kind'] = 'knit' if knit else 'shirt'
-    root['representation'] = 'garment type illustration; simulated cloth'
+    root['representation'] = 'garment type illustration; pressed simulated cloth'
+    root['geometryVersion'] = 'pressed-cloth-v2'
     root['origin'] = 'collar; Z up; front -Y'
-    # Direct texture-to-Principled link is supported by glTF exporters. The
-    # original seam-attribute multiply network is Blender-specific.
+    # Neutral, packed PBR maps survive both glTF export and browser tint edits.
+    touched = set()
     for obj in root.children:
         if obj.type != 'MESH':
             continue
         for mat in obj.data.materials:
             if not mat or not mat.name.startswith('cloth-'):
                 continue
-            mat.diffuse_color = (*_linear(_rgb(color)), 1)
-            shader = mat.node_tree.nodes.get('Principled BSDF')
-            texture = next((node for node in mat.node_tree.nodes if node.type == 'TEX_IMAGE'), None)
-            if texture:
-                mat.node_tree.links.new(texture.outputs['Color'], shader.inputs['Base Color'])
+            if mat.name not in touched:
+                apply_textile(mat, _linear(_rgb(color)), 'stripe' if stripe else 'oxford', .79)
+                touched.add(mat.name)
     if not knit:
         return root
     cloth = material('cloth-knit-body', color, .89, knit=True)
@@ -214,8 +259,6 @@ def _simulated_shirt(color, name, stripe=False, knit=False):
         y = -(specs['bNf'] if front else specs['bNb']) * math.sin(theta)
         neck.append((x, y, z + .002))
     curve('Ribbed crew neck', neck, .009, rib, root, cyclic=True)
-    with open(HERE / 'vendor' / 'shirt-3.pkl', 'rb') as handle:
-        cached = pickle.load(handle)
     _, _, info = sim.build(specs)
     for side in 'FB':
         rows = info['grid'][side][-5:]
@@ -226,51 +269,6 @@ def _simulated_shirt(color, name, stripe=False, knit=False):
         band = mesh('Ribbed knit hem ' + side, vertices, faces, rib, root, thickness=.003, subsurf=1)
         band.location.y = -.002 if side == 'F' else .002
     return root
-
-
-def _jacket_body(root, cloth, field=False):
-    rows, cols = 32, 64
-    verts, faces = [], []
-    for row in range(rows + 1):
-        t = row / rows
-        width = .257 + .012 * math.sin(math.pi * t) - .017 * math.sin(math.pi * t) ** 2 + .01 * t
-        depth = .058 - .008 * t
-        opening = (.068 * max(0, 1 - t / .52) + .006) if not field else .003
-        gap = math.asin(min(.7, opening / width))
-        for col in range(cols + 1):
-            angle = gap + (math.tau - 2 * gap) * col / cols
-            x = width * math.sin(angle)
-            y = -depth * math.cos(angle)
-            shoulder = -.06 * max(0, (abs(x) - .075) / (width - .075))
-            if abs(x) < .075:
-                shoulder = -.045 * max(0, math.cos(angle))
-            z = shoulder * (1 - t) - (.76 if not field else .73) * t
-            y += .003 * math.sin(t * 24 + angle * 6) * math.sin(math.pi * t)
-            verts.append((x, y, z))
-    for row in range(rows):
-        for col in range(cols):
-            a = row * (cols + 1) + col
-            faces.append((a, a + 1, a + cols + 2, a + cols + 1))
-    mesh('Field jacket body' if field else 'Tailored blazer body', verts, faces, cloth, root, thickness=.006, subsurf=1)
-    for side in (-1, 1):
-        verts, faces = [], []
-        lengthwise, around = 28, 24
-        for row in range(lengthwise + 1):
-            t = row / lengthwise
-            cx = side * (.216 + .028 * t + .01 * math.sin(math.pi * t))
-            cy = -.008 - .026 * t
-            cz = -.065 - .595 * t
-            radius = .078 * (1 - t) + .051 * t
-            for col in range(around):
-                angle = math.tau * col / around
-                radius_here = radius * (1 + .025 * math.sin(t * 35 + angle * 3))
-                verts.append((cx + math.cos(angle) * radius_here, cy + math.sin(angle) * radius_here * .69, cz - side * math.cos(angle) * radius_here * (.38 * (1 - t) + .1 * t)))
-        faces.append(tuple(reversed(range(around))))
-        for row in range(lengthwise):
-            for col in range(around):
-                a = row * around + col
-                faces.append((a, row * around + (col + 1) % around, (row + 1) * around + (col + 1) % around, a + around))
-        mesh('Structured jacket sleeve ' + str(side), verts, faces, cloth, root, thickness=.004, subsurf=1)
 
 
 def _patch(root, name, points, mat, thickness=.004):
@@ -291,52 +289,18 @@ def _pocket(root, x, z, width, height, mat, button_mat=None, flap=False):
 
 def _blazer(color, name):
     root = _root(name, 'blazer')
-    cloth = material('cloth-blazer-wool', color, .77)
-    lapel = material('cloth-blazer-lapels', color, .71)
-    gold = material('blazer-antique-brass', '#b39a62', .25, .78)
-    lining = material('cloth-blazer-inner-lining', '#24262b', .5)
-    _jacket_body(root, cloth)
-    _patch(root, 'Dark inner facing', [(-.076, -.013, -.025), (.076, -.013, -.025), (.047, -.027, -.42), (-.047, -.027, -.42)], lining)
-    for side in (-1, 1):
-        # Separate folded notch lapels, rather than shirt collars painted navy.
-        _patch(root, 'Notched lapel ' + str(side), [(side * .081, -.053, .002), (side * .13, -.058, -.10),
-                (side * .163, -.068, -.123), (side * .126, -.076, -.146), (side * .15, -.073, -.19),
-                (side * .018, -.071, -.43), (side * .066, -.059, -.15)], lapel, .007)
-        _patch(root, 'Lapel collar fall ' + str(side), [(side * .013, .003, .012), (side * .075, -.026, .01),
-                (side * .13, -.057, -.099), (side * .091, -.069, -.12), (side * .052, -.04, -.041)], lapel, .007)
-        _pocket(root, side * .158, -.478, .137, .13, cloth, flap=True)
-        for index in range(3):
-            button('Brass sleeve button', (side * (.268 - index * .009), -.068, -.636 + index * .013), .0048, gold, root)
-    _patch(root, 'Welt breast pocket', [(.085, -.072, -.255), (.199, -.063, -.242), (.199, -.065, -.257), (.085, -.074, -.27)], lapel)
-    for z in (-.434, -.53):
-        button('Brass front blazer button', (-.014, -.073, z), .0085, gold, root)
-    hanger(root)
-    return root
+    cloth = material('cloth-blazer-wool', color, .82)
+    lapel = material('cloth-blazer-lapels', color, .80)
+    brass = material('blazer-antique-brass', '#b39a62', .33, .72)
+    return build_jacket(root, cloth, lapel, brass, mesh, curve, button, hanger)
 
 
 def _fieldjacket(color, name):
     root = _root(name, 'fieldjacket')
-    cloth = material('cloth-fieldjacket-cotton', color, .85)
-    detail = material('cloth-fieldjacket-pocket-flaps', color, .8)
-    snaps = material('fieldjacket-dark-snaps', '#535449', .4, .6)
-    _jacket_body(root, cloth, field=True)
-    for side in (-1, 1):
-        _pocket(root, side * .14, -.18, .145, .16, detail, snaps, True)
-        _pocket(root, side * .15, -.46, .175, .19, detail, snaps, True)
-        _patch(root, 'Field folded collar ' + str(side), [(side * .005, -.02, .019), (side * .082, -.018, .012),
-                (side * .13, -.064, -.085), (side * .061, -.076, -.117), (side * .031, -.059, -.032)], detail, .007)
-        _patch(root, 'Shoulder epaulet ' + str(side), [(side * .106, -.013, -.021), (side * .255, -.018, -.059),
-                (side * .25, -.042, -.069), (side * .105, -.04, -.032)], detail)
-        button('Epaulet snap', (side * .127, -.043, -.032), .005, snaps, root)
-        _patch(root, 'Sleeve cinch strap', [(side * .205, -.069, -.61), (side * .289, -.066, -.616),
-                (side * .286, -.066, -.642), (side * .206, -.069, -.638)], detail)
-    _patch(root, 'Covered zipper storm placket', [(-.018, -.068, -.04), (.018, -.068, -.04),
-                (.019, -.065, -.706), (-.019, -.065, -.706)], detail)
-    for z in (-.13, -.26, -.40, -.55, -.68):
-        button('Storm placket snap', (0, -.075, z), .0057, snaps, root)
-    curve('Waist adjustment seam', [(-.244, -.022, -.399), (-.15, -.059, -.399), (0, -.064, -.399), (.15, -.059, -.399), (.244, -.022, -.399)], .0012, detail, root)
-    hanger(root)
-    return root
+    cloth = material('cloth-fieldjacket-cotton', color, .79)
+    detail = material('cloth-fieldjacket-pocket-flaps', color, .80)
+    snaps = material('fieldjacket-dark-snaps', '#535449', .42, .62)
+    return build_jacket(root, cloth, detail, snaps, mesh, curve, button, hanger, field=True)
 
 
 def _trousers(color, name, denim=False):

@@ -1,4 +1,6 @@
 /** Local-only prototype model. Recommendation rules are an explainable baseline. */
+import { buildAISnapshotKey, validateAIRequest, validateAIOutput } from './ai.js';
+
 export const CATEGORY_LABELS = Object.freeze({
   top: '상의',
   bottom: '하의',
@@ -33,6 +35,54 @@ export const STYLE_LABELS = Object.freeze({
   casual: '캐주얼',
 });
 
+// Typing suggestions only: none of these brands are inferred from a photograph.
+export const BRAND_SUGGESTIONS = Object.freeze([
+  'Polo Ralph Lauren', 'RRL', 'Brooks Brothers', 'J.Press', 'Gitman Vintage',
+  'BEAMS PLUS', 'Engineered Garments', 'L.L.Bean', 'orSlow', 'Levi’s',
+  'Red Wing', 'Alden', 'Paraboot', 'New Balance',
+]);
+
+/** A saved reference opened only by the user; no page metadata is fetched. */
+export function normalizeProductURL(value = '') {
+  if (value == null || value === '') return '';
+  if (typeof value !== 'string' || value.length > 2048 || /[\u0000-\u001f\u007f]/.test(value))
+    throw new Error('상품 링크는 2,048자 이내의 HTTP 또는 HTTPS 주소로 입력해 주세요.');
+  try {
+    const url = new URL(value.trim());
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password)
+      throw new Error();
+    return url.href;
+  } catch {
+    throw new Error('상품 링크는 로그인 정보가 포함되지 않은 HTTP 또는 HTTPS 주소로 입력해 주세요.');
+  }
+}
+
+/** Normalize explicitly entered identity fields without guessing missing ones. */
+export function normalizeProductIdentity(fields = {}) {
+  const result = {};
+  for (const [key, maximum] of [['brand', 300], ['productName', 300], ['styleCode', 160]]) {
+    const value = fields[key] ?? '';
+    if (typeof value !== 'string' || value.length > maximum)
+      throw new Error('브랜드·상품명·품번의 길이와 내용을 확인해 주세요.');
+    result[key] = value.trim();
+  }
+  result.productURL = normalizeProductURL(fields.productURL);
+  result.identityConfirmed = fields.identityConfirmed === true;
+  if (result.identityConfirmed && !result.brand && !result.productName && !result.styleCode)
+    throw new Error('확인한 브랜드, 상품명 또는 품번을 먼저 입력해 주세요.');
+  return result;
+}
+
+/** Only typed brand/product/code text enters the query; image data and filenames do not. */
+export function productSearchLink(item = {}, provider = 'google') {
+  const query = ['brand', 'productName', 'styleCode'].map(key =>
+    typeof item[key] === 'string' ? item[key].trim().slice(0, 300) : '').filter(Boolean).join(' ');
+  if (!query) return null;
+  const url = new URL(provider === 'naver' ? 'https://search.naver.com/search.naver' : 'https://www.google.com/search');
+  url.searchParams.set(provider === 'naver' ? 'query' : 'q', query);
+  return { query, url: url.href };
+}
+
 const demoItem = (id, name, category, kind, color, extra = {}) => ({
   id,
   name,
@@ -53,7 +103,7 @@ export const demoItems = [
   demoItem('demo-tee-white', '화이트 기본 티셔츠', 'top', 'tshirt', 'white'),
   demoItem('demo-chino-beige', '베이지 치노 팬츠', 'bottom', 'chino', 'beige'),
   demoItem('demo-denim-blue', '인디고 스트레이트 데님', 'bottom', 'denim', 'navy'),
-  demoItem('demo-jacket-brown', '브라운 캐주얼 재킷', 'outer', 'jacket', 'brown'),
+  demoItem('demo-jacket-brown', '네이비 블레이저', 'outer', 'blazer', 'navy'),
   demoItem('demo-loafer-brown', '브라운 페니 로퍼', 'shoes', 'loafer', 'brown'),
   demoItem('demo-shirt-white', '화이트 옥스퍼드 셔츠', 'top', 'shirt', 'white'),
   demoItem('demo-field-olive', '올리브 필드 재킷', 'outer', 'fieldjacket', 'olive'),
@@ -159,8 +209,8 @@ const neutralColors = new Set([
   'olive',
 ]);
 const preferredKinds = {
-  american: ['shirt', 'knit', 'chino', 'denim', 'jacket', 'loafer'],
-  minimal: ['shirt', 'knit', 'trouser', 'slacks', 'loafer'],
+  american: ['shirt', 'knit', 'chino', 'denim', 'jacket', 'blazer', 'loafer'],
+  minimal: ['shirt', 'knit', 'trouser', 'slacks', 'blazer', 'loafer'],
   workwear: ['shirt', 'denim', 'cargo', 'chore', 'jacket', 'boots'],
   casual: ['tshirt', 'tee', 'sweatshirt', 'hoodie', 'denim', 'sneaker'],
 };
@@ -170,7 +220,7 @@ function relevance(item, profile) {
   if (profile.style === 'minimal' && item.pattern === 'solid') score += 1;
   if (
     profile.occasion === 'work' &&
-    ['shirt', 'knit', 'chino', 'trouser', 'slacks', 'loafer', 'jacket'].includes(item.kind)
+    ['shirt', 'knit', 'chino', 'trouser', 'slacks', 'loafer', 'jacket', 'blazer'].includes(item.kind)
   )
     score += 3;
   if (
@@ -409,7 +459,8 @@ function walkSafe(value, depth = 0, counter = { count: 0 }, key = '') {
       if (value && !validImage(value))
         fail('이미지는 크기 제한 안의 PNG/JPEG/WebP 데이터만 허용합니다.');
     } else if (value.length > 20000) fail('텍스트가 너무 깁니다.');
-    if (/^(?:url|sourceUrl|reviewUrl)$/i.test(key)) checkUrl(value, key);
+    if (/^productURL$/i.test(key)) normalizeProductURL(value);
+    else if (/^(?:url|sourceUrl|reviewUrl)$/i.test(key)) checkUrl(value, key);
   } else if (typeof value === 'number' && !Number.isFinite(value))
     fail('유효하지 않은 숫자가 있습니다.');
   else if (Array.isArray(value)) {
@@ -469,6 +520,16 @@ function validateState(state) {
     if (!['demo', 'manual', 'photo'].includes(item.source)) fail('옷의 출처가 올바르지 않습니다.');
     for (const key of ['kind', 'color', 'pattern', 'brand'])
       if (item[key] !== undefined) checkString(item[key], `옷 ${key}`, 300);
+    if (item.productName !== undefined) checkString(item.productName, '상품명', 300);
+    if (item.styleCode !== undefined) checkString(item.styleCode, '품번', 160);
+    if (item.productURL !== undefined) {
+      checkString(item.productURL, '상품 링크', 2048);
+      normalizeProductURL(item.productURL);
+    }
+    if (item.identityConfirmed !== undefined && typeof item.identityConfirmed !== 'boolean')
+      fail('상품 정보 확인 상태가 올바르지 않습니다.');
+    if (item.identityConfirmed && ![item.brand, item.productName, item.styleCode].some(value => typeof value === 'string' && value.trim()))
+      fail('직접 확인한 브랜드, 상품명 또는 품번이 없습니다.');
     if (item.color !== undefined && !Object.hasOwn(COLOR_LABELS, item.color))
       fail('지원하지 않는 옷 색입니다.');
     for (const key of ['note', 'analysisNote'])
@@ -568,8 +629,49 @@ function validateState(state) {
         fail('사용 기록 날짜가 올바르지 않습니다.');
     }
   }
+  if (state.aiRecommendation !== undefined) validateAIRecommendationCache(state.aiRecommendation);
   walkSafe(state);
   return state;
+}
+
+function validateAIRecommendationCache(cache) {
+  if (!isObject(cache) || !isObject(cache.snapshot) || !isObject(cache.options) || !isObject(cache.result))
+    fail('저장한 AI 응답의 형식이 올바르지 않습니다.');
+  const { version, mode, ...requestData } = cache.snapshot;
+  if (version !== 2 || !['demo', 'personal'].includes(mode)) fail('저장한 AI 요청의 버전을 확인해 주세요.');
+  const request = validateAIRequest(requestData);
+  if (cache.options.intent !== request.intent || cache.options.anchorId !== request.anchorId)
+    fail('저장한 AI 응답의 요청 조건이 일치하지 않습니다.');
+  const result = cache.result;
+  if (result.provider !== 'manual-ai' || !Array.isArray(result.outfits) || !Array.isArray(result.purchases))
+    fail('저장한 AI 응답의 출처 또는 목록이 올바르지 않습니다.');
+  checkString(result.model, 'AI 출처', 300, true);
+  checkString(result.generatedAt, 'AI 응답 날짜', 100, true);
+  if (!Number.isFinite(Date.parse(result.generatedAt))) fail('AI 응답 날짜가 올바르지 않습니다.');
+  checkIds(result.outfits, 'AI 코디');
+  validateAIOutput({ outfits: result.outfits.map(({ id, ...outfit }) => outfit), gaps: result.gaps,
+    purchases: result.purchases }, request);
+  if (!Array.isArray(result.limitations) || result.limitations.length > 10
+    || result.limitations.some(text => typeof text !== 'string' || text.length > 5000))
+    fail('AI 응답의 확인 사항이 올바르지 않습니다.');
+  return cache;
+}
+
+export function createAIRecommendationCache(state, result, { intent = '', anchorId = null } = {}) {
+  const snapshot = JSON.parse(buildAISnapshotKey(state, { intent, anchorId }));
+  const cache = JSON.parse(JSON.stringify({ snapshot, options: { intent: snapshot.intent, anchorId: snapshot.anchorId }, result }));
+  return validateAIRecommendationCache(cache);
+}
+
+export function getAIRecommendationStatus(state, options = state.aiRecommendation?.options || {}) {
+  const cache = state.aiRecommendation;
+  if (!cache) return { status: 'empty', result: null };
+  try {
+    validateAIRecommendationCache(cache);
+    if (JSON.stringify(cache.snapshot) !== buildAISnapshotKey(state, options))
+      return { status: 'stale', result: null };
+    return { status: 'current', result: cache.result };
+  } catch { return { status: 'stale', result: null }; }
 }
 export function parseBackup(text) {
   if (typeof text !== 'string' || new TextEncoder().encode(text).byteLength > MAX_BACKUP_BYTES)

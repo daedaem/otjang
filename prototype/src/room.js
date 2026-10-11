@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Blender authors the room and every garment. This module only presents that
 // scene and binds the user's recorded items to compatible garment locations.
@@ -120,6 +124,9 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
   let renderer;
   let controls;
   let environmentTarget;
+  let composer;
+  let ambientOcclusion;
+  let outputPass;
   let model;
   let size = { width: 0, height: 0 };
   let items = [];
@@ -134,16 +141,25 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
   let currentView = 'room';
   let viewBeforeLoad = 'room';
   let pendingFocus = '';
+  let detailMix = 0;
+  let lastFrameTime = 0;
   const garmentMotions = new Map();
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#e5dfd4');
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 40);
+  scene.background = new THREE.Color('#e8e3d8');
+  const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 30);
   camera.position.set(0, 1.6, 6.4);
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const originalMaterials = new Set();
   const observerCleanups = [];
+  const scrimScene = new THREE.Scene();
+  const scrimCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
+  const scrimMaterial = new THREE.MeshBasicMaterial({ color: '#eae5db',
+    transparent: true, opacity: 0, depthWrite: false, depthTest: false, toneMapped: false });
+  const scrim = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), scrimMaterial);
+  scrim.position.z = -1;
+  scrimScene.add(scrim);
 
   const controller = {
     dispose,
@@ -152,9 +168,20 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     setItems,
     reset: () => setView('room'),
     getScreenPosition,
+    getScreenBounds,
+    get diagnostics() {
+      const textureInfo = texture => texture ? { name: texture.name || '', width: texture.image?.width || 0,
+        height: texture.image?.height || 0 } : null;
+      return { camera: { position: camera.position.toArray(), quaternion: camera.quaternion.toArray() },
+        slots: slots.map(slot => ({ slotKey: slot.key, quaternion: slot.object.quaternion.toArray(),
+          materials: slot.materials.map(({ material }) => ({ name: material.name,
+            color: material.color.getHexString(), map: textureInfo(material.map),
+            normalMap: textureInfo(material.normalMap), roughnessMap: textureInfo(material.roughnessMap) })) })) };
+    },
     get isReady() { return ready && readyNotified && !disposed && !failed; },
     get isDisposed() { return disposed; },
     get view() { return currentView; },
+    get detailRotation() { return slots.find(slot => slot.key === selectedKey)?.turn || 0; },
     get slots() {
       return slots.map(slot => ({ slotKey: slot.key, itemId: slot.item?.id || null,
         item: slot.item, category: slot.category, supportedKinds: [...slot.kinds],
@@ -185,6 +212,11 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     frame = 0;
     if (disposed || failed || !renderer || document.hidden || !inViewport) return;
     if (!size.width || !size.height) return;
+    const delta = Math.min((time - (lastFrameTime || time)) / 1000, .3);
+    lastFrameTime = time;
+    const targetMix = selectedKey ? 1 : 0;
+    detailMix = reducedMotion?.matches ? targetMix : THREE.MathUtils.damp(detailMix, targetMix, 9, delta || 1 / 60);
+    if (Math.abs(detailMix - targetMix) < .002) detailMix = targetMix;
     if (garmentMotions.size) {
       renderer.shadowMap.needsUpdate = true;
       for (const [key, motion] of garmentMotions) {
@@ -205,7 +237,24 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     }
     const changed = controls.update();
     try {
-      renderer.render(scene, camera);
+      camera.layers.set(0);
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
+      if (selectedKey) {
+        // Keep the selected cloth fully lit while the rest of the room recedes.
+        // Layer composition retains the real mesh, its maps, and object rotation.
+        renderer.autoClear = false;
+        scrimMaterial.opacity = detailMix * .94;
+        renderer.render(scrimScene, scrimCamera);
+        renderer.clearDepth();
+        const background = scene.background;
+        scene.background = null;
+        camera.layers.set(1);
+        renderer.render(scene, camera);
+        scene.background = background;
+        camera.layers.set(0);
+        renderer.autoClear = true;
+      }
     } catch (error) {
       fail(error, 'ROOM_RENDER_FAILED');
       return;
@@ -216,11 +265,21 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
       readyNotified = true;
       if (typeof onReady === 'function') onReady(controller);
     }
-    if (transition || garmentMotions.size || changed) requestRender();
+    if (transition || garmentMotions.size || changed || detailMix !== targetMix) requestRender();
   }
 
   function animateGarments(activeKey = '', instant = false) {
     for (const slot of slots) {
+      const active = slot.key === activeKey && slot.item;
+      slot.object.traverse(node => {
+        if (!node.isMesh) return;
+        node.layers.set(active ? 1 : 0);
+        node.receiveShadow = !active;
+      });
+      if (!active && slot.turn) {
+        slot.object.quaternion.copy(slot.baseQuaternion);
+        slot.turn = 0;
+      }
       const target = slot.key === activeKey && slot.item ? slot.pullPosition : slot.basePosition;
       if (instant || reducedMotion?.matches) {
         garmentMotions.delete(slot.key);
@@ -245,10 +304,16 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     if (size.width === width && size.height === height) return;
     size = { width, height };
     camera.aspect = width / height;
-    camera.fov = width < 560 ? 46 : 38;
+    camera.fov = width < 700 ? 38 : 34;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
+    if (composer) {
+      composer.setSize(width, height);
+      const ratio = renderer.getPixelRatio();
+      ambientOcclusion.setSize(Math.max(1, Math.round(width * ratio * .5)), Math.max(1, Math.round(height * ratio * .5)));
+    }
     if (currentView === 'room' && ready && !transition) setView('room', true);
+    else if (currentView === 'detail' && ready) focusItem(selectedKey, true);
     requestRender();
   }
 
@@ -279,43 +344,43 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     currentView = view;
     pendingFocus = '';
     selectedKey = '';
+    if (controls) controls.enabled = true;
     animateGarments('', instant);
     updateHighlight();
     if (!controls) return true;
-    controls.minDistance = 3.3;
-    controls.maxDistance = 9.8;
-    const framingDistance = THREE.MathUtils.clamp(
-      5.3 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect), 6.4, 9.6,
-    );
-    const x = view === 'left' ? -1.5 : view === 'right' ? 1.5 : 0;
-    const distance = view === 'room' ? framingDistance : 4.15;
-    moveCamera(new THREE.Vector3(x, 1.6, distance), new THREE.Vector3(x, 1.45, -0.1), instant);
+    controls.minDistance = 2.0;
+    controls.maxDistance = 7.2;
+    const portrait = size.width < 700;
+    const x = view === 'left' ? -1.20 : view === 'right' ? 1.54 : view === 'center' ? .34 : portrait ? -1.18 : -.25;
+    const distance = view === 'room' && !portrait ? 5.3 : portrait ? 3.45 : 3.25;
+    const target = new THREE.Vector3(x, portrait ? 1.48 : 1.32, .02);
+    const angle = view === 'room' && !portrait ? -.34 : -.04;
+    moveCamera(new THREE.Vector3(x + Math.sin(angle) * distance, portrait ? 1.60 : 1.72, Math.cos(angle) * distance), target, instant);
     return true;
   }
 
-  function focusItem(key) {
+  function focusItem(key, instant = false) {
     if (disposed || failed || typeof key !== 'string') return false;
     if (!ready) { pendingFocus = key; return true; }
     const slot = slots.find(entry => entry.key === key || entry.item?.id === key);
     if (!slot?.item || !slot.object.visible) return false;
-    const center = slot.restBounds.getCenter(new THREE.Vector3()).add(new THREE.Vector3(0, 0, 0.55));
+    const center = slot.restBounds.getCenter(new THREE.Vector3()).add(new THREE.Vector3(0, 0, .9));
     const extent = slot.restBounds.getSize(new THREE.Vector3());
     const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const portrait = size.width < 700 && camera.aspect < 1.1;
-    const distance = portrait
-      ? Math.max(1.8, extent.y / (2 * halfFov * 0.42), extent.x / (2 * halfFov * camera.aspect * 0.68))
-      : Math.max(1.4, extent.y / (2 * halfFov) * 1.2, extent.x / (2 * halfFov * camera.aspect) * 1.2);
-    const lookTarget = center.clone();
-    // The portrait inspector occupies the bottom of the stage. Frame the
-    // complete garment above it instead of enlarging it behind the sheet.
-    if (portrait) lookTarget.y -= distance * halfFov * 0.22;
+    const distance = Math.max(.95, extent.y / (2 * halfFov * (portrait ? .48 : .78)),
+      extent.x / (2 * halfFov * camera.aspect * (portrait ? .84 : .56)));
+    // Reserve the inspector's screen region rather than shrinking a whole room.
+    // Parallel camera/target offsets keep the garment front square to the lens.
+    const offset = new THREE.Vector3(portrait ? 0 : distance * halfFov * camera.aspect * .22,
+      portrait ? -distance * halfFov * .29 : 0, 0);
+    const lookTarget = center.clone().add(offset);
     selectedKey = slot.key;
-    animateGarments(slot.key);
+    animateGarments(slot.key, instant);
     currentView = 'detail';
-    controls.minDistance = 0.95;
-    controls.maxDistance = 9.8;
+    controls.enabled = false;
     updateHighlight();
-    moveCamera(new THREE.Vector3(center.x, center.y + 0.06, center.z + distance), lookTarget);
+    moveCamera(lookTarget.clone().add(new THREE.Vector3(0, 0, distance)), lookTarget, instant);
     return true;
   }
 
@@ -330,6 +395,25 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     return { x: normalizedX * size.width, y: normalizedY * size.height,
       normalizedX, normalizedY, visible: Boolean(slot.item && slot.object.visible
         && position.z > -1 && position.z < 1 && Math.abs(position.x) <= 1 && Math.abs(position.y) <= 1) };
+  }
+
+  function getScreenBounds(key) {
+    if (!ready || disposed || failed) return null;
+    const slot = slots.find(entry => entry.key === key || entry.item?.id === key);
+    if (!slot) return null;
+    camera.updateMatrixWorld();
+    const bounds = new THREE.Box3().setFromObject(slot.object);
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y])
+      for (const z of [bounds.min.z, bounds.max.z]) {
+        const point = new THREE.Vector3(x, y, z).project(camera);
+        const sx = (point.x + 1) * size.width / 2;
+        const sy = (1 - point.y) * size.height / 2;
+        left = Math.min(left, sx); right = Math.max(right, sx);
+        top = Math.min(top, sy); bottom = Math.max(bottom, sy);
+      }
+    return { left, top, right, bottom, width: right - left, height: bottom - top,
+      visible: Boolean(slot.item && slot.object.visible && right >= 0 && left <= size.width && bottom >= 0 && top <= size.height) };
   }
 
   function setItems(nextItems = []) {
@@ -428,7 +512,8 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
       dragging = true;
       return;
     }
-    pointerDown = { id: event.pointerId, x: event.clientX, y: event.clientY, time: performance.now() };
+    pointerDown = { id: event.pointerId, x: event.clientX, y: event.clientY,
+      turn: slots.find(slot => slot.key === selectedKey)?.turn || 0, time: performance.now() };
     dragging = false;
     transition = null;
   }
@@ -436,6 +521,19 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
   function pointerMove(event) {
     if (pointerDown && event.pointerId === pointerDown.id
       && Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y) > 6) dragging = true;
+    if (selectedKey && pointerDown && event.pointerId === pointerDown.id) {
+      const slot = slots.find(entry => entry.key === selectedKey);
+      if (slot && dragging) {
+        slot.turn = pointerDown.turn + (event.clientX - pointerDown.x) * .009;
+        slot.object.quaternion.copy(slot.baseQuaternion).premultiply(
+          new THREE.Quaternion().setFromAxisAngle(slot.turnAxis, slot.turn));
+        slot.object.updateMatrixWorld(true);
+        slot.bounds.setFromObject(slot.object);
+        canvas.style.cursor = 'grabbing';
+        requestRender();
+      }
+      return;
+    }
     if (pointerDown || event.pointerType === 'touch') return;
     const next = hitSlot(event)?.key || '';
     if (hoverKey !== next) {
@@ -451,6 +549,8 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
       && Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y) <= 6;
     pointerDown = null;
     dragging = false;
+    canvas.style.cursor = 'grab';
+    if (selectedKey) return;
     if (!wasClick) return;
     const slot = hitSlot(event);
     if (slot) {
@@ -498,6 +598,13 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     canvas.removeEventListener('webglcontextlost', contextLost);
     canvas.style.cursor = '';
     disposeTree(scene, originalMaterials);
+    disposeTree(scrimScene);
+    ambientOcclusion?.dispose();
+    // r160's pass dispose omits these two owned shader materials.
+    ambientOcclusion?.gtaoMaterial.dispose();
+    ambientOcclusion?.blendMaterial.dispose();
+    outputPass?.dispose();
+    composer?.dispose();
     environmentTarget?.dispose();
     renderer?.dispose();
     scene.clear();
@@ -519,12 +626,12 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     const debugRenderer = gl.getExtension('WEBGL_debug_renderer_info');
     const softwareGPU = debugRenderer
       && /swiftshader|llvmpipe|software/i.test(gl.getParameter(debugRenderer.UNMASKED_RENDERER_WEBGL));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, softwareGPU ? 1 : 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, softwareGPU ? 1 : 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.AgXToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.VSMShadowMap;
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = true;
     const environment = new RoomEnvironment(renderer);
@@ -533,21 +640,50 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
     scene.environment = environmentTarget.texture;
     environment.dispose();
     pmrem.dispose();
+    // Static room geometry and moving clothes both receive local contact AO.
+    // AO has no external texture dependency and is evaluated only on demand.
+    if (renderer.capabilities.isWebGL2 && renderer.extensions.has('EXT_color_buffer_float')) {
+      // Postprocessing bypasses the canvas antialias flag. Keep multisampling
+      // on the offscreen scene target so seams and thin hangers stay smooth.
+      const sceneTarget = new THREE.WebGLRenderTarget(1, 1, {
+        type: THREE.HalfFloatType,
+        samples: Math.min(4, renderer.capabilities.maxSamples),
+      });
+      composer = new EffectComposer(renderer, sceneTarget);
+      composer.addPass(new RenderPass(scene, camera));
+      ambientOcclusion = new GTAOPass(scene, camera, 1, 1);
+      ambientOcclusion.output = GTAOPass.OUTPUT.Default;
+      ambientOcclusion.blendIntensity = .48;
+      ambientOcclusion.updateGtaoMaterial({ radius: .18, thickness: .5, distanceExponent: 1,
+        scale: 1, samples: 8, distanceFallOff: 1, screenSpaceRadius: false });
+      ambientOcclusion.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 3, rings: 2, samples: 8 });
+      composer.addPass(ambientOcclusion);
+      outputPass = new OutputPass();
+      composer.addPass(outputPass);
+    }
 
-    scene.add(new THREE.HemisphereLight('#e5edf5', '#ad9375', 0.65));
-    const key = new THREE.DirectionalLight('#fff0d9', 3.0);
-    key.position.set(-3.8, 5.2, 4.0);
-    key.target.position.set(0, 1.2, -0.25);
+    scene.add(new THREE.HemisphereLight('#d7e3ed', '#947750', .32));
+    const key = new THREE.DirectionalLight('#fff4e4', 3.6);
+    key.position.set(-3.6, 4.3, 3.2);
+    key.target.position.set(-.2, 1.1, -.1);
     key.castShadow = true;
-    key.shadow.mapSize.set(softwareGPU ? 1024 : 2048, softwareGPU ? 1024 : 2048);
-    Object.assign(key.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 0.1, far: 16 });
-    key.shadow.bias = -0.00015;
-    key.shadow.normalBias = 0.018;
+    key.shadow.mapSize.set(2048, 2048);
+    Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: .1, far: 12 });
+    key.shadow.bias = -0.00008;
+    key.shadow.normalBias = 0.004;
     key.shadow.radius = 3;
+    key.shadow.blurSamples = 8;
     scene.add(key, key.target);
-    const fill = new THREE.DirectionalLight('#eaf0f5', 0.8);
+    const fill = new THREE.DirectionalLight('#e5ecf3', .65);
     fill.position.set(3.2, 2.8, 3.5);
     scene.add(fill);
+    const inspectionKey = new THREE.DirectionalLight('#fff4e9', 3.2);
+    inspectionKey.position.set(-2.8, 4.2, 5);
+    inspectionKey.layers.set(1);
+    const inspectionFill = new THREE.DirectionalLight('#e1eaf8', .9);
+    inspectionFill.position.set(3, 2, 4);
+    inspectionFill.layers.set(1);
+    scene.add(inspectionKey, inspectionFill);
 
     controls = new OrbitControls(camera, canvas);
     controls.target.set(0, 1.45, -0.1);
@@ -609,7 +745,12 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
             object.castShadow = true;
             object.receiveShadow = true;
             const materials = Array.isArray(object.material) ? object.material : [object.material];
-            materials.forEach(material => { if ('envMapIntensity' in material) material.envMapIntensity = 0.45; });
+            materials.forEach(material => {
+              if ('envMapIntensity' in material) material.envMapIntensity = .35;
+              for (const value of Object.values(material)) {
+                if (value?.isTexture) value.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+              }
+            });
           }
         });
         model.updateMatrixWorld(true);
@@ -637,18 +778,12 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
               const fixedColor = /button|hanger|wood|metal|sole|lace|zip|buckle|hardware/.test(materialName)
                 || mesh.userData?.recolor === false || material.userData?.recolor === false;
               const cloth = mesh.userData?.recolor === true || material.userData?.recolor === true
+                || material.userData?.wearnextTintable === true
                 || /cloth|fabric|garment|denim|leather|shirt|knit|trouser|jacket|sweater|chino|tee|upper/.test(materialName);
               if (copy.color && cloth && !fixedColor) {
-                // The exported weave is an albedo image, not a tangent-space
-                // normal map. Keep it as subtle fabric relief so changing a
-                // blue shirt to white actually changes the displayed color.
-                if (copy.map && /cloth|fabric/.test(materialName)) {
-                  copy.bumpMap = copy.map;
-                  copy.bumpScale = 0.0008;
-                  copy.map = null;
-                  copy.normalMap = null;
-                  copy.roughness = Math.max(copy.roughness || 0, 0.9);
-                }
+                // Blender supplies neutral woven albedo multiplied by the
+                // item color, with separate normal/roughness maps. Recolor
+                // only that factor; retain every source texture and UV.
                 materials.push({ material: copy, baseColor: copy.color.clone(),
                   baseEmissive: copy.emissive?.clone() || new THREE.Color(0),
                   baseEmissiveIntensity: copy.emissiveIntensity ?? 1 });
@@ -658,10 +793,12 @@ export function createRoom({ canvas, modelURL, onSelect, onReady, onError } = {}
             mesh.material = Array.isArray(mesh.material) ? copies : copies[0];
           });
           const bounds = new THREE.Box3().setFromObject(object);
-          const pullWorld = object.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0, 0.55));
+          const pullWorld = object.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0, .9));
           const pullPosition = object.parent ? object.parent.worldToLocal(pullWorld) : pullWorld;
+          const parentRotation = object.parent?.getWorldQuaternion(new THREE.Quaternion()) || new THREE.Quaternion();
           return { key, object, ...metadata, materials, item: null, bounds,
-            restBounds: bounds.clone(), basePosition: object.position.clone(), pullPosition };
+            restBounds: bounds.clone(), basePosition: object.position.clone(), pullPosition,
+            baseQuaternion: object.quaternion.clone(), turnAxis: new THREE.Vector3(0, 1, 0).applyQuaternion(parentRotation.invert()), turn: 0 };
         });
         if (!slots.length) throw new Error('옷장방에 옷을 연결할 위치가 없습니다.');
         bindItems();

@@ -25,6 +25,22 @@ const ready = async page => {
   await page.waitForFunction(() => window.__wearnext.roomSnapshot()?.ready, null, { timeout: 120000 });
 };
 const fitsViewport = page => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+const vectorDistance = (a, b) => Math.hypot(...a.map((value, index) => value - b[index]));
+const textureSignature = materials => materials.map(({ name, map, normalMap, roughnessMap }) =>
+  ({ name, map, normalMap, roughnessMap })).sort((a, b) => a.name.localeCompare(b.name));
+const detailLayout = page => page.evaluate(() => {
+  const rect = selector => {
+    const r = document.querySelector(selector)?.getBoundingClientRect();
+    return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+  };
+  const header = document.querySelector('.room-header');
+  const style = header && getComputedStyle(header);
+  return { scrollY, documentHeight: document.documentElement.scrollHeight,
+    shellScrollTop: document.querySelector('.room-shell')?.scrollTop,
+    stageScrollTop: document.querySelector('.room-stage')?.scrollTop,
+    header: rect('.room-header'), headerStyle: style ? { height: style.height, flexShrink: style.flexShrink } : null,
+    shell: rect('.room-shell'), stage: rect('.room-stage'), inspector: rect('.room-detail') };
+});
 async function sceneColorCount(page, screenshot) {
   const bounds = await page.locator('#room-canvas').boundingBox();
   return page.evaluate(async ({ png, bounds }) => {
@@ -57,6 +73,26 @@ function fixtureItem(id, name, kind, color = 'blue') {
   return { id, name, kind, color, category: 'top', source: 'manual', available: true,
     confirmed: true, attributesConfirmed: true, pattern: 'solid', brand: '' };
 }
+async function verifyColorChange(page, mode, itemId) {
+  const beforeColor = (await roomState(page)).slots.find(slot => slot.itemId === itemId);
+  ok(beforeColor.materials.some(material => [material.map, material.normalMap, material.roughnessMap]
+    .every(texture => texture?.width > 1 && texture?.height > 1)),
+  `${mode}: the shirt includes woven color, normal and roughness textures`);
+  await click(page, 'edit-item', itemId);
+  await page.selectOption('#item-form [name="color"]', 'pink');
+  await page.click('#item-form [type="submit"]');
+  // A click finishes before IndexedDB's asynchronous save does. The old viewer
+  // can still be ready then: wait for the committed record and closed form
+  // before waiting for the replacement viewer to finish rendering.
+  await page.waitForFunction(id => window.__wearnext.snapshot().items.find(item => item.id === id)?.color === 'pink'
+    && document.querySelector('#dialog')?.open === false, itemId);
+  await ready(page);
+  const afterColor = (await roomState(page)).slots.find(slot => slot.itemId === itemId);
+  ok(JSON.stringify(textureSignature(beforeColor.materials)) === JSON.stringify(textureSignature(afterColor.materials)),
+    `${mode}: changing a garment color preserves its material texture maps`);
+  ok(afterColor.materials.some((material, index) => material.color !== beforeColor.materials[index].color),
+    `${mode}: changing the recorded color updates the garment color factor`);
+}
 function track(page) {
   const errors = [], external = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -73,6 +109,20 @@ try {
     const page = await context.newPage();
     const { errors, external } = track(page);
     await page.goto(prototypeURL.href);
+    if (process.env.ROOM_CASE === 'color') {
+      await click(page, 'start-personal');
+      await page.waitForSelector('#photo-files', { state: 'attached' });
+      const personal = createState('personal');
+      personal.onboarded = true;
+      personal.items = [fixtureItem('color-shirt', '직접 기록한 셔츠', 'shirt', 'unknown')];
+      await importFixture(page, personal);
+      await click(page, 'room-item', 'color-shirt');
+      await verifyColorChange(page, mode, 'color-shirt');
+      ok(errors.length === 0, `${mode}: no execution errors ${errors.join('; ')}`);
+      ok(external.length === 0, `${mode}: recoloring needs no external HTTP requests`);
+      await context.close();
+      continue;
+    }
     await click(page, 'start-demo');
     await ready(page);
     const initial = await roomState(page);
@@ -108,11 +158,51 @@ try {
     const panel = await page.locator('#room-inspector .room-detail').boundingBox();
     ok(panel.x >= 0 && panel.x + panel.width <= width + 1,
       `${mode}: item inspector remains within the viewport`);
-    await page.waitForTimeout(650);
+    await page.waitForTimeout(750);
+    const beforeScreenshotLayout = await detailLayout(page);
     await page.screenshot({ path: path.join(root, `shots/${mode}-room-detail.png`), fullPage: true, timeout: 90000 });
+    const afterScreenshotLayout = await detailLayout(page);
+    console.log('DETAIL_LAYOUT', mode, { beforeScreenshot: beforeScreenshotLayout, afterScreenshot: afterScreenshotLayout });
+    ok(beforeScreenshotLayout.header.y >= -.5 && afterScreenshotLayout.header.y >= -.5
+      && beforeScreenshotLayout.header.height >= 40 && afterScreenshotLayout.header.height >= 40,
+    `${mode}: selecting a garment leaves the complete header at the top of the viewport`);
+    const beforeTurn = await roomState(page);
+    const garmentBeforeTurn = beforeTurn.slots.find(slot => slot.itemId === selectedItem);
+    const detailCanvas = await page.locator('#room-canvas').boundingBox();
+    const projected = garmentBeforeTurn.bounds;
+    ok(projected?.visible && projected.width > 30 && projected.height > 50,
+      `${mode}: selected garment has visible projected geometry`);
+    if (mode === 'mobile') {
+      const garmentRect = { left: detailCanvas.x + projected.left, top: detailCanvas.y + projected.top,
+        right: detailCanvas.x + projected.right, bottom: detailCanvas.y + projected.bottom };
+      const overlap = Math.min(garmentRect.right, panel.x + panel.width) - Math.max(garmentRect.left, panel.x) > 1
+        && Math.min(garmentRect.bottom, panel.y + panel.height) - Math.max(garmentRect.top, panel.y) > 1;
+      ok(!overlap, 'mobile: the selected garment bounds do not intersect the bottom inspector');
+      ok(projected.left >= -1 && projected.right <= detailCanvas.width + 1
+        && projected.top >= -1 && projected.bottom <= detailCanvas.height + 1,
+      'mobile: the complete selected garment fits inside the canvas');
+    }
+    const dragX = detailCanvas.x + (projected.left + projected.right) / 2;
+    const dragY = detailCanvas.y + (projected.top + projected.bottom) / 2;
+    await page.mouse.move(dragX, dragY);
+    await page.mouse.down();
+    await page.mouse.move(dragX + Math.min(width * .20, 120), dragY, { steps: 12 });
+    await page.mouse.up();
+    await page.waitForFunction(rotation => Math.abs(window.__wearnext.roomSnapshot().rotation - rotation) > .1,
+      beforeTurn.rotation);
+    const afterTurn = await roomState(page);
+    const garmentAfterTurn = afterTurn.slots.find(slot => slot.itemId === selectedItem);
+    ok(vectorDistance(garmentBeforeTurn.quaternion, garmentAfterTurn.quaternion) > .05,
+      `${mode}: dragging in detail rotates the actual garment object`);
+    ok(vectorDistance(beforeTurn.camera.position, afterTurn.camera.position) < .0001
+      && vectorDistance(beforeTurn.camera.quaternion, afterTurn.camera.quaternion) < .0001,
+    `${mode}: detail dragging leaves the camera fixed`);
     await click(page, 'room-reset');
     await page.waitForFunction(() => !window.__wearnext.roomSnapshot().selectedId);
     ok((await roomState(page)).view === 'room', `${mode}: returning a garment restores the room view`);
+    ok(vectorDistance((await roomState(page)).slots.find(slot => slot.itemId === selectedItem).quaternion,
+      initial.slots.find(slot => slot.itemId === selectedItem).quaternion) < .0001,
+    `${mode}: returning a garment restores its original orientation`);
     await click(page, 'room-view', 'right');
     await page.waitForFunction(() => window.__wearnext.roomSnapshot().view === 'right');
     ok(true, `${mode}: cabinet section control changes the viewpoint`);
@@ -203,11 +293,13 @@ try {
       slot => slot.visible && slot.itemId === 'personal-unknown'));
     ok((await roomState(page)).unplacedIds.length === 0,
       `${mode}: confirming the clothing kind places the existing record in the room`);
+    await verifyColorChange(page, mode, 'personal-unknown');
     ok(errors.length === 0, `${mode}: no execution errors ${errors.join('; ')}`);
     ok(external.length === 0, `${mode}: all scene assets load locally without external HTTP requests`);
     await context.close();
   }
 
+  if (process.env.ROOM_CASE !== 'color') {
   // An explicit no-WebGL context exercises the real browser-support fallback.
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -231,6 +323,7 @@ try {
   ok(errors.length === 0 && external.length === 0,
     'fallback: graceful support failure has no uncaught errors or external requests');
   await context.close();
+  }
   console.log(`${checks} Blender room browser checks passed.`);
 } finally {
   await browser.close();

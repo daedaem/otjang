@@ -1,6 +1,8 @@
 import * as Model from './model.js';
 import * as Photo from './photo.js';
 import * as Art from './art.js';
+import * as AI from './ai.js';
+import { getPreparedAIOutfits } from './ai-samples.js';
 import { createRoom } from './room.js';
 import roomModelURL from '../scene/assets/wardrobe.glb';
 import roomPosterURL from '../scene/assets/room-front.webp';
@@ -113,6 +115,40 @@ const imageOnly = (item) =>
     : Art.garmentSVG(item || {});
 const brand = () =>
   `<a class="brand" href="#closet" aria-label="WearNext 나의 옷장"><span class="brand-mark">W</span><span class="brand-name">WearNext</span></a>`;
+
+function identityPanel(item, { draft = false } = {}) {
+  const listId = `identity-brands-${String(item.id || 'new-item').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const field = name => draft ? `data-draft-field="${name}" data-id="${e(item.id)}"` : `name="${name}"`;
+  const searchId = draft ? item.id : '';
+  return `<section class="identity-panel" ${draft ? `data-identity-draft="${e(item.id)}"` : ''}>
+    <div class="identity-heading"><h3>브랜드와 상품 확인</h3><span class="identity-status">${item.identityConfirmed ? '직접 확인함' : '확인 전'}</span></div>
+    <p class="identity-note">사진만으로 브랜드나 정확한 제품을 알아내지는 않아요. 옷의 라벨이나 상품 페이지를 보고 아는 정보만 입력해 주세요.</p>
+    <div class="identity-fields form-grid">
+      <label class="field full"><span>브랜드 · 모르면 비워 두기</span><input ${field('brand')} list="${listId}" value="${e(item.brand || '')}" maxlength="300" placeholder="브랜드를 직접 입력하세요" autocomplete="off"><datalist id="${listId}">${Model.BRAND_SUGGESTIONS.map(name => `<option value="${e(name)}"></option>`).join('')}</datalist><small class="identity-note">목록은 입력 도움말이에요. 목록에 없는 브랜드도 적을 수 있어요.</small></label>
+      <label class="field full"><span>정확한 상품명 · 선택</span><input ${field('productName')} value="${e(item.productName || '')}" maxlength="300" placeholder="상품 페이지나 라벨에서 확인한 이름"></label>
+      <label class="field full"><span>품번 / 스타일 코드 · 선택</span><input ${field('styleCode')} value="${e(item.styleCode || '')}" maxlength="160" placeholder="예: 라벨에 적힌 모델 번호"></label>
+      <div class="identity-search full">${btn('identity-search-google', 'Google에서 찾기 ↗', { id: searchId, style: 'small', ico: 'search' })}${btn('identity-search-naver', '네이버에서 찾기 ↗', { id: searchId, style: 'small' })}</div>
+      <p class="identity-note full">버튼을 누르면 브랜드·상품명·품번 텍스트로 새 탭에서 검색해요. 사진은 전송하지 않아요.</p>
+      <label class="field full"><span>확인할 상품 원문 링크 · 선택</span><input ${field('productURL')} type="url" value="${e(item.productURL || '')}" maxlength="2048" placeholder="https://상품-페이지"></label>
+      <div class="identity-search full">${btn('identity-open-reference', '입력한 상품 링크 열기 ↗', { id: searchId, style: 'small' })}</div>
+      <p class="identity-note full">링크는 참고용으로 저장해요. 페이지 내용을 자동으로 읽지 않으므로 상품명·브랜드·품번은 직접 확인해서 고쳐 주세요.</p>
+      <label class="small full"><input type="checkbox" ${draft ? `data-draft-identity-confirm="${e(item.id)}"` : 'name="identityConfirmed"'} ${item.identityConfirmed ? 'checked' : ''}> 입력한 브랜드·상품 정보를 직접 확인했어요</label>
+    </div>
+  </section>`;
+}
+
+function identityDetails(item) {
+  if (item.source === 'demo') return '';
+  return `<div class="identity-summary"><p class="identity-status">${item.identityConfirmed ? '브랜드·상품 정보 직접 확인함' : '브랜드·상품 정보 확인 전'}</p>${item.productName ? `<p class="small">${e(item.productName)}</p>` : ''}${item.styleCode ? `<p class="identity-note">품번 ${e(item.styleCode)}</p>` : ''}${item.productURL ? `<a class="identity-reference" href="${e(item.productURL)}" target="_blank" rel="noopener noreferrer">저장한 상품 원문 ↗</a>` : ''}</div>`;
+}
+
+function readIdentityInputs(draftId = '') {
+  const root = draftId ? [...document.querySelectorAll('[data-identity-draft]')]
+    .find(panel => panel.dataset.identityDraft === draftId) : $('#item-form');
+  if (!root) return null;
+  return Object.fromEntries(['brand', 'productName', 'styleCode', 'productURL'].map(key =>
+    [key, root.querySelector(`[name="${key}"], [data-draft-field="${key}"]`)?.value || '']));
+}
 const errorText = (error) => (error instanceof Error ? error.message : String(error));
 let state,
   welcome = true,
@@ -137,6 +173,12 @@ const ui = {
   outfitOffset: 0,
   recordTab: 'outfits',
   mergeUndo: null,
+  aiIntent: '',
+  aiResponse: '',
+  aiResult: null,
+  aiContext: '',
+  aiMessage: '',
+  aiOpen: false,
 };
 let toastTimer;
 function toast(message) {
@@ -186,6 +228,8 @@ async function replaceState(next, route = null) {
     ui.closetView = 'room';
     ui.roomItem = null;
     ui.outfitItem = null;
+    resetAIExchange();
+    restoreAIExchange();
     ui.filter = 'all';
     ui.search = '';
     ui.outfitOffset = 0;
@@ -243,7 +287,7 @@ function renderWelcome() {
   return `<main class="room-welcome" id="main"><img class="welcome-room-image" src="${roomPosterURL}" alt="따뜻한 오크 옷장에 셔츠와 재킷이 걸린 드레스룸"><div class="welcome-room-shade"></div><header class="room-header">${brand()}<span class="room-edition">A SPACE FOR YOUR EVERYDAY</span></header><section class="room-welcome-copy"><div class="eyebrow">YOUR WARDROBE, REIMAGINED</div><h1>문을 열면,<br>나만의 옷장.</h1><p>좋아하는 옷을 꺼내 보고, 함께 입어 보고.<br>당신의 옷장에서 다음 한 벌을 찾아보세요.</p><div class="welcome-buttons">${btn('start-demo', '먼저 둘러보기', { style: 'primary', ico: 'arrow' })}${btn('start-personal', '내 옷으로 시작', { ico: 'camera' })}</div><p class="room-private">가입 없이 · 사진은 이 브라우저에만 저장</p>${loadError ? `<div class="mt">${notice(e(loadError) + ' 기존 데이터는 덮어쓰지 않았습니다.', 'error')}${btn('import', '백업 불러오기')}</div>` : ''}</section><footer class="room-welcome-footer"><span>01 — THE PERSONAL WARDROBE</span><span>Blender로 만든 공간 · 샘플 옷장 미리보기</span></footer></main>`;
 }
 function renderRoom() {
-  return `<main class="room-shell" id="main"><header class="room-header">${brand()}<nav class="room-nav" aria-label="주 메뉴">${nav.map(n => `<a href="#${n.id}" class="${n.id === 'closet' ? 'active' : ''}">${n.label}</a>`).join('')}</nav><button class="room-profile" data-action="profile" aria-label="스타일과 옷장 설정">${icon('more')}</button></header><section class="room-stage" aria-label="직접 둘러보는 3D 옷장"><div class="room-backdrop"><img src="${roomPosterURL}" alt="샘플 의류가 놓인 옷장 공간 미리보기"></div><canvas id="room-canvas" aria-label="옷을 눌러 꺼내고 드래그해서 둘러보세요. 아래 옷 선택 메뉴로도 이용할 수 있어요."></canvas><div class="room-intro"><span class="eyebrow">THE EVERYDAY ROOM</span><h1>${state.mode === 'demo' ? '취향이 머무는 곳.' : '나의 작은 드레스룸.'}</h1><p>${state.mode === 'demo' ? '샘플 옷장' : '나의 옷장'} <span>·</span> ${state.items.length}벌 <span>·</span> ${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</p></div><div class="room-top-actions">${btn('room-list', '목록', { style: 'room-button', ico: 'layers' })}${btn('photos', '옷 추가', { style: 'primary', ico: 'plus' })}</div><div id="room-status" class="room-status" role="status" data-ready="false"><span class="spinner"></span>옷장 문을 여는 중이에요. <small>배경은 샘플 공간 미리보기입니다.</small></div><div class="room-view-controls" role="group" aria-label="옷장 시점"><button data-action="room-view" data-id="front" aria-label="전체 옷장 보기">전체</button><button data-action="room-view" data-id="left">셔츠</button><button data-action="room-view" data-id="center">재킷</button><button data-action="room-view" data-id="right">선반</button><button data-action="room-reset" aria-label="옷을 제자리에 넣고 처음 시점으로">↺</button></div><div id="room-inspector" aria-live="polite"></div><div class="room-guide">드래그로 둘러보기 <span>·</span> 스크롤로 가까이 <span>·</span> 옷을 눌러 꺼내기</div>${!state.items.length ? `<div class="room-empty"><h2>첫 번째 옷을 걸어 볼까요?</h2><p>사진을 확인해 등록하면 이 공간에 담겨요.</p>${btn('photos', '내 옷 사진 추가', { style: 'primary', ico: 'camera' })}${btn('manual', '직접 기록', { style: 'ghost' })}</div>` : ''}</section><footer class="room-dock"><div class="room-dock-label"><span class="eyebrow">IN YOUR WARDROBE</span><b>오늘은 어떤 옷부터?</b></div><div class="room-items" aria-label="옷 선택">${state.items.map(item => `<button class="room-item" data-action="room-item" data-id="${e(item.id)}" aria-pressed="false"><span class="room-item-art">${imageOnly(item)}</span><span>${e(item.name)}</span></button>`).join('')}<button class="room-item room-item-add" data-action="photos"><span class="room-item-art">${icon('plus')}</span><span>새로운 옷</span></button></div><div class="room-footer-note"><span id="room-unplaced"></span><span>종류별 3D 모형 · 실제 옷 사진은 상세에서 확인</span>${state.mode === 'demo' ? '<button class="text-link" data-action="switch-personal">내 옷장 만들기 →</button>' : ''}</div></footer><nav class="room-mobile-nav" aria-label="모바일 메뉴">${nav.map(n => navLink(n, true)).join('')}</nav></main>`;
+  return `<main class="room-shell" id="main"><header class="room-header">${brand()}<nav class="room-nav" aria-label="주 메뉴">${nav.map(n => `<a href="#${n.id}" class="${n.id === 'closet' ? 'active' : ''}">${n.label}</a>`).join('')}</nav><button class="room-profile" data-action="profile" aria-label="스타일과 옷장 설정">${icon('more')}</button></header><section class="room-stage" aria-label="직접 둘러보는 3D 옷장"><div class="room-backdrop"><img src="${roomPosterURL}" alt="샘플 의류가 놓인 옷장 공간 미리보기"></div><canvas id="room-canvas" aria-label="옷을 눌러 꺼내고 드래그해서 둘러보세요. 아래 옷 선택 메뉴로도 이용할 수 있어요."></canvas><div class="room-intro"><span class="eyebrow">THE EVERYDAY ROOM</span><h1>${state.mode === 'demo' ? '취향이 머무는 곳.' : '나의 작은 드레스룸.'}</h1><p>${state.mode === 'demo' ? '샘플 옷장' : '나의 옷장'} <span>·</span> ${state.items.length}벌 <span>·</span> ${e(Model.STYLE_LABELS[state.profile.style] || '나의 스타일')}</p></div><div class="room-top-actions">${btn('room-list', '목록', { style: 'room-button', ico: 'layers' })}${btn('photos', '옷 추가', { style: 'primary', ico: 'plus' })}</div><div id="room-status" class="room-status" role="status" data-ready="false"><span class="spinner"></span>옷장 문을 여는 중이에요. <small>배경은 샘플 공간 미리보기입니다.</small></div><div class="room-view-controls" role="group" aria-label="옷장 시점"><button data-action="room-view" data-id="front" aria-label="처음 옷장 시점으로">처음</button><button data-action="room-view" data-id="left">셔츠</button><button data-action="room-view" data-id="center">재킷</button><button data-action="room-view" data-id="right">선반</button><button data-action="room-reset" aria-label="옷을 제자리에 넣고 처음 시점으로">↺</button></div><div id="room-inspector" aria-live="polite"></div><div class="room-guide">드래그로 둘러보기 <span>·</span> 스크롤로 가까이 <span>·</span> 옷을 눌러 꺼내기</div>${!state.items.length ? `<div class="room-empty"><h2>첫 번째 옷을 걸어 볼까요?</h2><p>사진을 확인해 등록하면 이 공간에 담겨요.</p>${btn('photos', '내 옷 사진 추가', { style: 'primary', ico: 'camera' })}${btn('manual', '직접 기록', { style: 'ghost' })}</div>` : ''}</section><footer class="room-dock"><div class="room-dock-label"><span class="eyebrow">IN YOUR WARDROBE</span><b>오늘은 어떤 옷부터?</b></div><div class="room-items" aria-label="옷 선택">${state.items.map(item => `<button class="room-item" data-action="room-item" data-id="${e(item.id)}" aria-pressed="false"><span class="room-item-art">${imageOnly(item)}</span><span>${e(item.name)}</span></button>`).join('')}<button class="room-item room-item-add" data-action="photos"><span class="room-item-art">${icon('plus')}</span><span>새로운 옷</span></button></div><div class="room-footer-note"><span id="room-unplaced"></span><span>종류별 3D 모형 · 실제 옷 사진은 상세에서 확인</span>${state.mode === 'demo' ? '<button class="text-link" data-action="switch-personal">내 옷장 만들기 →</button>' : ''}</div></footer><nav class="room-mobile-nav" aria-label="모바일 메뉴">${nav.map(n => navLink(n, true)).join('')}</nav></main>`;
 }
 function mountRoom() {
   const generation = roomGeneration;
@@ -284,8 +328,9 @@ function selectRoomItem(id, focus = true) {
     if (represented) roomController.focusItem(id);
     else roomController.reset();
   }
-  $('#room-inspector').innerHTML = `<aside class="room-detail"><button class="room-detail-close icon-btn" data-action="room-reset" aria-label="옷을 제자리에 넣기">${icon('close')}</button><span class="eyebrow">${item.source === 'demo' ? 'SAMPLE WARDROBE' : e(item.brand || 'MY WARDROBE')}</span><h2>${e(item.name)}</h2><p class="room-detail-meta"><span class="swatch" style="background:${COLOR[item.color] || COLOR.unknown}"></span>${e(COLORS[item.color] || '미확인')} · ${e(KINDS[item.kind] || Model.CATEGORY_LABELS[item.category])}</p>${item.image ? `<img class="room-own-photo" src="${e(item.image)}" alt="등록한 실제 옷 사진">` : ''}<p class="room-detail-note">${represented ? '옷의 종류와 색을 반영한 모형이에요. 실제 제품의 형태·핏과는 다를 수 있어요.' : '이 공간에 놓이지 않은 옷이에요. 기록과 사진으로 코디에 활용할 수 있어요.'}</p>${item.available === false ? '<span class="badge sand">오늘의 코디에서 제외 중</span>' : ''}<div class="room-detail-actions">${btn('room-outfit', '이 옷으로 코디', { id, style: 'primary wide', ico: 'layers' })}${btn('edit-item', '사진 · 정보 수정', { id, style: 'wide', ico: 'edit' })}${btn('room-reset', '옷장에 다시 넣기', { style: 'ghost wide' })}</div></aside>`;
+  $('#room-inspector').innerHTML = `<aside class="room-detail"><button class="room-detail-close icon-btn" data-action="room-reset" aria-label="옷을 제자리에 넣기">${icon('close')}</button><span class="eyebrow">${item.source === 'demo' ? 'SAMPLE WARDROBE' : e(item.brand || 'MY WARDROBE')}</span><h2>${e(item.name)}</h2><p class="room-detail-meta"><span class="swatch" style="background:${COLOR[item.color] || COLOR.unknown}"></span>${e(COLORS[item.color] || '미확인')} · ${e(KINDS[item.kind] || Model.CATEGORY_LABELS[item.category])}</p>${item.image ? `<img class="room-own-photo" src="${e(item.image)}" alt="등록한 실제 옷 사진">` : ''}<p class="room-detail-note">${represented ? '옷의 종류와 색을 반영한 모형이에요. 실제 제품의 형태·핏과는 다를 수 있어요.' : '이 공간에 놓이지 않은 옷이에요. 기록과 사진으로 코디에 활용할 수 있어요.'}</p>${identityDetails(item)}${item.available === false ? '<span class="badge sand">오늘의 코디에서 제외 중</span>' : ''}<div class="room-detail-actions">${btn('room-outfit', '이 옷으로 코디', { id, style: 'primary wide', ico: 'layers' })}${btn('edit-item', '사진 · 정보 수정', { id, style: 'wide', ico: 'edit' })}${btn('room-reset', '옷장에 다시 넣기', { style: 'ghost wide' })}</div></aside>`;
   $('.room-stage').classList.add('has-selection');
+  if ($('.room-guide')) $('.room-guide').textContent = represented ? '드래그해서 옷을 돌려 보세요' : '드래그로 둘러보기 · 옷을 눌러 꺼내기';
   document.querySelectorAll('.room-item[data-id]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.id === id)));
 }
 function resetRoom() {
@@ -293,6 +338,7 @@ function resetRoom() {
   roomController?.reset();
   if ($('#room-inspector')) $('#room-inspector').innerHTML = '';
   $('.room-stage')?.classList.remove('has-selection');
+  if ($('.room-guide')) $('.room-guide').textContent = '드래그로 둘러보기 · 옷을 눌러 꺼내기';
   document.querySelectorAll('.room-item[data-id]').forEach(button => button.setAttribute('aria-pressed', 'false'));
 }
 function renderCloset() {
@@ -327,7 +373,7 @@ function uploadStep() {
 }
 function reviewStep() {
   const selected = state.drafts.filter((d) => d.selected !== false);
-  return `<div class="section-heading"><div><h2>내 옷이 맞는지 가볍게 확인해 주세요.</h2><p class="muted small" style="margin-top:8px">종류와 이름을 확인하고, 중복된 사진은 하나만 남겨 주세요.</p></div>${btn('upload-step', '사진 더 담기', { style: 'small', ico: 'plus' })}</div>${ui.errors.length ? notice(ui.errors.map((x) => e(x.name) + ': ' + e(x.message)).join('<br>'), 'error') : ''}<div class="row wrap mb mt"><span class="badge">${selected.length}개 선택됨</span>${btn('merge-drafts', '선택한 초안을 같은 옷으로 묶기', { style: 'small' })}${btn('delete-drafts', '선택 초안 삭제', { style: 'small danger' })}${ui.mergeUndo ? btn('undo-merge', '묶기 취소', { style: 'small' }) : ''}<span class="muted small">서로 다른 옷은 따로 남겨 주세요.</span></div><div class="draft-grid">${state.drafts.map((d) => `<article class="draft-card ${d.selected === false ? 'excluded' : ''}"><div class="draft-top"><label><input type="checkbox" data-draft-select="${e(d.id)}" ${d.selected !== false ? 'checked' : ''}>옷장에 담기</label>${d.duplicateOf ? '<span class="badge warn">중복 가능</span>' : '<span class="badge outline">초안</span>'}</div>${picture(d)}<div class="draft-fields"><label class="field"><span>옷 이름</span><input data-draft-field="name" data-id="${e(d.id)}" value="${e(d.name)}" maxlength="300"></label><label class="field"><span>분류</span><select data-draft-field="category" data-id="${e(d.id)}">${options(Model.CATEGORY_LABELS, d.category)}</select></label><label class="field"><span>옷 종류 · 모형 연결</span><select data-draft-field="kind" data-id="${e(d.id)}">${options(KINDS, d.kind || 'unknown')}</select></label><label class="field"><span>색</span><select data-draft-field="color" data-id="${e(d.id)}">${options(COLORS, d.color)}</select></label></div><p class="draft-note">${e(d.analysisNote || '사진에서 만든 초안이에요. 종류와 색을 확인해 주세요.')}</p><div class="row wrap">${d.sourceImage ? btn('crop-draft', '영역 수정', { id: d.id, style: 'small' }) : ''}${btn('remove-draft', '제외', { id: d.id, style: 'small ghost' })}</div></article>`).join('')}</div>${!state.drafts.length ? empty('확인할 초안이 없어요', '사진을 추가하거나 직접 한 벌을 기록해 보세요.') : ''}<div class="sticky-actions"><div><strong class="small">${selected.length}개의 옷으로 시작</strong><p class="muted" style="font-size:10px">모르는 속성은 나중에 채워도 괜찮아요.</p></div>${btn('confirm-drafts', '선택한 옷 확정하기', { style: 'primary', ico: 'check', extra: selected.length ? '' : 'disabled' })}</div>`;
+  return `<div class="section-heading"><div><h2>내 옷이 맞는지 가볍게 확인해 주세요.</h2><p class="muted small" style="margin-top:8px">종류와 색을 확인한 뒤, 브랜드와 상품 정보를 직접 입력하거나 웹에서 찾아 연결해 주세요.</p></div>${btn('upload-step', '사진 더 담기', { style: 'small', ico: 'plus' })}</div>${ui.errors.length ? notice(ui.errors.map((x) => e(x.name) + ': ' + e(x.message)).join('<br>'), 'error') : ''}<div class="row wrap mb mt"><span class="badge">${selected.length}개 선택됨</span>${btn('merge-drafts', '선택한 초안을 같은 옷으로 묶기', { style: 'small' })}${btn('delete-drafts', '선택 초안 삭제', { style: 'small danger' })}${ui.mergeUndo ? btn('undo-merge', '묶기 취소', { style: 'small' }) : ''}<span class="muted small">서로 다른 옷은 따로 남겨 주세요.</span></div><div class="draft-grid">${state.drafts.map((d) => `<article class="draft-card ${d.selected === false ? 'excluded' : ''}"><div class="draft-top"><label><input type="checkbox" data-draft-select="${e(d.id)}" ${d.selected !== false ? 'checked' : ''}>옷장에 담기</label>${d.duplicateOf ? '<span class="badge warn">중복 가능</span>' : '<span class="badge outline">초안</span>'}</div>${picture(d)}<div class="draft-fields"><label class="field"><span>옷 이름</span><input data-draft-field="name" data-id="${e(d.id)}" value="${e(d.name)}" maxlength="300"></label><label class="field"><span>분류</span><select data-draft-field="category" data-id="${e(d.id)}">${options(Model.CATEGORY_LABELS, d.category)}</select></label><label class="field"><span>옷 종류 · 모형 연결</span><select data-draft-field="kind" data-id="${e(d.id)}">${options(KINDS, d.kind || 'unknown')}</select></label><label class="field"><span>색</span><select data-draft-field="color" data-id="${e(d.id)}">${options(COLORS, d.color)}</select></label></div>${identityPanel(d, { draft: true })}<p class="draft-note">${e(d.analysisNote || '사진에서 만든 초안이에요. 종류와 색을 확인해 주세요.')}</p><div class="row wrap">${d.sourceImage ? btn('crop-draft', '영역 수정', { id: d.id, style: 'small' }) : ''}${btn('remove-draft', '제외', { id: d.id, style: 'small ghost' })}</div></article>`).join('')}</div>${!state.drafts.length ? empty('확인할 초안이 없어요', '사진을 추가하거나 직접 한 벌을 기록해 보세요.') : ''}<div class="sticky-actions"><div><strong class="small">${selected.length}개의 옷으로 시작</strong><p class="muted" style="font-size:10px">모르는 속성은 나중에 채워도 괜찮아요.</p></div>${btn('confirm-drafts', '선택한 옷 확정하기', { style: 'primary', ico: 'check', extra: selected.length ? '' : 'disabled' })}</div>`;
 }
 function styleFields() {
   return `<div class="style-grid">${Object.entries(Model.STYLE_LABELS)
@@ -357,32 +403,72 @@ function outfitArt(outfit) {
     .map((item) => `<div class="outfit-piece">${imageOnly(item)}</div>`)
     .join('')}</div>`;
 }
+function outfitSource(outfit) {
+  return outfit.source === 'prepared-ai-sample' ? '미리 준비한 AI 추천 · 샘플 옷 기준'
+    : outfit.source === 'manual-ai' ? '가져온 AI 응답 · 생성 모델 미확인' : '기본 조합';
+}
 function outfitCard(outfit, index) {
   const saved = state.savedOutfits.some((x) => x.id === outfit.id);
-  return `<article class="outfit-card">${outfitArt(outfit)}<div class="outfit-body"><div class="row between"><span class="eyebrow">LOOK ${String(index + 1).padStart(2, '0')}</span><button class="icon-btn ${saved ? 'active' : ''}" data-action="save-outfit" data-id="${e(outfit.id)}" aria-label="${saved ? '코디 저장 취소' : '코디 저장'}" aria-pressed="${saved}">${icon('bookmark')}</button></div><h3>${['익숙한 옷, 새로운 하루', '단정함에 여유를 더해서', '오래 입을 클래식 조합'][index % 3]}</h3><p class="outfit-names">${outfit.items.map((id) => e(state.items.find((i) => i.id === id)?.name || '')).join(' + ')}</p><ul class="reasons">${outfit.reasons
-    .slice(0, 2)
-    .map((r) => `<li>${e(r)}</li>`)
-    .join(
-      '',
-    )}</ul>${btn('outfit-detail', '조합 자세히 보기', { id: outfit.id, style: 'wide small', ico: 'arrow' })}</div></article>`;
+  return `<article class="outfit-card">${outfitArt(outfit)}<div class="outfit-body"><div class="row between"><span class="eyebrow">LOOK ${String(index + 1).padStart(2, '0')}</span><button class="icon-btn ${saved ? 'active' : ''}" data-action="save-outfit" data-id="${e(outfit.id)}" aria-label="${saved ? '코디 저장 취소' : '코디 저장'}" aria-pressed="${saved}">${icon('bookmark')}</button></div><p class="ai-status">${outfitSource(outfit)}</p><h3>${e(outfit.title)}</h3><p class="outfit-names">${outfit.items.map((id) => e(state.items.find((i) => i.id === id)?.name || '')).join(' + ')}</p><ul class="reasons">${outfit.reasons.slice(0, 2).map((r) => `<li>${e(r)}</li>`).join('')}</ul>${btn('outfit-detail', '조합 자세히 보기', { id: outfit.id, style: 'wide small', ico: 'arrow' })}</div></article>`;
 }
 function getVisibleOutfits() {
   const all = Model.getOutfits(state, 20, ui.outfitItem);
-  return all.length
-    ? Array.from(
-        { length: Math.min(3, all.length) },
-        (_, i) => all[(ui.outfitOffset + i) % all.length],
-      )
-    : [];
+  return all.length ? Array.from({ length: Math.min(3, all.length) }, (_, i) => all[(ui.outfitOffset + i) % all.length]) : [];
+}
+function resetAIExchange() {
+  Object.assign(ui, { aiIntent: '', aiResponse: '', aiResult: null, aiContext: '', aiMessage: '', aiOpen: false });
+}
+function restoreAIExchange() {
+  if (state.aiRecommendation?.options) {
+    ui.aiIntent = state.aiRecommendation.options.intent;
+    ui.outfitItem = state.aiRecommendation.options.anchorId;
+  }
+}
+function aiContext() {
+  return AI.buildAISnapshotKey(state, { intent: ui.aiIntent, anchorId: ui.outfitItem });
+}
+function importedAIOutfits() {
+  const status = Model.getAIRecommendationStatus(state, { intent: ui.aiIntent, anchorId: ui.outfitItem });
+  ui.aiResult = status.result;
+  return status.result?.outfits.map(outfit => ({ ...outfit, source: 'manual-ai', cautions: [...status.result.limitations] })) || [];
+}
+function aiCacheNotice() {
+  const status = Model.getAIRecommendationStatus(state, { intent: ui.aiIntent, anchorId: ui.outfitItem });
+  return status.status === 'stale' ? notice('옷장·조건·구매 후보가 바뀌어 이전 AI 응답을 숨겼어요. 새 정보로 요청문을 보내고 응답을 다시 가져와 주세요. <button class="text-link" data-action="ai-update">AI 추천 업데이트</button>') : '';
+}
+function preparedAIOutfits() {
+  return getPreparedAIOutfits(state).filter(outfit => !ui.outfitItem || outfit.items.includes(ui.outfitItem))
+    .map(outfit => ({ ...outfit, cautions: [...(outfit.limitations || [])] }));
+}
+function findOutfit(id) {
+  return preparedAIOutfits().find(outfit => outfit.id === id)
+    || importedAIOutfits().find(outfit => outfit.id === id)
+    || Model.getOutfits(state, 20, ui.outfitItem).find(outfit => outfit.id === id)
+    || state.savedOutfits.find(outfit => outfit.id === id);
+}
+function renderAIExchange() {
+  return `<details class="ai-optional" data-ai-optional ${ui.aiOpen ? 'open' : ''}><summary>내 옷 정보로 AI 추천 업데이트하기 · 선택</summary><section class="ai-panel"><div class="ai-heading"><h3>사용 중인 AI와 연결해서 더 구체적으로</h3><p>필요할 때만 Codex나 Claude 대화에 옷 정보를 복사하고, 받은 JSON을 여기에 가져올 수 있어요. 이 앱이 AI를 실행하거나 자동으로 전송하지는 않아요.</p></div><ol class="ai-steps"><li>원하는 상황을 적고 요청문을 복사해 사용 중인 AI 대화에 붙여 넣으세요.</li><li>AI가 돌려준 JSON을 아래에 붙여 넣고 현재 옷장에 맞는지 확인하세요.</li></ol><label class="field"><span>어떻게 입고 싶나요? · 선택</span><textarea id="ai-intent" class="ai-input" maxlength="2000" placeholder="예: 토요일 카페에 갈 때, 평소보다 조금 단정하게 입고 싶어요.">${e(ui.aiIntent)}</textarea></label><div class="ai-actions">${btn('ai-copy-prompt', 'AI 요청문 복사', { style: 'primary' })}${btn('ai-download-prompt', '요청문 파일 받기', { ico: 'download' })}</div><p class="ai-status">확정한 옷 정보·스타일 조건과 직접 등록한 구매 후보의 이름·기록 가격·확인일을 담아요. 사진·상품 링크·개인 메모·기록은 제외해요. 복사 후 전달할 내용은 직접 확인해 주세요.</p><label class="field"><span>AI가 만든 JSON 응답</span><textarea id="ai-response" class="ai-input" maxlength="32000" placeholder='{"outfits": [...], "gaps": [...]}' spellcheck="false">${e(ui.aiResponse)}</textarea></label><div class="ai-actions">${btn('ai-import-response', '응답 확인하고 가져오기', { style: 'primary' })}${btn('ai-import-file', 'JSON 파일 열기', { ico: 'upload' })}${state.aiRecommendation ? btn('ai-clear-response', '가져온 응답 지우기', { style: 'ghost' }) : ''}</div>${ui.aiMessage ? `<p class="ai-status" role="status">${e(ui.aiMessage)}</p>` : ''}<p class="ai-status">가져온 응답은 이 브라우저와 개인 백업에 함께 저장돼요. 같은 옷장과 조건에서는 다시 요청하지 않고 볼 수 있어요. 생성 모델과 사실 여부를 앱에서 확인하지는 못해요.</p></section></details>`;
 }
 function renderOutfits() {
-  const outfits = getVisibleOutfits();
-  return `${heading('THE EVERYDAY EDIT', '오늘, 이렇게 입어 볼까요?', '새로 사지 않아도 좋아요. 등록된 옷에서 조합을 찾아봤어요.', btn('more-outfits', '다른 조합 보기', { style: 'ghost', ico: 'layers' }))}${contextBar()}${ui.outfitItem ? notice(e(state.items.find(i => i.id === ui.outfitItem)?.name || '선택한 옷') + '을 포함한 조합이에요. <button class="text-link" data-action="clear-outfit-item">전체 조합 보기</button>') : ''}${state.mode === 'demo' ? `<div class="mb">${notice('샘플 옷으로 조합을 체험하고 있어요. 저장과 착용 기록도 직접 남겨 보세요.', 'demo')}</div>` : ''}${outfits.length ? `<div class="outfit-grid">${outfits.map(outfitCard).join('')}</div><p class="small muted mt">등록된 종류·스타일·상황에 따른 규칙 제안이에요. 날씨, 실제 실측과 착용감은 확인하지 않았어요.</p>` : empty('함께 입을 옷을 조금 더 알려 주세요', '확정된 상의와 하의가 각각 한 벌 이상 필요해요. 오늘 제외한 옷은 코디에 넣지 않아요.')}`;
+  const prepared = preparedAIOutfits();
+  const imported = importedAIOutfits();
+  const rules = getVisibleOutfits();
+  const aiResults = ui.aiResult;
+  return `${heading('THE EVERYDAY EDIT', '오늘, 이렇게 입어 볼까요?', state.mode === 'demo' ? '기본 옷 10벌로 미리 준비한 스타일 제안을 살펴보세요.' : '가지고 있는 옷에서 나에게 맞는 조합을 찾아보세요.')}${contextBar()}${aiCacheNotice()}${ui.outfitItem ? notice(e(state.items.find(i => i.id === ui.outfitItem)?.name || '선택한 옷') + '을 포함한 조합이에요. <button class="text-link" data-action="clear-outfit-item">전체 조합 보기</button>') : ''}${state.mode === 'demo' ? `<section class="ai-results"><div class="ai-heading"><span class="eyebrow">PREPARED FOR YOUR FIRST LOOK</span><h2>미리 준비한 AI 추천</h2><p>샘플 옷을 기준으로 AI와 미리 작성한 코디예요. 옷마다 색의 균형, 질감과 입을 상황을 설명해 두었어요. 지금 실시간으로 생성하는 추천은 아니에요. 위 조건은 아래 기본 조합과 AI 요청문에 적용돼요.</p></div>${prepared.length ? `<div class="outfit-grid">${prepared.map(outfitCard).join('')}</div>` : notice('현재 선택한 옷이나 변경한 샘플 옷에 맞춰 준비된 코디가 없어요. 아래 기본 조합에서 살펴볼 수 있어요.')}<p class="ai-status">등록한 실제 소재·핏·체형·얼굴 정보로 검증한 결과는 아니에요. 직접 입어 보며 잘 맞는 점을 기록해 보세요.</p></section>` : ''}${aiResults ? `<section class="ai-results" data-imported-ai><div class="ai-heading"><h2>가져온 AI 추천</h2><p>사용자가 전달한 AI 응답이에요. 현재 옷장에 있는 옷 ID를 확인했으며, 모델과 설명의 사실 여부는 확인하지 않았어요.</p></div>${imported.length ? `<div class="outfit-grid">${imported.map(outfitCard).join('')}</div>` : ''}${aiResults.gaps.length ? `<div class="ai-result-card"><h3>AI가 남긴 추가 제안</h3><ul class="reasons">${aiResults.gaps.map(gap => `<li>${e(gap.reason)}</li>`).join('')}</ul></div>` : ''}</section>` : state.mode !== 'demo' ? notice('내 옷에 대한 AI 추천은 아직 가져오지 않았어요. 우선 기본 조합을 살펴보거나, 아래 선택 기능으로 사용 중인 AI에 요청할 수 있어요.') : ''}<details class="ai-optional" ${state.mode !== 'demo' && !aiResults ? 'open' : ''}><summary>기본 조합 · 등록한 종류와 색으로 보기</summary><section class="ai-panel"><div class="ai-heading"><h3>기본 조합</h3><p>등록한 종류·스타일·상황에 따른 규칙으로 조합해요. 날씨, 실제 실측과 착용감은 반영하지 않았어요.</p></div>${rules.length ? `<div class="ai-actions">${btn('more-outfits', '다른 기본 조합 보기', { style: 'ghost', ico: 'layers' })}</div><div class="outfit-grid">${rules.map(outfitCard).join('')}</div>` : empty('함께 입을 옷을 조금 더 알려 주세요', '확정된 상의와 하의가 각각 한 벌 이상 필요해요. 오늘 제외한 옷은 코디에 넣지 않아요.')}</section></details>${renderAIExchange()}`;
+}
+function renderAIPurchases() {
+  importedAIOutfits();
+  const result = ui.aiResult;
+  return `<section class="ai-results" ${result ? 'data-imported-ai' : ''}><div class="ai-heading"><h2>AI와 살펴본 다음 한 벌</h2><p>등록한 구매 후보를 보유 옷과 함께 검토한 응답이에요. 실제 구매 여부는 직접 결정하고, 가격·재고·핏은 판매처와 착용으로 확인해 주세요.</p></div>${result ? `${result.purchases.length ? `<div class="product-grid">${result.purchases.map(purchase => {
+    const product = state.products.find(item => item.id === purchase.productId);
+    if (!product) return '';
+    return `<article class="ai-result-card" data-ai-purchase="${e(product.id)}"><span class="badge outline">${e({ buy: '구매 검토', hold: '보류 권장', skip: '이번에는 제외' }[purchase.decision])}</span><p class="ai-status">가져온 AI 응답 · 생성 모델 미확인${product.source === 'demo' ? ' · 예시 상품' : ''}</p><h3>${e(product.name)}</h3><p class="small">${money(product.price)} · ${product.source === 'demo' ? '예시 가격' : '직접 기록한 가격'}${product.checkedAt ? ' · 확인일 ' + e(product.checkedAt) : ''}</p><ul class="reasons">${purchase.reasons.map(reason => `<li>${e(reason)}</li>`).join('')}</ul>${purchase.itemIds.length ? `<p class="small muted">함께 검토한 내 옷: ${purchase.itemIds.map(id => e(state.items.find(item => item.id === id)?.name || '')).join(', ')}</p>` : ''}${btn('product-detail', '후보 기록과 내 판단 보기', { id: product.id, style: 'wide small', ico: 'arrow' })}</article>`;
+  }).join('')}</div>` : notice('저장한 AI 응답에는 등록 후보별 구매 판단이 없어요. 후보를 포함한 요청문으로 업데이트할 수 있어요.')}${result.gaps.length ? `<div class="ai-result-card"><h3>AI가 남긴 일반적인 종류 제안</h3><ul class="reasons">${result.gaps.map(gap => `<li>${e(gap.reason)}</li>`).join('')}</ul></div>` : ''}` : notice('현재 조건에 맞는 AI 구매 판단을 아직 가져오지 않았어요. 구매 후보를 직접 추가한 뒤 아래 AI 요청문으로 함께 검토할 수 있어요.')}</section>`;
 }
 function renderDiscover() {
   const products = Model.rankProducts(state);
   const gaps = Model.getGaps(state);
-  return `${heading('YOUR NEXT GOOD FIND', '다음 한 벌은, 이유 있게.', '지금 가진 옷과 함께 생각하면 선택이 조금 더 쉬워져요.', btn('add-product', '후보 직접 추가', { style: 'primary', ico: 'plus' }))}${contextBar()}${gaps.length ? `<div class="gap-grid">${gaps.map((g, i) => `<div class="gap-card"><span class="eyebrow">BEFORE YOU BUY · ${String(i + 1).padStart(2, '0')}</span><h3>${e(g.title)}</h3><p>${e(g.description)}</p>${g.category === 'existing' ? '<button class="text-link small" data-action="outfits">가진 옷으로 코디 보기 →</button>' : ''}</div>`).join('')}</div>` : ''}<div class="section-heading"><h2>함께 비교할 구매 후보 <span class="muted">${products.length}</span></h2></div>${state.mode === 'demo' ? `<div class="mb">${notice('아래 상품·가격·후기는 모두 화면 체험용 예시예요. 실제 판매 상품이나 구매 후기가 아닙니다. 실제 후보는 직접 추가해 비교할 수 있어요.', 'demo')}</div>` : notice('실제 상품 자동 검색은 아직 연결되지 않았어요. 확인한 상품 링크·가격·후기를 추가하면 내 옷과 함께 비교할 수 있어요.')}<div class="product-grid mt">${products.map(productCard).join('')}</div>${!products.length ? empty('비교하고 싶은 첫 후보를 담아 보세요', '상품 링크, 확인한 가격과 후기 메모를 한곳에 모을 수 있어요.', 'add-product', '구매 후보 추가') : ''}`;
+  return `${heading('YOUR NEXT GOOD FIND', '다음 한 벌은, 이유 있게.', '지금 가진 옷과 함께 생각하면 선택이 조금 더 쉬워져요.', btn('add-product', '후보 직접 추가', { style: 'primary', ico: 'plus' }))}${contextBar()}${aiCacheNotice()}${renderAIPurchases()}${gaps.length ? `<details class="ai-optional"><summary>등록 정보로 보는 기본 비교 · 규칙 계산</summary><div class="gap-grid">${gaps.map((g, i) => `<div class="gap-card"><span class="eyebrow">BEFORE YOU BUY · ${String(i + 1).padStart(2, '0')}</span><h3>${e(g.title)}</h3><p>${e(g.description)}</p>${g.category === 'existing' ? '<button class="text-link small" data-action="outfits">가진 옷으로 코디 보기 →</button>' : ''}</div>`).join('')}</div></details>` : ''}<div class="section-heading"><h2>직접 기록한 구매 후보 <span class="muted">${products.length}</span></h2></div>${state.mode === 'demo' ? `<div class="mb">${notice('아래 상품·가격·후기는 모두 화면 체험용 예시예요. 실제 판매 상품이나 구매 후기가 아닙니다. 실제 후보는 직접 추가해 비교할 수 있어요.', 'demo')}</div>` : notice('실제 상품 자동 검색은 아직 연결되지 않았어요. 확인한 상품 링크·가격·후기를 추가하면 내 옷과 함께 비교할 수 있어요.')}<div class="product-grid mt">${products.map(productCard).join('')}</div>${!products.length ? empty('비교하고 싶은 첫 후보를 담아 보세요', '상품 링크, 확인한 가격과 후기 메모를 한곳에 모을 수 있어요.', 'add-product', '구매 후보 추가') : ''}${renderAIExchange()}`;
 }
 function productCard(p) {
   return `<article class="product-card"><div style="position:relative">${picture(p)}<span class="badge ${p.source === 'demo' ? 'sand' : 'outline'}" style="position:absolute;top:12px;left:12px">${p.source === 'demo' ? '예시 상품' : '직접 기록'}</span></div><div class="product-body"><span class="eyebrow">${p.source === 'demo' ? 'WARDROBE MATCH' : e(p.brand || 'MY NEXT FIND')}</span><h3>${e(p.name)}</h3><div class="price">${money(p.price)}${p.source === 'demo' ? '<small>예시 가격</small>' : ''}</div><span class="badge ${p.budgetState === 'over' ? 'warn' : 'outline'}">${p.budgetState === 'within' ? '입력한 예산 안' : p.budgetState === 'over' ? '입력한 예산 초과' : '가격·예산 확인 필요'}</span><p class="product-reason">${p.overlap.length ? `비슷한 보유 옷 ${p.overlap.length}벌과 역할을 비교해 보세요.` : `함께 검토할 보유 옷 ${p.pairings.length}벌을 연결했어요.`}</p><div class="row">${btn('product-detail', '내 옷과 비교', { id: p.id, style: 'grow', ico: 'arrow' })}<button class="icon-btn ${state.savedProducts.includes(p.id) ? 'active' : ''}" data-action="save-product" data-id="${e(p.id)}" aria-label="${state.savedProducts.includes(p.id) ? '상품 저장 취소' : '상품 저장'}">${icon('bookmark')}</button></div></div></article>`;
@@ -398,7 +484,7 @@ function renderSaved() {
           .map((x) => {
             const item =
               ui.recordTab === 'outfits' ? state.items.find((i) => i.id === x.items?.[0]) : x;
-            return `<div class="record-row"><div class="record-thumb">${imageOnly(item)}</div><div class="grow"><h3>${e(x.title || x.name)}</h3><p>${ui.recordTab === 'outfits' ? '다시 꺼내 입고 싶은 조합' : money(x.price) + (x.source === 'demo' ? ' · 예시 가격' : '')}</p></div>${btn(ui.recordTab === 'outfits' ? 'outfit-detail' : 'product-detail', '보기', { id: x.id, style: 'small' })}</div>`;
+            return `<div class="record-row"><div class="record-thumb">${imageOnly(item)}</div><div class="grow"><h3>${e(x.title || x.name)}</h3><p>${ui.recordTab === 'outfits' ? outfitSource(x) + ' · 저장한 코디' : money(x.price) + (x.source === 'demo' ? ' · 예시 가격' : '')}</p></div>${btn(ui.recordTab === 'outfits' ? 'outfit-detail' : 'product-detail', '보기', { id: x.id, style: 'small' })}</div>`;
           })
           .join('')
       : '<div class="empty" style="border:0;padding:25px"><p>마음에 드는 코디나 상품의 북마크를 눌러 보세요.</p></div>'
@@ -426,8 +512,8 @@ function editItem(id) {
   const item = state.items.find((i) => i.id === id) || {
     id: '',
     name: '',
-    category: 'top',
-    kind: 'shirt',
+    category: 'unknown',
+    kind: 'unknown',
     color: 'unknown',
     brand: '',
     available: true,
@@ -436,7 +522,7 @@ function editItem(id) {
   };
   openDialog(
     id ? '내 옷 기록 수정' : '새로운 옷 직접 기록',
-    `<form id="item-form" data-id="${e(id || '')}"><div class="edit-layout">${picture(item)}<div class="form-grid"><label class="field full"><span>옷 이름</span><input name="name" value="${e(item.name)}" maxlength="300" placeholder="예: 자주 입는 블루 셔츠" required></label><label class="field"><span>분류</span><select name="category">${options(Model.CATEGORY_LABELS, item.category)}</select></label><label class="field"><span>종류</span><select name="kind">${options(KINDS, item.kind)}</select></label><label class="field"><span>색</span><select name="color">${options(COLORS, item.color)}</select></label><label class="field"><span>브랜드 · 선택</span><input name="brand" value="${e(item.brand || '')}" maxlength="300" placeholder="몰라도 괜찮아요"></label><label class="field full"><span>메모 · 선택</span><textarea name="note" maxlength="3000" placeholder="잘 맞는 점, 실제 사이즈, 입을 때의 느낌">${e(item.note || '')}</textarea></label><label class="small full"><input type="checkbox" name="available" ${item.available !== false ? 'checked' : ''}> 지금 입을 수 있어요</label><label class="small full"><input type="checkbox" name="attributesConfirmed" ${item.attributesConfirmed ? 'checked' : ''}> 분류·종류·색을 직접 확인했어요</label></div></div>${item.source === 'photo' ? '<p class="small muted mt">원본 사진은 기기 안에서 크기를 줄인 후 저장했어요. 자동 추정값은 직접 고칠 수 있어요.</p>' : ''}<div class="dialog-footer">${id ? btn('delete-item', '이 옷 삭제', { id, style: 'danger' }) : ''}${btn('close-dialog', '취소')}<button class="btn primary" type="submit">저장하기</button></div></form>`,
+    `<form id="item-form" data-id="${e(id || '')}"><div class="edit-layout">${picture(item)}<div class="form-grid"><label class="field full"><span>옷 이름</span><input name="name" value="${e(item.name)}" maxlength="300" placeholder="예: 자주 입는 블루 셔츠" required></label><label class="field"><span>분류</span><select name="category">${options(Model.CATEGORY_LABELS, item.category)}</select></label><label class="field"><span>종류</span><select name="kind">${options(KINDS, item.kind)}</select></label><label class="field"><span>색</span><select name="color">${options(COLORS, item.color)}</select></label><label class="field full"><span>메모 · 선택</span><textarea name="note" maxlength="3000" placeholder="잘 맞는 점, 실제 사이즈, 입을 때의 느낌">${e(item.note || '')}</textarea></label><label class="small full"><input type="checkbox" name="available" ${item.available !== false ? 'checked' : ''}> 지금 입을 수 있어요</label><label class="small full"><input type="checkbox" name="attributesConfirmed" ${item.attributesConfirmed ? 'checked' : ''}> 분류·종류·색을 직접 확인했어요</label></div></div>${identityPanel(item)}${item.source === 'photo' ? '<p class="small muted mt">사진에서 추정한 종류·색과 상품 정보는 직접 확인해 수정할 수 있어요.</p>' : ''}<div class="dialog-footer">${id ? btn('delete-item', '이 옷 삭제', { id, style: 'danger' }) : ''}${btn('close-dialog', '취소')}<button class="btn primary" type="submit">저장하기</button></div></form>`,
   );
 }
 function productForm() {
@@ -446,15 +532,13 @@ function productForm() {
   );
 }
 function outfitDetail(id) {
-  const outfit =
-    Model.getOutfits(state, 20, ui.outfitItem).find((o) => o.id === id) ||
-    state.savedOutfits.find((o) => o.id === id);
+  const outfit = findOutfit(id);
   if (!outfit) return toast('현재 옷장에서는 이 조합을 찾지 못했어요.');
   ui.currentOutfit = outfit;
   const saved = state.savedOutfits.some((x) => x.id === id);
   openDialog(
     '이 조합, 나답게 입기',
-    `${outfitArt(outfit)}<h3 class="mt" style="font-size:17px">${e(outfit.title)}</h3><ul class="reasons">${outfit.reasons.map((r) => `<li>${e(r)}</li>`).join('')}</ul>${notice(outfit.cautions.map(e).join('<br>'))}<div class="dialog-footer">${btn('save-outfit', saved ? '저장 취소' : '코디 저장', { id, ico: 'bookmark' })}${btn('wear', '오늘 이렇게 입었어요', { id, style: 'primary', ico: 'check' })}</div>`,
+    `${outfitArt(outfit)}<p class="ai-status">${outfitSource(outfit)}</p><h3 class="mt" style="font-size:17px">${e(outfit.title)}</h3>${outfit.context ? `<p class="small muted">${e(outfit.context)}</p>` : ''}<ul class="reasons">${outfit.reasons.map((r) => `<li>${e(r)}</li>`).join('')}</ul>${outfit.cautions?.length ? notice(outfit.cautions.map(e).join('<br>')) : ''}${outfit.feedbackPrompt ? `<p class="small mt">입어 본 뒤 확인할 점: ${e(outfit.feedbackPrompt)}</p>` : ''}<div class="dialog-footer">${btn('save-outfit', saved ? '저장 취소' : '코디 저장', { id, ico: 'bookmark' })}${btn('wear', '오늘 이렇게 입었어요', { id, style: 'primary', ico: 'check' })}</div>`,
   );
 }
 function productDetail(id, tab = 'pairings') {
@@ -632,7 +716,82 @@ function downloadBackup(includeImages) {
 function profileDialog() {
   openDialog('나의 스타일과 상황', styleFields());
 }
+async function importAIResponse(text) {
+  ui.aiOpen = true;
+  try {
+    const options = { intent: ui.aiIntent, anchorId: ui.outfitItem };
+    const result = AI.importAIRecommendation(text, state, options);
+    const cache = Model.createAIRecommendationCache(state, result, options);
+    const context = aiContext();
+    ui.aiResponse = text;
+    ui.aiMessage = `코디 ${result.outfits.length}개와 구매 판단 ${result.purchases.length}개를 저장했어요.`;
+    const saved = await mutate(next => {
+      if (AI.buildAISnapshotKey(next, options) !== context) throw new Error('옷장이 바뀌었어요. 새 정보로 응답을 다시 가져와 주세요.');
+      next.aiRecommendation = cache;
+    });
+    if (!saved) {
+      ui.aiMessage = 'AI 응답을 저장하지 못했어요. 저장 공간과 옷장 정보를 확인한 뒤 다시 가져와 주세요.';
+      render();
+    }
+  } catch (error) {
+    ui.aiMessage = errorText(error);
+    render();
+  }
+}
 async function handleAction(action, id) {
+  if (action === 'ai-copy-prompt' || action === 'ai-download-prompt') {
+    const prompt = AI.buildAIHandoffPrompt(state, { intent: ui.aiIntent, anchorId: ui.outfitItem });
+    if (action === 'ai-copy-prompt') {
+      try {
+        await navigator.clipboard.writeText(prompt);
+        toast('AI 요청문을 복사했어요. 사용 중인 AI 대화에 직접 붙여 넣어 주세요.');
+      } catch {
+        openDialog('AI 요청문 복사', `<p class="small muted">아래 요청문을 선택해 복사하고 사용 중인 AI 대화에 붙여 넣어 주세요.</p><textarea class="ai-input" id="ai-copy-fallback" readonly>${e(prompt)}</textarea><div class="dialog-footer">${btn('close-dialog', '닫기')}</div>`);
+        $('#ai-copy-fallback').select();
+      }
+    } else {
+      const url = URL.createObjectURL(new Blob([prompt], { type: 'text/plain;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'wearnext-ai-request.txt';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast('AI 요청문 파일을 받았어요. 내용 확인 후 직접 전달해 주세요.');
+    }
+    return;
+  }
+  if (action === 'ai-import-response') { await importAIResponse(ui.aiResponse); return; }
+  if (action === 'ai-update') { ui.aiOpen = true; render(); $('#ai-intent')?.focus(); return; }
+  if (action === 'ai-import-file') {
+    readFile('.json,application/json', async file => {
+      try {
+        if (file.size > 32000) throw new Error('AI 응답은 32KB 이하의 JSON 파일로 선택해 주세요.');
+        await importAIResponse(await file.text());
+      } catch (error) { toast(errorText(error)); }
+    });
+    return;
+  }
+  if (action === 'ai-clear-response') {
+    ui.aiResponse = '';
+    ui.aiMessage = '가져온 AI 응답을 지웠어요. 저장한 코디는 기록에 남아 있어요.';
+    await mutate(next => { delete next.aiRecommendation; });
+    return;
+  }
+  if (action === 'identity-search-google' || action === 'identity-search-naver') {
+    const identity = readIdentityInputs(id);
+    if (!identity) return;
+    const result = Model.productSearchLink(identity, action.endsWith('naver') ? 'naver' : 'google');
+    if (!result) return toast('검색할 브랜드, 상품명 또는 품번을 먼저 입력해 주세요.');
+    window.open(result.url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  if (action === 'identity-open-reference') {
+    const identity = readIdentityInputs(id);
+    const url = Model.normalizeProductURL(identity?.productURL);
+    if (!url) return toast('확인할 상품 원문 링크를 먼저 붙여넣어 주세요.');
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
   if (action === 'room-list' || action === 'room-open') {
     ui.closetView = action === 'room-list' ? 'list' : 'room';
     ui.roomItem = null;
@@ -852,10 +1011,7 @@ async function handleAction(action, id) {
     return;
   }
   if (action === 'save-outfit') {
-    const outfit =
-      Model.getOutfits(state, 20, ui.outfitItem).find((x) => x.id === id) ||
-      state.savedOutfits.find((x) => x.id === id) ||
-      ui.currentOutfit;
+    const outfit = findOutfit(id);
     if (!outfit) return;
     const saved = state.savedOutfits.some((x) => x.id === id);
     await mutate(
@@ -874,10 +1030,7 @@ async function handleAction(action, id) {
     return;
   }
   if (action === 'wear') {
-    const outfit =
-      Model.getOutfits(state, 20, ui.outfitItem).find((x) => x.id === id) ||
-      state.savedOutfits.find((x) => x.id === id) ||
-      ui.currentOutfit;
+    const outfit = findOutfit(id);
     if (
       outfit &&
       (await mutate((s) => {
@@ -1000,6 +1153,7 @@ async function handleAction(action, id) {
       welcome = true;
       ui.mergeUndo = null;
       ui.importState = null;
+      resetAIExchange();
       closeDialog();
       render();
       toast('이 브라우저의 옷장 기록을 삭제했어요.');
@@ -1018,14 +1172,40 @@ document.addEventListener('click', (event) => {
   handleAction(target.dataset.action, target.dataset.id).catch((error) => toast(errorText(error)));
 });
 document.addEventListener('input', (event) => {
+  if (event.target.id === 'ai-intent') {
+    ui.aiIntent = event.target.value;
+    // Keep the field focused while editing; remove outdated results immediately.
+    if (ui.aiResult) {
+      ui.aiResult = null;
+      document.querySelector('[data-imported-ai]')?.remove();
+      ui.aiMessage = '요청 내용이 바뀌었어요. 새 요청으로 AI 응답을 가져와 주세요.';
+    }
+  }
+  if (event.target.id === 'ai-response') ui.aiResponse = event.target.value;
   if (event.target.id === 'closet-search') {
     ui.search = event.target.value;
     $('#closet-results').innerHTML = closetResults();
   }
   if (event.target.closest('#crop-form')) updateCropBox();
+  if (event.target.closest('#item-form .identity-panel') && event.target.name !== 'identityConfirmed') {
+    $('#item-form [name="identityConfirmed"]').checked = false;
+  }
 });
+document.addEventListener('toggle', (event) => {
+  if (event.target.matches?.('[data-ai-optional]')) ui.aiOpen = event.target.open;
+}, true);
 document.addEventListener('change', async (event) => {
   const target = event.target;
+  const itemForm = target.closest('#item-form');
+  if (itemForm && target.name === 'kind' && Object.hasOwn(KIND_CATEGORIES, target.value)) {
+    itemForm.elements.category.value = KIND_CATEGORIES[target.value];
+    itemForm.elements.attributesConfirmed.checked = false;
+  }
+  if (itemForm && target.name === 'category'
+    && KIND_CATEGORIES[itemForm.elements.kind.value] !== target.value) {
+    itemForm.elements.kind.value = 'unknown';
+    itemForm.elements.attributesConfirmed.checked = false;
+  }
   if (['photo-files', 'camera-file'].includes(target.id)) {
     await analyze([...target.files]);
     return;
@@ -1037,13 +1217,23 @@ document.addEventListener('change', async (event) => {
       if (d) d.selected = target.checked;
     });
   }
+  if (target.dataset.draftIdentityConfirm) {
+    const checked = target.checked;
+    await mutate((s) => {
+      const draft = s.drafts.find(item => item.id === target.dataset.draftIdentityConfirm);
+      if (draft) Object.assign(draft, Model.normalizeProductIdentity({ ...draft, identityConfirmed: checked }));
+    });
+  }
   if (target.dataset.draftField) {
     ui.mergeUndo = null;
     const value = target.value;
     await mutate((s) => {
       const d = s.drafts.find((x) => x.id === target.dataset.id);
       if (d) {
-        d[target.dataset.draftField] = value || '이름 없는 옷';
+        const field = target.dataset.draftField;
+        d[field] = field === 'productURL' ? Model.normalizeProductURL(value)
+          : field === 'name' ? value || '이름 없는 옷' : value;
+        if (['brand', 'productName', 'styleCode', 'productURL'].includes(field)) d.identityConfirmed = false;
         if (target.dataset.draftField === 'kind' && KIND_CATEGORIES[value]) d.category = KIND_CATEGORIES[value];
         if (target.dataset.draftField === 'category' && KIND_CATEGORIES[d.kind] !== value) d.kind = 'unknown';
       }
@@ -1071,7 +1261,9 @@ document.addEventListener('submit', async (event) => {
           category: data.get('category'),
           kind: data.get('kind'),
           color: data.get('color'),
-          brand: String(data.get('brand')).trim(),
+          ...Model.normalizeProductIdentity({ brand: data.get('brand'), productName: data.get('productName'),
+            styleCode: data.get('styleCode'), productURL: data.get('productURL'),
+            identityConfirmed: data.has('identityConfirmed') }),
           note: data.get('note'),
           available: data.has('available'),
           attributesConfirmed: data.has('attributesConfirmed'),
@@ -1222,8 +1414,31 @@ try {
   welcome = true;
 }
 ui.step = state.drafts.length ? 2 : 1;
+restoreAIExchange();
 render();
 // Read-only snapshots for reproducible browser tests; never exposes live mutable state.
-window.__wearnext = { snapshot: () => clone(state), ready: true, roomSnapshot: () => ({ ready: roomController?.isReady || false, slots: (roomController?.slots || []).map(s => ({ slotKey:s.slotKey,itemId:s.itemId,visible:s.visible,screen:roomController.getScreenPosition(s.slotKey) })), selectedId:ui.roomItem,view:roomController?.view, unplacedIds:roomController?.unplacedItems.map(i => i.id) || [], unplaced:roomController?.unplacedItems.map(i => i.id) || [] }) };
+window.__wearnext = {
+  snapshot: () => clone(state),
+  ready: true,
+  roomSnapshot: () => {
+    const diagnostics = roomController?.diagnostics;
+    return {
+      ready: roomController?.isReady || false,
+      slots: (roomController?.slots || []).map(slot => {
+        const diagnostic = diagnostics?.slots?.find(entry => entry.slotKey === slot.slotKey);
+        return { slotKey: slot.slotKey, itemId: slot.itemId, visible: slot.visible,
+          screen: roomController.getScreenPosition(slot.slotKey),
+          bounds: roomController.getScreenBounds?.(slot.slotKey) || null,
+          quaternion: diagnostic?.quaternion || null, materials: diagnostic?.materials || [] };
+      }),
+      camera: diagnostics?.camera || null,
+      selectedId: ui.roomItem,
+      view: roomController?.view,
+      rotation: roomController?.detailRotation ?? 0,
+      unplacedIds: roomController?.unplacedItems.map(item => item.id) || [],
+      unplaced: roomController?.unplacedItems.map(item => item.id) || [],
+    };
+  },
+};
 }
 initialize();

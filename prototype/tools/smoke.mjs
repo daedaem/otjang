@@ -67,7 +67,11 @@ try {
     );
     await page.goto(url + '#outfits');
     await page.waitForSelector('.outfit-card');
-    ok((await page.locator('.outfit-card').count()) === 3, `${mode}: three outfit recommendations`);
+    ok((await page.locator('.ai-results .outfit-card').count()) === 6,
+      `${mode}: six prepared AI sample recommendations`);
+    const basicCombinations = page.locator('details').filter({ hasText: '기본 조합 · 등록한 종류와 색으로 보기' });
+    ok((await basicCombinations.locator('.outfit-card').count()) === 3,
+      `${mode}: three secondary rule combinations`);
     await page.locator('[data-action="save-outfit"]').first().click();
     await page.waitForFunction(() => window.__wearnext.snapshot().savedOutfits.length === 1);
     await page.locator('[data-action="outfit-detail"]').first().click();
@@ -78,9 +82,10 @@ try {
     await page.selectOption('#context-form [name="occasion"]', 'weekend');
     await page.click('#context-form [type="submit"]');
     await page.waitForFunction(() => window.__wearnext.snapshot().profile.style === 'casual');
+    await basicCombinations.locator('summary').click();
     ok(
-      (await page.locator('.outfit-card').first().innerText()).includes('캐주얼'),
-      `${mode}: changed style changes reasoning`,
+      (await basicCombinations.locator('.outfit-card').first().innerText()).includes('캐주얼'),
+      `${mode}: changed style changes basic combination reasoning`,
     );
     await page.screenshot({ path: path.join(root, `shots/${mode}-outfits.png`), fullPage: true });
     await page.goto(url + '#discover');
