@@ -1,5 +1,7 @@
 # WearNext — 나만의 3D 옷장
 
+**상태: 기능 프로토타입, 시각 품질 재설계 중.** 사용자 검토에서 현재 결과의 품질이 부족하다는 피드백을 받았습니다. [원본과의 비교](../docs/design-review/quality-review.md)를 기준으로 개선하며 디자인 완성으로 표시하지 않습니다.
+
 Blender로 만든 드레스룸에서 옷을 꺼내 살펴보고, 선택한 옷으로 코디를 찾아보는 개인 프로토타입입니다. 사진 등록 → 옷장 → 코디 → 구매 후보·후기 비교 → 기록·백업이 하나의 로컬 옷장 데이터로 이어집니다.
 
 [실행 HTML 다운로드](https://github.com/daedaem/otjang/raw/refs/heads/feat/wearnext-prototype/prototype/WearNext.html) · [Blender 원본 다운로드](https://github.com/daedaem/otjang/raw/refs/heads/feat/wearnext-prototype/prototype/scene/assets/WearNext-wardrobe.blend) · [전체 소스 다운로드](https://github.com/daedaem/otjang/archive/refs/heads/feat/wearnext-prototype.zip)
