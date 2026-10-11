@@ -4,7 +4,7 @@
 
 Blender로 만든 드레스룸에서 옷을 꺼내 살펴보고, 선택한 옷으로 코디를 찾아보는 개인 프로토타입입니다. 사진 등록 → 옷장 → 코디 → 구매 후보·후기 비교 → 기록·백업이 하나의 로컬 옷장 데이터로 이어집니다.
 
-[실행 HTML 다운로드](https://github.com/daedaem/otjang/raw/refs/heads/feat/wearnext-prototype/prototype/WearNext.html) · [Blender 원본 다운로드](https://github.com/daedaem/otjang/raw/refs/heads/feat/wearnext-prototype/prototype/scene/assets/WearNext-wardrobe.blend) · [전체 소스 다운로드](https://github.com/daedaem/otjang/archive/refs/heads/feat/wearnext-prototype.zip)
+**[다운로드 없이 바로 실행하기](https://daedaem.github.io/otjang/)** · [실행 HTML 다운로드](https://github.com/daedaem/otjang/raw/refs/heads/feat/wearnext-prototype/prototype/WearNext.html) · [Blender 원본 다운로드](https://github.com/daedaem/otjang/raw/refs/heads/feat/wearnext-prototype/prototype/scene/assets/WearNext-wardrobe.blend) · [전체 소스 다운로드](https://github.com/daedaem/otjang/archive/refs/heads/feat/wearnext-prototype.zip)
 
 ![브라우저에서 실행한 3D 옷장](preview.png)
 
@@ -12,7 +12,9 @@ Blender로 만든 드레스룸에서 옷을 꺼내 살펴보고, 선택한 옷�
 
 ## 바로 사용하기
 
-`WearNext.html`은 Blender 장면·텍스처·Three.js·화면 코드를 모두 포함한 단일 파일입니다. 내려받아 최신 브라우저에서 열어 보세요. 계정·API 키·유료 서비스·Blender 설치가 필요하지 않습니다. 이 환경에서는 파일 주소 열기가 제한되어 동일 HTML을 로컬 HTTP로 검증했습니다.
+[실행 페이지](https://daedaem.github.io/otjang/)에서 **먼저 둘러보기**를 누르면 샘플 3D 옷장을 볼 수 있습니다. **내 옷으로 시작**은 빈 옷장으로 시작합니다. 계정·API 키·Blender 설치가 필요하지 않습니다. 사진과 기록은 방문한 브라우저에만 저장하며 다른 기기로 자동 동기화하지 않습니다.
+
+`WearNext.html`은 Blender 장면·텍스처·Three.js·화면 코드를 모두 포함한 단일 파일입니다. 오프라인 사용 시에는 내려받아 최신 브라우저에서 열 수 있습니다. [배포 기록과 갱신 방법](../docs/preview-deployment.md)에 실행 주소와 검증 범위를 남겼습니다.
 
 브라우저가 파일 열기나 저장을 제한하면 Node.js 20 이상에서 실행합니다. 미리 빌드된 HTML 실행에는 의존성 설치가 필요하지 않습니다.
 
