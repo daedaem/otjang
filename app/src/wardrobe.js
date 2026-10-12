@@ -60,6 +60,7 @@
   const MAX_CANDS = 5;
 
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
+  const own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k);     // 파일에서 온 글자가 사전의 기본 속성 이름(constructor 등)이어도 통과하지 않게
   const num = (v, lo, hi) => (typeof v === 'number' && isFinite(v) && v >= lo && v <= hi ? v : null);
   const IMG_RE = /^data:image\/(webp|png|jpeg);base64,[A-Za-z0-9+/=]+$/;
   const safeImg = (v) => (typeof v === 'string' && v.length < 600000 && IMG_RE.test(v) ? v : '');
@@ -70,32 +71,32 @@
 
   function cleanCandidate(c) {
     if (!c || typeof c !== 'object') return null;
-    const out = { brand: str(c.brand, 60).trim(), name: str(c.name, 80).trim(), evidence: EVIDENCE[c.evidence] ? c.evidence : 'owner', note: str(c.note, 200), url: safeLink(c.url) };
+    const out = { brand: str(c.brand, 60).trim(), name: str(c.name, 80).trim(), evidence: own(EVIDENCE, c.evidence) ? c.evidence : 'owner', note: str(c.note, 200), url: safeLink(c.url) };
     return out.brand || out.name ? out : null;
   }
   const emptyPhoto = (ownImg) => ({ kind: ownImg ? 'own' : 'none', img: ownImg || '', ownImg: ownImg || '', sourceName: '', sourceUrl: '', checkedAt: '' });
   function cleanPhoto(raw, legacyImg) {
     const p = raw && typeof raw === 'object' ? raw : {};
     let img = safeImg(p.img) || (p.img === undefined ? safeImg(legacyImg) : ''), ownImg = safeImg(p.ownImg);
-    let kind = PHOTO_KIND[p.kind] ? p.kind : (img ? 'own' : 'none');
+    let kind = own(PHOTO_KIND, p.kind) ? p.kind : (img ? 'own' : 'none');
     if (kind === 'own') { ownImg = img || ownImg; img = ownImg; if (!img) kind = 'none'; }
     if (kind === 'none') { if (img) { ownImg = img; kind = 'own'; } else if (ownImg) { img = ownImg; kind = 'own'; } }
     if (kind === 'own' || kind === 'none') return emptyPhoto(ownImg);
     return { kind, img, ownImg, sourceName: str(p.sourceName, 80), sourceUrl: safeLink(p.sourceUrl), checkedAt: safeDate(p.checkedAt) };
   }
   function cleanLook(raw) {
-    if (!raw || typeof raw !== 'object' || !LOOK_KINDS[raw.kind]) return null;
+    if (!raw || typeof raw !== 'object' || !own(LOOK_KINDS, raw.kind)) return null;
     return { kind: raw.kind, fabric: str(raw.fabric, 40).replace(/[^a-z0-9-]/gi, '') };
   }
 
   /** 파일이나 저장소에서 온 옷 한 벌을 아는 항목만 남겨 정리한다. 스키마 1(v0.3)과 2를 모두 받아 2로 돌려준다. */
   function cleanItem(raw, i) {
     if (!raw || typeof raw !== 'object') return null;
-    const cat = CATS[raw.cat] ? raw.cat : null;
+    const cat = own(CATS, raw.cat) ? raw.cat : null;
     if (!cat) return null;
     const m = {};
     if (raw.measures && typeof raw.measures === 'object') for (const [k] of MEASURES[cat]) { const v = num(raw.measures[k], 1, 300); if (v != null) m[k] = v; }
-    let attrSource = ATTR_SOURCE[raw.attrSource] ? raw.attrSource : null;
+    let attrSource = own(ATTR_SOURCE, raw.attrSource) ? raw.attrSource : null;
     if (!attrSource) attrSource = raw.source === 'photo-draft' ? (raw.confirmed === true ? 'owner-confirmed' : 'photo-draft') : 'owner';   // 스키마 1: source + confirmed
     const photo = cleanPhoto(raw.photo, raw.img);
     let product = null;
@@ -107,23 +108,23 @@
     const matchCandidates = Array.isArray(raw.matchCandidates) ? raw.matchCandidates.slice(0, MAX_CANDS).map(cleanCandidate).filter(Boolean) : [];
     return {
       id: str(raw.id, 40) || 'x' + (i || 0), status: raw.status === 'candidate' ? 'candidate' : raw.status === 'gone' ? 'gone' : 'owned',
-      cat, kind: KINDS[cat][raw.kind] ? raw.kind : Object.keys(KINDS[cat])[0], name: str(raw.name, 80) || '이름 없음', detail: str(raw.detail, 80),
-      family: FAM[raw.family] ? raw.family : 'gray', light: num(raw.light, 0, 100) == null ? 50 : Math.round(raw.light),
-      formality: [1, 2, 3].indexOf(raw.formality) >= 0 ? raw.formality : 2, pattern: PATTERNS[raw.pattern] ? raw.pattern : 'solid',
+      cat, kind: own(KINDS[cat], raw.kind) ? raw.kind : Object.keys(KINDS[cat])[0], name: str(raw.name, 80) || '이름 없음', detail: str(raw.detail, 80),
+      family: own(FAM, raw.family) ? raw.family : 'gray', light: num(raw.light, 0, 100) == null ? 50 : Math.round(raw.light),
+      formality: [1, 2, 3].indexOf(raw.formality) >= 0 ? raw.formality : 2, pattern: own(PATTERNS, raw.pattern) ? raw.pattern : 'solid',
       seasons: Array.isArray(raw.seasons) ? SEASONS.filter((s) => raw.seasons.indexOf(s) >= 0) : [],
       attrSource, draftNote: str(raw.draftNote, 200),
       photo, product, matchCandidates, look3d: cleanLook(raw.look3d),
       brand: str(raw.brand, 60), model: str(raw.model, 80), size: str(raw.size, 30), boughtYear: num(raw.boughtYear, 1950, 2100), review: str(raw.review, 500),
-      rebuy: REBUY[raw.rebuy] ? raw.rebuy : 'unknown', fabric: FABRIC[raw.fabric] ? raw.fabric : '', neck: NECK[raw.neck] ? raw.neck : '', measures: m,
+      rebuy: own(REBUY, raw.rebuy) ? raw.rebuy : 'unknown', fabric: own(FABRIC, raw.fabric) ? raw.fabric : '', neck: own(NECK, raw.neck) ? raw.neck : '', measures: m,
       link: safeLink(raw.link), price: num(raw.price, 0, 1e9), checkedAt: safeDate(raw.checkedAt),
     };
   }
   function cleanDecision(d) {
-    if (!d || typeof d !== 'object' || !d.before || !LEAN[d.before.lean]) return null;
+    if (!d || typeof d !== 'object' || !d.before || !own(LEAN, d.before.lean)) return null;
     const s = d.summary && typeof d.summary === 'object' ? d.summary : {};
     const out = { id: str(d.id, 40), itemId: str(d.itemId, 40), name: str(d.name, 80), before: { lean: d.before.lean, reason: str(d.before.reason, 200), at: str(d.before.at, 10) },
       summary: { overlaps: num(s.overlaps, 0, 999) || 0, added: num(s.added, 0, 9999) || 0, blockers: num(s.blockers, 0, 999) || 0 }, after: null };
-    if (d.after && DECIDE[d.after.decision]) out.after = { decision: d.after.decision, helpful: HELP[d.after.helpful] ? d.after.helpful : 'some', note: str(d.after.note, 300), at: str(d.after.at, 10), shift: SHIFT[d.after.shift] ? d.after.shift : 'same' };
+    if (d.after && own(DECIDE, d.after.decision)) out.after = { decision: d.after.decision, helpful: own(HELP, d.after.helpful) ? d.after.helpful : 'some', note: str(d.after.note, 300), at: str(d.after.at, 10), shift: own(SHIFT, d.after.shift) ? d.after.shift : 'same' };
     out.follow = out.after ? cleanFollow(d.follow, out.after.decision) : null;
     return out;
   }
@@ -131,11 +132,11 @@
   function cleanFollow(f, decision) {
     if (!f || typeof f !== 'object' || !safeDate(f.at)) return null;
     if (decision === 'buy') {
-      if (!WORN[f.worn]) return null;
+      if (!own(WORN, f.worn)) return null;
       if (f.worn === 'notbought') return { at: f.at, worn: 'notbought', feel: '' };
-      return FEEL_BUY[f.feel] ? { at: f.at, worn: f.worn, feel: f.feel } : null;
+      return own(FEEL_BUY, f.feel) ? { at: f.at, worn: f.worn, feel: f.feel } : null;
     }
-    if (decision === 'skip') return FEEL_SKIP[f.feel] ? { at: f.at, worn: '', feel: f.feel } : null;
+    if (decision === 'skip') return own(FEEL_SKIP, f.feel) ? { at: f.at, worn: '', feel: f.feel } : null;
     return null;
   }
   /** 물을 차례가 된 결정(산다·안 산다를 정한 지 days일 이상, 답 없음). 오래된 것부터. */
@@ -220,7 +221,7 @@
     return out;
   }
   function setLook3d(it, look) { const out = clone(it); out.look3d = cleanLook(look); return out; }
-  function setAttrSource(it, src) { const out = clone(it); out.attrSource = ATTR_SOURCE[src] ? src : out.attrSource; return out; }
+  function setAttrSource(it, src) { const out = clone(it); out.attrSource = own(ATTR_SOURCE, src) ? src : out.attrSource; return out; }
 
   // ---------- 내보내기 ----------
   /**

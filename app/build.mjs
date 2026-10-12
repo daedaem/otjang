@@ -38,7 +38,9 @@ if (/https?:\/\/(?!")/.test(src.replace(/placeholder="https:\/\/"/g, '').replace
   const picks = read('data/picks.json');
   const { validate } = await import('./tools/validate-catalog.mjs');
   const v = validate(JSON.parse(picks), process.env.TODAY || new Date().toISOString().slice(0, 10));
-  if (v.errors.length) throw new Error('카탈로그 오류 ' + v.errors.length + '건: ' + v.errors.slice(0, 5).join(' / ') + ' (node tools/validate-catalog.mjs 로 전부 보기)');
+  const expired = v.errors.filter((x) => /\[만료\]/.test(x)), hard = v.errors.filter((x) => !/\[만료\]/.test(x));
+  if (hard.length || (expired.length && !process.env.ALLOW_STALE)) throw new Error('카탈로그 오류 ' + v.errors.length + '건: ' + v.errors.slice(0, 5).join(' / ') + ' (node tools/validate-catalog.mjs 로 전부 보기' + (expired.length ? '. 30일 지난 상품은 다시 확인하세요 — 개발 중에만 ALLOW_STALE=1' : '') + ')');
+  if (expired.length) console.log('카탈로그 주의: 30일 지난 상품 ' + expired.length + '개(ALLOW_STALE=1 로 빌드함 — 배포하지 마세요)');
   if (v.warnings.some((w) => /다시 확인 필요|환율/.test(w))) console.log('카탈로그 주의: ' + v.warnings.filter((w) => /다시 확인 필요|환율/.test(w)).length + '건이 오래됐습니다(node tools/validate-catalog.mjs)');
   if (picks.includes('</')) throw new Error('picks.json 이 script 태그를 닫을 수 있습니다');
   if (!src.includes('/*@@PICKS@@*/')) throw new Error('marker missing /*@@PICKS@@*/');
@@ -53,11 +55,11 @@ if (split) {
   const ver = crypto.createHash('sha256').update(closet).digest('hex').slice(0, 10);
   if (closet) fs.writeFileSync(path.join(dir, split, 'closet.js'), closet);
   src = src.replace('/*@@CLOSET@@*/', () => (closet ? "window.__CLOSET_SRC = 'closet.js?v=" + ver + "';" : ''));
-  // 보안 정책(CSP): 이 파일 안의 스크립트(해시로 지정)와 같은 주소의 closet.js 만 실행한다. 외부로 보내는 요청은 막고, 개발용 "내 서버와 맞추기"는 이 컴퓨터(localhost)만 허용한다.
+  // 보안 정책(CSP): 이 파일 안의 스크립트(해시로 지정)와 같은 주소의 closet.js 만 실행한다. 외부로 보내는 요청은 모두 막는다(개발용 "내 서버와 맞추기"는 DEV_SYNC=1 로 빌드할 때만 이 컴퓨터 주소를 허용한다).
   // 'wasm-unsafe-eval' 은 3D 형태 파일 해독기(WebAssembly) 때문이다. 메타 태그 CSP 라 frame-ancestors 는 쓸 수 없다.
   const hashes = [...src.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => "'sha256-" + crypto.createHash('sha256').update(m[1], 'utf8').digest('base64') + "'");
   const csp = ["default-src 'self'", "script-src 'self' " + hashes.join(' ') + " 'wasm-unsafe-eval'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob:",
-    "connect-src 'self' blob: data: http://localhost:* http://127.0.0.1:*", "font-src 'self' data:", "manifest-src 'self'", "worker-src 'self' blob:", "object-src 'none'", "base-uri 'none'", "form-action 'none'"].join('; ');
+    "connect-src 'self' blob: data:" + (process.env.DEV_SYNC ? ' http://localhost:* http://127.0.0.1:*' : ''), "font-src 'self' data:", "manifest-src 'self'", "worker-src 'self' blob:", "object-src 'none'", "base-uri 'none'", "form-action 'none'"].join('; ');
   src = src.replace('<!--@@HEAD_EXTRA@@-->', () => '<meta http-equiv="Content-Security-Policy" content="' + csp + '">\n<meta name="referrer" content="no-referrer">\n' + (brand.beta ? '<meta name="robots" content="noindex, nofollow">\n' : '') +
     '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon-192.png">\n<link rel="apple-touch-icon" href="icon-192.png">\n<meta name="theme-color" content="#F5F2EA">');
   // share_target: 설치한 앱(안드로이드 크롬)이 쇼핑 앱의 "공유" 목록에 나타나, 공유한 링크·글로 "고민 중인 옷 넣기"를 연다. 아이폰 Safari 는 지원하지 않는다

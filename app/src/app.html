@@ -19,8 +19,8 @@
 :root[data-theme="dark"]{ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#70767F;
   --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; --sel:#30353D; }
 *{box-sizing:border-box}
-html{color-scheme:light dark}
-body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-text-size-adjust:100%}
+html{color-scheme:light dark;scroll-padding-top:56px;scroll-padding-bottom:84px}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-text-size-adjust:100%;word-break:keep-all;overflow-wrap:anywhere}
 [hidden]{display:none!important}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3,p{margin:0}
@@ -36,13 +36,14 @@ h1,h2,h3,p{margin:0}
 .tab{appearance:none;border:0;background:none;padding:10px 14px;white-space:nowrap;cursor:pointer;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .tab .n{font-weight:500;font-size:12.5px;color:var(--ink2);margin-left:4px}
+.tab .n:empty{display:none}
 @media (max-width:520px){.tab{padding:10px 9px;font-size:14px}.tab .n{margin-left:3px}}
 main{padding:20px 0 64px}
 .lead{color:var(--ink2);max-width:62ch;margin-bottom:16px}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
 .bar .grow{flex:1}
 .chip{appearance:none;border:1px solid var(--line2);background:none;border-radius:999px;padding:5px 12px;cursor:pointer;font-size:13.5px;color:var(--ink2)}
-.chip[aria-pressed="true"]{background:var(--sel);border-color:var(--accent);color:var(--ink);font-weight:650}
+.chip[aria-pressed="true"],.chip[role="radio"][aria-checked="true"]{background:var(--sel);border-color:var(--accent);color:var(--ink);font-weight:650}
 .chip[aria-pressed="true"]::before{content:"✓ "}
 .btn{appearance:none;border:1px solid var(--line2);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -186,7 +187,8 @@ a{color:var(--accent)}
 .notice{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin:0 0 14px;background:var(--card)}
 .notice h2{font-size:15px;margin:0 0 6px}.notice p{margin:0 0 8px}.notice ol{margin:0 0 10px;padding-left:20px}
 .notice.warnbox{border-color:#c47a1d}
-.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:10px;font-size:13.5px;max-width:92vw;z-index:50}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));margin:0 auto;width:fit-content;max-width:520px;background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:10px;font-size:14px;z-index:50;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.toast .btn{background:transparent;color:inherit;border-color:currentColor;margin:0}
 details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2);font-size:13.5px;margin-bottom:8px}
 /* 빠른 시작 */
 .qsec h3{font-size:13px;color:var(--ink2);font-weight:650;margin:12px 0 6px}
@@ -214,8 +216,8 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 .meas label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
 .meas input{width:78px}
 .meas select{width:auto}
-.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line2);border-radius:10px;overflow:hidden;max-width:100%}
-.seg button{appearance:none;border:0;background:var(--card);padding:8px 13px;font-weight:600;color:var(--ink2);cursor:pointer;min-height:40px}
+.seg{display:flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;width:100%;max-width:460px}
+.seg button{appearance:none;border:0;background:var(--card);padding:8px 6px;font-weight:600;color:var(--ink2);cursor:pointer;min-height:42px;flex:1;white-space:nowrap}
 .seg button+button{border-left:1px solid var(--line2)}
 .seg button[aria-checked="true"]{background:var(--sel);color:var(--ink);box-shadow:inset 0 -3px 0 var(--accent)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
@@ -227,29 +229,48 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 .phead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
 .ptitle{font-size:14px;color:var(--ink2)}.ptitle b{color:var(--ink)}
 .csum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--card);font-size:13.5px}
-.pbar{position:sticky;bottom:0;z-index:4;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border-top:1px solid var(--line2);padding:10px 0 4px;margin-top:14px}
+.pbar{position:sticky;bottom:0;z-index:4;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border-top:1px solid var(--line2);padding:10px 0 calc(6px + env(safe-area-inset-bottom));margin-top:14px}
 .pbar .pbt{font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar .btn{flex:none;white-space:nowrap}
 .taste{margin-top:14px;border-top:1px solid var(--line);padding-top:4px}
-.taste>summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;padding:8px 0;list-style-position:outside}
+.taste>summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 0;list-style:none}
+.taste>summary::-webkit-details-marker{display:none}
+.taste>summary::after{content:"▾";color:var(--ink2);margin-left:auto}
+.taste[open]>summary::after{content:"▴"}
+.taste .chg{border:1px solid var(--line2);border-radius:8px;padding:2px 8px;font-size:12.5px;color:var(--ink);font-weight:600}
+.hint{font-size:13px;color:var(--ink);background:var(--tint);border-radius:8px;padding:6px 10px;margin:8px 0 0}
 .fl2{font-size:12.5px;color:var(--ink2);font-weight:650}
-.pick{background:var(--card);border:2px solid var(--accent);border-radius:14px;padding:16px;margin:0 0 12px}
+.pick{background:var(--card);border:2px solid var(--accent);border-radius:14px;padding:16px;margin:0 0 12px;max-width:760px}
 .pick .eyebrow,.alt .eyebrow{font-size:12.5px;color:var(--ink2);font-weight:650;margin-bottom:8px}
 .pickgrid{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:start}
 svg.tee{width:88px;height:88px;display:block;background:var(--thumb);border-radius:10px}
-.tcap{font-size:10.5px;color:var(--ink2);margin-top:4px;line-height:1.3}
-.pick h3{font:700 18px/1.3 var(--serif);overflow-wrap:anywhere}
+.tcap{font-size:12px;color:var(--ink2);margin-top:4px;line-height:1.35}
+.pick h3{font:700 18px/1.35 var(--sans);overflow-wrap:anywhere}
 .pick .pp,.alt .pp{margin:6px 0 2px}
 .pick .pp b{font-size:17px}
 .pick .src,.alt .src{font-size:12.5px;color:var(--ink2)}
-.concl{font-size:15px;font-weight:600;margin:12px 0 4px;line-height:1.5}
-ul.checks{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
-ul.checks .mk{display:inline-block;width:18px;font-weight:700}
-.ck.ok .mk,.ck.good .mk{color:var(--ok)}.ck.fail .mk,.ck.low .mk{color:var(--warm)}.ck.unknown .mk,.ck.mid .mk{color:var(--ink2)}
+.concl{font-size:15.5px;font-weight:650;margin:12px 0 4px;line-height:1.55}
+.pick .note{font-size:13.5px}
+.gapwhy,.favnote{font-size:13.5px;color:var(--ink2);margin:4px 0 0}
+.ckh{font-size:12.5px;color:var(--ink2);font-weight:650;margin:12px 0 2px}
+.sizebox{background:var(--tint);border-radius:10px;padding:10px 12px;margin:12px 0 0;font-size:14px}
+.sizebox b{font-size:15px}
+.sizebox .note{margin-top:2px}
+.ask{border:2px solid var(--accent);border-radius:12px;padding:12px;margin:12px 0 0;background:var(--sel)}
+.ask p{margin:0 0 8px;font-weight:600}
+.ask .bar{margin:0}
+.rsn{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+fieldset.q{border:0;padding:0;margin:8px 0 0}
+fieldset.q legend{font-size:13px;color:var(--ink2);font-weight:650;padding:0;margin-bottom:4px}
+ul.checks{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:14.5px}
+ul.checks .mk{display:inline-block;width:20px;font-weight:700}
+ul.checks .ml{font-size:12.5px;color:var(--ink2);margin-right:4px}
+.ck.ok .mk,.ck.good .mk{color:var(--ok)}.ck.fail .mk,.ck.low .mk,.ck.warn .mk{color:var(--warm)}.ck.unknown .mk,.ck.mid .mk,.ck.none .mk,.ck.weak .mk{color:var(--ink2)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .disc{color:var(--warm);font-weight:700;font-size:13px}
 del{color:var(--ink2);font-size:13px}
 .vrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line2)}
-.alts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:0 0 12px}
+.alts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:0 0 12px;max-width:760px}
 .alt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
 .alt h3{font-size:15px;font-weight:650;overflow-wrap:anywhere}
 .pnotes{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--ink2)}
@@ -261,7 +282,18 @@ ol.rlist,ul.rlist{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-dir
 #pickResult{scroll-margin-top:56px}
 details.ev{margin-top:10px}details.ev>summary{cursor:pointer;font-size:13px;color:var(--ink2);padding:4px 0}
 details.ev ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
-@media (pointer:coarse){.chip{min-height:40px;padding:7px 13px}}
+@media (pointer:coarse){.chip{min-height:40px;padding:7px 13px}.btn.small{min-height:40px;padding:8px 12px}details.ev>summary{padding:10px 0}}
+.pick .bar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pick .bar .btn{text-align:center;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 8px}
+a.btn{text-decoration:none;display:inline-block}
+@media (max-width:520px){.top .tag,.top .local:not(.warn){display:none}}
+.now{border:1px solid var(--line2);border-radius:12px;padding:12px;margin:0 0 12px;background:var(--card);max-width:760px}
+.now h2{font-size:15px;margin:0 0 4px}
+.now .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.now .grid2 .full{grid-column:1/-1}
+.now label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--ink2)}
+.nowres{border:2px dashed var(--accent);border-radius:12px;padding:12px;margin:10px 0 0}
+.nowres .concl{margin-top:4px}
 </style>
 </head>
 <body>
@@ -273,6 +305,7 @@ details.ev ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
   </header>
   <nav class="tabs" role="tablist" id="tabs"></nav>
   <main id="main"></main>
+  <div id="pickLive" class="sr" aria-live="polite" role="status"></div>
 </div>
 <div id="stageHolder" hidden>
   <div class="stage" id="stage"><canvas id="stage3d" aria-label="옷장 3D 화면. 옷을 누르면 크게 보이고, 끌면 자리를 바꿉니다."></canvas>
@@ -359,7 +392,8 @@ details.ev ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
     <div class="field full"><label for="fbText">불편했던 점, 좋았던 점, 바라는 점</label><textarea id="fbText" rows="5" maxlength="2000"></textarea></div>
     <div class="field full" style="margin-top:10px"><span class="l">이 앱을 더는 쓸 수 없게 되면 어떨 것 같나요? (선택)</span><div class="choices" id="fbPmf"></div></div>
     <div class="field" style="max-width:280px"><label for="fbNps">친구에게 추천할 마음 (0~10, 선택)</label><select id="fbNps"></select></div>
-    <div class="checks" style="margin:10px 0"><label><input type="checkbox" id="fbStats" checked> 사용 요약 함께 붙이기 (옷 이름·사진·브랜드는 넣지 않습니다)</label></div>
+    <div class="checks" style="margin:10px 0"><label><input type="checkbox" id="fbStats" checked> 사용 요약 함께 붙이기 (내 옷의 이름·사진·브랜드는 넣지 않습니다)</label></div>
+    <div class="checks" id="fbFitRow" style="margin:0 0 10px" hidden><label><input type="checkbox" id="fbFit" checked> 추천에서 산 상품과 2주 뒤 사이즈 답도 붙이기 (사이즈 추천을 고치는 데만 씁니다)</label></div>
     <pre class="note" id="fbPreview" tabindex="0" role="region" aria-label="보낼 내용 미리보기" style="white-space:pre-wrap;max-height:160px;overflow:auto;border:1px dashed var(--line2);border-radius:8px;padding:8px"></pre>
     <div class="bar" style="margin:10px 0 0"><button class="btn primary" type="button" id="fbCopy">복사하기</button><span class="note" id="fbMsg"></span></div>
   </div>
@@ -460,6 +494,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
 <script>
 (function () {
   'use strict';
+  // 웹 시험판: 다른 사이트가 이 페이지를 틀(iframe) 안에 넣어 띄우면 열지 않는다(클릭 가로채기 방지. 메타 태그 보안 정책으로는 막을 수 없어서). 같은 주소 안의 틀은 괜찮다
+  if (window.__CLOSET_SRC && window.top !== window.self) { let same = false; try { same = window.top.location.origin === location.origin; } catch (e) { same = false; } if (!same) { document.body.textContent = '이 페이지는 다른 사이트 안에서는 열 수 없어요. 주소창에 직접 열어 주세요.'; return; } }
   const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, FB = window.Feedback, PK = window.Pick;
   const PICKS = PK.cleanPicks(PICKS_RAW) || { products: [], brands: {}, lines: {}, brandNotes: [], fx: {} };   // 검증 카탈로그: 공식 판매처 페이지에서 확인한 상품(가격·재고는 확인한 날의 값)
   let X = window.OtjangCloset || null;                                                              // 3D 옷장: 한 파일 빌드에서는 바로 있고, 나눈 빌드(웹 배포)에서는 3D 탭을 열 때 closet.js 를 내려받는다
@@ -551,21 +587,26 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const p = raw && typeof raw === 'object' ? raw : {};
     const keys = (v, dict) => (Array.isArray(v) ? v.filter((k, i, a) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(dict, k) && a.indexOf(k) === i) : []);
     const ref = {}; if (p.ref && typeof p.ref === 'object') for (const k of ['chest', 'length', 'shoulder']) { const v = num(p.ref[k], 20, 150); if (v != null) ref[k] = v; }
-    const lines = Object.keys(PICKS.lines);
-    const use = PK.USES[p.use] ? p.use : 'any';                                                      // 기본은 '상관없음'(용도 조건 없음)
-    return { line: PICKS.lines[p.line] ? p.line : lines[0] || '', sleeve: PK.SLEEVES[p.sleeve] ? p.sleeve : 'short', use,
+    const lines = Object.keys(PICKS.lines), own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k);
+    const use = own(PK.USES, p.use) ? p.use : 'any';                                                 // 기본은 '상관없음'(용도 조건 없음)
+    return { line: own(PICKS.lines, p.line) ? p.line : lines[0] || '', sleeve: own(PK.SLEEVES, p.sleeve) ? p.sleeve : 'short', use, budget: PK.BUDGETS.indexOf(p.budget) > 0 ? p.budget : 0,
       conds: Array.isArray(p.conds) ? keys(p.conds, PK.CONDS).filter((k) => PK.CONDS[k].use === use) : null,   // null 이면 그 용도의 조건을 모두 켠다
       pri: keys(p.pri, PK.CRITERIA).slice(0, 5), brands: keys(p.brands, PICKS.brands), styles: keys(p.styles, PK.STYLES),
-      size: typeof p.size === 'string' && /^(XS|S|M|L|XL|XXL)$/.test(p.size) ? p.size : '', ref, seen: p.seen === true };
+      size: typeof p.size === 'string' && /^(XS|S|M|L|XL|XXL)$/.test(p.size) ? p.size : '', ref, seen: p.seen === true,
+      outerLen: num(p.outerLen, 40, 100), wish: keys(p.wish, WISH) };
   }
-  /** 추천 기록: 결정(이걸로·대안·아니요), 판매처를 연 횟수, 샀나요, 2주 뒤 사이즈·만족. 이 브라우저에만 남는다. */
+  /** 추천 기록: 결정(이걸로·대안·아니요와 이유), 판매처를 연 때, 돌아왔는지, 미룸, 샀나요·산 사이즈, 2주 뒤 사이즈·만족, 그 답으로 바꾼 것. 이 브라우저에만 남는다(백업에는 들어간다). */
   function cleanPickLog(raw) {
-    return (Array.isArray(raw) ? raw : []).slice(-100).map((e) => (e && typeof e === 'object' && typeof e.productId === 'string' && W.safeDate(e.at) ? {
+    const own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k), date = (v) => PK.realDate(v);
+    const seen = new Set();
+    return (Array.isArray(raw) ? raw : []).slice(-100).map((e) => (e && typeof e === 'object' && typeof e.productId === 'string' && date(e.at) ? {
       id: str(e.id, 40) || 'k' + Math.random().toString(36).slice(2, 10), at: e.at, productId: str(e.productId, 60), label: str(e.label, 120), price: num(e.price, 0, 1e9) || 0, store: str(e.store, 60),
-      verdict: ['accept', 'alt', 'reject'].indexOf(e.verdict) >= 0 ? e.verdict : '', altId: str(e.altId, 60), out: num(e.out, 0, 999) || 0,
-      bought: ['yes', 'no'].indexOf(e.bought) >= 0 ? e.bought : '', boughtAt: W.safeDate(e.boughtAt),
-      follow: e.follow && W.safeDate(e.follow.at) && ['fit', 'small', 'big'].indexOf(e.follow.size) >= 0 && ['good', 'ok', 'regret'].indexOf(e.follow.feel) >= 0 ? { at: e.follow.at, size: e.follow.size, feel: e.follow.feel } : null,
-      pri: Array.isArray(e.pri) ? e.pri.filter((k) => PK.CRITERIA[k]).slice(0, 5) : [], use: PK.USES[e.use] ? e.use : 'any' } : null)).filter(Boolean);
+      verdict: ['accept', 'alt', 'reject'].indexOf(e.verdict) >= 0 ? e.verdict : '', altId: str(e.altId, 60), reason: ['price', 'brand', 'fit', 'have', 'other'].indexOf(e.reason) >= 0 ? e.reason : '',
+      out: num(e.out, 0, 999) || 0, outAt: date(e.outAt), outT: num(e.outT, 0, 1e14) || 0, returned: e.returned === true, snooze: date(e.snooze),
+      bought: ['yes', 'no'].indexOf(e.bought) >= 0 ? e.bought : '', boughtAt: date(e.boughtAt), boughtSize: str(e.boughtSize, 12), ownedId: str(e.ownedId, 40),
+      follow: e.follow && date(e.follow.at) && ['fit', 'small', 'big'].indexOf(e.follow.size) >= 0 && ['good', 'ok', 'regret'].indexOf(e.follow.feel) >= 0 ? { at: e.follow.at, size: e.follow.size, feel: e.follow.feel } : null,
+      learned: ['ref', 'up', 'down'].indexOf(e.learned) >= 0 ? e.learned : '',
+      pri: Array.isArray(e.pri) ? e.pri.filter((k, i, a) => own(PK.CRITERIA, k) && a.indexOf(k) === i).slice(0, 5) : [], use: own(PK.USES, e.use) ? e.use : 'any' } : null)).filter((e) => e && !seen.has(e.id) && seen.add(e.id));
   }
   /** 저장된 상태를 정리한다. 옷장 파일(스키마 1·2) + others + catalog + rack(3D 옷장에 건 옷). */
   function cleanState(raw) {
@@ -574,7 +615,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const m = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
     s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120), quickAdded: num(m.quickAdded, 0, 9999) || 0,   // quickAdded: 빠른 시작으로 넣은 옷 수
       installId: typeof m.installId === 'string' && /^[a-z0-9]{6,16}$/.test(m.installId) ? m.installId : Math.random().toString(36).slice(2, 10).padEnd(6, '0') };   // installId: 의견 요약에서 같은 사람을 한 번만 세려는 무작위 글자(사람을 알아볼 수 없다)   // days: 앱을 연 날(이 기기에만 남고, 의견 보내기를 누를 때만 요약으로 붙는다)   // 예시 옷장 보는 중인지, 마지막 백업일, 첫 안내를 봤는지
-    for (const k of ['pickRuns', 'pickOut', 'pickCand']) s.meta[k] = num(m[k], 0, 99999) || 0;          // 기준 추천을 받은 횟수, 추천에서 판매처를 연 횟수, 추천을 후보로 넣은 수
+    for (const k of ['pickRuns', 'pickOut', 'pickCand', 'nowRuns', 'pickShare']) s.meta[k] = num(m[k], 0, 99999) || 0;   // 기준 추천을 받은 횟수(날·조건마다 한 번), 판매처를 연 횟수, 후보로 넣은 수, '지금 보는 상품'을 견준 횟수
+    s.meta.pickSeen = (Array.isArray(m.pickSeen) ? m.pickSeen : []).filter((x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}\|[a-z0-9]{1,8}$/.test(x)).slice(-300);
     s.prefs = cleanPrefs(raw.prefs); s.pickLog = cleanPickLog(raw.pickLog);
     s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
     const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
@@ -600,7 +642,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   let state = null, storageOk = true, savePromise = Promise.resolve();
   const ui = { advOpen: false, syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
-    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '', pickForm: false, tasteOpen: false, shopOwnOpen: false, pickSeen: [], boughtSkip: [], awaitReturn: null, askBought: '' };
+    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '', pickForm: false, tasteOpen: false, shopOwnOpen: false, awaitReturn: null, leftFor: null, buyStep: '', buySize: '', buyOwn: true, nowForm: {}, nowProduct: null, nowOpen: false, askTop: false };
   function save() {
     const data = JSON.stringify(state);
     savePromise = (async () => {
@@ -686,7 +728,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const nav = $('#tabs'); nav.textContent = '';
     for (const [id, label] of TABS) {
       const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'closet3d' ? state.rack.length : null;
-      nav.append(h('button', { class: 'tab', type: 'button', role: 'tab', id: 'tabbtn-' + id, 'aria-selected': ui.tab === id ? 'true' : 'false', onclick: () => { ui.tab = id; render(); } }, label, n != null ? h('span', { class: 'n', text: String(n) }) : null));
+      nav.append(h('button', { class: 'tab', type: 'button', role: 'tab', id: 'tabbtn-' + id, 'aria-selected': ui.tab === id ? 'true' : 'false', onclick: () => { ui.tab = id; render(); } }, label, n ? h('span', { class: 'n', text: String(n) }) : null));
     }
   }
   const stageEl = $('#stage'), stageHolder = $('#stageHolder'), sq = (sel) => stageEl.querySelector(sel);   // 3D 화면은 한 번 만들어 탭 사이를 오간다 (WebGL을 다시 만들지 않게)
@@ -874,7 +916,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (dec) dec.summary = { overlaps: v.overlaps.length, added: v.added.length, blockers: v.blockers.length };
     window.__verdict = { overlaps: v.overlaps.map((o) => o.item.id), added: v.added.length, before: v.before, after: v.after, blockers: v.blockers.map((b) => b.text), top3: v.top3.length, supported: v.supported };
     const p1 = h('section', { class: 'panel', id: 'vOverlap' }, h('h2', { text: '겹치는 보유 옷' }));
-    if (!v.overlaps.length) p1.append(h('p', { class: 'sub', text: '겹쳐 보이는 보유 옷이 없습니다. 종류와 색 계열, 밝기가 모두 가까운 옷을 찾았습니다.' }));
+    if (!v.overlaps.length) p1.append(h('p', { class: 'sub', text: '겹쳐 보이는 보유 옷이 없습니다. 종류·색 계열·밝기가 모두 가까운 옷을 찾아봤지만 없었습니다.' }));
     else {
       p1.append(h('p', { class: 'sub', text: v.overlaps.length + '벌이 비슷합니다. 겹친다고 볼지는 직접 정하세요.' }));
       for (const o of v.overlaps) p1.append(h('div', { class: 'pair' },
@@ -943,15 +985,23 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   // ---------- 추천: 사고 싶은 옷을 내 기준으로 딱 하나 ----------
   const won = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
   const md = (d) => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(d || ''); return m ? Number(m[1]) + '월 ' + Number(m[2]) + '일' : d || ''; };
+  const addDays = (d, n) => { const t = new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000); return t.toISOString().slice(0, 10); };
   const SHORT = { value: '가성비', quality: '품질', brand: '브랜드', fit: '내 핏', style: '스타일' };
-  const MARK = { ok: ['✓', '확인됨'], unknown: ['?', '확인 못 함'], fail: ['✕', '어긋남'], good: ['✓', '좋음'], mid: ['○', '보통'], low: ['△', '약함'] };
+  const MARK = { ok: ['✓', '확인'], weak: ['✓', '약한 확인'], unknown: ['?', '모름'], warn: ['!', '어긋날 수 있음'], fail: ['✕', '어긋남'], good: ['✓', '좋음'], mid: ['○', '보통'], low: ['△', '약함'], none: ['—', '고르지 않음'] };
+  const SHOWLABEL = { weak: 1, unknown: 1, warn: 1, mid: 1, low: 1 };                              // 기호만으로는 뜻이 안 읽히는 표시는 글자도 함께 보인다
+  const WISH = { oxford: '옥스퍼드 셔츠', chino: '치노 팬츠', slacks: '슬랙스', 'crew-sweat': '크루넥 스웻셔츠', knit: '니트·카디건', denim: '데님 팬츠', loafer: '로퍼·구두' };   // 다음 품목 수요를 묻는 목록(준비 중)
+  const REASONS = [['price', '비싸요'], ['brand', '좋아하는 브랜드가 아니에요'], ['fit', '핏·사이즈가 걱정돼요'], ['have', '이미 비슷한 게 있어요'], ['other', '다른 이유']];
+  const HOSTS = [['kolonmall.com', '코오롱몰'], ['ralphlauren.co.kr', '랄프로렌 공식몰'], ['bronsonshop.com', '브론슨 공식몰'], ['uniqlo.com', '유니클로 공식몰'], ['levi.co.kr', '리바이스 공식몰'], ['poundsterlinglive.com', '환율 기록']];
+  const hostName = (u) => { let host = ''; try { host = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return '페이지'; } const hit = HOSTS.find(([d]) => host === d || host.endsWith('.' + d)); return hit ? hit[1] : host; };
+  const SESSION_T = Date.now();                                                                    // 이 방문을 연 시각: 판매처를 연 것이 지난 방문이면 "샀나요?"를 묻는다
   /** 눌러서 다시 그린 뒤에도 같은 단추에 초점을 돌려준다(키보드로 쓰는 사람을 위해). */
   function keepFocus(id, fn) { return () => { fn(); const el = id && document.getElementById(id); if (el) el.focus(); }; }
-  function josa(word, a, b) { const ch = String(word).charCodeAt(String(word).length - 1); return ch >= 0xac00 && ch <= 0xd7a3 ? word + ((ch - 0xac00) % 28 ? a : b) : word + a + '(' + b + ')'; }
+  function josa(word, a, b) { return PK.josa(word, a, b); }
   function pickQuery() {
     const pf = state.prefs;
-    return { line: pf.line, sleeve: pf.sleeve, use: pf.use, conds: pf.conds || undefined, priorities: pf.pri, brands: pf.brands, styles: pf.styles, size: pf.size, ref: pf.ref, today: today() };
+    return { line: pf.line, sleeve: pf.sleeve, use: pf.use, conds: pf.conds || undefined, priorities: pf.pri, brands: pf.brands, styles: pf.styles, size: pf.size, ref: pf.ref, budget: pf.budget, outerLen: pf.outerLen, extra: ui.nowProduct ? [ui.nowProduct] : [], today: today() };
   }
+  const pname = (p) => PK.pname(PICKS, p);
   /** 하나만 고르는 질문: 라디오 묶음(화살표로 옮김). */
   function segmented(id, label, opts, cur, onPick) {
     const move = (e) => {
@@ -963,13 +1013,15 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   function priceView(r) {
     const p = r.product, el = h('span');
-    if (p.currency !== 'KRW') { el.append('$' + p.price + (r.unit.ship ? ' + 배송비 $' + p.shipping.fee : '') + ' ≈ ', h('b', { text: won(r.unit.krw * p.packCount) })); return el; }
+    if (p.currency !== 'KRW') { el.append('$' + p.price + (r.unit.ship ? ' + 배송비 $' + p.shipping.fee : '') + ' ≈ ', h('b', { text: won(r.unit.pay) })); return el; }
     if (p.listPrice && p.listPrice > p.price) el.append(h('del', { text: won(p.listPrice) }), ' ', h('b', { text: won(p.price) }), ' ', h('span', { class: 'disc', text: Math.round((1 - p.price / p.listPrice) * 100) + '% 할인' }));
     else el.append(h('b', { text: won(p.price) }));
     if (p.packCount > 1) el.append(' ', h('span', { class: 'note', text: '(' + p.packCount + '장, 한 장 약 ' + won(r.unit.krw) + ')' }));
+    if (r.unit.shipKnown && r.unit.ship) el.append(' ', h('span', { class: 'note', text: '+ 배송비 ' + won(r.unit.ship) }));
     return el;
   }
-  const priceShort = (r) => (r.product.currency === 'KRW' ? won(r.product.price) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') : '약 ' + won(r.unit.krw));
+  const priceShort = (r) => (r.product.currency === 'KRW' ? won(r.product.price) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') : '약 ' + won(r.unit.pay));
+  const srcText = (p) => (p.user ? '직접 넣은 상품' + (p.store.name && p.store.name !== '직접 넣은 상품' ? ' · ' + p.store.name : '') + ' · 값은 직접 입력' : p.store.name + ' · ' + (p.store.type === 'official' ? '공식몰' : '입점 판매처') + ' · ' + md(p.checkedAt) + ' 확인');
   const SVGNS = 'http:' + '//www.w3.org/2000/svg';
   /** 상품 사진 대신, 공개된 정보(소매·핏·목 립·로고 위치)로 그린 티셔츠 모양. 모르는 부분은 점선. */
   function teeSvg(p) {
@@ -983,202 +1035,377 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     svg.append(s('path', { d: body, fill: '#F7F5F0', stroke: '#8A8F96', 'stroke-width': '1.5', 'stroke-linejoin': 'round', 'stroke-dasharray': p.fit ? '' : '4 3' }));
     svg.append(s('path', { d: 'M47 20C52 26 68 26 73 20', fill: 'none', stroke: '#8A8F96', 'stroke-width': String(neckW), 'stroke-dasharray': p.neck ? '' : '3 3', 'stroke-linecap': 'round' }));
     const mark = (x, y, wd, ht) => svg.append(s('rect', { x, y, width: wd, height: ht, rx: '1', fill: '#A8502A' }));
-    if (p.logo === 'small-chest') mark(71, 37, 6, 5); else if (p.logo === 'chest') mark(69, 35, 9, 7); else if (p.logo === 'hem') mark(70, 100, 9, 4); else if (p.logo === 'tab') mark(85, 95, 3, 6);
+    if (p.logo === 'small-chest') mark(71, 37, 6, 5); else if (p.logo === 'chest' || p.logo === 'print') mark(69, 35, 9, 7); else if (p.logo === 'hem') mark(70, 100, 9, 4); else if (p.logo === 'tab') mark(85, 95, 3, 6);
     else if (!p.logo) { svg.append(s('circle', { cx: '74', cy: '40', r: '5', fill: 'none', stroke: '#8A8F96', 'stroke-dasharray': '2 2' })); const t = s('text', { x: '74', y: '43', 'text-anchor': 'middle', 'font-size': '8', fill: '#5B6068' }); t.textContent = '?'; svg.append(t); }
     return svg;
   }
-  // 추천 기록(결정·판매처 열기·샀나요·2주 뒤): state.pickLog
-  function logFor(pid) { for (let i = state.pickLog.length - 1; i >= 0; i--) if (state.pickLog[i].productId === pid && state.pickLog[i].at === today()) return state.pickLog[i]; return null; }
+
+  // ---------- 추천 기록(결정·판매처 열기·샀나요·2주 뒤): state.pickLog ----------
+  /** 같은 상품의 최근 3일 안 기록을 이어 쓴다(날이 바뀌어도 둘로 갈리지 않게). */
+  function logFor(pid) { for (let i = state.pickLog.length - 1; i >= 0; i--) { const e = state.pickLog[i]; if (e.productId === pid && daysAgo(e.at) <= 3) return e; } return null; }
   function logEntry(r) {
     let e = logFor(r.product.id);
-    if (!e) { e = { id: newId('k'), at: today(), productId: r.product.id, label: PK.brandName(PICKS, r.product.brand) + ' ' + r.product.name, price: Math.round(r.krw), store: r.product.store.name, verdict: '', altId: '', out: 0, bought: '', boughtAt: '', follow: null, pri: state.prefs.pri.slice(0, 5), use: state.prefs.use }; state.pickLog.push(e); if (state.pickLog.length > 100) state.pickLog.shift(); }
+    if (!e) {
+      e = { id: newId('k'), at: today(), productId: r.product.id, label: pname(r.product), price: Math.round(r.krw), store: r.product.store.name, verdict: '', altId: '', reason: '', out: 0, outAt: '', outT: 0, returned: false, snooze: '',
+        bought: '', boughtAt: '', boughtSize: '', ownedId: '', follow: null, learned: '', pri: state.prefs.pri.slice(0, 5), use: state.prefs.use };
+      state.pickLog.push(e); if (state.pickLog.length > 100) state.pickLog.shift();
+    }
     return e;
   }
+  /** "샀나요?"를 물을 기록: 판매처를 열고 7일 안, 아직 답이 없고, 미루지 않았고, 판매처에서 돌아왔거나 지난 방문에 연 것. */
+  const askable = (e) => e.out > 0 && !e.bought && daysAgo(e.outAt || e.at) <= 7 && !(e.snooze && e.snooze > today()) && (e.returned || (e.outT && e.outT < SESSION_T));
+  const askEntry = () => state.pickLog.filter(askable).slice(-1)[0] || null;
+  const followDuePick = () => state.pickLog.filter((e) => e.bought === 'yes' && !e.follow && daysAgo(e.boughtAt) >= W.FOLLOW_DAYS)[0] || null;
   function storeLink(r, label, cls) {
-    return h('a', { class: cls || 'btn small', href: r.product.store.url, target: '_blank', rel: 'noopener noreferrer', onclick: () => { const e = logEntry(r); e.out++; state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = { id: e.id, t: Date.now() }; save(); }, text: label || '판매처에서 보기 ↗' });
+    const p = r.product;
+    if (!p.store.url) return null;
+    return h('a', { class: cls || 'btn small', href: p.store.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': pname(p) + ' — ' + (p.store.name || '판매처') + '에서 보기(새 창)',
+      onclick: () => { const e = logEntry(r); e.out++; e.outAt = today(); e.outT = Date.now(); e.returned = false; state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = e.id; save(); }, text: label || '판매처에서 보기 ↗' });
   }
   function pickToCand(r) {
+    const name = pname(r.product);
+    const dup = cands().find((c) => c.name === name && (c.link || '') === (r.product.store.url || ''));
+    if (dup) { toast('이미 살까 말까에 있어요.', { label: '보기', fn: () => { ui.judgeId = dup.id; ui.tab = 'judge'; render(); } }); return; }
     const c = PK.toCandidate(r.product, PICKS, today()); c.id = newId('c');
     state.items.push(c); state.meta.pickCand++; logEntry(r); state.prefs.seen = true; save(); render();
     toast('살까 말까에 담았어요.', { label: '보기', fn: () => { ui.judgeId = c.id; ui.tab = 'judge'; render(); } });
   }
   function closetLine(r) {
     const c = r.closet;
-    if (!c) return null;
-    if (!owned().length) return h('p', { class: 'note', text: '옷장에 가진 옷을 넣으면 이 옷과 생기는 조합도 계산해요.' });
+    if (!c || !owned().length) return null;
     if (!c.supported || c.note) return h('p', { class: 'note', text: c.note || '이 종류는 조합 규칙이 아직 없어요.' });
     const ex = c.top3[0], names = ex ? [ex.bottom && ex.bottom.name, ex.outer && ex.outer.name].filter(Boolean).join(' + ') : '';
     return h('p', { class: 'note' }, h('b', { text: '내 옷장과: ' }), '새 조합 ' + c.added + '개' + (names ? ' (예: + ' + names + ')' : '') + (c.overlaps.length ? ' · 비슷한 옷 ' + c.overlaps.length + '벌: ' + c.overlaps.map((o) => o.name).join(', ') : ''));
   }
-  function checkList(r) {
-    return h('ul', { class: 'checks', id: 'pickChecks' }, r.checks.map((c) => h('li', { class: 'ck ' + c.mark }, h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[c.mark][0] }), h('span', { class: 'sr', text: MARK[c.mark][1] + ': ' }), h('b', { text: c.label }), ' ', h('span', { text: c.text }))));
+  function checkList(list, id) {
+    return h('ul', { class: 'checks', id }, list.map((c) => h('li', { class: 'ck ' + c.mark }, h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[c.mark][0] }),
+      SHOWLABEL[c.mark] ? h('span', { class: 'ml', text: MARK[c.mark][1] }) : h('span', { class: 'sr', text: MARK[c.mark][1] + ': ' }), h('b', { text: c.label }), ' ', h('span', { text: c.text }))));
   }
-  function verdictRow(r, res) {
+  function sizeBox(r) {
+    const f = r.fit, p = r.product;
+    if (f.neutral) return h('div', { class: 'sizebox', id: 'pickSize' }, h('span', { text: '평소 사이즈나 잘 맞는 티의 실측을 넣으면 맞는 치수까지 골라 드려요. ' }),
+      h('button', { class: 'btn small', type: 'button', id: 'pickSizeGo', onclick: () => { ui.pickForm = true; ui.tasteOpen = true; render(); const el = $('#pk-size'); if (el) el.focus(); }, text: '사이즈 넣기' }));
+    return h('div', { class: 'sizebox', id: 'pickSize' }, f.size ? h('b', { text: '추천 사이즈 ' + PK.sizeName(p, f.size) }) : h('b', { text: '사이즈' }), f.size && f.meas ? ' — ' + f.meas.replace(/^[^:]+:\s*/, '') : '', h('p', { class: 'note', text: f.text }));
+  }
+  /** 판매처에서 돌아왔을 때: 샀나요? → 산 사이즈 → (옷장에 넣기) */
+  function askBox(e) {
+    const box = h('div', { class: 'ask', id: 'askBought', role: 'group', 'aria-label': '샀는지 알려 주기' });
+    const p = PICKS.products.find((x) => x.id === e.productId) || (ui.nowProduct && ui.nowProduct.id === e.productId ? ui.nowProduct : null);
+    if (ui.buyStep === e.id) {
+      const sizes = p ? (p.offered || p.sizes.map((s) => s.label)).slice(0, 10) : [];
+      const fitSize = p ? PK.fitOf(p, pickQuery()).size : '';                                          // 추천이 고른 사이즈를 기본으로
+      const def = ui.buySize || (fitSize && sizes.indexOf(fitSize) >= 0 ? fitSize : '') || (p && sizes.find((s) => PK.normSize(s) === PK.normSize(state.prefs.size))) || '';
+      if (!ui.buySize && def) ui.buySize = def;
+      box.append(h('p', { id: 'askSizeQ', text: '어떤 사이즈를 샀어요?' }),
+        sizes.length ? h('div', { class: 'chips', role: 'radiogroup', 'aria-labelledby': 'askSizeQ' }, sizes.map((s, i) => { const on = ui.buySize === s; return h('button', { type: 'button', class: 'chip nock', role: 'radio', id: 'bsz-' + i, 'aria-checked': on ? 'true' : 'false', tabindex: on || (!ui.buySize && i === 0) ? '0' : '-1', onclick: keepFocus('bsz-' + i, () => { ui.buySize = s; render(); }),
+          onkeydown: (ev) => { const j = ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? (i + 1) % sizes.length : ev.key === 'ArrowLeft' || ev.key === 'ArrowUp' ? (i - 1 + sizes.length) % sizes.length : -1; if (j < 0) return; ev.preventDefault(); keepFocus('bsz-' + j, () => { ui.buySize = sizes[j]; render(); })(); }, text: PK.sizeName(p, s) }); }))
+          : h('p', { class: 'note', text: '사이즈 목록이 없어 사이즈 없이 기록해요.' }),
+        p && !p.user ? h('label', { class: 'note', style: 'display:flex;gap:6px;align-items:center;margin:8px 0' }, h('input', { type: 'checkbox', id: 'bOwn', checked: ui.buyOwn !== false, onchange: (ev) => { ui.buyOwn = ev.target.checked; } }), '내 옷장에도 넣기(산 사이즈의 치수를 함께)') : null,
+        h('div', { class: 'bar', style: 'margin-top:8px' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtSave', onclick: () => saveBought(e, p), text: '저장' }), h('button', { class: 'btn small', type: 'button', onclick: () => { ui.buyStep = ''; render(); }, text: '취소' })));
+      return box;
+    }
+    box.append(h('p', { text: josa(e.label, '을', '를') + ' ' + (e.store || '판매처') + '에서 샀나요?' }),
+      h('div', { class: 'bar' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtYes', onclick: () => { ui.buyStep = e.id; ui.buySize = ''; render(); const el = $('#bsz-0') || $('#boughtSave'); if (el) el.focus(); }, text: '샀어요' }),
+        h('button', { class: 'btn small', type: 'button', id: 'boughtNo', onclick: () => { e.bought = 'no'; e.boughtAt = today(); save(); render(); toast('알겠어요. 기록해 둘게요.'); }, text: '안 사요' }),
+        h('button', { class: 'btn small', type: 'button', id: 'boughtLater', onclick: () => { e.snooze = addDays(today(), 1); save(); render(); toast('내일 다시 물어볼게요.'); }, text: '아직이요' })));
+    return box;
+  }
+  function saveBought(e, p) {
+    e.bought = 'yes'; e.boughtAt = today(); e.boughtSize = ui.buySize || '';
+    if (p && !p.user && ui.buyOwn !== false) { const it = PK.toOwned(p, PICKS, e.boughtSize, today()); it.id = newId('o'); state.items.push(it); e.ownedId = it.id; }
+    ui.buyStep = ''; ui.buySize = ''; save(); render();
+    toast('기록했어요. ' + md(addDays(today(), W.FOLLOW_DAYS)) + '쯤 사이즈가 잘 맞았는지 한 번 물어볼게요.' + (e.ownedId ? ' 내 옷장에도 넣었어요.' : ''));
+  }
+  /** 산 지 2주: 사이즈·만족. '잘 맞아요'면 그 사이즈 치수를 '잘 맞는 티'로 쓰고(되돌릴 수 있음), 작거나 크면 가슴을 2cm 옮길지 묻는다. */
+  function followBox(due) {
+    const box = h('form', { class: 'notice', id: 'pickFollow', onsubmit: (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(box), size = fd.get('pfSize'), feel = fd.get('pfFeel');
+      if (!size || !feel) { box.querySelector('.warnnote').hidden = false; return; }
+      due.follow = { at: today(), size, feel }; save(); render();
+      const p = PICKS.products.find((x) => x.id === due.productId), s = p && due.boughtSize ? p.sizes.find((x) => x.label === due.boughtSize) || null : null;
+      const meas = (o) => ['chest', 'length', 'shoulder'].filter((k) => o[k] != null).map((k) => ({ chest: '가슴 ', length: '총장 ', shoulder: '어깨 ' })[k] + o[k]).join(' · ') + 'cm';
+      if (size === 'fit' && s && s.chest != null) {
+        const prev = Object.assign({}, state.prefs.ref), ref = {}; for (const k of ['chest', 'length', 'shoulder']) if (s[k] != null) ref[k] = s[k];
+        state.prefs.ref = ref; due.learned = 'ref'; save(); render();
+        toast('고마워요. 다음 추천부터 이 치수(' + meas(ref) + ')를 잘 맞는 티로 써요.', { label: '되돌리기', fn: () => { state.prefs.ref = prev; due.learned = ''; save(); render(); } });
+      } else if ((size === 'small' || size === 'big') && s && s.chest != null) {
+        const ref = {}; for (const k of ['chest', 'length', 'shoulder']) if (s[k] != null) ref[k] = s[k]; ref.chest = Math.round((s.chest + (size === 'small' ? 2 : -2)) * 2) / 2;   // [제안값] 2cm
+        toast('기록했어요. 다음 추천에서는 가슴을 ' + (size === 'small' ? '2cm 크게' : '2cm 작게') + ' 잡을까요?', { label: '그렇게 하기', fn: () => { state.prefs.ref = ref; due.learned = size === 'small' ? 'up' : 'down'; save(); render(); toast('다음 추천부터 ' + meas(ref) + '에 가까운 사이즈를 골라요.'); } });
+      } else toast('고마워요. 기록했어요.');
+    } },
+      h('h2', { text: due.label + (due.boughtSize ? '(' + due.boughtSize + ')' : '') + ', ' + daysAgo(due.boughtAt) + '일 전에 샀어요' }), h('p', { class: 'note', text: '사이즈와 만족을 한 번만 알려 주세요. 다음 추천의 사이즈를 고르는 데 써요.' }),
+      h('fieldset', { class: 'q' }, h('legend', { text: '사이즈' }), h('div', { class: 'choices' }, [['fit', '잘 맞아요'], ['small', '작아요'], ['big', '커요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfSize', value: v }), h('span', { text: t }))))),
+      h('fieldset', { class: 'q' }, h('legend', { text: '만족' }), h('div', { class: 'choices' }, [['good', '잘 샀어요'], ['ok', '그저 그래요'], ['regret', '후회돼요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfFeel', value: v }), h('span', { text: t }))))),
+      h('p', { class: 'warnnote', hidden: true, text: '사이즈와 만족을 하나씩 골라 주세요.' }), h('button', { class: 'btn small primary', type: 'submit', id: 'pickFollowSave', text: '저장' }));
+    return box;
+  }
+  function verdictRow(r) {
     const e = logFor(r.product.id), cur = e ? e.verdict : '';
     const set = (v) => () => {
-      const x = logEntry(r); x.verdict = x.verdict === v ? '' : v; x.altId = x.verdict === 'alt' && res.alts[0] ? res.alts[0].r.product.id : ''; state.prefs.seen = true; save(); render();
-      if (x.verdict === 'accept') toast('좋아요. 판매처에서 사고 나서 "샀어요"를 누르면, 2주 뒤에 잘 맞았는지 한 번 물어볼게요.');
+      const x = logEntry(r); x.verdict = x.verdict === v ? '' : v; if (x.verdict !== 'reject') x.reason = ''; x.altId = ''; state.prefs.seen = true; save(); render();
+      if (x.verdict === 'accept') toast('좋아요. 사고 나서 이 화면으로 돌아오면 "샀어요"를 한 번만 눌러 주세요.');
     };
-    return h('div', { class: 'vrow', id: 'pickVerdict', role: 'group', 'aria-label': '이 추천 어때요' }, h('span', { class: 'note', text: '이 추천 어때요?' }),
-      [['accept', '이걸로 할래요'], ['alt', '대안이 나아요'], ['reject', '아니에요']].map(([v, t]) => h('button', { class: 'chip', type: 'button', id: 'pv-' + v, 'aria-pressed': cur === v ? 'true' : 'false', onclick: keepFocus('pv-' + v, set(v)), text: t })));
+    const row = h('div', { class: 'vrow', id: 'pickVerdict', role: 'group', 'aria-label': '이 추천 어때요' }, h('span', { class: 'note', text: '이 추천 어때요?' }),
+      [['accept', '이걸로 할래요'], ['reject', '아니에요']].map(([v, t]) => h('button', { class: 'chip', type: 'button', id: 'pv-' + v, 'aria-pressed': cur === v ? 'true' : 'false', onclick: keepFocus('pv-' + v, set(v)), text: t })));
+    if (cur === 'reject') row.append(h('div', { class: 'rsn', role: 'group', 'aria-label': '아닌 이유' }, h('span', { class: 'note', text: '왜요?' }), REASONS.map(([k, t]) => { const b = chip(t, e.reason === k, keepFocus('pr-' + k, () => { e.reason = e.reason === k ? '' : k; save(); render(); })); b.id = 'pr-' + k; return b; })));
+    if (cur === 'alt' && e.altId) { const a = PICKS.products.find((x) => x.id === e.altId); row.append(h('span', { class: 'note', text: '대안(' + (a ? pname(a) : e.altId) + ')이 더 낫다고 기록했어요.' })); }
+    return row;
+  }
+  function altBetter(pickRow, r) {
+    const x = logEntry(pickRow); x.verdict = 'alt'; x.altId = r.product.id; x.reason = ''; state.prefs.seen = true; save(); render();
+    toast('기록했어요. 이 상품을 사면 판매처에서 돌아와 "샀어요"를 눌러 주세요.');
   }
   function evidence(r) {
-    const p = r.product;
-    return h('details', { class: 'ev' }, h('summary', { text: '근거와 확인일 보기' }),
-      h('ul', null, p.evidence.map((e) => h('li', null, (e.seen ? md(e.seen) + ' 확인 — ' : '') + e.what + ' ', h('a', { href: e.url, target: '_blank', rel: 'noopener noreferrer', text: '페이지' }))),
-        h('li', { text: '소재: ' + (p.fabric.comp || '표기 없음') + ' (' + (PK.SRC[p.fabric.compSrc] || '') + ')' + (p.fabric.notes.length ? ' · ' + p.fabric.notes.join(' · ') : '') }),
-        p.origin ? h('li', { text: '제조국: ' + p.origin }) : null,
-        p.sizes.length ? h('li', { text: '치수(' + (PK.SRC[p.sizeSrc] || '') + '): ' + p.sizes.map((s) => s.label + (s.alias && s.alias !== s.label ? '(' + s.alias + ')' : '') + ' ' + [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? '총장 ' + s.length : '', s.shoulder != null ? '어깨 ' + s.shoulder : ''].filter(Boolean).join('/')).join(', ') + (p.sizeNote ? ' — ' + p.sizeNote : '') }) : h('li', { text: p.sizeNote || '치수표 없음' }),
+    const p = r.product, q = r.quality;
+    return h('details', { class: 'ev' }, h('summary', { text: p.user ? '직접 넣은 값 보기' : '근거와 확인일 보기' }),
+      h('ul', null, p.evidence.map((e) => h('li', null, (e.seen ? md(e.seen) + ' 확인 — ' : '') + e.what + ' ', h('a', { href: e.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': hostName(e.url) + ' 페이지 열기(새 창)', text: hostName(e.url) + ' 페이지' }))),
+        h('li', { text: '소재: ' + (p.fabric.comp || '표기 없음') + (p.fabric.comp ? ' (' + (PK.SRC[p.fabric.compSrc] || '') + ')' : '') + (p.fabric.notes.length ? ' · ' + p.fabric.notes.join(' · ') : '') }),
+        h('li', { text: '제조국: ' + (p.origin || '확인 못 함') }),
+        p.sizes.length ? h('li', { text: '치수(' + (PK.SRC[p.sizeSrc] || '') + '): ' + p.sizes.map((s) => PK.sizeName(p, s.label) + ' ' + [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? '총장 ' + s.length : '', s.shoulder != null ? '어깨 ' + s.shoulder : ''].filter(Boolean).join('/')).join(', ') + (p.sizeNote ? ' — ' + p.sizeNote : '') }) : h('li', { text: p.sizeNote || '치수표 없음' }),
         p.stock ? h('li', { text: '재고(' + md(p.stock.checkedAt) + '): ' + (p.stock.inStock === false ? '상품 전체 품절' : p.stock.sizes ? p.stock.sizes.join(', ') + ' 있음' : p.stock.inStock ? '있음(사이즈별은 판매처에서)' : '확인 못 함') + (p.offered ? ' · 판매 사이즈 ' + p.offered.join('·') : '') }) : null,
-        p.shipping ? h('li', null, '배송: ' + p.shipping.note + ' ', p.shipping.url ? h('a', { href: p.shipping.url, target: '_blank', rel: 'noopener noreferrer', text: '배송 안내' }) : null) : null,
-        h('li', { text: '품질 점수 ' + r.quality.score + '/10 — 기본 3점에 ' + (r.quality.parts.length ? r.quality.parts.join(', ') : '더한 것 없음') + (r.quality.unknown.length ? ' (밝히지 않음: ' + r.quality.unknown.join(', ') + ')' : '') + '. 출처가 판매처 설명이면 0.3배, 상품명에만 있으면 0.5배로 셉니다' }),
+        p.shipping ? h('li', null, '배송: ' + (p.shipping.note || won(p.shipping.fee)) + ' ', p.shipping.url ? h('a', { href: p.shipping.url, target: '_blank', rel: 'noopener noreferrer', text: '배송 안내' }) : null) : null,
+        h('li', { text: '공개된 품질 근거: ' + (q.parts.length ? q.parts.join(', ') : '밝힌 것이 거의 없음') + (q.unknown.length ? ' · 밝히지 않음: ' + q.unknown.join(', ') : '') + '. 판매처 설명은 자동으로 만든 문장일 수 있어 약하게, 상품명에만 있는 말은 절반만 셉니다.' }),
+        p.colorName ? h('li', { text: '판매처 색 이름: ' + p.colorName }) : null,
         h('li', { text: '스타일 분류(어울 편집): ' + (p.styles.map((s) => PK.STYLES[s]).join('·') || '없음') })));
   }
   function pickCard(r, res) {
-    const p = r.product, bn = PK.brandName(PICKS, p.brand);
+    const p = r.product;
     const warn = r.cautions.filter((t) => !/^확인 못 한 것/.test(t));
-    return h('article', { class: 'pick', id: 'pickTop', 'data-id': p.id },
+    const conds = r.checks.filter((c) => c.group === 'cond'), pris = r.checks.filter((c) => c.group === 'pri');
+    const ask = askEntry();
+    return h('article', { class: 'pick', id: 'pickTop', 'data-id': p.id, 'aria-labelledby': 'pickTitle' },
       h('p', { class: 'eyebrow', id: 'pickRank', text: res.rank.text }),
-      h('div', { class: 'pickgrid' }, h('div', null, teeSvg(p), h('p', { class: 'tcap', text: '공개 정보로 그린 모양 · 상품 사진은 저작권 때문에 싣지 않아요' })),
-        h('div', null, h('h3', { text: bn + ' ' + p.name }), h('p', { class: 'meta', text: [p.colorName, PK.SLEEVES[p.sleeve], p.fit ? PK.FIT[p.fit] : ''].filter(Boolean).join(' · ') }),
+      h('div', { class: 'pickgrid' }, h('div', null, teeSvg(p), h('p', { class: 'tcap', text: '사진 아님 · 공개 정보로 그림' })),
+        h('div', null, h('h3', { id: 'pickTitle', text: pname(p) }), h('p', { class: 'meta', text: [(W.FAM[p.family] || [''])[0], PK.SLEEVES[p.sleeve], p.fit ? PK.FIT[p.fit] : ''].filter(Boolean).join(' · ') }),
           h('p', { class: 'pp' }, priceView(r)),
-          h('p', { class: 'src' }, p.store.name + ' · ' + (p.store.type === 'official' ? '공식' : '판매처') + ' · ' + md(p.checkedAt) + ' 확인', r.stale ? h('span', { class: 'badge warn', style: 'margin-left:6px', text: '다시 확인 필요' }) : null))),
+          h('p', { class: 'src' }, srcText(p), r.stale ? h('span', { class: 'badge warn', style: 'margin-left:6px', text: '다시 확인 필요' }) : null))),
       h('p', { class: 'concl', id: 'pickWhy', text: r.conclusion }),
-      checkList(r),
-      h('p', { class: 'note', id: 'pickSize', style: 'margin-top:8px' }, h('b', { text: '사이즈: ' }), r.fit.meas ? r.fit.meas + ' · ' : '', r.fit.text),
+      res.gapWhy ? h('p', { class: 'gapwhy', id: 'pickGap', text: res.gapWhy }) : null,
+      res.favNote ? h('p', { class: 'favnote', id: 'pickFav', text: res.favNote }) : null,
+      conds.length ? [h('p', { class: 'ckh', text: '꼭 지킬 것' + (res.rank.allOk == null ? '' : res.rank.allOk ? ' (모두 확인된 상품 ' + res.rank.allOk + '개)' : ' (모두 확인된 상품은 아직 없어요)') }), checkList(conds, 'pickConds')] : null,
+      pris.length ? [h('p', { class: 'ckh', text: '내 기준' }), checkList(pris, 'pickChecks')] : null,
+      sizeBox(r),
       warn.length ? h('ul', { class: 'why warn', id: 'pickWarn' }, warn.slice(0, 3).map((t) => h('li', { text: t }))) : null,
       closetLine(r),
-      h('div', { class: 'bar', style: 'margin:12px 0 0' }, storeLink(r, (p.store.type === 'official' ? '공식몰' : p.store.name.split(' ')[0]) + '에서 보기 ↗', 'btn primary'), h('button', { class: 'btn', type: 'button', id: 'pickCand', onclick: () => pickToCand(r), text: '살까 말까에 담기' })),
-      verdictRow(r, res), evidence(r));
+      h('div', { class: 'bar', style: 'margin:12px 0 0' }, storeLink(r, p.user ? '보던 상품 다시 열기 ↗' : p.currency !== 'KRW' ? '해외 공식몰에서 보기 ↗' : (p.store.type === 'official' ? '공식몰' : p.store.name.split(' ')[0]) + '에서 보기 ↗', 'btn primary'),
+        h('button', { class: 'btn', type: 'button', id: 'pickCand', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: () => pickToCand(r), text: '살까 말까에 담기' })),
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, h('button', { class: 'btn small', type: 'button', id: 'pickShare', onclick: () => sharePick(r), text: '친구에게 물어보기' }), h('span', { class: 'note', text: '내 옷장 정보는 넣지 않아요' })),
+      ask && ask.productId === p.id && !ui.askTop ? askBox(ask) : null,
+      verdictRow(r), evidence(r));
   }
-  function altCard(a) {
-    const r = a.r, p = r.product;
+  function altCard(a, i, pickRow) {
+    const r = a.r, p = r.product, ask = askEntry();
+    const e = logFor(pickRow.product.id), chosen = e && e.verdict === 'alt' && e.altId === p.id;
     return h('article', { class: 'alt', 'data-id': p.id }, h('p', { class: 'eyebrow', text: a.label + ' · ' + a.delta }),
-      h('h3', { text: PK.brandName(PICKS, p.brand) + ' ' + p.name }), h('p', { class: 'pp' }, priceView(r)),
-      h('p', { class: 'src', text: p.store.name + ' · ' + md(p.checkedAt) + ' 확인' }), h('p', { class: 'note', text: a.why }),
-      owned().length ? closetLine(r) : null,
-      h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(r), h('button', { class: 'btn small', type: 'button', onclick: () => pickToCand(r), text: '살까 말까에 담기' })));
+      h('h3', { text: pname(p) }), h('p', { class: 'pp' }, priceView(r)),
+      h('p', { class: 'src', text: srcText(p) }), h('p', { class: 'note', text: a.why }),
+      closetLine(r),
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(r),
+        h('button', { class: 'chip', type: 'button', id: 'alt-better-' + i, 'aria-pressed': chosen ? 'true' : 'false', onclick: keepFocus('alt-better-' + i, () => altBetter(pickRow, r)), text: '이게 더 나아요' }),
+        h('button', { class: 'btn small', type: 'button', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: () => pickToCand(r), text: '살까 말까에 담기' })),
+      ask && ask.productId === p.id && !ui.askTop ? askBox(ask) : null);
   }
   function rankList(res) {
     const li = (r, i) => h('li', { class: r.out ? 'out' : '' }, h('span', { class: 'n', text: r.out ? '—' : String(i + 1) }),
-      h('span', { class: 'rk' }, h('b', { text: PK.brandName(PICKS, r.product.brand) + ' ' + r.product.name }), h('span', { class: 'note', text: r.total + '점 · 한 장 약 ' + won(r.unit.krw) + (r.stale ? ' · 다시 확인 필요' : '') }), r.out ? h('span', { class: 'note warnc', text: r.out }) : null));
+      h('span', { class: 'rk' }, h('b', { text: pname(r.product) + (r.product.user ? ' (직접 넣은 상품)' : '') }),
+        h('span', { class: 'note', text: '기준 점수 ' + Math.round(r.total) + ' · ' + (r.product.packCount > 1 || r.product.currency !== 'KRW' ? '한 장 약 ' : '') + won(r.unit.krw) + (r.stale ? ' · 다시 확인 필요' : '') + (r.gateNote ? ' · ' + r.gateNote : '') }),
+        r.out ? h('span', { class: 'note warnc', text: r.out }) : null));
     const out = res.ranked.filter((r) => r.out);
-    return h('details', { class: 'ev', id: 'pickAll' }, h('summary', { text: '전체 순위 보기 (조건에 맞는 ' + res.eligible.length + '개' + (out.length ? ', 조건으로 뺀 ' + out.length + '개' : '') + (res.excluded.length ? ', 소매로 거른 ' + res.excluded.length + '개' : '') + ')' }),
-      h('ol', { class: 'rlist' }, res.eligible.map(li)), out.length ? [h('p', { class: 'fl2', style: 'margin-top:10px', text: '조건으로 뺀 것' }), h('ul', { class: 'rlist' }, out.map((r) => li(r, 0)))] : null,
-      h('p', { class: 'note', style: 'margin-top:8px', text: '기준 점수는 고른 무게로 더한 0~100 점수이고 확률이 아니에요. 품질은 공개된 정보로만 매겨서 정보를 많이 밝힌 상품이 유리해요. 가격·재고는 확인한 날의 값이에요.' }));
+    return h('details', { class: 'ev', id: 'pickAll' }, h('summary', { text: '전체 순위 보기 (' + (res.conds.length ? '조건을 어기지 않은 ' : '') + res.eligibleAll.length + '개' + (res.userRank ? '(직접 넣은 상품 포함)' : '') + (out.length ? ', 뺀 ' + out.length + '개' : '') + (res.excluded.length ? ', 소매로 거른 ' + res.excluded.length + '개' : '') + ')' }),
+      h('ol', { class: 'rlist' }, res.eligibleAll.map(li)), out.length ? [h('p', { class: 'fl2', style: 'margin-top:10px', text: '뺀 것(이유)' }), h('ul', { class: 'rlist' }, out.map((r) => li(r, 0)))] : null,
+      h('p', { class: 'note', style: 'margin-top:8px', text: '기준 점수는 고른 무게로 더한 0~100 점수예요. 품질은 공개된 정보로만 매겨서 정보를 많이 밝힌 상품이 유리해요.' }));
   }
   function pickHead(res) {
-    const pf = state.prefs, line = PICKS.lines[pf.line], n = PICKS.products.filter((p) => p.line === pf.line).length;
-    return h('div', { class: 'phead' }, h('p', { class: 'ptitle' }, h('b', { text: (line ? line.label : '') + ' ' + n + '개' }), ' 중에서 골라요 · ' + md(res.about.checkedAt) + ' 확인 · 다른 옷은 준비 중'),
+    const pf = state.prefs, line = PICKS.lines[pf.line], n = res.about.inLine, inPool = res.about.count;
+    return h('div', { class: 'phead' }, h('p', { class: 'ptitle' }, h('b', { text: (line ? line.label : '') + ' ' + n + '개' }), (pf.sleeve !== 'any' && inPool !== n ? ' 중 ' + PK.SLEEVES[pf.sleeve] + ' ' + inPool + '개' : '') + ' · ' + md(res.about.checkedAt) + ' 공식 판매처에서 확인 · 다른 옷은 준비 중'),
       segmented('pk-sleeve', '소매', [['short', '반팔'], ['long', '긴팔'], ['any', '상관없음']], pf.sleeve, (v) => { pf.sleeve = v; save(); render(); }));
   }
   function condSummary() {
     const pf = state.prefs, cs = PK.activeConds(pickQuery());
-    const parts = [PK.USES[pf.use] + (cs.length ? '(' + cs.map((k) => PK.CONDS[k].label).join('·') + ')' : ''), pf.pri.length ? pf.pri.map((k) => SHORT[k]).join(' › ') : '기준 같은 무게', pf.brands.length ? '브랜드 ' + pf.brands.length + '곳' : '', pf.size || (Object.keys(pf.ref).length ? '실측 있음' : '')].filter(Boolean);
-    return h('div', { class: 'csum', id: 'pickSum' }, h('span', { text: parts.join(' · ') }), h('button', { class: 'btn small', type: 'button', id: 'pickEdit', onclick: keepFocus('pk-use-any', () => { ui.pickForm = true; render(); }), text: '조건 바꾸기' }));
+    const parts = [(pf.use === 'any' ? '용도 상관없음' : PK.USE_LONG[pf.use]) + (cs.length ? '(' + cs.map((k) => PK.CONDS[k].label).join('·') + ')' : ''), pf.pri.length ? pf.pri.map((k) => SHORT[k]).join(' › ') : '기준 같은 무게', pf.budget ? '예산 ' + won(pf.budget) + ' 이하' : '', pf.brands.length ? '브랜드 ' + pf.brands.length + '곳' : '', pf.size || (Object.keys(pf.ref).length ? '실측 있음' : '')].filter(Boolean);
+    return h('div', { class: 'csum', id: 'pickSum' }, h('span', { text: parts.join(' · ') }), h('button', { class: 'btn small', type: 'button', id: 'pickEdit', onclick: keepFocus('pk-use-' + pf.use, () => { ui.pickForm = true; render(); }), text: '조건 바꾸기' }));
+  }
+  const TASTE_HINT = { brand: '좋아하는 브랜드를 골라 주세요. 고르기 전에는 브랜드를 같은 무게로 봐요.', style: '좋아하는 스타일을 골라 주세요. 흰 티에서는 동점일 때만 써요.', fit: '평소 사이즈나 잘 맞는 티의 실측을 넣어 주세요. 그래야 핏을 볼 수 있어요.' };
+  function tasteNeed(k) { const pf = state.prefs; return (k === 'brand' && !pf.brands.length) || (k === 'style' && !pf.styles.length) || (k === 'fit' && !pf.size && !Object.keys(pf.ref).length); }
+  function tasteSum() { const pf = state.prefs; return [pf.brands.length ? '브랜드 ' + pf.brands.length + '곳' : '브랜드 안 고름', pf.styles.length ? PK.STYLES[pf.styles[0]] + (pf.styles.length > 1 ? ' 외 ' + (pf.styles.length - 1) : '') : '스타일 안 고름', pf.size || '사이즈 모름', Object.keys(pf.ref).length ? '실측 ' + Object.keys(pf.ref).length + '곳' : '실측 없음'].join(' · '); }
+  /** 실측을 입력하는 동안에는 화면을 다시 그리지 않고 아래 바만 고친다(다시 그리면 바로 누른 '딱 하나 보기'를 놓친다). */
+  function refreshBar() {
+    const res = PK.recommend(state.items, PICKS, pickQuery()), t = $('#pickBar .pbt'), s = $('#pickTasteSum');
+    if (t) { t.textContent = ''; if (res.pick) t.append('1위 ', h('b', { text: PK.brandName(PICKS, res.pick.product.brand) || pname(res.pick.product) }), ' · ' + priceShort(res.pick)); else t.append('조건에 맞는 상품이 없어요'); }
+    if (s) s.textContent = tasteSum();
   }
   function tasteBlock() {
     const pf = state.prefs;
     const toggle = (k, v) => () => { const a = pf[k], i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); save(); render(); };
     const pc = (id, label, on, fn) => { const b = chip(label, on, keepFocus(id, fn)); b.id = id; return b; };
-    const meas = (k, label) => { const v = pf.ref[k]; return h('label', null, label, h('input', { type: 'number', id: 'pk-ref-' + k, min: '20', max: '150', step: '0.5', inputmode: 'decimal', value: v == null ? '' : String(v), 'aria-label': '잘 맞는 티의 ' + label + ' (cm)',
-      onchange: (e) => keepFocus(document.activeElement === e.target ? e.target.id : '', () => { const n = Number(e.target.value); if (e.target.value === '' || !isFinite(n)) delete pf.ref[k]; else if (n >= 20 && n <= 150) pf.ref[k] = Math.round(n * 2) / 2; save(); render(); })() }), 'cm'); };
+    let tm = 0;
+    const meas = (k, label) => { const v = pf.ref[k]; return h('label', null, label, h('input', { type: 'number', id: 'pk-ref-' + k, min: '20', max: '150', step: '0.5', inputmode: 'decimal', enterkeyhint: 'done', value: v == null ? '' : String(v), 'aria-label': '잘 맞는 티의 ' + label + ' (cm)',
+      oninput: (e) => { const n = Number(e.target.value); if (e.target.value === '' || !isFinite(n)) delete pf.ref[k]; else if (n >= 20 && n <= 150) pf.ref[k] = Math.round(n * 2) / 2; save(); clearTimeout(tm); tm = setTimeout(refreshBar, 250); },
+      onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); const b = $('#pickGo'); if (b) b.click(); } } }), 'cm'); };
     const sizeSel = h('select', { id: 'pk-size', 'aria-label': '평소 상의 사이즈', onchange: (e) => keepFocus('pk-size', () => { pf.size = e.target.value; save(); render(); })() },
       h('option', { value: '', text: '평소 사이즈 모름' }), ['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((s) => h('option', { value: s, text: s + ({ S: ' (95)', M: ' (100)', L: ' (105)', XL: ' (110)', XXL: ' (115)' }[s] || '') })));
     sizeSel.value = pf.size;
-    const sum = [pf.brands.length ? '브랜드 ' + pf.brands.length + '곳' : '브랜드 안 고름', pf.styles.length ? PK.STYLES[pf.styles[0]] + (pf.styles.length > 1 ? ' 외 ' + (pf.styles.length - 1) : '') : '스타일 안 고름', pf.size || '사이즈 모름', Object.keys(pf.ref).length ? '실측 ' + Object.keys(pf.ref).length + '곳' : '실측 없음'].join(' · ');
     const line = PICKS.lines[pf.line];
-    const d = h('details', { class: 'taste', id: 'pickTaste' }, h('summary', null, h('span', { class: 'fl2', text: '내 취향·사이즈' }), h('span', { class: 'note', text: sum + ' — 바꾸기' })),
+    const hintK = ['brand', 'style', 'fit'].find((k) => pf.pri.indexOf(k) >= 0 && tasteNeed(k));
+    const myTees = owned().filter((i) => i.cat === 'top' && i.measures && i.measures.chest != null).slice(0, 4);
+    const d = h('details', { class: 'taste', id: 'pickTaste' }, h('summary', null, h('span', { class: 'fl2', text: '내 취향·사이즈' }), h('span', { class: 'note', id: 'pickTasteSum', text: tasteSum() }), h('span', { class: 'chg', 'aria-hidden': 'true', text: '바꾸기' })),
+      hintK ? h('p', { class: 'hint', id: 'pickHint', text: TASTE_HINT[hintK] }) : null,
       h('p', { class: 'fl', text: '좋아하는 브랜드' }), h('div', { class: 'chips' }, Object.keys(PICKS.brands).map((k) => pc('pk-brand-' + k, PICKS.brands[k].ko || PICKS.brands[k].name, pf.brands.indexOf(k) >= 0, toggle('brands', k)))),
       h('p', { class: 'fl', text: '스타일' }), h('div', { class: 'chips' }, Object.keys(PK.STYLES).map((k) => pc('pk-style-' + k, PK.STYLES[k], pf.styles.indexOf(k) >= 0, toggle('styles', k)))),
       line && line.styleNote ? h('p', { class: 'note', style: 'margin-top:4px', text: line.styleNote + '.' }) : null,
-      h('p', { class: 'fl', text: '사이즈' }), h('div', { class: 'meas' }, sizeSel, h('span', { class: 'note', text: '잘 맞는 티의 실측(브랜드마다 다른 사이즈를 맞춰 드려요):' }), meas('chest', '가슴단면'), meas('length', '총장'), meas('shoulder', '어깨너비')));
-    if (ui.tasteOpen) d.open = true;
+      h('p', { class: 'fl', text: '사이즈' }), h('div', { class: 'meas' }, sizeSel, h('span', { class: 'note', text: '잘 맞는 티의 실측(브랜드마다 다른 사이즈를 맞춰 드려요):' }), meas('chest', '가슴단면'), meas('length', '총장'), meas('shoulder', '어깨너비')),
+      myTees.length ? h('div', { class: 'bar', style: 'margin:8px 0 0' }, h('span', { class: 'note', text: '내 옷장에서 잘 맞는 티 고르기:' }), myTees.map((it, i) => h('button', { class: 'btn small', type: 'button', id: 'pk-myref-' + i, onclick: keepFocus('pk-myref-' + i, () => { const m = {}; for (const k of ['chest', 'length', 'shoulder']) if (it.measures[k] != null) m[k] = it.measures[k]; pf.ref = m; save(); render(); }), text: it.name + (it.size ? ' (' + it.size + ')' : '') }))) : null);
+    if (ui.tasteOpen || hintK) d.open = true;
     d.addEventListener('toggle', () => { ui.tasteOpen = d.open; });
     return d;
   }
   function pickForm(res) {
     const pf = state.prefs;
     const cs = PK.activeConds(pickQuery());
-    const condBox = pf.use === 'any' ? null : h('div', { class: 'conds' }, h('span', { class: 'note', text: '꼭 지킬 것:' }), Object.keys(PK.CONDS).filter((k) => PK.CONDS[k].use === pf.use).map((k) => {
+    const myOuter = owned().filter((i) => (i.kind === 'cardigan' || i.cat === 'outer' || /카디건/.test(i.name)) && i.measures && i.measures.length).slice(0, 3);
+    const condBox = pf.use === 'any' ? null : h('div', { class: 'conds' }, h('span', { class: 'note', text: (pf.use === 'layer' ? '카디건·셔츠 안에 받쳐 입을 때' : '한 장으로 입을 때') + ' 꼭 지킬 것:' }), Object.keys(PK.CONDS).filter((k) => PK.CONDS[k].use === pf.use && (!PK.CONDS[k].needs || pf.outerLen)).map((k) => {
       const on = cs.indexOf(k) >= 0, b = chip(PK.CONDS[k].label, on, keepFocus('pk-cond-' + k, () => { pf.conds = on ? cs.filter((x) => x !== k) : cs.concat([k]); save(); render(); })); b.id = 'pk-cond-' + k; return b;
-    }), h('span', { class: 'note', text: '어긴 상품은 빼고, 모르는 건 ?로 보여 줘요' }));
-    const slots = h('div', { class: 'slots', id: 'pk-slots', 'aria-label': '고른 순위' });
+    }), h('span', { class: 'note', text: '어긴 게 확인된 상품은 빼고, 모르는 건 ?로 보여 줘요' }),
+      pf.use === 'layer' ? h('label', { class: 'note', style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px' }, '겉에 입을 카디건 총장(선택)',
+        h('input', { type: 'number', id: 'pk-outer', min: '40', max: '100', step: '0.5', inputmode: 'decimal', style: 'width:84px', value: pf.outerLen == null ? '' : String(pf.outerLen), 'aria-label': '겉에 입을 카디건의 총장 (cm)',
+          onchange: (e) => keepFocus('pk-outer', () => { const n = Number(e.target.value); pf.outerLen = e.target.value === '' || !isFinite(n) ? null : n >= 40 && n <= 100 ? Math.round(n * 2) / 2 : pf.outerLen; if (pf.outerLen && Array.isArray(pf.conds) && pf.conds.indexOf('notLonger') < 0) pf.conds = pf.conds.concat(['notLonger']); save(); render(); })() }), 'cm — 넣으면 티 밑단이 카디건 아래로 보이는지 봐 드려요',
+        myOuter.map((it) => h('button', { class: 'btn small', type: 'button', onclick: keepFocus('pk-outer', () => { pf.outerLen = it.measures.length; if (Array.isArray(pf.conds) && pf.conds.indexOf('notLonger') < 0) pf.conds = pf.conds.concat(['notLonger']); save(); render(); }), text: '내 옷장: ' + it.name + ' ' + it.measures.length + 'cm' }))) : null);
+    const slots = h('div', { class: 'slots', id: 'pk-slots', role: 'group', 'aria-label': '고른 순위' });
     for (let i = 0; i < Math.max(3, pf.pri.length); i++) {
       const k = pf.pri[i];
-      slots.append(k ? h('button', { type: 'button', class: 'slot on', id: 'pk-slot-' + i, 'aria-label': (i + 1) + '순위 ' + SHORT[k] + ', 누르면 뺍니다', onclick: keepFocus('pk-slots', () => { pf.pri.splice(i, 1); save(); render(); }) }, h('span', { class: 'ord', 'aria-hidden': 'true', text: String(i + 1) }), PK.CRITERIA[k], h('span', { class: 'x', 'aria-hidden': 'true', text: '✕' }))
+      slots.append(k ? h('button', { type: 'button', class: 'slot on', id: 'pk-slot-' + i, 'aria-label': (i + 1) + '순위 ' + SHORT[k] + ', 누르면 뺍니다', onclick: () => { pf.pri.splice(i, 1); save(); render(); const nx = $('#pk-slot-' + i) || $('#pk-slot-' + (i - 1)) || $('#pk-pri-' + k); if (nx) nx.focus(); } },
+        h('span', { class: 'ord', 'aria-hidden': 'true', text: String(i + 1) }), PK.CRITERIA[k], h('span', { class: 'x', 'aria-hidden': 'true', text: '✕' }))
         : h('span', { class: 'slot', text: (i + 1) + '순위 —' }));
     }
-    const chips = h('div', { class: 'chips' }, Object.keys(PK.CRITERIA).map((k) => {
-      const i = pf.pri.indexOf(k), b = chip('', i >= 0, keepFocus('pk-pri-' + k, () => { if (i >= 0) pf.pri.splice(i, 1); else pf.pri.push(k); save(); render(); }));
-      b.id = 'pk-pri-' + k; b.classList.add('nock');
-      if (i >= 0) b.append(h('span', { class: 'ord', 'aria-hidden': 'true', text: String(i + 1) })); else b.append('+ ');
-      b.append(PK.CRITERIA[k]); b.setAttribute('aria-label', PK.CRITERIA[k] + (i >= 0 ? ', ' + (i + 1) + '순위' : ''));
-      return b;
-    }));
+    const left = Object.keys(PK.CRITERIA).filter((k) => pf.pri.indexOf(k) < 0);
+    const add = (k) => () => {
+      pf.pri.push(k); const need = tasteNeed(k); if (need) ui.tasteOpen = true; save(); render();
+      const nx = need ? (k === 'brand' ? $('#pk-brand-' + Object.keys(PICKS.brands)[0]) : k === 'style' ? $('#pk-style-' + Object.keys(PK.STYLES)[0]) : $('#pk-size')) : $('#pk-pri-' + (left[left.indexOf(k) + 1] || left[left.indexOf(k) - 1])) || $('#pk-slots');
+      if (nx) nx.focus();
+    };
+    const chips = h('div', { class: 'chips' }, left.map((k) => { const b = chip('', false, add(k)); b.id = 'pk-pri-' + k; b.classList.add('nock'); b.append('+ ', PK.CRITERIA[k]); b.setAttribute('aria-label', PK.CRITERIA[k] + ', ' + (pf.pri.length + 1) + '순위로 넣기'); return b; }));
     const p = pf.pri.map((k) => SHORT[k]);
-    const help = !p.length ? '누른 순서대로 중요하게 봐요. 고르지 않은 기준은 조금만 반영돼요.' : josa(p[0], '을', '를') + ' 가장' + (p.length > 1 ? ', 그다음 ' + p.slice(1).join(', ') + ' 순으로' : '') + ' 봐요. 나머지는 조금만 반영돼요.';
-    return h('section', { class: 'panel pform', id: 'pickForm' },
+    const help = !p.length ? '누른 순서대로 중요하게 봐요. 1순위가 보통 이상인 상품 안에서 먼저 골라요.' : josa(p[0], '을', '를') + ' 가장' + (p.length > 1 ? ', 그다음 ' + p.slice(1).join(', ') + ' 순으로' : '') + ' 봐요. 나머지는 조금만 반영돼요.';
+    return h('section', { class: 'panel pform', id: 'pickForm', 'aria-label': '추천 조건' },
       h('p', { class: 'fl', text: '어디에 입나요?' }),
-      segmented('pk-use', '어디에 입나요', [['any', '상관없음'], ['layer', '카디건·셔츠 안에'], ['solo', '한 장으로']], pf.use, (v) => { pf.use = v; pf.conds = null; save(); render(); }), condBox,
+      segmented('pk-use', '어디에 입나요', [['any', '상관없음'], ['layer', '받쳐 입기'], ['solo', '한 장으로']], pf.use, (v) => { pf.use = v; pf.conds = null; save(); render(); }), condBox,
       h('p', { class: 'fl', text: '무엇이 가장 중요해요?' }), slots, chips,
       h('p', { class: 'note', style: 'margin-top:6px' }, help, ' ', pf.pri.length ? h('button', { class: 'btn small', type: 'button', id: 'pk-clear', onclick: keepFocus('pk-pri-value', () => { pf.pri = []; save(); render(); }), text: '처음부터' }) : null),
+      h('p', { class: 'fl', text: '예산(지금 낼 돈, 이하)' }),
+      segmented('pk-budget', '예산', [['0', '상관없음'], ['30000', '3만 원'], ['50000', '5만 원'], ['100000', '10만 원']], String(pf.budget || 0), (v) => { pf.budget = Number(v); save(); render(); }),
       tasteBlock(),
-      h('div', { class: 'pbar', id: 'pickBar' }, h('span', { class: 'pbt' }, res.pick ? ['지금 1위 · ', h('b', { text: PK.brandName(PICKS, res.pick.product.brand) }), ' · ' + priceShort(res.pick)] : '조건에 맞는 상품이 없어요'),
-        h('button', { class: 'btn primary', type: 'button', id: 'pickGo', onclick: () => { countPickRun(); state.prefs.seen = true; ui.pickForm = false; save(); render(); const el = $('#pickResult'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }, text: '딱 하나 보기' })));
+      h('div', { class: 'pbar', id: 'pickBar' }, h('span', { class: 'pbt' }, res.pick ? ['1위 ', h('b', { text: PK.brandName(PICKS, res.pick.product.brand) || pname(res.pick.product) }), ' · ' + priceShort(res.pick)] : '조건에 맞는 상품이 없어요'),
+        h('button', { class: 'btn primary', type: 'button', id: 'pickGo', onclick: () => { state.prefs.seen = true; ui.pickForm = false; save(); render(); countPickRun(); const el = $('#pickResult'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }, text: '딱 하나 보기' })));
   }
-  /** 판매처에서 돌아왔거나 최근 3일 안에 판매처를 연 추천: "샀나요?" / 산 지 2주 지난 추천: "잘 맞았나요?" */
-  function pickAsks() {
-    const out = [];
-    const recent = state.pickLog.filter((e) => e.out > 0 && !e.bought && (ui.askBought === e.id || daysAgo(e.at) <= 3) && ui.boughtSkip.indexOf(e.id) < 0).slice(-1)[0];
-    if (recent) out.push(h('div', { class: 'notice', id: 'askBought' }, h('p', null, h('b', { text: recent.label }), ' — ' + recent.store + '에서 샀나요?'),
-      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtYes', onclick: () => { recent.bought = 'yes'; recent.boughtAt = today(); save(); render(); toast('기록했어요. 2주 뒤에 사이즈가 잘 맞았는지 한 번 물어볼게요.'); }, text: '샀어요' }),
-        h('button', { class: 'btn small', type: 'button', id: 'boughtNo', onclick: () => { recent.bought = 'no'; recent.boughtAt = today(); save(); render(); }, text: '안 사요' }),
-        h('button', { class: 'btn small', type: 'button', id: 'boughtLater', onclick: () => { ui.boughtSkip.push(recent.id); render(); }, text: '아직이요' }))));
-    const due = state.pickLog.filter((e) => e.bought === 'yes' && !e.follow && daysAgo(e.boughtAt) >= W.FOLLOW_DAYS)[0];
-    if (due) {
-      const box = h('form', { class: 'notice', id: 'pickFollow', onsubmit: (ev) => { ev.preventDefault(); const fd = new FormData(box), size = fd.get('pfSize'), feel = fd.get('pfFeel'); if (!size || !feel) { box.querySelector('.warnnote').hidden = false; return; } due.follow = { at: today(), size, feel }; save(); render(); toast('고마워요. 이 답이 다음 추천의 사이즈를 고르는 근거가 돼요.'); } },
-        h('h2', { text: due.label + ', ' + daysAgo(due.boughtAt) + '일 전에 샀어요' }), h('p', { class: 'note', text: '사이즈와 만족을 한 번만 알려 주세요.' }),
-        h('div', { class: 'choices' }, [['fit', '잘 맞아요'], ['small', '작아요'], ['big', '커요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfSize', value: v }), h('span', { text: t })))),
-        h('div', { class: 'choices' }, [['good', '잘 샀어요'], ['ok', '그저 그래요'], ['regret', '후회돼요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfFeel', value: v }), h('span', { text: t })))),
-        h('p', { class: 'warnnote', hidden: true, text: '사이즈와 만족을 하나씩 골라 주세요.' }), h('button', { class: 'btn small primary', type: 'submit', id: 'pickFollowSave', text: '저장' }));
-      out.push(box);
-    }
-    return out;
+  /** 추천을 받아 본 횟수: 결과를 보여 준 날·조건마다 한 번만 센다(다시 열기·소매 왕복으로 부풀지 않게). */
+  function countPickRun() {
+    const k = today() + '|' + hashStr(ui.pickKey || '');
+    if (state.meta.pickSeen.indexOf(k) >= 0) return;
+    state.meta.pickSeen.push(k); if (state.meta.pickSeen.length > 300) state.meta.pickSeen.shift();
+    state.meta.pickRuns++; save();
   }
-  /** 추천을 받아 본 횟수: '딱 하나 보기'를 누르거나 결과를 먼저 보여 줄 때, 이번 방문에서 처음 보는 조건이면 하나 센다. */
-  function countPickRun() { if (ui.pickKey && ui.pickSeen.indexOf(ui.pickKey) < 0) { ui.pickSeen.push(ui.pickKey); state.meta.pickRuns++; save(); } }
+  function hashStr(s) { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0; return (x >>> 0).toString(36); }
+  /** '지금 보는 상품': 무신사 등에서 보던 흰 티를 같은 기준으로 견준다. 값은 사용자가 상품 페이지를 보고 적는다(앱은 링크를 열지 않는다). */
+  function nowBox(res) {
+    const f = ui.nowForm || {};
+    const set = (k) => (e) => { f[k] = e.target.value; ui.nowForm = f; };
+    const sel = (k, label, opts) => h('label', null, label, h('select', { id: 'now-' + k, onchange: set(k) }, opts.map(([v, t]) => { const o = h('option', { value: v, text: t }); if ((f[k] || '') === v) o.selected = true; return o; })));
+    const inp = (k, label, type, extra) => h('label', { class: extra && extra.full ? 'full' : '' }, label, h('input', Object.assign({ id: 'now-' + k, type: type || 'text', value: f[k] || '', oninput: set(k) }, extra && extra.attrs || {})));
+    const d = h('details', { class: 'now', id: 'nowBox' }, h('summary', { class: 'fl2', style: 'cursor:pointer;font-size:14px;color:var(--ink)' }, '무신사 등에서 보던 흰 티가 있나요? 같은 기준으로 견줘 볼게요'),
+      h('p', { class: 'note', style: 'margin-top:6px', text: '상품 페이지를 보며 아는 것만 적어 주세요. 링크는 열거나 읽지 않고, 적은 값은 이 브라우저에만 남아요.' }),
+      h('div', { class: 'grid2' },
+        inp('link', '상품 링크나 공유 글(선택)', 'text', { full: true, attrs: { maxlength: '600', placeholder: '붙여 넣으면 판매처와 이름을 채워요', oninput: (e) => { f.link = e.target.value; const pl = pastedLink(f.link), shop = pl.url ? sourceOf(pl.url) : ''; const nm = shop && pl.name.indexOf(shop) === 0 ? pl.name.slice(shop.length).trim() : pl.name; if (nm && !f.name) { f.name = nm; const n = $('#now-name'); if (n) n.value = nm; } ui.nowForm = f; } } }),
+        inp('name', '상품 이름'), inp('brand', '브랜드', 'text', { attrs: { list: 'now-brands' } }),
+        inp('price', '가격(원)', 'number', { attrs: { inputmode: 'numeric', min: '100' } }), sel('packCount', '몇 장 묶음', [['1', '한 장'], ['2', '2장'], ['3', '3장']]),
+        sel('sleeve', '소매', [['short', '반팔'], ['long', '긴팔']]), sel('fit', '핏', [['', '모름'], ['slim', '슬림'], ['regular', '레귤러'], ['relaxed', '루즈·박스']]),
+        sel('logo', '겉 로고', [['', '모름'], ['none', '없음'], ['small-chest', '가슴에 작게'], ['chest', '가슴에 크게'], ['print', '프린트'], ['hem', '밑단에만']]), sel('thick', '두께', [['', '모름'], ['thin', '얇음'], ['mid', '보통'], ['thick', '두꺼움']]),
+        sel('neck', '목 립', [['', '모름'], ['narrow', '좁음'], ['standard', '보통'], ['wide', '넓음']]), sel('cotton', '면 100%', [['', '모름'], ['yes', '예'], ['no', '아니요']]),
+        inp('size', '볼 사이즈(예: M)', 'text', { attrs: { maxlength: '8' } }), inp('chest', '그 사이즈 가슴단면(cm)', 'number', { attrs: { inputmode: 'decimal', step: '0.5' } }),
+        inp('length', '총장(cm)', 'number', { attrs: { inputmode: 'decimal', step: '0.5' } }), inp('shoulder', '어깨너비(cm)', 'number', { attrs: { inputmode: 'decimal', step: '0.5' } })),
+      h('datalist', { id: 'now-brands' }, Object.keys(PICKS.brands).map((k) => h('option', { value: PICKS.brands[k].ko || PICKS.brands[k].name }))),
+      h('p', { class: 'warnnote', id: 'nowErr', hidden: true, text: '가격을 넣어 주세요(원).' }),
+      h('div', { class: 'bar', style: 'margin:10px 0 0' }, h('button', { class: 'btn primary', type: 'button', id: 'nowGo', onclick: () => {
+        const pl = pastedLink(f.link || '');
+        const u = PK.userProduct({ name: f.name, brand: f.brand, price: Number(f.price), packCount: Number(f.packCount || 1), link: pl.url, storeName: pl.url ? sourceOf(pl.url) || '' : '', sleeve: f.sleeve || 'short', fit: f.fit || undefined,
+          logo: f.logo || undefined, thick: f.thick || undefined, neck: f.neck || undefined, cotton100: f.cotton === 'yes' ? true : f.cotton === 'no' ? false : undefined, size: f.size, chest: Number(f.chest), length: Number(f.length), shoulder: Number(f.shoulder) }, PICKS, state.prefs.line, today());
+        if (!u) { $('#nowErr').hidden = false; return; }
+        ui.nowProduct = u; ui.nowOpen = true; state.meta.nowRuns++; state.prefs.seen = true; save(); render(); const el = $('#nowRes'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+      }, text: '견줘 보기' }), ui.nowProduct ? h('button', { class: 'btn', type: 'button', id: 'nowClear', onclick: () => { ui.nowProduct = null; ui.nowForm = {}; render(); }, text: '지우기' }) : null));
+    if (ui.nowOpen) d.open = true;
+    d.addEventListener('toggle', () => { ui.nowOpen = d.open; });
+    if (ui.nowProduct) d.append(nowResult(res));
+    return d;
+  }
+  function nowResult(res) {
+    const r = res.user;
+    if (!r) return null;
+    const p = r.product, pk = res.pick, ur = res.userRank;
+    const head = r.out ? '고른 조건으로는 뺐어요: ' + r.out : !ur ? '' : ur.idx === 0 ? '고른 기준으로 1위예요(' + ur.n + '개 중)' : ur.n + '개 중 ' + (ur.idx + 1) + '위예요';
+    const cmp = pk && pk !== r ? '1위 ' + pname(pk.product) + '(' + priceShort(pk) + ')보다 ' + PK.signedWon(r.unit.krw - pk.unit.krw) + (pk.product.packCount > 1 || p.packCount > 1 ? '(한 장 기준)' : '') + '. ' + (pk.conclusion.split('. ')[0] || '') + '.' : '';
+    return h('div', { class: 'nowres', id: 'nowRes', role: 'status' }, h('p', { class: 'fl2', text: '지금 보는 상품: ' + pname(p) + ' · ' + priceShort(r) }),
+      h('p', { class: 'concl', text: head }), h('p', { class: 'note', text: r.conclusion }),
+      r.conds.length ? checkList(r.checks.filter((c) => c.group === 'cond'), 'nowConds') : null,
+      h('p', { class: 'note', text: r.fit.byRef ? '사이즈: ' + r.fit.text.replace(/ · .*$/, '') : r.fit.meas ? '적은 치수 ' + r.fit.meas.replace(/ \(직접 입력\)$/, '') + ' — 잘 맞는 티 실측을 넣으면 얼마나 다른지 알려 드려요' : '치수를 적으면 잘 맞는 티와 견줘 드려요' }), cmp ? h('p', { class: 'note', text: cmp }) : null,
+      h('p', { class: 'note', text: '적은 값으로만 견줬어요. 로고·두께·목 립은 상품 사진과 상세를 보고 적어 주세요.' }),
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, h('button', { class: 'btn small', type: 'button', id: 'nowCand', onclick: () => pickToCand(r), text: '살까 말까에 담기(내 옷장과 겹치는지 보기)' })));
+  }
+  /** 추천 하나를 친구에게: 상품·가격·판매처·이유 한 줄과 판매처 링크만(내 옷장 정보는 넣지 않는다). 공유 창이 없으면 글을 복사한다. */
+  async function sharePick(r) {
+    const p = r.product, text = '이 흰 티 어때? ' + pname(p) + ' · ' + priceShort(r) + (p.store.name ? ' (' + p.store.name + ')' : '') + '\n어울이 고른 이유: ' + r.conclusion;
+    state.meta.pickShare++; save(); window.__shareText = text;
+    try { if (navigator.share) { await navigator.share({ title: pname(p), text, url: p.store.url || undefined }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    let ok = false; try { await navigator.clipboard.writeText(text + (p.store.url ? '\n' + p.store.url : '')); ok = true; } catch (e) { ok = false; }
+    toast(ok ? '물어볼 글을 복사했어요. 카톡에 붙여 넣어 주세요.' : '복사하지 못했어요. 다시 눌러 주세요.');
+  }
+  /** 다음에 이 방식으로 추천받고 싶은 옷(준비 중). 의견 보내기의 요약 줄(nx)로 다음 품목을 정한다. */
+  function wishBlock() {
+    const pf = state.prefs;
+    return h('section', { class: 'notice', id: 'pickWish', 'aria-labelledby': 'pickWishH', style: 'margin-top:16px;max-width:760px' }, h('h2', { id: 'pickWishH', text: '다음에 이렇게 추천받고 싶은 옷이 있나요?' }),
+      h('p', { class: 'note', text: '지금은 흰 크루넥 티만 있어요. 눌러 두면 의견 보내기에 함께 붙어 다음 품목을 정하는 데 써요(여러 개 가능).' }),
+      h('div', { class: 'chips' }, Object.keys(WISH).map((k) => { const on = pf.wish.indexOf(k) >= 0, b = chip(WISH[k], on, keepFocus('pk-wish-' + k, () => { if (on) pf.wish = pf.wish.filter((x) => x !== k); else pf.wish = pf.wish.concat([k]); save(); render(); })); b.id = 'pk-wish-' + k; return b; })));
+  }
   function renderPick(main) {
     const q = pickQuery(), res = PK.recommend(state.items, PICKS, q);
-    const key = JSON.stringify([q.line, q.sleeve, q.use, q.conds, q.priorities, q.brands, q.styles, q.size, q.ref]);
-    ui.pickKey = key;
+    ui.pickKey = JSON.stringify([q.line, q.sleeve, q.use, q.conds, q.priorities, q.brands, q.styles, q.size, q.ref, q.budget, q.outerLen]);
     const formOpen = ui.pickForm || !state.prefs.seen;
-    if (!formOpen) countPickRun();                                                                   // 결과를 먼저 보여 주는 화면이면 본 것으로 센다
-    window.__pick = { pick: res.pick && res.pick.product.id, total: res.pick && res.pick.total, rank: res.rank, alts: res.alts.map((a) => [a.label, a.r.product.id]), ranked: res.ranked.map((r) => [r.product.id, r.total, r.out]), notes: res.notes.map((n) => n.text), conclusion: res.pick ? res.pick.conclusion : '', checks: res.pick ? res.pick.checks : [], size: res.pick ? res.pick.fit.text : '' };
-    for (const a of pickAsks()) main.append(a);
+    if (!formOpen && res.pick) countPickRun();                                                        // 결과를 먼저 보여 주는 화면이면 본 것으로 센다(날·조건마다 한 번)
+    window.__pick = { pick: res.pick && res.pick.product.id, total: res.pick && res.pick.total, rank: res.rank, gate: res.gate, gapWhy: res.gapWhy, favNote: res.favNote, alts: res.alts.map((a) => [a.label, a.r.product.id]), ranked: res.ranked.map((r) => [r.product.id, r.total, r.out]), notes: res.notes.map((n) => n.text), conclusion: res.pick ? res.pick.conclusion : '', checks: res.pick ? res.pick.checks : [], size: res.pick ? res.pick.fit.text : '', user: res.user ? { out: res.user.out, idx: res.userRank ? res.userRank.idx : -1, n: res.userRank ? res.userRank.n : 0 } : null };
+    const ask = askEntry(), shown = res.pick ? [res.pick.product.id].concat(res.alts.map((a) => a.r.product.id)) : [];
+    ui.askTop = !!(ask && (formOpen || shown.indexOf(ask.productId) < 0));
+    if (ui.askTop) main.append(askBox(ask));
+    const due = followDuePick(); if (due) main.append(followBox(due));
     main.append(pickHead(res));
+    main.append(nowBox(res));
     main.append(formOpen ? pickForm(res) : condSummary());
-    const box = h('section', { id: 'pickResult', 'aria-live': 'polite' });
+    const box = h('section', { id: 'pickResult', 'aria-labelledby': 'pickResH' }, h('h2', { class: 'sr', id: 'pickResH', text: '추천 결과' }));
+    const live = $('#pickLive'), say = res.pick ? '1위 ' + pname(res.pick.product) + '. ' + res.pick.conclusion : '조건에 맞는 상품이 없어요.';
+    if (live && live.textContent !== say) live.textContent = say;
     if (!res.pick) {
-      const allOld = res.ranked.length && res.ranked.every((r) => /일이 지나/.test(r.out));
-      box.append(h('div', { class: 'empty', text: allOld ? '가격·재고를 확인한 지 오래돼 추천을 멈췄어요. 다시 확인한 뒤에 열어요.' : '이 조건에 맞는 상품이 아직 없어요. 꼭 지킬 조건이나 소매를 바꿔 보세요.' }));
+      const allOld = res.ranked.length && res.ranked.some((r) => /일이 지나/.test(r.out));
+      box.append(h('div', { class: 'empty', text: allOld ? '가격·재고를 확인한 지 30일이 지난 상품이 있어 추천을 잠시 멈췄어요. 다시 확인하는 대로 열게요.' : '이 조건에 맞는 상품이 아직 없어요. 꼭 지킬 조건·예산이나 소매를 바꿔 보세요.' }));
       if (res.notes.length) box.append(h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text }))));
       main.append(box); return;
     }
     box.append(pickCard(res.pick, res));
-    if (res.alts.length) box.append(h('div', { class: 'alts', id: 'pickAlts' }, res.alts.map(altCard)));
-    if (res.notes.length) box.append(h('details', { class: 'ev', id: 'pickNotes' }, h('summary', { text: '뺀 상품과 빠진 브랜드 ' + res.notes.length + '개' }), h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text })))));
+    if (res.alts.length) box.append(h('div', { class: 'alts', id: 'pickAlts' }, res.alts.map((a, i) => altCard(a, i, res.pick))));
+    if (res.altNote) box.append(h('p', { class: 'note', id: 'pickAltNote', style: 'margin:0 0 12px', text: res.altNote }));
+    if (res.notes.length) {
+      const miss = res.notes.filter((n) => n.kind === 'missing'), onlyMiss = miss.length === res.notes.length;
+      box.append(h('details', { class: 'ev', id: 'pickNotes' }, h('summary', { text: onlyMiss ? '목록에 없는 브랜드 ' + miss.length + '곳(' + miss.map((n) => PK.brandName(PICKS, n.brand)).join('·') + ')' : '뺀 상품과 빠진 브랜드 보기 (' + res.notes.length + ')' }), h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text })))));
+    }
     box.append(rankList(res));
     box.append(h('p', { class: 'note', style: 'margin:8px 0 0', text: '기준 점수는 이 목록(' + res.about.count + '개) 안에서 고른 기준으로 매긴 점수이고 확률이 아니에요. 순서는 고른 기준으로만 정하고, 광고·입점비·제휴 수수료로 바꾸지 않아요.' }));
     main.append(box);
-    const last = state.pickLog[state.pickLog.length - 1];
-    if (last && last.productId !== res.pick.product.id) main.append(h('p', { class: 'note', id: 'pickLast', style: 'margin-top:10px', text: '지난 추천: ' + last.label + ' · ' + md(last.at) + (last.verdict ? ' · ' + { accept: '이걸로 하기로 함', alt: '대안이 낫다고 함', reject: '아니라고 함' }[last.verdict] : '') + (last.bought === 'yes' ? ' · 샀음' : '') }));
+    main.append(wishBlock());
+    const last = state.pickLog.filter((e) => e.productId !== res.pick.product.id && e.productId !== 'user-now').slice(-1)[0];
+    if (last) main.append(h('p', { class: 'note', id: 'pickLast', style: 'margin-top:10px', text: '지난 추천: ' + last.label + ' · ' + md(last.at) + (last.verdict ? ' · ' + { accept: '이걸로 하기로 함', alt: '대안이 낫다고 함', reject: '아니라고 함' }[last.verdict] : '') + (last.bought === 'yes' ? ' · 샀음' + (last.boughtSize ? '(' + last.boughtSize + ')' : '') : last.bought === 'no' ? ' · 안 삼' : '') }));
   }
 
   // ---------- 살 만한 옷 (추천 + 직접 넣는 상품 목록) ----------
   function renderShop(main) {
     renderPick(main);
-    const d = h('details', { class: 'ev', id: 'shopOwn', style: 'margin-top:22px' }, h('summary', { text: '목록에 없는 상품 직접 넣어 견주기' }));
+    const d = h('details', { class: 'ev', id: 'shopOwn', style: 'margin-top:22px' }, h('summary', { text: '다른 옷: 직접 넣은 상품을 내 옷장으로 견주기' }));
     if (ui.shopOwnOpen) d.open = true;
     d.addEventListener('toggle', () => { ui.shopOwnOpen = d.open; });
     main.append(d);
@@ -1274,7 +1501,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   function renderLog(main) {
     const done = state.decisions.filter((d) => d.after), useful = done.filter((d) => d.after.helpful !== 'no' || d.after.shift === 'changed' || d.after.shift === 'settled').length;
     const fs_ = done.filter((d) => d.follow), due = W.followDue(state.decisions, today());
-    main.append(h('p', { class: 'lead', text: '판정이 실제 결정에 도움이 됐는지 남기는 기록입니다. 이 도구를 계속 만들지 정하는 근거로 씁니다.' }));
+    main.append(h('p', { class: 'lead', text: '살까 말까 판정과 추천을 받고 실제로 어떻게 정했는지 남는 곳입니다. 이 브라우저에만 저장됩니다.' }));
     const gate = h('section', { class: 'panel', id: 'gate' }, h('h2', { text: '판정 기록 ' + done.length + '건' }),
       h('p', { class: 'sub', text: '첫 문턱은 실제로 고민한 상품 3건입니다. 그중 ' + useful + '건에서 판정이 도움이 됐거나 결정이 바뀌었습니다.' + (fs_.length ? ' 2주 뒤 답 ' + fs_.length + '건 가운데 후회·아쉬움은 ' + fs_.filter((d) => d.follow.feel === 'regret').length + '건입니다.' : '') + (due.length ? ' 지금 물을 차례인 결정이 ' + due.length + '건 있습니다(옷장 탭).' : '') }));
     if (done.length) {
@@ -1284,6 +1511,15 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '후보', '보기 전', '결정', '도움', '2주 뒤', '판정 요약', '메모'].map((t) => h('th', { text: t })))), tb)));
     } else gate.append(h('p', { class: 'note', text: '아직 기록이 없습니다. 살까 말까 탭에서 후보를 넣고 판정을 끝까지 진행하면 여기에 쌓입니다.' }));
     main.append(gate);
+    // 추천 기록: 받은 추천에 무엇을 했는지(이걸로·아니에요·샀어요·2주 뒤)
+    if (state.pickLog.length) {
+      const VD = { accept: '이걸로 할래요', alt: '대안이 나아요', reject: '아니에요' }, RS = { price: '비쌈', brand: '브랜드', fit: '핏·사이즈', have: '이미 있음', other: '기타' }, SZ = { fit: '잘 맞음', small: '작음', big: '큼' }, FL = { good: '잘 샀어요', ok: '그저 그래요', regret: '후회돼요' };
+      const tb = h('tbody');
+      for (const e of state.pickLog.slice().reverse()) tb.append(h('tr', null, h('td', { text: e.at }), h('td', { text: e.label }), h('td', { text: (VD[e.verdict] || '—') + (e.reason ? '(' + RS[e.reason] + ')' : '') }), h('td', { text: e.out ? e.out + '번' : '—' }),
+        h('td', { text: e.bought === 'yes' ? '샀음' + (e.boughtSize ? ' ' + e.boughtSize : '') : e.bought === 'no' ? '안 삼' : '—' }), h('td', { text: e.follow ? SZ[e.follow.size] + ' · ' + FL[e.follow.feel] : e.bought === 'yes' ? md(addDays(e.boughtAt, W.FOLLOW_DAYS)) + '쯤 물음' : '—' })));
+      main.append(h('section', { class: 'panel', id: 'pickLogBox' }, h('h2', { text: '추천 기록 ' + state.pickLog.length + '건' }), h('p', { class: 'sub', text: '받은 추천에 무엇을 했는지 남습니다. 산 사이즈와 2주 뒤 답은 다음 추천의 사이즈를 고르는 데 씁니다.' }),
+        h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '상품', '내 판단', '판매처', '샀나요', '2주 뒤'].map((t) => h('th', { text: t })))), tb))));
+    }
     // 사진 상태 요약
     const own = owned();
     const cnt = (k) => own.filter((i) => i.photo.kind === k).length;
@@ -1302,20 +1538,23 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const ck = (k, label) => h('label', null, h('input', { type: 'checkbox', id: 'exp-' + k, checked: ui.exp[k], onchange: (e) => { ui.exp[k] = e.target.checked; } }), ' ' + label);
     const imp = h('input', { type: 'file', accept: 'application/json,.json', id: 'importFile', hidden: true, onchange: async () => {
       const raw = await readFileJson(imp); const w = raw && W.cleanWardrobe(raw);
-      ui.importArm = w && w.items.length && w.kind !== 'template' ? w : false; render();
+      if (w) { w.prefs = raw.prefs && typeof raw.prefs === 'object' ? cleanPrefs(raw.prefs) : null; w.pickLog = cleanPickLog(raw.pickLog); }
+      ui.importArm = w && (w.items.length || w.pickLog.length) && w.kind !== 'template' ? w : false; render();
     } });
     const io = h('section', { class: 'panel' }, h('h2', { text: '옷장 파일' }), h('p', { class: 'sub', text: '보유한 옷과 기록을 파일(스키마 2)로 내보냅니다. 구매 후보는 넣지 않습니다. 이 파일을 받은 사람은 옷장 구경 탭에서 열어 볼 수 있습니다. v0.3 파일(스키마 1)도 가져올 수 있습니다.' }),
       h('div', { class: 'checks', style: 'margin-bottom:12px' }, ck('img', '내 사진 포함'), ck('otherImg', '남의 상품 사진 포함'), ck('cands', '미확인 브랜드 후보 포함'), ck('price', '가격과 링크 포함'), ck('body', '키와 평소 사이즈 포함'), ck('log', '판정 기록 포함')),
       h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'exportBtn', onclick: () => { download('otjang-' + (state.owner.nickname || 'wardrobe').replace(/[^\w가-힣-]+/g, '') + '-' + today() + '.json', W.exportWardrobe(state, ui.exp)); if (ui.exp.img) { state.meta.lastBackupAt = today(); save(); } }, text: '내보내기' }),
         h('button', { class: 'btn', type: 'button', onclick: () => imp.click(), text: '내 옷장으로 가져오기' }), imp,
-        h('span', { class: 'grow' }), h('button', { class: 'btn small danger', type: 'button', id: 'resetBtn', onclick: async () => { if (!ui.resetArm) { ui.resetArm = true; render(); return; } await wipe(); state = cleanState(BASE); state.rack = defaultRack(state.items); ui.resetArm = false; ui.judgeId = ''; ui.stageSel = null; save(); render(); }, text: ui.resetArm ? '한 번 더 누르면 처음 상태로 돌아갑니다' : '처음 상태로' })));
+        h('span', { class: 'grow' }), h('button', { class: 'btn small danger', type: 'button', id: 'resetBtn', onclick: async () => { if (!ui.resetArm) { ui.resetArm = true; render(); return; } const keepId = state.meta.installId; await wipe(); state = cleanState(BASE); state.meta.installId = keepId; state.rack = defaultRack(state.items); ui.resetArm = false; ui.judgeId = ''; ui.stageSel = null; save(); render(); }, text: ui.resetArm ? '한 번 더 누르면 처음 상태로 돌아갑니다' : '처음 상태로' })));
     if (ui.importArm === false) io.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '옷장 파일을 읽지 못했습니다.' }));
-    else if (ui.importArm) io.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', text: '지금 옷장을 지우고 파일의 옷 ' + ui.importArm.items.length + '벌로 바꿉니다.' }),
-      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.meta.sample = false; state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
+    else if (ui.importArm) io.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', text: '지금 옷장을 지우고 파일의 옷 ' + ui.importArm.items.length + '벌로 바꿉니다.' + (ui.importArm.pickLog.length ? ' 추천 기록 ' + ui.importArm.pickLog.length + '건과 추천 설정도 가져옵니다.' : '') }),
+      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.meta.sample = false; state.rack = defaultRack(state.items);
+        if (w.prefs) state.prefs = w.prefs; if (w.pickLog.length) { const have = new Set(state.pickLog.map((e) => e.id)); state.pickLog = state.pickLog.concat(w.pickLog.filter((e) => !have.has(e.id))).slice(-100); }
+        ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
       h('button', { class: 'btn small', type: 'button', onclick: () => { ui.importArm = null; render(); }, text: '취소' })));
     main.append(io);
     main.append(h('details', { class: 'adv', id: 'opsBox', open: ui.opsOpen, ontoggle: (e) => { ui.opsOpen = e.target.open; } }, h('summary', { text: '베타 운영자: 받은 의견 모아 보기' }), renderOps()));
-    main.append(h('details', { class: 'adv', id: 'advanced', open: ui.advOpen, ontoggle: (e) => { ui.advOpen = e.target.open; } }, h('summary', { text: '고급: 내 서버와 맞추기 (개발용, 서버를 직접 켠 경우만)' }), renderSync()));
+    if (!window.__CLOSET_SRC) main.append(h('details', { class: 'adv', id: 'advanced', open: ui.advOpen, ontoggle: (e) => { ui.advOpen = e.target.open; } }, h('summary', { text: '고급: 내 서버와 맞추기 (개발용, 서버를 직접 켠 경우만)' }), renderSync()));   // 웹 시험판에서는 감춘다(보안 정책이 이 컴퓨터 주소로 보내는 것도 막는다)
     main.append(h('p', { class: 'note', text: '이 파일은 인터넷으로 아무것도 보내지 않습니다(아래 "내 서버와 맞추기"를 직접 누를 때만 그 주소로 보냅니다). 가격, 재고, 링크를 찾아오지 않고, 사진으로 옷을 입혀 보는 기능은 아직 없습니다. 저장: ' + (store.mode === 'idb' ? '브라우저 데이터베이스(IndexedDB)' : store.mode === 'ls' ? '브라우저 저장소(localStorage)' : '이 화면을 닫으면 사라짐') + (state.loadedFrom === 'ls1' ? ' · v0.3 저장소에서 옮겨 왔습니다(예전 저장소는 그대로 둠)' : '') }));
   }
 
@@ -1334,6 +1573,9 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
         ['유지: 최근 30일에 3일 이상 엶', r(sm.retained), '1/3 이상(2주 뒤에 볼 것)', word[vd.retained]], ['판정 끝 합계', sm.decisions + '건', '', ''],
         ['기준 추천을 받아 본 사람', r(sm.picked), '', ''], ['추천에서 판매처까지 연 사람', r(sm.outbound), '추천받은 사람의 40%(제안)', ''], ['"이걸로 할래요"를 누른 사람', r(sm.accepted), '', ''], ['추천에서 샀다고 한 사람', r(sm.bought), '', ''],
         ['2주 뒤 사이즈 답', sm.pickFollow.answers + '건 (잘 맞음 ' + sm.pickFollow.fit + ')', '잘 맞음이 많을수록', ''],
+        ['"아니에요"를 누른 사람', r(sm.rejected), '이유는 사람이 읽는 요약에', ''], ['대안이 낫다고 한 수', sm.altChosen + '건', '', ''], ['"지금 보는 상품"을 견줘 본 사람', r(sm.nowUsers), '결제 직전 쓰임의 신호', ''],
+        ['다음에 받고 싶은 옷(사람 수)', Object.keys(sm.wishes).length ? Object.keys(sm.wishes).sort((x, y) => sm.wishes[y] - sm.wishes[x]).map((k) => (WISH[k] || k) + ' ' + sm.wishes[k]).join(', ') : '없음', '다음 품목을 정하는 근거', ''], ['추천을 친구에게 물어본 수', sm.shared + '번', '', ''],
+        ['산 상품 사이즈 결과(보낸 사람만)', sm.fitOutcomes.length ? sm.fitOutcomes.map((x) => x.product + ' ' + x.size + ' ' + ({ fit: '잘 맞음', small: '작음', big: '큼' })[x.fit]).join(', ') : '없음', '사이즈 추천 규칙을 고치는 근거', ''],
         ['2주 뒤 답', sm.follow.answers + '건 (잘함 ' + sm.follow.good + ' · 그저 ' + sm.follow.ok + ' · 후회·아쉬움 ' + sm.follow.regret + ' · 결국 안 삼 ' + sm.follow.notbought + ')', '후회가 적을수록', ''],
         ['"더는 못 쓰면 매우 아쉽다"', r(sm.pmf) + ' · 답 ' + sm.pmf.answered + '명', '40%(흔히 쓰는 참고선)', word[vd.pmf]], ['추천할 마음(NPS)', sm.nps.score == null ? '답 없음' : sm.nps.score + '점 · 답 ' + sm.nps.answered + '명 (9~10점 ' + sm.nps.promoters + ', 0~6점 ' + sm.nps.detractors + ')', '', ''],
         ['오류를 겪은 사람', sm.errors + '명', '0명', ''], ['버전', sm.versions.join(', '), '', '']];
@@ -1721,9 +1963,14 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   $('#qc-family').addEventListener('change', () => { $('#qc-light').value = String(FAM[$('#qc-family').value][3]); syncQcLight(); });
   $('#qc-light').addEventListener('input', syncQcLight);
   $('#qc-link').addEventListener('input', () => {
-    const p = pastedLink($('#qc-link').value);
-    $('#qc-src').textContent = p.url ? '판매처: ' + (sourceOf(p.url) || new URL(p.url).hostname) + ' (링크는 열거나 읽지 않습니다. 가격·재고는 직접 확인해 주세요)' : $('#qc-link').value.trim() ? '링크를 찾지 못했습니다. http:// 또는 https:// 로 시작하는 주소를 넣어 주세요.' : '';
+    const raw = $('#qc-link').value, p = pastedLink(raw);
+    $('#qc-src').textContent = p.url ? '판매처: ' + (sourceOf(p.url) || new URL(p.url).hostname) + ' (링크는 열거나 읽지 않습니다. 가격·재고는 직접 확인해 주세요)' : raw.trim() ? '링크를 찾지 못했습니다. http:// 또는 https:// 로 시작하는 주소를 넣어 주세요.' : '';
     if (p.name && !$('#qc-name').value.trim()) $('#qc-name').value = p.name;
+    // 흰 티로 보이면: 같은 기준(가성비·품질·브랜드·핏)으로 견줄 수 있는 '보던 흰 티'로 보낸다
+    if (/티셔츠|반팔|반소매|\btee\b|t-shirt|크루넥/i.test(raw) && /흰|화이트|white|오프화이트/i.test(raw)) {
+      const shop = p.url ? sourceOf(p.url) : '', nm = shop && p.name.indexOf(shop) === 0 ? p.name.slice(shop.length).trim() : p.name;
+      $('#qc-src').append(document.createTextNode(' '), h('button', { class: 'btn small', type: 'button', id: 'qcToPick', onclick: () => { $('#qcDlg').close(); ui.nowForm = { link: raw, name: nm }; ui.nowOpen = true; ui.tab = 'shop'; render(); const el = $('#now-price'); if (el) el.focus(); }, text: '흰 티라면: 추천 기준으로 견줘 보기' }));
+    }
   });
   $('#qcClose').addEventListener('click', () => $('#qcDlg').close());
   $('#qcCancel').addEventListener('click', () => $('#qcDlg').close());
@@ -1942,15 +2189,20 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     return ['[' + BRAND.name + ' ' + BRAND.version + ']', '옷 ' + own.length + '벌(초안 ' + own.filter(W.isDraft).length + ', 내 사진 ' + own.filter((i) => i.photo.ownImg).length + ') · 후보 ' + cands().length + ' · 판정 끝 ' + done + '건 · 상품 ' + state.catalog.products.length + '개 · 3D 걸림 ' + state.rack.length,
       '예시 옷장: ' + (state.meta.sample ? '보는 중' : '아님') + ' · 저장: ' + store.mode + (storageOk ? '' : '(실패)') + ' · 화면 ' + window.innerWidth + '×' + window.innerHeight + ' · 3D: ' + (closet.failed ? '실패' : closet.ready ? '열림' : '안 엶'),
       '연 날 ' + state.meta.days.length + '일(최근 30일 ' + state.meta.days.filter((d) => daysAgo(d) <= 30).length + '일) · 첫 사용 ' + (state.meta.days[0] || '-') + ' · 빠른 시작 ' + state.meta.quickAdded + '벌',
-      '기준 추천 ' + state.meta.pickRuns + '번 · 판매처 연 횟수 ' + state.meta.pickOut + ' · 후보로 ' + state.meta.pickCand + '벌 · 이걸로 할래요 ' + state.pickLog.filter((e) => e.verdict === 'accept').length + ' · 샀어요 ' + state.pickLog.filter((e) => e.bought === 'yes').length + ' · 2주 뒤 사이즈 잘 맞음 ' + state.pickLog.filter((e) => e.follow && e.follow.size === 'fit').length + '/' + state.pickLog.filter((e) => e.follow).length,
+      '기준 추천 ' + state.meta.pickRuns + '번 · 판매처 연 횟수 ' + state.meta.pickOut + ' · 후보로 ' + state.meta.pickCand + '벌 · 이걸로 할래요 ' + state.pickLog.filter((e) => e.verdict === 'accept').length + ' · 대안이 나음 ' + state.pickLog.filter((e) => e.verdict === 'alt').length + ' · 아니에요 ' + state.pickLog.filter((e) => e.verdict === 'reject').length + rejectWhy() + ' · 샀어요 ' + state.pickLog.filter((e) => e.bought === 'yes').length + ' · 2주 뒤 사이즈 잘 맞음 ' + state.pickLog.filter((e) => e.follow && e.follow.size === 'fit').length + '/' + state.pickLog.filter((e) => e.follow).length + ' · 지금 보는 상품 견주기 ' + state.meta.nowRuns + '번 · 친구에게 물어봄 ' + state.meta.pickShare + '번' + (state.prefs.wish.length ? ' · 다음에 받고 싶은 옷: ' + state.prefs.wish.map((k) => WISH[k]).join(', ') : ''),
       (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length; return '2주 뒤 답 ' + f.length + '건(잘함 ' + c('good') + ', 그저 ' + c('ok') + ', 후회·아쉬움 ' + c('regret') + ', 결국 안 삼 ' + f.filter((d) => d.follow.worn === 'notbought').length + ') · 물을 차례 ' + W.followDue(state.decisions, today()).length + '건'; })(),
       errors.length ? '최근 오류: ' + errors.slice(-3).join(' / ') : '최근 오류 없음',
       (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length;                 // 운영자가 "받은 의견 모아 보기"에 붙여 넣으면 읽는 한 줄
         return FB.line({ id: state.meta.installId, v: BRAND.version, at: today(), own: own.length, draft: own.filter(W.isDraft).length, photo: own.filter((i) => i.photo.ownImg).length, cand: cands().length, done, prod: state.catalog.products.length,
           rack: state.rack.length, quick: state.meta.quickAdded, days: state.meta.days.length, d30: state.meta.days.filter((d) => daysAgo(d) <= 30).length, first: state.meta.days[0] || '', fol: f.length, good: c('good'), ok: c('ok'), regret: c('regret'),
-          nb: f.filter((d) => d.follow.worn === 'notbought').length, due: W.followDue(state.decisions, today()).length, pk: state.meta.pickRuns, pko: state.meta.pickOut, pkc: state.meta.pickCand, pka: state.pickLog.filter((e) => e.verdict === 'accept').length, pkb: state.pickLog.filter((e) => e.bought === 'yes').length, pkf: state.pickLog.filter((e) => e.follow).length, pkfit: state.pickLog.filter((e) => e.follow && e.follow.size === 'fit').length, pmf: a.pmf || '', nps: a.nps === '' || a.nps == null ? '' : a.nps, err: errors.length, scr: window.innerWidth + 'x' + window.innerHeight }); })()].join('\n');
+          nb: f.filter((d) => d.follow.worn === 'notbought').length, due: W.followDue(state.decisions, today()).length, pk: state.meta.pickRuns, pko: state.meta.pickOut, pkc: state.meta.pickCand, pka: state.pickLog.filter((e) => e.verdict === 'accept').length, pkb: state.pickLog.filter((e) => e.bought === 'yes').length, pkf: state.pickLog.filter((e) => e.follow).length, pkfit: state.pickLog.filter((e) => e.follow && e.follow.size === 'fit').length,
+          pkr: state.pickLog.filter((e) => e.verdict === 'reject').length, pkal: state.pickLog.filter((e) => e.verdict === 'alt').length, pknow: state.meta.nowRuns, pksh: state.meta.pickShare, pkx: a.fit ? fitOutcomes() : '', nx: state.prefs.wish.join(','), pmf: a.pmf || '', nps: a.nps === '' || a.nps == null ? '' : a.nps, err: errors.length, scr: window.innerWidth + 'x' + window.innerHeight }); })()].join('\n');
   }
-  function fbAnswers() { const p = document.querySelector('#fbPmf input:checked'), n = $('#fbNps').value; return { pmf: p ? p.value : '', nps: n === '' ? '' : Number(n) }; }
+  function fbAnswers() { const p = document.querySelector('#fbPmf input:checked'), n = $('#fbNps').value; return { pmf: p ? p.value : '', nps: n === '' ? '' : Number(n), fit: $('#fbFit').checked && !$('#fbFitRow').hidden }; }
+  /** '아니에요'의 이유 수(사람이 읽는 요약에만). */
+  function rejectWhy() { const r = state.pickLog.filter((e) => e.verdict === 'reject' && e.reason), c = {}; for (const e of r) c[e.reason] = (c[e.reason] || 0) + 1; const names = { price: '비쌈', brand: '브랜드', fit: '핏', have: '이미 있음', other: '기타' }; return r.length ? '(' + Object.keys(c).map((k) => names[k] + ' ' + c[k]).join(', ') + ')' : ''; }
+  /** 추천에서 산 상품의 2주 뒤 사이즈 결과(상품 id~산 사이즈~사이즈~만족). 사용자가 고를 때만 의견에 붙인다. */
+  function fitOutcomes() { return state.pickLog.filter((e) => e.follow && e.productId !== 'user-now' && /^[a-z0-9-]{1,60}$/.test(e.productId)).map((e) => e.productId + '~' + (e.boughtSize || '').replace(/[^A-Za-z0-9]/g, '') + '~' + e.follow.size + '~' + e.follow.feel).slice(-10).join(','); }
   function feedbackText() {
     const t = $('#fbText').value.trim(), a = fbAnswers();
     const q = [a.pmf ? '더는 못 쓰게 되면: ' + FB.PMF[a.pmf] : '', a.nps !== '' ? '추천할 마음: ' + a.nps + '/10' : ''].filter(Boolean).join(' · ');
@@ -1959,10 +2211,10 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   for (const k of Object.keys(FB.PMF)) $('#fbPmf').append(h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'fbPmf', value: k, onchange: () => syncFb() }), h('span', { text: FB.PMF[k] })));
   $('#fbNps').append(h('option', { value: '', text: '고르지 않음' })); for (let i = 10; i >= 0; i--) $('#fbNps').append(h('option', { value: String(i), text: String(i) + (i === 10 ? ' (꼭 추천)' : i === 0 ? ' (전혀)' : '') }));
   $('#fbNps').addEventListener('change', () => syncFb());
-  function syncFb() { $('#fbPreview').textContent = feedbackText(); }
+  function syncFb() { $('#fbFitRow').hidden = !state.pickLog.some((e) => e.follow && e.productId !== 'user-now'); $('#fbPreview').textContent = feedbackText(); }
   $('#fbBtn').addEventListener('click', () => { $('#fbMsg').textContent = ''; syncFb(); $('#fbDlg').showModal(); });
   $('#fbClose').addEventListener('click', () => $('#fbDlg').close());
-  $('#fbText').addEventListener('input', syncFb); $('#fbStats').addEventListener('change', syncFb);
+  $('#fbText').addEventListener('input', syncFb); $('#fbStats').addEventListener('change', syncFb); $('#fbFit').addEventListener('change', syncFb);
   $('#fbCopy').addEventListener('click', async () => {
     const text = feedbackText(); let ok = false;
     try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
@@ -1974,7 +2226,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const b = $('#helpBody'); b.textContent = '';
     b.append(h('p', { class: 'lead', text: BRAND.name + '(' + BRAND.status + ')은 ' + BRAND.tagline + ' 판단하도록 돕는 도구입니다. 지금은 지인 대상 시험판(' + BRAND.version + ')입니다.' }),
       h('h3', { text: '처음 쓰는 법' }),
-      h('ol', null, h('li', { text: '사고 싶은 옷이 있으면 "추천" 탭에서 어떻게 입을지와 중요한 기준(가성비·품질·브랜드·내 핏·스타일)을 순서대로 누릅니다. 어울이 공식 판매처 페이지에서 확인한 상품 가운데 딱 하나와 대안 둘, 그 이유와 근거(확인일·출처)를 보여 줍니다. 지금은 흰 크루넥 티셔츠부터 있습니다.' }),
+      h('ol', null, h('li', { text: '사고 싶은 옷이 있으면 "추천" 탭에서 어떻게 입을지와 중요한 기준(가성비·품질·브랜드·내 핏·스타일)을 순서대로 누릅니다. 어울이 공식 판매처 페이지에서 확인한 상품 가운데 딱 하나와 대안, 그 이유와 근거(확인일·출처)를 보여 줍니다. 지금은 흰 크루넥 티셔츠부터 있습니다.' }),
+        h('li', { text: '무신사 같은 곳에서 이미 보던 흰 티가 있으면 추천 탭 맨 위 "보던 흰 티가 있나요?"에 가격·치수·로고·두께를 적어 같은 기준으로 견줘 봅니다. 링크는 열지 않습니다.' }),
         h('li', { text: '옷장 탭의 "기본 옷 골라 넣기"로 가진 옷과 비슷한 옷을 한 번에 넣습니다. 한 벌씩 사진과 함께 넣으면 색과 밝기를 사진에서 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
         h('li', { text: '살까 고민 중인 옷은 "살까 말까" 탭의 "빠르게 넣고 판정"으로 종류와 색만 골라 봅니다. 가진 옷과 겹치는지, 새로 생기는 조합이 몇 개인지 보여 줍니다.' }),
         h('li', { text: '결정을 적으면 2주 뒤에 "몇 번 입었나, 잘 샀나"를 한 번 묻습니다. 판정이 실제로 도움이 됐는지 아는 유일한 방법이라 답해 주시면 큰 도움이 됩니다.' }),
@@ -1988,15 +2241,18 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
         h('li', { text: '3D는 종류별로 미리 만든 형태에 색을 입힌 모습이라 실제 상품과 다릅니다. 사람에게 입혀 보는 기능은 아직 없습니다.' }),
         h('li', { text: '추천 상품의 가격·재고는 어울이 확인한 날의 값을 담아 둔 것이고, 앱이 실시간으로 찾아오지 않습니다. 사기 전에 판매처에서 확인해 주세요. 상품 사진은 가져오지 않고 판매처 링크만 둡니다.' }),
         h('li', { text: '추천 순서는 고른 기준으로만 정합니다. 광고·입점비·제휴 수수료로 바꾸지 않습니다(제휴 링크를 쓰게 되면 그 사실을 화면에 밝힙니다).' }),
+        h('li', { text: '근거의 세기를 나눠 보여 줍니다: ✓ 공식·상품정보제공고시로 확인, ◐ 판매처 설명이나 상품 사진으로만 본 약한 확인, ? 모름, ! 약한 근거로 어긋날 수 있음, ✕ 확인된 어긋남(이 상품은 1등에서 뺍니다).' }),
         h('li', { text: '직접 넣은 상품은 가격·재고를 찾아오지 않고, 적은 값과 확인한 날짜만 보여 줍니다.' })));
   }
   $('#helpBtn').addEventListener('click', () => { renderHelp(); $('#helpDlg').showModal(); });
   $('#helpClose').addEventListener('click', () => $('#helpDlg').close());
   const daysAgo = (d) => (d ? Math.round((Date.parse(today() + 'T00:00:00Z') - Date.parse(d + 'T00:00:00Z')) / 86400000) : null);
-  function backupNow() { download(BRAND.latin.toLowerCase() + '-backup-' + today() + '.json', W.exportWardrobe(state, Object.assign({}, ui.exp, { img: true, cands: true, price: true, body: true, log: true }))); state.meta.lastBackupAt = today(); save(); render(); toast('백업 파일을 내려받았습니다. 안전한 곳에 보관해 주세요.'); }
+  function backupNow() { download(BRAND.latin.toLowerCase() + '-backup-' + today() + '.json', Object.assign(W.exportWardrobe(state, Object.assign({}, ui.exp, { img: true, cands: true, price: true, body: true, log: true })), { prefs: state.prefs, pickLog: state.pickLog })); state.meta.lastBackupAt = today(); save(); render(); toast('백업 파일을 내려받았습니다(추천 설정·기록 포함). 안전한 곳에 보관해 주세요.'); }
   /** 예시 옷장을 지우고 내 옷장으로 시작한다. 직접 넣은 상품 목록은 예시가 아니므로 남긴다. */
   function leaveSample() { state.items = []; state.decisions = []; state.rack = []; state.meta.sample = false; state.meta.welcomed = true; ui.judgeId = ''; ui.stageSel = null; ui.rackPick = ''; }
-  function startNotices(main) {                                                                   // 옷장 탭 위: 첫 방문 안내 / 예시 옷장 표시 / 백업 알림
+  function startNotices(main) {                                                                   // 옷장 탭 위: 추천 물음(샀나요·2주 뒤) / 첫 방문 안내 / 예시 옷장 표시 / 백업 알림
+    const ask = askEntry(); if (ask) main.append(askBox(ask));
+    const pdue = followDuePick(); if (pdue) main.append(followBox(pdue));
     if (state.meta.sample) {
       main.append(h('div', { class: 'notice', id: 'sampleNote' }, h('p', { text: '예시 옷장을 보고 있습니다. 둘러본 뒤 내 옷장으로 시작하면 예시 옷은 지워집니다.' }),
         h('button', { class: 'btn small primary', type: 'button', id: 'leaveSample', onclick: () => { leaveSample(); save(); render(); }, text: '내 옷장으로 시작 (예시 지우기)' })));
@@ -2019,7 +2275,6 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     }
     const due = W.followDue(state.decisions, today());
     if (due.length && !ui.followLater) main.append(followNotice(due[0]));
-    for (const a of pickAsks()) if (a.id === 'pickFollow') main.append(a);
     if (owned().length >= 2 && !cands().length && !state.decisions.length) main.append(h('div', { class: 'notice', id: 'nextNote' },
       h('p', { text: '다음: 지금 살까 고민 중인 옷이 있다면 종류와 색만 골라 판정해 보세요. 가진 옷과 겹치는지, 새 조합이 몇 개 생기는지 보여 줍니다.' }),
       h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn small primary', type: 'button', id: 'nextJudge', onclick: () => openQuickCand(), text: '고민 중인 옷 판정해 보기' }),
@@ -2039,13 +2294,22 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     document.head.append(sc);
   }
 
-  // 판매처 링크를 연 뒤 이 화면으로 돌아오면(3시간 안) 추천 탭 위에 "샀나요?"를 띄운다
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible' || !ui.awaitReturn) return; const a = ui.awaitReturn; ui.awaitReturn = null; if (Date.now() - a.t > 3 * 3600 * 1000) return; ui.askBought = a.id; if (ui.tab === 'shop') render(); });
+  // 판매처 링크를 눌러 이 화면을 떠났다가 돌아오면 "샀나요?"를 그 카드 안(또는 맨 위)에 띄우고 보이게 옮긴다. 링크만 누르고 떠나지 않았으면 묻지 않는다
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { if (ui.awaitReturn) ui.leftFor = ui.awaitReturn; return; }
+    if (!ui.leftFor) return;
+    const e = state.pickLog.find((x) => x.id === ui.leftFor); ui.leftFor = null; ui.awaitReturn = null;
+    if (!e || e.bought) return;
+    e.returned = true; save();
+    if (ui.tab !== 'shop' && ui.tab !== 'closet') return;
+    render(); const a = $('#askBought'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'center' });
+  });
   // ---------- 시작 ----------
   load().then((s) => {
     state = s;
     window.__app = { get state() { return state; }, ui, J, R, W, C, FB, PK, PICKS, flush: () => savePromise, store, hang, unhang, brand: BRAND, usageSummary: (a) => usageSummary(a), errors };
     if (state.meta.days[state.meta.days.length - 1] !== today()) state.meta.days.push(today());
+    if (!owned().length && !state.meta.sample && state.prefs.seen) ui.tab = 'shop';                  // 추천만 쓰는 사람은 다시 열면 추천부터
     $('#appTag').textContent = BRAND.tagline + (BRAND.beta ? ' · 시험판 ' + BRAND.version : '');
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* 무시: 오래 남게 해 달라는 요청이며 거절돼도 동작은 같다 */ }
     // 웹 배포판에서만: 한 번 연 뒤에는 인터넷이 끊겨도 열리게(sw.js). 옷장 자료는 다루지 않는다
