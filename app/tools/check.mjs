@@ -188,6 +188,7 @@ for (const m of modes) {
 
   // 5. 살 만한 옷: 상품을 직접 넣고, 목록 안에서만 순서를 매기고, 후보로 넣는다
   await page.click('#tabbtn-shop');
+  await page.click('#shopOwn > summary');
   ok(await page.locator('#shopEmpty').count() === 1, '상품이 없으면 비어 있다고 알려 준다 (지어내지 않는다)');
   await page.click('#addProduct');
   await page.fill('#p-brand', '어느 브랜드'); await page.fill('#p-name', '네이비 크루넥 니트'); await page.selectOption('#p-cat', 'top'); await page.selectOption('#p-kind', 'knit'); await page.selectOption('#p-family', 'navy');

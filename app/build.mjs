@@ -35,7 +35,11 @@ for (const [m, text] of Object.entries(parts)) {
 if (/https?:\/\/(?!")/.test(src.replace(/placeholder="https:\/\/"/g, '').replace(/http:\/\/ 또는 https:\/\//g, '').replace(/\/\^https\?:[^\n]*/g, ''))) throw new Error('외부 주소가 들어 있습니다');
 // 검증 카탈로그(data/picks.json)는 판매처·근거 주소를 담고 있다. 화면에서 링크로만 쓰고 앱이 요청하지 않으므로 위 검사 뒤에 넣는다(요청 0건은 tools/check*.mjs 가 본다)
 {
-  const picks = read('data/picks.json'); JSON.parse(picks);
+  const picks = read('data/picks.json');
+  const { validate } = await import('./tools/validate-catalog.mjs');
+  const v = validate(JSON.parse(picks), process.env.TODAY || new Date().toISOString().slice(0, 10));
+  if (v.errors.length) throw new Error('카탈로그 오류 ' + v.errors.length + '건: ' + v.errors.slice(0, 5).join(' / ') + ' (node tools/validate-catalog.mjs 로 전부 보기)');
+  if (v.warnings.some((w) => /다시 확인 필요|환율/.test(w))) console.log('카탈로그 주의: ' + v.warnings.filter((w) => /다시 확인 필요|환율/.test(w)).length + '건이 오래됐습니다(node tools/validate-catalog.mjs)');
   if (picks.includes('</')) throw new Error('picks.json 이 script 태그를 닫을 수 있습니다');
   if (!src.includes('/*@@PICKS@@*/')) throw new Error('marker missing /*@@PICKS@@*/');
   src = src.replace('/*@@PICKS@@*/', () => picks);

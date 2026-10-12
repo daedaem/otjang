@@ -1,9 +1,9 @@
 {
   "name": "otjang",
-  "version": "0.5.0-beta",
+  "version": "0.6.0-beta",
   "private": true,
   "type": "commonjs",
-  "description": "어울(EOUL, 가칭) 시험판: 옷장 기록, 사진 상태, 살까 말까 판정, 3D 옷장, 직접 넣는 상품 목록과 구매 추천. 서버 없이 동작한다.",
+  "description": "어울(EOUL, 가칭) 시험판: 기준으로 딱 하나 추천(검증 카탈로그), 옷장 기록, 살까 말까 판정, 3D 옷장. 서버 없이 동작한다.",
   "scripts": {
     "build": "node build.mjs",
     "build:empty": "WARDROBE=data/empty.json OUT=dist/otjang-empty.html node build.mjs",
@@ -15,7 +15,8 @@
     "build:web": "WARDROBE=data/empty.json SPLIT_DIR=dist/web node build.mjs",
     "check:web": "node tools/check-web.mjs",
     "check:a11y": "node tools/check-a11y.mjs",
-    "check:perf": "node tools/check-perf.mjs"
+    "check:perf": "node tools/check-perf.mjs",
+    "check:catalog": "node tools/validate-catalog.mjs"
   },
   "dependencies": {
     "three": "0.160.1"
