@@ -297,13 +297,14 @@ a{color:var(--accent)}
 <script>/*@@WARDROBE_LIB@@*/</script>
 <script>/*@@CATALOG_LIB@@*/</script>
 <script>/*@@COLORGUESS@@*/</script>
+<script>/*@@SYNC@@*/</script>
 <script>const BASE = /*@@WARDROBE@@*/;
 const TEMPLATE = /*@@TEMPLATE@@*/;</script>
 <script>/*@@CLOSET@@*/</script>
 <script>
 (function () {
   'use strict';
-  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, X = window.OtjangCloset || null;
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, X = window.OtjangCloset || null;
   const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
   const KEY1 = 'otjang.v1', KEY2 = 'otjang.v2', DB = 'otjang';
   const YEAR = new Date().getFullYear();
@@ -414,7 +415,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     s.loadedFrom = from; return s;
   }
   let state = null, storageOk = true, savePromise = Promise.resolve();
-  const ui = { tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
+  const ui = { syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
     shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null };
   function save() {
     const data = JSON.stringify(state);
@@ -867,7 +868,60 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
       h('button', { class: 'btn small', type: 'button', onclick: () => { ui.importArm = null; render(); }, text: '취소' })));
     main.append(io);
-    main.append(h('p', { class: 'note', text: '이 파일은 인터넷으로 아무것도 보내지 않습니다. 가격, 재고, 링크를 찾아오지 않고, 사진으로 옷을 입혀 보는 기능은 아직 없습니다. 저장: ' + (store.mode === 'idb' ? '브라우저 데이터베이스(IndexedDB)' : store.mode === 'ls' ? '브라우저 저장소(localStorage)' : '이 화면을 닫으면 사라짐') + (state.loadedFrom === 'ls1' ? ' · v0.3 저장소에서 옮겨 왔습니다(예전 저장소는 그대로 둠)' : '') }));
+    main.append(renderSync());
+    main.append(h('p', { class: 'note', text: '이 파일은 인터넷으로 아무것도 보내지 않습니다(아래 "내 서버와 맞추기"를 직접 누를 때만 그 주소로 보냅니다). 가격, 재고, 링크를 찾아오지 않고, 사진으로 옷을 입혀 보는 기능은 아직 없습니다. 저장: ' + (store.mode === 'idb' ? '브라우저 데이터베이스(IndexedDB)' : store.mode === 'ls' ? '브라우저 저장소(localStorage)' : '이 화면을 닫으면 사라짐') + (state.loadedFrom === 'ls1' ? ' · v0.3 저장소에서 옮겨 왔습니다(예전 저장소는 그대로 둠)' : '') }));
+  }
+
+  // ---------- 내 서버와 맞추기 (선택, server/) ----------
+  async function syncFetch(path, opts) {
+    const base = SY.normalizeBase(ui.syncBase); if (!base) throw new Error('주소는 ' + 'http:' + '//호스트:포트 모양이어야 합니다.');
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 10000);
+    try {
+      const r = await fetch(base + path, Object.assign({ signal: ctl.signal, mode: 'cors', credentials: 'omit' }, opts || {}));
+      if (!r.ok) { let d = ''; try { d = (await r.json()).detail || ''; } catch (e) { /* 무시 */ } throw new Error('서버가 ' + r.status + '로 답했습니다' + (d ? ': ' + str(d, 200) : '.')); }
+      return r;
+    } catch (e) { throw new Error(e.name === 'AbortError' ? '서버가 10초 안에 답하지 않았습니다.' : e.message && e.message.indexOf('서버가') === 0 || e.message.indexOf('주소는') === 0 ? e.message : '서버에 닿지 못했습니다. 서버가 켜져 있는지, 주소가 맞는지 확인해 주세요.'); }
+    finally { clearTimeout(t); }
+  }
+  async function syncPush() {
+    ui.syncBusy = true; ui.syncMsg = '보내는 중…'; render();
+    try {
+      const photos = ui.syncPhotos == null ? SY.isLocalAddress(ui.syncBase) : ui.syncPhotos;
+      const wb = JSON.stringify(SY.wardrobePayload(state, { photos })), cb = JSON.stringify(SY.catalogPayload(state, { photos }));
+      const r1 = await (await syncFetch('/api/wardrobe/import', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': await SY.idempotencyKey(wb) }, body: wb })).json();
+      const r2 = await (await syncFetch('/api/catalog/import', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': await SY.idempotencyKey(cb) }, body: cb })).json();
+      ui.syncMsg = '보냈습니다: 옷 ' + (r1.items | 0) + '벌(새로 ' + (r1.created | 0) + ', 바뀜 ' + (r1.updated | 0) + '), 판정 기록 ' + (r1.decisions | 0) + '건, 상품 ' + (r2.items | 0) + '개' + (r1.replayed ? ' — 같은 내용을 이미 보낸 적이 있어 서버가 저장된 결과를 돌려주었습니다' : '') + (photos ? '' : ' (사진은 보내지 않았습니다)') + '.';
+    } catch (e) { ui.syncMsg = e.message; }
+    ui.syncBusy = false; render();
+  }
+  async function syncPull() {
+    ui.syncBusy = true; ui.syncMsg = '받는 중…'; render();
+    try {
+      const w = W.cleanWardrobe(await (await syncFetch('/api/wardrobe?photos=true')).json());
+      const c = C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, await (await syncFetch('/api/catalog')).json()));
+      if (!w) throw new Error('서버가 준 옷장을 읽지 못했습니다.');
+      ui.pullArm = { w, c }; ui.syncMsg = '';
+    } catch (e) { ui.syncMsg = e.message; }
+    ui.syncBusy = false; render();
+  }
+  function renderSync() {
+    const photos = ui.syncPhotos == null ? SY.isLocalAddress(ui.syncBase) : ui.syncPhotos;
+    const sec = h('section', { class: 'panel', id: 'syncPanel' }, h('h2', { text: '내 서버와 맞추기 (선택)' }),
+      h('p', { class: 'sub', text: '저장소의 server/(Spring Boot)를 내 PC에서 켰을 때만 씁니다. 누를 때만 보내고 받습니다. 사진은 주소가 이 컴퓨터(localhost)일 때만 기본으로 함께 보냅니다.' }),
+      h('div', { class: 'form' },
+        h('div', { class: 'field full' }, h('label', { for: 'syncBase', text: '서버 주소' }), h('input', { id: 'syncBase', type: 'text', maxlength: '80', value: ui.syncBase, onchange: (e) => { ui.syncBase = e.target.value.trim(); ui.syncPhotos = null; render(); } })),
+        h('div', { class: 'field full' }, h('div', { class: 'checks' }, h('label', null, h('input', { id: 'syncPhotos', type: 'checkbox', checked: photos, onchange: (e) => { ui.syncPhotos = e.target.checked; render(); } }), ' 사진도 보내기' + (SY.isLocalAddress(ui.syncBase) ? '' : ' (이 컴퓨터가 아닌 주소입니다. 사진이 그 컴퓨터에 저장됩니다)'))))),
+      h('div', { class: 'bar', style: 'margin:0' },
+        h('button', { class: 'btn primary', type: 'button', id: 'syncPush', disabled: ui.syncBusy || !SY.normalizeBase(ui.syncBase), onclick: syncPush, text: '서버로 보내기' }),
+        h('button', { class: 'btn', type: 'button', id: 'syncPull', disabled: ui.syncBusy || !SY.normalizeBase(ui.syncBase), onclick: syncPull, text: '서버에서 받기' })));
+    if (!SY.normalizeBase(ui.syncBase)) sec.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '주소는 ' + 'http:' + '//호스트:포트 모양이어야 합니다. 예: ' + 'http:' + '//localhost:8080' }));
+    if (ui.syncMsg) sec.append(h('p', { class: 'note', id: 'syncMsg', style: 'margin-top:10px', text: ui.syncMsg }));
+    if (ui.pullArm) sec.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', id: 'pullWarn', text: '지금 옷장을 서버의 옷 ' + ui.pullArm.w.items.length + '벌, 판정 기록 ' + ui.pullArm.w.decisions.length + '건, 상품 ' + (ui.pullArm.c ? ui.pullArm.c.products.length : 0) + '개로 바꿉니다. 서버에 사진이 없는 옷은 이 브라우저의 내 사진을 남깁니다.' }),
+      h('button', { class: 'btn small danger', type: 'button', id: 'pullGo', onclick: () => { const { w, c } = ui.pullArm; state.items = SY.mergePulled(state.items, w.items); state.owner = w.owner; state.decisions = w.decisions; if (c) state.catalog.products = c.products;
+        const ids = new Set(state.items.filter((i) => i.look3d).map((i) => i.id)); state.rack = state.rack.filter((r) => ids.has(r.id)); if (!state.rack.length) state.rack = defaultRack(state.items);
+        ui.pullArm = null; ui.stageSel = null; ui.syncMsg = '서버에서 받았습니다: 옷 ' + state.items.length + '벌.'; save(); render(); }, text: '바꾸기' }),
+      h('button', { class: 'btn small', type: 'button', onclick: () => { ui.pullArm = null; render(); }, text: '취소' })));
+    return sec;
   }
 
   // ---------- 편집 창 (기록 수정) ----------

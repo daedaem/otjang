@@ -34,7 +34,25 @@ for (const m of modes) {
   const logs = [], reqs = [], dialogs = [];
   page.on('console', (msg) => { if (msg.type() === 'error' || msg.type() === 'warning') logs.push(msg.text().slice(0, 200)); });
   page.on('pageerror', (e) => logs.push('pageerror: ' + e.message));
-  page.on('request', (r) => { if (!r.url().startsWith('file:') && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) reqs.push(r.url()); });
+  const MOCK = 'http://127.0.0.1:8099';                                                              // 내 서버 흉내(page.route). 실제 서버(server/)와의 연결은 여기서 확인하지 않는다
+  const syncReqs = [];
+  page.on('request', (r) => { if (r.url().startsWith(MOCK)) { syncReqs.push(r.method() + ' ' + r.url().slice(MOCK.length)); return; } if (!r.url().startsWith('file:') && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) reqs.push(r.url()); });
+  const srv = { wardrobe: null, catalog: null, keys: new Set() };
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Expose-Headers': 'Idempotent-Replayed' };
+  await page.route(MOCK + '/**', async (route) => {
+    const q = route.request(), u = new URL(q.url());
+    if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const json = (o) => route.fulfill({ status: 200, headers: Object.assign({ 'Content-Type': 'application/json' }, cors), body: JSON.stringify(o) });
+    if (q.method() === 'POST' && (u.pathname === '/api/wardrobe/import' || u.pathname === '/api/catalog/import')) {
+      const key = q.headers()['idempotency-key'] || '', body = JSON.parse(q.postData()), wardrobe = u.pathname.includes('wardrobe');
+      const replayed = srv.keys.has(key); srv.keys.add(key);
+      if (wardrobe) srv.wardrobe = body; else srv.catalog = body;
+      return json({ items: (wardrobe ? body.items : body.products).length, created: replayed ? 0 : 1, updated: 0, decisions: wardrobe ? body.decisions.length : 0, replayed });
+    }
+    if (q.method() === 'GET' && u.pathname === '/api/wardrobe') { const w = JSON.parse(JSON.stringify(srv.wardrobe)); w.items[1].name = w.items[1].name + ' (서버)'; return json(w); }
+    if (q.method() === 'GET' && u.pathname === '/api/catalog') return json(srv.catalog);
+    return route.fulfill({ status: 404, headers: cors, body: '{}' });
+  });
   page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   const shot = (n, opts) => page.screenshot(Object.assign({ path: path.join(shots, m.name + '-' + n + '.png'), fullPage: true, timeout: 120000 }, opts || {}));
@@ -216,6 +234,23 @@ for (const m of modes) {
   ok(data.schema === 2 && data.items.length === 14 && data.items.every((i) => i.status === 'owned') && data.items.every((i) => i.price == null && !i.link) && data.owner.height == null && data.decisions.length === 0, '내보낸 파일(스키마 2)에는 보유 옷만 있고 가격, 체형, 판정 기록은 기본으로 빠진다');
   ok(bought.photo.kind === 'confirmed' && bought.photo.img === '' && bought.product.brand === '브랜드' && data.items[0].photo.img.startsWith('data:image') && data.items.every((i) => i.matchCandidates.length === 0), '남의 상품 사진과 브랜드 후보는 기본으로 빠지고, 내 사진과 확인된 상품 정보는 남는다');
   await shot('7-log');
+  // 7b. 내 서버와 맞추기 (흉내 서버): 보내기 → 같은 내용 다시 보내기(멱등 키 같음) → 받기 → 바꾸기
+  ok((await page.isChecked('#syncPhotos')) === false || (await page.inputValue('#syncBase')).includes('localhost'), '기본 주소는 이 컴퓨터(localhost)다');
+  await page.fill('#syncBase', 'http://192.168.0.10:8099'); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
+  ok((await page.isChecked('#syncPhotos')) === false, '이 컴퓨터가 아닌 주소면 사진은 기본으로 보내지 않는다');
+  await page.fill('#syncBase', MOCK); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
+  ok(await page.isChecked('#syncPhotos'), '이 컴퓨터(127.0.0.1) 주소면 사진을 기본으로 함께 보낸다');
+  await page.click('#syncPush'); await page.waitForFunction(() => /보냈습니다|닿지|답/.test((document.querySelector('#syncMsg') || {}).textContent || ''));
+  const pushMsg = await page.locator('#syncMsg').innerText();
+  const sw = srv.wardrobe;
+  ok(pushMsg.includes('보냈습니다') && sw && sw.schema === 2 && sw.items.length === (await page.evaluate(() => window.__app.state.items.length)) && JSON.stringify(sw).includes('data:image') && srv.catalog && srv.catalog.products.length === 2, '서버로 보내기: 옷장 전체(후보·기록 포함)와 상품 목록을 보낸다', { pushMsg, n: sw && sw.items.length });
+  await page.click('#syncPush'); await page.waitForFunction(() => /저장된 결과/.test((document.querySelector('#syncMsg') || {}).textContent || ''));
+  ok(srv.keys.size === 2, '같은 내용을 다시 보내면 같은 멱등 키를 쓴다(옷장 1, 상품 1)', srv.keys.size);
+  await page.click('#syncPull'); await page.waitForSelector('#pullWarn');
+  await page.click('#pullGo');
+  const pulled = await page.evaluate(() => ({ n: window.__app.state.items.length, name1: window.__app.state.items[1].name, own0: window.__app.state.items[0].photo.ownImg.slice(0, 10) }));
+  ok(pulled.name1.endsWith('(서버)') && pulled.own0 === 'data:image' && pulled.n === sw.items.length, '서버에서 받기: 확인을 누르면 서버 내용으로 바뀌고 내 사진은 남는다', pulled);
+  ok(syncReqs.filter((r) => !r.startsWith('OPTIONS')).join() === 'POST /api/wardrobe/import,POST /api/catalog/import,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/wardrobe?photos=true,GET /api/catalog', '누른 만큼만 요청한다', syncReqs);
   await page.click('#tabbtn-compare');
   await page.setInputFiles('#otherFile', asFile(exp));
   await page.waitForFunction(() => window.__app.state.others.length === 1);

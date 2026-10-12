@@ -21,7 +21,7 @@ if (!process.env.NO3D) {
 }
 
 let src = read('src/app.html');
-const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'),
+const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@SYNC@@*/': read('src/sync.js'),
   '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json') };
 for (const [m, text] of Object.entries(parts)) {
   if (!src.includes(m)) throw new Error('marker missing ' + m);

@@ -1,11 +1,12 @@
 # 개인판 v0.4 (화면 이름 "옷장들이"는 가칭)
 
 오래 입는 옷의 기록을 남기고, 살까 고민 중인 옷을 가진 옷에 비춰 보고, 3D 옷장에 걸어 보고, 직접 넣은 상품 목록 안에서 살 만한 것을 고르는 도구다.
-서버가 없다. `dist/index.html` 파일 하나를 브라우저로 열면 된다. 인터넷으로 아무것도 보내지 않는다. 가격·재고·링크를 찾아오지 않는다. AI를 쓰지 않는다(같은 입력이면 같은 결과).
+서버 없이 돈다. `dist/index.html` 파일 하나를 브라우저로 열면 된다. 인터넷으로 아무것도 보내지 않는다(내 서버와 맞추기를 직접 누를 때만 그 주소로 보낸다). 가격·재고·링크를 찾아오지 않는다. AI를 쓰지 않는다(같은 입력이면 같은 결과).
 
 v0.3에서 더해진 것 (PRD v0.3 「남은 작업」 1·2·4·6):
 - **사진 상태·출처·확인일** (옷장 파일 스키마 2): 옷마다 속성 출처(사진 초안 / 주인 입력 / 주인 확인), 사진 상태(내 사진 / 확인된 동일 제품 / 미확인 후보 / 대체 이미지 / 없음), 상품 매칭 정보를 내 옷 기록과 따로 둔다. 상태는 사용자 동작으로만 바뀐다.
 - **옷 등록 질문 단계**: 무엇인가 → 색과 느낌 → 어떤 상품인가. 아는 칸은 묻지 않고 "모름"을 고를 수 있다. 상품 주소·사진은 직접 넣는다(열거나 긁어 오지 않는다).
+- **내 서버와 맞추기** (v0.4.3, 선택): 기록 탭에서 서버 주소(기본 localhost:8080)를 두고 "서버로 보내기"(옷장 전체·판정 기록·상품 목록, 내용 해시 멱등 키) / "서버에서 받기"(확인 후 바꾸기, 서버에 없는 내 사진은 남김). 누를 때만 요청한다. 사진은 이 컴퓨터 주소일 때만 기본으로 보낸다. 흉내 서버로 흐름을 확인했고, 실제 server/ 와의 연결은 아직 확인하지 않았다.
 - **사진에서 색·밝기 초안** (v0.4.1): 내 사진을 넣으면 사진 가운데 색으로 색 계열·밝기를 미리 채운다(브라우저 캔버스만, AI·외부 요청 없음). 그대로 두고 저장하면 "사진에서 뽑은 초안"(photo-draft)으로 남고, 손대거나 확인 체크를 하면 주인 입력·확인이 된다. 종류·무늬·격식은 추정하지 않는다.
 - **3D 옷장 탭**: Blender로 빛을 미리 구운 옷장에 종류별 형태(셔츠·블레이저·필드 재킷·트러커 재킷)의 옷을 건다. 미리 만든 원단 5종, 또는 옷의 색·무늬로 브라우저에서 만든 원단(근사). 끌어 자리 바꾸기, 눌러 크게 보기, 흔들림.
 - **살 만한 옷 탭**: 사람이 직접 넣은 상품 목록. 내 옷장에 비춰 조합·겹침·빈틈으로 순서를 매긴다. 오래된 가격은 "재확인 필요". 목록 밖 상품을 지어내지 않는다.
@@ -29,11 +30,11 @@ v0.3에서 더해진 것 (PRD v0.3 「남은 작업」 1·2·4·6):
 
 ```bash
 npm install                  # three 0.160.1, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                     # 규칙·스키마·상품·색 초안 테스트 46개 (Node 22, 추가 패키지 없음)
+npm test                     # 규칙·스키마·상품·색 초안·서버 맞추기 테스트 52개 (Node 22, 추가 패키지 없음)
 npm run assets               # assets/closet → src/closet/assets.gen.js
 npm run build                # dist/index.html (약 9MB, 3D 포함). NO3D=1 이면 3D 없이, NO_MESHOPT=1 이면 WebAssembly 없이(더 크다)
 npm run build:empty          # dist/otjang-empty.html (빈 옷장)
-npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인: 환경당 65항목 × 두 환경(3D 탭 포함. NO3D=1로 건너뛸 수 있음, QUICK=1이면 한 환경). 기대값은 예시 옷장 기준
+npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인: 환경당 72항목 × 두 환경(3D 탭 포함. NO3D=1로 건너뛸 수 있음, QUICK=1이면 한 환경). 기대값은 예시 옷장 기준
 npm run golden               # 규칙 결과 스냅샷 다시 만들기 (규칙을 일부러 바꿀 때만)
 npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (meshopt 압축)
 ```
@@ -48,6 +49,7 @@ npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (
 | `src/judge.js` | 구매 후보 판정과 옷장 비교 (v0.3 그대로) |
 | `src/wardrobe.js` | 옷장 파일 스키마 2: 정리·옮기기, 사진 상태 바꾸기(setOwnPhoto, setProductPhoto, confirmProduct, unconfirm, clearProductPhoto, addCandidate), 내보내기 |
 | `src/catalog.js` | 상품 목록 정리, 재확인 필요 판정, 상품 순위(rank), 상품 → 후보 |
+| `src/sync.js` | 내 서버와 보내기·받기의 순수 함수(주소 검사, 보낼 파일 만들기·사진 빼기, 받은 옷에 내 사진 남기기, 멱등 키) |
 | `src/colorguess.js` | 사진 가운데 픽셀을 HSL 상자로 묶어 대표색 → 색 계열·밝기 초안. 인디고는 자동으로 고르지 않는다(네이비로 두고 사용자가 바꿈) |
 | `src/app.html` | 화면. 글자는 모두 textContent로 넣고, 가져온 파일은 아는 항목만 남겨 정리한다 |
 | `src/closet/index.js` | 3D 옷장 모듈(three.js). create()로 만들고 setItems()로 걸 옷을 준다 |
