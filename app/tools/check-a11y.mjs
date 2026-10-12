@@ -43,7 +43,10 @@ for (const m of [{ name: 'light', w: 1280, h: 900, scheme: 'light' }, { name: 'd
   await page.waitForSelector('#vCombos'); await audit('살까 말까 판정 화면');
   await page.click('#askFriend'); await page.waitForFunction(() => window.__share && window.__share.bytes > 0); await audit('친구에게 물어보기 창', '#shareDlg'); await page.click('#shClose');
   await page.click('#tabbtn-outfits'); await audit('코디');
-  await page.click('#tabbtn-shop'); await audit('살 만한 옷');
+  await page.click('#tabbtn-shop'); await audit('추천(기준 고르기)');
+  for (const id of ['#pk-pri-brand', '#pk-pri-quality', '#pk-brand-polo', '#pk-brand-pottery', '#pk-style-american-classic']) await page.click(id);
+  await page.selectOption('#pk-size', 'M'); await page.click('#pickGo'); await page.click('#pickAll > summary'); await page.click('#pickTop details.ev > summary');
+  await audit('추천 결과(딱 하나·대안·전체 순위·근거 펼침)');
   await page.click('#tabbtn-compare'); await audit('옷장 구경');
   await page.click('#tabbtn-log'); await page.click('#opsBox > summary'); await audit('기록(받은 의견 모아 보기 펼침)');
   await page.click('#helpBtn'); await audit('안내 창', '#helpDlg'); await page.click('#helpClose');

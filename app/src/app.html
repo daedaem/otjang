@@ -202,6 +202,30 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 .brow .bf .full{grid-column:1/-1}
 .brow .bf .inl .sw{width:22px;height:22px;border-radius:6px;border:1px solid var(--line2);flex:none}
 .notice .choices{margin:6px 0 8px}
+/* 추천: 기준으로 딱 하나 */
+.pform .fl{font-size:12.5px;color:var(--ink2);font-weight:650;margin:12px 0 6px}
+.pform .fl:first-of-type{margin-top:0}
+.pform .chips{display:flex;flex-wrap:wrap;gap:6px}
+.ord{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--accent-ink);color:var(--accent);font-size:11.5px;line-height:18px;text-align:center;margin-right:5px;font-weight:700}
+.meas{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meas label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.meas input{width:78px}
+.meas select{width:auto}
+.pick{background:var(--card);border:2px solid var(--accent);border-radius:14px;padding:16px;margin:0 0 12px}
+.pick .eyebrow,.alt .eyebrow{font-size:12.5px;color:var(--ink2);font-weight:650;margin-bottom:4px}
+.pick h3{font:700 19px/1.3 var(--serif);overflow-wrap:anywhere}
+.pick .pp,.alt .pp{font-weight:700;margin:6px 0 2px}
+.pick .pp{font-size:17px}
+.pick .src,.alt .src{font-size:12.5px;color:var(--ink2);margin-bottom:8px}
+.pick h4,.alt h4{font-size:13px;margin:10px 0 4px;color:var(--ink2)}
+.alts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:0 0 12px}
+.alt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.alt h3{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+.pnotes{margin:0 0 12px;padding-left:18px;font-size:13px;color:var(--ink2)}
+#pickResult{scroll-margin-top:56px}
+table.rank td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+details.ev{margin-top:10px}details.ev>summary{cursor:pointer;font-size:13px;color:var(--ink2)}
+details.ev ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -386,6 +410,7 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 <script>/*@@JUDGE@@*/</script>
 <script>/*@@WARDROBE_LIB@@*/</script>
 <script>/*@@CATALOG_LIB@@*/</script>
+<script>/*@@PICK@@*/</script>
 <script>/*@@COLORGUESS@@*/</script>
 <script>/*@@SYNC@@*/</script>
 <script>/*@@FEEDBACK@@*/</script>
@@ -393,12 +418,14 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 const SAMPLE = /*@@SAMPLE@@*/;
 const SAMPLE_B = /*@@SAMPLE_B@@*/;
 const BASE = /*@@WARDROBE@@*/;
-const TEMPLATE = /*@@TEMPLATE@@*/;</script>
+const TEMPLATE = /*@@TEMPLATE@@*/;
+const PICKS_RAW = /*@@PICKS@@*/;</script>
 <script>/*@@CLOSET@@*/</script>
 <script>
 (function () {
   'use strict';
-  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, FB = window.Feedback;
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, FB = window.Feedback, PK = window.Pick;
+  const PICKS = PK.cleanPicks(PICKS_RAW) || { products: [], brands: {}, lines: {}, brandNotes: [], fx: {} };   // 검증 카탈로그: 공식 판매처 페이지에서 확인한 상품(가격·재고는 확인한 날의 값)
   let X = window.OtjangCloset || null;                                                              // 3D 옷장: 한 파일 빌드에서는 바로 있고, 나눈 빌드(웹 배포)에서는 3D 탭을 열 때 closet.js 를 내려받는다
   const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
   const KEY1 = 'otjang.v1', KEY2 = 'otjang.v2', DB = 'otjang';
@@ -483,6 +510,16 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   const kvSet = (k, v) => new Promise((res) => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => res(false); t.onabort = () => res(false); } catch (e) { res(false); } });
   const kvDel = (k) => new Promise((res) => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = () => res(true); t.onerror = () => res(false); } catch (e) { res(false); } });
   const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  /** 추천 설정(무엇을, 어떻게 입나, 중요한 순서, 좋아하는 브랜드·스타일, 사이즈, 잘 맞는 옷 치수). 이 브라우저에만 남는다. */
+  function cleanPrefs(raw) {
+    const p = raw && typeof raw === 'object' ? raw : {};
+    const keys = (v, dict) => (Array.isArray(v) ? v.filter((k, i, a) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(dict, k) && a.indexOf(k) === i) : []);
+    const ref = {}; if (p.ref && typeof p.ref === 'object') for (const k of ['chest', 'length', 'shoulder']) { const v = num(p.ref[k], 20, 150); if (v != null) ref[k] = v; }
+    const lines = Object.keys(PICKS.lines);
+    return { line: PICKS.lines[p.line] ? p.line : lines[0] || '', sleeve: PK.SLEEVES[p.sleeve] ? p.sleeve : 'short', use: PK.USES[p.use] ? p.use : 'layer',
+      pri: keys(p.pri, PK.CRITERIA).slice(0, 5), brands: keys(p.brands, PICKS.brands), styles: keys(p.styles, PK.STYLES),
+      size: typeof p.size === 'string' && /^(XS|S|M|L|XL|XXL)$/.test(p.size) ? p.size : '', ref };
+  }
   /** 저장된 상태를 정리한다. 옷장 파일(스키마 1·2) + others + catalog + rack(3D 옷장에 건 옷). */
   function cleanState(raw) {
     const w = W.cleanWardrobe(raw); if (!w) return null;
@@ -490,6 +527,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const m = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
     s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120), quickAdded: num(m.quickAdded, 0, 9999) || 0,   // quickAdded: 빠른 시작으로 넣은 옷 수
       installId: typeof m.installId === 'string' && /^[a-z0-9]{6,16}$/.test(m.installId) ? m.installId : Math.random().toString(36).slice(2, 10).padEnd(6, '0') };   // installId: 의견 요약에서 같은 사람을 한 번만 세려는 무작위 글자(사람을 알아볼 수 없다)   // days: 앱을 연 날(이 기기에만 남고, 의견 보내기를 누를 때만 요약으로 붙는다)   // 예시 옷장 보는 중인지, 마지막 백업일, 첫 안내를 봤는지
+    for (const k of ['pickRuns', 'pickOut', 'pickCand']) s.meta[k] = num(m[k], 0, 99999) || 0;          // 기준 추천을 받은 횟수, 추천에서 판매처를 연 횟수, 추천을 후보로 넣은 수
+    s.prefs = cleanPrefs(raw.prefs);
     s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
     const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
     const ids = new Set(s.items.map((i) => i.id)), slots = new Set();
@@ -514,7 +553,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   }
   let state = null, storageOk = true, savePromise = Promise.resolve();
   const ui = { advOpen: false, syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
-    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '' };
+    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '', pickShow: false };
   function save() {
     const data = JSON.stringify(state);
     savePromise = (async () => {
@@ -595,11 +634,11 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   }
 
   // ---------- 탭 ----------
-  const TABS = [['closet', '옷장'], ['closet3d', '3D 옷장'], ['judge', '살까 말까'], ['outfits', '코디'], ['shop', '살 만한 옷'], ['compare', '옷장 구경'], ['log', '기록']];
+  const TABS = [['closet', '옷장'], ['shop', '추천'], ['judge', '살까 말까'], ['outfits', '코디'], ['closet3d', '3D 옷장'], ['compare', '옷장 구경'], ['log', '기록']];
   function renderTabs() {
     const nav = $('#tabs'); nav.textContent = '';
     for (const [id, label] of TABS) {
-      const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'shop' ? state.catalog.products.length : id === 'closet3d' ? state.rack.length : null;
+      const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'closet3d' ? state.rack.length : null;
       nav.append(h('button', { class: 'tab', type: 'button', role: 'tab', id: 'tabbtn-' + id, 'aria-selected': ui.tab === id ? 'true' : 'false', onclick: () => { ui.tab = id; render(); } }, label, n != null ? h('span', { class: 'n', text: String(n) }) : null));
     }
   }
@@ -854,9 +893,120 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     main.append(h('div', { class: 'outfits', id: 'recGrid' }, cur.map((c) => outfitCard({ top: map[c.top], bottom: map[c.bottom], outer: c.outer ? map[c.outer] : null, score: c.score, why: c.why, caution: c.caution }))));
   }
 
+  // ---------- 추천: 사고 싶은 옷을 내 기준으로 딱 하나 ----------
+  const won = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
+  /** 눌러서 다시 그린 뒤에도 같은 단추에 초점을 돌려준다(키보드로 쓰는 사람을 위해). */
+  function keepFocus(id, fn) { return () => { fn(); const el = id && document.getElementById(id); if (el) el.focus(); }; }
+  function pickQuery() {
+    const pf = state.prefs;
+    return { line: pf.line, sleeve: pf.sleeve, use: pf.use, priorities: pf.pri, brands: pf.brands, styles: pf.styles, size: pf.size, ref: pf.ref, today: today() };
+  }
+  function pickForm() {
+    const pf = state.prefs;
+    const setv = (k, v) => () => { pf[k] = v; save(); render(); };
+    const toggle = (k, v) => () => { const a = pf[k], i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); save(); render(); };
+    const pc = (id, label, on, fn) => { const b = chip(label, on, keepFocus(id, fn)); b.id = id; return b; };
+    const inLine = PICKS.products.filter((p) => p.line === pf.line), nb = new Set(inLine.map((p) => p.brand)).size;
+    const dates = inLine.map((p) => p.checkedAt).sort();
+    const meas = (k, label) => { const v = pf.ref[k]; return h('label', null, label, h('input', { type: 'number', id: 'pk-ref-' + k, min: '20', max: '150', step: '0.5', inputmode: 'decimal', value: v == null ? '' : String(v), 'aria-label': '잘 맞는 옷의 ' + label + ' (cm)',
+      onchange: (e) => keepFocus(document.activeElement === e.target ? e.target.id : '', () => { const n = Number(e.target.value); if (e.target.value === '' || !isFinite(n)) delete pf.ref[k]; else if (n >= 20 && n <= 150) pf.ref[k] = Math.round(n * 2) / 2; save(); render(); })() }), 'cm'); };
+    const sizeSel = h('select', { id: 'pk-size', 'aria-label': '평소 상의 사이즈', onchange: (e) => keepFocus('pk-size', () => { pf.size = e.target.value; save(); render(); })() },
+      h('option', { value: '', text: '평소 사이즈 모름' }), ['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((s) => h('option', { value: s, text: s + (s === 'S' ? ' (95)' : s === 'M' ? ' (100)' : s === 'L' ? ' (105)' : s === 'XL' ? ' (110)' : '') })));
+    sizeSel.value = pf.size;
+    return h('section', { class: 'panel pform', id: 'pickForm' },
+      h('h2', { text: '사고 싶은 옷, 내 기준으로 딱 하나' }),
+      h('p', { class: 'sub', text: '중요한 기준을 순서대로 누르면, 어울이 공식 판매처 페이지에서 확인한 상품 가운데 하나를 고르고 이유를 보여 줍니다. 광고나 입점비로 순서를 바꾸지 않습니다.' }),
+      h('p', { class: 'fl', text: '무엇을' }), h('div', { class: 'chips' }, Object.keys(PICKS.lines).map((k) => pc('pk-line-' + k, PICKS.lines[k].label, pf.line === k, setv('line', k))),
+        h('span', { class: 'note', text: '상품 ' + inLine.length + '개 · 브랜드 ' + nb + '곳 · ' + (dates[0] || '') + ' 확인 · 다른 옷은 준비 중' })),
+      h('p', { class: 'fl', text: '소매' }), h('div', { class: 'chips' }, Object.keys(PK.SLEEVES).map((k) => pc('pk-sleeve-' + k, PK.SLEEVES[k], pf.sleeve === k, setv('sleeve', k)))),
+      h('p', { class: 'fl', text: '어떻게 입나요' }), h('div', { class: 'chips' }, Object.keys(PK.USES).map((k) => pc('pk-use-' + k, PK.USES[k] + (k === 'layer' ? ' (얇게·목 좁게·로고 없이)' : k === 'solo' ? ' (탄탄하게)' : ''), pf.use === k, setv('use', k)))),
+      h('p', { class: 'fl', text: '중요한 순서 (누른 순서가 중요도입니다)' }), h('div', { class: 'chips' }, Object.keys(PK.CRITERIA).map((k) => {
+        const i = pf.pri.indexOf(k), b = pc('pk-pri-' + k, '', i >= 0, toggle('pri', k));
+        if (i >= 0) b.append(h('span', { class: 'ord', 'aria-hidden': 'true', text: String(i + 1) }));
+        b.append(PK.CRITERIA[k]); if (i >= 0) b.setAttribute('aria-label', PK.CRITERIA[k] + ', ' + (i + 1) + '순위'); return b;
+      })),
+      h('p', { class: 'fl', text: '좋아하는 브랜드' }), h('div', { class: 'chips' }, Object.keys(PICKS.brands).map((k) => pc('pk-brand-' + k, PICKS.brands[k].ko || PICKS.brands[k].name, pf.brands.indexOf(k) >= 0, toggle('brands', k)))),
+      h('p', { class: 'fl', text: '스타일' }), h('div', { class: 'chips' }, Object.keys(PK.STYLES).map((k) => pc('pk-style-' + k, PK.STYLES[k], pf.styles.indexOf(k) >= 0, toggle('styles', k)))),
+      h('p', { class: 'fl', text: '사이즈 (선택)' }), h('div', { class: 'meas' }, sizeSel, h('span', { class: 'note', text: '잘 맞는 티의 실측:' }), meas('chest', '가슴 너비'), meas('length', '총장'), meas('shoulder', '어깨')),
+      h('div', { class: 'bar', style: 'margin:14px 0 0' }, h('button', { class: 'btn primary', type: 'button', id: 'pickGo', onclick: () => { ui.pickShow = true; state.meta.pickRuns++; save(); render(); const r = $('#pickResult'); if (r && r.scrollIntoView) r.scrollIntoView({ block: 'start' }); }, text: '딱 하나 골라 주세요' }),
+        !pf.pri.length ? h('span', { class: 'note', text: '기준을 하나도 고르지 않으면 모두 같은 무게로 봅니다' }) : null));
+  }
+  function priceLine(r) {
+    const p = r.product, parts = [p.currency === 'KRW' ? won(p.price) : '$' + p.price + ' (약 ' + won(r.krw) + ')'];
+    if (p.listPrice && p.listPrice > p.price) parts.push('정가 ' + won(p.listPrice) + '에서 할인');
+    return parts.join(' · ');
+  }
+  function storeLink(r, label, cls) {
+    return h('a', { class: cls || 'btn small', href: r.product.store.url, target: '_blank', rel: 'noopener noreferrer', onclick: () => { state.meta.pickOut++; save(); }, text: label || '판매처에서 보기 ↗' });
+  }
+  function pickToCand(r) {
+    const c = PK.toCandidate(r.product, PICKS, today()); c.id = newId('c');
+    state.items.push(c); state.meta.pickCand++; ui.judgeId = c.id; ui.tab = 'judge'; save(); render();
+  }
+  function closetLine(r) {
+    const c = r.closet;
+    if (!c) return null;
+    if (!owned().length) return h('p', { class: 'note', text: '옷장에 가진 옷을 넣으면 이 옷과 생기는 조합도 계산합니다.' });
+    if (!c.supported || c.note) return h('p', { class: 'note', text: c.note || '이 종류는 조합 규칙이 아직 없습니다.' });
+    const ex = c.top3[0];
+    const names = ex ? [ex.bottom && ex.bottom.name, ex.outer && ex.outer.name].filter(Boolean).join(' + ') : '';
+    return h('p', { class: 'note' }, h('b', { text: '내 옷장과: ' }), '주의 사항 없는 새 조합 ' + c.added + '개' + (names ? ' (예: + ' + names + ')' : '') + (c.overlaps.length ? ' · 비슷한 옷 ' + c.overlaps.length + '벌: ' + c.overlaps.map((o) => o.name).join(', ') : ''));
+  }
+  function pickCard(r, res) {
+    const p = r.product, bn = PK.brandName(PICKS, p.brand);
+    const ev = h('details', { class: 'ev' }, h('summary', { text: '근거와 확인일 보기' }),
+      h('ul', null, p.evidence.map((e) => h('li', null, (e.seen ? e.seen + ' 확인 — ' : '') + e.what + ' ', h('a', { href: e.url, target: '_blank', rel: 'noopener noreferrer', text: '페이지' }))),
+        h('li', { text: '소재: ' + (p.fabric.comp || '표기 없음') + (p.fabric.notes.length ? ' · ' + p.fabric.notes.join(' · ') : '') }),
+        p.sizes.length ? h('li', { text: '치수(' + (PK.SRC[p.sizeSrc] || '') + '): ' + p.sizes.map((s) => s.label + ' ' + [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? '총장 ' + s.length : '', s.shoulder != null ? '어깨 ' + s.shoulder : ''].filter(Boolean).join('/')).join(', ') + (p.sizeNote ? ' — ' + p.sizeNote : '') }) : h('li', { text: p.sizeNote || '치수표 없음' }),
+        p.stock ? h('li', { text: '재고(' + p.stock.checkedAt + '): ' + (p.stock.sizes ? p.stock.sizes.join(', ') : p.stock.inStock ? '있음(사이즈별은 판매처에서)' : '확인 못 함') }) : null,
+        h('li', { text: '품질 점수 ' + r.quality.score + '/10 — 기본 3점에 ' + (r.quality.parts.length ? r.quality.parts.join(', ') : '더한 것 없음') + (r.quality.unknown.length ? ' (모름: ' + r.quality.unknown.join(', ') + ')' : '') }),
+        h('li', { text: '스타일 분류(어울 편집): ' + (p.styles.map((s) => PK.STYLES[s]).join('·') || '없음') })));
+    return h('article', { class: 'pick', id: 'pickTop', 'data-id': p.id },
+      h('p', { class: 'eyebrow', text: '내 기준에 가장 맞는 것 · 기준 점수 ' + r.total + '/100' }),
+      h('h3', { text: bn + ' ' + p.name }), h('p', { class: 'meta', text: [p.colorName, PK.SLEEVES[p.sleeve], p.fit ? PK.FIT[p.fit] : ''].filter(Boolean).join(' · ') }),
+      h('p', { class: 'pp', text: priceLine(r) }),
+      h('p', { class: 'src' }, p.store.name + ' · ' + (p.store.type === 'official' ? '공식' : '판매처') + ' · ' + p.checkedAt + ' 확인', r.stale ? h('span', { class: 'badge warn', style: 'margin-left:6px', text: '다시 확인 필요' }) : null),
+      h('h4', { text: '왜 이것' }), h('ul', { class: 'why', id: 'pickWhy' }, r.reasons.map((t) => h('li', { text: t }))),
+      h('h4', { text: '사이즈' }), h('p', { class: 'note', id: 'pickSize', text: r.sizeLine }),
+      r.cautions.length ? [h('h4', { text: '아쉬운 점 · 확인 못 한 것' }), h('ul', { class: 'why warn', id: 'pickWarn' }, r.cautions.map((t) => h('li', { text: t })))] : null,
+      closetLine(r),
+      h('div', { class: 'bar', style: 'margin:12px 0 0' }, storeLink(r, '판매처에서 보기 ↗', 'btn primary'), h('button', { class: 'btn', type: 'button', id: 'pickCand', onclick: () => pickToCand(r), text: '살까 말까에 넣기' })), ev);
+  }
+  function altCard(a) {
+    const r = a.r, p = r.product;
+    return h('article', { class: 'alt', 'data-id': p.id }, h('p', { class: 'eyebrow', text: a.label + ' · ' + r.total + '/100' }),
+      h('h3', { text: PK.brandName(PICKS, p.brand) + ' ' + p.name }), h('p', { class: 'pp', text: priceLine(r) }),
+      h('p', { class: 'src', text: p.store.name + ' · ' + p.checkedAt + ' 확인' }), h('p', { class: 'note', text: a.why }),
+      h('ul', { class: 'why' }, r.reasons.slice(0, 2).map((t) => h('li', { text: t }))),
+      r.cautions.length ? h('ul', { class: 'why warn' }, r.cautions.slice(0, 2).map((t) => h('li', { text: t }))) : null,
+      closetLine(r),
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(r), h('button', { class: 'btn small', type: 'button', onclick: () => pickToCand(r), text: '살까 말까에 넣기' })));
+  }
+  function renderPick(main) {
+    main.append(pickForm());
+    if (!ui.pickShow) return;
+    const res = PK.recommend(state.items, PICKS, pickQuery());
+    window.__pick = { pick: res.pick && res.pick.product.id, total: res.pick && res.pick.total, alts: res.alts.map((a) => [a.label, a.r.product.id]), ranked: res.ranked.map((r) => [r.product.id, r.total]), notes: res.notes, reasons: res.pick ? res.pick.reasons : [], cautions: res.pick ? res.pick.cautions : [], size: res.pick ? res.pick.sizeLine : '' };
+    const box = h('section', { id: 'pickResult', 'aria-live': 'polite' });
+    if (!res.pick) { box.append(h('div', { class: 'empty', text: '이 조건에 맞는 상품이 아직 없습니다. 소매나 용도를 바꿔 보세요.' }), res.notes.length ? h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n }))) : null); main.append(box); return; }
+    box.append(pickCard(res.pick, res));
+    if (res.alts.length) box.append(h('div', { class: 'alts', id: 'pickAlts' }, res.alts.map(altCard)));
+    if (res.notes.length) box.append(h('ul', { class: 'pnotes', id: 'pickNotes' }, res.notes.map((n) => h('li', { text: n }))));
+    box.append(h('p', { class: 'note', style: 'margin:0 0 8px', text: '기준 점수는 이 목록(' + res.about.count + '개) 안에서 견준 상대 점수이고 확률이 아닙니다. 순서는 고른 기준으로만 정합니다.' }));
+    const names ={ value: '가성비', quality: '품질', brand: '브랜드', fit: '핏', style: '스타일' };
+    box.append(h('details', { class: 'ev', id: 'pickAll' }, h('summary', { text: '전체 순위 보기 (' + res.ranked.length + '개' + (res.excluded.length ? ', 조건으로 뺀 ' + res.excluded.length + '개' : '') + ')' }),
+      h('div', { class: 'scroll', tabindex: '0', role: 'region', 'aria-label': '전체 순위 표' }, h('table', { class: 'log rank' }, h('thead', null, h('tr', null, ['순위', '상품', '가격', '기준 점수'].concat(Object.keys(names).map((k) => names[k])).concat(res.use !== 'any' ? ['용도'] : []).map((t) => h('th', { text: t })))),
+        h('tbody', null, res.ranked.map((r, i) => h('tr', null, h('td', { class: 'n', text: String(i + 1) }), h('td', { text: PK.brandName(PICKS, r.product.brand) + ' ' + r.product.name + (r.mismatch ? ' (용도에서 뺌)' : r.avail === false ? ' (사이즈 품절)' : '') }),
+          h('td', { class: 'n', text: won(r.krw) }), h('td', { class: 'n', text: String(r.total) }), Object.keys(names).map((k) => h('td', { class: 'n', text: String(Math.round(r.crit[k] * 100)) })), res.use !== 'any' ? h('td', { class: 'n', text: String(Math.round(r.use.score * 100)) }) : null))))),
+      h('p', { class: 'note', style: 'margin-top:8px', text: '점수는 이 목록 안에서 견준 상대 점수(0~100)이고 확률이 아닙니다. 품질은 공개된 정보로만 매겨서 정보를 많이 밝힌 상품이 유리합니다. 가격·재고는 확인한 날의 값이라 바뀔 수 있습니다. 스타일 분류는 어울의 편집 판단입니다.' })));
+    main.append(box);
+  }
+
   // ---------- 살 만한 옷 (직접 넣는 상품 목록) ----------
   function renderShop(main) {
-    main.append(h('p', { class: 'lead', text: '쇼핑하다 본 실제 상품을 직접 넣어 두면, 내 옷장에 비춰 어떤 상품이 조합을 많이 만들고 빈틈을 채우는지 순서를 매깁니다. 가격과 재고는 찾아오지 않고, 적은 값과 확인한 날만 보여 줍니다. 목록 밖의 상품을 지어내지 않습니다.' }));
+    renderPick(main);
+    main.append(h('h2', { class: 'big', style: 'margin:22px 0 6px;font-size:18px', text: '직접 넣은 상품 견주기' }));
+    main.append(h('p', { class: 'lead', text: '목록에 없는 상품(예: 무신사에서 본 옷)은 직접 넣어 두면, 내 옷장에 비춰 어떤 상품이 조합을 많이 만들고 빈틈을 채우는지 순서를 매깁니다. 직접 넣은 상품은 가격과 재고를 찾아오지 않고, 적은 값과 확인한 날만 보여 줍니다.' }));
     const gaps = sources();
     main.append(h('div', { class: 'bar' }, h('button', { class: 'btn primary', type: 'button', id: 'addProduct', onclick: () => openProduct(null), text: '상품 추가' }),
       h('button', { class: 'btn', type: 'button', id: 'catImportBtn', onclick: () => $('#catFile').click(), text: '상품 목록 파일 열기' }),
@@ -1003,6 +1153,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       const r = (x) => x.count + '/' + x.total + '명' + (x.pct == null ? '' : ' (' + x.pct + '%)');
       const rows = [['참여자', sm.n + '명 (같은 사람은 최근 의견만)', '', ''], ['활성화: 옷 5벌 이상', r(sm.activated), '절반 이상', word[vd.activated]], ['핵심 가치: 살까 말까 끝까지 1건 이상', r(sm.value), '1/3 이상', word[vd.value]],
         ['유지: 최근 30일에 3일 이상 엶', r(sm.retained), '1/3 이상(2주 뒤에 볼 것)', word[vd.retained]], ['판정 끝 합계', sm.decisions + '건', '', ''],
+        ['기준 추천을 받아 본 사람', r(sm.picked), '', ''], ['추천에서 판매처까지 연 사람', r(sm.outbound), '', ''],
         ['2주 뒤 답', sm.follow.answers + '건 (잘함 ' + sm.follow.good + ' · 그저 ' + sm.follow.ok + ' · 후회·아쉬움 ' + sm.follow.regret + ' · 결국 안 삼 ' + sm.follow.notbought + ')', '후회가 적을수록', ''],
         ['"더는 못 쓰면 매우 아쉽다"', r(sm.pmf) + ' · 답 ' + sm.pmf.answered + '명', '40%(흔히 쓰는 참고선)', word[vd.pmf]], ['추천할 마음(NPS)', sm.nps.score == null ? '답 없음' : sm.nps.score + '점 · 답 ' + sm.nps.answered + '명 (9~10점 ' + sm.nps.promoters + ', 0~6점 ' + sm.nps.detractors + ')', '', ''],
         ['오류를 겪은 사람', sm.errors + '명', '0명', ''], ['버전', sm.versions.join(', '), '', '']];
@@ -1611,12 +1762,13 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     return ['[' + BRAND.name + ' ' + BRAND.version + ']', '옷 ' + own.length + '벌(초안 ' + own.filter(W.isDraft).length + ', 내 사진 ' + own.filter((i) => i.photo.ownImg).length + ') · 후보 ' + cands().length + ' · 판정 끝 ' + done + '건 · 상품 ' + state.catalog.products.length + '개 · 3D 걸림 ' + state.rack.length,
       '예시 옷장: ' + (state.meta.sample ? '보는 중' : '아님') + ' · 저장: ' + store.mode + (storageOk ? '' : '(실패)') + ' · 화면 ' + window.innerWidth + '×' + window.innerHeight + ' · 3D: ' + (closet.failed ? '실패' : closet.ready ? '열림' : '안 엶'),
       '연 날 ' + state.meta.days.length + '일(최근 30일 ' + state.meta.days.filter((d) => daysAgo(d) <= 30).length + '일) · 첫 사용 ' + (state.meta.days[0] || '-') + ' · 빠른 시작 ' + state.meta.quickAdded + '벌',
+      '기준 추천 ' + state.meta.pickRuns + '번 · 추천에서 판매처 연 횟수 ' + state.meta.pickOut + ' · 추천을 후보로 ' + state.meta.pickCand + '벌',
       (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length; return '2주 뒤 답 ' + f.length + '건(잘함 ' + c('good') + ', 그저 ' + c('ok') + ', 후회·아쉬움 ' + c('regret') + ', 결국 안 삼 ' + f.filter((d) => d.follow.worn === 'notbought').length + ') · 물을 차례 ' + W.followDue(state.decisions, today()).length + '건'; })(),
       errors.length ? '최근 오류: ' + errors.slice(-3).join(' / ') : '최근 오류 없음',
       (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length;                 // 운영자가 "받은 의견 모아 보기"에 붙여 넣으면 읽는 한 줄
         return FB.line({ id: state.meta.installId, v: BRAND.version, at: today(), own: own.length, draft: own.filter(W.isDraft).length, photo: own.filter((i) => i.photo.ownImg).length, cand: cands().length, done, prod: state.catalog.products.length,
           rack: state.rack.length, quick: state.meta.quickAdded, days: state.meta.days.length, d30: state.meta.days.filter((d) => daysAgo(d) <= 30).length, first: state.meta.days[0] || '', fol: f.length, good: c('good'), ok: c('ok'), regret: c('regret'),
-          nb: f.filter((d) => d.follow.worn === 'notbought').length, due: W.followDue(state.decisions, today()).length, pmf: a.pmf || '', nps: a.nps === '' || a.nps == null ? '' : a.nps, err: errors.length, scr: window.innerWidth + 'x' + window.innerHeight }); })()].join('\n');
+          nb: f.filter((d) => d.follow.worn === 'notbought').length, due: W.followDue(state.decisions, today()).length, pk: state.meta.pickRuns, pko: state.meta.pickOut, pkc: state.meta.pickCand, pmf: a.pmf || '', nps: a.nps === '' || a.nps == null ? '' : a.nps, err: errors.length, scr: window.innerWidth + 'x' + window.innerHeight }); })()].join('\n');
   }
   function fbAnswers() { const p = document.querySelector('#fbPmf input:checked'), n = $('#fbNps').value; return { pmf: p ? p.value : '', nps: n === '' ? '' : Number(n) }; }
   function feedbackText() {
@@ -1642,7 +1794,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const b = $('#helpBody'); b.textContent = '';
     b.append(h('p', { class: 'lead', text: BRAND.name + '(' + BRAND.status + ')은 ' + BRAND.tagline + ' 판단하도록 돕는 도구입니다. 지금은 지인 대상 시험판(' + BRAND.version + ')입니다.' }),
       h('h3', { text: '처음 쓰는 법' }),
-      h('ol', null, h('li', { text: '옷장 탭의 "기본 옷 골라 넣기"로 가진 옷과 비슷한 옷을 한 번에 넣습니다. 한 벌씩 사진과 함께 넣으면 색과 밝기를 사진에서 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
+      h('ol', null, h('li', { text: '사고 싶은 옷이 있으면 "추천" 탭에서 어떻게 입을지와 중요한 기준(가성비·품질·브랜드·내 핏·스타일)을 순서대로 누릅니다. 어울이 공식 판매처 페이지에서 확인한 상품 가운데 딱 하나와 대안 둘, 그 이유와 근거(확인일·출처)를 보여 줍니다. 지금은 흰 크루넥 티셔츠부터 있습니다.' }),
+        h('li', { text: '옷장 탭의 "기본 옷 골라 넣기"로 가진 옷과 비슷한 옷을 한 번에 넣습니다. 한 벌씩 사진과 함께 넣으면 색과 밝기를 사진에서 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
         h('li', { text: '살까 고민 중인 옷은 "살까 말까" 탭의 "빠르게 넣고 판정"으로 종류와 색만 골라 봅니다. 가진 옷과 겹치는지, 새로 생기는 조합이 몇 개인지 보여 줍니다.' }),
         h('li', { text: '결정을 적으면 2주 뒤에 "몇 번 입었나, 잘 샀나"를 한 번 묻습니다. 판정이 실제로 도움이 됐는지 아는 유일한 방법이라 답해 주시면 큰 도움이 됩니다.' }),
         h('li', { text: '코디 탭에서 가진 옷으로 만든 조합을, 3D 옷장 탭에서 상의·아우터를 걸어 봅니다(셔츠·재킷 등 6종).' })),
@@ -1653,7 +1806,9 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       h('h3', { text: '알아 두실 점' }),
       h('ul', null, h('li', { text: '판정과 코디는 색·밝기·격식·무늬 규칙으로 계산합니다. 확률이 아니고, 핏·소재·얼굴 분위기는 아직 보지 못합니다. 원피스는 한 벌로 차림 하나로 셉니다.' }),
         h('li', { text: '3D는 종류별로 미리 만든 형태에 색을 입힌 모습이라 실제 상품과 다릅니다. 사람에게 입혀 보는 기능은 아직 없습니다.' }),
-        h('li', { text: '상품 가격·재고는 찾아오지 않습니다. 직접 넣은 값과 확인한 날짜만 보여 줍니다.' })));
+        h('li', { text: '추천 상품의 가격·재고는 어울이 확인한 날의 값을 담아 둔 것이고, 앱이 실시간으로 찾아오지 않습니다. 사기 전에 판매처에서 확인해 주세요. 상품 사진은 가져오지 않고 판매처 링크만 둡니다.' }),
+        h('li', { text: '추천 순서는 고른 기준으로만 정합니다. 광고·입점비·제휴 수수료로 바꾸지 않습니다(제휴 링크를 쓰게 되면 그 사실을 화면에 밝힙니다).' }),
+        h('li', { text: '직접 넣은 상품은 가격·재고를 찾아오지 않고, 적은 값과 확인한 날짜만 보여 줍니다.' })));
   }
   $('#helpBtn').addEventListener('click', () => { renderHelp(); $('#helpDlg').showModal(); });
   $('#helpClose').addEventListener('click', () => $('#helpDlg').close());
@@ -1671,8 +1826,9 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       const sample = (src) => () => { const s = cleanState(src); state.items = s.items; state.decisions = s.decisions; state.rack = defaultRack(s.items); state.meta.sample = true; state.meta.welcomed = true; save(); render(); };
       main.append(h('div', { class: 'notice', id: 'welcome' }, h('h2', { text: BRAND.name + '에 오신 것을 환영합니다' }),
         h('p', { text: BRAND.tagline + ' 고를 수 있게, 가진 옷을 바탕으로 비교해 드립니다.' }),
-        h('ol', null, h('li', { text: '가진 옷과 비슷한 기본 옷을 눌러 한 번에 넣습니다 (30초, 나중에 고칠 수 있습니다)' }), h('li', { text: '고민 중인 옷의 종류와 색을 골라 "살까 말까"를 봅니다' }), h('li', { text: '겹치는 옷과 새 조합을 보고 정하고, 2주 뒤 잘 샀는지 한 번 답합니다' })),
-        h('div', { class: 'bar', style: 'margin:0 0 8px' }, h('button', { class: 'btn primary', type: 'button', id: 'startQuick', onclick: () => { state.meta.welcomed = true; save(); openQuick(); }, text: '자주 입는 옷 골라 넣기' }),
+        h('ol', null, h('li', { text: '사고 싶은 옷이 있으면 "추천"에서 중요한 기준(가성비·품질·브랜드·핏·스타일)을 순서대로 눌러 딱 하나를 받습니다 — 옷장을 넣기 전에도 됩니다' }), h('li', { text: '가진 옷과 비슷한 기본 옷을 눌러 한 번에 넣으면(30초) 가진 옷과의 조합까지 계산합니다' }), h('li', { text: '고민 중인 옷은 "살까 말까"로 겹치는 옷과 새 조합을 보고 정하고, 2주 뒤 잘 샀는지 한 번 답합니다' })),
+        h('div', { class: 'bar', style: 'margin:0 0 8px' }, h('button', { class: 'btn primary', type: 'button', id: 'startPick', onclick: () => { state.meta.welcomed = true; ui.tab = 'shop'; save(); render(); }, text: '사고 싶은 옷 골라 받기' }),
+          h('button', { class: 'btn', type: 'button', id: 'startQuick', onclick: () => { state.meta.welcomed = true; save(); openQuick(); }, text: '자주 입는 옷 골라 넣기' }),
           h('button', { class: 'btn', type: 'button', id: 'startPhotos', onclick: () => { state.meta.welcomed = true; save(); $('#bulkFile').click(); }, text: '옷 사진 여러 장으로' }),
           h('button', { class: 'btn', type: 'button', id: 'startOwn', onclick: () => { state.meta.welcomed = true; save(); openWizard(null, 'owned'); }, text: '한 벌씩 자세히 넣기' })),
         h('div', { class: 'bar', style: 'margin:0' }, h('span', { class: 'note', text: '먼저 둘러보기:' }),
@@ -1705,7 +1861,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   // ---------- 시작 ----------
   load().then((s) => {
     state = s;
-    window.__app = { get state() { return state; }, ui, J, R, W, C, FB, flush: () => savePromise, store, hang, unhang, brand: BRAND, usageSummary: (a) => usageSummary(a), errors };
+    window.__app = { get state() { return state; }, ui, J, R, W, C, FB, PK, PICKS, flush: () => savePromise, store, hang, unhang, brand: BRAND, usageSummary: (a) => usageSummary(a), errors };
     if (state.meta.days[state.meta.days.length - 1] !== today()) state.meta.days.push(today());
     $('#appTag').textContent = BRAND.tagline + (BRAND.beta ? ' · 시험판 ' + BRAND.version : '');
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* 무시: 오래 남게 해 달라는 요청이며 거절돼도 동작은 같다 */ }

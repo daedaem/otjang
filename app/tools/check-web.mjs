@@ -60,6 +60,31 @@ for (const m of modes) {
   const swOn = await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null, { timeout: 15000 }).then(() => true, () => false);
   ok(swOn, '서비스 워커가 이 폴더만 맡는다(끊겨도 열리게)', await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()) ? (await navigator.serviceWorker.getRegistration()).scope : ''));
 
+  // 1b. 추천: 옷장을 넣기 전에도 "사고 싶은 옷"을 내 기준으로 딱 하나 받는다(검증 카탈로그 안에서만, 판매처 링크는 열지 않는다)
+  await page.click('#startPick');
+  ok(await page.locator('#pickForm').isVisible() && (await page.locator('#tabbtn-shop').getAttribute('aria-selected')) === 'true', '첫 안내의 "사고 싶은 옷 골라 받기"가 추천 탭의 기준 고르기로 간다');
+  for (const id of ['#pk-use-layer', '#pk-pri-brand', '#pk-pri-quality', '#pk-brand-polo', '#pk-brand-bronson', '#pk-brand-pottery', '#pk-brand-outstanding', '#pk-brand-brooks', '#pk-brand-lvc', '#pk-style-american-classic']) await page.click(id);
+  const focusAfter = await page.evaluate(() => document.activeElement && document.activeElement.id);
+  await page.selectOption('#pk-size', 'M');
+  ok((await page.locator('#pk-pri-brand').getAttribute('aria-label')) === '브랜드, 1순위' && focusAfter === 'pk-style-american-classic' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'pk-size', '누른 순서가 순위로 읽히고, 다시 그린 뒤에도 초점이 누른 단추(사이즈 고르기)에 남는다', focusAfter);
+  await page.click('#pickGo');
+  const pk = await page.evaluate(() => window.__pick), pkTxt = await page.locator('#pickResult').innerText();
+  const pkProd = await page.evaluate((id) => window.__app.PICKS.products.find((p) => p.id === id), pk.pick);
+  ok(pk.pick && pkProd.fabric.thick !== 'thick' && ['polo', 'bronson', 'pottery', 'outstanding', 'brooks', 'lvc'].indexOf(pkProd.brand) >= 0 && pk.alts.length === 2 && pk.reasons.some((t) => t.includes('좋아하는 브랜드')),
+    '딱 하나: 좋아하는 브랜드 가운데, 카디건 안에 입기에 두껍지 않은 것을 고르고 대안 둘과 이유를 붙인다', { pick: pk.pick, alts: pk.alts });
+  ok(pk.notes.some((n) => n.includes('두꺼워서')) && pk.notes.some((n) => n.includes('LVC')) && pk.notes.some((n) => n.includes('아웃스탠딩')), '뺀 상품(두꺼움)과 확인한 상품이 없는 브랜드(LVC·아웃스탠딩)를 숨기지 않고 알린다', pk.notes.map((n) => n.slice(0, 30)));
+  const links = await page.locator('#pickResult a[target="_blank"]').evaluateAll((as) => as.map((a) => [a.getAttribute('href'), a.getAttribute('rel')]));
+  ok(links.length >= 3 && links.every(([href, rel]) => /^https:\/\//.test(href) && rel.includes('noopener') && rel.includes('noreferrer')), '판매처·근거는 새 창 링크(noopener noreferrer)로만 두고 앱이 가져오지 않는다', links.length);
+  ok(pkTxt.includes('확인') && /\d{4}-\d{2}-\d{2} 확인/.test(pkTxt) && pkTxt.includes('확률이 아닙니다') && !(await overflow()), '가격 옆에 확인일, 점수가 확률이 아니라는 설명이 있고 가로 넘침이 없다');
+  await page.screenshot({ path: path.join(shots, m.name + '-1b-pick.png'), fullPage: true });
+  await page.click('#pickCand');
+  const pc = await page.evaluate(() => { const c = window.__app.state.items.find((i) => i.status === 'candidate'); return c && { link: c.link, price: c.price, checkedAt: c.checkedAt, brand: c.brand, photo: c.photo.kind, tab: window.__app.ui.tab }; });
+  ok(pc && /^https:\/\//.test(pc.link) && pc.price > 0 && pc.checkedAt && pc.brand && pc.photo === 'none' && pc.tab === 'judge', '"살까 말까에 넣기"는 판매처 링크·원화 가격·확인일을 담은 후보로 이어진다(상품 사진은 넣지 않는다)', pc);
+  await page.locator('#beforeForm').getByRole('button', { name: '후보 삭제' }).click();
+  const pkMeta = await page.evaluate(() => ({ runs: window.__app.state.meta.pickRuns, cand: window.__app.state.meta.pickCand, pri: window.__app.state.prefs.pri.join(), n: window.__app.state.items.length }));
+  ok(pkMeta.runs === 1 && pkMeta.cand === 1 && pkMeta.pri === 'brand,quality' && pkMeta.n === 0, '추천 횟수·후보로 넣은 수와 기준이 이 브라우저에 남고, 후보를 지우면 빈 옷장으로 돌아간다', pkMeta);
+  await page.click('#tabbtn-closet');
+
   // 2. 예시 A 둘러보기 → 3D → 지우기
   await page.click('#startSample');
   let s = await st();
@@ -200,7 +225,7 @@ for (const m of modes) {
   await page.locator('#fbPmf input[value="very"]').check(); await page.selectOption('#fbNps', '9');
   const pv = await page.locator('#fbPreview').innerText();
   const mline = (pv.match(/EOUL1\|\S+/) || [''])[0];
-  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
+  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=1\|pko=0\|pkc=1\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
     '만족도 질문(더는 못 쓰면·추천할 마음)과 운영자가 읽을 요약 한 줄이 붙는다', mline);
   ok(pv.includes('시험 의견') && pv.includes('0.5.0-beta') && pv.includes('옷 6벌') && pv.includes('후보 2') && pv.includes('연 날 1일') && pv.includes('빠른 시작 5벌') && pv.includes('2주 뒤 답 1건(잘함 1') && !pv.includes('흰 셔츠') && !pv.includes('트렌치') && !pv.includes('스커트') && !pv.includes('musinsa'),
     '의견 미리보기에 사용 요약(빠른 시작·2주 뒤 답 포함)은 있고 옷 이름은 없다', pv.split('\n').slice(2));

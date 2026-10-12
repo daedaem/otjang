@@ -23,7 +23,7 @@ if (!process.env.NO3D) {
 }
 
 let src = read('src/app.html');
-const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@SYNC@@*/': read('src/sync.js'), '/*@@FEEDBACK@@*/': read('src/feedback.js'),
+const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@PICK@@*/': read('src/pick.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@SYNC@@*/': read('src/sync.js'), '/*@@FEEDBACK@@*/': read('src/feedback.js'),
   '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json'), '/*@@SAMPLE@@*/': read('data/sample-wardrobe.json'), '/*@@SAMPLE_B@@*/': read('data/sample-wardrobe-b.json'), '/*@@BRAND@@*/': JSON.stringify(brand) };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 for (const [m, text] of Object.entries(parts)) {
@@ -33,6 +33,13 @@ for (const [m, text] of Object.entries(parts)) {
 }
 // 앱 쪽 코드에 외부 주소가 없는지 본다 (3D 번들은 라이브러리 안의 문자열이 있을 수 있어 따로 본다: 실행 중 요청이 0건인지 tools/check.mjs가 확인한다)
 if (/https?:\/\/(?!")/.test(src.replace(/placeholder="https:\/\/"/g, '').replace(/http:\/\/ 또는 https:\/\//g, '').replace(/\/\^https\?:[^\n]*/g, ''))) throw new Error('외부 주소가 들어 있습니다');
+// 검증 카탈로그(data/picks.json)는 판매처·근거 주소를 담고 있다. 화면에서 링크로만 쓰고 앱이 요청하지 않으므로 위 검사 뒤에 넣는다(요청 0건은 tools/check*.mjs 가 본다)
+{
+  const picks = read('data/picks.json'); JSON.parse(picks);
+  if (picks.includes('</')) throw new Error('picks.json 이 script 태그를 닫을 수 있습니다');
+  if (!src.includes('/*@@PICKS@@*/')) throw new Error('marker missing /*@@PICKS@@*/');
+  src = src.replace('/*@@PICKS@@*/', () => picks);
+}
 if (!src.includes('/*@@CLOSET@@*/')) throw new Error('marker missing /*@@CLOSET@@*/');
 src = src.split('@@APP_NAME@@').join(esc(brand.name + (brand.status ? ' (' + brand.status + ')' : '')));
 const out = split ? path.join(split, 'index.html') : process.env.OUT || 'dist/index.html';
