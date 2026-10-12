@@ -751,6 +751,24 @@
   function srcPhrase(cs) { const s = Array.from(new Set(cs.map((c) => c.srcText || (has(SRC, c.src) ? SRC[c.src] : '')).filter(Boolean))); return s.length ? s.join('·') : '약한 근거'; }
 
   /**
+   * 잘 맞는 옷 치수가 없을 때, 보던 상품(a)과 1등(b)의 같은 사이즈끼리 가슴·총장 차이(총장은 옆목점 기준으로 맞춤, 뒤 중심은 +2cm 추정).
+   * 예: "같은 L끼리면 보던 상품이 가슴 2.5cm 넓고 총장은 약 1cm 짧아요". 견줄 치수가 없거나 차이가 1cm 아래(치수표 오차 안)면 ''.
+   */
+  function sameSizeDiff(a, b) {
+    if (a.fit.byRef || b.fit.byRef || !a.product.sizes.length) return '';
+    const sa = a.product.sizes[0], lab = normSize(sa.label), sb = lab ? sizeOf(b.product, lab) : null;
+    if (!sb) return '';
+    const END = { 넓: ['넓고', '넓어요'], 좁: ['좁고', '좁아요'], 길: ['길고', '길어요'], 짧: ['짧고', '짧아요'] };
+    const hps = (p, s) => (s.length == null ? null : s.length + (p.lengthFrom === 'cb' ? LEN_CB : 0));
+    const est = a.product.lengthFrom === 'cb' || b.product.lengthFrom === 'cb';
+    const parts = [];
+    if (sa.chest != null && sb.chest != null) { const d = Math.round((sa.chest - sb.chest) * 10) / 10; if (Math.abs(d) >= 1) parts.push(['가슴 ' + Math.abs(d) + 'cm ', d > 0 ? '넓' : '좁']); }
+    const la = hps(a.product, sa), lb = hps(b.product, sb);
+    if (la != null && lb != null) { const d = Math.round((la - lb) * 10) / 10; if (Math.abs(d) >= 1) parts.push(['총장' + (parts.length ? '은' : '') + ' ' + (est ? '약 ' : '') + Math.abs(d) + 'cm ', d > 0 ? '길' : '짧']); }
+    if (!parts.length) return '';
+    return '같은 ' + sizeName(b.product, sb.label) + '끼리면 보던 상품이 ' + parts.map(([t, k], i) => t + END[k][i < parts.length - 1 ? 0 : 1]).join(' ');
+  }
+  /**
    * 보던 상품(a, 직접 넣은 상품)과 1등(b)을 같은 줄로 견준다(두 칸 표).
    * 반환: { rows: [{ key, label, a: { text, status }, b: { text, status }, win: 'a'|'b'|'' }], sum: 문장 }
    * 지금 낼 돈은 배송비를 아는 값끼리만 이기고 지는 것을 정한다(보던 상품 배송비를 모르면, 배송비를 빼도 비쌀 때만 1등이 싸다고 한다).
@@ -771,7 +789,7 @@
       const st = (x) => (x.status === 'weak' && x.kind === 'partial' ? 'partial' : x.status);
       rows.push({ key: 'cond:' + c.key, label: c.label, noun: c.noun, a: { text: brief(c), status: st(c), full: c.text }, b: { text: brief(d), status: st(d), full: d.text }, win: cw(c.status) > cw(d.status) ? 'a' : cw(c.status) < cw(d.status) ? 'b' : '' });
     });
-    const mtxt = (p, s) => { if (!s) return ''; const m = [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? (p.lengthFrom === 'cb' ? '총장(뒤 중심) ' : '총장 ') + s.length : ''].filter(Boolean); return m.length ? m.join('·') + 'cm' : ''; };
+    const mtxt = (p, s) => { if (!s) return ''; const m = [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? (p.lengthFrom === 'cb' ? '총장 약 ' + (s.length + LEN_CB) + '(뒤 중심 ' + s.length + ')' : '총장 ' + s.length) : ''].filter(Boolean); return m.length ? m.join('·') + 'cm' : ''; };
     const sizeTxt = (r, want) => {
       const p = r.product;
       if (r.fit.byRef) return sizeName(p, r.fit.size) + ' — 잘 맞는 옷과 ' + r.fit.diffs.join(', ');
@@ -793,7 +811,8 @@
       : dPay === 0 ? '지금 낼 돈은 같아요' : '';
     const nouns = (w) => rows.filter((x) => x.win === w && x.key !== 'pay' && x.key !== 'unit').map((x) => x.noun || x.label);
     const bw = nouns('b'), aw = nouns('a');
-    const sum = [price, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : ''].filter(Boolean).map((t) => t + '.').join(' ');
+    const same = sameSizeDiff(a, b);
+    const sum = [price, same, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : ''].filter(Boolean).map((t) => t + '.').join(' ');
     return { rows, sum, payWin };
   }
   /** 대안 한 줄: 한 장 값과 공개된 품질 근거 둘, 조건 상태. */

@@ -404,3 +404,15 @@ test('보던 상품과 1등 두 칸 비교: 배송비를 모르면 "넘게" 싸�
   assert.match(P.contrast(r3.user, r3.pick, cat).sum, /^보던 상품이 1,000원 싸지만 배송비를 몰라 확실하지 않아요/);
   assert.ok(c.rows.every((x) => x.a.text.length <= 40 && x.b.text.length <= 60), '표 칸은 짧게(출처 꼬리·긴 설명은 뗀다)');
 });
+
+test('잘 맞는 옷 치수가 없으면 같은 사이즈끼리 가슴·총장 차이를 말한다(뒤 중심 총장은 +2cm 추정, 1cm 아래는 말하지 않음)', () => {
+  const sup = by('uniqlo-e455365-white'), L = sup.sizes.find((s) => s.label === 'L');
+  assert.equal(sup.lengthFrom, 'cb');
+  const mk = (chest, length) => P.userProduct({ name: '보던 티', price: 19900, size: 'L', chest, length }, cat, 'white-tee', TODAY);
+  const sumFor = (u) => { const r = rec({ use: 'layer', priorities: ['quality'], extra: [u] }); assert.equal(r.pick.product.id, sup.id, '품질 1순위면 유니클로 수피마가 1위(이 시험의 전제)'); return P.contrast(r.user, r.pick, cat); };
+  const c = sumFor(mk(L.chest + 2.5, L.length + P.LEN_CB - 1));
+  assert.match(c.sum, /같은 L끼리면 보던 상품이 가슴 2\.5cm 넓고 총장은 약 1cm 짧아요\./, c.sum);
+  assert.ok(c.rows.some((x) => x.key === 'size' && /총장 약 \d+\(뒤 중심 \d+\)cm/.test(x.b.text)), '1위 칸은 옆목점 기준 추정과 뒤 중심 값을 함께');
+  assert.ok(!/같은 L끼리면/.test(sumFor(mk(L.chest + 0.5, L.length + P.LEN_CB)).sum), '치수표 오차(1cm) 안의 차이는 말하지 않는다');
+  assert.ok(!/끼리면/.test(P.contrast(rec({ use: 'layer', priorities: ['quality'], ref: { chest: 54, length: 72 }, extra: [mk(57, 72)] }).user, rec({ use: 'layer', priorities: ['quality'], ref: { chest: 54, length: 72 }, extra: [mk(57, 72)] }).pick, cat).sum), '잘 맞는 옷 치수가 있으면 그 비교를 쓴다');
+});

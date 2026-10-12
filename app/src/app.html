@@ -1417,7 +1417,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const inp = (k, label, type, extra) => h('label', { class: extra && extra.full ? 'full' : '' }, label, h('input', Object.assign({ id: 'now-' + k, type: type || 'text', value: f[k] || '', oninput: set(k) }, extra && extra.attrs || {})));
     const fillNote = h('p', { class: 'note', id: 'nowFill', 'aria-live': 'polite' });
     const onLink = (e) => {
-      f.link = e.target.value; const pl = pastedLink(f.link), nm = nowName(pl), g = PK.guessFromName(PICKS, nm || f.link), got = [];
+      f.link = e.target.value; const pl = pastedLink(f.link), nm = pl.url ? nowName(pl) : nowName({ url: '', name: str(f.link.replace(/[【】]/g, ' ').replace(/\s+/g, ' ').trim(), 80) }), g = PK.guessFromName(PICKS, nm || f.link), got = [];   // 주소 없이 이름만 붙여 넣어도 이름으로 쓴다
       const setIf = (k, v, say) => { if (v == null || v === '' || f[k]) return; f[k] = String(v); const el = $('#now-' + k); if (el) el.value = String(v); got.push(say); };
       setIf('name', nm, '이름'); if (g.brand) setIf('brand', PICKS.brands[g.brand].ko || PICKS.brands[g.brand].name, '브랜드'); setIf('fit', g.fit, '핏(' + (PK.FIT[g.fit] || '') + ')'); setIf('packCount', g.packCount, g.packCount + '장 묶음'); setIf('sleeve', g.sleeve, PK.SLEEVES[g.sleeve] || '');
       fillNote.textContent = got.length ? '글에서 ' + got.join('·') + '을 채웠어요. 다르면 "더 정확히"에서 바꿔 주세요.' : '';
@@ -1458,9 +1458,9 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   function nowResult(res) {
     const r = res.user;
     if (!r) return null;
-    const p = r.product, pk = res.pick, ur = res.userRank, nm = pname(p);
-    const head = r.out ? '보던 ' + josa(nm, '은', '는') + ' 고른 조건에 안 맞아요. ' + r.out.replace(/^고른 조건에 안 맞아요: /, '')
-      : !ur ? '' : ur.idx === 0 ? '보던 ' + josa(nm, '이', '가') + ' 고른 기준으로 ' + ur.n + '개 중 1위예요.' : '보던 ' + josa(nm, '은', '는') + ' 고른 기준으로 ' + ur.n + '개 중 ' + (ur.idx + 1) + '위예요.';
+    const p = r.product, pk = res.pick, ur = res.userRank, named = p.name !== '지금 보는 상품', nm = named ? pname(p) : '', subj = named ? '보던 ' + nm : '보던 상품';   // 이름을 안 적었으면 '보던 상품'
+    const head = r.out ? josa(subj, '은', '는') + ' 고른 조건에 안 맞아요. ' + r.out.replace(/^고른 조건에 안 맞아요: /, '')
+      : !ur ? '' : ur.idx === 0 ? josa(subj, '이', '가') + ' 같은 기준으로 ' + ur.n + '개 중 1위예요.' : josa(subj, '은', '는') + ' 같은 기준으로 ' + ur.n + '개 중 ' + (ur.idx + 1) + '위예요.';
     const c = pk ? PK.contrast(r, pk, PICKS) : null;
     const cell = (x, w) => { const td = h('td', { class: w ? 'win' : '' }); if (x.status) td.append(h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[x.status] ? MARK[x.status][0] + ' ' : '' }), h('span', { class: 'sr', text: (MARK[x.status] ? MARK[x.status][1] : '') + ': ' })); td.append(x.text); if (w) td.append(h('span', { class: 'sr', text: ' (더 나음)' })); return td; };
     const table = c ? h('div', { class: 'scroll' }, h('table', { class: 'cmp', id: 'nowCmp' }, h('caption', { class: 'sr', text: '보던 상품과 1위 견주기' }),
@@ -1474,7 +1474,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       else if (x.verdict === 'reject') toast('알겠어요. 기록해 둘게요.');
     };
     return h('div', { class: 'nowres', id: 'nowRes', tabindex: '-1' },
-      h('p', { class: 'fl2', text: '보던 상품: ' + nm + ' · ' + priceShort(r) }),
+      h('p', { class: 'fl2', text: '보던 상품' + (named ? ': ' + nm : '') + ' · ' + priceShort(r) }),
       h('p', { class: 'nowh', id: 'nowHead', text: head }),
       ur && ur.idx === 0 && !r.out ? h('p', { class: 'note', text: '적은 값대로라면 어울이 확인한 상품보다 앞서요. 적은 값은 약한 확인이라, 사기 전에 목 립·두께를 상세 사진으로 한 번 더 봐 주세요.' }) : null,
       table, c ? h('p', { class: 'nowsum', id: 'nowSum', text: c.sum }) : null,

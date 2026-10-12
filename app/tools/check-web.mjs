@@ -177,6 +177,17 @@ for (const m of modes) {
   ok((await page.locator('#nowRes').count()) === 1 && (await page.evaluate(() => window.__app.state.prefs.now.price)) === '39000', '새로 고쳐도 적은 값과 견준 결과가 남는다');
   await page.screenshot({ path: path.join(shots, m.name + '-1d-now.png'), fullPage: true });
   await page.click('#nowClear');
+  // 주소 없이 이름만 붙여 넣어도 이름으로 쓰고, 이름을 안 적으면 '보던 상품'이라고 부른다
+  await ensureOpen('#nowBox');
+  await page.fill('#now-link', '베이식 크루넥 반팔 티셔츠 화이트 오버핏');
+  const plainN = await page.evaluate(() => ({ name: document.querySelector('#now-name').value, fit: document.querySelector('#now-fit').value }));
+  await page.fill('#now-price', '19900'); await page.click('#nowGo');
+  const nh1 = await page.evaluate(() => document.querySelector('#nowHead').textContent);
+  await page.click('#nowClear'); await ensureOpen('#nowBox'); await page.fill('#now-price', '25000'); await page.click('#nowGo');
+  const nh2 = await page.evaluate(() => [document.querySelector('#nowHead').textContent, document.querySelector('#nowRes .fl2').textContent]);
+  ok(plainN.name === '베이식 크루넥 반팔 티셔츠 화이트 오버핏' && plainN.fit === 'relaxed' && /^보던 베이식 크루넥 반팔 티셔츠 화이트 오버핏(은|는) 같은 기준으로/.test(nh1) && /^보던 상품은 같은 기준으로 \d+개 중 \d+위예요\.$/.test(nh2[0]) && /^보던 상품 · /.test(nh2[1]) && !/지금 보는 상품/.test(nh2.join('')),
+    '주소 없이 이름만 붙여 넣어도 이름·핏을 채우고, 이름이 없으면 "보던 상품"으로 부른다', { plainN, nh1, nh2 });
+  await page.click('#nowClear');
   // 카디건 총장을 넣으면 '카디건보다 짧게'가 켜지고, 고른 사이즈 총장과 견준다
   await page.click('#pickEdit');
   ok(await page.locator('#pk-cond-notLonger').isDisabled() && await page.locator('#pk-closed').isVisible(), '총장을 넣기 전에는 "카디건보다 짧게" 자리가 꺼진 채로 있고, 단추 잠금 질문이 보인다');
@@ -348,7 +359,7 @@ for (const m of modes) {
   await page.locator('#fbPmf input[value="very"]').check(); await page.selectOption('#fbNps', '9');
   const pv = await page.locator('#fbPreview').innerText();
   const mline = (pv.match(/EOUL1\|\S+/) || [''])[0];
-  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=2\|pko=1\|pkc=1\|pka=1\|pkb=1\|pkf=1\|pkfit=1\|pkr=0\|pkal=0\|pknow=1\|pksh=1\|pkx=pottery-ss-classic-white~2~fit~good~2\|pkw=0~0~0~0~0\|nwd=0~1~0\|nx=oxford\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
+  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=2\|pko=1\|pkc=1\|pka=1\|pkb=1\|pkf=1\|pkfit=1\|pkr=0\|pkal=0\|pknow=3\|pksh=1\|pkx=pottery-ss-classic-white~2~fit~good~2\|pkw=0~0~0~0~0\|nwd=0~1~0\|nx=oxford\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
     '만족도 질문(더는 못 쓰면·추천할 마음)과 운영자가 읽을 요약 한 줄이 붙는다', mline);
   ok(pv.includes('시험 의견') && pv.includes(VER) && pv.includes('옷 6벌') && pv.includes('후보 2') && pv.includes('연 날 1일') && pv.includes('빠른 시작 5벌') && pv.includes('2주 뒤 답 1건(잘함 1') && !pv.includes('흰 셔츠') && !pv.includes('트렌치') && !pv.includes('스커트') && !pv.includes('musinsa'),
     '의견 미리보기에 사용 요약(빠른 시작·2주 뒤 답 포함)은 있고 옷 이름은 없다', pv.split('\n').slice(2));

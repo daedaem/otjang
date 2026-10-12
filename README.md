@@ -22,12 +22,12 @@ Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-pro
 ```bash
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                                     # 규칙·스키마·추천(조건 격자 속성 시험·날짜 불변)·카탈로그 검사·재확인 도구·의견 줄·골든 등 테스트 95개 (Node 22)
+npm test                                     # 규칙·스키마·추천(조건 격자 속성 시험·날짜 불변)·카탈로그 검사·재확인 도구·의견 줄·골든 등 테스트 96개 (Node 22)
 npm run check:catalog                        # 검증 카탈로그(data/picks.json) 검사: 가격·치수·출처·확인일 (빌드도 오류·30일 지난 상품이 있으면 멈춘다)
 npm run recheck -- plan                      # 다시 확인할 상품 목록(운영자가 실행할 때만. fetch·apply 는 docs/catalog-policy.md)
 npm run assets && npm run build              # dist/index.html (약 11MB, 3D 포함 파일 하나). 브라우저로 열면 된다
 npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 72항목 × 두 환경)
-npm run build:web && npm run check:web       # 베타 웹판 dist/web/ (첫 화면 index.html 514KB·gzip 약 141KB, 3D는 탭을 열 때 closet.js 11.7MB·gzip 약 6.3MB) + 처음 온 사람 흐름·추천·결정 고리·보던 상품·공유·보안 정책 확인 (환경당 87항목 × 2)
+npm run build:web && npm run check:web       # 베타 웹판 dist/web/ (첫 화면 index.html 516KB·gzip 약 141KB, 3D는 탭을 열 때 closet.js 11.7MB·gzip 약 6.3MB) + 처음 온 사람 흐름·추천·결정 고리·보던 상품·공유·보안 정책 확인 (환경당 88항목 × 2)
 npm run check:a11y                           # 접근성 자동 검사(axe-core, WCAG 2.1 A·AA)
 npm run check:perf                           # 느린 4G·LTE 흉내 회선에서 첫 화면·3D 탭 시간
 ```
@@ -38,7 +38,7 @@ npm run check:perf                           # 느린 4G·LTE 흉내 회선에�
 
 ## 확인한 것과 아닌 것
 
-- **검증 사실**(2026-10-13 0.8.0-beta, 리눅스 클라우드, 헤드리스 Chromium): 테스트 95개, 한 파일 빌드 흐름 환경당 72항목 × 2, 웹판 흐름(로컬 HTTP, 추천·결정 고리·보던 상품 두 칸 비교·끊김·사진 여러 장 포함) 환경당 87항목 × 2, 접근성 자동 검사 22개 화면 × 2 위반 0, 흉내 회선에서 첫 화면 1초 안·3D 탭 느린 4G 약 35초·LTE 약 8초. 외부 요청 0건, 보안 정책이 외부 전송을 막음. 서버는 규칙 Java 이식의 골든 교차 검증(예시 A·B)과 PostgreSQL 16 에 V1~V4 적용까지 확인(Spring 계층 실제 컴파일은 미실행 — server/README.md).
+- **검증 사실**(2026-10-13 0.8.0-beta, 리눅스 클라우드, 헤드리스 Chromium): 테스트 96개, 한 파일 빌드 흐름 환경당 72항목 × 2, 웹판 흐름(로컬 HTTP, 추천·결정 고리·보던 상품 두 칸 비교·끊김·사진 여러 장 포함) 환경당 88항목 × 2, 접근성 자동 검사 22개 화면 × 2 위반 0, 흉내 회선에서 첫 화면 1초 안·3D 탭 느린 4G 약 35초·LTE 약 8초. 외부 요청 0건, 보안 정책이 외부 전송을 막음. 서버는 규칙 Java 이식의 골든 교차 검증(예시 A·B)과 PostgreSQL 16 에 V1~V4 적용까지 확인(Spring 계층 실제 컴파일은 미실행 — server/README.md).
 - **미실행**: 실제 휴대폰·Safari 에서 열기, 실제 사용자 기록(베타 전 0명), 3D 체감 성능(GPU 없는 환경에서만 잼).
 - 추천은 사람이 공식 판매처 페이지에서 확인해 넣은 상품(지금 흰 크루넥 티 17개, 확인일 2026-10-13) 안에서만 합니다. 가격·재고·배송비는 확인한 날의 값이고 자동으로 갱신하지 않습니다(운영자가 재확인 도구를 실행). 기준선·무게는 [제안값]입니다([규칙 설명서](docs/rules-explained.md) 10절, [카탈로그 정책](docs/catalog-policy.md)).
 - 전 품목 자동 수집·추천, 실사 착장, 정확한 핏 판정, 다중 사용자 서버, 다른 PC 동기화는 완료된 기능으로 소개하지 않습니다.

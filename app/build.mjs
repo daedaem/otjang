@@ -76,7 +76,7 @@ if (split) {
 }
 fs.mkdirSync(path.dirname(path.join(dir, out)), { recursive: true });
 fs.writeFileSync(path.join(dir, out), src);
-console.log(out, (src.length / 1048576).toFixed(2), 'MB' + (split ? (closet ? ' + closet.js ' + (closet.length / 1048576).toFixed(2) + 'MB (3D 탭을 열 때 받음)' : '') : closet ? ' (3D 포함)' : ' (3D 없음)'));
+console.log(out, (Buffer.byteLength(src) / 1048576).toFixed(2), 'MB' + (split ? (closet ? ' + closet.js ' + (Buffer.byteLength(closet) / 1048576).toFixed(2) + 'MB (3D 탭을 열 때 받음)' : '') : closet ? ' (3D 포함)' : ' (3D 없음)'));
 if (process.env.ARTIFACT) {                                                                          // 게시용: 문서 뼈대(doctype, html, head, body)는 게시할 때 씌워지므로 뺀다
   const art = src.replace(/<!doctype html>\s*/i, '').replace(/<html[^>]*>\s*/i, '').replace(/<\/html>\s*$/i, '').replace(/<head>\s*/i, '').replace(/<\/head>\s*/i, '').replace(/<meta [^>]*>\s*/gi, '').replace(/<title>[^<]*<\/title>\s*/i, '').replace(/<body>\s*/i, '').replace(/<\/body>\s*/i, '');
   fs.writeFileSync(path.join(dir, process.env.ARTIFACT), art); console.log(process.env.ARTIFACT, (art.length / 1048576).toFixed(2), 'MB (게시용)');
