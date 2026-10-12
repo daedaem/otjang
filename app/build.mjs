@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 const dir = path.dirname(fileURLToPath(import.meta.url));   // 한글·공백이 든 경로에서도 동작
 const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
 const wardrobe = process.env.WARDROBE || (fs.existsSync(path.join(dir, 'data/wardrobe.json')) ? 'data/wardrobe.json' : 'data/sample-wardrobe.json');   // 내 옷장(data/wardrobe.json, 저장소에 넣지 않음)이 있으면 그것, 없으면 예시 옷장
-JSON.parse(read(wardrobe)); JSON.parse(read('data/template-ivy.json'));                            // JSON이 깨졌으면 여기서 멈춘다
+JSON.parse(read(wardrobe)); JSON.parse(read('data/template-ivy.json'));
+const brand = JSON.parse(read('brand.json'));
+const split = process.env.SPLIT_DIR || '';                                                           // SPLIT_DIR=dist/web: 웹 배포용. 3D(closet.js)를 따로 두고 3D 탭을 열 때 받는다                            // JSON이 깨졌으면 여기서 멈춘다
 
 let closet = '';
 if (!process.env.NO3D) {
@@ -22,7 +24,8 @@ if (!process.env.NO3D) {
 
 let src = read('src/app.html');
 const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@SYNC@@*/': read('src/sync.js'),
-  '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json') };
+  '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json'), '/*@@SAMPLE@@*/': read('data/sample-wardrobe.json'), '/*@@BRAND@@*/': JSON.stringify(brand) };
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 for (const [m, text] of Object.entries(parts)) {
   if (!src.includes(m)) throw new Error('marker missing ' + m);
   if (text.includes('</')) throw new Error('이 조각은 script 태그를 닫을 수 있습니다: ' + m);
@@ -31,11 +34,24 @@ for (const [m, text] of Object.entries(parts)) {
 // 앱 쪽 코드에 외부 주소가 없는지 본다 (3D 번들은 라이브러리 안의 문자열이 있을 수 있어 따로 본다: 실행 중 요청이 0건인지 tools/check.mjs가 확인한다)
 if (/https?:\/\/(?!")/.test(src.replace(/placeholder="https:\/\/"/g, '').replace(/http:\/\/ 또는 https:\/\//g, '').replace(/\/\^https\?:[^\n]*/g, ''))) throw new Error('외부 주소가 들어 있습니다');
 if (!src.includes('/*@@CLOSET@@*/')) throw new Error('marker missing /*@@CLOSET@@*/');
-src = src.replace('/*@@CLOSET@@*/', () => closet.replace(/<\/script/g, '<\\/script'));
-const out = process.env.OUT || 'dist/index.html';
+src = src.split('@@APP_NAME@@').join(esc(brand.name + (brand.status ? ' (' + brand.status + ')' : '')));
+const out = split ? path.join(split, 'index.html') : process.env.OUT || 'dist/index.html';
+if (split) {
+  fs.mkdirSync(path.join(dir, split), { recursive: true });
+  const ver = (await import('node:crypto')).createHash('sha256').update(closet).digest('hex').slice(0, 10);
+  if (closet) fs.writeFileSync(path.join(dir, split, 'closet.js'), closet);
+  src = src.replace('/*@@CLOSET@@*/', () => (closet ? "window.__CLOSET_SRC = 'closet.js?v=" + ver + "';" : ''));
+  src = src.replace('<!--@@HEAD_EXTRA@@-->', '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon-192.png">\n<link rel="apple-touch-icon" href="icon-192.png">\n<meta name="theme-color" content="#F5F2EA">');
+  fs.writeFileSync(path.join(dir, split, 'manifest.webmanifest'), JSON.stringify({ name: brand.name + ' (' + brand.status + ')', short_name: brand.name, start_url: './', display: 'standalone', background_color: '#F5F2EA', theme_color: '#F5F2EA', lang: 'ko',
+    icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 1));
+  for (const n of ['icon-192.png', 'icon-512.png']) if (fs.existsSync(path.join(dir, 'web', n))) fs.copyFileSync(path.join(dir, 'web', n), path.join(dir, split, n));
+} else {
+  src = src.replace('/*@@CLOSET@@*/', () => closet.replace(/<\/script/g, '<\\/script'));
+  src = src.replace('<!--@@HEAD_EXTRA@@-->', '');
+}
 fs.mkdirSync(path.dirname(path.join(dir, out)), { recursive: true });
 fs.writeFileSync(path.join(dir, out), src);
-console.log(out, (src.length / 1048576).toFixed(2), 'MB' + (closet ? ' (3D 포함)' : ' (3D 없음)'));
+console.log(out, (src.length / 1048576).toFixed(2), 'MB' + (split ? (closet ? ' + closet.js ' + (closet.length / 1048576).toFixed(2) + 'MB (3D 탭을 열 때 받음)' : '') : closet ? ' (3D 포함)' : ' (3D 없음)'));
 if (process.env.ARTIFACT) {                                                                          // 게시용: 문서 뼈대(doctype, html, head, body)는 게시할 때 씌워지므로 뺀다
   const art = src.replace(/<!doctype html>\s*/i, '').replace(/<html[^>]*>\s*/i, '').replace(/<\/html>\s*$/i, '').replace(/<head>\s*/i, '').replace(/<\/head>\s*/i, '').replace(/<meta [^>]*>\s*/gi, '').replace(/<title>[^<]*<\/title>\s*/i, '').replace(/<body>\s*/i, '').replace(/<\/body>\s*/i, '');
   fs.writeFileSync(path.join(dir, process.env.ARTIFACT), art); console.log(process.env.ARTIFACT, (art.length / 1048576).toFixed(2), 'MB (게시용)');

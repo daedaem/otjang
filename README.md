@@ -2,9 +2,9 @@
 
 내 옷장을 바탕으로 가진 옷을 더 잘 활용하고, 다음 한 벌을 고르는 일을 돕는 개인 사이드프로젝트입니다. 사업 가능성을 검토하면서 백엔드·AI 개발 과정의 근거를 남깁니다.
 
-이름은 정해지지 않았습니다. 저장소 문서는 "WearNext", 개인판 앱 화면은 "옷장들이"를 가칭으로 쓰고 있습니다 [미결정].
+이름은 정해지지 않았습니다. 저장소 문서는 "WearNext", 앱 화면은 "어울(EOUL)"을 임시로 씁니다(2026-10-12 사용자 결정, `app/brand.json` 한 곳에서 바꿈) [미결정].
 
-**현재 단계: 개인판 v0.4 동작, 본인 사용 검증 전.** 본인 전용으로 코디와 구매 판단을 충분히 완성한 뒤 공개 여부를 결정합니다. 패션 커뮤니티는 이후 검증할 성장 가설이며, 현재 사용자 모집이나 공개 운영을 시작한 상태가 아닙니다. 상태와 결정 기록은 [docs/status-2026-10-12.md](docs/status-2026-10-12.md)에 있습니다.
+**현재 단계: 지인 비공개 베타(5~20명) 준비, 0.5.0-beta.** 서버 없는 웹앱으로 먼저 내고, 서버형은 다음 단계입니다(2026-10-12 사용자 결정). 베타에서 확인할 질문과 기준은 [docs/beta-plan-2026-10-12.md](docs/beta-plan-2026-10-12.md), 상태와 결정 기록은 [docs/status-2026-10-12.md](docs/status-2026-10-12.md)에 있습니다. 패션 커뮤니티는 이후 검증할 성장 가설입니다.
 
 ## 구성
 
@@ -22,9 +22,12 @@ Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-pro
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
 npm test                                     # 규칙·스키마·상품·색 초안·서버 맞추기 테스트 52개 (Node 22)
-npm run assets && npm run build              # dist/index.html (약 11MB). 브라우저로 열면 된다
+npm run assets && npm run build              # dist/index.html (약 11MB, 3D 포함 파일 하나). 브라우저로 열면 된다
 npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 72항목 × 두 환경)
+npm run build:web && npm run check:web       # 베타 웹판 dist/web/ (첫 화면 약 0.2MB, 3D는 탭을 열 때 closet.js 약 11.7MB) + 처음 온 사람 흐름 확인
 ```
+
+웹판은 빈 옷장으로 시작하고, "예시 옷장으로 둘러보기"를 누르면 합성 예시를 보여 줍니다. 옷장·사진은 각 사용자의 브라우저(IndexedDB)에만 저장되고, 분석 도구나 추적 코드는 없습니다. 의견은 앱의 "의견 보내기"가 옷 이름 없는 사용 요약을 붙여 복사해 주면 사용자가 직접 보냅니다.
 
 저장소의 옷장 자료는 합성 예시(`app/data/sample-wardrobe.json`)입니다. 본인 자료는 `app/data/wardrobe.json`(.gitignore)에 두면 빌드가 그것을 씁니다.
 

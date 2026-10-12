@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>옷장들이</title>
+<title>@@APP_NAME@@</title>
+<!--@@HEAD_EXTRA@@-->
 <style>
 :root{
   --paper:#F5F2EA; --card:#FFFDF8; --ink:#1E2227; --ink2:#5B6068; --line:#DDD6C8; --line2:#C4BBA9;
@@ -179,12 +180,19 @@ a{color:var(--accent)}
 .prod h3{font-size:15px;font-weight:650;overflow-wrap:anywhere}
 .prod .price{font-weight:700}
 .prod .rank{font-size:12.5px;color:var(--ink2)}
+.hacts{display:flex;gap:6px;align-items:center}
+.notice{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin:0 0 14px;background:var(--card)}
+.notice h2{font-size:15px;margin:0 0 6px}.notice p{margin:0 0 8px}.notice ol{margin:0 0 10px;padding-left:20px}
+.notice.warnbox{border-color:#c47a1d}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:10px;font-size:13.5px;max-width:92vw;z-index:50}
+details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2);font-size:13.5px;margin-bottom:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 class="mark">옷장들이</h1><span class="tag">오래 입는 옷의 기록</span></div>
+    <div class="brand"><h1 class="mark">@@APP_NAME@@</h1><span class="tag" id="appTag"></span></div>
+    <div class="hacts"><button class="btn small" type="button" id="helpBtn">안내</button><button class="btn small" type="button" id="fbBtn">의견 보내기</button></div>
     <div class="local" id="saveNote">이 브라우저 안에만 저장됩니다</div>
   </header>
   <nav class="tabs" role="tablist" id="tabs"></nav>
@@ -264,6 +272,20 @@ a{color:var(--accent)}
   </form>
 </dialog>
 
+<dialog id="helpDlg" aria-labelledby="helpTitle">
+  <div class="dhead"><h2 id="helpTitle">안내</h2><button class="btn small" type="button" id="helpClose">닫기</button></div>
+  <div class="dbody" id="helpBody"></div>
+</dialog>
+<dialog id="fbDlg" aria-labelledby="fbTitle">
+  <div class="dhead"><h2 id="fbTitle">의견 보내기</h2><button class="btn small" type="button" id="fbClose">닫기</button></div>
+  <div class="dbody">
+    <p class="note" style="margin-bottom:10px">이 앱은 서버가 없어 의견을 자동으로 보내지 않습니다. 아래 내용을 복사해 운영자에게 직접 보내 주세요.</p>
+    <div class="field full"><label for="fbText">불편했던 점, 좋았던 점, 바라는 점</label><textarea id="fbText" rows="5" maxlength="2000"></textarea></div>
+    <div class="checks" style="margin:10px 0"><label><input type="checkbox" id="fbStats" checked> 사용 요약 함께 붙이기 (옷 이름·사진·브랜드는 넣지 않습니다)</label></div>
+    <pre class="note" id="fbPreview" style="white-space:pre-wrap;max-height:160px;overflow:auto;border:1px dashed var(--line2);border-radius:8px;padding:8px"></pre>
+    <div class="bar" style="margin:10px 0 0"><button class="btn primary" type="button" id="fbCopy">복사하기</button><span class="note" id="fbMsg"></span></div>
+  </div>
+</dialog>
 <dialog id="product" aria-labelledby="pdTitle">
   <form id="pdForm" method="dialog">
     <div class="dhead"><h2 id="pdTitle">상품 추가</h2><button class="btn small" type="button" id="pdClose">닫기</button></div>
@@ -298,13 +320,16 @@ a{color:var(--accent)}
 <script>/*@@CATALOG_LIB@@*/</script>
 <script>/*@@COLORGUESS@@*/</script>
 <script>/*@@SYNC@@*/</script>
-<script>const BASE = /*@@WARDROBE@@*/;
+<script>const BRAND = /*@@BRAND@@*/;
+const SAMPLE = /*@@SAMPLE@@*/;
+const BASE = /*@@WARDROBE@@*/;
 const TEMPLATE = /*@@TEMPLATE@@*/;</script>
 <script>/*@@CLOSET@@*/</script>
 <script>
 (function () {
   'use strict';
-  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, X = window.OtjangCloset || null;
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync;
+  let X = window.OtjangCloset || null;                                                              // 3D 옷장: 한 파일 빌드에서는 바로 있고, 나눈 빌드(웹 배포)에서는 3D 탭을 열 때 closet.js 를 내려받는다
   const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
   const KEY1 = 'otjang.v1', KEY2 = 'otjang.v2', DB = 'otjang';
   const YEAR = new Date().getFullYear();
@@ -392,6 +417,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   function cleanState(raw) {
     const w = W.cleanWardrobe(raw); if (!w) return null;
     const s = { schema: 2, owner: w.owner, items: w.items, decisions: w.decisions, others: [], catalog: { products: [] }, rack: [] };
+    const m = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
+    s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120) };   // days: 앱을 연 날(이 기기에만 남고, 의견 보내기를 누를 때만 요약으로 붙는다)   // 예시 옷장 보는 중인지, 마지막 백업일, 첫 안내를 봤는지
     s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
     const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
     const ids = new Set(s.items.map((i) => i.id)), slots = new Set();
@@ -415,7 +442,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     s.loadedFrom = from; return s;
   }
   let state = null, storageOk = true, savePromise = Promise.resolve();
-  const ui = { syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
+  const ui = { advOpen: false, syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
     shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null };
   function save() {
     const data = JSON.stringify(state);
@@ -516,6 +543,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
 
   // ---------- 옷장 ----------
   function renderCloset(main) {
+    startNotices(main);
     const drafts = owned().filter(W.isDraft).length;
     main.append(h('p', { class: 'lead', text: '가진 옷과 그 옷에 대한 기록입니다. 사이즈, 산 해, 오래 입어 본 후기를 적어 두면 다음에 살 때의 근거가 됩니다.' + (drafts ? ' 지금 ' + drafts + '벌은 사진에서 뽑은 초안이라 색과 종류를 직접 확인해야 합니다.' : '') }));
     const bar = h('div', { class: 'bar' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),
@@ -523,7 +551,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       h('button', { class: 'btn primary', type: 'button', id: 'addOwned', onclick: () => openWizard(null, 'owned'), text: '옷 추가' }));
     main.append(bar, h('div', { class: 'bar' }, seasonChips(ui.season, (s) => { ui.season = s; render(); })));
     const list = state.items.filter((i) => i.status !== 'gone' && (ui.cat === 'all' || i.cat === ui.cat) && J.inSeason(i, ui.season));
-    if (!list.length) { main.append(h('div', { class: 'empty', text: '이 조건에 맞는 옷이 없습니다.' })); return; }
+    if (!list.length) { if (state.items.length) main.append(h('div', { class: 'empty', text: '이 조건에 맞는 옷이 없습니다.' })); return; }
     const order = { outer: 0, top: 1, bottom: 2, shoes: 3 };
     list.sort((a, b) => (a.status === b.status ? order[a.cat] - order[b.cat] : a.status === 'candidate' ? 1 : -1));
     main.append(h('div', { class: 'grid', id: 'closetGrid' }, list.map((it) => itemCard(it, { actions: [
@@ -586,6 +614,11 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   }
   function unhang(id) { state.rack = state.rack.filter((r) => r.id !== id); if (ui.stageSel === id) ui.stageSel = null; save(); render(); }
   function renderCloset3d(main) {
+    if (!X && window.__CLOSET_SRC && !closet.failed) {
+      loadClosetScript();
+      main.append(h('p', { class: 'lead', text: '3D 옷장을 내려받는 중입니다(약 11MB, 처음 한 번). 와이파이에서 여는 것을 권합니다.' }), h('div', { class: 'empty', id: 'closetLoading', text: '불러오는 중…' }));
+      return;
+    }
     main.append(h('p', { class: 'lead', text: '옷장을 3D로 봅니다. 옷은 종류별로 미리 만든 형태에 원단만 입힌 모습이라 특정 상품의 재현이 아닙니다. 자리는 6곳(위 봉 4, 아래 봉 2)이고, 옷을 끌어 자리를 바꾸거나 눌러서 크게 볼 수 있습니다.' }));
     main.append(stageEl);
     const card = h('section', { class: 'panel', id: 'stageCard', hidden: true }); main.append(card);
@@ -860,15 +893,15 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     } });
     const io = h('section', { class: 'panel' }, h('h2', { text: '옷장 파일' }), h('p', { class: 'sub', text: '보유한 옷과 기록을 파일(스키마 2)로 내보냅니다. 구매 후보는 넣지 않습니다. 이 파일을 받은 사람은 옷장 구경 탭에서 열어 볼 수 있습니다. v0.3 파일(스키마 1)도 가져올 수 있습니다.' }),
       h('div', { class: 'checks', style: 'margin-bottom:12px' }, ck('img', '내 사진 포함'), ck('otherImg', '남의 상품 사진 포함'), ck('cands', '미확인 브랜드 후보 포함'), ck('price', '가격과 링크 포함'), ck('body', '키와 평소 사이즈 포함'), ck('log', '판정 기록 포함')),
-      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'exportBtn', onclick: () => download('otjang-' + (state.owner.nickname || 'wardrobe').replace(/[^\w가-힣-]+/g, '') + '-' + today() + '.json', W.exportWardrobe(state, ui.exp)), text: '내보내기' }),
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'exportBtn', onclick: () => { download('otjang-' + (state.owner.nickname || 'wardrobe').replace(/[^\w가-힣-]+/g, '') + '-' + today() + '.json', W.exportWardrobe(state, ui.exp)); if (ui.exp.img) { state.meta.lastBackupAt = today(); save(); } }, text: '내보내기' }),
         h('button', { class: 'btn', type: 'button', onclick: () => imp.click(), text: '내 옷장으로 가져오기' }), imp,
         h('span', { class: 'grow' }), h('button', { class: 'btn small danger', type: 'button', id: 'resetBtn', onclick: async () => { if (!ui.resetArm) { ui.resetArm = true; render(); return; } await wipe(); state = cleanState(BASE); state.rack = defaultRack(state.items); ui.resetArm = false; ui.judgeId = ''; ui.stageSel = null; save(); render(); }, text: ui.resetArm ? '한 번 더 누르면 처음 상태로 돌아갑니다' : '처음 상태로' })));
     if (ui.importArm === false) io.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '옷장 파일을 읽지 못했습니다.' }));
     else if (ui.importArm) io.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', text: '지금 옷장을 지우고 파일의 옷 ' + ui.importArm.items.length + '벌로 바꿉니다.' }),
-      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
+      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.meta.sample = false; state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
       h('button', { class: 'btn small', type: 'button', onclick: () => { ui.importArm = null; render(); }, text: '취소' })));
     main.append(io);
-    main.append(renderSync());
+    main.append(h('details', { class: 'adv', id: 'advanced', open: ui.advOpen, ontoggle: (e) => { ui.advOpen = e.target.open; } }, h('summary', { text: '고급: 내 서버와 맞추기 (개발용, 서버를 직접 켠 경우만)' }), renderSync()));
     main.append(h('p', { class: 'note', text: '이 파일은 인터넷으로 아무것도 보내지 않습니다(아래 "내 서버와 맞추기"를 직접 누를 때만 그 주소로 보냅니다). 가격, 재고, 링크를 찾아오지 않고, 사진으로 옷을 입혀 보는 기능은 아직 없습니다. 저장: ' + (store.mode === 'idb' ? '브라우저 데이터베이스(IndexedDB)' : store.mode === 'ls' ? '브라우저 저장소(localStorage)' : '이 화면을 닫으면 사라짐') + (state.loadedFrom === 'ls1' ? ' · v0.3 저장소에서 옮겨 왔습니다(예전 저장소는 그대로 둠)' : '') }));
   }
 
@@ -1192,10 +1225,87 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     $('#product').close(); save(); render();
   });
 
+  // ---------- 베타: 안내, 의견, 오류, 백업, 3D 나눠 받기 ----------
+  const errors = [];
+  function toast(text) { let t = $('#toast'); if (!t) { t = h('div', { class: 'toast', id: 'toast', role: 'status' }); document.body.append(t); } t.textContent = text; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 4000); }
+  window.addEventListener('error', (e) => { errors.push(str(String(e.message || e.error || '오류'), 160)); if (errors.length === 1) toast('문제가 생겼습니다. "의견 보내기"로 알려 주시면 고치겠습니다.'); });
+  window.addEventListener('unhandledrejection', (e) => { errors.push(str(String((e.reason && e.reason.message) || e.reason || '오류'), 160)); });
+  function usageSummary() {
+    const own = owned(), done = state.decisions.filter((d) => d.after).length;
+    return ['[' + BRAND.name + ' ' + BRAND.version + ']', '옷 ' + own.length + '벌(초안 ' + own.filter(W.isDraft).length + ', 내 사진 ' + own.filter((i) => i.photo.ownImg).length + ') · 후보 ' + cands().length + ' · 판정 끝 ' + done + '건 · 상품 ' + state.catalog.products.length + '개 · 3D 걸림 ' + state.rack.length,
+      '예시 옷장: ' + (state.meta.sample ? '보는 중' : '아님') + ' · 저장: ' + store.mode + (storageOk ? '' : '(실패)') + ' · 화면 ' + window.innerWidth + '×' + window.innerHeight + ' · 3D: ' + (closet.failed ? '실패' : closet.ready ? '열림' : '안 엶'),
+      '연 날 ' + state.meta.days.length + '일(최근 30일 ' + state.meta.days.filter((d) => daysAgo(d) <= 30).length + '일) · 첫 사용 ' + (state.meta.days[0] || '-'),
+      errors.length ? '최근 오류: ' + errors.slice(-3).join(' / ') : '최근 오류 없음'].join('\n');
+  }
+  function feedbackText() { const t = $('#fbText').value.trim(); return (t || '(내용 없음)') + ($('#fbStats').checked ? '\n\n' + usageSummary() : ''); }
+  function syncFb() { $('#fbPreview').textContent = feedbackText(); }
+  $('#fbBtn').addEventListener('click', () => { $('#fbMsg').textContent = ''; syncFb(); $('#fbDlg').showModal(); });
+  $('#fbClose').addEventListener('click', () => $('#fbDlg').close());
+  $('#fbText').addEventListener('input', syncFb); $('#fbStats').addEventListener('change', syncFb);
+  $('#fbCopy').addEventListener('click', async () => {
+    const text = feedbackText(); let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+    if (!ok) { const ta = h('textarea', { style: 'position:fixed;opacity:0' }); ta.value = text; document.body.append(ta); ta.select(); try { ok = document.execCommand('copy'); } catch (e) { ok = false; } ta.remove(); }
+    $('#fbMsg').textContent = ok ? '복사했습니다. ' + BRAND.feedbackHint : '복사하지 못했습니다. 위 글을 길게 눌러 직접 복사해 주세요.';
+    window.__feedback = text;
+  });
+  function renderHelp() {
+    const b = $('#helpBody'); b.textContent = '';
+    b.append(h('p', { class: 'lead', text: BRAND.name + '(' + BRAND.status + ')은 ' + BRAND.tagline + ' 판단하도록 돕는 도구입니다. 지금은 지인 대상 시험판(' + BRAND.version + ')입니다.' }),
+      h('h3', { text: '처음 쓰는 법' }),
+      h('ol', null, h('li', { text: '옷장 탭에서 가진 옷을 몇 벌 넣습니다. 사진을 넣으면 색과 밝기를 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
+        h('li', { text: '살까 고민 중인 옷은 "살까 말까" 탭에 후보로 넣습니다. 가진 옷과 겹치는지, 새로 생기는 조합이 몇 개인지 보여 줍니다.' }),
+        h('li', { text: '코디 탭에서 가진 옷으로 만든 조합을, 3D 옷장 탭에서 옷을 걸어 봅니다(셔츠·재킷 등 6종).' })),
+      h('h3', { text: '내 자료는 어디에' }),
+      h('ul', null, h('li', { text: '옷장·사진·기록은 이 기기의 이 브라우저 안에만 저장됩니다. 운영자는 볼 수 없고, 어디로도 보내지 않습니다.' }),
+        h('li', { text: '브라우저 데이터를 지우거나 오래 열지 않으면(특히 아이폰 Safari) 사라질 수 있습니다. 기록 탭에서 백업 파일을 내려받아 두세요. 홈 화면에 추가하면 더 오래 남습니다.' }),
+        h('li', { text: '다른 기기로 옮길 때는 백업 파일을 내보내고 그 기기에서 가져옵니다.' })),
+      h('h3', { text: '알아 두실 점' }),
+      h('ul', null, h('li', { text: '판정과 코디는 색·밝기·격식·무늬 규칙으로 계산합니다. 확률이 아니고, 핏·소재·얼굴 분위기는 아직 보지 못합니다.' }),
+        h('li', { text: '3D는 종류별로 미리 만든 형태에 색을 입힌 모습이라 실제 상품과 다릅니다. 사람에게 입혀 보는 기능은 아직 없습니다.' }),
+        h('li', { text: '상품 가격·재고는 찾아오지 않습니다. 직접 넣은 값과 확인한 날짜만 보여 줍니다.' })));
+  }
+  $('#helpBtn').addEventListener('click', () => { renderHelp(); $('#helpDlg').showModal(); });
+  $('#helpClose').addEventListener('click', () => $('#helpDlg').close());
+  const daysAgo = (d) => (d ? Math.round((Date.parse(today() + 'T00:00:00Z') - Date.parse(d + 'T00:00:00Z')) / 86400000) : null);
+  function backupNow() { download(BRAND.latin.toLowerCase() + '-backup-' + today() + '.json', W.exportWardrobe(state, Object.assign({}, ui.exp, { img: true, cands: true, price: true, body: true, log: true }))); state.meta.lastBackupAt = today(); save(); render(); toast('백업 파일을 내려받았습니다. 안전한 곳에 보관해 주세요.'); }
+  function startNotices(main) {                                                                   // 옷장 탭 위: 첫 방문 안내 / 예시 옷장 표시 / 백업 알림
+    if (state.meta.sample) {
+      main.append(h('div', { class: 'notice', id: 'sampleNote' }, h('p', { text: '예시 옷장을 보고 있습니다. 둘러본 뒤 내 옷장으로 시작하면 예시 옷은 지워집니다.' }),
+        h('button', { class: 'btn small primary', type: 'button', id: 'leaveSample', onclick: () => { state.items = []; state.decisions = []; state.rack = []; state.catalog.products = []; state.meta.sample = false; state.meta.welcomed = true; save(); render(); }, text: '내 옷장으로 시작 (예시 지우기)' })));
+      return;
+    }
+    if (!state.items.length) {
+      main.append(h('div', { class: 'notice', id: 'welcome' }, h('h2', { text: BRAND.name + '에 오신 것을 환영합니다' }),
+        h('p', { text: BRAND.tagline + ' 고를 수 있게, 가진 옷을 바탕으로 비교해 드립니다.' }),
+        h('ol', null, h('li', { text: '가진 옷을 몇 벌 넣습니다 (사진이 있으면 색을 미리 채워 줍니다)' }), h('li', { text: '고민 중인 옷을 "살까 말까"에 넣습니다' }), h('li', { text: '겹치는 옷과 새 조합을 보고 정합니다' })),
+        h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'startOwn', onclick: () => { state.meta.welcomed = true; save(); openWizard(null, 'owned'); }, text: '첫 옷 넣기' }),
+          h('button', { class: 'btn', type: 'button', id: 'startSample', onclick: () => { const s = cleanState(SAMPLE); state.items = s.items; state.decisions = s.decisions; state.rack = defaultRack(s.items); state.meta.sample = true; state.meta.welcomed = true; save(); render(); }, text: '예시 옷장으로 둘러보기' }),
+          h('button', { class: 'btn', type: 'button', onclick: () => { renderHelp(); $('#helpDlg').showModal(); }, text: '안내 읽기' }))));
+      return;
+    }
+    const d = daysAgo(state.meta.lastBackupAt);
+    if (owned().length >= 3 && (d == null || d > 14)) main.append(h('div', { class: 'notice warnbox', id: 'backupNote' },
+      h('p', { text: (d == null ? '아직 백업한 적이 없습니다.' : '마지막 백업이 ' + d + '일 전입니다.') + ' 옷장은 이 브라우저에만 저장되어, 브라우저 데이터가 지워지면 되돌릴 수 없습니다.' }),
+      h('button', { class: 'btn small primary', type: 'button', id: 'backupNow', onclick: backupNow, text: '백업 파일 받기' })));
+  }
+  const closetLoad = { busy: false };
+  function loadClosetScript() {                                                                    // 나눈 빌드: 3D 탭을 처음 열 때만 closet.js(약 11MB)를 내려받는다
+    if (X || closetLoad.busy || !window.__CLOSET_SRC) return;
+    closetLoad.busy = true;
+    const sc = document.createElement('script'); sc.src = window.__CLOSET_SRC; sc.async = true;
+    sc.onload = () => { closetLoad.busy = false; X = window.OtjangCloset || null; if (!X) closet.failed = '3D 옷장을 불러오지 못했습니다.'; if (ui.tab === 'closet3d') render(); };
+    sc.onerror = () => { closetLoad.busy = false; closet.failed = '3D 옷장을 내려받지 못했습니다. 인터넷 연결을 확인하고 다시 열어 주세요.'; if (ui.tab === 'closet3d') render(); };
+    document.head.append(sc);
+  }
+
   // ---------- 시작 ----------
   load().then((s) => {
     state = s;
-    window.__app = { get state() { return state; }, ui, J, R, W, C, flush: () => savePromise, store, hang, unhang };
+    window.__app = { get state() { return state; }, ui, J, R, W, C, flush: () => savePromise, store, hang, unhang, brand: BRAND, usageSummary: () => usageSummary(), errors };
+    if (state.meta.days[state.meta.days.length - 1] !== today()) state.meta.days.push(today());
+    $('#appTag').textContent = BRAND.tagline + (BRAND.beta ? ' · 시험판 ' + BRAND.version : '');
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* 무시: 오래 남게 해 달라는 요청이며 거절돼도 동작은 같다 */ }
     save(); render();
   });
 })();
