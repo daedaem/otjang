@@ -4,6 +4,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, 'shots'); fs.mkdirSync(shots, { recursive: true });
@@ -15,6 +16,15 @@ const ok = (cond, label, extra) => { if (!cond) failed++; console.log((cond ? ' 
 const asFile = (f, mimeType = 'application/json') => ({ name: path.basename(f), mimeType, buffer: fs.readFileSync(f) });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR4nGP4z8DwHwYZAB5pA/1Oxp5HAAAAAElFTkSuQmCC', 'base64');   // 2×2 png
 const pngFile = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
+// 단색 PNG 를 만든다(사진에서 색 뽑기 확인용)
+function crc32(buf) { let c, crc = 0xffffffff; for (let n = 0; n < buf.length; n++) { c = (crc ^ buf[n]) & 0xff; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; crc = (crc >>> 8) ^ c; } return (crc ^ 0xffffffff) >>> 0; }
+function chunk(type, data) { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td)); return Buffer.concat([len, td, crc]); }
+function solidPng(w, hgt, rgb) {
+  const raw = Buffer.alloc((w * 3 + 1) * hgt);
+  for (let y = 0; y < hgt; y++) { raw[y * (w * 3 + 1)] = 0; for (let x = 0; x < w; x++) { const o = y * (w * 3 + 1) + 1 + x * 3; raw[o] = rgb[0]; raw[o + 1] = rgb[1]; raw[o + 2] = rgb[2]; } }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(hgt, 4); ihdr[8] = 8; ihdr[9] = 2;
+  return { name: 'solid.png', mimeType: 'image/png', buffer: Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]) };
+}
 const v1fixture = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/wardrobe-v1.json'), 'utf8'));
 const modes = process.env.QUICK ? [{ name: 'desk-light', w: 1280, h: 900, scheme: 'light' }] : [{ name: 'desk-light', w: 1280, h: 900, scheme: 'light' }, { name: 'phone-dark', w: 390, h: 844, scheme: 'dark' }];
 for (const m of modes) {
@@ -95,6 +105,20 @@ for (const m of modes) {
   ok(bl.photo === 'own' && bl.img, '상품 사진을 떼면 내 사진으로 돌아간다', bl);
   await page.click('#mtCancel');
   ok(await page.locator('#closetGrid .card', { hasText: '네이비 블레이저' }).locator('.badge', { hasText: '브랜드 후보' }).count() === 1, '카드에 브랜드 후보 배지가 보인다');
+
+  // 2b. 사진에서 색·밝기 초안 뽑기: 네이비 사진으로 옷을 더하면 색 계열·밝기가 미리 채워지고, 그대로 저장하면 '사진에서 뽑은 초안'이 된다
+  await page.click('#addOwned');
+  await page.selectOption('#z-cat', 'top'); await page.selectOption('#z-kind', 'knit'); await page.fill('#z-name', '네이비 니트 (사진)'); await page.setInputFiles('#z-photo', solidPng(32, 32, [28, 38, 72]));
+  await page.click('#wzNext'); await page.waitForSelector('#z-guess');
+  const gz = await page.evaluate(() => ({ fam: document.querySelector('#z-family').value, light: Number(document.querySelector('#z-light').value), note: document.querySelector('#z-guess').textContent }));
+  ok(gz.fam === 'navy' && gz.light >= 15 && gz.light <= 25 && gz.note.includes('사진에서 뽑은 초안') && gz.note.includes('네이비'), '사진을 넣으면 색 계열·밝기 초안이 채워지고 안내가 보인다', gz);
+  await page.click('#wzNext'); await page.locator('#wizard .inl button', { hasText: '모름' }).first().click(); await page.locator('#wizard .inl button', { hasText: '모름' }).nth(1).click();
+  await page.click('#wzNext'); await page.waitForFunction(() => !document.querySelector('#wizard').open);
+  const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '네이비 니트 (사진)'); return i && { src: i.attrSource, family: i.family, light: i.light, note: i.draftNote, photo: i.photo.kind }; });
+  ok(gi && gi.src === 'photo-draft' && gi.family === 'navy' && gi.photo === 'own' && gi.note.includes('대표색 #'), '사진 초안을 그대로 두고 저장하면 attrSource 가 photo-draft 이고 대표색이 기록된다', gi);
+  await page.locator('#closetGrid .card', { hasText: '네이비 니트 (사진)' }).getByRole('button', { name: '기록' }).click();
+  await page.click('#edDelete'); await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
+  ok(await page.evaluate(() => !window.__app.state.items.some((x) => x.name === '네이비 니트 (사진)')), '시험용 옷을 지웠다');
 
   // 3. 살까 말까: 마법사로 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로
   await page.click('#tabbtn-judge');

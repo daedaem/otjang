@@ -6,6 +6,7 @@
 v0.3에서 더해진 것 (PRD v0.3 「남은 작업」 1·2·4·6):
 - **사진 상태·출처·확인일** (옷장 파일 스키마 2): 옷마다 속성 출처(사진 초안 / 주인 입력 / 주인 확인), 사진 상태(내 사진 / 확인된 동일 제품 / 미확인 후보 / 대체 이미지 / 없음), 상품 매칭 정보를 내 옷 기록과 따로 둔다. 상태는 사용자 동작으로만 바뀐다.
 - **옷 등록 질문 단계**: 무엇인가 → 색과 느낌 → 어떤 상품인가. 아는 칸은 묻지 않고 "모름"을 고를 수 있다. 상품 주소·사진은 직접 넣는다(열거나 긁어 오지 않는다).
+- **사진에서 색·밝기 초안** (v0.4.1): 내 사진을 넣으면 사진 가운데 색으로 색 계열·밝기를 미리 채운다(브라우저 캔버스만, AI·외부 요청 없음). 그대로 두고 저장하면 "사진에서 뽑은 초안"(photo-draft)으로 남고, 손대거나 확인 체크를 하면 주인 입력·확인이 된다. 종류·무늬·격식은 추정하지 않는다.
 - **3D 옷장 탭**: Blender로 빛을 미리 구운 옷장에 종류별 형태(셔츠·블레이저·필드 재킷·트러커 재킷)의 옷을 건다. 미리 만든 원단 5종, 또는 옷의 색·무늬로 브라우저에서 만든 원단(근사). 끌어 자리 바꾸기, 눌러 크게 보기, 흔들림.
 - **살 만한 옷 탭**: 사람이 직접 넣은 상품 목록. 내 옷장에 비춰 조합·겹침·빈틈으로 순서를 매긴다. 오래된 가격은 "재확인 필요". 목록 밖 상품을 지어내지 않는다.
 - 저장은 IndexedDB(안 되면 localStorage). v0.3 저장소는 처음 열 때 읽어 옮기고 그대로 둔다.
@@ -28,11 +29,11 @@ v0.3에서 더해진 것 (PRD v0.3 「남은 작업」 1·2·4·6):
 
 ```bash
 npm install                  # three 0.160.1, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                     # 규칙·스키마·상품 테스트 41개 (Node 22, 추가 패키지 없음)
+npm test                     # 규칙·스키마·상품·색 초안 테스트 46개 (Node 22, 추가 패키지 없음)
 npm run assets               # assets/closet → src/closet/assets.gen.js
 npm run build                # dist/index.html (약 9MB, 3D 포함). NO3D=1 이면 3D 없이, NO_MESHOPT=1 이면 WebAssembly 없이(더 크다)
 npm run build:empty          # dist/otjang-empty.html (빈 옷장)
-npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 122항목 확인 (두 환경, 3D 탭 포함. NO3D=1로 건너뛸 수 있음, QUICK=1이면 한 환경). 기대값은 예시 옷장 기준
+npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인: 환경당 64항목 × 두 환경(3D 탭 포함. NO3D=1로 건너뛸 수 있음, QUICK=1이면 한 환경). 기대값은 예시 옷장 기준
 npm run golden               # 규칙 결과 스냅샷 다시 만들기 (규칙을 일부러 바꿀 때만)
 npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (meshopt 압축)
 ```
@@ -47,6 +48,7 @@ npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (
 | `src/judge.js` | 구매 후보 판정과 옷장 비교 (v0.3 그대로) |
 | `src/wardrobe.js` | 옷장 파일 스키마 2: 정리·옮기기, 사진 상태 바꾸기(setOwnPhoto, setProductPhoto, confirmProduct, unconfirm, clearProductPhoto, addCandidate), 내보내기 |
 | `src/catalog.js` | 상품 목록 정리, 재확인 필요 판정, 상품 순위(rank), 상품 → 후보 |
+| `src/colorguess.js` | 사진 가운데 픽셀을 HSL 상자로 묶어 대표색 → 색 계열·밝기 초안. 인디고는 자동으로 고르지 않는다(네이비로 두고 사용자가 바꿈) |
 | `src/app.html` | 화면. 글자는 모두 textContent로 넣고, 가져온 파일은 아는 항목만 남겨 정리한다 |
 | `src/closet/index.js` | 3D 옷장 모듈(three.js). create()로 만들고 setItems()로 걸 옷을 준다 |
 | `src/closet/cloth.js` | 흔들림용 거친 물리 천(PBD)과 보이는 옷을 붙이는 Skin |
@@ -74,7 +76,7 @@ npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (
 - 어울림을 확률로 말하지 않는다. 규칙 점수는 가산과 감점의 합이다.
 - 사라거나 사지 말라고 하지 않는다. 규칙이 본 사실과 근거만 보여 준다.
 - 3D 옷은 종류로 그린 모습이다. 브랜드나 상품 모양을 추측하지 않고, 로고·그래픽·패치를 그리지 않는다. 바지·신발·니트·블루종 형태는 아직 없다.
-- 사진으로 옷을 입혀 보는 기능이 없다. 핏과 소재는 판단하지 않는다.
+- 사진으로 옷을 입혀 보는 기능이 없다. 핏과 소재는 판단하지 않는다. 사진에서 뽑는 것은 색 계열·밝기 초안뿐이고 종류·무늬·격식·브랜드는 추정하지 않는다.
 - 여러 사람이 함께 쓰는 서버, 공개 옷장, 아이템 사전은 아직 없다.
 
 ## 알려진 한계

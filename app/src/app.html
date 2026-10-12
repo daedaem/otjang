@@ -296,13 +296,14 @@ a{color:var(--accent)}
 <script>/*@@JUDGE@@*/</script>
 <script>/*@@WARDROBE_LIB@@*/</script>
 <script>/*@@CATALOG_LIB@@*/</script>
+<script>/*@@COLORGUESS@@*/</script>
 <script>const BASE = /*@@WARDROBE@@*/;
 const TEMPLATE = /*@@TEMPLATE@@*/;</script>
 <script>/*@@CLOSET@@*/</script>
 <script>
 (function () {
   'use strict';
-  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, X = window.OtjangCloset || null;
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, X = window.OtjangCloset || null;
   const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
   const KEY1 = 'otjang.v1', KEY2 = 'otjang.v2', DB = 'otjang';
   const YEAR = new Date().getFullYear();
@@ -346,6 +347,23 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
         let out = c.toDataURL('image/webp', 0.82); if (out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/jpeg', 0.85);
         resolve(safeImg(out));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+  /** 사진 파일에서 색 계열·밝기 초안을 뽑는다(브라우저 안에서만, 96px 로 줄여서). 실패하면 null. */
+  function guessColor(file) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        try {
+          const k = Math.min(1, 96 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+          c.width = Math.max(2, Math.round(img.naturalWidth * k)); c.height = Math.max(2, Math.round(img.naturalHeight * k));
+          const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, c.width, c.height);
+          resolve(G.guess(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height));
+        } catch (e) { resolve(null); }
+        URL.revokeObjectURL(url);
       };
       img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
       img.src = url;
@@ -923,10 +941,10 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   });
 
   // ---------- 등록 마법사: 무엇인가 → 색과 느낌 → 어떤 상품인가 (모르는 것만 묻는다) ----------
-  const wz = { status: 'owned', step: 0, item: null, data: null, ownImg: '', prodImg: '', ask: null };
+  const wz = { status: 'owned', step: 0, item: null, data: null, ownImg: '', prodImg: '', ask: null, guess: null, guessApplied: false, touched: false };
   const STEP_NAMES = ['1. 무엇인가요', '2. 색과 느낌', '3. 어떤 상품인가요'];
   function openWizard(item, status) {
-    wz.status = item ? item.status : status; wz.step = 0; wz.item = item || null; wz.ownImg = item ? item.photo.ownImg : ''; wz.prodImg = '';
+    wz.status = item ? item.status : status; wz.step = 0; wz.item = item || null; wz.ownImg = item ? item.photo.ownImg : ''; wz.prodImg = ''; wz.guess = null; wz.guessApplied = false; wz.touched = false;
     const base = item || W.cleanItem({ cat: 'top', kind: 'shirt', name: '', family: 'white', light: 95, formality: 2, pattern: 'solid', status: wz.status }, 0);
     wz.data = { cat: base.cat, kind: base.kind, name: base.name, family: base.family, light: base.light, formality: base.formality, pattern: base.pattern, seasons: base.seasons.slice(), confirmed: base.attrSource === 'owner-confirmed',
       brand: base.brand, brandUnknown: false, model: base.model, modelUnknown: false, sourceUrl: '', sourceName: '', photoKind: '', price: base.price, link: base.link, checkedAt: base.checkedAt };
@@ -965,10 +983,12 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     }
     if (wz.step === 1) {
       const fam = h('select', { id: 'z-family' }), light = h('input', { id: 'z-light', type: 'range', min: '0', max: '100', step: '1', value: String(d.light) }), sw = h('span', { class: 'sw', id: 'z-sw' }), lv = h('span', { id: 'z-lightv' });
-      fill(fam, FAM, d.family); const sync = () => { const v = Number(light.value); lv.textContent = lightText(v); sw.style.background = swatch({ family: fam.value, light: v }); }; fam.addEventListener('change', () => { light.value = String(FAM[fam.value][3]); sync(); }); light.addEventListener('input', sync);
+      if (wz.guess && !wz.guessApplied) { d.family = wz.guess.family; d.light = wz.guess.light; wz.guessApplied = true; wz.touched = false; }
+      fill(fam, FAM, d.family); light.value = String(d.light); const sync = () => { const v = Number(light.value); lv.textContent = lightText(v); sw.style.background = swatch({ family: fam.value, light: v }); }; fam.addEventListener('change', () => { light.value = String(FAM[fam.value][3]); wz.touched = true; sync(); }); light.addEventListener('input', () => { wz.touched = true; sync(); });
       const form = h('select', { id: 'z-formality' }), pat = h('select', { id: 'z-pattern' }); fill(form, FORMAL, d.formality); fill(pat, PATTERNS, d.pattern);
       const sb = h('div', { class: 'checks', id: 'z-seasons' }); for (const s of SEASONS) sb.append(h('label', null, h('input', { type: 'checkbox', value: s, checked: d.seasons.indexOf(s) >= 0 }), ' ' + s));
       b.append(h('p', { class: 'note', style: 'margin-bottom:10px', text: (wz.item && W.isDraft(wz.item) ? '지금 값은 사진에서 뽑은 초안입니다. ' : '') + '규칙은 색 계열, 밝기, 격식, 무늬만 봅니다. 모르면 그대로 두어도 됩니다.' }),
+        wz.guess ? h('p', { class: 'note draftnote', id: 'z-guess', style: 'margin-bottom:10px' }, h('span', { class: 'sw', style: 'background:' + G.hex(wz.guess.rgb) + ';margin-right:6px' }), '사진에서 뽑은 초안: ' + FAM[wz.guess.family][0] + ', 밝기 ' + wz.guess.light + '. ' + wz.guess.note) : '',
         h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'z-family', text: '색 계열' }), fam), h('div', { class: 'field' }, h('label', { for: 'z-light' }, '밝기 ', lv), h('div', { class: 'range' }, sw, light)),
           h('div', { class: 'field' }, h('label', { for: 'z-formality', text: '격식' }), form), h('div', { class: 'field' }, h('label', { for: 'z-pattern', text: '무늬' }), pat),
           h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (비워 두면 사계절)' }), sb),
@@ -996,7 +1016,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   }
   async function wizardNext() {
     const err = $('#wzErr'); err.hidden = true;
-    if (wz.step === 0) { const f = $('#z-photo').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.ownImg = img; } }
+    if (wz.step === 0) { const f = $('#z-photo').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.ownImg = img; wz.guess = await guessColor(f); wz.guessApplied = false; wz.touched = false; } }
     if (wz.step === 2) { const f = $('#z-prodPhoto').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '상품 사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.prodImg = img; } }
     collect();
     const d = wz.data;
@@ -1012,9 +1032,10 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     if (next < 3) { wz.step = next; renderWizard(); return; }
     // 저장
     const prev = wz.item;
-    const attrSource = d.confirmed ? 'owner-confirmed' : prev ? (prev.attrSource === 'owner-confirmed' ? 'owner' : prev.attrSource) : 'owner';
+    const fromPhoto = wz.guessApplied && !wz.touched;                                               // 색·밝기를 사진 초안 그대로 두었으면 '사진에서 뽑은 초안'으로 남긴다
+    const attrSource = d.confirmed ? 'owner-confirmed' : fromPhoto ? 'photo-draft' : prev ? (prev.attrSource === 'owner-confirmed' ? 'owner' : prev.attrSource) : 'owner';
     let item = W.cleanItem(Object.assign({}, prev || {}, { id: prev ? prev.id : newId(wz.status === 'candidate' ? 'c' : 'i'), status: wz.status, cat: d.cat, kind: d.kind, name: d.name, family: d.family, light: d.light, formality: d.formality, pattern: d.pattern, seasons: d.seasons,
-      attrSource, brand: d.brand, model: d.model, price: wz.status === 'candidate' ? d.price : (prev ? prev.price : null), link: wz.status === 'candidate' ? d.link : (prev ? prev.link : ''), checkedAt: wz.status === 'candidate' ? (d.checkedAt || (d.price != null ? today() : '')) : (prev ? prev.checkedAt : '') }), 0);
+      attrSource, draftNote: fromPhoto && !d.confirmed ? '사진 가운데 색에서 뽑은 초안 (대표색 ' + G.hex(wz.guess.rgb) + ')' : (prev ? prev.draftNote : ''), brand: d.brand, model: d.model, price: wz.status === 'candidate' ? d.price : (prev ? prev.price : null), link: wz.status === 'candidate' ? d.link : (prev ? prev.link : ''), checkedAt: wz.status === 'candidate' ? (d.checkedAt || (d.price != null ? today() : '')) : (prev ? prev.checkedAt : '') }), 0);
     if (!item) { err.textContent = '저장할 수 없습니다.'; err.hidden = false; return; }
     if (wz.ownImg !== item.photo.ownImg) item = W.setOwnPhoto(item, wz.ownImg);
     if (wz.prodImg || d.sourceUrl) {
