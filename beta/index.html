@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>어울 (가칭)</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-lG5xdAJzYaFhDTtkXilp/RviBLlj1db5Wr40qjnggL4=' 'sha256-LPsnBtPWomGQFXVGY304O8n+pmQYRJ9sZdBxcjISOaM=' 'sha256-+yL+FqzwBAjkRoao8sGA/F/JJlCij9TkGwZzLRQnacE=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-LheCghBBaAPcZyobBS29sif8RMn1RbIbscAn5I53/4M=' 'sha256-/Pz9j52/T/bhzHY8M5Az/PAl47Qbml4wKvZBaknlSk0=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-hyzC9THt/DN2wm3FD/qWK8a7g72JawDv6iHE7MxqCFk=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-lG5xdAJzYaFhDTtkXilp/RviBLlj1db5Wr40qjnggL4=' 'sha256-LPsnBtPWomGQFXVGY304O8n+pmQYRJ9sZdBxcjISOaM=' 'sha256-9cgO4EJJfT/Tb/krvDU+CU4ALnR/txoz+ljJuNq0l44=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-LheCghBBaAPcZyobBS29sif8RMn1RbIbscAn5I53/4M=' 'sha256-/Pz9j52/T/bhzHY8M5Az/PAl47Qbml4wKvZBaknlSk0=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-ycFD35TRkb0Vzgmng5TUaK/uV5YoLlDE5nPuGScCZQ8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
@@ -1992,6 +1992,24 @@ table.cmp td.win{background:var(--sel);font-weight:650}
   function srcPhrase(cs) { const s = Array.from(new Set(cs.map((c) => c.srcText || (has(SRC, c.src) ? SRC[c.src] : '')).filter(Boolean))); return s.length ? s.join('·') : '약한 근거'; }
 
   /**
+   * 잘 맞는 옷 치수가 없을 때, 보던 상품(a)과 1등(b)의 같은 사이즈끼리 가슴·총장 차이(총장은 옆목점 기준으로 맞춤, 뒤 중심은 +2cm 추정).
+   * 예: "같은 L끼리면 보던 상품이 가슴 2.5cm 넓고 총장은 약 1cm 짧아요". 견줄 치수가 없거나 차이가 1cm 아래(치수표 오차 안)면 ''.
+   */
+  function sameSizeDiff(a, b) {
+    if (a.fit.byRef || b.fit.byRef || !a.product.sizes.length) return '';
+    const sa = a.product.sizes[0], lab = normSize(sa.label), sb = lab ? sizeOf(b.product, lab) : null;
+    if (!sb) return '';
+    const END = { 넓: ['넓고', '넓어요'], 좁: ['좁고', '좁아요'], 길: ['길고', '길어요'], 짧: ['짧고', '짧아요'] };
+    const hps = (p, s) => (s.length == null ? null : s.length + (p.lengthFrom === 'cb' ? LEN_CB : 0));
+    const est = a.product.lengthFrom === 'cb' || b.product.lengthFrom === 'cb';
+    const parts = [];
+    if (sa.chest != null && sb.chest != null) { const d = Math.round((sa.chest - sb.chest) * 10) / 10; if (Math.abs(d) >= 1) parts.push(['가슴 ' + Math.abs(d) + 'cm ', d > 0 ? '넓' : '좁']); }
+    const la = hps(a.product, sa), lb = hps(b.product, sb);
+    if (la != null && lb != null) { const d = Math.round((la - lb) * 10) / 10; if (Math.abs(d) >= 1) parts.push(['총장' + (parts.length ? '은' : '') + ' ' + (est ? '약 ' : '') + Math.abs(d) + 'cm ', d > 0 ? '길' : '짧']); }
+    if (!parts.length) return '';
+    return '같은 ' + sizeName(b.product, sb.label) + '끼리면 보던 상품이 ' + parts.map(([t, k], i) => t + END[k][i < parts.length - 1 ? 0 : 1]).join(' ');
+  }
+  /**
    * 보던 상품(a, 직접 넣은 상품)과 1등(b)을 같은 줄로 견준다(두 칸 표).
    * 반환: { rows: [{ key, label, a: { text, status }, b: { text, status }, win: 'a'|'b'|'' }], sum: 문장 }
    * 지금 낼 돈은 배송비를 아는 값끼리만 이기고 지는 것을 정한다(보던 상품 배송비를 모르면, 배송비를 빼도 비쌀 때만 1등이 싸다고 한다).
@@ -2012,7 +2030,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       const st = (x) => (x.status === 'weak' && x.kind === 'partial' ? 'partial' : x.status);
       rows.push({ key: 'cond:' + c.key, label: c.label, noun: c.noun, a: { text: brief(c), status: st(c), full: c.text }, b: { text: brief(d), status: st(d), full: d.text }, win: cw(c.status) > cw(d.status) ? 'a' : cw(c.status) < cw(d.status) ? 'b' : '' });
     });
-    const mtxt = (p, s) => { if (!s) return ''; const m = [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? (p.lengthFrom === 'cb' ? '총장(뒤 중심) ' : '총장 ') + s.length : ''].filter(Boolean); return m.length ? m.join('·') + 'cm' : ''; };
+    const mtxt = (p, s) => { if (!s) return ''; const m = [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? (p.lengthFrom === 'cb' ? '총장 약 ' + (s.length + LEN_CB) + '(뒤 중심 ' + s.length + ')' : '총장 ' + s.length) : ''].filter(Boolean); return m.length ? m.join('·') + 'cm' : ''; };
     const sizeTxt = (r, want) => {
       const p = r.product;
       if (r.fit.byRef) return sizeName(p, r.fit.size) + ' — 잘 맞는 옷과 ' + r.fit.diffs.join(', ');
@@ -2034,7 +2052,8 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       : dPay === 0 ? '지금 낼 돈은 같아요' : '';
     const nouns = (w) => rows.filter((x) => x.win === w && x.key !== 'pay' && x.key !== 'unit').map((x) => x.noun || x.label);
     const bw = nouns('b'), aw = nouns('a');
-    const sum = [price, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : ''].filter(Boolean).map((t) => t + '.').join(' ');
+    const same = sameSizeDiff(a, b);
+    const sum = [price, same, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : ''].filter(Boolean).map((t) => t + '.').join(' ');
     return { rows, sum, payWin };
   }
   /** 대안 한 줄: 한 장 값과 공개된 품질 근거 둘, 조건 상태. */
@@ -6667,7 +6686,7 @@ const PICKS_RAW = {
     const inp = (k, label, type, extra) => h('label', { class: extra && extra.full ? 'full' : '' }, label, h('input', Object.assign({ id: 'now-' + k, type: type || 'text', value: f[k] || '', oninput: set(k) }, extra && extra.attrs || {})));
     const fillNote = h('p', { class: 'note', id: 'nowFill', 'aria-live': 'polite' });
     const onLink = (e) => {
-      f.link = e.target.value; const pl = pastedLink(f.link), nm = nowName(pl), g = PK.guessFromName(PICKS, nm || f.link), got = [];
+      f.link = e.target.value; const pl = pastedLink(f.link), nm = pl.url ? nowName(pl) : nowName({ url: '', name: str(f.link.replace(/[【】]/g, ' ').replace(/\s+/g, ' ').trim(), 80) }), g = PK.guessFromName(PICKS, nm || f.link), got = [];   // 주소 없이 이름만 붙여 넣어도 이름으로 쓴다
       const setIf = (k, v, say) => { if (v == null || v === '' || f[k]) return; f[k] = String(v); const el = $('#now-' + k); if (el) el.value = String(v); got.push(say); };
       setIf('name', nm, '이름'); if (g.brand) setIf('brand', PICKS.brands[g.brand].ko || PICKS.brands[g.brand].name, '브랜드'); setIf('fit', g.fit, '핏(' + (PK.FIT[g.fit] || '') + ')'); setIf('packCount', g.packCount, g.packCount + '장 묶음'); setIf('sleeve', g.sleeve, PK.SLEEVES[g.sleeve] || '');
       fillNote.textContent = got.length ? '글에서 ' + got.join('·') + '을 채웠어요. 다르면 "더 정확히"에서 바꿔 주세요.' : '';
@@ -6708,9 +6727,9 @@ const PICKS_RAW = {
   function nowResult(res) {
     const r = res.user;
     if (!r) return null;
-    const p = r.product, pk = res.pick, ur = res.userRank, nm = pname(p);
-    const head = r.out ? '보던 ' + josa(nm, '은', '는') + ' 고른 조건에 안 맞아요. ' + r.out.replace(/^고른 조건에 안 맞아요: /, '')
-      : !ur ? '' : ur.idx === 0 ? '보던 ' + josa(nm, '이', '가') + ' 고른 기준으로 ' + ur.n + '개 중 1위예요.' : '보던 ' + josa(nm, '은', '는') + ' 고른 기준으로 ' + ur.n + '개 중 ' + (ur.idx + 1) + '위예요.';
+    const p = r.product, pk = res.pick, ur = res.userRank, named = p.name !== '지금 보는 상품', nm = named ? pname(p) : '', subj = named ? '보던 ' + nm : '보던 상품';   // 이름을 안 적었으면 '보던 상품'
+    const head = r.out ? josa(subj, '은', '는') + ' 고른 조건에 안 맞아요. ' + r.out.replace(/^고른 조건에 안 맞아요: /, '')
+      : !ur ? '' : ur.idx === 0 ? josa(subj, '이', '가') + ' 같은 기준으로 ' + ur.n + '개 중 1위예요.' : josa(subj, '은', '는') + ' 같은 기준으로 ' + ur.n + '개 중 ' + (ur.idx + 1) + '위예요.';
     const c = pk ? PK.contrast(r, pk, PICKS) : null;
     const cell = (x, w) => { const td = h('td', { class: w ? 'win' : '' }); if (x.status) td.append(h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[x.status] ? MARK[x.status][0] + ' ' : '' }), h('span', { class: 'sr', text: (MARK[x.status] ? MARK[x.status][1] : '') + ': ' })); td.append(x.text); if (w) td.append(h('span', { class: 'sr', text: ' (더 나음)' })); return td; };
     const table = c ? h('div', { class: 'scroll' }, h('table', { class: 'cmp', id: 'nowCmp' }, h('caption', { class: 'sr', text: '보던 상품과 1위 견주기' }),
@@ -6724,7 +6743,7 @@ const PICKS_RAW = {
       else if (x.verdict === 'reject') toast('알겠어요. 기록해 둘게요.');
     };
     return h('div', { class: 'nowres', id: 'nowRes', tabindex: '-1' },
-      h('p', { class: 'fl2', text: '보던 상품: ' + nm + ' · ' + priceShort(r) }),
+      h('p', { class: 'fl2', text: '보던 상품' + (named ? ': ' + nm : '') + ' · ' + priceShort(r) }),
       h('p', { class: 'nowh', id: 'nowHead', text: head }),
       ur && ur.idx === 0 && !r.out ? h('p', { class: 'note', text: '적은 값대로라면 어울이 확인한 상품보다 앞서요. 적은 값은 약한 확인이라, 사기 전에 목 립·두께를 상세 사진으로 한 번 더 봐 주세요.' }) : null,
       table, c ? h('p', { class: 'nowsum', id: 'nowSum', text: c.sum }) : null,
