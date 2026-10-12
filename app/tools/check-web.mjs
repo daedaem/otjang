@@ -1,14 +1,26 @@
 // 웹 배포판(dist/web, npm run build:web)을 처음 온 사람처럼 열어 본다:
-// 첫 안내 → 예시 A·B 둘러보기 → 기본 옷 골라 넣기 → 고민 중인 옷 바로 판정(첫 판정까지 누른 횟수) → 결정 → 2주 뒤 물음 → 한 벌 자세히 넣기 → 백업 → 안내·의견 → 다시 열기.
-// 사용: npm run build:web && node tools/check-web.mjs      (두 환경: 1280×900 밝음, 390×844 어두움. QUICK=1 이면 첫 환경만)
-import { chromium } from 'playwright';
+// 첫 안내 → 예시 A·B 둘러보기 → 기본 옷 골라 넣기 → 고민 중인 옷 바로 판정(첫 판정까지 누른 횟수) → 친구에게 물어보기 → 결정 → 2주 뒤 물음 → 쇼핑 링크 붙여넣기
+// → 한 벌 자세히 넣기 → 백업 → 안내·의견 → 다시 열기 → 공유로 들어오기 → 보안 정책(CSP)이 외부 요청을 막는지.
+// 배포와 같은 조건이 되도록 dist/web 을 이 컴퓨터의 작은 HTTP 서버(127.0.0.1)로 연다(파일로 열면 CSP 의 'self' 가 다르게 동작한다).
+// 사용: npm run build:web && node tools/check-web.mjs      (두 환경: 1280×900 밝음, 390×844 어두움. QUICK=1 이면 첫 환경만. BROWSER=webkit|firefox 로 다른 엔진, 설치된 경우)
+import * as pw from 'playwright';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const web = path.join(root, process.env.WEB || 'dist/web');
 const shots = path.join(root, 'shots'); fs.mkdirSync(shots, { recursive: true });
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const engine = process.env.BROWSER || 'chromium';
+const browser = await pw[engine].launch(engine === 'chromium' ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const server = http.createServer((req, res) => {
+  const u = new URL(req.url, 'http://x'), f = path.join(web, decodeURIComponent(u.pathname === '/' ? '/index.html' : u.pathname));
+  if (!f.startsWith(web) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const origin = 'http://127.0.0.1:' + server.address().port;
 let failed = 0;
 const ok = (c, label, extra) => { if (!c) failed++; console.log((c ? '  ok   ' : '  FAIL ') + label + (extra !== undefined ? ' → ' + JSON.stringify(extra) : '')); };
 const MAX_ACTIONS = 15;                                                                              // [제안값] 빈 옷장에서 첫 판정까지 누르거나 고르는 횟수의 상한 (예전 흐름은 옷 5벌 + 후보 1벌에 약 51번)
@@ -21,9 +33,9 @@ for (const m of modes) {
   const logs = [], ext = [], files = [];
   page.on('console', (x) => { if (x.type() === 'error' || x.type() === 'warning') logs.push(x.text().slice(0, 200)); });
   page.on('pageerror', (e) => logs.push('pageerror: ' + e.message));
-  page.on('request', (r) => { const u = r.url(); if (u.startsWith('file:')) files.push(path.basename(new URL(u).pathname)); else if (!u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u); });
+  page.on('request', (r) => { const u = r.url(); if (u.startsWith(origin)) files.push(path.basename(new URL(u).pathname) || 'index.html'); else if (!u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u); });
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
-  await page.goto(pathToFileURL(path.join(web, 'index.html')).href);
+  await page.goto(origin + '/');
   await page.waitForFunction(() => window.__app);
   const st = () => page.evaluate(() => { const s = window.__app.state; return { n: s.items.length, owned: s.items.filter((i) => i.status === 'owned').length, cand: s.items.filter((i) => i.status === 'candidate').length, sample: s.meta.sample, rack: s.rack.length, quick: s.meta.quickAdded, dec: s.decisions.length }; });
 
@@ -87,6 +99,18 @@ for (const m of modes) {
   ok(verdict.supported && verdict.before === 4 && verdict.added === 2, '트렌치코트 후보는 가진 차림 4개(상의·하의 3쌍 + 원피스 1벌)에 걸쳐 보고 2개에 걸칠 수 있다', verdict);
   await page.screenshot({ path: path.join(shots, m.name + '-3-verdict.png'), fullPage: true });
 
+  // 4b. 친구에게 물어보기: 그림과 글에 내 옷장 이름이 없다, 그림 저장, (공유 기능이 있는 기기라면) 공유 창
+  await page.click('#askFriend');
+  await page.waitForFunction(() => window.__share && window.__share.bytes > 0);
+  const shr = await page.evaluate(() => window.__share);
+  ok(shr.w === 1080 && shr.h === 1350 && shr.bytes > 20000 && shr.text.includes('베이지 트렌치코트') && shr.text.includes('조합 4개 가운데 2개') && !/흰 셔츠|네이비 니트|진청 데님|베이지 치노|검정 원피스/.test(shr.text),
+    '공유 그림(1080×1350)과 글에 후보와 판정 요약만 있고 내 옷 이름은 없다', { bytes: shr.bytes, text: shr.text.split('\n')[0] });
+  const [png] = await Promise.all([page.waitForEvent('download'), page.click('#shSave')]);
+  const pf = path.join(shots, m.name + '-ask.png'); await png.saveAs(pf);
+  const head = fs.readFileSync(pf).subarray(0, 8).toString('hex');
+  ok(head === '89504e470d0a1a0a' && png.suggestedFilename().endsWith('.png'), '그림 저장은 PNG 파일을 내려받는다', png.suggestedFilename());
+  await page.click('#shClose');
+
   // 5. 결정 → 2주 뒤 물음 (날짜를 20일 앞으로 돌려 본다)
   await page.locator('#afterForm input[name="decision"][value="buy"]').check();
   await page.locator('#afterForm input[name="helpful"][value="yes"]').check();
@@ -106,6 +130,15 @@ for (const m of modes) {
   ok(fol && fol.worn === 'few' && fol.feel === 'good' && !(await page.locator('#followNote').count()), '답하면 결정 기록에 남고 물음이 사라진다', fol);
   await page.click('#tabbtn-log');
   ok((await page.locator('#gate').innerText()).includes('1~2번 입음 · 잘 샀다'), '기록 탭 표에 2주 뒤 답이 보인다');
+  // 5b. 쇼핑 앱에서 복사한 글과 링크를 붙여 넣으면 판매처와 이름을 채운다(링크는 열지 않는다)
+  await page.click('#tabbtn-judge'); await page.click('#quickCand');
+  await page.fill('#qc-link', '[무신사] 미니멀 울 코트 https://www.musinsa.com/products/1234567');
+  ok((await page.locator('#qc-src').innerText()).includes('무신사') && (await page.inputValue('#qc-name')) === '무신사 미니멀 울 코트', '붙여 넣은 글에서 판매처(무신사)와 이름을 채운다', await page.inputValue('#qc-name'));
+  await page.selectOption('#qc-cat', 'outer'); await page.selectOption('#qc-kind', 'coat'); await page.selectOption('#qc-family', 'gray');
+  await page.locator('#qc-lean input[value="unsure"]').check(); await page.click('#qcGo');
+  await page.waitForSelector('#vCombos');
+  const linked = await page.evaluate(() => window.__app.state.items.find((i) => i.name === '무신사 미니멀 울 코트'));
+  ok(linked && linked.link === 'https://www.musinsa.com/products/1234567' && (await page.locator('main').innerText()).includes('무신사 · https://www.musinsa.com/products/1234567'), '후보에 링크가 남고 판정 화면에 판매처와 함께 보인다');
   await page.click('#tabbtn-closet');
 
   // 6. 한 벌 자세히 넣기(마법사): 새 종류 스커트
@@ -120,7 +153,7 @@ for (const m of modes) {
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#backupNow')]);
   const bf = path.join(shots, m.name + '-backup.json'); await dl.saveAs(bf);
   const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
-  ok(bk.schema === 2 && bk.items.length === 6 && bk.decisions.length === 1 && bk.decisions[0].follow.feel === 'good' && !(await page.locator('#backupNote').count()), '백업 파일(스키마 2)에 옷 6벌과 결정·2주 뒤 답이 들어가고 알림이 사라진다', dl.suggestedFilename());
+  ok(bk.schema === 2 && bk.items.length === 6 && bk.decisions.length === 2 && bk.decisions[0].follow.feel === 'good' && !(await page.locator('#backupNote').count()), '백업 파일(스키마 2)에 옷 6벌과 판정 기록·2주 뒤 답이 들어가고 알림이 사라진다', dl.suggestedFilename());
 
   // 8. 안내와 의견 보내기
   await page.click('#helpBtn');
@@ -128,24 +161,50 @@ for (const m of modes) {
   ok(help.includes('이 브라우저 안에만 저장') && help.includes('2주 뒤'), '안내에 저장 위치·한계와 2주 뒤 물음이 적혀 있다');
   await page.click('#helpClose');
   await page.click('#fbBtn'); await page.fill('#fbText', '시험 의견');
+  await page.locator('#fbPmf input[value="very"]').check(); await page.selectOption('#fbNps', '9');
   const pv = await page.locator('#fbPreview').innerText();
-  ok(pv.includes('시험 의견') && pv.includes('0.5.0-beta') && pv.includes('옷 6벌') && pv.includes('연 날 1일') && pv.includes('빠른 시작 5벌') && pv.includes('2주 뒤 답 1건(잘함 1') && !pv.includes('흰 셔츠') && !pv.includes('트렌치') && !pv.includes('스커트'),
+  const mline = (pv.match(/EOUL1\|\S+/) || [''])[0];
+  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
+    '만족도 질문(더는 못 쓰면·추천할 마음)과 운영자가 읽을 요약 한 줄이 붙는다', mline);
+  ok(pv.includes('시험 의견') && pv.includes('0.5.0-beta') && pv.includes('옷 6벌') && pv.includes('후보 2') && pv.includes('연 날 1일') && pv.includes('빠른 시작 5벌') && pv.includes('2주 뒤 답 1건(잘함 1') && !pv.includes('흰 셔츠') && !pv.includes('트렌치') && !pv.includes('스커트') && !pv.includes('musinsa'),
     '의견 미리보기에 사용 요약(빠른 시작·2주 뒤 답 포함)은 있고 옷 이름은 없다', pv.split('\n').slice(2));
   await page.click('#fbCopy'); await page.waitForTimeout(200);
   ok((await page.locator('#fbMsg').innerText()).length > 0, '복사하기를 누르면 결과를 알려 준다', await page.locator('#fbMsg').innerText());
   await page.click('#fbClose');
 
+  // 8b. 운영자: 받은 의견 여러 개를 붙여 넣으면 베타 지표를 계산한다 (같은 사람은 최근 것만)
+  const mine = await page.evaluate(() => window.__feedback);
+  const other = 'EOUL1|id=zz99yy|v=0.5.0-beta|at=2026-10-20|own=2|draft=0|photo=0|cand=0|done=0|prod=0|rack=0|quick=2|days=1|d30=1|fol=0|first=2026-10-19|good=0|ok=0|regret=0|nb=0|due=0|pmf=not|nps=4|err=1|scr=390x844';
+  const older = other.replace('at=2026-10-20', 'at=2026-10-19').replace('own=2', 'own=1');
+  await page.click('#tabbtn-log'); await page.click('#opsBox > summary');
+  await page.fill('#opsText', '[민지] 오후 9:01\n' + mine + '\n[준호] 오후 9:30 써 봤어요\n' + older + '\n[준호] 오후 10:00\n' + other);
+  await page.click('#opsGo');
+  const ops = await page.evaluate(() => window.__ops);
+  ok(ops.sm.n === 2 && ops.sm.activated.count === 1 && ops.sm.value.count === 1 && ops.sm.pmf.very === 1 && ops.sm.pmf.not === 1 && ops.sm.nps.score === 0 && ops.sm.errors === 1 && ops.vd.activated === 'few' && (await page.locator('#opsTable').innerText()).includes('사람이 적어 판단 보류'),
+    '받은 의견 3개(같은 사람 2번)에서 2명으로 세고 활성화·판정·만족·추천·오류를 계산한다', { n: ops.sm.n, act: ops.sm.activated, nps: ops.sm.nps.score });
+  await page.click('#tabbtn-closet');
+
   // 9. 다시 열어도 남아 있다 (IndexedDB)
   await page.evaluate(() => window.__app.flush()); await page.reload(); await page.waitForFunction(() => window.__app);
   s = await st();
   const fol2 = await page.evaluate(() => window.__app.state.decisions[0].follow);
-  ok(s.owned === 6 && s.cand === 1 && s.dec === 1 && s.quick === 5 && fol2 && fol2.feel === 'good' && (await page.evaluate(() => window.__app.state.loadedFrom)) === 'idb', '다시 열어도 옷 6벌·후보·결정·2주 뒤 답이 남아 있다', s);
+  ok(s.owned === 6 && s.cand === 2 && s.dec === 2 && s.quick === 5 && fol2 && fol2.feel === 'good' && (await page.evaluate(() => window.__app.state.loadedFrom)) === 'idb', '다시 열어도 옷 6벌·후보 2·결정·2주 뒤 답이 남아 있다', s);
   ok(!(await overflow()), '가로 넘침이 없다');
   await page.screenshot({ path: path.join(shots, m.name + '-4-closet.png'), fullPage: true });
+  // 10. 공유로 들어오기(설치한 앱에서 쇼핑 앱의 "공유"): 주소의 title·url 로 고민 중인 옷 넣기가 열리고, 주소창은 바로 지워진다
+  await page.goto(origin + '/?title=' + encodeURIComponent('니트 카디건') + '&url=' + encodeURIComponent('https://www.29cm.co.kr/products/1'));
+  await page.waitForFunction(() => window.__app && document.querySelector('#qcDlg').open);
+  ok((await page.locator('#qc-src').innerText()).includes('29CM') && (await page.inputValue('#qc-name')) === '니트 카디건' && (await page.evaluate(() => location.search)) === '', '공유로 들어오면 판매처·이름이 채워진 채 열리고 주소창의 값은 지워진다');
+  await page.click('#qcCancel');
   ok(ext.length === 0, '인터넷으로 나간 요청이 없다', ext);
-  ok(logs.length === 0, '콘솔 오류·경고가 없다', logs);
+  ok(logs.length === 0, '콘솔 오류·경고가 없다(보안 정책 위반 없음)', logs);
+  // 11. 보안 정책: 이 페이지에서 외부 주소로 보내려 해도 막힌다
+  const csp = await page.evaluate(async () => ({ meta: !!document.querySelector('meta[http-equiv="Content-Security-Policy"]'), robots: (document.querySelector('meta[name="robots"]') || {}).content || '',
+    fetch: await fetch('https://example.com/collect').then(() => 'sent', () => 'blocked'), script: await new Promise((res) => { const sc = document.createElement('script'); sc.src = 'https://example.com/x.js'; sc.onload = () => res('ran'); sc.onerror = () => res('blocked'); document.head.append(sc); }) }));
+  ok(csp.meta && csp.robots.includes('noindex') && csp.fetch === 'blocked' && csp.script === 'blocked', '보안 정책이 외부 전송과 외부 스크립트를 막고, 검색 노출을 막는 표시가 있다', csp);
   await ctx.close();
 }
 await browser.close();
+server.close();
 console.log(failed ? failed + '건 실패' : '모두 통과');
 process.exit(failed ? 1 : 0);

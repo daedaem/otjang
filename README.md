@@ -10,9 +10,10 @@
 
 | 폴더 | 내용 |
 |---|---|
-| [`app/`](app/) | 개인판 v0.4. 서버 없이 HTML 파일 하나로 동작한다. 옷장 기록, 사진 상태(확인된 동일 제품 / 미확인 후보 / 대체 이미지), 살까 말까 판정, 코디, 3D 옷장, 직접 넣는 상품 목록과 구매 추천, 옷장 비교, 내보내기·가져오기 |
+| [`app/`](app/) | 시험판 0.5.0-beta. 서버 없이 동작한다. 기본 옷 골라 넣기(빠른 시작), 고민 중인 옷 바로 판정(살까 말까), 친구에게 물어보기(공유 그림), 결정 2주 뒤 물음, 코디, 3D 옷장, 직접 넣는 상품 목록과 구매 추천, 옷장 비교, 백업·가져오기, 의견 보내기와 운영자용 베타 지표. 원피스·스커트 등 성별을 가리지 않는 분류 |
 | [`blender/`](blender/) | 3D 옷장 자산(옷장·방, 옷 4종의 형태·빛·원단)을 만드는 Blender(bpy) 스크립트. 기능 개발에는 필요 없다 |
-| [`docs/`](docs/) | 진행 상태와 결정 기록 |
+| [`server/`](server/) | 다음 단계(서버형)용 Spring Boot 4 + PostgreSQL. 규칙은 앱과 골든 회귀로 교차 검증 |
+| [`docs/`](docs/) | 진행 상태와 결정 기록, 베타 계획, [규칙 설명서](docs/rules-explained.md) |
 
 Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-prototype`, `docs/prd-v0.4`)에 있고 합의 전입니다.
 
@@ -21,10 +22,12 @@ Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-pro
 ```bash
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                                     # 규칙·스키마·상품·색 초안·서버 맞추기 테스트 52개 (Node 22)
+npm test                                     # 규칙·스키마·원피스·2주 뒤 물음·의견 줄·골든 등 테스트 63개 (Node 22)
 npm run assets && npm run build              # dist/index.html (약 11MB, 3D 포함 파일 하나). 브라우저로 열면 된다
 npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 72항목 × 두 환경)
-npm run build:web && npm run check:web       # 베타 웹판 dist/web/ (첫 화면 약 0.2MB, 3D는 탭을 열 때 closet.js 약 11.7MB) + 처음 온 사람 흐름 확인
+npm run build:web && npm run check:web       # 베타 웹판 dist/web/ (첫 화면 약 0.26MB, 3D는 탭을 열 때 closet.js 약 11.7MB) + 처음 온 사람 흐름·공유·보안 정책 확인
+npm run check:a11y                           # 접근성 자동 검사(axe-core, WCAG 2.1 A·AA)
+npm run check:perf                           # 느린 4G·LTE 흉내 회선에서 첫 화면·3D 탭 시간
 ```
 
 웹판은 빈 옷장으로 시작하고, "예시 옷장으로 둘러보기"를 누르면 합성 예시를 보여 줍니다. 옷장·사진은 각 사용자의 브라우저(IndexedDB)에만 저장되고, 분석 도구나 추적 코드는 없습니다. 의견은 앱의 "의견 보내기"가 옷 이름 없는 사용 요약을 붙여 복사해 주면 사용자가 직접 보냅니다.
@@ -33,8 +36,8 @@ npm run build:web && npm run check:web       # 베타 웹판 dist/web/ (첫 화�
 
 ## 확인한 것과 아닌 것
 
-- **검증 사실**(2026-10-12, 리눅스 클라우드): 테스트 52개, 빌드, 헤드리스 Chromium 두 환경(1280×900 밝음, 390×844 어두움)에서 환경당 72항목 통과. 외부 요청 0건. 빌드 결과에 사진 데이터 없음. 서버는 규칙 Java 이식의 골든 교차 검증과 PostgreSQL 16 스키마 적용까지 확인(Spring 계층 컴파일은 미실행 — server/README.md).
-- **미실행**: 실제 휴대폰·Safari·맥에서 열기, 본인이 살까 말까 판정을 실제로 써 본 기록(0건), 3D 체감 성능.
+- **검증 사실**(2026-10-13 새벽, 리눅스 클라우드, 헤드리스 Chromium): 테스트 63개, 한 파일 빌드 흐름 환경당 72항목 × 2, 웹판 흐름(로컬 HTTP) 환경당 40항목 × 2, 접근성 자동 검사 위반 0, 빈 옷장에서 첫 판정까지 13번. 외부 요청 0건, 보안 정책이 외부 전송을 막음. 서버는 규칙 Java 이식의 골든 교차 검증(예시 A·B)과 PostgreSQL 16 에 V1~V4 적용까지 확인(Spring 계층 실제 컴파일은 미실행 — server/README.md).
+- **미실행**: 실제 휴대폰·Safari 에서 열기, 실제 사용자 기록(베타 전 0명), 3D 체감 성능(GPU 없는 환경에서만 잼).
 - 실제 상품 자동 추천, 실사 착장, 정확한 핏 판정, 다중 사용자 서버, 다른 PC 동기화는 완료된 기능으로 소개하지 않습니다.
 
 ## 협업 방식

@@ -1,0 +1,68 @@
+/*
+ * Feedback — 베타 참여자가 "의견 보내기"로 복사해 보낸 글에서 사용 요약 한 줄(EOUL1|…)을 찾아 베타 지표를 계산한다.
+ * 서버가 없으므로 운영자가 받은 글(카카오톡 등)을 붙여 넣어야 숫자가 나온다. 이 계산은 그 브라우저 안에서만 하고 아무 데도 보내지 않는다.
+ *
+ * 요약 줄: EOUL1|id=무작위|v=버전|at=날짜|first=첫 사용|own=옷|draft=초안|photo=내 사진|cand=후보|done=판정 끝|prod=상품|rack=3D 걸림|quick=빠른 시작|days=연 날|d30=최근 30일 연 날
+ *          |fol=2주 뒤 답|good=잘함|ok=그저|regret=후회·아쉬움|nb=결국 안 삼|due=물을 차례|pmf=very·some·not·quit|nps=0~10|err=오류 수|scr=화면
+ * id 는 브라우저마다 처음 한 번 만드는 무작위 글자다(사람을 알아볼 수 없다). 같은 사람이 여러 번 보내면 가장 최근 것만 센다.
+ *
+ * 기준(THRESH)은 docs/beta-plan 의 제안값이고, PMF 40% 는 업계에서 흔히 쓰는 참고선(Sean Ellis 질문)이다. 지인 표본은 작고 치우쳐 있어 숫자를 일반화하지 않는다.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Feedback = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  const PREFIX = 'EOUL1';
+  const NUMS = ['own', 'draft', 'photo', 'cand', 'done', 'prod', 'rack', 'quick', 'days', 'd30', 'fol', 'good', 'ok', 'regret', 'nb', 'due', 'err'];
+  const PMF = { very: '매우 아쉽다', some: '조금 아쉽다', not: '아쉽지 않다', quit: '이미 안 쓴다' };
+  const THRESH = { activated: 0.5, value: 1 / 3, retained: 1 / 3, pmf: 0.4 };                         // [제안값] 활성화 절반, 판정 끝 1/3, 유지 1/3, PMF 40%(참고선)
+
+  /** 요약 줄 객체를 글자 한 줄로. 값의 | 와 공백은 지운다. */
+  function line(o) {
+    const keys = ['id', 'v', 'at', 'first'].concat(NUMS.filter((k) => k !== 'err')).concat(['pmf', 'nps', 'err', 'scr']);
+    return PREFIX + keys.map((k) => '|' + k + '=' + String(o[k] == null ? '' : o[k]).replace(/[|\s]+/g, '')).join('');
+  }
+  const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : '');
+  function parseOne(s) {
+    const o = {};
+    for (const part of s.split('|').slice(1)) { const at = part.indexOf('='); if (at > 0) o[part.slice(0, at)] = part.slice(at + 1); }
+    const out = { id: String(o.id || '').slice(0, 16), v: String(o.v || '').slice(0, 20), at: date(o.at), first: date(o.first), pmf: PMF[o.pmf] ? o.pmf : '', scr: String(o.scr || '').slice(0, 12) };
+    for (const k of NUMS) { const n = Number(o[k]); out[k] = Number.isFinite(n) && n >= 0 && n < 100000 ? Math.floor(n) : 0; }
+    const nps = o.nps === '' || o.nps == null ? NaN : Number(o.nps);
+    out.nps = Number.isInteger(nps) && nps >= 0 && nps <= 10 ? nps : null;
+    return out.id ? out : null;
+  }
+  /** 붙여 넣은 글 전체에서 요약 줄을 모두 찾는다. 같은 id 는 날짜가 가장 늦은 것(같으면 나중 것)만 남긴다. */
+  function parse(text) {
+    const found = String(text || '').match(new RegExp(PREFIX + '\\|[^\\s]+', 'g')) || [];
+    const by = new Map();
+    for (const s of found) { const e = parseOne(s); if (!e) continue; const prev = by.get(e.id); if (!prev || e.at >= prev.at) by.set(e.id, e); }
+    return Array.from(by.values());
+  }
+  const rate = (k, n) => ({ count: k, total: n, pct: n ? Math.round((k / n) * 100) : null });
+  /** 베타 지표. 비율은 사람 수 기준이다. */
+  function summarize(entries) {
+    const n = entries.length, cnt = (f) => entries.filter(f).length, sum = (k) => entries.reduce((a, e) => a + e[k], 0);
+    const pmfAns = entries.filter((e) => e.pmf), npsAns = entries.filter((e) => e.nps != null);
+    const prom = npsAns.filter((e) => e.nps >= 9).length, det = npsAns.filter((e) => e.nps <= 6).length;
+    return {
+      n,
+      activated: rate(cnt((e) => e.own >= 5), n),                                                   // 옷 5벌 이상 넣음
+      value: rate(cnt((e) => e.done >= 1), n),                                                      // 살까 말까를 끝까지(결정 기록) 1건 이상
+      retained: rate(cnt((e) => e.d30 >= 3), n),                                                    // 최근 30일에 3일 이상 엶
+      follow: { answers: sum('fol'), good: sum('good'), ok: sum('ok'), regret: sum('regret'), notbought: sum('nb'), due: sum('due') },
+      decisions: sum('done'),
+      pmf: Object.assign(rate(pmfAns.filter((e) => e.pmf === 'very').length, pmfAns.length), { answered: pmfAns.length, very: cnt((e) => e.pmf === 'very'), some: cnt((e) => e.pmf === 'some'), not: cnt((e) => e.pmf === 'not'), quit: cnt((e) => e.pmf === 'quit') }),
+      nps: { answered: npsAns.length, promoters: prom, detractors: det, passives: npsAns.length - prom - det, score: npsAns.length ? Math.round(((prom - det) / npsAns.length) * 100) : null },
+      errors: cnt((e) => e.err > 0),
+      versions: Array.from(new Set(entries.map((e) => e.v))).sort(),
+    };
+  }
+  /** 기준과 견준 판정. 아직 사람이 적으면(5명 미만) 판단하지 않는다. */
+  function verdicts(sm) {
+    const judge = (r, th) => (sm.n < 5 || r.pct == null ? 'few' : r.count / r.total >= th ? 'pass' : 'below');
+    return { activated: judge(sm.activated, THRESH.activated), value: judge(sm.value, THRESH.value), retained: judge(sm.retained, THRESH.retained), pmf: sm.pmf.answered < 5 ? 'few' : sm.pmf.count / sm.pmf.total >= THRESH.pmf ? 'pass' : 'below' };
+  }
+  return { PREFIX, PMF, THRESH, line, parse, parseOne, summarize, verdicts };
+});

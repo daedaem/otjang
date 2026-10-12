@@ -23,7 +23,7 @@ if (!process.env.NO3D) {
 }
 
 let src = read('src/app.html');
-const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@SYNC@@*/': read('src/sync.js'),
+const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@SYNC@@*/': read('src/sync.js'), '/*@@FEEDBACK@@*/': read('src/feedback.js'),
   '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json'), '/*@@SAMPLE@@*/': read('data/sample-wardrobe.json'), '/*@@SAMPLE_B@@*/': read('data/sample-wardrobe-b.json'), '/*@@BRAND@@*/': JSON.stringify(brand) };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 for (const [m, text] of Object.entries(parts)) {
@@ -38,11 +38,20 @@ src = src.split('@@APP_NAME@@').join(esc(brand.name + (brand.status ? ' (' + bra
 const out = split ? path.join(split, 'index.html') : process.env.OUT || 'dist/index.html';
 if (split) {
   fs.mkdirSync(path.join(dir, split), { recursive: true });
-  const ver = (await import('node:crypto')).createHash('sha256').update(closet).digest('hex').slice(0, 10);
+  const crypto = await import('node:crypto');
+  const ver = crypto.createHash('sha256').update(closet).digest('hex').slice(0, 10);
   if (closet) fs.writeFileSync(path.join(dir, split, 'closet.js'), closet);
   src = src.replace('/*@@CLOSET@@*/', () => (closet ? "window.__CLOSET_SRC = 'closet.js?v=" + ver + "';" : ''));
-  src = src.replace('<!--@@HEAD_EXTRA@@-->', '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon-192.png">\n<link rel="apple-touch-icon" href="icon-192.png">\n<meta name="theme-color" content="#F5F2EA">');
-  fs.writeFileSync(path.join(dir, split, 'manifest.webmanifest'), JSON.stringify({ name: brand.name + ' (' + brand.status + ')', short_name: brand.name, start_url: './', display: 'standalone', background_color: '#F5F2EA', theme_color: '#F5F2EA', lang: 'ko',
+  // 보안 정책(CSP): 이 파일 안의 스크립트(해시로 지정)와 같은 주소의 closet.js 만 실행한다. 외부로 보내는 요청은 막고, 개발용 "내 서버와 맞추기"는 이 컴퓨터(localhost)만 허용한다.
+  // 'wasm-unsafe-eval' 은 3D 형태 파일 해독기(WebAssembly) 때문이다. 메타 태그 CSP 라 frame-ancestors 는 쓸 수 없다.
+  const hashes = [...src.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => "'sha256-" + crypto.createHash('sha256').update(m[1], 'utf8').digest('base64') + "'");
+  const csp = ["default-src 'self'", "script-src 'self' " + hashes.join(' ') + " 'wasm-unsafe-eval'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob:",
+    "connect-src 'self' blob: data: http://localhost:* http://127.0.0.1:*", "font-src 'self' data:", "manifest-src 'self'", "worker-src 'self' blob:", "object-src 'none'", "base-uri 'none'", "form-action 'none'"].join('; ');
+  src = src.replace('<!--@@HEAD_EXTRA@@-->', () => '<meta http-equiv="Content-Security-Policy" content="' + csp + '">\n<meta name="referrer" content="no-referrer">\n' + (brand.beta ? '<meta name="robots" content="noindex, nofollow">\n' : '') +
+    '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon-192.png">\n<link rel="apple-touch-icon" href="icon-192.png">\n<meta name="theme-color" content="#F5F2EA">');
+  // share_target: 설치한 앱(안드로이드 크롬)이 쇼핑 앱의 "공유" 목록에 나타나, 공유한 링크·글로 "고민 중인 옷 넣기"를 연다. 아이폰 Safari 는 지원하지 않는다
+  fs.writeFileSync(path.join(dir, split, 'manifest.webmanifest'), JSON.stringify({ name: brand.name + ' (' + brand.status + ')', short_name: brand.name, start_url: './', scope: './', display: 'standalone', background_color: '#F5F2EA', theme_color: '#F5F2EA', lang: 'ko',
+    share_target: { action: './', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
     icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 1));
   for (const n of ['icon-192.png', 'icon-512.png']) if (fs.existsSync(path.join(dir, 'web', n))) fs.copyFileSync(path.join(dir, 'web', n), path.join(dir, split, n));
 } else {
