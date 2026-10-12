@@ -41,7 +41,8 @@ public class RulesController {
         }
     }
     public record OverlapDto(Ref item, String level, List<String> same, List<String> diff) {}
-    public record ComboDto(Ref top, Ref bottom, Ref outer, int score, List<String> why) {}
+    /** 조합 하나. 원피스 차림이면 top 이 원피스, bottom 은 null, dress 는 true. */
+    public record ComboDto(Ref top, Ref bottom, Ref outer, int score, List<String> why, boolean dress) {}
     public record VerdictDto(boolean supported, List<OverlapDto> overlaps, int before, int after, List<ComboDto> added, List<ComboDto> top3, List<Judge.Blocker> blockers, List<String> needs, String note, List<Ref> draftItems) {}
     public record MatchDto(Ref mine, Ref theirs, String how) {}
     public record ComparisonDto(List<MatchDto> both, List<Ref> onlyTheirs, List<Ref> onlyMine) {}
@@ -65,11 +66,11 @@ public class RulesController {
         List<OverlapDto> overlaps = new ArrayList<>();
         for (Judge.Overlap o : v.overlaps()) overlaps.add(new OverlapDto(Ref.of(o.item()), o.level(), o.same(), o.diff()));
         List<ComboDto> added = new ArrayList<>(), top3 = new ArrayList<>();
-        for (Judge.Added a : v.added()) added.add(new ComboDto(Ref.of(a.top()), Ref.of(a.bottom()), null, a.score(), a.why()));
-        for (Judge.Pick p : v.top3()) top3.add(new ComboDto(Ref.of(p.top()), Ref.of(p.bottom()), Ref.of(p.outer()), p.score(), p.why()));
+        for (Judge.Added a : v.added()) added.add(new ComboDto(Ref.of(a.top()), Ref.of(a.bottom()), null, a.score(), a.why(), a.dress()));
+        for (Judge.Pick p : v.top3()) top3.add(new ComboDto(Ref.of(p.top()), Ref.of(p.bottom()), Ref.of(p.outer()), p.score(), p.why(), p.dress()));
         List<Ref> drafts = new ArrayList<>();
         for (Judge.Overlap o : v.overlaps()) if (o.item() instanceof Item it && it.isDraft()) drafts.add(Ref.of(it));
-        for (Judge.Added a : v.added()) for (Garment g : List.of(a.top(), a.bottom())) if (g instanceof Item it && it.isDraft() && drafts.stream().noneMatch((d) -> d.id().equals(it.id()))) drafts.add(Ref.of(it));
+        for (Judge.Added a : v.added()) for (Garment g : java.util.Arrays.asList(a.top(), a.bottom())) if (g instanceof Item it && it.isDraft() && drafts.stream().noneMatch((d) -> d.id().equals(it.id()))) drafts.add(Ref.of(it));   // 원피스 차림은 bottom 이 null 이라 List.of 를 쓰지 않는다
         return new VerdictDto(v.supported(), overlaps, v.before(), v.after(), added, top3, v.blockers(), v.needs(), v.note(), drafts);
     }
 
@@ -79,7 +80,7 @@ public class RulesController {
         for (Item i : wardrobe.allItems(false)) if (i.isOwned() && i.inSeason(season)) pool.add(i);
         List<String> skip = exclude.isEmpty() ? List.of() : List.of(exclude.split(","));
         List<ComboDto> out = new ArrayList<>();
-        for (Recommend.Combo c : Recommend.recommend(pool, Math.min(Math.max(n, 1), 10), skip)) out.add(new ComboDto(ref(pool, c.top()), ref(pool, c.bottom()), c.outer() == null ? null : ref(pool, c.outer()), c.score(), c.why()));
+        for (Recommend.Combo c : Recommend.recommend(pool, Math.min(Math.max(n, 1), 10), skip)) out.add(new ComboDto(ref(pool, c.top()), c.bottom() == null ? null : ref(pool, c.bottom()), c.outer() == null ? null : ref(pool, c.outer()), c.score(), c.why(), c.dress()));
         return out;
     }
 

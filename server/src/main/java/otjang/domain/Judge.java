@@ -23,14 +23,24 @@ public final class Judge {
 
     public record Similarity(boolean overlap, String level, List<String> same, List<String> diff, int gap) {}
     public record Overlap(Garment item, String level, List<String> same, List<String> diff, int gap) {}
-    /** 후보로 새로 생기는 상의·하의 쌍. partner 는 후보의 짝(상의 후보면 하의, 하의 후보면 상의, 아우터 후보면 상의). */
-    public record Added(Garment top, Garment bottom, Garment partner, int score, List<String> why, List<Garment> outers) {}
-    public record Pick(Garment top, Garment bottom, Garment outer, int score, List<String> why) {}
+    /**
+     * 후보로 새로 생기는 상의·하의 쌍. partner 는 후보의 짝(상의 후보면 하의, 하의 후보면 상의, 아우터 후보면 상의).
+     * 원피스 차림은 top 자리에 원피스, bottom 은 null, dress 는 true 다 (judge.js 와 같다).
+     */
+    public record Added(Garment top, Garment bottom, Garment partner, int score, List<String> why, List<Garment> outers, boolean dress) {
+        public Added(Garment top, Garment bottom, Garment partner, int score, List<String> why, List<Garment> outers) { this(top, bottom, partner, score, why, outers, false); }
+    }
+    public record Pick(Garment top, Garment bottom, Garment outer, int score, List<String> why, boolean dress) {
+        public Pick(Garment top, Garment bottom, Garment outer, int score, List<String> why) { this(top, bottom, outer, score, why, false); }
+    }
     public record Blocker(String text, int count, int total, String word) {}
-    public record Pair(Garment top, Garment bottom, int score, List<String> why) {}
+    /** 주의 사항 없는 차림 하나. 원피스면 bottom 은 null, dress 는 true. */
+    public record Pair(Garment top, Garment bottom, int score, List<String> why, boolean dress) {
+        public Pair(Garment top, Garment bottom, int score, List<String> why) { this(top, bottom, score, why, false); }
+    }
 
     /**
-     * 판정 결과. before/after 는 주의 사항 없는 상의·하의 쌍의 수(아우터 후보는 그 아우터를 걸칠 수 있는 쌍의 수), added 는 새로 생기는 쌍,
+     * 판정 결과. before/after 는 주의 사항 없는 차림(상의·하의 쌍 + 원피스)의 수(아우터 후보는 그 아우터를 걸칠 수 있는 차림의 수), added 는 새로 생기는 쌍,
      * top3 는 대표 조합, blockers 는 조합이 안 되는 이유와 그 이유에 걸린 옷의 수, needs 는 조합이 하나도 없을 때 필요한 옷 문장.
      */
     public record Verdict(boolean supported, List<Overlap> overlaps, int before, int after, List<Added> added, List<Pick> top3, List<Blocker> blockers, List<String> needs, String note) {}
@@ -94,6 +104,17 @@ public final class Judge {
         return out;
     }
 
+    /** 주의 사항 없는 차림: 상의·하의 쌍 + 원피스 한 벌씩. */
+    public static List<Pair> cleanOutfits(List<? extends Garment> items) {
+        List<Pair> out = new ArrayList<>(cleanPairs(items));
+        for (Garment d : items) {
+            if (!d.cat().equals("dress")) continue;
+            Recommend.Score s = Recommend.scoreDress(d);
+            out.add(new Pair(d, null, s.score(), s.why(), true));
+        }
+        return out;
+    }
+
     private static List<Blocker> tally(List<String> cautions, int total, String word) {
         Map<String, Integer> m = new LinkedHashMap<>();
         for (String s : cautions) m.merge(s, 1, Integer::sum);
@@ -110,7 +131,7 @@ public final class Judge {
         List<Overlap> overlaps = findOverlaps(candidate, owned);
         List<Garment> tops = new ArrayList<>(), bottoms = new ArrayList<>(), outers = new ArrayList<>();
         for (Garment g : owned) switch (g.cat()) { case "top" -> tops.add(g); case "bottom" -> bottoms.add(g); case "outer" -> outers.add(g); default -> { } }
-        List<Pair> pairsBefore = cleanPairs(owned);
+        List<Pair> pairsBefore = cleanOutfits(owned);
 
         if (candidate.cat().equals("top") || candidate.cat().equals("bottom")) {
             boolean isTop = candidate.cat().equals("top");
@@ -158,22 +179,46 @@ public final class Judge {
             List<String> cautions = new ArrayList<>();
             List<Added> added = new ArrayList<>();
             for (Pair p : pairsBefore) {
-                Recommend.Score s = Recommend.scoreOuter(candidate, p.top(), p.bottom());
+                Recommend.Score s = p.dress() ? Recommend.scoreDressOuter(candidate, p.top()) : Recommend.scoreOuter(candidate, p.top(), p.bottom());
                 if (s.caution().isEmpty()) {
                     List<String> why = new ArrayList<>(p.why()); why.addAll(s.why());
-                    added.add(new Added(p.top(), p.bottom(), p.top(), p.score() + s.score(), List.copyOf(why), List.of()));
+                    added.add(new Added(p.top(), p.bottom(), p.top(), p.score() + s.score(), List.copyOf(why), List.of(), p.dress()));
                 } else cautions.addAll(s.caution());
             }
             List<Added> sorted = new ArrayList<>(added);
-            sorted.sort(Comparator.comparingInt(Added::score).reversed().thenComparing(a -> a.top().id() + a.bottom().id()));
+            sorted.sort(Comparator.comparingInt(Added::score).reversed().thenComparing(a -> a.top().id() + (a.bottom() == null ? "" : a.bottom().id())));
             Set<String> seenTop = new HashSet<>();
             List<Added> picked = new ArrayList<>();
             for (Added c : sorted) if (picked.size() < 3 && seenTop.add(c.top().id())) picked.add(c);
             for (Added c : sorted) if (picked.size() < 3 && !picked.contains(c)) picked.add(c);
             List<Pick> top3 = new ArrayList<>();
-            for (Added c : picked) top3.add(new Pick(c.top(), c.bottom(), candidate, c.score(), c.why()));
+            for (Added c : picked) top3.add(new Pick(c.top(), c.bottom(), candidate, c.score(), c.why(), c.dress()));
             // 지금 아우터들이 걸칠 수 있는 쌍의 수와 견줄 수 있게, 기준은 "쌍의 수"로 둔다
             return new Verdict(true, overlaps, pairsBefore.size(), added.size(), List.copyOf(added), List.copyOf(top3), tally(cautions, pairsBefore.size(), "조합"), List.of(), "");
+        }
+
+        if (candidate.cat().equals("dress")) {
+            // 원피스는 혼자서 차림 하나가 된다. 걸칠 수 있는 아우터를 함께 본다
+            record Ok(Garment o, Recommend.Score s) {}
+            Recommend.Score self = Recommend.scoreDress(candidate);
+            List<String> cautions = new ArrayList<>();
+            List<Ok> ok = new ArrayList<>();
+            for (Garment o : outers) {
+                Recommend.Score s = Recommend.scoreDressOuter(o, candidate);
+                if (s.caution().isEmpty()) ok.add(new Ok(o, s)); else cautions.addAll(s.caution());
+            }
+            ok.sort(Comparator.comparingInt((Ok x) -> x.s().score()).reversed().thenComparing(x -> x.o().id()));
+            List<Garment> okOuters = new ArrayList<>();
+            for (Ok x : ok) okOuters.add(x.o());
+            List<Added> added = List.of(new Added(candidate, null, candidate, self.score(), self.why(), List.copyOf(okOuters), true));
+            List<Pick> top3 = new ArrayList<>();
+            for (Ok x : ok.subList(0, Math.min(3, ok.size()))) {
+                List<String> why = new ArrayList<>(self.why()); why.addAll(x.s().why());
+                top3.add(new Pick(candidate, null, x.o(), self.score() + x.s().score(), List.copyOf(why), true));
+            }
+            if (top3.isEmpty()) top3.add(new Pick(candidate, null, null, self.score(), self.why(), true));
+            List<String> needs = !outers.isEmpty() && ok.isEmpty() ? List.of("이 원피스와 색이나 격식이 다른 아우터가 있으면 겹쳐 입을 수 있습니다.") : List.of();
+            return new Verdict(true, overlaps, pairsBefore.size(), pairsBefore.size() + 1, added, List.copyOf(top3), tally(cautions, outers.size(), "아우터"), needs, "");
         }
 
         return new Verdict(false, overlaps, 0, 0, List.of(), List.of(), List.of(), List.of(), "신발과 소품은 조합 규칙이 아직 없어 겹치는 옷만 보여 줍니다.");

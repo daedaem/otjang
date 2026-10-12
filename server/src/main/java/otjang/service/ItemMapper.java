@@ -86,14 +86,17 @@ public class ItemMapper {
         } else {
             e.setAfterDecision(null); e.setAfterHelpful(null); e.setAfterNote(""); e.setAfterAt(null); e.setAfterShift(null);
         }
+        if (d.follow() != null) { e.setFollowAt(date(d.follow().at())); e.setFollowWorn(d.follow().worn()); e.setFollowFeel(d.follow().feel()); }
+        else { e.setFollowAt(null); e.setFollowWorn(null); e.setFollowFeel(null); }
         return e;
     }
 
     public Wardrobe.Decision toDomain(DecisionEntity e) {
         Wardrobe.Decision.After after = e.getAfterDecision() == null ? null
                 : new Wardrobe.Decision.After(e.getAfterDecision(), e.getAfterHelpful(), e.getAfterNote(), str(e.getAfterAt()), e.getAfterShift());
+        Wardrobe.Decision.Follow follow = e.getFollowAt() == null || after == null ? null : new Wardrobe.Decision.Follow(str(e.getFollowAt()), nz(e.getFollowWorn()), nz(e.getFollowFeel()));
         return new Wardrobe.Decision(e.getClientId(), e.getItemClientId(), e.getItemName(), new Wardrobe.Decision.Before(e.getBeforeLean(), e.getBeforeReason(), str(e.getBeforeAt())),
-                new Wardrobe.Decision.Summary(e.getSummaryOverlaps(), e.getSummaryAdded(), e.getSummaryBlockers()), after);
+                new Wardrobe.Decision.Summary(e.getSummaryOverlaps(), e.getSummaryAdded(), e.getSummaryBlockers()), after, follow);
     }
 
     /** YYYY-MM-DD 모양이고 실제 날짜일 때만 LocalDate. 아니면 null(앱의 str(…, 10) 값은 날짜 모양이 아닐 수 있다). */

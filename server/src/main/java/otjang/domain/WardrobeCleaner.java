@@ -137,7 +137,23 @@ public final class WardrobeCleaner {
         }
         return new Wardrobe.Decision(str(d.get("id"), 40), str(d.get("itemId"), 40), str(d.get("name"), 80),
                 new Wardrobe.Decision.Before(lean, str(before.get("reason"), 200), str(before.get("at"), 10)),
-                new Wardrobe.Decision.Summary(count(s.get("overlaps"), 999), count(s.get("added"), 9999), count(s.get("blockers"), 999)), after);
+                new Wardrobe.Decision.Summary(count(s.get("overlaps"), 999), count(s.get("added"), 9999), count(s.get("blockers"), 999)), after,
+                after == null ? null : cleanFollow(d.get("follow"), after.decision()));
+    }
+
+    /** 결정 뒤 물음의 답(wardrobe.js cleanFollow). 산다: worn 필수, 결국 안 샀다가 아니면 feel 필수. 안 산다: feel 필수. 보류·맞지 않는 값이면 null. */
+    public static Wardrobe.Decision.Follow cleanFollow(Object rawObj, String decision) {
+        Map<String, Object> f = obj(rawObj);
+        if (f == null || safeDate(f.get("at")).isEmpty()) return null;
+        String at = (String) f.get("at");
+        String worn = f.get("worn") instanceof String w ? w : "", feel = f.get("feel") instanceof String fe ? fe : "";
+        if ("buy".equals(decision)) {
+            if (!Vocab.WORN.containsKey(worn)) return null;
+            if (worn.equals("notbought")) return new Wardrobe.Decision.Follow(at, "notbought", "");
+            return Vocab.FEEL_BUY.containsKey(feel) ? new Wardrobe.Decision.Follow(at, worn, feel) : null;
+        }
+        if ("skip".equals(decision)) return Vocab.FEEL_SKIP.containsKey(feel) ? new Wardrobe.Decision.Follow(at, "", feel) : null;
+        return null;
     }
 
     private static int count(Object v, int hi) {
