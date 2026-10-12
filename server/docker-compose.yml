@@ -1,0 +1,14 @@
+# 로컬 PostgreSQL 16. 비용 0원. `docker compose up -d` 뒤 `./mvnw spring-boot:run` 또는 `mvn spring-boot:run`.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: otjang
+      POSTGRES_USER: otjang
+      POSTGRES_PASSWORD: otjang   # 로컬 개발용 기본값. 다른 PC 에 열 때는 바꾼다
+    ports:
+      - "5432:5432"
+    volumes:
+      - otjang-pg:/var/lib/postgresql/data
+volumes:
+  otjang-pg:

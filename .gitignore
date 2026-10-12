@@ -26,3 +26,24 @@ shots/
 /docs/*PRD*v0.2*.md
 /docs/*PRD*v0.3.md
 /prototypes/
+
+# 개인판 앱(app/): 생성 파일과 개인 옷장 자료. 사진이 든 자료는 어떤 이름이든 넣지 않는다
+/app/node_modules/
+/app/dist/
+/app/shots/
+/app/out/
+/app/src/closet/assets.gen.js
+/app/data/wardrobe.json
+*-with-photos*
+
+# Blender 파이프라인(blender/): 시뮬레이션 캐시, 생성 질감, 굽기 출력, 가상환경
+/blender/cache/
+/blender/closet/
+/blender/web-closet*/
+/blender/out/
+/blender/.venv/
+
+# 서버(server/): 빌드 결과, 로컬 사진 폴더, IDE
+/server/target/
+/server/data/
+/server/.mvn/wrapper/maven-wrapper.jar
