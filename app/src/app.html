@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>옷장들이</title>
+<style>
+:root{
+  --paper:#F5F2EA; --card:#FFFDF8; --ink:#1E2227; --ink2:#5B6068; --line:#DDD6C8; --line2:#C4BBA9;
+  --accent:#1F2A45; --accent-ink:#FFFFFF; --warm:#A8502A; --warm-bg:#F6E3D8; --ok:#3F6B4A; --ok-bg:#E3EEDF; --tint:#ECE7DB; --thumb:#EAE5D9; --stage:#d9d1c4;
+  --serif:"Nanum Myeongjo","AppleMyungjo","Noto Serif KR",Georgia,serif;
+  --sans:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#4A4F57;
+    --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; }
+}
+:root[data-theme="dark"]{ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#4A4F57;
+  --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; }
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;padding:22px 0 12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.mark{font:700 26px/1.1 var(--serif);letter-spacing:-.01em}
+.tag{color:var(--ink2);font-size:14px}
+.local{font-size:12.5px;color:var(--ink2);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.local.warn{color:var(--warm);border-color:var(--warm)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line2);overflow-x:auto;scrollbar-width:none;position:sticky;top:0;background:var(--paper);z-index:5;padding-top:4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{appearance:none;border:0;background:none;padding:10px 14px;white-space:nowrap;cursor:pointer;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .n{font-weight:500;font-size:12.5px;color:var(--ink2);margin-left:4px}
+@media (max-width:520px){.tab{padding:10px 9px;font-size:14px}.tab .n{margin-left:3px}}
+main{padding:20px 0 64px}
+.lead{color:var(--ink2);max-width:62ch;margin-bottom:16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.bar .grow{flex:1}
+.chip{appearance:none;border:1px solid var(--line2);background:none;border-radius:999px;padding:5px 12px;cursor:pointer;font-size:13.5px;color:var(--ink2)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn{appearance:none;border:1px solid var(--line2);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.danger{color:var(--warm);border-color:var(--warm)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.chip:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type=text],input[type=number],input[type=url],textarea{background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:7px 10px;min-width:0;width:100%}
+textarea{resize:vertical;min-height:64px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.card.cand{border-color:var(--warm)}
+.thumb{aspect-ratio:1/1;background:var(--thumb);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+.thumb.nopic{aspect-ratio:5/3}
+.thumb.nopic .lbl{display:none}
+.thumb .sw{height:56%;aspect-ratio:1/1;border-radius:10px;border:1px solid rgba(0,0,0,.12)}
+.thumb .lbl{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:var(--ink2)}
+.thumb .pk{position:absolute;left:6px;top:6px;font-size:11px;line-height:1;padding:4px 6px;border-radius:6px;background:rgba(30,34,39,.78);color:#fff}
+.thumb .pk.sub{background:rgba(168,80,42,.9)}
+.cbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.cbody h3{font-size:14.5px;line-height:1.35;font-weight:650;overflow-wrap:anywhere}
+.meta{font-size:12.5px;color:var(--ink2)}
+.rec{font-size:12.5px;color:var(--ink)}
+.quote{font-size:12.5px;color:var(--ink);border-left:2px solid var(--line2);padding-left:8px;margin-top:2px;overflow-wrap:anywhere}
+.badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px}
+.badge{font-size:11.5px;line-height:1;padding:4px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--ink2);white-space:nowrap}
+.badge.cand{background:var(--warm-bg);border-color:var(--warm);color:var(--warm);font-weight:700}
+.badge.draft{border-style:dashed}
+.badge.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.badge.warn{background:var(--warm-bg);border-color:var(--warm);color:var(--warm)}
+.cfoot{margin-top:auto;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.panel h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.panel .sub{color:var(--ink2);font-size:13.5px;margin-bottom:12px}
+.big{font:700 22px/1.2 var(--serif)}
+.split{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.split{grid-template-columns:1fr}}
+.list{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer;text-align:left;width:100%}
+.row[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.row .mini{flex:none}
+.mini{width:48px;height:48px;border-radius:8px;background:var(--thumb);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.mini img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.mini .sw{width:60%;height:60%;border-radius:6px;border:1px solid rgba(0,0,0,.12)}
+.rowt{min-width:0;flex:1}
+.rowt b{display:block;font-size:14px;overflow-wrap:anywhere}
+.rowt span{font-size:12.5px;color:var(--ink2)}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.pair:first-of-type{border-top:0}
+.pair .vs{color:var(--ink2);font-size:12.5px}
+@media (max-width:520px){.pair{grid-template-columns:1fr;gap:6px}.pair .vs{padding-left:58px}}
+.side{display:flex;gap:10px;align-items:center;min-width:0}
+.facts{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.fact{font-size:12px;padding:3px 8px;border-radius:6px;background:var(--tint);color:var(--ink)}
+.fact.diff{background:none;border:1px dashed var(--line2);color:var(--ink2)}
+.outfits{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.outfit{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--card);min-width:0}
+.stack{display:flex;gap:6px;margin-bottom:10px}
+.stack .mini{width:auto;flex:1;height:auto;aspect-ratio:1/1;position:relative}
+.stack .mini.cand{outline:2px solid var(--warm);outline-offset:-2px}
+.names{font-size:13.5px;font-weight:650;margin-bottom:6px;overflow-wrap:anywhere}
+ul.why{margin:0;padding-left:18px;font-size:13px;color:var(--ink)}
+ul.why li{margin:2px 0}
+ul.why.warn li{color:var(--warm)}
+.score{font-size:12px;color:var(--ink2);margin-top:8px}
+.draftnote{font-size:12px;color:var(--ink2);border:1px dashed var(--line2);border-radius:8px;padding:6px 10px;margin-top:8px}
+.steps{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.step{font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--ink2)}
+.step.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.step.done{border-color:var(--ok);color:var(--ok)}
+.choices{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.choice{position:relative}
+.choice input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.choice span{display:block;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--card);font-weight:600}
+.choice input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.choice input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>label,.field>span.l{font-size:12.5px;color:var(--ink2);font-weight:600}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form .full{grid-column:1/-1}
+@media (max-width:520px){.form{grid-template-columns:1fr}}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px}
+.checks label{display:flex;align-items:center;gap:6px;font-size:14px}
+.hr{height:1px;background:var(--line);margin:14px 0;border:0}
+dialog{border:1px solid var(--line2);border-radius:14px;background:var(--paper);color:var(--ink);padding:0;width:min(640px,calc(100vw - 24px));max-height:calc(100vh - 24px)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.dhead{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--paper);z-index:1}
+.dhead h2{font-size:16px}
+.dbody{padding:16px}
+.dfoot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--paper)}
+.dfoot .grow{flex:1}
+.note{font-size:12.5px;color:var(--ink2)}
+.warnnote{font-size:13px;color:var(--warm)}
+.empty{border:1px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--ink2)}
+table.log{width:100%;border-collapse:collapse;font-size:13.5px}
+table.log th,table.log td{text-align:left;padding:8px 8px;border-top:1px solid var(--line);vertical-align:top}
+table.log th{font-size:12.5px;color:var(--ink2);font-weight:600;border-top:0}
+.scroll{overflow-x:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.kv dt{color:var(--ink2)}
+.kv dd{margin:0;overflow-wrap:anywhere}
+a{color:var(--accent)}
+.range{display:flex;align-items:center;gap:8px}
+.range input{flex:1;padding:0}
+.range .sw{width:28px;height:28px;border-radius:6px;border:1px solid var(--line2);flex:none}
+.inl{display:flex;gap:8px;align-items:center}
+.inl input{flex:1}
+.pics{display:flex;gap:12px;flex-wrap:wrap}
+.pics .pbox{width:120px}
+.pics .thumb{border-radius:8px;border:1px solid var(--line)}
+.pics .cap{font-size:12px;color:var(--ink2);margin-top:4px;text-align:center}
+.candlist{display:flex;flex-direction:column;gap:6px}
+.candrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;border:1px dashed var(--line2);border-radius:8px;padding:6px 10px}
+.candrow .grow{flex:1;min-width:120px}
+/* 3D 옷장 */
+.stage{position:relative;height:min(70vh,640px);min-height:380px;border-radius:14px;overflow:hidden;background:var(--stage);border:1px solid var(--line);margin-bottom:12px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage .sui{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:2}
+.stage .sui .btn{background:rgba(255,253,249,.92);color:#1c1a17;border-color:transparent;box-shadow:0 1px 4px rgba(28,26,23,.2)}
+.stage .shint{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(28,26,23,.78);color:#fbf8f2;font-size:12.5px;white-space:nowrap;pointer-events:none;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.stage .schips{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:999px;background:rgba(255,253,249,.82);max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none}
+.stage .schips button{display:flex;align-items:center;gap:7px;flex:none;border:1px solid transparent;background:transparent;border-radius:999px;padding:5px 11px 5px 5px;font:inherit;font-size:13px;font-weight:600;color:#1c1a17;cursor:pointer}
+.stage .schips button[aria-pressed="true"]{background:#fff;border-color:rgba(28,26,23,.14)}
+.stage .schips i{width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(28,26,23,.2);flex:none}
+.stage .smsg{position:absolute;left:50%;top:40%;transform:translateX(-50%);max-width:min(440px,86%);padding:14px 16px;border-radius:12px;background:var(--card);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:14px;text-align:center}
+.stage .sload{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#1c1a17;font-size:14px;background:rgba(217,209,196,.6);pointer-events:none}
+.racklist .row{cursor:default}
+.racklist .row .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.lookpick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.lookpick select{width:auto}
+/* 상품 */
+.prod{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+@media (max-width:520px){.prod{grid-template-columns:72px minmax(0,1fr)}}
+.prod .thumb{border-radius:8px;aspect-ratio:1/1}
+.prod h3{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+.prod .price{font-weight:700}
+.prod .rank{font-size:12.5px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1 class="mark">옷장들이</h1><span class="tag">오래 입는 옷의 기록</span></div>
+    <div class="local" id="saveNote">이 브라우저 안에만 저장됩니다</div>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <main id="main"></main>
+</div>
+<div id="stageHolder" hidden>
+  <div class="stage" id="stage"><canvas id="stage3d" aria-label="옷장 3D 화면. 옷을 누르면 크게 보이고, 끌면 자리를 바꿉니다."></canvas>
+    <div class="sui"><button class="btn small" type="button" id="stageHome">처음 시점</button><button class="btn small" type="button" id="stagePoke">툭 쳐 보기</button></div>
+    <p class="shint" id="stageHint">옷을 누르면 크게 보입니다 · 끌면 자리를 바꾸고 흔들립니다</p>
+    <div class="schips" id="stageChips" role="group" aria-label="걸린 옷"></div>
+    <div class="sload" id="stageLoad">옷장을 준비하는 중…</div>
+    <p class="smsg" id="stageMsg" hidden></p>
+  </div>
+</div>
+
+<dialog id="editor" aria-labelledby="edTitle">
+  <form id="edForm" method="dialog">
+    <div class="dhead"><h2 id="edTitle">옷 기록</h2><button class="btn small" type="button" id="edClose">닫기</button></div>
+    <div class="dbody">
+      <div class="form">
+        <div class="field full"><label for="f-name">이름</label><input id="f-name" type="text" maxlength="80" required placeholder="예: 흰색 옥스퍼드 버튼다운 셔츠"></div>
+        <div class="field"><label for="f-cat">분류</label><select id="f-cat"></select></div>
+        <div class="field"><label for="f-kind">종류</label><select id="f-kind"></select></div>
+        <div class="field"><label for="f-family">색 계열</label><select id="f-family"></select></div>
+        <div class="field"><label for="f-light">밝기 <span id="f-lightv"></span></label><div class="range"><span class="sw" id="f-sw"></span><input id="f-light" type="range" min="0" max="100" step="1"></div></div>
+        <div class="field"><label for="f-formality">격식</label><select id="f-formality"></select></div>
+        <div class="field"><label for="f-pattern">무늬</label><select id="f-pattern"></select></div>
+        <div class="field full"><span class="l">계절 (비워 두면 사계절로 봅니다)</span><div class="checks" id="f-seasons"></div></div>
+        <div class="field full"><div class="checks"><label><input id="f-confirmed" type="checkbox"> 색·밝기·격식·무늬를 직접 확인했습니다</label></div><span class="note" id="f-draftNote"></span></div>
+      </div>
+      <hr class="hr">
+      <div class="form">
+        <div class="field full"><span class="l">사진</span><div class="pics" id="f-pics"></div><span class="note" id="f-photoNote"></span></div>
+        <div class="field full"><div class="inl"><input id="f-photo" type="file" accept="image/*"><button class="btn small" type="button" id="f-match">상품 사진·확인</button></div><span class="note">내 사진은 얼굴과 몸이 없는 옷 사진으로. 상품 사진은 직접 넣고, 같은 상품인지는 직접 확인합니다.</span></div>
+      </div>
+      <hr class="hr">
+      <div class="form">
+        <div class="field"><label for="f-brand">브랜드</label><input id="f-brand" type="text" maxlength="60"></div>
+        <div class="field"><label for="f-model">상품명·품번</label><input id="f-model" type="text" maxlength="80"></div>
+        <div class="field"><label for="f-size">사이즈</label><input id="f-size" type="text" maxlength="30" placeholder="예: 100, M, 32"></div>
+        <div class="field" id="w-year"><label for="f-year">산 해</label><input id="f-year" type="number" min="1950" max="2100" step="1" placeholder="예: 2021"></div>
+        <div class="field" id="w-rebuy"><label for="f-rebuy">다시 살까</label><select id="f-rebuy"></select></div>
+        <div class="field"><label for="f-fabric">두께</label><select id="f-fabric"></select></div>
+        <div class="field" id="w-neck"><label for="f-neck">넥 높이</label><select id="f-neck"></select></div>
+        <div class="field full" id="w-review"><label for="f-review">오래 입어 본 후기</label><textarea id="f-review" maxlength="500" placeholder="예: 3년째. 세탁해도 목이 늘지 않았다. 기장이 조금 길다."></textarea></div>
+        <div class="field full"><span class="l">실측 (cm, 아는 것만)</span><div class="form" id="f-measures"></div></div>
+      </div>
+      <hr class="hr">
+      <div class="form">
+        <div class="field full"><label for="f-link">링크 (직접 넣은 값만 보여 줍니다. 열거나 긁어 오지 않습니다)</label><input id="f-link" type="url" maxlength="400" placeholder="https://"></div>
+        <div class="field"><label for="f-price">가격 (원)</label><input id="f-price" type="number" min="0" step="100"></div>
+        <div class="field"><label for="f-checked">가격을 확인한 날</label><input id="f-checked" type="text" maxlength="10" placeholder="2026-10-10"></div>
+      </div>
+      <p class="warnnote" id="edErr" hidden></p>
+    </div>
+    <div class="dfoot"><button class="btn danger small" type="button" id="edDelete">삭제</button><span class="grow"></span><button class="btn" type="button" id="edCancel">취소</button><button class="btn primary" type="submit" id="edSave">저장</button></div>
+  </form>
+</dialog>
+
+<dialog id="wizard" aria-labelledby="wzTitle">
+  <form id="wzForm" method="dialog">
+    <div class="dhead"><h2 id="wzTitle">옷 추가</h2><button class="btn small" type="button" id="wzClose">닫기</button></div>
+    <div class="dbody">
+      <div class="steps" id="wzSteps"></div>
+      <div id="wzBody"></div>
+      <p class="warnnote" id="wzErr" hidden></p>
+    </div>
+    <div class="dfoot"><button class="btn" type="button" id="wzBack">이전</button><span class="grow"></span><button class="btn" type="button" id="wzCancel">취소</button><button class="btn primary" type="button" id="wzNext">다음</button></div>
+  </form>
+</dialog>
+
+<dialog id="match" aria-labelledby="mtTitle">
+  <form id="mtForm" method="dialog">
+    <div class="dhead"><h2 id="mtTitle">상품 사진과 확인</h2><button class="btn small" type="button" id="mtClose">닫기</button></div>
+    <div class="dbody" id="mtBody"></div>
+    <div class="dfoot"><span class="grow"></span><button class="btn" type="button" id="mtCancel">닫기</button></div>
+  </form>
+</dialog>
+
+<dialog id="product" aria-labelledby="pdTitle">
+  <form id="pdForm" method="dialog">
+    <div class="dhead"><h2 id="pdTitle">상품 추가</h2><button class="btn small" type="button" id="pdClose">닫기</button></div>
+    <div class="dbody">
+      <p class="note" style="margin-bottom:12px">쇼핑하다 본 실제 상품을 직접 적습니다. 이 화면은 가격과 재고를 찾아오지 않으므로, 적은 날짜가 함께 남습니다.</p>
+      <div class="form">
+        <div class="field"><label for="p-brand">브랜드</label><input id="p-brand" type="text" maxlength="60"></div>
+        <div class="field"><label for="p-name">상품명</label><input id="p-name" type="text" maxlength="80" required></div>
+        <div class="field"><label for="p-code">품번 (선택)</label><input id="p-code" type="text" maxlength="60"></div>
+        <div class="field"><label for="p-link">상품 주소 (선택)</label><input id="p-link" type="url" maxlength="400" placeholder="https://"></div>
+        <div class="field"><label for="p-cat">분류</label><select id="p-cat"></select></div>
+        <div class="field"><label for="p-kind">종류</label><select id="p-kind"></select></div>
+        <div class="field"><label for="p-family">색 계열</label><select id="p-family"></select></div>
+        <div class="field"><label for="p-light">밝기 <span id="p-lightv"></span></label><div class="range"><span class="sw" id="p-sw"></span><input id="p-light" type="range" min="0" max="100" step="1"></div></div>
+        <div class="field"><label for="p-formality">격식</label><select id="p-formality"></select></div>
+        <div class="field"><label for="p-pattern">무늬</label><select id="p-pattern"></select></div>
+        <div class="field full"><span class="l">계절 (비워 두면 사계절)</span><div class="checks" id="p-seasons"></div></div>
+        <div class="field"><label for="p-price">확인한 가격 (원)</label><input id="p-price" type="number" min="0" step="100"></div>
+        <div class="field"><label for="p-checked">확인한 날</label><input id="p-checked" type="text" maxlength="10" placeholder="2026-10-12"></div>
+        <div class="field full"><label for="p-photo">상품 사진 (직접 넣은 것만)</label><input id="p-photo" type="file" accept="image/*"><span class="note" id="p-photoNote"></span></div>
+        <div class="field full"><label for="p-note">메모 (선택)</label><input id="p-note" type="text" maxlength="200"></div>
+      </div>
+      <p class="warnnote" id="pdErr" hidden></p>
+    </div>
+    <div class="dfoot"><button class="btn danger small" type="button" id="pdDelete">지우기</button><span class="grow"></span><button class="btn" type="button" id="pdCancel">취소</button><button class="btn primary" type="submit" id="pdSave">저장</button></div>
+  </form>
+</dialog>
+
+<script>/*@@RECOMMEND@@*/</script>
+<script>/*@@JUDGE@@*/</script>
+<script>/*@@WARDROBE_LIB@@*/</script>
+<script>/*@@CATALOG_LIB@@*/</script>
+<script>const BASE = /*@@WARDROBE@@*/;
+const TEMPLATE = /*@@TEMPLATE@@*/;</script>
+<script>/*@@CLOSET@@*/</script>
+<script>
+(function () {
+  'use strict';
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, X = window.OtjangCloset || null;
+  const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
+  const KEY1 = 'otjang.v1', KEY2 = 'otjang.v2', DB = 'otjang';
+  const YEAR = new Date().getFullYear();
+
+  // ---------- 작은 도구 ----------
+  const $ = (s, el) => (el || document).querySelector(s);
+  /** 글자는 모두 textContent로 넣는다. 가져온 파일의 글자가 마크업으로 해석되지 않게 한다. */
+  function h(tag, attrs) {
+    const el = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = v;
+      else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+      else if (k === 'style') el.style.cssText = v;
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (let i = 2; i < arguments.length; i++) {
+      const c = arguments[i];
+      if (c == null || c === false) continue;
+      if (Array.isArray(c)) c.forEach((x) => x != null && x !== false && el.append(x));
+      else el.append(c);
+    }
+    return el;
+  }
+  const swatch = (it) => { const f = FAM[it.family] || FAM.gray; return 'hsl(' + f[1] + ' ' + f[2] + '% ' + Math.round(Math.max(6, Math.min(96, it.light * 0.9 + 5))) + '%)'; };
+  const kindLabel = (it) => (KINDS[it.cat] && KINDS[it.cat][it.kind]) || it.kind || '';
+  const famLabel = (it) => (FAM[it.family] ? FAM[it.family][0] : it.family || '');
+  const fmtWon = (n) => n.toLocaleString('ko-KR') + '원';
+  function download(name, obj) {
+    const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })), download: name });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  function readImage(file, max) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, (max || 480) / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        let out = c.toDataURL('image/webp', 0.82); if (out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/jpeg', 0.85);
+        resolve(safeImg(out));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+  async function readFileJson(input) { const f = input.files[0]; if (!f) return undefined; try { return JSON.parse(await f.text()); } catch (e) { return null; } }
+
+  // ---------- 저장소: IndexedDB를 쓰고, 안 되면 localStorage, 그것도 안 되면 메모리 ----------
+  const store = { db: null, mode: 'memory' };
+  function openDb() {
+    return new Promise((res) => {
+      try {
+        if (!window.indexedDB) return res(null);
+        const r = indexedDB.open(DB, 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('kv'); };
+        r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  const kvGet = (k) => new Promise((res) => { try { const t = store.db.transaction('kv').objectStore('kv').get(k); t.onsuccess = () => res(t.result); t.onerror = () => res(undefined); } catch (e) { res(undefined); } });
+  const kvSet = (k, v) => new Promise((res) => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => res(false); t.onabort = () => res(false); } catch (e) { res(false); } });
+  const kvDel = (k) => new Promise((res) => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = () => res(true); t.onerror = () => res(false); } catch (e) { res(false); } });
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  /** 저장된 상태를 정리한다. 옷장 파일(스키마 1·2) + others + catalog + rack(3D 옷장에 건 옷). */
+  function cleanState(raw) {
+    const w = W.cleanWardrobe(raw); if (!w) return null;
+    const s = { schema: 2, owner: w.owner, items: w.items, decisions: w.decisions, others: [], catalog: { products: [] }, rack: [] };
+    s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
+    const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
+    const ids = new Set(s.items.map((i) => i.id)), slots = new Set();
+    s.rack = (Array.isArray(raw.rack) ? raw.rack : []).map((r) => (r && typeof r === 'object' ? { id: str(r.id, 40), slot: num(r.slot, 0, 5) } : null)).filter((r) => r && ids.has(r.id) && r.slot != null && !slots.has(r.slot) && slots.add(r.slot));
+    return s;
+  }
+  function defaultRack(items) {                                                                   // 처음에는 3D 형태가 있는 옷을 보유 옷부터 6벌까지 건다
+    const can = items.filter((i) => i.status !== 'gone' && i.look3d).sort((a, b) => (a.status === b.status ? 0 : a.status === 'owned' ? -1 : 1));
+    return can.slice(0, 6).map((i, k) => ({ id: i.id, slot: k }));
+  }
+  async function load() {
+    store.db = await openDb();
+    let raw = null, from = '';
+    if (store.db) { store.mode = 'idb'; const t = await kvGet('state'); if (t) { try { raw = JSON.parse(t); from = 'idb'; } catch (e) { raw = null; } } }
+    if (!raw) { const t = lsGet(KEY2); if (t) { try { raw = JSON.parse(t); from = 'ls2'; } catch (e) { raw = null; } } }
+    if (!raw) { const t = lsGet(KEY1); if (t) { try { raw = JSON.parse(t); from = 'ls1'; } catch (e) { raw = null; } } }   // v0.3 저장소: 읽어서 옮긴다. v1 키는 지우지 않는다
+    if (!store.db) { try { localStorage.setItem('__probe__', '1'); localStorage.removeItem('__probe__'); store.mode = 'ls'; } catch (e) { store.mode = 'memory'; } }
+    let s = raw && cleanState(raw);
+    if (!s) { s = cleanState(BASE); from = 'base'; }
+    if (from !== 'idb' && from !== 'ls2') s.rack = defaultRack(s.items);
+    s.loadedFrom = from; return s;
+  }
+  let state = null, storageOk = true, savePromise = Promise.resolve();
+  const ui = { tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
+    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null };
+  function save() {
+    const data = JSON.stringify(state);
+    savePromise = (async () => {
+      let ok = false;
+      if (store.mode === 'idb') ok = await kvSet('state', data);
+      if (!ok && store.mode !== 'memory') { try { localStorage.setItem(KEY2, data); ok = true; } catch (e) { ok = false; } }
+      storageOk = ok;
+      const n = $('#saveNote');
+      n.textContent = storageOk ? '이 브라우저 안에만 저장됩니다' : '저장할 수 없는 상태입니다. 기록 탭에서 파일로 내보내 보관하세요';
+      n.classList.toggle('warn', !storageOk);
+    })();
+    return savePromise;
+  }
+  async function wipe() { if (store.mode === 'idb') await kvDel('state'); try { localStorage.removeItem(KEY2); } catch (e) { /* 저장소를 못 쓰는 환경 */ } }
+  const owned = () => state.items.filter((i) => i.status === 'owned');
+  const cands = () => state.items.filter((i) => i.status === 'candidate');
+  const byId = (id) => state.items.find((i) => i.id === id);
+  const newId = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+  function replaceItem(it) { const at = state.items.findIndex((i) => i.id === it.id); if (at >= 0) state.items[at] = it; else state.items.push(it); return it; }
+
+  // ---------- 공통 조각 ----------
+  function pic(it, cls) {
+    const img = it.photo ? it.photo.img : it.img, kind = it.photo ? it.photo.kind : (img ? 'own' : 'none');
+    const box = h('div', { class: cls || (img ? 'thumb' : 'thumb nopic') });
+    if (img) box.append(h('img', { src: img, alt: '', loading: 'lazy' }));
+    else { box.append(h('span', { class: 'sw', style: 'background:' + swatch(it) })); if (!cls) box.append(h('span', { class: 'lbl', text: '사진 없음' })); }
+    if (!cls && img && kind !== 'own') box.append(h('span', { class: 'pk' + (kind === 'substitute' ? ' sub' : ''), text: kind === 'confirmed' ? '확인된 동일 제품' : kind === 'candidate' ? '미확인 후보' : '대체 이미지 · 내 옷 아님' }));
+    return box;
+  }
+  function recordLine(it) {
+    const parts = [];
+    if (it.brand) parts.push(it.brand);
+    if (it.size) parts.push('사이즈 ' + it.size);
+    if (it.boughtYear) parts.push(it.boughtYear >= YEAR ? '올해 삼' : (YEAR - it.boughtYear + 1) + '년째');
+    if (it.rebuy !== 'unknown') parts.push(REBUY[it.rebuy]);
+    return parts.join(' · ');
+  }
+  function stateBadges(it, opts) {
+    const badges = h('div', { class: 'badges' });
+    if (it.status === 'candidate') badges.append(h('span', { class: 'badge cand', text: '구매 후보' }));
+    else if (!opts.theirs) badges.append(h('span', { class: 'badge', text: '보유' }));
+    if (!opts.theirs && W.isDraft(it)) badges.append(h('span', { class: 'badge draft', text: '사진에서 뽑은 초안' }));
+    if (it.photo && it.photo.kind === 'confirmed') badges.append(h('span', { class: 'badge ok', text: '확인된 동일 제품' }));
+    else if (it.photo && it.photo.kind === 'candidate') badges.append(h('span', { class: 'badge draft', text: '미확인 후보' }));
+    else if (it.photo && it.photo.kind === 'substitute') badges.append(h('span', { class: 'badge warn', text: '대체 이미지 · 내 옷 아님' }));
+    if (!opts.theirs && it.matchCandidates && it.matchCandidates.length && !(it.photo && it.photo.kind === 'confirmed')) badges.append(h('span', { class: 'badge draft', text: '브랜드 후보 ' + it.matchCandidates.length }));
+    return badges;
+  }
+  function itemCard(it, opts) {
+    opts = opts || {};
+    const rec = recordLine(it);
+    const body = h('div', { class: 'cbody' }, stateBadges(it, opts), h('h3', { text: it.name }),
+      h('p', { class: 'meta', text: [famLabel(it), kindLabel(it), PATTERNS[it.pattern] !== '무지' ? PATTERNS[it.pattern] : '', it.seasons.length && it.seasons.length < 4 ? it.seasons.join('·') : ''].filter(Boolean).join(' · ') }),
+      rec ? h('p', { class: 'rec', text: rec }) : (opts.theirs ? null : h('p', { class: 'meta', text: '기록이 아직 없습니다' })),
+      it.review ? h('p', { class: 'quote', text: it.review }) : null);
+    if (opts.actions) body.append(h('div', { class: 'cfoot' }, opts.actions));
+    return h('article', { class: 'card' + (it.status === 'candidate' ? ' cand' : ''), 'data-id': it.id }, pic(it), body);
+  }
+  const chip = (label, on, fn) => h('button', { class: 'chip', type: 'button', 'aria-pressed': on ? 'true' : 'false', onclick: fn, text: label });
+  function seasonChips(cur, set) {
+    return [chip('모든 계절', !cur, () => set(''))].concat(SEASONS.map((s) => chip(s, cur === s, () => set(s))));
+  }
+  /** 결과에 쓰인 옷 가운데 속성이 초안인 것을 알려 주는 줄. 점수는 바꾸지 않는다. */
+  function draftNote(items) {
+    const d = items.filter((i) => i && W.isDraft(i));
+    if (!d.length) return null;
+    return h('p', { class: 'draftnote', text: '확인 전 속성 포함: ' + d.map((i) => i.name).join(', ') + ' — 사진에서 뽑은 초안이라 색·밝기·격식이 다를 수 있습니다. 옷장 탭에서 확인해 주세요.' });
+  }
+  function outfitCard(c, candId) {
+    const parts = [c.outer, c.top, c.bottom].filter(Boolean);
+    const stack = h('div', { class: 'stack' }, parts.map((p) => { const m = pic(p, 'mini' + (p.id === candId || p.status === 'candidate' ? ' cand' : '')); m.title = p.name; return m; }));
+    const el = h('div', { class: 'outfit' }, stack, h('p', { class: 'names', text: parts.map((p) => p.name).join(' + ') }),
+      h('ul', { class: 'why' }, (c.why || []).map((w) => h('li', { text: w }))));
+    if (c.caution && c.caution.length) el.append(h('ul', { class: 'why warn' }, c.caution.map((w) => h('li', { text: w }))));
+    el.append(h('p', { class: 'score', text: '규칙 점수 ' + c.score + ' (가산과 감점의 합. 확률이 아닙니다)' }));
+    const dn = draftNote(parts); if (dn) el.append(dn);
+    return el;
+  }
+
+  // ---------- 탭 ----------
+  const TABS = [['closet', '옷장'], ['closet3d', '3D 옷장'], ['judge', '살까 말까'], ['outfits', '코디'], ['shop', '살 만한 옷'], ['compare', '옷장 구경'], ['log', '기록']];
+  function renderTabs() {
+    const nav = $('#tabs'); nav.textContent = '';
+    for (const [id, label] of TABS) {
+      const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'shop' ? state.catalog.products.length : id === 'closet3d' ? state.rack.length : null;
+      nav.append(h('button', { class: 'tab', type: 'button', role: 'tab', id: 'tabbtn-' + id, 'aria-selected': ui.tab === id ? 'true' : 'false', onclick: () => { ui.tab = id; render(); } }, label, n != null ? h('span', { class: 'n', text: String(n) }) : null));
+    }
+  }
+  const stageEl = $('#stage'), stageHolder = $('#stageHolder'), sq = (sel) => stageEl.querySelector(sel);   // 3D 화면은 한 번 만들어 탭 사이를 오간다 (WebGL을 다시 만들지 않게)
+  function render() {
+    renderTabs();
+    stageHolder.append(stageEl); stageHolder.hidden = true;
+    const main = $('#main'); main.textContent = '';
+    ({ closet: renderCloset, closet3d: renderCloset3d, judge: renderJudge, outfits: renderOutfits, shop: renderShop, compare: renderCompare, log: renderLog })[ui.tab](main);
+    if (ui.tab !== 'closet3d' && closet.api) closet.api.setActive(false);
+  }
+
+  // ---------- 옷장 ----------
+  function renderCloset(main) {
+    const drafts = owned().filter(W.isDraft).length;
+    main.append(h('p', { class: 'lead', text: '가진 옷과 그 옷에 대한 기록입니다. 사이즈, 산 해, 오래 입어 본 후기를 적어 두면 다음에 살 때의 근거가 됩니다.' + (drafts ? ' 지금 ' + drafts + '벌은 사진에서 뽑은 초안이라 색과 종류를 직접 확인해야 합니다.' : '') }));
+    const bar = h('div', { class: 'bar' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),
+      Object.keys(CATS).map((c) => chip(CATS[c], ui.cat === c, () => { ui.cat = c; render(); })), h('span', { class: 'grow' }),
+      h('button', { class: 'btn primary', type: 'button', id: 'addOwned', onclick: () => openWizard(null, 'owned'), text: '옷 추가' }));
+    main.append(bar, h('div', { class: 'bar' }, seasonChips(ui.season, (s) => { ui.season = s; render(); })));
+    const list = state.items.filter((i) => i.status !== 'gone' && (ui.cat === 'all' || i.cat === ui.cat) && J.inSeason(i, ui.season));
+    if (!list.length) { main.append(h('div', { class: 'empty', text: '이 조건에 맞는 옷이 없습니다.' })); return; }
+    const order = { outer: 0, top: 1, bottom: 2, shoes: 3 };
+    list.sort((a, b) => (a.status === b.status ? order[a.cat] - order[b.cat] : a.status === 'candidate' ? 1 : -1));
+    main.append(h('div', { class: 'grid', id: 'closetGrid' }, list.map((it) => itemCard(it, { actions: [
+      h('button', { class: 'btn small', type: 'button', onclick: () => openEditor(it), text: it.status === 'candidate' ? '수정' : '기록' }),
+      W.isDraft(it) || (!it.brand && !it.model) ? h('button', { class: 'btn small', type: 'button', onclick: () => openWizard(it), text: '확인하기' }) : null,
+      h('button', { class: 'btn small', type: 'button', onclick: () => openMatch(it.id), text: it.photo.kind === 'own' || it.photo.kind === 'none' ? '상품 사진' : '사진·확인' }),
+      it.status === 'candidate' ? h('button', { class: 'btn small', type: 'button', onclick: () => { ui.judgeId = it.id; ui.tab = 'judge'; render(); }, text: '판정 보기' }) : null] }))));
+  }
+
+  // ---------- 3D 옷장 ----------
+  const closet = { api: null, failed: '', ready: false };
+  const look3dFor = (it) => {                                                                    // 옷 → 3D 옷장에 거는 모양 (종류 + 원단). 사람이 고른 look3d만 쓴다
+    if (!it.look3d || !X) return null;
+    const k = it.look3d.kind, tile = it.look3d.fabric && X.TILES[it.look3d.fabric] && X.TILES[it.look3d.fabric].kind === k ? it.look3d.fabric : '';
+    const f = FAM[it.family] || FAM.gray;
+    return { id: it.id, kind: k, name: it.name, jit: (it.id.length % 5 - 2) * 0.01, fabric: tile ? { tile } : { color: X.familyColor(f[1], f[2], it.light), pattern: it.pattern === 'stripe' || it.pattern === 'check' ? it.pattern : 'solid' } };
+  };
+  const fabricLabel = (it) => { const l = look3dFor(it); if (!l) return ''; return l.fabric.tile ? X.TILES[l.fabric.tile].name + ' (미리 만든 원단)' : famLabel(it) + ' ' + (PATTERNS[it.pattern] === '프린트' ? '무지' : PATTERNS[it.pattern]) + ' (색으로 만든 원단, 근사)'; };
+  const rackItems = () => state.rack.map((r) => ({ r, it: byId(r.id) })).filter((x) => x.it && x.it.status !== 'gone' && x.it.look3d);
+  function ensureCloset() {
+    if (closet.api || closet.failed) return;
+    if (!X || !X.available()) { closet.failed = '이 파일에는 3D 옷장 자료가 들어 있지 않습니다.'; return; }
+    const canvas = sq('#stage3d');
+    const api = X.create({ canvas, host: stageEl, onSelect: (id) => { ui.stageSel = id; sq('#stageHint').hidden = true; syncStage(); }, onDeselect: () => { ui.stageSel = null; sq('#stageHint').hidden = false; syncStage(); },
+      onError: (msg) => { closet.failed = msg; const m = sq('#stageMsg'); m.textContent = msg; m.hidden = false; sq('#stageLoad').hidden = true; },
+      onReady: () => { closet.ready = true; sq('#stageLoad').hidden = true; },
+      onMove: (list) => { state.rack = list.map((x) => ({ id: x.id, slot: x.slot })); save(); } });
+    if (!api) { closet.failed = closet.failed || '3D를 그릴 수 없습니다.'; return; }
+    closet.api = api; window.__closet = api;
+    sq('#stageHome').addEventListener('click', () => api.home());
+    sq('#stagePoke').addEventListener('click', () => api.pokeAll());
+  }
+  function pushRack() { if (closet.api) closet.api.setItems(rackItems().map(({ r, it }) => Object.assign(look3dFor(it), { slot: r.slot }))); }
+  function syncStage() {
+    const chips = sq('#stageChips'); chips.textContent = '';
+    const ri = rackItems(), cut = ri.length > 4 ? 6 : 10;
+    for (const { it } of ri) {
+      const l = look3dFor(it), sw = l.fabric.tile ? X.TILES[l.fabric.tile].sw : swatch(it);
+      chips.append(h('button', { type: 'button', 'aria-pressed': ui.stageSel === it.id ? 'true' : 'false', 'aria-label': it.name + ' 크게 보기', title: it.name, onclick: () => { if (!closet.api) return; if (ui.stageSel === it.id) closet.api.deselect(); else closet.api.select(it.id); } }, h('i', { style: 'background:' + sw }), h('span', { text: it.name.length > cut ? it.name.slice(0, cut) + '…' : it.name })));
+    }
+    const card = $('#stageCard'); if (!card) return;
+    const it = ui.stageSel && byId(ui.stageSel); card.textContent = '';
+    if (!it) { card.hidden = true; return; }
+    card.hidden = false;
+    const l = look3dFor(it);
+    card.append(stateBadges(it, {}), h('h2', { text: it.name }), h('p', { class: 'sub', text: X.KIND[l.kind].type + ' · ' + X.KIND[l.kind].parts }),
+      h('dl', { class: 'kv' }, h('dt', { text: '원단' }), h('dd', { text: fabricLabel(it) }), h('dt', { text: '실제 제품' }), h('dd', { text: it.product ? [it.product.brand, it.product.name].filter(Boolean).join(' ') + ' (확인 ' + it.product.confirmedAt + ')' : it.brand ? it.brand + (it.model ? ' ' + it.model : '') + ' (주인 기록)' : '입력 전' }),
+        it.status === 'candidate' && it.price != null ? [h('dt', { text: '가격' }), h('dd', { text: fmtWon(it.price) + (it.checkedAt ? ' (' + it.checkedAt + ' 확인)' : '') })] : null),
+      h('p', { class: 'note', style: 'margin-top:10px', text: '종류와 색으로 그린 기본 형태이며 특정 상품을 재현한 것이 아닙니다. 로고와 그래픽은 그리지 않습니다. 끌면 돌려 볼 수 있습니다.' }),
+      h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn primary small', type: 'button', onclick: () => closet.api && closet.api.deselect(), text: '옷장에 다시 걸기' }),
+        h('button', { class: 'btn small', type: 'button', onclick: () => openEditor(it), text: it.status === 'candidate' ? '후보 수정' : '기록' }),
+        it.status === 'candidate' ? h('button', { class: 'btn small', type: 'button', onclick: () => { ui.judgeId = it.id; ui.tab = 'judge'; render(); }, text: '판정 보기' }) : null,
+        h('button', { class: 'btn small', type: 'button', onclick: () => { unhang(it.id); }, text: '옷장에서 내리기' })));
+  }
+  function hang(id) {
+    const used = new Set(state.rack.map((r) => r.slot)); let slot = -1;
+    for (let s = 0; s < 6; s++) if (!used.has(s)) { slot = s; break; }
+    if (slot < 0) return false;
+    state.rack = state.rack.filter((r) => r.id !== id).concat([{ id, slot }]); save(); return true;
+  }
+  function unhang(id) { state.rack = state.rack.filter((r) => r.id !== id); if (ui.stageSel === id) ui.stageSel = null; save(); render(); }
+  function renderCloset3d(main) {
+    main.append(h('p', { class: 'lead', text: '옷장을 3D로 봅니다. 옷은 종류별로 미리 만든 형태에 원단만 입힌 모습이라 특정 상품의 재현이 아닙니다. 자리는 6곳(위 봉 4, 아래 봉 2)이고, 옷을 끌어 자리를 바꾸거나 눌러서 크게 볼 수 있습니다.' }));
+    main.append(stageEl);
+    const card = h('section', { class: 'panel', id: 'stageCard', hidden: true }); main.append(card);
+    ensureCloset();
+    if (closet.failed) { const m = sq('#stageMsg'); m.textContent = closet.failed; m.hidden = false; sq('#stageLoad').hidden = true; }
+    else if (closet.api) { closet.api.setActive(true); closet.api.resize(); pushRack(); if (closet.ready) sq('#stageLoad').hidden = true; }
+    syncStage();
+    // 옷장에 걸 옷 고르기
+    const rack = new Map(state.rack.map((r) => [r.id, r]));
+    const all = state.items.filter((i) => i.status !== 'gone').sort((a, b) => (a.status === b.status ? 0 : a.status === 'owned' ? -1 : 1));
+    const panel = h('section', { class: 'panel', id: 'rackPanel' }, h('h2', { text: '옷장에 걸 옷 (' + state.rack.length + '/6)' }),
+      h('p', { class: 'sub', text: '3D 형태가 있는 옷만 걸 수 있습니다. 형태는 직접 고릅니다(셔츠, 블레이저, 필드 재킷, 트러커 재킷). 원단은 미리 만든 것 가운데 고르거나, 옷의 색·무늬로 만든 근사치를 씁니다. 바지와 신발 형태는 아직 없습니다.' }));
+    const list = h('div', { class: 'list racklist' });
+    for (const it of all) {
+      const r = rack.get(it.id), has = !!it.look3d;
+      const row = h('div', { class: 'row', 'data-id': it.id }, pic(it, 'mini'), h('span', { class: 'rowt' }, h('b', { text: it.name + (it.status === 'candidate' ? ' (구매 후보)' : '') }),
+        h('span', { text: has ? (r ? '걸림 · ' : '') + X.KIND[it.look3d.kind].type + ' · ' + fabricLabel(it) : '3D 형태 없음 — 고르면 걸 수 있습니다' })));
+      const acts = h('span', { class: 'acts' });
+      if (has) acts.append(h('button', { class: 'btn small' + (r ? '' : ' primary'), type: 'button', onclick: () => { if (r) unhang(it.id); else if (hang(it.id)) render(); else alertLine(panel, '옷장 자리가 6곳입니다. 하나를 내린 뒤 걸어 주세요.'); }, text: r ? '내리기' : '걸기' }));
+      acts.append(h('button', { class: 'btn small', type: 'button', onclick: () => { ui.rackPick = ui.rackPick === it.id ? '' : it.id; render(); }, text: has ? '형태 바꾸기' : '형태 고르기' }));
+      row.append(acts);
+      list.append(row);
+      if (ui.rackPick === it.id) list.append(lookPicker(it));
+    }
+    panel.append(list); main.append(panel);
+  }
+  function alertLine(panel, text) { let m = $('.warnnote', panel); if (!m) { m = h('p', { class: 'warnnote' }); panel.append(m); } m.textContent = text; }
+  function lookPicker(it) {
+    const kindSel = h('select', { id: 'lk-kind' }); for (const k in LOOK_KINDS) kindSel.append(h('option', { value: k, text: LOOK_KINDS[k] }));
+    kindSel.value = it.look3d ? it.look3d.kind : (it.cat === 'top' ? 'shirt' : it.kind === 'blazer' ? 'blazer' : 'field');
+    const fabSel = h('select', { id: 'lk-fabric' });
+    const fillFab = () => { fabSel.textContent = ''; fabSel.append(h('option', { value: '', text: '옷의 색·무늬로 만들기 (근사)' })); for (const id in X.TILES) if (X.TILES[id].kind === kindSel.value) fabSel.append(h('option', { value: id, text: X.TILES[id].name + ' (미리 만든 원단)' })); fabSel.value = it.look3d && X.TILES[it.look3d.fabric] && X.TILES[it.look3d.fabric].kind === kindSel.value ? it.look3d.fabric : ''; };
+    fillFab(); kindSel.addEventListener('change', fillFab);
+    return h('div', { class: 'lookpick', id: 'lookPick' }, h('span', { class: 'note', text: '형태' }), kindSel, h('span', { class: 'note', text: '원단' }), fabSel,
+      h('button', { class: 'btn small primary', type: 'button', id: 'lk-save', onclick: () => { replaceItem(W.setLook3d(it, { kind: kindSel.value, fabric: fabSel.value })); ui.rackPick = ''; save(); render(); }, text: '저장' }),
+      it.look3d ? h('button', { class: 'btn small', type: 'button', onclick: () => { replaceItem(W.setLook3d(it, null)); state.rack = state.rack.filter((r) => r.id !== it.id); ui.rackPick = ''; save(); render(); }, text: '형태 없음으로' }) : null,
+      h('span', { class: 'note', text: '종류로 그린 모습입니다. 브랜드나 상품 모양을 추측하지 않습니다.' }));
+  }
+
+  // ---------- 살까 말까 ----------
+  function openDecision(id) { return state.decisions.find((d) => d.itemId === id && !d.after); }
+  function renderJudge(main) {
+    main.append(h('p', { class: 'lead', text: '살까 고민 중인 옷을 후보로 넣으면, 가진 옷과 겹치는지와 새로 생기는 조합을 보여 줍니다. 사라거나 사지 말라고 하지 않습니다. 규칙이 본 사실과 근거만 보여 줍니다.' }));
+    const list = cands();
+    if (ui.judgeId && !list.some((c) => c.id === ui.judgeId)) ui.judgeId = '';
+    if (!ui.judgeId && list.length) ui.judgeId = list[0].id;
+    const left = h('div', { class: 'list' }, list.map((c) => h('button', { class: 'row', type: 'button', 'aria-pressed': c.id === ui.judgeId ? 'true' : 'false', onclick: () => { ui.judgeId = c.id; render(); } },
+      pic(c, 'mini'), h('span', { class: 'rowt' }, h('b', { text: c.name }), h('span', { text: [famLabel(c), kindLabel(c)].join(' · ') })))),
+      h('button', { class: 'btn primary', type: 'button', id: 'addCand', onclick: () => openWizard(null, 'candidate'), text: '후보 추가' }));
+    const right = h('div');
+    main.append(h('div', { class: 'split' }, left, right));
+    const c = byId(ui.judgeId);
+    if (!c) { right.append(h('div', { class: 'empty', text: '아직 후보가 없습니다. 지금 살까 고민 중인 옷 한 벌을 넣어 보세요. 사진이 없어도 종류와 색만으로 판정합니다. 살 만한 옷 탭의 상품을 후보로 넣을 수도 있습니다.' })); return; }
+    const open = openDecision(c.id);
+    const past = state.decisions.filter((d) => d.itemId === c.id && d.after), last = past[past.length - 1];
+    const stage = open ? 2 : last && ui.rejudge !== c.id ? 3 : 1;
+    right.append(h('div', { class: 'steps' }, h('span', { class: 'step ' + (stage === 1 ? 'on' : 'done'), text: '1. 보기 전 내 마음' }), h('span', { class: 'step ' + (stage === 2 ? 'on' : stage === 3 ? 'done' : ''), text: '2. 판정' }), h('span', { class: 'step ' + (stage === 3 ? 'on' : ''), text: '3. 결정' })));
+    if (stage === 3) {
+      right.append(h('section', { class: 'panel', id: 'decided' }, h('h2', { text: c.name }),
+        h('p', { class: 'big', text: '결정: ' + DECIDE[last.after.decision] }),
+        h('p', { class: 'sub', text: '보기 전 마음은 "' + LEAN[last.before.lean] + '"이었습니다 (' + SHIFT[last.after.shift] + '). 판정은 ' + HELP[last.after.helpful] + '고 적었습니다.' + (last.after.note ? ' 메모: ' + last.after.note : '') }),
+        h('div', { class: 'bar', style: 'margin:0' },
+          last.after.decision === 'buy' ? h('button', { class: 'btn primary', type: 'button', id: 'moveOwned', onclick: () => { const o = Object.assign({}, c, { status: 'owned', boughtYear: c.boughtYear || YEAR }); replaceItem(W.cleanItem(o, 0)); save(); ui.tab = 'closet'; render(); }, text: '샀어요. 보유로 옮기기' }) : null,
+          h('button', { class: 'btn', type: 'button', onclick: () => { ui.rejudge = c.id; render(); }, text: '다시 판정하기' }),
+          h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
+          X && c.look3d ? h('button', { class: 'btn', type: 'button', onclick: () => { if (hang(c.id)) { ui.tab = 'closet3d'; render(); } }, text: '3D 옷장에 걸어 보기' }) : null)));
+      renderVerdict(right, c, null);
+      return;
+    }
+    if (stage === 1) {
+      const form = h('form', { class: 'panel', id: 'beforeForm', onsubmit: (e) => {
+        e.preventDefault();
+        const lean = (new FormData(form)).get('lean'); if (!lean) return;
+        state.decisions.push({ id: newId('d'), itemId: c.id, name: c.name, before: { lean, reason: str($('#beforeReason').value, 200), at: today() }, summary: { overlaps: 0, added: 0, blockers: 0 }, after: null });
+        ui.rejudge = ''; save(); render();
+      } }, h('h2', { text: c.name }), h('p', { class: 'sub', text: '판정을 보기 전에 지금 마음을 적어 둡니다. 나중에 판정이 결정에 도움이 됐는지 견줘 보기 위해서입니다.' }),
+        h('div', { class: 'choices' }, Object.keys(LEAN).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'lean', value: k, required: true }), h('span', { text: LEAN[k] })))),
+        h('div', { class: 'field' }, h('label', { for: 'beforeReason', text: '그렇게 생각하는 이유 (선택)' }), h('input', { id: 'beforeReason', type: 'text', maxlength: '200' })),
+        h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn primary', type: 'submit', id: 'showVerdict', text: '판정 보기' }), h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' })));
+      right.append(form);
+      return;
+    }
+    renderVerdict(right, c, open);
+  }
+  function renderVerdict(root, c, dec) {
+    const v = J.judgeCandidate(state.items, c);
+    if (dec) dec.summary = { overlaps: v.overlaps.length, added: v.added.length, blockers: v.blockers.length };
+    window.__verdict = { overlaps: v.overlaps.map((o) => o.item.id), added: v.added.length, before: v.before, after: v.after, blockers: v.blockers.map((b) => b.text), top3: v.top3.length, supported: v.supported };
+    const p1 = h('section', { class: 'panel', id: 'vOverlap' }, h('h2', { text: '겹치는 보유 옷' }));
+    if (!v.overlaps.length) p1.append(h('p', { class: 'sub', text: '겹쳐 보이는 보유 옷이 없습니다. 종류와 색 계열, 밝기가 모두 가까운 옷을 찾았습니다.' }));
+    else {
+      p1.append(h('p', { class: 'sub', text: v.overlaps.length + '벌이 비슷합니다. 겹친다고 볼지는 직접 정하세요.' }));
+      for (const o of v.overlaps) p1.append(h('div', { class: 'pair' },
+        h('div', { class: 'side' }, pic(c, 'mini'), h('span', { class: 'rowt' }, h('b', { text: c.name }), h('span', { text: '구매 후보' }))),
+        h('span', { class: 'vs', text: o.level === 'strong' ? '많이 겹침' : '일부 겹침' }),
+        h('div', { class: 'side' }, pic(o.item, 'mini'), h('span', { class: 'rowt' }, h('b', { text: o.item.name }), h('span', { text: recordLine(o.item) || '보유' })))),
+        h('div', { class: 'facts' }, o.same.map((s) => h('span', { class: 'fact', text: s })), o.diff.map((s) => h('span', { class: 'fact diff', text: s }))));
+    }
+    const p2 = h('section', { class: 'panel', id: 'vCombos' }, h('h2', { text: '새로 생기는 조합' }));
+    if (!v.supported || v.note) p2.append(h('p', { class: 'sub', text: v.note }));
+    else {
+      if (c.cat === 'outer') p2.append(h('p', { class: 'big', text: '조합 ' + v.before + '개 가운데 ' + v.added.length + '개에 걸칠 수 있습니다' }));
+      else p2.append(h('p', { class: 'big', text: '조합 ' + v.before + '개 → ' + v.after + '개' }), h('p', { class: 'sub', text: '주의 사항이 없는 상의·하의 조합의 수입니다. 이 옷으로 ' + v.added.length + '개가 새로 생깁니다.' + (v.added.length > 0 && v.added.length < 3 ? ' 3개에 못 미칩니다.' : '') }));
+      if (v.top3.length) p2.append(h('div', { class: 'outfits', style: 'margin-top:12px' }, v.top3.map((o) => outfitCard(o, c.id))));
+    }
+    const p3 = h('section', { class: 'panel', id: 'vBlock' }, h('h2', { text: '걸리는 점' }));
+    if (!v.blockers.length && !v.needs.length) p3.append(h('p', { class: 'sub', text: v.supported ? '규칙에 걸린 것이 없습니다. 규칙은 밝기, 색 계열, 격식, 무늬만 봅니다. 핏과 소재는 보지 못합니다.' : '판정하지 않은 항목입니다.' }));
+    else {
+      p3.append(h('ul', { class: 'why warn' }, v.blockers.map((b) => h('li', { text: b.word + ' ' + b.total + (b.word === '조합' ? '개' : '벌') + ' 중 ' + b.count + (b.word === '조합' ? '개' : '벌') + ': ' + b.text })), v.needs.map((n) => h('li', { text: n }))));
+      p3.append(h('p', { class: 'note', style: 'margin-top:8px', text: '규칙은 밝기, 색 계열, 격식, 무늬만 봅니다. 핏과 소재는 보지 못합니다.' }));
+    }
+    const used = [c].concat(v.overlaps.map((o) => o.item)).concat(v.top3.flatMap((o) => [o.top, o.bottom, o.outer].filter(Boolean)));
+    const dn = draftNote(Array.from(new Set(used))); if (dn) { dn.id = 'vDraft'; p3.append(dn); }
+    const kv = h('dl', { class: 'kv' });
+    if (c.price != null) kv.append(h('dt', { text: '가격' }), h('dd', { text: fmtWon(c.price) + (c.checkedAt ? ' (' + c.checkedAt + ' 확인)' : ' (확인 날짜 없음)') }));
+    if (c.link) kv.append(h('dt', { text: '링크' }), h('dd', null, h('a', { href: c.link, target: '_blank', rel: 'noopener noreferrer', text: c.link })));
+    if (c.size) kv.append(h('dt', { text: '사이즈' }), h('dd', { text: c.size }));
+    if (c.product) kv.append(h('dt', { text: '상품' }), h('dd', { text: [c.product.brand, c.product.name, c.product.code].filter(Boolean).join(' ') + ' (확인 ' + c.product.confirmedAt + ')' }));
+    const p4 = h('section', { class: 'panel' }, h('h2', { text: '직접 넣은 구매 정보' }), kv.children.length ? kv : h('p', { class: 'sub', text: '가격과 링크를 넣지 않았습니다. 이 화면은 가격과 재고를 찾아오지 않습니다.' }));
+    root.append(p1, p2, p3, p4);
+    if (!dec) return;
+    const form = h('form', { class: 'panel', id: 'afterForm', onsubmit: (e) => {
+      e.preventDefault();
+      const fd = new FormData(form), decision = fd.get('decision'), helpful = fd.get('helpful'); if (!decision || !helpful) return;
+      const lean = dec.before.lean;
+      const shift = decision === 'hold' ? (lean === 'unsure' ? 'same' : 'held') : lean === 'unsure' ? 'settled' : lean === decision ? 'same' : 'changed';
+      dec.after = { decision, helpful, note: str($('#afterNote').value, 300), at: today(), shift };
+      save(); render();
+    } }, h('h2', { text: '결정' }), h('p', { class: 'sub', text: '보기 전 마음: ' + LEAN[dec.before.lean] + (dec.before.reason ? ' (' + dec.before.reason + ')' : '') }),
+      h('div', { class: 'choices' }, Object.keys(DECIDE).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'decision', value: k, required: true }), h('span', { text: DECIDE[k] })))),
+      h('span', { class: 'note', text: '이 판정이 결정에 도움이 됐나요' }),
+      h('div', { class: 'choices' }, Object.keys(HELP).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'helpful', value: k, required: true }), h('span', { text: HELP[k] })))),
+      h('div', { class: 'field' }, h('label', { for: 'afterNote', text: '메모 (선택)' }), h('input', { id: 'afterNote', type: 'text', maxlength: '300', placeholder: '새로 알게 된 것, 다른 곳에서 얻은 답과의 차이' })),
+      h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn primary', type: 'submit', id: 'saveDecision', text: '결정 기록' })));
+    root.append(form);
+  }
+
+  // ---------- 코디 ----------
+  function renderOutfits(main) {
+    main.append(h('p', { class: 'lead', text: '가진 옷으로 만든 조합 3개와 그 이유입니다. 밝기 차이, 격식, 무늬, 겹쳐 입기 규칙으로 점수를 매깁니다. AI를 쓰지 않아 같은 옷장이면 같은 결과가 나옵니다.' }));
+    main.append(h('div', { class: 'bar' }, seasonChips(ui.season, (s) => { ui.season = s; ui.exclude = []; render(); })),
+      h('div', { class: 'bar' }, cands().length ? chip('구매 후보도 섞기', ui.mixCand, () => { ui.mixCand = !ui.mixCand; ui.exclude = []; render(); }) : null,
+        h('button', { class: 'btn small', type: 'button', id: 'moreRecs', onclick: () => { ui.exclude = ui.exclude.concat(cur.map((c) => [c.top, c.bottom, c.outer || ''].join('|'))); render(); }, text: '다른 추천 보기' }),
+        ui.exclude.length ? h('button', { class: 'btn small', type: 'button', onclick: () => { ui.exclude = []; render(); }, text: '처음부터' }) : null));
+    const pool = state.items.filter((i) => (i.status === 'owned' || (ui.mixCand && i.status === 'candidate')) && J.inSeason(i, ui.season));
+    const cur = R.recommend(pool, 3, ui.exclude);
+    window.__recs = cur;
+    if (!cur.length) { main.append(h('div', { class: 'empty', text: ui.exclude.length ? '더 보여 줄 조합이 없습니다.' : '이 조건으로는 조합을 만들 수 없습니다. 상의와 하의가 한 벌씩은 있어야 합니다.' })); return; }
+    const map = Object.fromEntries(pool.map((i) => [i.id, i]));
+    main.append(h('div', { class: 'outfits', id: 'recGrid' }, cur.map((c) => outfitCard({ top: map[c.top], bottom: map[c.bottom], outer: c.outer ? map[c.outer] : null, score: c.score, why: c.why, caution: c.caution }))));
+  }
+
+  // ---------- 살 만한 옷 (직접 넣는 상품 목록) ----------
+  function renderShop(main) {
+    main.append(h('p', { class: 'lead', text: '쇼핑하다 본 실제 상품을 직접 넣어 두면, 내 옷장에 비춰 어떤 상품이 조합을 많이 만들고 빈틈을 채우는지 순서를 매깁니다. 가격과 재고는 찾아오지 않고, 적은 값과 확인한 날만 보여 줍니다. 목록 밖의 상품을 지어내지 않습니다.' }));
+    const gaps = sources();
+    main.append(h('div', { class: 'bar' }, h('button', { class: 'btn primary', type: 'button', id: 'addProduct', onclick: () => openProduct(null), text: '상품 추가' }),
+      h('button', { class: 'btn', type: 'button', id: 'catImportBtn', onclick: () => $('#catFile').click(), text: '상품 목록 파일 열기' }),
+      state.catalog.products.length ? h('button', { class: 'btn', type: 'button', id: 'catExportBtn', onclick: () => download('otjang-catalog-' + today() + '.json', { schema: 1, kind: 'catalog', name: (state.owner.nickname || '') + ' 상품 목록', products: state.catalog.products }), text: '내보내기' }) : null,
+      h('input', { type: 'file', accept: 'application/json,.json', id: 'catFile', hidden: true, onchange: async () => { const raw = await readFileJson($('#catFile')); const c = raw && C.cleanCatalog(raw); ui.catImport = c && c.products.length ? c : false; render(); } })));
+    if (ui.catImport === false) main.append(h('p', { class: 'warnnote', text: '상품 목록 파일을 읽지 못했습니다. 이 탭에서 내보낸 JSON 파일인지 확인하세요.' }));
+    else if (ui.catImport) main.append(h('div', { class: 'bar' }, h('span', { class: 'warnnote', text: '파일의 상품 ' + ui.catImport.products.length + '개를 목록에 더합니다 (같은 id는 건너뜁니다).' }),
+      h('button', { class: 'btn small primary', type: 'button', id: 'catMerge', onclick: () => { const have = new Set(state.catalog.products.map((p) => p.id)); for (const p of ui.catImport.products) if (!have.has(p.id)) state.catalog.products.push(p); ui.catImport = null; save(); render(); }, text: '더하기' }),
+      h('button', { class: 'btn small', type: 'button', onclick: () => { ui.catImport = null; render(); }, text: '취소' })));
+    main.append(h('div', { class: 'bar' }, seasonChips(ui.shopSeason, (s) => { ui.shopSeason = s; render(); })),
+      h('div', { class: 'bar' }, h('span', { class: 'note', text: '빈틈을 볼 옷장:' }), gaps.map((g) => chip(g.w.name || '이름 없는 옷장', ui.shopGap === g.key, () => { ui.shopGap = g.key; render(); }))));
+    if (!state.catalog.products.length) { main.append(h('div', { class: 'empty', id: 'shopEmpty', text: '아직 상품이 없습니다. 살까 고민 중인 상품의 이름, 가격, 주소를 직접 넣어 보세요.' })); return; }
+    const g = gaps.find((x) => x.key === ui.shopGap) || gaps[0];
+    const gapItems = J.compareWardrobes(state.items, g.w.items, { season: ui.shopSeason }).onlyTheirs;
+    const ranked = C.rank(state.items, state.catalog.products, { season: ui.shopSeason, gaps: gapItems });
+    window.__shop = ranked.map((r) => ({ id: r.product.id, score: r.score, stale: r.stale, gap: r.gap ? r.gap.id : null, added: r.added }));
+    if (!ranked.length) { main.append(h('div', { class: 'empty', text: '이 계절에 맞는 상품이 없습니다.' })); return; }
+    const box = h('div', { id: 'shopList' });
+    ranked.forEach((r, i) => {
+      const p = r.product;
+      const el = h('article', { class: 'prod', 'data-id': p.id }, pic(Object.assign({}, p, { photo: { kind: p.img ? 'own' : 'none', img: p.img } })),
+        h('div', null, h('p', { class: 'rank', text: (i + 1) + '위 · 규칙 점수 ' + r.score + ' (가산과 감점의 합, 확률 아님)' }), h('h3', { text: [p.brand, p.name].filter(Boolean).join(' ') + (p.code ? ' (' + p.code + ')' : '') }),
+          h('p', { class: 'meta', text: [famLabel(p), kindLabel(p), PATTERNS[p.pattern] !== '무지' ? PATTERNS[p.pattern] : '', FORMAL[p.formality]].filter(Boolean).join(' · ') }),
+          h('p', { class: 'price' }, p.price != null ? fmtWon(p.price) + ' ' : '가격 미입력 ', h('span', { class: 'note', text: p.checkedAt ? p.checkedAt + ' 확인' : '확인한 날 없음' }), r.stale ? h('span', { class: 'badge warn', style: 'margin-left:6px', text: '재확인 필요 (' + C.STALE_DAYS + '일 지남)' }) : null),
+          p.link ? h('p', { class: 'meta' }, h('a', { href: p.link, target: '_blank', rel: 'noopener noreferrer', text: p.link })) : null,
+          r.reasons.length ? h('ul', { class: 'why' }, r.reasons.map((t) => h('li', { text: t }))) : null,
+          r.cautions.length ? h('ul', { class: 'why warn' }, r.cautions.map((t) => h('li', { text: t }))) : null,
+          p.note ? h('p', { class: 'quote', text: p.note }) : null,
+          h('div', { class: 'cfoot' }, h('button', { class: 'btn small primary', type: 'button', onclick: () => { const c = C.toCandidate(p); c.id = newId('c'); state.items.push(c); ui.judgeId = c.id; ui.tab = 'judge'; save(); render(); }, text: '후보로 넣어 판정' }),
+            h('button', { class: 'btn small', type: 'button', onclick: () => openProduct(p), text: '수정' }))));
+      box.append(el);
+    });
+    main.append(box);
+  }
+
+  // ---------- 옷장 구경 ----------
+  function sources() {
+    const tpl = W.cleanWardrobe(TEMPLATE);
+    return [{ key: 'template', w: tpl }].concat(state.others.map((w, i) => ({ key: 'o' + i, w })));
+  }
+  function renderCompare(main) {
+    main.append(h('p', { class: 'lead', text: '다른 사람의 옷장이나 기본 옷장을 열어 구경하고, 내 옷장과 견줘 내게 없는 것을 찾습니다. 다른 사람의 옷장은 그 사람이 기록 탭에서 내보낸 파일로 받습니다.' }));
+    const src = sources();
+    if (!src.some((s) => s.key === ui.src)) ui.src = 'template';
+    const file = h('input', { type: 'file', accept: 'application/json,.json', id: 'otherFile', hidden: true, onchange: async () => {
+      const f = file.files[0]; if (!f) return;
+      const raw = await readFileJson(file); const w = raw && W.cleanWardrobe(raw);
+      const msg = $('#otherMsg');
+      if (!w || !w.items.length) { msg.textContent = '옷장 파일을 읽지 못했습니다. 기록 탭에서 내보낸 JSON 파일인지 확인하세요.'; msg.hidden = false; return; }
+      w.decisions = []; if (!w.name) w.name = w.owner.nickname ? w.owner.nickname + '의 옷장' : f.name.replace(/\.json$/i, '').slice(0, 40);
+      state.others = [w].concat(state.others).slice(0, 6); ui.src = 'o0'; save(); render();
+    } });
+    const left = h('div', { class: 'list' }, src.map((s) => h('button', { class: 'row', type: 'button', 'aria-pressed': s.key === ui.src ? 'true' : 'false', onclick: () => { ui.src = s.key; render(); } },
+      h('span', { class: 'rowt' }, h('b', { text: s.w.name || '이름 없는 옷장' }), h('span', { text: s.w.items.filter(J.isOwned).length + '벌' + (s.w.kind === 'template' ? ' · 기본 옷장' : '') + (s.w.draft ? ' · 초안' : '') })))),
+      h('button', { class: 'btn', type: 'button', id: 'openOther', onclick: () => file.click(), text: '옷장 파일 열기' }), file, h('p', { class: 'warnnote', id: 'otherMsg', hidden: true }));
+    const right = h('div');
+    main.append(h('div', { class: 'split' }, left, right));
+    const cur = src.find((s) => s.key === ui.src), w = cur.w;
+    const o = w.owner, who = [o.height ? '키 ' + o.height + 'cm' : '', o.topSize ? '상의 ' + o.topSize : '', o.bottomSize ? '하의 ' + o.bottomSize : ''].filter(Boolean).join(' · ');
+    const head = h('section', { class: 'panel' }, h('h2', { text: w.name || '이름 없는 옷장' }), h('p', { class: 'sub', text: [who, w.note].filter(Boolean).join(' — ') || '주인이 적은 정보가 없습니다.' }),
+      h('div', { class: 'bar', style: 'margin:0' }, seasonChips(ui.cmpSeason, (s) => { ui.cmpSeason = s; render(); }), h('span', { class: 'grow' }),
+        cur.key !== 'template' ? h('button', { class: 'btn small danger', type: 'button', onclick: () => { state.others.splice(Number(cur.key.slice(1)), 1); ui.src = 'template'; save(); render(); }, text: '목록에서 지우기' }) : null));
+    const r = J.compareWardrobes(state.items, w.items, { season: ui.cmpSeason });
+    window.__cmp = { both: r.both.length, onlyTheirs: r.onlyTheirs.map((i) => i.id), onlyMine: r.onlyMine.length };
+    const miss = h('section', { class: 'panel', id: 'cmpMissing' }, h('h2', { text: '이 옷장에는 있고 내게 없는 것 ' + r.onlyTheirs.length + '벌' }),
+      h('p', { class: 'sub', text: '종류, 색 계열, 밝기가 가까운 옷이 내 옷장에 없는 것입니다. 후보로 넣으면 살까 말까 판정으로 이어집니다.' }));
+    if (r.onlyTheirs.length) miss.append(h('div', { class: 'grid' }, r.onlyTheirs.map((it) => itemCard(it, { theirs: true, actions: [h('button', { class: 'btn small', type: 'button', onclick: () => {
+      const copy = W.cleanItem(Object.assign({}, it, { id: newId('c'), status: 'candidate', attrSource: 'owner', photo: null, product: null, matchCandidates: [], look3d: null, review: '', rebuy: 'unknown', boughtYear: null, size: '', price: null, link: '', checkedAt: '', measures: {} }), 0);
+      state.items.push(copy); ui.judgeId = copy.id; ui.tab = 'judge'; save(); render();
+    }, text: '후보로 넣기' })] }))));
+    else miss.append(h('p', { class: 'note', text: '빠진 것이 없습니다.' }));
+    const both = h('section', { class: 'panel', id: 'cmpBoth' }, h('h2', { text: '둘 다 가진 것 ' + r.both.length + '벌' }));
+    for (const b of r.both) both.append(h('div', { class: 'pair' },
+      h('div', { class: 'side' }, pic(b.mine, 'mini'), h('span', { class: 'rowt' }, h('b', { text: b.mine.name }), h('span', { text: '내 옷' + (recordLine(b.mine) ? ' · ' + recordLine(b.mine) : '') }))),
+      h('span', { class: 'vs', text: b.how === 'exact' ? '같은 옷' : '비슷한 옷' }),
+      h('div', { class: 'side' }, pic(b.theirs, 'mini'), h('span', { class: 'rowt' }, h('b', { text: b.theirs.name }), h('span', { text: recordLine(b.theirs) || (w.kind === 'template' ? '기본 옷장' : '기록 없음') })))));
+    const mineOnly = h('section', { class: 'panel' }, h('h2', { text: '내게만 있는 것 ' + r.onlyMine.length + '벌' }), h('div', { class: 'facts' }, r.onlyMine.map((i) => h('span', { class: 'fact', text: i.name }))));
+    right.append(head, miss, both, mineOnly);
+    if (w.kind !== 'template') {
+      const all = w.items.filter((i) => J.isOwned(i) && J.inSeason(i, ui.cmpSeason));
+      right.append(h('section', { class: 'panel', id: 'cmpTour' }, h('h2', { text: '옷장 전체 ' + all.length + '벌' }), h('p', { class: 'sub', text: '주인이 적은 기록 그대로입니다. 대체 이미지는 그 사람 옷이 아닌 다른 상품의 사진입니다.' }), h('div', { class: 'grid' }, all.map((it) => itemCard(it, { theirs: true })))));
+    }
+  }
+
+  // ---------- 기록 ----------
+  function renderLog(main) {
+    const done = state.decisions.filter((d) => d.after), useful = done.filter((d) => d.after.helpful !== 'no' || d.after.shift === 'changed' || d.after.shift === 'settled').length;
+    main.append(h('p', { class: 'lead', text: '판정이 실제 결정에 도움이 됐는지 남기는 기록입니다. 이 도구를 계속 만들지 정하는 근거로 씁니다.' }));
+    const gate = h('section', { class: 'panel', id: 'gate' }, h('h2', { text: '판정 기록 ' + done.length + '건' }),
+      h('p', { class: 'sub', text: '첫 문턱은 실제로 고민한 상품 3건입니다. 그중 ' + useful + '건에서 판정이 도움이 됐거나 결정이 바뀌었습니다.' }));
+    if (done.length) {
+      const tb = h('tbody');
+      for (const d of done.slice().reverse()) tb.append(h('tr', null, h('td', { text: d.after.at }), h('td', { text: d.name }), h('td', { text: LEAN[d.before.lean] }), h('td', { text: DECIDE[d.after.decision] + ' (' + SHIFT[d.after.shift] + ')' }),
+        h('td', { text: HELP[d.after.helpful] }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }), h('td', { text: d.after.note })));
+      gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '후보', '보기 전', '결정', '도움', '판정 요약', '메모'].map((t) => h('th', { text: t })))), tb)));
+    } else gate.append(h('p', { class: 'note', text: '아직 기록이 없습니다. 살까 말까 탭에서 후보를 넣고 판정을 끝까지 진행하면 여기에 쌓입니다.' }));
+    main.append(gate);
+    // 사진 상태 요약
+    const own = owned();
+    const cnt = (k) => own.filter((i) => i.photo.kind === k).length;
+    main.append(h('section', { class: 'panel', id: 'photoStat' }, h('h2', { text: '사진과 속성 상태' }),
+      h('p', { class: 'sub', text: '옷 사진은 세 상태로만 적습니다: 확인된 동일 제품 / 미확인 후보 / 대체 이미지. 대체 이미지의 브랜드·상품명·가격은 내 옷 정보로 적지 않습니다.' }),
+      h('div', { class: 'facts' }, h('span', { class: 'fact', text: '내 사진 ' + cnt('own') + '벌' }), h('span', { class: 'fact', text: '확인된 동일 제품 ' + cnt('confirmed') + '벌' }), h('span', { class: 'fact', text: '미확인 후보 ' + cnt('candidate') + '벌' }),
+        h('span', { class: 'fact', text: '대체 이미지 ' + cnt('substitute') + '벌' }), h('span', { class: 'fact', text: '사진 없음 ' + cnt('none') + '벌' }), h('span', { class: 'fact diff', text: '속성 초안(확인 전) ' + own.filter(W.isDraft).length + '벌' }))));
+    const o = state.owner;
+    const set = (k, cast) => (e) => { state.owner[k] = cast(e.target.value); save(); };
+    main.append(h('section', { class: 'panel' }, h('h2', { text: '옷장 주인' }), h('p', { class: 'sub', text: '키와 평소 사이즈는 다른 사람이 사이즈를 고를 때 참고가 됩니다. 내보낼 때 포함할지 고를 수 있습니다.' }),
+      h('div', { class: 'form' },
+        h('div', { class: 'field' }, h('label', { for: 'o-nick', text: '닉네임' }), h('input', { id: 'o-nick', type: 'text', maxlength: '30', value: o.nickname, onchange: set('nickname', (v) => str(v, 30)) })),
+        h('div', { class: 'field' }, h('label', { for: 'o-height', text: '키 (cm)' }), h('input', { id: 'o-height', type: 'number', min: '100', max: '230', value: o.height == null ? '' : String(o.height), onchange: set('height', (v) => num(Number(v), 100, 230)) })),
+        h('div', { class: 'field' }, h('label', { for: 'o-top', text: '평소 상의 사이즈' }), h('input', { id: 'o-top', type: 'text', maxlength: '20', value: o.topSize, onchange: set('topSize', (v) => str(v, 20)) })),
+        h('div', { class: 'field' }, h('label', { for: 'o-bottom', text: '평소 하의 사이즈' }), h('input', { id: 'o-bottom', type: 'text', maxlength: '20', value: o.bottomSize, onchange: set('bottomSize', (v) => str(v, 20)) })))));
+    const ck = (k, label) => h('label', null, h('input', { type: 'checkbox', id: 'exp-' + k, checked: ui.exp[k], onchange: (e) => { ui.exp[k] = e.target.checked; } }), ' ' + label);
+    const imp = h('input', { type: 'file', accept: 'application/json,.json', id: 'importFile', hidden: true, onchange: async () => {
+      const raw = await readFileJson(imp); const w = raw && W.cleanWardrobe(raw);
+      ui.importArm = w && w.items.length && w.kind !== 'template' ? w : false; render();
+    } });
+    const io = h('section', { class: 'panel' }, h('h2', { text: '옷장 파일' }), h('p', { class: 'sub', text: '보유한 옷과 기록을 파일(스키마 2)로 내보냅니다. 구매 후보는 넣지 않습니다. 이 파일을 받은 사람은 옷장 구경 탭에서 열어 볼 수 있습니다. v0.3 파일(스키마 1)도 가져올 수 있습니다.' }),
+      h('div', { class: 'checks', style: 'margin-bottom:12px' }, ck('img', '내 사진 포함'), ck('otherImg', '남의 상품 사진 포함'), ck('cands', '미확인 브랜드 후보 포함'), ck('price', '가격과 링크 포함'), ck('body', '키와 평소 사이즈 포함'), ck('log', '판정 기록 포함')),
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'exportBtn', onclick: () => download('otjang-' + (state.owner.nickname || 'wardrobe').replace(/[^\w가-힣-]+/g, '') + '-' + today() + '.json', W.exportWardrobe(state, ui.exp)), text: '내보내기' }),
+        h('button', { class: 'btn', type: 'button', onclick: () => imp.click(), text: '내 옷장으로 가져오기' }), imp,
+        h('span', { class: 'grow' }), h('button', { class: 'btn small danger', type: 'button', id: 'resetBtn', onclick: async () => { if (!ui.resetArm) { ui.resetArm = true; render(); return; } await wipe(); state = cleanState(BASE); state.rack = defaultRack(state.items); ui.resetArm = false; ui.judgeId = ''; ui.stageSel = null; save(); render(); }, text: ui.resetArm ? '한 번 더 누르면 처음 상태로 돌아갑니다' : '처음 상태로' })));
+    if (ui.importArm === false) io.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '옷장 파일을 읽지 못했습니다.' }));
+    else if (ui.importArm) io.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', text: '지금 옷장을 지우고 파일의 옷 ' + ui.importArm.items.length + '벌로 바꿉니다.' }),
+      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
+      h('button', { class: 'btn small', type: 'button', onclick: () => { ui.importArm = null; render(); }, text: '취소' })));
+    main.append(io);
+    main.append(h('p', { class: 'note', text: '이 파일은 인터넷으로 아무것도 보내지 않습니다. 가격, 재고, 링크를 찾아오지 않고, 사진으로 옷을 입혀 보는 기능은 아직 없습니다. 저장: ' + (store.mode === 'idb' ? '브라우저 데이터베이스(IndexedDB)' : store.mode === 'ls' ? '브라우저 저장소(localStorage)' : '이 화면을 닫으면 사라짐') + (state.loadedFrom === 'ls1' ? ' · v0.3 저장소에서 옮겨 왔습니다(예전 저장소는 그대로 둠)' : '') }));
+  }
+
+  // ---------- 편집 창 (기록 수정) ----------
+  const ed = { item: null, status: 'owned', ownImg: '' };
+  const fill = (sel, map, val) => { sel.textContent = ''; for (const k in map) sel.append(h('option', { value: k, text: Array.isArray(map[k]) ? map[k][0] : map[k] })); if (val != null) sel.value = String(val); };
+  function syncKind(val) { fill($('#f-kind'), KINDS[$('#f-cat').value], val); syncMeasures(ed.item ? ed.item.measures : {}); $('#w-neck').hidden = $('#f-cat').value !== 'top'; }
+  function syncMeasures(vals) {
+    const box = $('#f-measures'); box.textContent = '';
+    for (const [k, label] of MEASURES[$('#f-cat').value]) box.append(h('div', { class: 'field' }, h('label', { for: 'm-' + k, text: label }), h('input', { id: 'm-' + k, type: 'number', min: '1', max: '300', step: '0.5', value: vals && vals[k] != null ? String(vals[k]) : '' })));
+    if (!box.children.length) box.append(h('span', { class: 'note', text: '이 분류는 실측 항목이 없습니다.' }));
+  }
+  const lightText = (v) => (v < 30 ? '(어두움 ' + v + ')' : v < 65 ? '(중간 ' + v + ')' : '(밝음 ' + v + ')');
+  function syncLight() { const v = Number($('#f-light').value); $('#f-lightv').textContent = lightText(v); $('#f-sw').style.background = swatch({ family: $('#f-family').value, light: v }); }
+  function photoBoxes(it) {
+    const box = $('#f-pics'); box.textContent = '';
+    const own = it.photo && it.photo.ownImg, cur = it.photo && it.photo.kind !== 'own' && it.photo.kind !== 'none' ? it.photo : null;
+    box.append(h('div', { class: 'pbox' }, pic({ photo: { kind: own ? 'own' : 'none', img: own }, family: it.family, light: it.light }), h('p', { class: 'cap', text: own ? '내 사진' : '내 사진 없음' })));
+    if (cur) box.append(h('div', { class: 'pbox' }, pic({ photo: cur, family: it.family, light: it.light }), h('p', { class: 'cap', text: PHOTO_KIND[cur.kind] })));
+  }
+  function openEditor(item, status) {
+    ed.item = item || null; ed.status = item ? item.status : status; ed.ownImg = item ? item.photo.ownImg : '';
+    const it = item || W.cleanItem({ cat: 'top', kind: 'shirt', name: '', family: 'white', light: 95, status: ed.status }, 0);
+    const cand = ed.status === 'candidate';
+    $('#edTitle').textContent = item ? (cand ? '구매 후보 수정' : '옷 기록') : cand ? '구매 후보 추가' : '옷 추가';
+    $('#f-name').value = it.name; fill($('#f-cat'), CATS, it.cat); syncKind(it.kind); fill($('#f-family'), FAM, it.family); $('#f-light').value = String(it.light);
+    fill($('#f-formality'), FORMAL, it.formality); fill($('#f-pattern'), PATTERNS, it.pattern); fill($('#f-rebuy'), REBUY, it.rebuy); fill($('#f-fabric'), FABRIC, it.fabric); fill($('#f-neck'), NECK, it.neck);
+    const sb = $('#f-seasons'); sb.textContent = ''; for (const s of SEASONS) sb.append(h('label', null, h('input', { type: 'checkbox', value: s, checked: it.seasons.indexOf(s) >= 0 }), ' ' + s));
+    $('#f-brand').value = it.brand; $('#f-model').value = it.model; $('#f-size').value = it.size; $('#f-year').value = it.boughtYear == null ? '' : String(it.boughtYear); $('#f-review').value = it.review;
+    $('#f-link').value = it.link; $('#f-price').value = it.price == null ? '' : String(it.price); $('#f-checked').value = it.checkedAt; $('#f-confirmed').checked = it.attrSource === 'owner-confirmed';
+    $('#f-photo').value = ''; photoBoxes(it); $('#f-photoNote').textContent = ed.ownImg ? '내 사진이 있습니다. 새로 고르면 바뀝니다.' : '사진이 없어도 됩니다.';
+    $('#f-match').hidden = !item;
+    $('#f-draftNote').textContent = it.draftNote || (W.isDraft(it) ? '사진을 보고 붙인 초안입니다. 색 계열과 밝기, 격식을 확인해 주세요.' : it.attrSource === 'owner-confirmed' ? '주인이 확인한 속성입니다.' : '');
+    for (const id of ['w-year', 'w-rebuy', 'w-review']) $('#' + id).hidden = cand;
+    $('#edDelete').hidden = !item; $('#edDelete').textContent = '삭제'; ui.delArm = false; $('#edErr').hidden = true;
+    syncLight(); $('#editor').showModal();
+  }
+  $('#f-cat').addEventListener('change', () => syncKind());
+  $('#f-family').addEventListener('change', () => { $('#f-light').value = String(FAM[$('#f-family').value][3]); syncLight(); });
+  $('#f-light').addEventListener('input', syncLight);
+  $('#edClose').addEventListener('click', () => $('#editor').close());
+  $('#edCancel').addEventListener('click', () => $('#editor').close());
+  $('#f-match').addEventListener('click', () => { if (ed.item) { $('#editor').close(); openMatch(ed.item.id); } });
+  $('#edDelete').addEventListener('click', () => {
+    if (!ui.delArm) { ui.delArm = true; $('#edDelete').textContent = '한 번 더 누르면 삭제'; return; }
+    state.items = state.items.filter((i) => i.id !== ed.item.id); state.rack = state.rack.filter((r) => r.id !== ed.item.id); if (ui.stageSel === ed.item.id) ui.stageSel = null; $('#editor').close(); save(); render();
+  });
+  $('#edForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#edErr'); err.hidden = true;
+    const f = $('#f-photo').files[0];
+    if (f) { const d = await readImage(f); if (!d) { err.textContent = '사진을 읽지 못했습니다. 다른 파일을 골라 주세요.'; err.hidden = false; return; } ed.ownImg = d; }
+    const link = $('#f-link').value.trim();
+    if (link && !safeLink(link)) { err.textContent = '링크는 http:// 또는 https://로 시작해야 합니다.'; err.hidden = false; return; }
+    const cat = $('#f-cat').value, m = {};
+    for (const [k] of MEASURES[cat]) { const v = Number(($('#m-' + k) || {}).value); if (v > 0) m[k] = v; }
+    const price = $('#f-price').value === '' ? null : Number($('#f-price').value);
+    const prev = ed.item;
+    const attrSource = $('#f-confirmed').checked ? 'owner-confirmed' : prev ? (prev.attrSource === 'owner-confirmed' ? 'owner' : prev.attrSource) : 'owner';
+    const raw = Object.assign({}, prev || {}, { id: prev ? prev.id : newId(ed.status === 'candidate' ? 'c' : 'i'), status: ed.status, cat, kind: $('#f-kind').value, name: $('#f-name').value.trim(), detail: prev ? prev.detail : '',
+      family: $('#f-family').value, light: Number($('#f-light').value), formality: Number($('#f-formality').value), pattern: $('#f-pattern').value,
+      seasons: Array.from(document.querySelectorAll('#f-seasons input:checked')).map((x) => x.value), attrSource, draftNote: prev ? prev.draftNote : '',
+      brand: $('#f-brand').value.trim(), model: $('#f-model').value.trim(), size: $('#f-size').value.trim(), boughtYear: $('#f-year').value === '' ? null : Number($('#f-year').value), review: $('#f-review').value.trim(), rebuy: $('#f-rebuy').value,
+      fabric: $('#f-fabric').value, neck: cat === 'top' ? $('#f-neck').value : '', measures: m, link, price, checkedAt: $('#f-checked').value.trim() || (price != null ? today() : '') });
+    let item = W.cleanItem(raw, 0);
+    if (!item || !raw.name) { err.textContent = '이름을 적어 주세요.'; err.hidden = false; return; }
+    if (ed.ownImg !== (prev ? prev.photo.ownImg : '')) item = W.setOwnPhoto(item, ed.ownImg);
+    if (prev && item.cat !== prev.cat && item.look3d) item.look3d = null;
+    replaceItem(item);
+    if (item.status === 'candidate') ui.judgeId = item.id;
+    $('#editor').close(); save(); render();
+  });
+
+  // ---------- 등록 마법사: 무엇인가 → 색과 느낌 → 어떤 상품인가 (모르는 것만 묻는다) ----------
+  const wz = { status: 'owned', step: 0, item: null, data: null, ownImg: '', prodImg: '', ask: null };
+  const STEP_NAMES = ['1. 무엇인가요', '2. 색과 느낌', '3. 어떤 상품인가요'];
+  function openWizard(item, status) {
+    wz.status = item ? item.status : status; wz.step = 0; wz.item = item || null; wz.ownImg = item ? item.photo.ownImg : ''; wz.prodImg = '';
+    const base = item || W.cleanItem({ cat: 'top', kind: 'shirt', name: '', family: 'white', light: 95, formality: 2, pattern: 'solid', status: wz.status }, 0);
+    wz.data = { cat: base.cat, kind: base.kind, name: base.name, family: base.family, light: base.light, formality: base.formality, pattern: base.pattern, seasons: base.seasons.slice(), confirmed: base.attrSource === 'owner-confirmed',
+      brand: base.brand, brandUnknown: false, model: base.model, modelUnknown: false, sourceUrl: '', sourceName: '', photoKind: '', price: base.price, link: base.link, checkedAt: base.checkedAt };
+    wz.ask = item ? { basics: false, attrs: W.isDraft(item), product: !item.brand || !item.model } : { basics: true, attrs: true, product: true };
+    $('#wzTitle').textContent = item ? '모르는 것만 묻기: ' + item.name : wz.status === 'candidate' ? '구매 후보 추가' : '옷 추가';
+    $('#wzErr').hidden = true;
+    wz.step = firstStep(0); renderWizard(); $('#wizard').showModal();
+  }
+  const stepOn = (i) => [wz.ask.basics, wz.ask.attrs, wz.ask.product][i];
+  function firstStep(from) { for (let i = from; i < 3; i++) if (stepOn(i)) return i; return 3; }
+  function prevStep(from) { for (let i = from - 1; i >= 0; i--) if (stepOn(i)) return i; return -1; }
+  function collect() {
+    const d = wz.data, b = $('#wzBody');
+    if (wz.step === 0) { d.cat = $('#z-cat').value; d.kind = $('#z-kind').value; d.name = $('#z-name').value.trim(); }
+    if (wz.step === 1) { d.family = $('#z-family').value; d.light = Number($('#z-light').value); d.formality = Number($('#z-formality').value); d.pattern = $('#z-pattern').value; d.seasons = Array.from(b.querySelectorAll('#z-seasons input:checked')).map((x) => x.value); d.confirmed = $('#z-confirmed').checked; }
+    if (wz.step === 2) {
+      d.brand = $('#z-brand').value.trim(); d.model = $('#z-model').value.trim(); d.sourceUrl = $('#z-url').value.trim(); d.sourceName = $('#z-source').value.trim();
+      const pk = b.querySelector('input[name="photoKind"]:checked'); d.photoKind = pk ? pk.value : '';
+      if (wz.status === 'candidate') { d.price = $('#z-price').value === '' ? null : Number($('#z-price').value); d.link = $('#z-link').value.trim(); d.checkedAt = $('#z-checked').value.trim(); }
+    }
+  }
+  function renderWizard() {
+    const d = wz.data, b = $('#wzBody'); b.textContent = '';
+    const steps = $('#wzSteps'); steps.textContent = '';
+    STEP_NAMES.forEach((n, i) => { if (stepOn(i)) steps.append(h('span', { class: 'step' + (i === wz.step ? ' on' : i < wz.step ? ' done' : ''), text: n })); });
+    $('#wzBack').disabled = prevStep(wz.step) < 0;
+    $('#wzNext').textContent = firstStep(wz.step + 1) >= 3 ? '저장' : '다음';
+    if (wz.step === 0) {
+      const cat = h('select', { id: 'z-cat' }), kind = h('select', { id: 'z-kind' }); fill(cat, CATS, d.cat); fill(kind, KINDS[d.cat], d.kind);
+      cat.addEventListener('change', () => fill(kind, KINDS[cat.value]));
+      const photo = h('input', { id: 'z-photo', type: 'file', accept: 'image/*' });
+      b.append(h('p', { class: 'note', style: 'margin-bottom:10px', text: wz.status === 'candidate' ? '살까 고민 중인 옷입니다. 사진이 없어도 종류와 색만으로 판정합니다.' : '옷 한 벌을 적습니다. 사진은 얼굴과 몸이 없는 옷 사진으로 넣습니다. 이 사진은 이 브라우저 안에만 남습니다.' }),
+        h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'z-cat', text: '분류' }), cat), h('div', { class: 'field' }, h('label', { for: 'z-kind', text: '종류' }), kind),
+          h('div', { class: 'field full' }, h('label', { for: 'z-name', text: '이름 (부르는 대로)' }), h('input', { id: 'z-name', type: 'text', maxlength: '80', value: d.name, placeholder: '예: 네이비 케이블 니트 카디건' })),
+          h('div', { class: 'field full' }, h('label', { for: 'z-photo', text: '내 사진 (선택)' }), photo, h('span', { class: 'note', text: wz.ownImg ? '사진이 있습니다. 새로 고르면 바뀝니다.' : '' }))));
+    }
+    if (wz.step === 1) {
+      const fam = h('select', { id: 'z-family' }), light = h('input', { id: 'z-light', type: 'range', min: '0', max: '100', step: '1', value: String(d.light) }), sw = h('span', { class: 'sw', id: 'z-sw' }), lv = h('span', { id: 'z-lightv' });
+      fill(fam, FAM, d.family); const sync = () => { const v = Number(light.value); lv.textContent = lightText(v); sw.style.background = swatch({ family: fam.value, light: v }); }; fam.addEventListener('change', () => { light.value = String(FAM[fam.value][3]); sync(); }); light.addEventListener('input', sync);
+      const form = h('select', { id: 'z-formality' }), pat = h('select', { id: 'z-pattern' }); fill(form, FORMAL, d.formality); fill(pat, PATTERNS, d.pattern);
+      const sb = h('div', { class: 'checks', id: 'z-seasons' }); for (const s of SEASONS) sb.append(h('label', null, h('input', { type: 'checkbox', value: s, checked: d.seasons.indexOf(s) >= 0 }), ' ' + s));
+      b.append(h('p', { class: 'note', style: 'margin-bottom:10px', text: (wz.item && W.isDraft(wz.item) ? '지금 값은 사진에서 뽑은 초안입니다. ' : '') + '규칙은 색 계열, 밝기, 격식, 무늬만 봅니다. 모르면 그대로 두어도 됩니다.' }),
+        h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'z-family', text: '색 계열' }), fam), h('div', { class: 'field' }, h('label', { for: 'z-light' }, '밝기 ', lv), h('div', { class: 'range' }, sw, light)),
+          h('div', { class: 'field' }, h('label', { for: 'z-formality', text: '격식' }), form), h('div', { class: 'field' }, h('label', { for: 'z-pattern', text: '무늬' }), pat),
+          h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (비워 두면 사계절)' }), sb),
+          h('div', { class: 'field full' }, h('div', { class: 'checks' }, h('label', null, h('input', { id: 'z-confirmed', type: 'checkbox', checked: d.confirmed }), ' 색·밝기·격식·무늬를 직접 확인했습니다')))));
+      sync();
+    }
+    if (wz.step === 2) {
+      const unk = (inputId, flag) => h('button', { class: 'btn small', type: 'button', onclick: () => { $('#' + inputId).value = ''; d[flag] = true; $('#' + inputId).placeholder = '모름'; }, text: '모름' });
+      const askBrand = !wz.item || !wz.item.brand, askModel = !wz.item || !wz.item.model;
+      const kinds = h('div', { class: 'choices', id: 'z-photoKind' },
+        [['confirmed', '이 사진이 같은 상품임을 확인했습니다'], ['candidate', '같은 상품인지 아직 확실하지 않습니다'], ['substitute', '다른 상품의 사진을 임시로 걸어 둡니다 (내 옷 아님)']].map(([k, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'photoKind', value: k, checked: d.photoKind === k }), h('span', { text: t }))));
+      const prod = h('input', { id: 'z-prodPhoto', type: 'file', accept: 'image/*' });
+      b.append(h('p', { class: 'note', style: 'margin-bottom:10px', text: '사진만으로는 브랜드 후보까지만 나옵니다. 아는 것만 적고, 모르면 "모름"을 누르세요. 상품 사진은 직접 넣고(이 화면은 주소를 열거나 긁어 오지 않습니다), 같은 상품인지도 직접 확인합니다.' }),
+        h('div', { class: 'form' },
+          askBrand ? h('div', { class: 'field' }, h('label', { for: 'z-brand', text: '브랜드' }), h('div', { class: 'inl' }, h('input', { id: 'z-brand', type: 'text', maxlength: '60', value: d.brand }), unk('z-brand', 'brandUnknown'))) : h('input', { id: 'z-brand', type: 'hidden', value: d.brand }),
+          askModel ? h('div', { class: 'field' }, h('label', { for: 'z-model', text: '상품명이나 품번' }), h('div', { class: 'inl' }, h('input', { id: 'z-model', type: 'text', maxlength: '80', value: d.model }), unk('z-model', 'modelUnknown'))) : h('input', { id: 'z-model', type: 'hidden', value: d.model }),
+          h('div', { class: 'field full' }, h('label', { for: 'z-url', text: '상품 사진의 출처 주소 (선택)' }), h('input', { id: 'z-url', type: 'url', maxlength: '400', value: d.sourceUrl, placeholder: 'https:' + '//' })),
+          h('div', { class: 'field' }, h('label', { for: 'z-source', text: '출처 이름 (선택)' }), h('input', { id: 'z-source', type: 'text', maxlength: '80', value: d.sourceName, placeholder: '예: 공식몰, 무신사' })),
+          h('div', { class: 'field' }, h('label', { for: 'z-prodPhoto', text: '상품 사진 (선택)' }), prod),
+          h('div', { class: 'field full' }, h('span', { class: 'l', text: '상품 사진이나 주소를 넣었다면, 그 사진의 상태' }), kinds, h('span', { class: 'note', text: '확인하지 않은 사진의 브랜드·가격은 내 옷 정보로 적히지 않습니다.' })),
+          wz.status === 'candidate' ? [h('div', { class: 'field' }, h('label', { for: 'z-price', text: '가격 (원, 직접 확인한 값)' }), h('input', { id: 'z-price', type: 'number', min: '0', step: '100', value: d.price == null ? '' : String(d.price) })),
+            h('div', { class: 'field' }, h('label', { for: 'z-checked', text: '가격을 확인한 날' }), h('input', { id: 'z-checked', type: 'text', maxlength: '10', value: d.checkedAt || today() })),
+            h('div', { class: 'field full' }, h('label', { for: 'z-link', text: '판매 링크 (선택)' }), h('input', { id: 'z-link', type: 'url', maxlength: '400', value: d.link, placeholder: 'https:' + '//' }))] : null));
+    }
+  }
+  async function wizardNext() {
+    const err = $('#wzErr'); err.hidden = true;
+    if (wz.step === 0) { const f = $('#z-photo').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.ownImg = img; } }
+    if (wz.step === 2) { const f = $('#z-prodPhoto').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '상품 사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.prodImg = img; } }
+    collect();
+    const d = wz.data;
+    if (wz.step === 0 && !d.name) { err.textContent = '이름을 적어 주세요.'; err.hidden = false; return; }
+    if (wz.step === 2) {
+      if (d.sourceUrl && !safeLink(d.sourceUrl)) { err.textContent = '주소는 http:// 또는 https://로 시작해야 합니다.'; err.hidden = false; return; }
+      if (d.link && !safeLink(d.link)) { err.textContent = '판매 링크는 http:// 또는 https://로 시작해야 합니다.'; err.hidden = false; return; }
+      const hasProd = !!(wz.prodImg || d.sourceUrl);
+      if (hasProd && !d.photoKind) { err.textContent = '상품 사진의 상태를 골라 주세요.'; err.hidden = false; return; }
+      if (hasProd && d.photoKind === 'confirmed' && !d.brand && !d.model) { err.textContent = '같은 상품이라고 확인하려면 브랜드나 상품명이 있어야 합니다.'; err.hidden = false; return; }
+    }
+    const next = firstStep(wz.step + 1);
+    if (next < 3) { wz.step = next; renderWizard(); return; }
+    // 저장
+    const prev = wz.item;
+    const attrSource = d.confirmed ? 'owner-confirmed' : prev ? (prev.attrSource === 'owner-confirmed' ? 'owner' : prev.attrSource) : 'owner';
+    let item = W.cleanItem(Object.assign({}, prev || {}, { id: prev ? prev.id : newId(wz.status === 'candidate' ? 'c' : 'i'), status: wz.status, cat: d.cat, kind: d.kind, name: d.name, family: d.family, light: d.light, formality: d.formality, pattern: d.pattern, seasons: d.seasons,
+      attrSource, brand: d.brand, model: d.model, price: wz.status === 'candidate' ? d.price : (prev ? prev.price : null), link: wz.status === 'candidate' ? d.link : (prev ? prev.link : ''), checkedAt: wz.status === 'candidate' ? (d.checkedAt || (d.price != null ? today() : '')) : (prev ? prev.checkedAt : '') }), 0);
+    if (!item) { err.textContent = '저장할 수 없습니다.'; err.hidden = false; return; }
+    if (wz.ownImg !== item.photo.ownImg) item = W.setOwnPhoto(item, wz.ownImg);
+    if (wz.prodImg || d.sourceUrl) {
+      if (d.photoKind === 'confirmed') item = W.confirmProduct(item, { brand: d.brand, name: d.model, img: wz.prodImg, sourceName: d.sourceName, sourceUrl: d.sourceUrl });
+      else item = W.setProductPhoto(item, d.photoKind, { img: wz.prodImg, sourceName: d.sourceName, sourceUrl: d.sourceUrl, brand: d.photoKind === 'candidate' ? d.brand : '', name: d.photoKind === 'candidate' ? d.model : '', evidence: 'owner' });
+    }
+    if (prev && item.cat !== prev.cat && item.look3d) item.look3d = null;
+    replaceItem(item);
+    if (item.status === 'candidate') ui.judgeId = item.id;
+    $('#wizard').close(); save(); render();
+  }
+  $('#wzNext').addEventListener('click', wizardNext);
+  $('#wzForm').addEventListener('submit', (e) => { e.preventDefault(); wizardNext(); });
+  $('#wzBack').addEventListener('click', () => { collect(); const p = prevStep(wz.step); if (p >= 0) { wz.step = p; renderWizard(); } });
+  $('#wzClose').addEventListener('click', () => $('#wizard').close());
+  $('#wzCancel').addEventListener('click', () => $('#wizard').close());
+
+  // ---------- 상품 사진과 확인 ----------
+  const mt = { id: '' };
+  function openMatch(id) { mt.id = id; renderMatch(); $('#match').showModal(); }
+  function renderMatch() {
+    const it = byId(mt.id), b = $('#mtBody'); b.textContent = ''; if (!it) return;
+    const update = (next) => { replaceItem(next); save(); renderMatch(); render(); };
+    b.append(h('p', { class: 'note', style: 'margin-bottom:10px', text: it.name + ' — 지금 사진 상태: ' + PHOTO_KIND[it.photo.kind] + '. 상태는 여기서 직접 올리고 내립니다. 자동으로 바뀌지 않습니다.' }));
+    const pics = h('div', { class: 'pics' });
+    pics.append(h('div', { class: 'pbox' }, pic({ photo: { kind: it.photo.ownImg ? 'own' : 'none', img: it.photo.ownImg }, family: it.family, light: it.light }), h('p', { class: 'cap', text: it.photo.ownImg ? '내 사진' : '내 사진 없음' })));
+    if (it.photo.kind !== 'own' && it.photo.kind !== 'none') pics.append(h('div', { class: 'pbox' }, pic({ photo: it.photo, family: it.family, light: it.light }), h('p', { class: 'cap', text: PHOTO_KIND[it.photo.kind] + (it.photo.sourceName ? ' · ' + it.photo.sourceName : '') })));
+    b.append(pics);
+    if (it.product) b.append(h('p', { class: 'rec', style: 'margin-top:8px', text: '확인된 상품: ' + [it.product.brand, it.product.name, it.product.code].filter(Boolean).join(' ') + ' (' + it.product.confirmedAt + ' 확인)' }),
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, h('button', { class: 'btn small', type: 'button', id: 'mtUnconfirm', onclick: () => update(W.unconfirm(it)), text: '확인 취소 (미확인 후보로)' })));
+    if (it.photo.kind !== 'own' && it.photo.kind !== 'none') b.append(h('div', { class: 'bar', style: 'margin:8px 0 0' },
+      it.photo.sourceUrl ? h('a', { href: it.photo.sourceUrl, target: '_blank', rel: 'noopener noreferrer', text: '출처 주소' }) : null,
+      h('button', { class: 'btn small', type: 'button', id: 'mtClear', onclick: () => update(W.clearProductPhoto(it)), text: '상품 사진 떼기' + (it.photo.ownImg ? ' (내 사진으로)' : '') })));
+    b.append(h('hr', { class: 'hr' }));
+    // 후보 목록
+    const cl = h('div', { class: 'candlist' });
+    b.append(h('span', { class: 'l', text: '브랜드·상품 후보 (확인 전, 내 옷 정보가 아님)' }), cl);
+    if (!it.matchCandidates.length) cl.append(h('p', { class: 'note', text: '후보가 없습니다.' }));
+    it.matchCandidates.forEach((c, i) => cl.append(h('div', { class: 'candrow' }, h('span', { class: 'grow', text: [c.brand, c.name].filter(Boolean).join(' ') + ' — ' + EVIDENCE[c.evidence] + (c.note ? ' · ' + c.note : '') }),
+      c.url ? h('a', { href: c.url, target: '_blank', rel: 'noopener noreferrer', text: '주소' }) : null,
+      h('button', { class: 'btn small primary', type: 'button', onclick: () => update(W.confirmProduct(it, { brand: c.brand, name: c.name, sourceUrl: c.url })), text: '같은 상품으로 확인' }),
+      h('button', { class: 'btn small', type: 'button', onclick: () => update(W.removeCandidate(it, i)), text: '지우기' }))));
+    b.append(h('hr', { class: 'hr' }));
+    // 새로 넣기
+    const brand = h('input', { id: 'mt-brand', type: 'text', maxlength: '60', placeholder: '브랜드' }), name = h('input', { id: 'mt-name', type: 'text', maxlength: '80', placeholder: '상품명·품번' });
+    const src = h('input', { id: 'mt-source', type: 'text', maxlength: '80', placeholder: '출처 이름 (예: 공식몰)' }), url = h('input', { id: 'mt-url', type: 'url', maxlength: '400', placeholder: 'https:' + '// (열거나 긁어 오지 않습니다)' });
+    const file = h('input', { id: 'mt-photo', type: 'file', accept: 'image/*' }), err = h('p', { class: 'warnnote', hidden: true });
+    const go = async (kind) => {
+      err.hidden = true; let img = '';
+      const f = file.files[0]; if (f) { img = await readImage(f); if (!img) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } }
+      const u = url.value.trim(); if (u && !safeLink(u)) { err.textContent = '주소는 http:// 또는 https://로 시작해야 합니다.'; err.hidden = false; return; }
+      if (kind === 'candidate-only') { if (!brand.value.trim() && !name.value.trim()) { err.textContent = '브랜드나 상품명을 적어 주세요.'; err.hidden = false; return; } return update(W.addCandidate(it, { brand: brand.value, name: name.value, evidence: 'owner', url: u })); }
+      if (!img && !u) { err.textContent = '상품 사진이나 출처 주소를 넣어 주세요.'; err.hidden = false; return; }
+      if (kind === 'confirmed') { if (!brand.value.trim() && !name.value.trim()) { err.textContent = '같은 상품이라고 확인하려면 브랜드나 상품명이 있어야 합니다.'; err.hidden = false; return; } return update(W.confirmProduct(it, { brand: brand.value, name: name.value, img, sourceName: src.value, sourceUrl: u })); }
+      update(W.setProductPhoto(it, kind, { img, sourceName: src.value, sourceUrl: u, brand: kind === 'candidate' ? brand.value : '', name: kind === 'candidate' ? name.value : '', evidence: 'owner' }));
+    };
+    b.append(h('span', { class: 'l', text: '상품 사진 넣기 / 후보 적기' }),
+      h('div', { class: 'form', style: 'margin-top:8px' }, h('div', { class: 'field' }, brand), h('div', { class: 'field' }, name), h('div', { class: 'field' }, src), h('div', { class: 'field' }, file), h('div', { class: 'field full' }, url)),
+      h('div', { class: 'bar', style: 'margin:10px 0 0' },
+        h('button', { class: 'btn small primary', type: 'button', id: 'mtConfirm', onclick: () => go('confirmed'), text: '같은 상품임을 확인하고 걸기' }),
+        h('button', { class: 'btn small', type: 'button', id: 'mtCand', onclick: () => go('candidate'), text: '미확인 후보로 걸기' }),
+        h('button', { class: 'btn small', type: 'button', id: 'mtSub', onclick: () => go('substitute'), text: '대체 이미지로 걸기' }),
+        h('button', { class: 'btn small', type: 'button', id: 'mtAddCand', onclick: () => go('candidate-only'), text: '후보만 적기' })), err);
+  }
+  $('#mtClose').addEventListener('click', () => $('#match').close());
+  $('#mtCancel').addEventListener('click', () => $('#match').close());
+  $('#mtForm').addEventListener('submit', (e) => e.preventDefault());
+
+  // ---------- 상품 추가·수정 ----------
+  const pd = { item: null, img: '' };
+  function syncPLight() { const v = Number($('#p-light').value); $('#p-lightv').textContent = lightText(v); $('#p-sw').style.background = swatch({ family: $('#p-family').value, light: v }); }
+  function openProduct(p) {
+    pd.item = p || null; pd.img = p ? p.img : '';
+    const it = p || { brand: '', name: '', code: '', link: '', cat: 'top', kind: 'shirt', family: 'white', light: 95, formality: 2, pattern: 'solid', seasons: [], price: null, checkedAt: '', note: '' };
+    $('#pdTitle').textContent = p ? '상품 수정' : '상품 추가';
+    $('#p-brand').value = it.brand; $('#p-name').value = it.name; $('#p-code').value = it.code; $('#p-link').value = it.link;
+    fill($('#p-cat'), CATS, it.cat); fill($('#p-kind'), KINDS[it.cat], it.kind); fill($('#p-family'), FAM, it.family); $('#p-light').value = String(it.light); fill($('#p-formality'), FORMAL, it.formality); fill($('#p-pattern'), PATTERNS, it.pattern);
+    const sb = $('#p-seasons'); sb.textContent = ''; for (const s of SEASONS) sb.append(h('label', null, h('input', { type: 'checkbox', value: s, checked: it.seasons.indexOf(s) >= 0 }), ' ' + s));
+    $('#p-price').value = it.price == null ? '' : String(it.price); $('#p-checked').value = it.checkedAt || today(); $('#p-note').value = it.note; $('#p-photo').value = ''; $('#p-photoNote').textContent = pd.img ? '사진이 있습니다. 새로 고르면 바뀝니다.' : '';
+    $('#pdDelete').hidden = !p; $('#pdErr').hidden = true; syncPLight(); $('#product').showModal();
+  }
+  $('#p-cat').addEventListener('change', () => fill($('#p-kind'), KINDS[$('#p-cat').value]));
+  $('#p-family').addEventListener('change', () => { $('#p-light').value = String(FAM[$('#p-family').value][3]); syncPLight(); });
+  $('#p-light').addEventListener('input', syncPLight);
+  $('#pdClose').addEventListener('click', () => $('#product').close());
+  $('#pdCancel').addEventListener('click', () => $('#product').close());
+  $('#pdDelete').addEventListener('click', () => { if (pd.item) { state.catalog.products = state.catalog.products.filter((x) => x.id !== pd.item.id); $('#product').close(); save(); render(); } });
+  $('#pdForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#pdErr'); err.hidden = true;
+    const f = $('#p-photo').files[0];
+    if (f) { const d = await readImage(f); if (!d) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } pd.img = d; }
+    const link = $('#p-link').value.trim(); if (link && !safeLink(link)) { err.textContent = '주소는 http:// 또는 https://로 시작해야 합니다.'; err.hidden = false; return; }
+    const price = $('#p-price').value === '' ? null : Number($('#p-price').value);
+    const raw = { id: pd.item ? pd.item.id : newId('p'), brand: $('#p-brand').value.trim(), name: $('#p-name').value.trim(), code: $('#p-code').value.trim(), link, cat: $('#p-cat').value, kind: $('#p-kind').value, family: $('#p-family').value, light: Number($('#p-light').value),
+      formality: Number($('#p-formality').value), pattern: $('#p-pattern').value, seasons: Array.from(document.querySelectorAll('#p-seasons input:checked')).map((x) => x.value), price, checkedAt: $('#p-checked').value.trim() || (price != null ? today() : ''), img: pd.img, note: $('#p-note').value.trim(), addedAt: pd.item ? pd.item.addedAt : today() };
+    const p = C.cleanProduct(raw, 0);
+    if (!p) { err.textContent = '상품명을 적어 주세요.'; err.hidden = false; return; }
+    const at = state.catalog.products.findIndex((x) => x.id === p.id); if (at >= 0) state.catalog.products[at] = p; else state.catalog.products.push(p);
+    $('#product').close(); save(); render();
+  });
+
+  // ---------- 시작 ----------
+  load().then((s) => {
+    state = s;
+    window.__app = { get state() { return state; }, ui, J, R, W, C, flush: () => savePromise, store, hang, unhang };
+    save(); render();
+  });
+})();
+</script>
+</body>
+</html>

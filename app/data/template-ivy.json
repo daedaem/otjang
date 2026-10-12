@@ -1,0 +1,234 @@
+{
+ "schema": 1,
+ "kind": "template",
+ "name": "아이비·아메리칸 캐주얼 기본 옷장",
+ "draft": true,
+ "note": "작성자가 만든 초안입니다. 맞지 않는 항목은 직접 고쳐 쓰세요.",
+ "items": [
+  {
+   "id": "t-ocbd-white",
+   "cat": "top",
+   "kind": "shirt",
+   "name": "흰색 옥스퍼드 버튼다운 셔츠",
+   "family": "white",
+   "light": 95,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "t-ocbd-blue",
+   "cat": "top",
+   "kind": "shirt",
+   "name": "블루 옥스퍼드 버튼다운 셔츠",
+   "family": "blue",
+   "light": 80,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "t-stripe",
+   "cat": "top",
+   "kind": "shirt",
+   "name": "블루 스트라이프 셔츠",
+   "family": "blue",
+   "light": 86,
+   "formality": 3,
+   "pattern": "stripe",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을"
+   ]
+  },
+  {
+   "id": "t-tee-white",
+   "cat": "top",
+   "kind": "tee",
+   "name": "흰 크루넥 티셔츠",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "t-sweat-gray",
+   "cat": "top",
+   "kind": "sweat",
+   "name": "그레이 스웻셔츠",
+   "family": "gray",
+   "light": 68,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "t-knit-navy",
+   "cat": "top",
+   "kind": "knit",
+   "name": "네이비 크루넥 니트",
+   "family": "navy",
+   "light": 18,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "b-chino-khaki",
+   "cat": "bottom",
+   "kind": "chino",
+   "name": "카키 치노",
+   "family": "khaki",
+   "light": 64,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을"
+   ]
+  },
+  {
+   "id": "b-denim-raw",
+   "cat": "bottom",
+   "kind": "denim",
+   "name": "생지 인디고 데님",
+   "family": "indigo",
+   "light": 12,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "b-wool-gray",
+   "cat": "bottom",
+   "kind": "slacks",
+   "name": "그레이 울 팬츠",
+   "family": "gray",
+   "light": 45,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "o-blazer-navy",
+   "cat": "outer",
+   "kind": "blazer",
+   "name": "네이비 블레이저",
+   "family": "navy",
+   "light": 16,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을"
+   ]
+  },
+  {
+   "id": "o-cardigan-navy",
+   "cat": "outer",
+   "kind": "cardigan",
+   "name": "네이비 카디건",
+   "family": "navy",
+   "light": 18,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "o-field-olive",
+   "cat": "outer",
+   "kind": "jacket",
+   "name": "올리브 필드 재킷",
+   "family": "olive",
+   "light": 45,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을"
+   ]
+  },
+  {
+   "id": "o-harrington",
+   "cat": "outer",
+   "kind": "jacket",
+   "name": "베이지 해링턴 재킷",
+   "family": "beige",
+   "light": 72,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을"
+   ]
+  },
+  {
+   "id": "s-loafer-brown",
+   "cat": "shoes",
+   "kind": "loafer",
+   "name": "브라운 페니 로퍼",
+   "family": "brown",
+   "light": 25,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을",
+    "겨울"
+   ]
+  },
+  {
+   "id": "s-sneaker-white",
+   "cat": "shoes",
+   "kind": "sneaker",
+   "name": "흰 캔버스 스니커즈",
+   "family": "white",
+   "light": 92,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "여름",
+    "가을"
+   ]
+  }
+ ]
+}
