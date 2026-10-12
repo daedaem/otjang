@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>어울 (가칭)</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-JMoVQywhtAPPbqva8UqLH1ivNfjwIqc2oK9InL9ZoKg=' 'sha256-uBQua/+lbz7FH1J4NT8kE7rINU39gyBHKMjkZCyKUSI=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-Q2GaMJj3mvc7JyaXIG5Q3fDT0F6pCq50mdJ3BKWVmHE=' 'sha256-X9WY5/Bn2pLmOlws79K6UH6yUvwpGTfMjwDYKyo+NuY=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-3dK0VUGeh0LpG38oUxjTlzmRF9019qf0PfRnapxoJ5g=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-JMoVQywhtAPPbqva8UqLH1ivNfjwIqc2oK9InL9ZoKg=' 'sha256-uBQua/+lbz7FH1J4NT8kE7rINU39gyBHKMjkZCyKUSI=' 'sha256-y5bP9Qr1yPktSuIXyG8BDKc1XNyu1R4gPdNrmt9Gong=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-Z51lGwcgbP+c727xcTGiKV0njJXBJLAZNpGEewtLyj8=' 'sha256-929hJ3tyM1e1hoK7HZa8D/d8RuIEeWRG8AUqUdhxWy0=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-ZtGkD0ZkGuQp+e+Gl+S3yBD1IzR0IKEGs2lBfI6UpeM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
@@ -13,17 +13,17 @@
 <meta name="theme-color" content="#F5F2EA">
 <style>
 :root{
-  --paper:#F5F2EA; --card:#FFFDF8; --ink:#1E2227; --ink2:#5B6068; --line:#DDD6C8; --line2:#C4BBA9;
-  --accent:#1F2A45; --accent-ink:#FFFFFF; --warm:#A8502A; --warm-bg:#F6E3D8; --ok:#3F6B4A; --ok-bg:#E3EEDF; --tint:#ECE7DB; --thumb:#EAE5D9; --stage:#d9d1c4;
+  --paper:#F5F2EA; --card:#FFFDF8; --ink:#1E2227; --ink2:#5B6068; --line:#DDD6C8; --line2:#948A78;
+  --accent:#1F2A45; --accent-ink:#FFFFFF; --warm:#A8502A; --warm-bg:#F6E3D8; --ok:#3F6B4A; --ok-bg:#E3EEDF; --tint:#ECE7DB; --thumb:#EAE5D9; --stage:#d9d1c4; --sel:#E6E2D7;
   --serif:"Nanum Myeongjo","AppleMyungjo","Noto Serif KR",Georgia,serif;
   --sans:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#4A4F57;
-    --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; }
+  :root:not([data-theme="light"]){ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#70767F;
+    --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; --sel:#30353D; }
 }
-:root[data-theme="dark"]{ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#4A4F57;
-  --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; }
+:root[data-theme="dark"]{ --paper:#16181B; --card:#1E2125; --ink:#ECE9E2; --ink2:#A3A7AD; --line:#32363C; --line2:#70767F;
+  --accent:#B5C4EA; --accent-ink:#141821; --warm:#E59A72; --warm-bg:#3A261C; --ok:#8FBF9B; --ok-bg:#1F2D23; --tint:#24272C; --thumb:#2A2D32; --stage:#2a2d31; --sel:#30353D; }
 *{box-sizing:border-box}
 html{color-scheme:light dark}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-text-size-adjust:100%}
@@ -48,7 +48,8 @@ main{padding:20px 0 64px}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
 .bar .grow{flex:1}
 .chip{appearance:none;border:1px solid var(--line2);background:none;border-radius:999px;padding:5px 12px;cursor:pointer;font-size:13.5px;color:var(--ink2)}
-.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip[aria-pressed="true"]{background:var(--sel);border-color:var(--accent);color:var(--ink);font-weight:650}
+.chip[aria-pressed="true"]::before{content:"✓ "}
 .btn{appearance:none;border:1px solid var(--line2);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.small{padding:5px 10px;font-size:13px}
@@ -112,7 +113,8 @@ textarea{resize:vertical;min-height:64px}
 .names{font-size:13.5px;font-weight:650;margin-bottom:6px;overflow-wrap:anywhere}
 ul.why{margin:0;padding-left:18px;font-size:13px;color:var(--ink)}
 ul.why li{margin:2px 0}
-ul.why.warn li{color:var(--warm)}
+ul.why.warn li{color:var(--ink)}
+ul.why.warn li::marker{color:var(--warm)}
 .score{font-size:12px;color:var(--ink2);margin-top:8px}
 .draftnote{font-size:12px;color:var(--ink2);border:1px dashed var(--line2);border-radius:8px;padding:6px 10px;margin-top:8px}
 .steps{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
@@ -208,6 +210,64 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 .brow .bf .full{grid-column:1/-1}
 .brow .bf .inl .sw{width:22px;height:22px;border-radius:6px;border:1px solid var(--line2);flex:none}
 .notice .choices{margin:6px 0 8px}
+/* 추천: 기준으로 딱 하나 */
+.pform .fl{font-size:12.5px;color:var(--ink2);font-weight:650;margin:14px 0 6px}
+.pform .fl:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.ord{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11.5px;line-height:18px;text-align:center;margin-right:6px;font-weight:700}
+.chip.nock[aria-pressed="true"]::before{content:none}
+.meas{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meas label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.meas input{width:78px}
+.meas select{width:auto}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line2);border-radius:10px;overflow:hidden;max-width:100%}
+.seg button{appearance:none;border:0;background:var(--card);padding:8px 13px;font-weight:600;color:var(--ink2);cursor:pointer;min-height:40px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-checked="true"]{background:var(--sel);color:var(--ink);box-shadow:inset 0 -3px 0 var(--accent)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.conds{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.slots{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.slot{display:inline-flex;align-items:center;border:1px dashed var(--line2);border-radius:10px;padding:6px 10px;font-size:13.5px;color:var(--ink2);min-height:40px;background:none}
+.slot.on{border-style:solid;border-color:var(--accent);color:var(--ink);background:var(--sel);font-weight:650;cursor:pointer;gap:2px}
+.slot .x{color:var(--ink2);font-size:12px;margin-left:8px}
+.phead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ptitle{font-size:14px;color:var(--ink2)}.ptitle b{color:var(--ink)}
+.csum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--card);font-size:13.5px}
+.pbar{position:sticky;bottom:0;z-index:4;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border-top:1px solid var(--line2);padding:10px 0 4px;margin-top:14px}
+.pbar .pbt{font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.taste{margin-top:14px;border-top:1px solid var(--line);padding-top:4px}
+.taste>summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;padding:8px 0;list-style-position:outside}
+.fl2{font-size:12.5px;color:var(--ink2);font-weight:650}
+.pick{background:var(--card);border:2px solid var(--accent);border-radius:14px;padding:16px;margin:0 0 12px}
+.pick .eyebrow,.alt .eyebrow{font-size:12.5px;color:var(--ink2);font-weight:650;margin-bottom:8px}
+.pickgrid{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:start}
+svg.tee{width:88px;height:88px;display:block;background:var(--thumb);border-radius:10px}
+.tcap{font-size:10.5px;color:var(--ink2);margin-top:4px;line-height:1.3}
+.pick h3{font:700 18px/1.3 var(--serif);overflow-wrap:anywhere}
+.pick .pp,.alt .pp{margin:6px 0 2px}
+.pick .pp b{font-size:17px}
+.pick .src,.alt .src{font-size:12.5px;color:var(--ink2)}
+.concl{font-size:15px;font-weight:600;margin:12px 0 4px;line-height:1.5}
+ul.checks{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+ul.checks .mk{display:inline-block;width:18px;font-weight:700}
+.ck.ok .mk,.ck.good .mk{color:var(--ok)}.ck.fail .mk,.ck.low .mk{color:var(--warm)}.ck.unknown .mk,.ck.mid .mk{color:var(--ink2)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.disc{color:var(--warm);font-weight:700;font-size:13px}
+del{color:var(--ink2);font-size:13px}
+.vrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line2)}
+.alts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:0 0 12px}
+.alt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.alt h3{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+.pnotes{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--ink2)}
+ol.rlist,ul.rlist{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.rlist li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:6px;font-size:13.5px}
+.rlist .rk{display:flex;flex-direction:column;min-width:0}
+.rlist .n{color:var(--ink2);font-variant-numeric:tabular-nums}
+.warnc{color:var(--warm)}
+#pickResult{scroll-margin-top:56px}
+details.ev{margin-top:10px}details.ev>summary{cursor:pointer;font-size:13px;color:var(--ink2);padding:4px 0}
+details.ev ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
+@media (pointer:coarse){.chip{min-height:40px;padding:7px 13px}}
 </style>
 </head>
 <body>
@@ -1082,6 +1142,457 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 });
 </script>
 <script>/*
+ * Pick — 사고 싶은 옷 하나를 "내 기준"으로 골라 주는 추천. 검증 카탈로그(data/picks.json) 안에서만 고른다. AI를 쓰지 않는다.
+ *
+ * 카탈로그: 공식 스토어·공식 판매처의 상품 페이지에서 직접 확인한 값만 들어 있다. 값마다 출처 등급(SRC)이 있다.
+ *   가격·재고는 확인한 날(checkedAt)의 값이다. 상품 사진은 가져오지 않고 판매처 링크만 둔다. 스타일 분류(styles)는 어울의 편집 판단이다.
+ *
+ * 기준(CRITERIA) — 누른 순서대로 무게 3·2·1.5·1.2·1, 누르지 않은 기준은 0.5 [제안값]
+ *   value   가성비: 한 장 값(해외면 배송비 포함) ÷ 품질 점수. 품목마다 고정 기준선(lines[].value.lo·hi)으로 0~1. 목록에 무엇이 있든 같은 상품은 같은 값
+ *   quality 공개된 품질 근거: 면 100%, 수피마·라일·링스펀, 루프휠·통짜·인터로크, 바인딩 목. 출처 등급으로 가중(공식·고시 1, 상품명 0.5, 판매처 설명 0.3).
+ *           정보를 밝히지 않은 상품은 낮게 나온다(품질이 낮다는 뜻이 아니다)
+ *   brand   좋아하는 브랜드 1, 같은 계열(폴로 ↔ 퍼플 라벨) 0.5
+ *   fit     잘 맞는 옷 실측과 가장 가까운 사이즈, 또는 평소 사이즈의 판매·재고
+ *   style   고른 스타일(편집 분류)과 겹치면 1. 기본 품목(styleRole: 'tiebreak')은 무게를 0.3 이하로 묶어 동점 깨기에만 쓴다
+ * 용도(USES)와 꼭 지킬 조건(CONDS): 카디건·셔츠 안에 → 로고 안 보이게·얇게·목 립 좁게 / 한 장으로 → 비치지 않게.
+ *   조건을 어긴 것이 확인된 상품은 1등·대안에서 빼고(순위에는 남김) 이유를 알린다. 모르는 값은 '?'로 보여 주고 0.5로 센다(용도 무게 2.5).
+ *
+ * recommend(items, catalog, query) → { pick, alts, ranked, eligible, excluded, notes, rank, about }
+ *   query: { line, sleeve, use, conds: [조건], priorities: [기준 순서], brands, styles, size, ref: {chest,length,shoulder}, today }
+ * 점수는 0~100의 가중 평균이다. 확률이 아니다. 같은 입력이면 같은 결과가 나온다.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./judge.js'), require('./wardrobe.js'));
+  else root.Pick = factory(root.Judge, root.Wardrobe);
+})(typeof self !== 'undefined' ? self : this, function (J, W) {
+  'use strict';
+  const SCHEMA = 1;
+  const STALE_DAYS = 14, DROP_DAYS = 30, FX_DAYS = 30;                                                 // [제안값] 14일 지나면 가성비를 중간으로, 30일 지나면 1등 후보에서 뺀다
+  const CRITERIA = { value: '가성비', quality: '품질(소재·봉제)', brand: '브랜드', fit: '내 핏', style: '스타일' };
+  const STYLES = { 'american-classic': '아메리칸 클래식', preppy: '프레피', amekaji: '아메카지', workwear: '워크웨어', minimal: '미니멀', normcore: '놈코어', gorpcore: '고프코어', street: '스트리트' };
+  const USES = { any: '상관없음', layer: '카디건·셔츠 안에', solo: '한 장으로' };
+  const CONDS = { noLogo: { label: '로고 안 보이게', use: 'layer' }, thin: { label: '얇게', use: 'layer' }, narrowNeck: { label: '목 립 좁게', use: 'layer' }, notSheer: { label: '비치지 않게', use: 'solo' } };
+  const SLEEVES = { short: '반팔', long: '긴팔', any: '상관없음' };
+  const FIT = { slim: '슬림핏', regular: '레귤러핏', relaxed: '루즈·박스핏' };
+  const THICK = { thin: '얇음', mid: '보통', thick: '두꺼움' };
+  const NECKS = { narrow: '목 립이 좁은 편', standard: '기본 립 크루넥', binding: '바인딩 목', wide: '목 립이 넓은 편' };
+  const LOGOS = { none: '겉 로고 없음', hem: '밑단 로고', 'small-chest': '가슴 작은 자수', chest: '가슴 자수', tab: '작은 탭·라벨' };
+  const SRC = { official: '공식', notice: '상품정보제공고시', name: '상품명에만', seller: '판매처 설명', photo: '상품 사진으로 본 판단', 'official-weight': '공식 원단 무게로 판단' };
+  const SRC_W = { official: 1, notice: 1, 'official-weight': 1, photo: 0.6, name: 0.5, seller: 0.3 };   // [제안값] 근거 강도
+  const FIBERS = { supima: '수피마 코튼', pima: '피마 코튼', lisle: '라일사', ringspun: '링스펀 코튼', giza: '기자 코튼' };
+  const KNITS = { jersey: '저지', interlock: '인터로크', loopwheel: '루프휠' };
+  const PRI_W = [3, 2, 1.5, 1.2, 1];                                                                   // [제안값] 누른 순서대로의 무게
+  const OFF_W = 0.5, USE_W = 2.5, TIEBREAK_W = 0.3;                                                    // [제안값]
+  const SIZE_ALIAS = { '90': 'XS', '95': 'S', '100': 'M', '105': 'L', '110': 'XL', '115': 'XXL', '2XL': 'XXL', 'XXXL': '3XL' };
+  const DEFAULT_VALUE = { lo: 2500, hi: 50000 };
+
+  const str = W.str, num = W.num, safeLink = W.safeLink, safeDate = W.safeDate;
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const has = (dict, k) => k != null && Object.prototype.hasOwnProperty.call(dict, k);
+  const pick1 = (v, dict) => (has(dict, v) ? v : null);
+  const won = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
+  const signedWon = (n) => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(Math.round(n)).toLocaleString('ko-KR') + '원';
+  const kd = (d) => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(d || ''); return m ? Number(m[1]) + '월 ' + Number(m[2]) + '일' : d || ''; };   // 화면 문장의 날짜: 10월 13일
+  const SIZE_SRC = { official: '공식 치수', notice: '공식 치수', seller: '판매처 치수표', photo: '사진 판단', name: '상품명', 'official-weight': '공식' };
+  const normSize = (label) => { const l = String(label || '').trim().toUpperCase(); return SIZE_ALIAS[l] || l; };
+
+  // ---------- 정리 (모르는 값은 받지 않거나 null 로 둔다) ----------
+  function cleanSize(s) {
+    if (!s || typeof s !== 'object') return null;
+    const out = { label: str(s.label, 12).trim() };
+    if (!out.label) return null;
+    const al = str(s.alias, 8).trim(); if (al) out.alias = normSize(al);
+    for (const k of ['length', 'shoulder', 'chest', 'chestCirc', 'sleeve']) { const v = num(s[k], 1, 250); if (v != null) out[k] = v; }
+    if (out.chest == null && out.chestCirc != null) out.chest = Math.round((out.chestCirc / 2) * 10) / 10;   // 둘레만 있으면 반으로 나눠 너비로 견준다
+    return out;
+  }
+  /** 상품 하나를 정리한다. 판매처 주소·가격(1 이상)·확인일·알려진 분류·종류가 없으면 null. */
+  function cleanPickProduct(raw, i) {
+    if (!raw || typeof raw !== 'object') return null;
+    const cat = W.CATS[raw.cat] ? raw.cat : null;
+    const name = str(raw.name, 100).trim(), id = str(raw.id, 60).trim();
+    const store = raw.store && typeof raw.store === 'object' ? raw.store : {};
+    const url = safeLink(store.url), currency = raw.currency === 'USD' ? 'USD' : raw.currency === 'KRW' ? 'KRW' : null;
+    const price = num(raw.price, currency === 'KRW' ? 100 : 1, 1e9);                                // 0원·오타 같은 값은 받지 않는다
+    if (!cat || !name || !id || !url || price == null || !currency || !safeDate(raw.checkedAt) || !W.KINDS[cat][raw.kind]) return null;
+    const f = raw.fabric && typeof raw.fabric === 'object' ? raw.fabric : {};
+    const st = raw.stock && typeof raw.stock === 'object' ? raw.stock : null;
+    const sh = raw.shipping && typeof raw.shipping === 'object' ? raw.shipping : null;
+    return {
+      id, line: str(raw.line, 40), brand: str(raw.brand, 40), name, code: str(raw.code, 60), colorName: str(raw.colorName, 40),
+      cat, kind: raw.kind, family: W.FAM[raw.family] ? raw.family : 'gray',
+      light: num(raw.light, 0, 100) == null ? 50 : Math.round(raw.light), formality: [1, 2, 3].indexOf(raw.formality) >= 0 ? raw.formality : 2,
+      pattern: W.PATTERNS[raw.pattern] ? raw.pattern : 'solid', seasons: arr(raw.seasons).filter((s) => W.SEASONS.indexOf(s) >= 0),
+      sleeve: raw.sleeve === 'long' ? 'long' : 'short', fit: pick1(raw.fit, FIT), fitNote: str(raw.fitNote, 120),
+      fabric: { comp: str(f.comp, 140), cotton100: f.cotton100 === true ? true : f.cotton100 === false ? false : null, compSrc: pick1(f.compSrc, SRC) || 'official',
+        fiber: pick1(f.fiber, FIBERS), fiberSrc: pick1(f.fiberSrc, SRC) || (f.fiber ? 'official' : null), knit: pick1(f.knit, KNITS), weight: str(f.weight, 20),
+        thick: pick1(f.thick, THICK), thickSrc: pick1(f.thickSrc, SRC), notes: arr(f.notes).map((n) => str(n, 200)).filter(Boolean).slice(0, 6) },
+      build: arr(raw.build).map((b) => str(b, 20)).filter(Boolean).slice(0, 8), buildSrc: pick1(raw.buildSrc, SRC) || 'official', neck: pick1(raw.neck, NECKS), neckSrc: pick1(raw.neckSrc, SRC),
+      logo: pick1(raw.logo, LOGOS), logoNote: str(raw.logoNote, 120), origin: str(raw.origin, 40),
+      sizes: arr(raw.sizes).map(cleanSize).filter(Boolean).slice(0, 12), sizeSrc: pick1(raw.sizeSrc, SRC), sizeNote: str(raw.sizeNote, 200),
+      offered: Array.isArray(raw.offered) ? raw.offered.map((s) => str(s, 8).trim()).filter(Boolean).slice(0, 12) : null,
+      price, currency, listPrice: num(raw.listPrice, 1, 1e9), priceNote: str(raw.priceNote, 200), packCount: num(raw.packCount, 1, 12) || 1,
+      shipping: sh && num(sh.fee, 0, 1000) != null ? { fee: sh.fee, freeOver: num(sh.freeOver, 0, 100000), note: str(sh.note, 200), url: safeLink(sh.url) } : null,
+      stock: st ? { sizes: Array.isArray(st.sizes) ? st.sizes.map((s) => str(s, 8)).filter(Boolean) : null, inStock: st.inStock === true ? true : st.inStock === false ? false : null, checkedAt: safeDate(st.checkedAt) } : null,
+      store: { name: str(store.name, 60), type: store.type === 'official' ? 'official' : 'retailer', url },
+      styles: arr(raw.styles).filter((s) => STYLES[s]).slice(0, 4), checkedAt: raw.checkedAt,
+      evidence: arr(raw.evidence).map((e) => (e && typeof e === 'object' && safeLink(e.url) ? { url: safeLink(e.url), what: str(e.what, 240), seen: safeDate(e.seen) } : null)).filter(Boolean).slice(0, 6),
+      _i: i || 0,
+    };
+  }
+  /** picks.json 을 정리한다. 모르는 파일이면 null. 품목(line)이 등록되지 않은 상품은 뺀다(오타 방지). */
+  function cleanPicks(raw) {
+    if (!raw || typeof raw !== 'object' || raw.schema !== SCHEMA || raw.kind !== 'picks' || !Array.isArray(raw.products)) return null;
+    const ids = new Set();
+    const brands = {};
+    if (raw.brands && typeof raw.brands === 'object') for (const k of Object.keys(raw.brands).slice(0, 80)) {
+      const b = raw.brands[k]; if (!b || typeof b !== 'object' || !/^[a-z0-9-]{1,30}$/.test(k)) continue;
+      brands[k] = { name: str(b.name, 60), ko: str(b.ko, 40) || str(b.name, 40), aliases: arr(b.aliases).map((a) => str(a, 40).toLowerCase()).filter(Boolean).slice(0, 10), family: str(b.family, 30) };
+    }
+    const fx = {};
+    if (raw.fx && raw.fx.USD && num(raw.fx.USD.krw, 100, 10000) != null) fx.USD = { krw: raw.fx.USD.krw, date: safeDate(raw.fx.USD.date), source: safeLink(raw.fx.USD.source), note: str(raw.fx.USD.note, 120) };
+    const lines = {};
+    if (raw.lines && typeof raw.lines === 'object') for (const k of Object.keys(raw.lines).slice(0, 40)) {
+      const l = raw.lines[k]; if (!l || typeof l !== 'object' || !/^[a-z0-9-]{1,40}$/.test(k)) continue;
+      const v = l.value && typeof l.value === 'object' && num(l.value.lo, 1, 1e7) != null && num(l.value.hi, 2, 1e8) != null && l.value.hi > l.value.lo ? { lo: l.value.lo, hi: l.value.hi } : DEFAULT_VALUE;
+      lines[k] = { label: str(l.label, 40), cat: W.CATS[l.cat] ? l.cat : 'top', kind: str(l.kind, 20), family: str(l.family, 20), value: v, styleRole: l.styleRole === 'tiebreak' ? 'tiebreak' : 'normal', styleNote: str(l.styleNote, 120) };
+    }
+    const products = raw.products.slice(0, 2000).map(cleanPickProduct).filter(Boolean).filter((p) => (ids.has(p.id) ? false : ids.add(p.id)))
+      .filter((p) => lines[p.line] && (p.currency === 'KRW' || fx[p.currency]));                    // 등록 안 된 품목·환율 없는 외화 상품은 견줄 수 없어 뺀다
+    const brandNotes = arr(raw.brandNotes).map((n) => (n && typeof n === 'object' ? { brand: str(n.brand, 30), line: str(n.line, 40), text: str(n.text, 300), checkedAt: safeDate(n.checkedAt), url: safeLink(n.url) } : null)).filter((n) => n && n.text);
+    return { schema: SCHEMA, kind: 'picks', name: str(raw.name, 60), updatedAt: safeDate(raw.updatedAt), about: str(raw.about, 400), fx, brands, lines, brandNotes, products };
+  }
+
+  // ---------- 하나하나 재기 ----------
+  const brandName = (cat, key) => (cat.brands[key] ? cat.brands[key].ko || cat.brands[key].name : key);
+  function daysSince(date, today) { if (!safeDate(date)) return null; return Math.round((Date.parse((today || W.today()) + 'T00:00:00Z') - Date.parse(date + 'T00:00:00Z')) / 86400000); }
+  /** 원화 가격(묶음 전체, 해외면 상품값만). */
+  function krw(p, cat) { return p.currency === 'KRW' ? p.price : Math.round(p.price * cat.fx[p.currency].krw); }
+  /** 한 장 값: 배송비를 아는 해외 상품은 한 장 주문 기준 배송비를 더하고, 묶음이면 장 수로 나눈다. landed=false 면 배송비를 모른다. */
+  function unitPrice(p, cat) {
+    if (p.currency === 'KRW') return { krw: p.price / p.packCount, landed: true, ship: 0 };
+    const rate = cat.fx[p.currency].krw;
+    if (p.shipping) { const ship = p.shipping.freeOver != null && p.price >= p.shipping.freeOver ? 0 : p.shipping.fee; return { krw: Math.round((p.price + ship) * rate) / p.packCount, landed: true, ship: Math.round(ship * rate) }; }
+    return { krw: Math.round(p.price * rate) / p.packCount, landed: false, ship: null };
+  }
+
+  /** 공개된 품질 근거(3~10): 출처 등급으로 가중한다. parts 는 화면에 그대로 보여 줄 근거, unknown 은 밝히지 않은 것, known 은 정보 공개 정도. */
+  function qualityOf(p) {
+    const parts = [], unknown = [];
+    let s = 3;
+    const f = p.fabric, w = (src) => SRC_W[src] == null ? 1 : SRC_W[src], tag = (src) => (src && src !== 'official' ? ' (' + SRC[src] + ')' : '');
+    const add = (pts, src, text) => { const v = Math.round(pts * w(src) * 100) / 100; s += v; parts.push(text + tag(src)); };
+    if (f.cotton100 === true) add(1, f.compSrc, '면 100%');
+    else if (f.cotton100 === false) parts.push('혼방: ' + f.comp + tag(f.compSrc));
+    if (f.fiber === 'supima' || f.fiber === 'pima' || f.fiber === 'lisle' || f.fiber === 'giza') add(1.5, f.fiberSrc, FIBERS[f.fiber]);
+    else if (f.fiber === 'ringspun') add(0.75, f.fiberSrc, FIBERS[f.fiber]);
+    if (f.knit === 'loopwheel') add(1.5, 'official', '루프휠 편직(옛 방식, 느리게 짜며 몸판이 통짜)');
+    else if (f.knit === 'interlock') add(0.75, 'official', '인터로크(두 겹으로 촘촘히 짠 원단)');
+    if (f.knit !== 'loopwheel' && p.build.indexOf('tubular') >= 0) add(0.75, p.buildSrc, '몸판 옆선 없는 통짜');   // 루프휠이면 통짜는 같은 사실이라 두 번 세지 않는다
+    if (p.build.indexOf('binding-neck') >= 0) add(0.5, 'official', '목둘레가 잘 늘어나지 않는 바인딩');
+    if (f.cotton100 == null) unknown.push('혼용률');
+    if (!f.fiber && !f.knit) unknown.push('원사·편직 방식');
+    if (!f.weight) unknown.push('원단 무게');
+    if (!p.origin) unknown.push('제조국');
+    const keys = [f.cotton100 != null, !!(f.fiber || f.knit), !!f.weight, !!f.thick, !!p.neck, !!p.logo, !!p.origin, p.sizes.length > 0];
+    return { score: Math.min(10, Math.round(s * 100) / 100), parts, unknown, known: keys.filter(Boolean).length, of: keys.length };
+  }
+
+  /** 꼭 지킬 조건 하나를 상품에 비춰 본다: ok | fail | unknown 과 그 이유. */
+  function condOf(p, key) {
+    const f = p.fabric, src = (k) => (k ? ' (' + SRC[k] + ')' : '');
+    if (key === 'noLogo') {
+      if (p.logo === 'none') return { status: 'ok', text: '겉 로고 없음' + (p.logoNote && /사진/.test(p.logoNote) ? ' (상품 사진으로 확인)' : '') };
+      if (p.logo === 'hem') return { status: 'ok', text: '로고가 밑단에 있어 카디건 안에서 안 보임' };
+      if (p.logo === 'tab') return { status: 'ok', text: '작은 탭·라벨만 있음 (' + (p.logoNote || '위치 확인 안 함') + ')' };
+      if (p.logo === 'small-chest' || p.logo === 'chest') return { status: 'fail', text: (p.logoNote || LOGOS[p.logo]).replace(/\((공식|상품 사진으로 확인)\)/, '').trim() };
+      return { status: 'unknown', text: '로고 위치 확인 못 함' };
+    }
+    if (key === 'thin') {
+      if (f.thick === 'thin') return { status: 'ok', text: '얇음' + src(f.thickSrc) };
+      if (f.thick === 'mid') return { status: 'ok', text: '보통 두께' + src(f.thickSrc) };
+      if (f.thick === 'thick') return { status: 'fail', text: '두꺼움' + (f.weight ? '(' + f.weight + ')' : '') + src(f.thickSrc) };
+      return { status: 'unknown', text: '두께 확인 못 함' };
+    }
+    if (key === 'narrowNeck') {
+      if (p.neck === 'narrow') return { status: 'ok', text: NECKS.narrow + src(p.neckSrc) };
+      if (p.neck === 'wide') return { status: 'fail', text: NECKS.wide + src(p.neckSrc) };
+      return { status: 'unknown', text: p.neck ? NECKS[p.neck] + ' — 폭은 확인 못 함' : '목 립 폭 확인 못 함' };
+    }
+    if (key === 'notSheer') {
+      if (f.thick === 'thick' || f.thick === 'mid') return { status: 'ok', text: THICK[f.thick] + src(f.thickSrc) };
+      if (f.thick === 'thin') return { status: 'fail', text: '얇아서 흰색이면 비칠 수 있음' + src(f.thickSrc) };
+      return { status: 'unknown', text: '두께·비침 확인 못 함' };
+    }
+    return { status: 'unknown', text: '' };
+  }
+  function activeConds(q) {
+    const use = has(USES, q.use) ? q.use : 'any';
+    if (use === 'any') return [];
+    const want = Array.isArray(q.conds) ? q.conds.filter((k) => CONDS[k] && CONDS[k].use === use) : Object.keys(CONDS).filter((k) => CONDS[k].use === use);
+    return want;
+  }
+
+  function sizeName(p, label) { const s = p.sizes.find((x) => x.label === label); return s && s.alias && s.alias !== s.label ? s.label + '(' + s.alias + ')' : label; }
+  function sizeOf(p, want) { return p.sizes.find((s) => normSize(s.label) === want || s.alias === want) || null; }
+  function offeredHas(p, s, want) { if (!p.offered) return null; return p.offered.some((o) => normSize(o) === want || (s && o === s.label)); }
+  function measLine(s, src) { if (!s) return ''; const parts = [s.chest != null ? '가슴단면 ' + s.chest : '', s.length != null ? '총장 ' + s.length : '', s.shoulder != null ? '어깨 ' + s.shoulder : ''].filter(Boolean); return parts.length ? s.label + (s.alias && s.alias !== s.label ? '(' + s.alias + ')' : '') + ': ' + parts.join(' · ') + 'cm' + (src ? ' (' + SIZE_SRC[src] + ')' : '') : ''; }
+  /** 사이즈 하나가 살 수 있는지: true(재고 확인) / false(품절·안 팜·상품 전체 품절) / null(모름). */
+  function availOf(p, label, want) {
+    if (p.stock && p.stock.inStock === false) return { avail: false, why: '상품 전체 품절(' + kd(p.stock.checkedAt) + ' 확인)' };
+    const s = sizeOf(p, want) || (label ? p.sizes.find((x) => x.label === label) : null);
+    const off = offeredHas(p, s, want);
+    if (off === false) return { avail: false, why: want + ' 사이즈는 팔지 않아요(판매 사이즈: ' + p.offered.join('·') + ')', notOffered: true };
+    const inStock = p.stock && p.stock.sizes ? p.stock.sizes.map(normSize) : null;
+    if (inStock) {
+      const hit = inStock.indexOf(want) >= 0 || (s && p.stock.sizes.indexOf(s.label) >= 0);
+      if (hit) return { avail: true, why: (s ? s.label : want) + ' 재고 있음(' + kd(p.stock.checkedAt) + ' 확인)' };
+      if (off === true) return { avail: false, why: want + ' 품절(' + kd(p.stock.checkedAt) + ' 확인)' };
+      return { avail: null, why: want + '을 파는지 확인 못 함' };
+    }
+    return { avail: null, why: '사이즈별 재고는 판매처에서 확인해 주세요' + (p.stock && p.stock.inStock ? '(상품은 재고 있음, ' + kd(p.stock.checkedAt) + ' 확인)' : '') };
+  }
+  /** 사이즈 고르기. ref(잘 맞는 옷 실측)가 있으면 가장 가까운 사이즈, 없으면 평소 사이즈. */
+  function fitOf(p, q) {
+    const ref = q.ref && typeof q.ref === 'object' ? q.ref : null;
+    const hasRef = ref && ['chest', 'length', 'shoulder'].some((k) => num(ref[k], 1, 250) != null);
+    if (p.stock && p.stock.inStock === false) return { score: 0, size: '', text: '상품 전체 품절(' + kd(p.stock.checkedAt) + ' 확인)', avail: false, caution: true };
+    if (hasRef) {
+      let best = null;
+      for (const s of p.sizes) {
+        let cost = 0, n = 0; const diffs = [];
+        for (const [k, w, label] of [['chest', 1, '가슴'], ['length', 0.6, '총장'], ['shoulder', 0.6, '어깨']]) {
+          const r = num(ref[k], 1, 250); if (r == null || s[k] == null) continue;
+          const d = Math.round((s[k] - r) * 10) / 10; cost += Math.abs(d) * w; n += w; diffs.push(label + ' ' + (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d) + 'cm');
+        }
+        if (!n) continue;
+        const c = cost / n;
+        if (!best || c < best.c) best = { s, c, diffs };
+      }
+      if (!best) return { score: 0.4, size: '', text: '글자로 된 치수표가 없어 사이즈를 고를 수 없어요', caution: true, avail: null };
+      const onlyOne = p.sizes.length === 1;
+      if (onlyOne && best.c > 3) return { score: 0.4, size: '', text: '공개 치수가 ' + best.s.label + '뿐이라 정확히 고를 수 없어요(' + best.s.label + '와 ' + best.diffs.join(', ') + ')', caution: true, avail: null, onlyOne };
+      const a = availOf(p, best.s.label, normSize(best.s.alias || best.s.label));
+      let score = Math.max(0, 1 - best.c / 5);                                                         // [제안값] 평균 5cm 어긋나면 0
+      if (a.avail === false) score *= 0.3;
+      const text = best.s.label + (best.s.alias && best.s.alias !== best.s.label ? '(' + best.s.alias + ')' : '') + ' 사이즈가 잘 맞는 옷과 가장 가까워요: ' + best.diffs.join(', ') + (onlyOne ? ' (공개 치수가 이 사이즈뿐)' : '') + ' · ' + a.why;
+      return { score, size: best.s.label, text, caution: best.c > 3 || a.avail === false, avail: a.avail, onlyOne, byRef: true, meas: measLine(best.s, p.sizeSrc) };
+    }
+    const want = normSize(q.size);
+    if (want) {
+      const s = sizeOf(p, want), a = availOf(p, s ? s.label : '', want);
+      const nonStd = p.sizes.length && p.sizes.every((x) => /^\d+$/.test(x.label)) && !p.sizes.some((x) => x.alias);
+      if (nonStd && !s) return { score: 0.5, size: '', text: '이 브랜드는 사이즈 이름이 달라(' + p.sizes.map((x) => x.label).join('·') + ') 평소 사이즈로 못 골라요. 잘 맞는 티 실측을 넣어 주세요', avail: null, meas: '' };
+      const score = a.avail === true ? 1 : a.avail === false ? 0 : 0.6;
+      return { score, size: s ? s.label : want, text: a.why, avail: a.avail, caution: a.avail === false, notOffered: !!a.notOffered, meas: measLine(s, p.sizeSrc) };
+    }
+    return { score: 0.5, size: '', text: '잘 맞는 티 실측이나 평소 사이즈를 넣으면 사이즈까지 골라 드려요', neutral: true, avail: null, meas: '' };
+  }
+
+  function brandOf(p, q, cat) {
+    const fav = arr(q.brands);
+    if (!fav.length) return { score: 0.5, text: '', neutral: true };
+    if (fav.indexOf(p.brand) >= 0) return { score: 1, text: '좋아하는 브랜드(' + brandName(cat, p.brand) + ')' };
+    const fam = cat.brands[p.brand] && cat.brands[p.brand].family;
+    const sib = fam && fav.find((b) => cat.brands[b] && cat.brands[b].family === fam);
+    if (sib) return { score: 0.5, text: '좋아하는 ' + brandName(cat, sib) + '와 같은 계열(' + brandName(cat, p.brand) + ')' };
+    return { score: 0, text: '' };
+  }
+  function styleOf(p, q) {
+    const want = arr(q.styles).filter((s) => STYLES[s]);
+    if (!want.length) return { score: 0.5, text: '', neutral: true };
+    const hit = p.styles.filter((s) => want.indexOf(s) >= 0);
+    if (hit.length) return { score: 1, text: '스타일: ' + hit.map((s) => STYLES[s]).join('·') + ' (어울 편집 분류)' };
+    return { score: 0, text: '' };
+  }
+
+  /** 상품 하나를 내 옷장의 후보로 바꾼다(살까 말까 판정에 쓴다). 사진은 넣지 않는다. */
+  function toCandidate(p, cat, today) {
+    const at = today || W.today();
+    return W.cleanItem({ id: 'k' + p.id.replace(/[^a-z0-9]/gi, '').slice(0, 24) + '-' + at.replace(/-/g, ''), status: 'candidate', cat: p.cat, kind: p.kind, name: brandName(cat, p.brand) + ' ' + p.name,
+      family: p.family, light: p.light, formality: p.formality, pattern: p.pattern, seasons: p.seasons, attrSource: 'owner', brand: brandName(cat, p.brand), model: p.code ? p.name + ' (' + p.code + ')' : p.name,
+      link: p.store.url, price: krw(p, cat), checkedAt: p.checkedAt, photo: { kind: 'none' }, detail: p.colorName }, 0);
+  }
+
+  // ---------- 고르기 ----------
+  function weightsOf(q, line) {
+    const pri = arr(q.priorities).filter((k, i, a) => CRITERIA[k] && a.indexOf(k) === i).slice(0, 5);
+    const w = {};
+    for (const k of Object.keys(CRITERIA)) w[k] = OFF_W;
+    pri.forEach((k, i) => { w[k] = PRI_W[i]; });
+    if (line && line.styleRole === 'tiebreak') w.style = Math.min(w.style, TIEBREAK_W);
+    return { w, pri };
+  }
+  const mark = (v) => (v >= 0.66 ? 'good' : v >= 0.33 ? 'mid' : 'low');
+
+  /**
+   * 기준대로 하나를 고른다.
+   * 반환: { pick, alts: [{ label, why, delta, r }], ranked, eligible, excluded, notes, rank, about, conds, use }
+   *   r: { product, krw, unit, quality, crit, total, conds, use, fit, reasons, cautions, checks, conclusion, stale, out(뺀 이유) … }
+   */
+  function recommend(items, cat, q) {
+    q = q || {};
+    const today = q.today || W.today(), use = has(USES, q.use) ? q.use : 'any', conds = activeConds(q);
+    const line = cat.lines[q.line] || null;
+    const { w, pri } = weightsOf(q, line);
+    const vref = line ? line.value : DEFAULT_VALUE;
+    const inLine = cat.products.filter((p) => !q.line || p.line === q.line);
+    const pool = [], excluded = [];
+    for (const p of inLine) {
+      if (!q.sleeve || q.sleeve === 'any' || p.sleeve === q.sleeve) pool.push(p);
+      else excluded.push({ id: p.id, name: brandName(cat, p.brand) + ' ' + p.name, why: SLEEVES[p.sleeve] + '이라 뺐어요' });
+    }
+    const fxAge = cat.fx.USD ? daysSince(cat.fx.USD.date, today) : null;
+    const rows = pool.map((p) => {
+      const quality = qualityOf(p), up = unitPrice(p, cat), age = daysSince(p.checkedAt, today);
+      const ppq = up.krw / quality.score;
+      let v = Math.max(0, Math.min(1, (Math.log(vref.hi) - Math.log(ppq)) / (Math.log(vref.hi) - Math.log(vref.lo))));
+      const valueNotes = [];
+      if (!up.landed) { v = Math.min(v, 0.5); valueNotes.push('배송비·관세를 몰라 가성비를 중간으로 봤어요'); }
+      const stale = age == null || age > STALE_DAYS, future = age != null && age < -1;
+      if (stale) { v = 0.5; valueNotes.push('가격 확인이 ' + (age == null ? '언제인지 몰라' : age + '일 전이라') + ' 가성비를 중간으로 봤어요'); }
+      const cs = conds.map((k) => Object.assign({ key: k, label: CONDS[k].label }, condOf(p, k)));
+      const useScore = cs.length ? cs.reduce((a, c) => a + (c.status === 'ok' ? 1 : c.status === 'unknown' ? 0.5 : 0), 0) / cs.length : null;
+      const r = { product: p, krw: krw(p, cat), unit: up, quality, ppq, age, stale, future, fit: fitOf(p, q), brand: brandOf(p, q, cat), style: styleOf(p, q), conds: cs, useScore, valueNotes };
+      r.crit = { value: v, quality: Math.min(1, (quality.score - 3) / 4.5), brand: r.brand.score, fit: r.fit.score, style: r.style.score };   // [제안값] 공개 근거 7.5점 이상이면 품질 만점
+      let sw = 0, sum = 0;
+      for (const c of Object.keys(CRITERIA)) { sw += w[c]; sum += w[c] * r.crit[c]; }
+      if (useScore != null) { sw += USE_W; sum += USE_W * useScore; }
+      r.raw = sum / sw; r.total = Math.round(r.raw * 1000) / 10;
+      r.avail = r.fit.avail;
+      const fail = cs.filter((c) => c.status === 'fail');
+      r.out = future ? '확인일이 미래 날짜라 자료를 다시 봐야 해요' : fail.length ? '고른 조건에 안 맞아요: ' + fail.map((c) => c.label + ' ✕ ' + c.text).join(', ')
+        : r.avail === false ? r.fit.text : age != null && age > DROP_DAYS ? '확인한 지 ' + age + '일이 지나 1등 후보에서 뺐어요' : '';
+      return r;
+    });
+    rows.sort((a, b) => b.raw - a.raw || a.unit.krw - b.unit.krw || (a.product.id < b.product.id ? -1 : 1));
+    const eligible = rows.filter((r) => !r.out);
+    const pickRow = eligible[0] || null;
+    // 근거 문장·체크 목록·결론
+    for (const r of rows) explain(r, { pri, w, use, conds, cat, fxAge });
+    const notes = [];
+    for (const r of rows) {
+      if (r === pickRow) break;
+      if (r.out) notes.push({ kind: 'out', id: r.product.id, text: brandName(cat, r.product.brand) + ' ' + r.product.name + ' — 기준 점수는 더 높지만 ' + r.out });
+    }
+    // 대안 둘: 점수가 가까운 2위는 늘 보이고, 나머지 하나는 1등과 다른 쪽(조건 확인·더 쌈·다른 좋아하는 브랜드·품질 근거)에서 고른다. 이름은 1등과의 차이로 붙인다
+    const alts = [];
+    if (pickRow) {
+      const fav = arr(q.brands);
+      const near = (r) => r.raw >= pickRow.raw - 0.25;                                                 // [제안값] 1등보다 25점 넘게 낮은 것은 대안으로 내지 않는다
+      const priceOk = (r) => pri[0] !== 'value' || r.unit.krw <= pickRow.unit.krw * 2;                // 가성비가 1순위면 두 배 넘게 비싼 것은 내지 않는다
+      const rest = eligible.filter((r) => r !== pickRow && priceOk(r));
+      const okCount = (r) => r.conds.filter((c) => c.status === 'ok').length;
+      const diffLabel = (r) => (r.unit.krw <= pickRow.unit.krw * 0.85 ? '더 싸게' : fav.indexOf(r.product.brand) >= 0 && r.product.brand !== pickRow.product.brand ? joinJosa([brandName(cat, r.product.brand)], '을', '를') + ' 더 좋아한다면'
+        : r.product.sleeve !== pickRow.product.sleeve ? SLEEVES[r.product.sleeve] + '을 원하면' : r.product.fit && r.product.fit !== pickRow.product.fit ? FIT[r.product.fit] + '을 원하면'
+        : r.quality.score >= pickRow.quality.score + 0.75 ? '공개된 품질 근거가 더 많은 것' : '다음 후보');
+      const cands = [];
+      if (rest[0] && pickRow.raw - rest[0].raw < 0.12) cands.push({ r: rest[0], label: diffLabel(rest[0]) });
+      const condBetter = rest.find((r) => near(r) && okCount(r) > okCount(pickRow));
+      if (condBetter) { const gain = condBetter.conds.filter((c, i) => c.status === 'ok' && pickRow.conds[i].status !== 'ok').map((c) => c.label); cands.push({ r: condBetter, label: joinJosa(gain, '이', '가') + ' 확인된 것' }); }
+      const cheaper = rest.filter((r) => near(r) && r.unit.krw <= pickRow.unit.krw * 0.85).sort((a, b) => b.raw - a.raw)[0];
+      if (cheaper) cands.push({ r: cheaper, label: '더 싸게' });
+      const favOther = rest.find((r) => near(r) && fav.indexOf(r.product.brand) >= 0 && r.product.brand !== pickRow.product.brand);
+      if (favOther) cands.push({ r: favOther, label: joinJosa([brandName(cat, favOther.product.brand)], '을', '를') + ' 더 좋아한다면' });
+      const better = rest.filter((r) => near(r) && r.quality.score >= pickRow.quality.score + 0.75).sort((a, b) => b.raw - a.raw)[0];
+      if (better) cands.push({ r: better, label: '공개된 품질 근거가 더 많은 것' });
+      for (const r of rest) cands.push({ r, label: diffLabel(r) });
+      for (const c of cands) {
+        if (alts.length >= 2) break;
+        if (alts.some((a) => a.r === c.r)) continue;
+        const d = c.r.unit.krw - pickRow.unit.krw;
+        let label = c.label; if (alts.some((a) => a.label === label)) label = label === '다음 후보' ? '그다음 후보' : label + ' (2)';
+        alts.push({ label, delta: signedWon(d) + (c.r.product.packCount > 1 || pickRow.product.packCount > 1 ? '(한 장 기준)' : ''), why: altWhy(c.r), r: c.r });
+      }
+    }
+    // 옷장과의 조합: 1등과 대안만 계산한다
+    for (const r of [pickRow].concat(alts.map((a) => a.r)).filter(Boolean)) {
+      const v = J.judgeCandidate(items, toCandidate(r.product, cat, today));
+      r.closet = { supported: v.supported, note: v.note, added: v.added.length, before: v.before, after: v.after, top3: v.top3, overlaps: v.overlaps.map((o) => ({ id: o.item.id, name: o.item.name, level: o.level })) };
+    }
+    // 좋아하는 브랜드의 빈자리: 품목에 아예 없는 브랜드와, 이 소매 조건에만 없는 브랜드를 나눠 말한다
+    const fav = arr(q.brands);
+    for (const b of fav) {
+      const inL = inLine.some((p) => p.brand === b), inPool = pool.some((p) => p.brand === b);
+      if (inPool) continue;
+      const bn = cat.brandNotes.find((n) => n.brand === b && (!q.line || !n.line || n.line === q.line));
+      if (!inL) notes.push({ kind: 'missing', brand: b, text: bn ? bn.text : brandName(cat, b) + ': 이 품목에는 아직 확인한 상품이 없어요.' });
+      else notes.push({ kind: 'sleeve', brand: b, text: brandName(cat, b) + ': ' + SLEEVES[q.sleeve] + ' 상품은 목록에 없어요(다른 소매는 있어요).' });
+    }
+    if (fxAge != null && fxAge > FX_DAYS && pool.some((p) => p.currency !== 'KRW')) notes.push({ kind: 'fx', text: '달러 환율이 ' + fxAge + '일 전 값이에요. 해외 상품 원화 가격은 다를 수 있어요.' });
+    const second = eligible[1];
+    const rank = pickRow ? { n: eligible.length, gap: second ? Math.round((pickRow.raw - second.raw) * 1000) / 10 : null,
+      text: eligible.length === 1 ? '조건에 맞는 것은 이것 하나' : '조건에 맞는 ' + eligible.length + '개 중 1위 · 2위와 ' + (pickRow.raw - second.raw < 0.03 ? '근소한 차이' : pickRow.raw - second.raw < 0.1 ? '차이 조금' : '차이 큼') } : null;
+    const brandsIn = Array.from(new Set(rows.map((r) => r.product.brand)));
+    return { pick: pickRow, alts, ranked: rows, eligible, excluded, notes, rank, weights: w, priorities: pri, use, conds,
+      about: { count: rows.length, inLine: inLine.length, brands: brandsIn.length, checkedAt: rows.length ? rows.map((r) => r.product.checkedAt).sort()[0] : '', line: line ? line.label : '', styleNote: line && line.styleRole === 'tiebreak' ? line.styleNote : '' } };
+  }
+
+  /** 한 줄 결론, 체크 목록, 근거 문장, 아쉬운 점을 만든다. */
+  function explain(r, o) {
+    const { pri, use, cat } = o, p = r.product;
+    const checks = [];
+    for (const c of r.conds) checks.push({ mark: c.status === 'ok' ? 'ok' : c.status === 'fail' ? 'fail' : 'unknown', label: c.label, text: c.text });
+    const critText = {
+      value: () => '한 장 약 ' + won(r.unit.krw) + (r.unit.landed ? '' : '(배송비 별도)') + ' · 품질 1점당 ' + won(r.ppq),
+      quality: () => (r.quality.parts.length ? r.quality.parts.join(', ') : '밝힌 소재·봉제 정보가 거의 없어요') + ' · 정보 공개 ' + r.quality.known + '/' + r.quality.of,
+      brand: () => r.brand.text || '고른 브랜드가 아니에요',
+      fit: () => r.fit.text,
+      style: () => r.style.text || (r.style.neutral ? '스타일을 고르지 않았어요' : '고른 스타일과 달라요(편집 분류: ' + (p.styles.map((s) => STYLES[s]).join('·') || '없음') + ')'),
+    };
+    pri.forEach((c, i) => checks.push({ mark: mark(r.crit[c]), label: CRITERIA[c] + ' ' + (i + 1) + '순위', text: critText[c]() }));
+    r.checks = checks;
+    // 근거 문장(긍정): 조건 → 고른 기준 → 고르지 않았지만 좋은 점
+    const reasons = [];
+    const okConds = r.conds.filter((c) => c.status === 'ok');
+    if (okConds.length) reasons.push(USES[use] + ' 입기에: ' + okConds.map((c) => c.text).join(', '));
+    for (const c of pri) { if (r.crit[c] >= 0.5) { const t = c === 'fit' ? (r.fit.avail === true || r.fit.byRef ? r.fit.text : '') : critText[c](); if (t && reasons.indexOf(t) < 0) reasons.push(CRITERIA[c] + ': ' + t); } }
+    r.reasons = reasons.slice(0, 5);
+    const cautions = [];
+    const unk = r.conds.filter((c) => c.status === 'unknown');
+    if (unk.length) cautions.push('확인 못 한 것: ' + unk.map((c) => c.text.replace(/ 확인 못 함$/, '')).join(', ') + ' — 판매처 상세에서 봐 주세요');
+    for (const c of r.conds.filter((x) => x.status === 'fail')) cautions.push(c.label + '와 맞지 않아요: ' + c.text);
+    if (r.fit.caution) cautions.push(r.fit.text);
+    for (const t of r.valueNotes) cautions.push(t);
+    if (p.currency !== 'KRW') cautions.push('해외 주문: $' + p.price + (r.unit.landed && r.unit.ship ? ' + 배송비 $' + p.shipping.fee : '') + ' ≈ 한 장 ' + won(r.unit.krw) + '(' + kd(cat.fx[p.currency].date) + ' 환율). 관세·부가세는 따로 확인');
+    if (p.priceNote) cautions.push(p.priceNote);
+    if (!r.fit.size && p.stock && p.stock.sizes && p.stock.sizes.length && p.stock.sizes.length <= 2) cautions.push('재고가 ' + p.stock.sizes.join('·') + '만 있어요(' + kd(p.stock.checkedAt) + ' 확인)');
+    if (r.future) cautions.push('확인일이 미래 날짜예요. 자료를 다시 확인해야 해요');
+    r.cautions = cautions;
+    // 한 줄 결론: 가장 무게가 큰 이유 → 조건 상태 → 가장 큰 걸림. 조사는 받침에 맞춘다
+    const top = pri.find((c) => r.crit[c] >= 0.5);
+    const lead = top === 'brand' ? (r.brand.score === 1 ? '좋아하는 브랜드(' + brandName(cat, p.brand) + ')예요' : '좋아하는 브랜드와 같은 계열이에요')
+      : top === 'quality' ? '공개된 품질 근거가 많은 편이에요(' + (r.quality.parts.slice(0, 2).join(', ') || '면') + ')'
+      : top === 'value' ? '한 장 약 ' + won(r.unit.krw) + '으로 가성비가 좋은 편이에요'
+      : top === 'fit' ? (r.fit.size ? sizeName(p, r.fit.size) + ' 사이즈가 잘 맞을 것 같아요' : '사이즈를 고를 수 있어요')
+      : top === 'style' ? '고른 스타일과 맞아요' : '고른 기준을 합한 점수가 가장 높아요';
+    const condTxt = !r.conds.length ? '' : okConds.length === r.conds.length ? '고른 조건(' + okConds.map((c) => c.label).join('·') + ')도 모두 확인됐어요'
+      : okConds.length ? joinJosa(okConds.map((c) => c.label), '은', '는') + ' 확인됐어요' : '';
+    const noun = { noLogo: '로고 위치', thin: '두께', narrowNeck: '목 립 폭', notSheer: '비침' };
+    const but = unk.length ? '다만 ' + joinJosa(unk.map((c) => noun[c.key] || c.label), '은', '는') + ' 확인 못 했어요.' : r.fit.caution ? '다만 ' + r.fit.text.replace(/[.\s]+$/, '') + '.' : '';
+    r.conclusion = [lead, condTxt].filter(Boolean).join('. ') + '.' + (but ? ' ' + but : '');
+  }
+  /** 대안 한 줄: 한 장 값과 공개된 품질 근거 둘, 조건 상태. */
+  function altWhy(r) {
+    const parts = ['한 장 약 ' + won(r.unit.krw) + (r.unit.landed ? '' : '(배송비 별도)')];
+    if (r.quality.parts.length) parts.push(r.quality.parts.slice(0, 2).join(', '));
+    const ok = r.conds.filter((c) => c.status === 'ok').map((c) => c.label), unk = r.conds.filter((c) => c.status === 'unknown').map((c) => c.label);
+    if (ok.length) parts.push('확인: ' + ok.join('·'));
+    if (unk.length) parts.push('모름: ' + unk.join('·'));
+    return parts.join(' · ');
+  }
+  /** 낱말들을 '·'로 잇고 마지막 낱말의 받침에 맞춰 조사를 붙인다(한글이 아니면 둘 다 적는다). */
+  function joinJosa(words, withBatchim, without) {
+    const s = words.join('·'), ch = s.charCodeAt(s.length - 1);
+    if (ch >= 0xac00 && ch <= 0xd7a3) return s + ((ch - 0xac00) % 28 ? withBatchim : without);
+    return s + withBatchim + '(' + without + ')';
+  }
+
+  return { SCHEMA, STALE_DAYS, DROP_DAYS, CRITERIA, STYLES, USES, CONDS, SLEEVES, FIT, THICK, NECKS, LOGOS, SRC, SRC_W, FIBERS, KNITS,
+    cleanPicks, cleanPickProduct, qualityOf, condOf, activeConds, fitOf, availOf, brandOf, styleOf, krw, unitPrice, toCandidate, recommend, normSize, brandName, won, signedWon };
+});
+</script>
+<script>/*
  * ColorGuess — 옷 사진에서 색 계열과 밝기의 "초안"을 뽑는다. 브라우저 캔버스 픽셀만 쓰고, AI·외부 요청이 없다(0원).
  * 사진 가운데(가로 20~80%, 세로 15~85%)의 픽셀을 색 상자(HSL 구간)로 묶어 가장 많은 상자의 평균색을 대표색으로 삼는다.
  * 결과는 사용자가 확인하기 전까지 '사진에서 뽑은 초안'(attrSource photo-draft)이다. 조명·그림자·배경 때문에 틀릴 수 있고, 종류·무늬·격식은 추정하지 않는다.
@@ -1239,7 +1750,7 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
  * 서버가 없으므로 운영자가 받은 글(카카오톡 등)을 붙여 넣어야 숫자가 나온다. 이 계산은 그 브라우저 안에서만 하고 아무 데도 보내지 않는다.
  *
  * 요약 줄: EOUL1|id=무작위|v=버전|at=날짜|first=첫 사용|own=옷|draft=초안|photo=내 사진|cand=후보|done=판정 끝|prod=상품|rack=3D 걸림|quick=빠른 시작|days=연 날|d30=최근 30일 연 날
- *          |fol=2주 뒤 답|good=잘함|ok=그저|regret=후회·아쉬움|nb=결국 안 삼|due=물을 차례|pmf=very·some·not·quit|nps=0~10|err=오류 수|scr=화면
+ *          |fol=2주 뒤 답|good=잘함|ok=그저|regret=후회·아쉬움|nb=결국 안 삼|due=물을 차례|pk=추천 받음|pko=판매처 엶|pkc=추천→후보|pka=이걸로 할래요|pkb=샀어요|pkf=2주 뒤 답|pkfit=사이즈 잘 맞음|pmf=very·some·not·quit|nps=0~10|err=오류 수|scr=화면
  * id 는 브라우저마다 처음 한 번 만드는 무작위 글자다(사람을 알아볼 수 없다). 같은 사람이 여러 번 보내면 가장 최근 것만 센다.
  *
  * 기준(THRESH)은 docs/beta-plan 의 제안값이고, PMF 40% 는 업계에서 흔히 쓰는 참고선(Sean Ellis 질문)이다. 지인 표본은 작고 치우쳐 있어 숫자를 일반화하지 않는다.
@@ -1250,7 +1761,7 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
   const PREFIX = 'EOUL1';
-  const NUMS = ['own', 'draft', 'photo', 'cand', 'done', 'prod', 'rack', 'quick', 'days', 'd30', 'fol', 'good', 'ok', 'regret', 'nb', 'due', 'err'];
+  const NUMS = ['own', 'draft', 'photo', 'cand', 'done', 'prod', 'rack', 'quick', 'days', 'd30', 'fol', 'good', 'ok', 'regret', 'nb', 'due', 'pk', 'pko', 'pkc', 'pka', 'pkb', 'pkf', 'pkfit', 'err'];   // pk: 기준 추천을 받아 본 횟수, pko: 판매처를 연 횟수, pkc: 후보로 넣은 수, pka: '이걸로 할래요', pkb: 샀어요, pkf: 2주 뒤 답, pkfit: 사이즈 잘 맞음
   const PMF = { very: '매우 아쉽다', some: '조금 아쉽다', not: '아쉽지 않다', quit: '이미 안 쓴다' };
   const THRESH = { activated: 0.5, value: 1 / 3, retained: 1 / 3, pmf: 0.4 };                         // [제안값] 활성화 절반, 판정 끝 1/3, 유지 1/3, PMF 40%(참고선)
 
@@ -1289,6 +1800,11 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
       retained: rate(cnt((e) => e.d30 >= 3), n),                                                    // 최근 30일에 3일 이상 엶
       follow: { answers: sum('fol'), good: sum('good'), ok: sum('ok'), regret: sum('regret'), notbought: sum('nb'), due: sum('due') },
       decisions: sum('done'),
+      picked: rate(cnt((e) => e.pk >= 1), n),                                                      // 기준 추천을 한 번이라도 받아 본 사람
+      outbound: rate(cnt((e) => e.pko >= 1), n),                                                   // 추천에서 판매처까지 열어 본 사람(살 마음의 신호)
+      accepted: rate(cnt((e) => e.pka >= 1), n),                                                   // '이걸로 할래요'를 누른 사람
+      bought: rate(cnt((e) => e.pkb >= 1), n),                                                     // 추천에서 샀다고 한 사람
+      pickFollow: { answers: sum('pkf'), fit: sum('pkfit') },
       pmf: Object.assign(rate(pmfAns.filter((e) => e.pmf === 'very').length, pmfAns.length), { answered: pmfAns.length, very: cnt((e) => e.pmf === 'very'), some: cnt((e) => e.pmf === 'some'), not: cnt((e) => e.pmf === 'not'), quit: cnt((e) => e.pmf === 'quit') }),
       nps: { answered: npsAns.length, promoters: prom, detractors: det, passives: npsAns.length - prom - det, score: npsAns.length ? Math.round(((prom - det) / npsAns.length) * 100) : null },
       errors: cnt((e) => e.err > 0),
@@ -1303,7 +1819,7 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
   return { PREFIX, PMF, THRESH, line, parse, parseOne, summarize, verdicts };
 });
 </script>
-<script>const BRAND = {"name":"어울","latin":"EOUL","status":"가칭","tagline":"나에게 어울리고 내 옷장을 채워 줄 다음 한 벌을, 사기 전에","version":"0.5.0-beta","beta":true,"feedbackHint":"복사한 내용을 카카오톡이나 문자로 운영자에게 보내 주세요.","note":"이름은 사용자 결정 전 임시(2026-10-12 '어울(EOUL)로 임시 사용'). 바꿀 때는 이 파일만 고치고 다시 빌드한다."};
+<script>const BRAND = {"name":"어울","latin":"EOUL","status":"가칭","tagline":"나에게 어울리고 내 옷장을 채워 줄 다음 한 벌을, 사기 전에","version":"0.6.0-beta","beta":true,"feedbackHint":"복사한 내용을 카카오톡이나 문자로 운영자에게 보내 주세요.","note":"이름은 사용자 결정 전 임시(2026-10-12 '어울(EOUL)로 임시 사용'). 바꿀 때는 이 파일만 고치고 다시 빌드한다."};
 const SAMPLE = {
  "schema": 2,
  "note": "예시 옷장(합성 자료). 사진에서 뽑은 초안 상태로 두어 확인 흐름을 볼 수 있게 했다. 특정인의 옷장이 아니다.",
@@ -2723,12 +3239,1650 @@ const TEMPLATE = {
    ]
   }
  ]
+};
+const PICKS_RAW = {
+ "schema": 1,
+ "kind": "picks",
+ "name": "어울 검증 카탈로그",
+ "updatedAt": "2026-10-13",
+ "about": "공식 스토어·공식 판매처의 공개 상품 페이지에서 직접 확인한 값만 넣는다. 가격·재고는 확인한 날의 값이며 바뀔 수 있다. 상품 사진은 가져오지 않고 링크만 둔다. 스타일 분류(styles)는 어울의 편집 판단이다.",
+ "fx": {
+  "USD": {
+   "krw": 1336,
+   "date": "2026-10-12",
+   "source": "https://www.poundsterlinglive.com/history/USD-KRW-2026",
+   "note": "그날 종가. 카드 결제 환율, 해외 배송비, 관세는 따로다"
+  }
+ },
+ "brands": {
+  "polo": {
+   "name": "Polo Ralph Lauren",
+   "ko": "폴로 랄프로렌",
+   "aliases": [
+    "폴로",
+    "polo",
+    "폴로 랄프 로렌",
+    "ralph lauren",
+    "랄프로렌"
+   ],
+   "family": "ralph-lauren"
+  },
+  "rlpl": {
+   "name": "Ralph Lauren Purple Label",
+   "ko": "랄프로렌 퍼플 라벨",
+   "aliases": [
+    "퍼플 라벨",
+    "purple label"
+   ],
+   "family": "ralph-lauren"
+  },
+  "brooks": {
+   "name": "Brooks Brothers",
+   "ko": "브룩스 브라더스",
+   "aliases": [
+    "브룩스브라더스",
+    "brooks brothers"
+   ]
+  },
+  "pottery": {
+   "name": "POTTERY",
+   "ko": "포터리",
+   "aliases": [
+    "pottery"
+   ]
+  },
+  "bronson": {
+   "name": "Bronson Mfg. Co.",
+   "ko": "브론슨",
+   "aliases": [
+    "bronson"
+   ]
+  },
+  "lvc": {
+   "name": "Levi's Vintage Clothing",
+   "ko": "LVC",
+   "aliases": [
+    "lvc",
+    "리바이스 빈티지 클로딩",
+    "리바이스 빈티지"
+   ],
+   "family": "levis"
+  },
+  "levis": {
+   "name": "Levi's",
+   "ko": "리바이스",
+   "aliases": [
+    "levis",
+    "levi's",
+    "리바이스"
+   ],
+   "family": "levis"
+  },
+  "outstanding": {
+   "name": "OUTSTANDING & CO.",
+   "ko": "아웃스탠딩",
+   "aliases": [
+    "아웃스탠딩",
+    "outstanding"
+   ]
+  },
+  "uniqlo": {
+   "name": "UNIQLO",
+   "ko": "유니클로",
+   "aliases": [
+    "uniqlo",
+    "유니클로"
+   ]
+  },
+  "hanes": {
+   "name": "Hanes",
+   "ko": "헤인즈",
+   "aliases": [
+    "hanes",
+    "헤인즈"
+   ]
+  }
+ },
+ "brandNotes": [
+  {
+   "brand": "lvc",
+   "line": "white-tee",
+   "checkedAt": "2026-10-13",
+   "text": "LVC 공식 판매처(리바이스 코리아)에는 지금 흰 티가 없어요. 1960s 캐주얼 티셔츠(99,000원)가 제트 블랙과 줄무늬로만 있어요.",
+   "url": "https://levi.co.kr/collections/%EB%82%A8%EC%84%B1-lvc"
+  },
+  {
+   "brand": "outstanding",
+   "line": "white-tee",
+   "checkedAt": "2026-10-13",
+   "text": "아웃스탠딩은 공식 온라인몰을 찾지 못했고, 주 판매처인 무신사는 자동 수집을 막고 있어 확인한 상품이 없어요. 무신사에서 본 상품은 '살까 말까'에 링크를 붙여 넣으면 가진 옷과 겹치는지·새 조합이 생기는지(색·밝기 규칙)는 볼 수 있어요."
+  }
+ ],
+ "lines": {
+  "white-tee": {
+   "label": "흰 크루넥 티셔츠",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "value": {
+    "lo": 2500,
+    "hi": 50000,
+    "note": "품질 1점당 가격(원)의 고정 기준선. 2,500원 이하면 가성비 최고, 50,000원 이상이면 최저로 본다 [제안값]"
+   },
+   "styleRole": "tiebreak",
+   "styleNote": "흰 무지 티는 스타일 차이가 작아 스타일은 동점일 때만 본다"
+  }
+ },
+ "products": [
+  {
+   "id": "polo-480590-white",
+   "line": "white-tee",
+   "brand": "polo",
+   "name": "커스텀 슬림핏 저지 크루넥 티셔츠",
+   "code": "480590",
+   "colorName": "화이트",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "slim",
+   "fitNote": "체스트와 허리에 걸쳐 약간 슬림한 핏(공식)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": "jersey",
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "워싱 처리로 브로큰인 느낌(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [
+    "washed"
+   ],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "chest",
+   "logoNote": "왼쪽 가슴 포니 자수(공식)",
+   "origin": "수입품(제조국 미표기)",
+   "sizes": [
+    {
+     "label": "M",
+     "length": 69.9,
+     "shoulder": 45.1,
+     "chestCirc": 99.1
+    }
+   ],
+   "sizeSrc": "official",
+   "sizeNote": "공식 상세에 M 치수만 공개. 가슴은 둘레(99.1cm)라 반으로 나눠 견준다. 모델 185cm가 M 착용",
+   "price": 139000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": [
+     "XS",
+     "S",
+     "M",
+     "L",
+     "XL",
+     "XXL"
+    ],
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "랄프로렌 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://www.ralphlauren.co.kr/custom-slim-fit-jersey-crewneck-t-shirt-480590.html?dwvar_480590_colorname=White"
+   },
+   "styles": [
+    "american-classic",
+    "preppy"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.ralphlauren.co.kr/custom-slim-fit-jersey-crewneck-t-shirt-480590.html?dwvar_480590_colorname=White",
+     "what": "가격·색상별 재고(페이지의 구조화 자료), 핏·M 치수·소재·포니 자수(세부 정보)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "3XL"
+   ]
+  },
+  {
+   "id": "polo-630376-white",
+   "line": "white-tee",
+   "brand": "polo",
+   "name": "커스텀 슬림핏 소프트 코튼 티셔츠",
+   "code": "630376",
+   "colorName": "화이트",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "slim",
+   "fitNote": "체스트와 허리에 걸쳐 약간 슬림한 핏(공식)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": "interlock",
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "소프트 코튼 폴로 셔츠와 같은 원단, 인터로크(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "chest",
+   "logoNote": "왼쪽 가슴 멀티 컬러 포니 자수(공식)",
+   "origin": "수입품(제조국 미표기)",
+   "sizes": [
+    {
+     "label": "M",
+     "length": 69.9,
+     "shoulder": 45.1,
+     "chestCirc": 99.1
+    }
+   ],
+   "sizeSrc": "official",
+   "sizeNote": "공식 상세에 M 치수만 공개. 가슴은 둘레",
+   "price": 139000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": [
+     "XXL"
+    ],
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "랄프로렌 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://www.ralphlauren.co.kr/%EC%BB%A4%EC%8A%A4%ED%85%80-%EC%8A%AC%EB%A6%BC%ED%95%8F-%EC%86%8C%ED%94%84%ED%8A%B8-%EC%BD%94%ED%8A%BC-%ED%8B%B0%EC%85%94%EC%B8%A0-630376.html?dwvar_630376_colorname=White"
+   },
+   "styles": [
+    "american-classic",
+    "preppy"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.ralphlauren.co.kr/%EC%BB%A4%EC%8A%A4%ED%85%80-%EC%8A%AC%EB%A6%BC%ED%95%8F-%EC%86%8C%ED%94%84%ED%8A%B8-%EC%BD%94%ED%8A%BC-%ED%8B%B0%EC%85%94%EC%B8%A0-630376.html?dwvar_630376_colorname=White",
+     "what": "가격·흰색 재고(XXL만), 인터로크 설명, 핏·M 치수·소재",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ]
+  },
+  {
+   "id": "rlpl-281670-white",
+   "line": "white-tee",
+   "brand": "rlpl",
+   "name": "라일 크루넥 티셔츠",
+   "code": "281670",
+   "colorName": "클래식 화이트",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": null,
+   "fitNote": "핏 설명 없음",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": "lisle",
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "부드러운 코튼 라일사(공식)"
+    ],
+    "compSrc": "official",
+    "fiberSrc": "official"
+   },
+   "build": [
+    "vent-hem"
+   ],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "hem",
+   "logoNote": "왼쪽 밑단에 'Ralph Lauren' 글씨 자수(공식). 가슴에는 없음",
+   "origin": "수입품(제조국 미표기)",
+   "sizes": [
+    {
+     "label": "M",
+     "length": 71.1,
+     "shoulder": 44.5,
+     "chestCirc": 96.5
+    }
+   ],
+   "sizeSrc": "official",
+   "sizeNote": "공식 상세에 M 치수만 공개. 가슴은 둘레",
+   "price": 395000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": [
+     "S",
+     "M",
+     "L",
+     "XL",
+     "XXL"
+    ],
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "랄프로렌 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://www.ralphlauren.co.kr/lisle-crewneck-t-shirt-281670.html?dwvar_281670_colorname=Classic%20White"
+   },
+   "styles": [
+    "american-classic",
+    "minimal"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.ralphlauren.co.kr/lisle-crewneck-t-shirt-281670.html?dwvar_281670_colorname=Classic%20White",
+     "what": "브랜드(Purple Label)·가격·흰색 재고, 라일사·밑단 자수·M 치수",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ]
+  },
+  {
+   "id": "brooks-bbnpmm5192a",
+   "line": "white-tee",
+   "brand": "brooks",
+   "name": "수피마 골든플리스 로고 티셔츠",
+   "code": "BBNPMM5192A",
+   "colorName": "화이트",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "regular",
+   "fitNote": "레귤러핏(판매처 표기)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": "supima",
+    "fiberSrc": "name",
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "상품명에 수피마(소재 고시는 면 100%)"
+    ],
+    "compSrc": "notice"
+   },
+   "build": [],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "small-chest",
+   "logoNote": "왼쪽 가슴 작은 골든플리스 자수(상품 사진으로 확인)",
+   "origin": "베트남",
+   "sizes": [
+    {
+     "label": "S",
+     "length": 68.6,
+     "shoulder": 41.9,
+     "chest": 50.8,
+     "sleeve": 21
+    },
+    {
+     "label": "M",
+     "length": 71.1,
+     "shoulder": 43.2,
+     "chest": 53.3,
+     "sleeve": 21.6
+    },
+    {
+     "label": "L",
+     "length": 73.7,
+     "shoulder": 44.5,
+     "chest": 55.9,
+     "sleeve": 22.2
+    },
+    {
+     "label": "XL",
+     "length": 76.2,
+     "shoulder": 46.4,
+     "chest": 59.7,
+     "sleeve": 22.9
+    }
+   ],
+   "sizeSrc": "seller",
+   "sizeNote": "코오롱몰 치수표. 판매처는 치수표가 자동 추출일 수 있다고 고지한다",
+   "price": 74250,
+   "currency": "KRW",
+   "listPrice": 99000,
+   "stock": {
+    "inStock": true,
+    "sizes": null,
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "코오롱몰 (브룩스 브라더스 국내 판매처)",
+    "type": "retailer",
+    "url": "https://www.kolonmall.com/Product/K1745904915105011NO01"
+   },
+   "styles": [
+    "american-classic",
+    "preppy"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.kolonmall.com/Product/K1745904915105011NO01",
+     "what": "가격(25% 할인, 정가 99,000원)·재고 있음·레귤러핏·치수표·상품정보제공고시(면 100%, 베트남)·로고 위치(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ]
+  },
+  {
+   "id": "pottery-ss-classic-white",
+   "line": "white-tee",
+   "brand": "pottery",
+   "name": "Short Sleeve Classic T-Shirt",
+   "code": "K1772761145790065NO01",
+   "colorName": "White",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "regular",
+   "fitNote": "레귤러핏(판매처 표기), 남녀 공용",
+   "fabric": {
+    "comp": "Cotton 100%",
+    "cotton100": true,
+    "fiber": "supima",
+    "fiberSrc": "seller",
+    "knit": null,
+    "weight": null,
+    "thick": "thin",
+    "thickSrc": "seller",
+    "notes": [
+     "소재 고시는 Cotton 100%. 수피마·실키 피니시·얇은 두께감은 판매처 설명(자동 생성 문장일 수 있다)"
+    ],
+    "compSrc": "notice"
+   },
+   "build": [],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "none",
+   "logoNote": "겉에 보이는 로고 없음(상품 사진으로 확인)",
+   "origin": "한국",
+   "sizes": [
+    {
+     "label": "1",
+     "length": 65.5,
+     "shoulder": 45,
+     "chest": 52,
+     "sleeve": 20,
+     "alias": "S"
+    },
+    {
+     "label": "2",
+     "length": 67.5,
+     "shoulder": 46.5,
+     "chest": 54.5,
+     "sleeve": 21,
+     "alias": "M"
+    },
+    {
+     "label": "3",
+     "length": 69.5,
+     "shoulder": 48,
+     "chest": 57,
+     "sleeve": 22,
+     "alias": "L"
+    },
+    {
+     "label": "4",
+     "length": 71.5,
+     "shoulder": 51,
+     "chest": 61,
+     "sleeve": 22.5,
+     "alias": "XL"
+    },
+    {
+     "label": "5",
+     "length": 73.5,
+     "shoulder": 54,
+     "chest": 65,
+     "sleeve": 23,
+     "alias": "XXL"
+    }
+   ],
+   "sizeSrc": "seller",
+   "sizeNote": "코오롱몰 치수표(판매처는 자동 추출일 수 있다고 고지). 사이즈 1~5 = S·M·L·XL·2XL(판매처 옵션 표기)",
+   "price": 79000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": null,
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "코오롱몰 포터리 브랜드관",
+    "type": "retailer",
+    "url": "https://www.kolonmall.com/Brands/pottery/Product/K1772761145790065NO01"
+   },
+   "styles": [
+    "minimal",
+    "normcore"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.kolonmall.com/Brands/pottery/Product/K1772761145790065NO01",
+     "what": "가격·재고 있음·레귤러핏·치수표·판매처 설명(수피마, 얇은 두께감)·로고 없음(사진)·상품정보제공고시(소재·제조국)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ]
+  },
+  {
+   "id": "pottery-ss-comfort-white",
+   "line": "white-tee",
+   "brand": "pottery",
+   "name": "Short Sleeve Comfort T-Shirt",
+   "code": "K1772760658797098NO01",
+   "colorName": "White",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "relaxed",
+   "fitNote": "루즈·릴랙스핏(판매처 표기), 남녀 공용",
+   "fabric": {
+    "comp": "Cotton 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": "thin",
+    "thickSrc": "seller",
+    "notes": [
+     "소재 고시 Cotton 100%. 얇은 두께감은 판매처 설명(자동 생성 문장일 수 있다)"
+    ],
+    "compSrc": "notice",
+    "fiberSrc": null
+   },
+   "build": [],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "none",
+   "logoNote": "겉 로고 없음(상품 사진으로 확인)",
+   "origin": "중국",
+   "sizes": [
+    {
+     "label": "1",
+     "length": 67.5,
+     "shoulder": 50,
+     "chest": 56,
+     "sleeve": 21,
+     "alias": "S"
+    },
+    {
+     "label": "2",
+     "length": 69.5,
+     "shoulder": 51.5,
+     "chest": 58.5,
+     "sleeve": 22,
+     "alias": "M"
+    },
+    {
+     "label": "3",
+     "length": 71.5,
+     "shoulder": 53,
+     "chest": 61,
+     "sleeve": 23,
+     "alias": "L"
+    },
+    {
+     "label": "4",
+     "length": 73.5,
+     "shoulder": 55,
+     "chest": 64,
+     "sleeve": 23.5,
+     "alias": "XL"
+    },
+    {
+     "label": "5",
+     "length": 75.5,
+     "shoulder": 57,
+     "chest": 67,
+     "sleeve": 24,
+     "alias": "XXL"
+    }
+   ],
+   "sizeSrc": "seller",
+   "sizeNote": "코오롱몰 치수표(판매처는 자동 추출일 수 있다고 고지). 사이즈 1~5 = S·M·L·XL·2XL(판매처 옵션 표기)",
+   "price": 79000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": null,
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "코오롱몰 포터리 브랜드관",
+    "type": "retailer",
+    "url": "https://www.kolonmall.com/Brands/pottery/Product/K1772760658797098NO01"
+   },
+   "styles": [
+    "minimal",
+    "normcore"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.kolonmall.com/Brands/pottery/Product/K1772760658797098NO01",
+     "what": "가격·재고 있음·루즈핏·치수표·판매처 설명(얇은 두께감)·상품정보제공고시(소재·제조국)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ]
+  },
+  {
+   "id": "pottery-ls-classic-white",
+   "line": "white-tee",
+   "brand": "pottery",
+   "name": "Long Sleeve Classic T-Shirt",
+   "code": "K1771919955712071NO01",
+   "colorName": "White",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "long",
+   "fit": "regular",
+   "fitNote": "레귤러 핏(판매처 설명), 남녀 공용",
+   "fabric": {
+    "comp": "Supima Cotton 100%",
+    "cotton100": true,
+    "fiber": "supima",
+    "fiberSrc": "notice",
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "소재 고시 Supima Cotton 100%. 실키 가공·재킷 소매 패턴은 판매처 설명",
+     "같은 상품의 그레이 색상 설명에는 '얇은 두께'라고 적혀 있다"
+    ],
+    "compSrc": "notice"
+   },
+   "build": [],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "none",
+   "logoNote": "겉 로고 없음(상품 사진으로 확인)",
+   "origin": "한국",
+   "sizes": [
+    {
+     "label": "1",
+     "length": 66.5,
+     "shoulder": 45,
+     "chest": 52,
+     "sleeve": 60.4,
+     "alias": "S"
+    },
+    {
+     "label": "2",
+     "length": 68.5,
+     "shoulder": 46.5,
+     "chest": 54.5,
+     "sleeve": 61.7,
+     "alias": "M"
+    },
+    {
+     "label": "3",
+     "length": 70.5,
+     "shoulder": 48,
+     "chest": 57,
+     "sleeve": 63,
+     "alias": "L"
+    },
+    {
+     "label": "4",
+     "length": 72.5,
+     "shoulder": 51,
+     "chest": 61,
+     "sleeve": 64,
+     "alias": "XL"
+    },
+    {
+     "label": "5",
+     "length": 74.5,
+     "shoulder": 54,
+     "chest": 65,
+     "sleeve": 64,
+     "alias": "XXL"
+    }
+   ],
+   "sizeSrc": "seller",
+   "sizeNote": "코오롱몰 치수표(판매처는 자동 추출일 수 있다고 고지). 사이즈 1~5 = S·M·L·XL·2XL(판매처 옵션 표기)",
+   "price": 98000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": null,
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "코오롱몰 포터리 브랜드관",
+    "type": "retailer",
+    "url": "https://www.kolonmall.com/Brands/pottery/Product/K1771919955712071NO01"
+   },
+   "styles": [
+    "minimal",
+    "normcore"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.kolonmall.com/Brands/pottery/Product/K1771919955712071NO01",
+     "what": "가격·재고 있음·치수표·판매처 설명(수피마, 실키 가공)·상품정보제공고시(소재·제조국)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ]
+  },
+  {
+   "id": "bronson-loopwheel-white",
+   "line": "white-tee",
+   "brand": "bronson",
+   "name": "Loopwheel Tubular Athletic T-Shirt",
+   "code": null,
+   "colorName": "White",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "regular",
+   "fitNote": "미국식 레귤러 핏, 평소 사이즈 권장(공식)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": "ringspun",
+    "fiberSrc": "official",
+    "knit": "loopwheel",
+    "weight": "10.5oz",
+    "thick": "thick",
+    "thickSrc": "official-weight",
+    "notes": [
+     "10.5온스 링스펀 코튼, 옛 방식 루프휠 편직기로 짬, 몸판 옆선 없는 통짜(공식)",
+     "면사로 박음질(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [
+    "tubular",
+    "loopwheel"
+   ],
+   "neck": "wide",
+   "neckSrc": "photo",
+   "logo": "none",
+   "logoNote": "겉에 보이는 로고 없음(상품 사진으로 확인)",
+   "origin": null,
+   "sizes": [],
+   "sizeSrc": null,
+   "sizeNote": "치수표가 그림으로만 있어 자동 비교를 못 한다",
+   "price": 28.99,
+   "currency": "USD",
+   "listPrice": null,
+   "stock": {
+    "inStock": true,
+    "sizes": [
+     "S",
+     "M",
+     "L",
+     "XL",
+     "XXL"
+    ],
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "Bronson 공식 온라인 스토어 (해외 주문)",
+    "type": "official",
+    "url": "https://bronsonshop.com/products/bronson-mens-original-series-ringspun-cotton-short-sleeve-tubular-t-shirt"
+   },
+   "styles": [
+    "amekaji",
+    "workwear"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://bronsonshop.com/products/bronson-mens-original-series-ringspun-cotton-short-sleeve-tubular-t-shirt",
+     "what": "달러 가격·사이즈별 재고, 10.5온스 링스펀·루프휠·통짜 몸판(상세), 로고 없음·목 립 모양(사진)",
+     "seen": "2026-10-13"
+    },
+    {
+     "url": "https://bronsonshop.com/pages/shipping-policy",
+     "what": "배송비(99달러 미만 6.99달러)·배송 기간",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "shipping": {
+    "fee": 6.99,
+    "freeOver": 99,
+    "currency": "USD",
+    "note": "99달러 미만 주문은 배송비 6.99달러, 해외 일반 배송 9~14 영업일(공식 배송 안내). 한국 관세·부가세는 따로 확인",
+    "url": "https://bronsonshop.com/pages/shipping-policy",
+    "checkedAt": "2026-10-13"
+   }
+  },
+  {
+   "id": "uniqlo-e422992-white",
+   "line": "white-tee",
+   "brand": "uniqlo",
+   "name": "크루넥T (반팔)",
+   "code": "489929",
+   "colorName": "00 WHITE",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": null,
+   "fitNote": "남녀 공용",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": "jersey",
+    "weight": null,
+    "thick": "thick",
+    "thickSrc": "official",
+    "notes": [
+     "헤비웨이트 코튼 저지(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [
+    "binding-neck"
+   ],
+   "neck": "binding",
+   "neckSrc": "official",
+   "logo": "none",
+   "logoNote": "겉에 보이는 로고 없음(상품 사진으로 확인)",
+   "origin": "중국",
+   "sizes": [
+    {
+     "label": "S",
+     "length": 66,
+     "shoulder": 45,
+     "chest": 50
+    },
+    {
+     "label": "M",
+     "length": 69,
+     "shoulder": 46.5,
+     "chest": 53
+    },
+    {
+     "label": "L",
+     "length": 72,
+     "shoulder": 48,
+     "chest": 56
+    },
+    {
+     "label": "XL",
+     "length": 75,
+     "shoulder": 50,
+     "chest": 60
+    }
+   ],
+   "sizeSrc": "official",
+   "sizeNote": "유니클로 공식 치수(가슴은 너비). 소매는 등 중심부터 재서 다른 브랜드와 견주지 않는다",
+   "price": 19900,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "sizes": [
+     "XS",
+     "S",
+     "M",
+     "L",
+     "XL",
+     "XXL",
+     "3XL",
+     "4XL"
+    ],
+    "checkedAt": "2026-10-13",
+    "inStock": true
+   },
+   "store": {
+    "name": "유니클로 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://www.uniqlo.com/kr/ko/products/E422992-000/00?colorDisplayCode=00"
+   },
+   "styles": [
+    "normcore",
+    "minimal"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.uniqlo.com/kr/ko/products/E422992-000/00?colorDisplayCode=00",
+     "what": "가격·흰색 재고·치수·소재(면 100%)·제조국·헤비웨이트·바인딩 목(상세)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "3XL",
+    "4XL"
+   ]
+  },
+  {
+   "id": "uniqlo-e465193-white",
+   "line": "white-tee",
+   "brand": "uniqlo",
+   "name": "AIRism 코튼 크루넥T (긴팔)",
+   "code": "489924",
+   "colorName": "00 WHITE",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "long",
+   "fit": null,
+   "fitNote": "남녀 공용",
+   "fabric": {
+    "comp": "몸판 면 53%·폴리에스터 47%(재생 30% 포함), 목 립 면 73%·폴리에스터 27%",
+    "cotton100": false,
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "땀이 잘 마르고 닿으면 시원한 기능(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [],
+   "neck": "narrow",
+   "neckSrc": "official",
+   "logo": "none",
+   "logoNote": "겉에 보이는 로고 없음(상품 사진으로 확인)",
+   "origin": "중국",
+   "sizes": [
+    {
+     "label": "S",
+     "length": 66.5,
+     "shoulder": 46,
+     "chest": 52
+    },
+    {
+     "label": "M",
+     "length": 69.5,
+     "shoulder": 47.5,
+     "chest": 55
+    },
+    {
+     "label": "L",
+     "length": 72.5,
+     "shoulder": 49,
+     "chest": 58
+    },
+    {
+     "label": "XL",
+     "length": 75.5,
+     "shoulder": 51,
+     "chest": 62
+    }
+   ],
+   "sizeSrc": "official",
+   "sizeNote": "유니클로 공식 치수(가슴은 너비)",
+   "price": 29900,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "sizes": [
+     "XS",
+     "S",
+     "M",
+     "L",
+     "XL",
+     "XXL",
+     "3XL",
+     "4XL"
+    ],
+    "checkedAt": "2026-10-13",
+    "inStock": true
+   },
+   "store": {
+    "name": "유니클로 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://www.uniqlo.com/kr/ko/products/E465193-000/00?colorDisplayCode=00"
+   },
+   "styles": [
+    "normcore",
+    "minimal"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.uniqlo.com/kr/ko/products/E465193-000/00?colorDisplayCode=00",
+     "what": "가격·흰색 재고·치수·혼용률·제조국·'약간 폭이 좁은 크루넥'(상세)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "3XL",
+    "4XL"
+   ]
+  },
+  {
+   "id": "uniqlo-e450179-white",
+   "line": "white-tee",
+   "brand": "uniqlo",
+   "name": "소프트 브러시드 크루넥T (긴팔)",
+   "code": "486106",
+   "colorName": "00 WHITE",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을",
+    "겨울"
+   ],
+   "sleeve": "long",
+   "fit": "regular",
+   "fitNote": "깔끔한 레귤러 실루엣(공식)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "안쪽 기모(공식)",
+     "소매를 걷어도 잘 내려오지 않게 만듦(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [
+    "brushed"
+   ],
+   "neck": "standard",
+   "neckSrc": "official",
+   "logo": "none",
+   "logoNote": "겉에 보이는 로고 없음(상품 사진으로 확인)",
+   "origin": null,
+   "sizes": [
+    {
+     "label": "S",
+     "length": 66,
+     "shoulder": 41,
+     "chest": 50
+    },
+    {
+     "label": "M",
+     "length": 69,
+     "shoulder": 42.5,
+     "chest": 53
+    },
+    {
+     "label": "L",
+     "length": 72,
+     "shoulder": 44,
+     "chest": 56
+    },
+    {
+     "label": "XL",
+     "length": 75,
+     "shoulder": 46,
+     "chest": 60
+    }
+   ],
+   "sizeSrc": "official",
+   "sizeNote": "유니클로 공식 치수(가슴은 너비)",
+   "price": 29900,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "sizes": [
+     "XS",
+     "S",
+     "M",
+     "L",
+     "XL",
+     "XXL",
+     "3XL",
+     "4XL"
+    ],
+    "checkedAt": "2026-10-13",
+    "inStock": true
+   },
+   "store": {
+    "name": "유니클로 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://www.uniqlo.com/kr/ko/products/E450179-000/00?colorDisplayCode=00"
+   },
+   "styles": [
+    "normcore"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.uniqlo.com/kr/ko/products/E450179-000/00?colorDisplayCode=00",
+     "what": "가격·흰색 재고·치수·면 100%·안쪽 기모·립 크루넥(상세)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "3XL",
+    "4XL"
+   ]
+  },
+  {
+   "id": "levis-005gy0000",
+   "line": "white-tee",
+   "brand": "levis",
+   "name": "헤비웨이트 루즈 티셔츠",
+   "code": "005GY0000",
+   "colorName": "Bright White",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "relaxed",
+   "fitNote": "스케이트 티셔츠에서 따온 루즈 핏(공식)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": "thick",
+    "thickSrc": "official",
+    "notes": [
+     "프리미엄 헤비웨이트 코튼, 봉제 뒤 염색(가먼트 다잉)(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [
+    "garment-dyed"
+   ],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "none",
+   "logoNote": "겉에 보이는 로고 없음(상품 사진으로 확인)",
+   "origin": null,
+   "sizes": [],
+   "sizeSrc": null,
+   "sizeNote": "치수표를 글자로 찾지 못했다",
+   "price": 47200,
+   "currency": "KRW",
+   "listPrice": 59000,
+   "stock": {
+    "sizes": [
+     "S",
+     "M",
+     "L",
+     "XL"
+    ],
+    "checkedAt": "2026-10-13",
+    "inStock": true
+   },
+   "store": {
+    "name": "리바이스 코리아 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://levi.co.kr/products/%ED%97%A4%EB%B9%84%EC%9B%A8%EC%9D%B4%ED%8A%B8-%EB%A3%A8%EC%A6%88-%ED%8B%B0-005gy0000"
+   },
+   "styles": [
+    "street"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://levi.co.kr/products/%ED%97%A4%EB%B9%84%EC%9B%A8%EC%9D%B4%ED%8A%B8-%EB%A3%A8%EC%A6%88-%ED%8B%B0-005gy0000",
+     "what": "할인가(정가 59,000원의 20%)·사이즈별 재고·면 100% 헤비웨이트·가먼트 다잉(상세)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ]
+  },
+  {
+   "id": "levis-001lj0001",
+   "line": "white-tee",
+   "brand": "levis",
+   "name": "BlueTab 릴렉스드 티",
+   "code": "001LJ0001",
+   "colorName": "White",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "relaxed",
+   "fitNote": "릴렉스드(루즈) 핏(공식)",
+   "fabric": {
+    "comp": "면 100%",
+    "cotton100": true,
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "리바이스 프리미엄 라인 Blue Tab(공식)"
+    ],
+    "compSrc": "official"
+   },
+   "build": [],
+   "neck": null,
+   "neckSrc": null,
+   "logo": "tab",
+   "logoNote": "시그니처 블루 탭(공식). 위치는 확인 안 함",
+   "origin": null,
+   "sizes": [],
+   "sizeSrc": null,
+   "sizeNote": "치수표를 글자로 찾지 못했다",
+   "price": 99000,
+   "currency": "KRW",
+   "listPrice": null,
+   "stock": {
+    "sizes": [
+     "S",
+     "M",
+     "L",
+     "XL"
+    ],
+    "checkedAt": "2026-10-13",
+    "inStock": true
+   },
+   "store": {
+    "name": "리바이스 코리아 공식 온라인 스토어",
+    "type": "official",
+    "url": "https://levi.co.kr/products/bluetab-%EB%A6%B4%EB%A0%89%EC%8A%A4%EB%93%9C-%ED%8B%B0-001lj0001"
+   },
+   "styles": [
+    "amekaji",
+    "minimal"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://levi.co.kr/products/bluetab-%EB%A6%B4%EB%A0%89%EC%8A%A4%EB%93%9C-%ED%8B%B0-001lj0001",
+     "what": "가격·사이즈별 재고·면 100%·릴렉스드 핏·블루 탭(상세)",
+     "seen": "2026-10-13"
+    }
+   ],
+   "offered": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ]
+  },
+  {
+   "id": "hanes-red-3p-white",
+   "line": "white-tee",
+   "brand": "hanes",
+   "name": "3P 레드 라벨 크루넥 티셔츠 (3장)",
+   "code": "ZITCX26061REX",
+   "colorName": "WHITE",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "regular",
+   "fitNote": "레귤러핏(판매처 표기), 남녀 공용",
+   "fabric": {
+    "comp": "COTTON 100%",
+    "cotton100": true,
+    "compSrc": "notice",
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": "thin",
+    "thickSrc": "seller",
+    "notes": [
+     "얇은 두께(판매처 설명 — 자동 생성 문장일 수 있다)",
+     "옆선 없는 통짜(튜블라)·목 뒤 라벨 없는 인쇄·블라인드 스티치(판매처 설명)"
+    ]
+   },
+   "build": [
+    "tubular"
+   ],
+   "buildSrc": "seller",
+   "neck": null,
+   "neckSrc": null,
+   "logo": "none",
+   "logoNote": "겉 로고 없음, 목 안쪽에 빨간 인쇄 라벨(상품 사진으로 확인)",
+   "origin": "캄보디아",
+   "sizes": [
+    {
+     "label": "S",
+     "length": 67,
+     "shoulder": 41,
+     "chest": 46,
+     "sleeve": 19.5
+    },
+    {
+     "label": "M",
+     "length": 72.5,
+     "shoulder": 44,
+     "chest": 49,
+     "sleeve": 20
+    },
+    {
+     "label": "L",
+     "length": 76,
+     "shoulder": 47,
+     "chest": 52,
+     "sleeve": 20.5
+    },
+    {
+     "label": "XL",
+     "length": 80,
+     "shoulder": 51,
+     "chest": 56,
+     "sleeve": 21
+    }
+   ],
+   "sizeSrc": "seller",
+   "sizeNote": "코오롱몰 치수표(가슴 폭·어깨 폭은 너비). 판매처는 치수표가 자동 추출일 수 있다고 고지한다",
+   "packCount": 3,
+   "price": 29000,
+   "currency": "KRW",
+   "listPrice": null,
+   "priceNote": "목록 화면에는 10% 할인가 26,100원이 보이나 상품 자료의 가격은 29,000원(쿠폰·회원 조건일 수 있음)",
+   "offered": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "stock": {
+    "inStock": true,
+    "sizes": null,
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "코오롱몰 헤인즈 브랜드관",
+    "type": "retailer",
+    "url": "https://www.kolonmall.com/Brands/HANES/Product/ZITCX26061REX"
+   },
+   "styles": [
+    "normcore",
+    "minimal"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.kolonmall.com/Brands/HANES/Product/ZITCX26061REX",
+     "what": "가격·재고 있음·치수표·상품정보제공고시(면 100%, 캄보디아)·판매처 설명(얇은 두께, 튜블라)·로고 없음(사진)",
+     "seen": "2026-10-13"
+    }
+   ]
+  },
+  {
+   "id": "hanes-blue-3p-white",
+   "line": "white-tee",
+   "brand": "hanes",
+   "name": "3P 블루 라벨 크루넥 티셔츠 (3장)",
+   "code": "ZITCX26062BUX",
+   "colorName": "WHITE",
+   "cat": "top",
+   "kind": "tee",
+   "family": "white",
+   "light": 95,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [],
+   "sleeve": "short",
+   "fit": "relaxed",
+   "fitNote": "박스 실루엣(판매처 표기), 남녀 공용",
+   "fabric": {
+    "comp": "COTTON 75%·POLYESTER 25%",
+    "cotton100": false,
+    "compSrc": "notice",
+    "fiber": null,
+    "knit": null,
+    "weight": null,
+    "thick": null,
+    "thickSrc": null,
+    "notes": [
+     "면·폴리에스터 혼방, 드라이한 촉감·빨리 마름(판매처 설명)",
+     "옆선 없는 통짜(튜블라)·태그리스·블라인드 스티치(판매처 설명)"
+    ]
+   },
+   "build": [
+    "tubular"
+   ],
+   "buildSrc": "seller",
+   "neck": null,
+   "neckSrc": null,
+   "logo": "tab",
+   "logoNote": "옆쪽에 작은 깃발 라벨이 보임(상품 사진 판단)",
+   "origin": "캄보디아",
+   "sizes": [
+    {
+     "label": "S",
+     "length": 67,
+     "shoulder": 41,
+     "chest": 46,
+     "sleeve": 19.5
+    },
+    {
+     "label": "M",
+     "length": 72.5,
+     "shoulder": 44,
+     "chest": 49,
+     "sleeve": 20
+    },
+    {
+     "label": "L",
+     "length": 76,
+     "shoulder": 47,
+     "chest": 52,
+     "sleeve": 20.5
+    },
+    {
+     "label": "XL",
+     "length": 80,
+     "shoulder": 51,
+     "chest": 56,
+     "sleeve": 21
+    }
+   ],
+   "sizeSrc": "seller",
+   "sizeNote": "코오롱몰 치수표(가슴 폭·어깨 폭은 너비). 판매처는 치수표가 자동 추출일 수 있다고 고지한다",
+   "packCount": 3,
+   "price": 31000,
+   "currency": "KRW",
+   "listPrice": null,
+   "priceNote": "목록 화면에는 10% 할인가 27,900원이 보이나 상품 자료의 가격은 31,000원(쿠폰·회원 조건일 수 있음)",
+   "offered": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "stock": {
+    "inStock": true,
+    "sizes": null,
+    "checkedAt": "2026-10-13"
+   },
+   "store": {
+    "name": "코오롱몰 헤인즈 브랜드관",
+    "type": "retailer",
+    "url": "https://www.kolonmall.com/Brands/HANES/Product/ZITCX26062BUX"
+   },
+   "styles": [
+    "normcore",
+    "minimal"
+   ],
+   "checkedAt": "2026-10-13",
+   "evidence": [
+    {
+     "url": "https://www.kolonmall.com/Brands/HANES/Product/ZITCX26062BUX",
+     "what": "가격·재고 있음·치수표·상품정보제공고시(면 75%·폴리 25%, 캄보디아)·판매처 설명(튜블라, 박스 실루엣)·라벨 위치(사진)",
+     "seen": "2026-10-13"
+    }
+   ]
+  }
+ ]
 };</script>
 <script>window.__CLOSET_SRC = 'closet.js?v=cf930fd2eb';</script>
 <script>
 (function () {
   'use strict';
-  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, FB = window.Feedback;
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, FB = window.Feedback, PK = window.Pick;
+  const PICKS = PK.cleanPicks(PICKS_RAW) || { products: [], brands: {}, lines: {}, brandNotes: [], fx: {} };   // 검증 카탈로그: 공식 판매처 페이지에서 확인한 상품(가격·재고는 확인한 날의 값)
   let X = window.OtjangCloset || null;                                                              // 3D 옷장: 한 파일 빌드에서는 바로 있고, 나눈 빌드(웹 배포)에서는 3D 탭을 열 때 closet.js 를 내려받는다
   const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
   const KEY1 = 'otjang.v1', KEY2 = 'otjang.v2', DB = 'otjang';
@@ -2813,6 +4967,27 @@ const TEMPLATE = {
   const kvSet = (k, v) => new Promise((res) => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => res(false); t.onabort = () => res(false); } catch (e) { res(false); } });
   const kvDel = (k) => new Promise((res) => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = () => res(true); t.onerror = () => res(false); } catch (e) { res(false); } });
   const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  /** 추천 설정(무엇을, 어떻게 입나, 중요한 순서, 좋아하는 브랜드·스타일, 사이즈, 잘 맞는 옷 치수). 이 브라우저에만 남는다. */
+  function cleanPrefs(raw) {
+    const p = raw && typeof raw === 'object' ? raw : {};
+    const keys = (v, dict) => (Array.isArray(v) ? v.filter((k, i, a) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(dict, k) && a.indexOf(k) === i) : []);
+    const ref = {}; if (p.ref && typeof p.ref === 'object') for (const k of ['chest', 'length', 'shoulder']) { const v = num(p.ref[k], 20, 150); if (v != null) ref[k] = v; }
+    const lines = Object.keys(PICKS.lines);
+    const use = PK.USES[p.use] ? p.use : 'any';                                                      // 기본은 '상관없음'(용도 조건 없음)
+    return { line: PICKS.lines[p.line] ? p.line : lines[0] || '', sleeve: PK.SLEEVES[p.sleeve] ? p.sleeve : 'short', use,
+      conds: Array.isArray(p.conds) ? keys(p.conds, PK.CONDS).filter((k) => PK.CONDS[k].use === use) : null,   // null 이면 그 용도의 조건을 모두 켠다
+      pri: keys(p.pri, PK.CRITERIA).slice(0, 5), brands: keys(p.brands, PICKS.brands), styles: keys(p.styles, PK.STYLES),
+      size: typeof p.size === 'string' && /^(XS|S|M|L|XL|XXL)$/.test(p.size) ? p.size : '', ref, seen: p.seen === true };
+  }
+  /** 추천 기록: 결정(이걸로·대안·아니요), 판매처를 연 횟수, 샀나요, 2주 뒤 사이즈·만족. 이 브라우저에만 남는다. */
+  function cleanPickLog(raw) {
+    return (Array.isArray(raw) ? raw : []).slice(-100).map((e) => (e && typeof e === 'object' && typeof e.productId === 'string' && W.safeDate(e.at) ? {
+      id: str(e.id, 40) || 'k' + Math.random().toString(36).slice(2, 10), at: e.at, productId: str(e.productId, 60), label: str(e.label, 120), price: num(e.price, 0, 1e9) || 0, store: str(e.store, 60),
+      verdict: ['accept', 'alt', 'reject'].indexOf(e.verdict) >= 0 ? e.verdict : '', altId: str(e.altId, 60), out: num(e.out, 0, 999) || 0,
+      bought: ['yes', 'no'].indexOf(e.bought) >= 0 ? e.bought : '', boughtAt: W.safeDate(e.boughtAt),
+      follow: e.follow && W.safeDate(e.follow.at) && ['fit', 'small', 'big'].indexOf(e.follow.size) >= 0 && ['good', 'ok', 'regret'].indexOf(e.follow.feel) >= 0 ? { at: e.follow.at, size: e.follow.size, feel: e.follow.feel } : null,
+      pri: Array.isArray(e.pri) ? e.pri.filter((k) => PK.CRITERIA[k]).slice(0, 5) : [], use: PK.USES[e.use] ? e.use : 'any' } : null)).filter(Boolean);
+  }
   /** 저장된 상태를 정리한다. 옷장 파일(스키마 1·2) + others + catalog + rack(3D 옷장에 건 옷). */
   function cleanState(raw) {
     const w = W.cleanWardrobe(raw); if (!w) return null;
@@ -2820,6 +4995,8 @@ const TEMPLATE = {
     const m = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
     s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120), quickAdded: num(m.quickAdded, 0, 9999) || 0,   // quickAdded: 빠른 시작으로 넣은 옷 수
       installId: typeof m.installId === 'string' && /^[a-z0-9]{6,16}$/.test(m.installId) ? m.installId : Math.random().toString(36).slice(2, 10).padEnd(6, '0') };   // installId: 의견 요약에서 같은 사람을 한 번만 세려는 무작위 글자(사람을 알아볼 수 없다)   // days: 앱을 연 날(이 기기에만 남고, 의견 보내기를 누를 때만 요약으로 붙는다)   // 예시 옷장 보는 중인지, 마지막 백업일, 첫 안내를 봤는지
+    for (const k of ['pickRuns', 'pickOut', 'pickCand']) s.meta[k] = num(m[k], 0, 99999) || 0;          // 기준 추천을 받은 횟수, 추천에서 판매처를 연 횟수, 추천을 후보로 넣은 수
+    s.prefs = cleanPrefs(raw.prefs); s.pickLog = cleanPickLog(raw.pickLog);
     s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
     const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
     const ids = new Set(s.items.map((i) => i.id)), slots = new Set();
@@ -2844,7 +5021,7 @@ const TEMPLATE = {
   }
   let state = null, storageOk = true, savePromise = Promise.resolve();
   const ui = { advOpen: false, syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
-    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '' };
+    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '', pickForm: false, tasteOpen: false, shopOwnOpen: false, pickSeen: [], boughtSkip: [], awaitReturn: null, askBought: '' };
   function save() {
     const data = JSON.stringify(state);
     savePromise = (async () => {
@@ -2925,11 +5102,11 @@ const TEMPLATE = {
   }
 
   // ---------- 탭 ----------
-  const TABS = [['closet', '옷장'], ['closet3d', '3D 옷장'], ['judge', '살까 말까'], ['outfits', '코디'], ['shop', '살 만한 옷'], ['compare', '옷장 구경'], ['log', '기록']];
+  const TABS = [['closet', '옷장'], ['shop', '추천'], ['judge', '살까 말까'], ['outfits', '코디'], ['closet3d', '3D 옷장'], ['compare', '옷장 구경'], ['log', '기록']];
   function renderTabs() {
     const nav = $('#tabs'); nav.textContent = '';
     for (const [id, label] of TABS) {
-      const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'shop' ? state.catalog.products.length : id === 'closet3d' ? state.rack.length : null;
+      const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'closet3d' ? state.rack.length : null;
       nav.append(h('button', { class: 'tab', type: 'button', role: 'tab', id: 'tabbtn-' + id, 'aria-selected': ui.tab === id ? 'true' : 'false', onclick: () => { ui.tab = id; render(); } }, label, n != null ? h('span', { class: 'n', text: String(n) }) : null));
     }
   }
@@ -3184,9 +5361,252 @@ const TEMPLATE = {
     main.append(h('div', { class: 'outfits', id: 'recGrid' }, cur.map((c) => outfitCard({ top: map[c.top], bottom: map[c.bottom], outer: c.outer ? map[c.outer] : null, score: c.score, why: c.why, caution: c.caution }))));
   }
 
-  // ---------- 살 만한 옷 (직접 넣는 상품 목록) ----------
+  // ---------- 추천: 사고 싶은 옷을 내 기준으로 딱 하나 ----------
+  const won = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
+  const md = (d) => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(d || ''); return m ? Number(m[1]) + '월 ' + Number(m[2]) + '일' : d || ''; };
+  const SHORT = { value: '가성비', quality: '품질', brand: '브랜드', fit: '내 핏', style: '스타일' };
+  const MARK = { ok: ['✓', '확인됨'], unknown: ['?', '확인 못 함'], fail: ['✕', '어긋남'], good: ['✓', '좋음'], mid: ['○', '보통'], low: ['△', '약함'] };
+  /** 눌러서 다시 그린 뒤에도 같은 단추에 초점을 돌려준다(키보드로 쓰는 사람을 위해). */
+  function keepFocus(id, fn) { return () => { fn(); const el = id && document.getElementById(id); if (el) el.focus(); }; }
+  function josa(word, a, b) { const ch = String(word).charCodeAt(String(word).length - 1); return ch >= 0xac00 && ch <= 0xd7a3 ? word + ((ch - 0xac00) % 28 ? a : b) : word + a + '(' + b + ')'; }
+  function pickQuery() {
+    const pf = state.prefs;
+    return { line: pf.line, sleeve: pf.sleeve, use: pf.use, conds: pf.conds || undefined, priorities: pf.pri, brands: pf.brands, styles: pf.styles, size: pf.size, ref: pf.ref, today: today() };
+  }
+  /** 하나만 고르는 질문: 라디오 묶음(화살표로 옮김). */
+  function segmented(id, label, opts, cur, onPick) {
+    const move = (e) => {
+      const i = opts.findIndex(([v]) => v === cur), n = opts.length;
+      const j = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (i + 1) % n : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i - 1 + n) % n : -1;
+      if (j < 0) return; e.preventDefault(); keepFocus(id + '-' + opts[j][0], () => onPick(opts[j][0]))();
+    };
+    return h('div', { class: 'seg', role: 'radiogroup', 'aria-label': label, id }, opts.map(([v, t]) => h('button', { type: 'button', role: 'radio', id: id + '-' + v, 'aria-checked': cur === v ? 'true' : 'false', tabindex: cur === v ? '0' : '-1', onclick: keepFocus(id + '-' + v, () => onPick(v)), onkeydown: move, text: t })));
+  }
+  function priceView(r) {
+    const p = r.product, el = h('span');
+    if (p.currency !== 'KRW') { el.append('$' + p.price + (r.unit.ship ? ' + 배송비 $' + p.shipping.fee : '') + ' ≈ ', h('b', { text: won(r.unit.krw * p.packCount) })); return el; }
+    if (p.listPrice && p.listPrice > p.price) el.append(h('del', { text: won(p.listPrice) }), ' ', h('b', { text: won(p.price) }), ' ', h('span', { class: 'disc', text: Math.round((1 - p.price / p.listPrice) * 100) + '% 할인' }));
+    else el.append(h('b', { text: won(p.price) }));
+    if (p.packCount > 1) el.append(' ', h('span', { class: 'note', text: '(' + p.packCount + '장, 한 장 약 ' + won(r.unit.krw) + ')' }));
+    return el;
+  }
+  const priceShort = (r) => (r.product.currency === 'KRW' ? won(r.product.price) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') : '약 ' + won(r.unit.krw));
+  const SVGNS = 'http:' + '//www.w3.org/2000/svg';
+  /** 상품 사진 대신, 공개된 정보(소매·핏·목 립·로고 위치)로 그린 티셔츠 모양. 모르는 부분은 점선. */
+  function teeSvg(p) {
+    const s = (tag, a) => { const e = document.createElementNS(SVGNS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
+    const w = p.fit === 'relaxed' ? 5 : p.fit === 'slim' ? -3 : 0, L = 33 - w, R = 87 + w;
+    const body = p.sleeve === 'long' ? 'M47 20C52 26 68 26 73 20L86 23L106 88L97 92L' + R + ' 52L' + R + ' 108L' + L + ' 108L' + L + ' 52L23 92L14 88L34 23Z'
+      : 'M47 20C52 26 68 26 73 20L86 23L104 38L96 50L' + R + ' 45L' + R + ' 108L' + L + ' 108L' + L + ' 45L24 50L16 38L34 23Z';
+    const neckW = { narrow: 2, standard: 3, binding: 3.5, wide: 5 }[p.neck] || 3;
+    const desc = [PK.SLEEVES[p.sleeve], p.fit ? PK.FIT[p.fit] : '핏 정보 없음', '목 립: ' + (p.neck ? PK.NECKS[p.neck] : '정보 없음'), '로고: ' + (p.logo ? PK.LOGOS[p.logo] : '위치 모름')].join(', ');
+    const svg = s('svg', { viewBox: '0 0 120 120', class: 'tee', role: 'img', 'aria-label': '공개 정보로 그린 모양: ' + desc });
+    svg.append(s('path', { d: body, fill: '#F7F5F0', stroke: '#8A8F96', 'stroke-width': '1.5', 'stroke-linejoin': 'round', 'stroke-dasharray': p.fit ? '' : '4 3' }));
+    svg.append(s('path', { d: 'M47 20C52 26 68 26 73 20', fill: 'none', stroke: '#8A8F96', 'stroke-width': String(neckW), 'stroke-dasharray': p.neck ? '' : '3 3', 'stroke-linecap': 'round' }));
+    const mark = (x, y, wd, ht) => svg.append(s('rect', { x, y, width: wd, height: ht, rx: '1', fill: '#A8502A' }));
+    if (p.logo === 'small-chest') mark(71, 37, 6, 5); else if (p.logo === 'chest') mark(69, 35, 9, 7); else if (p.logo === 'hem') mark(70, 100, 9, 4); else if (p.logo === 'tab') mark(85, 95, 3, 6);
+    else if (!p.logo) { svg.append(s('circle', { cx: '74', cy: '40', r: '5', fill: 'none', stroke: '#8A8F96', 'stroke-dasharray': '2 2' })); const t = s('text', { x: '74', y: '43', 'text-anchor': 'middle', 'font-size': '8', fill: '#5B6068' }); t.textContent = '?'; svg.append(t); }
+    return svg;
+  }
+  // 추천 기록(결정·판매처 열기·샀나요·2주 뒤): state.pickLog
+  function logFor(pid) { for (let i = state.pickLog.length - 1; i >= 0; i--) if (state.pickLog[i].productId === pid && state.pickLog[i].at === today()) return state.pickLog[i]; return null; }
+  function logEntry(r) {
+    let e = logFor(r.product.id);
+    if (!e) { e = { id: newId('k'), at: today(), productId: r.product.id, label: PK.brandName(PICKS, r.product.brand) + ' ' + r.product.name, price: Math.round(r.krw), store: r.product.store.name, verdict: '', altId: '', out: 0, bought: '', boughtAt: '', follow: null, pri: state.prefs.pri.slice(0, 5), use: state.prefs.use }; state.pickLog.push(e); if (state.pickLog.length > 100) state.pickLog.shift(); }
+    return e;
+  }
+  function storeLink(r, label, cls) {
+    return h('a', { class: cls || 'btn small', href: r.product.store.url, target: '_blank', rel: 'noopener noreferrer', onclick: () => { const e = logEntry(r); e.out++; state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = { id: e.id, t: Date.now() }; save(); }, text: label || '판매처에서 보기 ↗' });
+  }
+  function pickToCand(r) {
+    const c = PK.toCandidate(r.product, PICKS, today()); c.id = newId('c');
+    state.items.push(c); state.meta.pickCand++; logEntry(r); state.prefs.seen = true; save(); render();
+    toast('살까 말까에 담았어요.', { label: '보기', fn: () => { ui.judgeId = c.id; ui.tab = 'judge'; render(); } });
+  }
+  function closetLine(r) {
+    const c = r.closet;
+    if (!c) return null;
+    if (!owned().length) return h('p', { class: 'note', text: '옷장에 가진 옷을 넣으면 이 옷과 생기는 조합도 계산해요.' });
+    if (!c.supported || c.note) return h('p', { class: 'note', text: c.note || '이 종류는 조합 규칙이 아직 없어요.' });
+    const ex = c.top3[0], names = ex ? [ex.bottom && ex.bottom.name, ex.outer && ex.outer.name].filter(Boolean).join(' + ') : '';
+    return h('p', { class: 'note' }, h('b', { text: '내 옷장과: ' }), '새 조합 ' + c.added + '개' + (names ? ' (예: + ' + names + ')' : '') + (c.overlaps.length ? ' · 비슷한 옷 ' + c.overlaps.length + '벌: ' + c.overlaps.map((o) => o.name).join(', ') : ''));
+  }
+  function checkList(r) {
+    return h('ul', { class: 'checks', id: 'pickChecks' }, r.checks.map((c) => h('li', { class: 'ck ' + c.mark }, h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[c.mark][0] }), h('span', { class: 'sr', text: MARK[c.mark][1] + ': ' }), h('b', { text: c.label }), ' ', h('span', { text: c.text }))));
+  }
+  function verdictRow(r, res) {
+    const e = logFor(r.product.id), cur = e ? e.verdict : '';
+    const set = (v) => () => {
+      const x = logEntry(r); x.verdict = x.verdict === v ? '' : v; x.altId = x.verdict === 'alt' && res.alts[0] ? res.alts[0].r.product.id : ''; state.prefs.seen = true; save(); render();
+      if (x.verdict === 'accept') toast('좋아요. 판매처에서 사고 나서 "샀어요"를 누르면, 2주 뒤에 잘 맞았는지 한 번 물어볼게요.');
+    };
+    return h('div', { class: 'vrow', id: 'pickVerdict', role: 'group', 'aria-label': '이 추천 어때요' }, h('span', { class: 'note', text: '이 추천 어때요?' }),
+      [['accept', '이걸로 할래요'], ['alt', '대안이 나아요'], ['reject', '아니에요']].map(([v, t]) => h('button', { class: 'chip', type: 'button', id: 'pv-' + v, 'aria-pressed': cur === v ? 'true' : 'false', onclick: keepFocus('pv-' + v, set(v)), text: t })));
+  }
+  function evidence(r) {
+    const p = r.product;
+    return h('details', { class: 'ev' }, h('summary', { text: '근거와 확인일 보기' }),
+      h('ul', null, p.evidence.map((e) => h('li', null, (e.seen ? md(e.seen) + ' 확인 — ' : '') + e.what + ' ', h('a', { href: e.url, target: '_blank', rel: 'noopener noreferrer', text: '페이지' }))),
+        h('li', { text: '소재: ' + (p.fabric.comp || '표기 없음') + ' (' + (PK.SRC[p.fabric.compSrc] || '') + ')' + (p.fabric.notes.length ? ' · ' + p.fabric.notes.join(' · ') : '') }),
+        p.origin ? h('li', { text: '제조국: ' + p.origin }) : null,
+        p.sizes.length ? h('li', { text: '치수(' + (PK.SRC[p.sizeSrc] || '') + '): ' + p.sizes.map((s) => s.label + (s.alias && s.alias !== s.label ? '(' + s.alias + ')' : '') + ' ' + [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? '총장 ' + s.length : '', s.shoulder != null ? '어깨 ' + s.shoulder : ''].filter(Boolean).join('/')).join(', ') + (p.sizeNote ? ' — ' + p.sizeNote : '') }) : h('li', { text: p.sizeNote || '치수표 없음' }),
+        p.stock ? h('li', { text: '재고(' + md(p.stock.checkedAt) + '): ' + (p.stock.inStock === false ? '상품 전체 품절' : p.stock.sizes ? p.stock.sizes.join(', ') + ' 있음' : p.stock.inStock ? '있음(사이즈별은 판매처에서)' : '확인 못 함') + (p.offered ? ' · 판매 사이즈 ' + p.offered.join('·') : '') }) : null,
+        p.shipping ? h('li', null, '배송: ' + p.shipping.note + ' ', p.shipping.url ? h('a', { href: p.shipping.url, target: '_blank', rel: 'noopener noreferrer', text: '배송 안내' }) : null) : null,
+        h('li', { text: '품질 점수 ' + r.quality.score + '/10 — 기본 3점에 ' + (r.quality.parts.length ? r.quality.parts.join(', ') : '더한 것 없음') + (r.quality.unknown.length ? ' (밝히지 않음: ' + r.quality.unknown.join(', ') + ')' : '') + '. 출처가 판매처 설명이면 0.3배, 상품명에만 있으면 0.5배로 셉니다' }),
+        h('li', { text: '스타일 분류(어울 편집): ' + (p.styles.map((s) => PK.STYLES[s]).join('·') || '없음') })));
+  }
+  function pickCard(r, res) {
+    const p = r.product, bn = PK.brandName(PICKS, p.brand);
+    const warn = r.cautions.filter((t) => !/^확인 못 한 것/.test(t));
+    return h('article', { class: 'pick', id: 'pickTop', 'data-id': p.id },
+      h('p', { class: 'eyebrow', id: 'pickRank', text: res.rank.text }),
+      h('div', { class: 'pickgrid' }, h('div', null, teeSvg(p), h('p', { class: 'tcap', text: '공개 정보로 그린 모양 · 상품 사진은 저작권 때문에 싣지 않아요' })),
+        h('div', null, h('h3', { text: bn + ' ' + p.name }), h('p', { class: 'meta', text: [p.colorName, PK.SLEEVES[p.sleeve], p.fit ? PK.FIT[p.fit] : ''].filter(Boolean).join(' · ') }),
+          h('p', { class: 'pp' }, priceView(r)),
+          h('p', { class: 'src' }, p.store.name + ' · ' + (p.store.type === 'official' ? '공식' : '판매처') + ' · ' + md(p.checkedAt) + ' 확인', r.stale ? h('span', { class: 'badge warn', style: 'margin-left:6px', text: '다시 확인 필요' }) : null))),
+      h('p', { class: 'concl', id: 'pickWhy', text: r.conclusion }),
+      checkList(r),
+      h('p', { class: 'note', id: 'pickSize', style: 'margin-top:8px' }, h('b', { text: '사이즈: ' }), r.fit.meas ? r.fit.meas + ' · ' : '', r.fit.text),
+      warn.length ? h('ul', { class: 'why warn', id: 'pickWarn' }, warn.slice(0, 3).map((t) => h('li', { text: t }))) : null,
+      closetLine(r),
+      h('div', { class: 'bar', style: 'margin:12px 0 0' }, storeLink(r, (p.store.type === 'official' ? '공식몰' : p.store.name.split(' ')[0]) + '에서 보기 ↗', 'btn primary'), h('button', { class: 'btn', type: 'button', id: 'pickCand', onclick: () => pickToCand(r), text: '살까 말까에 담기' })),
+      verdictRow(r, res), evidence(r));
+  }
+  function altCard(a) {
+    const r = a.r, p = r.product;
+    return h('article', { class: 'alt', 'data-id': p.id }, h('p', { class: 'eyebrow', text: a.label + ' · ' + a.delta }),
+      h('h3', { text: PK.brandName(PICKS, p.brand) + ' ' + p.name }), h('p', { class: 'pp' }, priceView(r)),
+      h('p', { class: 'src', text: p.store.name + ' · ' + md(p.checkedAt) + ' 확인' }), h('p', { class: 'note', text: a.why }),
+      owned().length ? closetLine(r) : null,
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(r), h('button', { class: 'btn small', type: 'button', onclick: () => pickToCand(r), text: '살까 말까에 담기' })));
+  }
+  function rankList(res) {
+    const li = (r, i) => h('li', { class: r.out ? 'out' : '' }, h('span', { class: 'n', text: r.out ? '—' : String(i + 1) }),
+      h('span', { class: 'rk' }, h('b', { text: PK.brandName(PICKS, r.product.brand) + ' ' + r.product.name }), h('span', { class: 'note', text: r.total + '점 · 한 장 약 ' + won(r.unit.krw) + (r.stale ? ' · 다시 확인 필요' : '') }), r.out ? h('span', { class: 'note warnc', text: r.out }) : null));
+    const out = res.ranked.filter((r) => r.out);
+    return h('details', { class: 'ev', id: 'pickAll' }, h('summary', { text: '전체 순위 보기 (조건에 맞는 ' + res.eligible.length + '개' + (out.length ? ', 조건으로 뺀 ' + out.length + '개' : '') + (res.excluded.length ? ', 소매로 거른 ' + res.excluded.length + '개' : '') + ')' }),
+      h('ol', { class: 'rlist' }, res.eligible.map(li)), out.length ? [h('p', { class: 'fl2', style: 'margin-top:10px', text: '조건으로 뺀 것' }), h('ul', { class: 'rlist' }, out.map((r) => li(r, 0)))] : null,
+      h('p', { class: 'note', style: 'margin-top:8px', text: '기준 점수는 고른 무게로 더한 0~100 점수이고 확률이 아니에요. 품질은 공개된 정보로만 매겨서 정보를 많이 밝힌 상품이 유리해요. 가격·재고는 확인한 날의 값이에요.' }));
+  }
+  function pickHead(res) {
+    const pf = state.prefs, line = PICKS.lines[pf.line], n = PICKS.products.filter((p) => p.line === pf.line).length;
+    return h('div', { class: 'phead' }, h('p', { class: 'ptitle' }, h('b', { text: (line ? line.label : '') + ' ' + n + '개' }), ' 중에서 골라요 · ' + md(res.about.checkedAt) + ' 확인 · 다른 옷은 준비 중'),
+      segmented('pk-sleeve', '소매', [['short', '반팔'], ['long', '긴팔'], ['any', '상관없음']], pf.sleeve, (v) => { pf.sleeve = v; save(); render(); }));
+  }
+  function condSummary() {
+    const pf = state.prefs, cs = PK.activeConds(pickQuery());
+    const parts = [PK.USES[pf.use] + (cs.length ? '(' + cs.map((k) => PK.CONDS[k].label).join('·') + ')' : ''), pf.pri.length ? pf.pri.map((k) => SHORT[k]).join(' › ') : '기준 같은 무게', pf.brands.length ? '브랜드 ' + pf.brands.length + '곳' : '', pf.size || (Object.keys(pf.ref).length ? '실측 있음' : '')].filter(Boolean);
+    return h('div', { class: 'csum', id: 'pickSum' }, h('span', { text: parts.join(' · ') }), h('button', { class: 'btn small', type: 'button', id: 'pickEdit', onclick: keepFocus('pk-use-any', () => { ui.pickForm = true; render(); }), text: '조건 바꾸기' }));
+  }
+  function tasteBlock() {
+    const pf = state.prefs;
+    const toggle = (k, v) => () => { const a = pf[k], i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); save(); render(); };
+    const pc = (id, label, on, fn) => { const b = chip(label, on, keepFocus(id, fn)); b.id = id; return b; };
+    const meas = (k, label) => { const v = pf.ref[k]; return h('label', null, label, h('input', { type: 'number', id: 'pk-ref-' + k, min: '20', max: '150', step: '0.5', inputmode: 'decimal', value: v == null ? '' : String(v), 'aria-label': '잘 맞는 티의 ' + label + ' (cm)',
+      onchange: (e) => keepFocus(document.activeElement === e.target ? e.target.id : '', () => { const n = Number(e.target.value); if (e.target.value === '' || !isFinite(n)) delete pf.ref[k]; else if (n >= 20 && n <= 150) pf.ref[k] = Math.round(n * 2) / 2; save(); render(); })() }), 'cm'); };
+    const sizeSel = h('select', { id: 'pk-size', 'aria-label': '평소 상의 사이즈', onchange: (e) => keepFocus('pk-size', () => { pf.size = e.target.value; save(); render(); })() },
+      h('option', { value: '', text: '평소 사이즈 모름' }), ['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((s) => h('option', { value: s, text: s + ({ S: ' (95)', M: ' (100)', L: ' (105)', XL: ' (110)', XXL: ' (115)' }[s] || '') })));
+    sizeSel.value = pf.size;
+    const sum = [pf.brands.length ? '브랜드 ' + pf.brands.length + '곳' : '브랜드 안 고름', pf.styles.length ? PK.STYLES[pf.styles[0]] + (pf.styles.length > 1 ? ' 외 ' + (pf.styles.length - 1) : '') : '스타일 안 고름', pf.size || '사이즈 모름', Object.keys(pf.ref).length ? '실측 ' + Object.keys(pf.ref).length + '곳' : '실측 없음'].join(' · ');
+    const line = PICKS.lines[pf.line];
+    const d = h('details', { class: 'taste', id: 'pickTaste' }, h('summary', null, h('span', { class: 'fl2', text: '내 취향·사이즈' }), h('span', { class: 'note', text: sum + ' — 바꾸기' })),
+      h('p', { class: 'fl', text: '좋아하는 브랜드' }), h('div', { class: 'chips' }, Object.keys(PICKS.brands).map((k) => pc('pk-brand-' + k, PICKS.brands[k].ko || PICKS.brands[k].name, pf.brands.indexOf(k) >= 0, toggle('brands', k)))),
+      h('p', { class: 'fl', text: '스타일' }), h('div', { class: 'chips' }, Object.keys(PK.STYLES).map((k) => pc('pk-style-' + k, PK.STYLES[k], pf.styles.indexOf(k) >= 0, toggle('styles', k)))),
+      line && line.styleNote ? h('p', { class: 'note', style: 'margin-top:4px', text: line.styleNote + '.' }) : null,
+      h('p', { class: 'fl', text: '사이즈' }), h('div', { class: 'meas' }, sizeSel, h('span', { class: 'note', text: '잘 맞는 티의 실측(브랜드마다 다른 사이즈를 맞춰 드려요):' }), meas('chest', '가슴단면'), meas('length', '총장'), meas('shoulder', '어깨너비')));
+    if (ui.tasteOpen) d.open = true;
+    d.addEventListener('toggle', () => { ui.tasteOpen = d.open; });
+    return d;
+  }
+  function pickForm(res) {
+    const pf = state.prefs;
+    const cs = PK.activeConds(pickQuery());
+    const condBox = pf.use === 'any' ? null : h('div', { class: 'conds' }, h('span', { class: 'note', text: '꼭 지킬 것:' }), Object.keys(PK.CONDS).filter((k) => PK.CONDS[k].use === pf.use).map((k) => {
+      const on = cs.indexOf(k) >= 0, b = chip(PK.CONDS[k].label, on, keepFocus('pk-cond-' + k, () => { pf.conds = on ? cs.filter((x) => x !== k) : cs.concat([k]); save(); render(); })); b.id = 'pk-cond-' + k; return b;
+    }), h('span', { class: 'note', text: '어긴 상품은 빼고, 모르는 건 ?로 보여 줘요' }));
+    const slots = h('div', { class: 'slots', id: 'pk-slots', 'aria-label': '고른 순위' });
+    for (let i = 0; i < Math.max(3, pf.pri.length); i++) {
+      const k = pf.pri[i];
+      slots.append(k ? h('button', { type: 'button', class: 'slot on', id: 'pk-slot-' + i, 'aria-label': (i + 1) + '순위 ' + SHORT[k] + ', 누르면 뺍니다', onclick: keepFocus('pk-slots', () => { pf.pri.splice(i, 1); save(); render(); }) }, h('span', { class: 'ord', 'aria-hidden': 'true', text: String(i + 1) }), PK.CRITERIA[k], h('span', { class: 'x', 'aria-hidden': 'true', text: '✕' }))
+        : h('span', { class: 'slot', text: (i + 1) + '순위 —' }));
+    }
+    const chips = h('div', { class: 'chips' }, Object.keys(PK.CRITERIA).map((k) => {
+      const i = pf.pri.indexOf(k), b = chip('', i >= 0, keepFocus('pk-pri-' + k, () => { if (i >= 0) pf.pri.splice(i, 1); else pf.pri.push(k); save(); render(); }));
+      b.id = 'pk-pri-' + k; b.classList.add('nock');
+      if (i >= 0) b.append(h('span', { class: 'ord', 'aria-hidden': 'true', text: String(i + 1) })); else b.append('+ ');
+      b.append(PK.CRITERIA[k]); b.setAttribute('aria-label', PK.CRITERIA[k] + (i >= 0 ? ', ' + (i + 1) + '순위' : ''));
+      return b;
+    }));
+    const p = pf.pri.map((k) => SHORT[k]);
+    const help = !p.length ? '누른 순서대로 중요하게 봐요. 고르지 않은 기준은 조금만 반영돼요.' : josa(p[0], '을', '를') + ' 가장' + (p.length > 1 ? ', 그다음 ' + p.slice(1).join(', ') + ' 순으로' : '') + ' 봐요. 나머지는 조금만 반영돼요.';
+    return h('section', { class: 'panel pform', id: 'pickForm' },
+      h('p', { class: 'fl', text: '어디에 입나요?' }),
+      segmented('pk-use', '어디에 입나요', [['any', '상관없음'], ['layer', '카디건·셔츠 안에'], ['solo', '한 장으로']], pf.use, (v) => { pf.use = v; pf.conds = null; save(); render(); }), condBox,
+      h('p', { class: 'fl', text: '무엇이 가장 중요해요?' }), slots, chips,
+      h('p', { class: 'note', style: 'margin-top:6px' }, help, ' ', pf.pri.length ? h('button', { class: 'btn small', type: 'button', id: 'pk-clear', onclick: keepFocus('pk-pri-value', () => { pf.pri = []; save(); render(); }), text: '처음부터' }) : null),
+      tasteBlock(),
+      h('div', { class: 'pbar', id: 'pickBar' }, h('span', { class: 'pbt' }, res.pick ? ['지금 1위 · ', h('b', { text: PK.brandName(PICKS, res.pick.product.brand) }), ' · ' + priceShort(res.pick)] : '조건에 맞는 상품이 없어요'),
+        h('button', { class: 'btn primary', type: 'button', id: 'pickGo', onclick: () => { countPickRun(); state.prefs.seen = true; ui.pickForm = false; save(); render(); const el = $('#pickResult'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }, text: '딱 하나 보기' })));
+  }
+  /** 판매처에서 돌아왔거나 최근 3일 안에 판매처를 연 추천: "샀나요?" / 산 지 2주 지난 추천: "잘 맞았나요?" */
+  function pickAsks() {
+    const out = [];
+    const recent = state.pickLog.filter((e) => e.out > 0 && !e.bought && (ui.askBought === e.id || daysAgo(e.at) <= 3) && ui.boughtSkip.indexOf(e.id) < 0).slice(-1)[0];
+    if (recent) out.push(h('div', { class: 'notice', id: 'askBought' }, h('p', null, h('b', { text: recent.label }), ' — ' + recent.store + '에서 샀나요?'),
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtYes', onclick: () => { recent.bought = 'yes'; recent.boughtAt = today(); save(); render(); toast('기록했어요. 2주 뒤에 사이즈가 잘 맞았는지 한 번 물어볼게요.'); }, text: '샀어요' }),
+        h('button', { class: 'btn small', type: 'button', id: 'boughtNo', onclick: () => { recent.bought = 'no'; recent.boughtAt = today(); save(); render(); }, text: '안 사요' }),
+        h('button', { class: 'btn small', type: 'button', id: 'boughtLater', onclick: () => { ui.boughtSkip.push(recent.id); render(); }, text: '아직이요' }))));
+    const due = state.pickLog.filter((e) => e.bought === 'yes' && !e.follow && daysAgo(e.boughtAt) >= W.FOLLOW_DAYS)[0];
+    if (due) {
+      const box = h('form', { class: 'notice', id: 'pickFollow', onsubmit: (ev) => { ev.preventDefault(); const fd = new FormData(box), size = fd.get('pfSize'), feel = fd.get('pfFeel'); if (!size || !feel) { box.querySelector('.warnnote').hidden = false; return; } due.follow = { at: today(), size, feel }; save(); render(); toast('고마워요. 이 답이 다음 추천의 사이즈를 고르는 근거가 돼요.'); } },
+        h('h2', { text: due.label + ', ' + daysAgo(due.boughtAt) + '일 전에 샀어요' }), h('p', { class: 'note', text: '사이즈와 만족을 한 번만 알려 주세요.' }),
+        h('div', { class: 'choices' }, [['fit', '잘 맞아요'], ['small', '작아요'], ['big', '커요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfSize', value: v }), h('span', { text: t })))),
+        h('div', { class: 'choices' }, [['good', '잘 샀어요'], ['ok', '그저 그래요'], ['regret', '후회돼요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfFeel', value: v }), h('span', { text: t })))),
+        h('p', { class: 'warnnote', hidden: true, text: '사이즈와 만족을 하나씩 골라 주세요.' }), h('button', { class: 'btn small primary', type: 'submit', id: 'pickFollowSave', text: '저장' }));
+      out.push(box);
+    }
+    return out;
+  }
+  /** 추천을 받아 본 횟수: '딱 하나 보기'를 누르거나 결과를 먼저 보여 줄 때, 이번 방문에서 처음 보는 조건이면 하나 센다. */
+  function countPickRun() { if (ui.pickKey && ui.pickSeen.indexOf(ui.pickKey) < 0) { ui.pickSeen.push(ui.pickKey); state.meta.pickRuns++; save(); } }
+  function renderPick(main) {
+    const q = pickQuery(), res = PK.recommend(state.items, PICKS, q);
+    const key = JSON.stringify([q.line, q.sleeve, q.use, q.conds, q.priorities, q.brands, q.styles, q.size, q.ref]);
+    ui.pickKey = key;
+    const formOpen = ui.pickForm || !state.prefs.seen;
+    if (!formOpen) countPickRun();                                                                   // 결과를 먼저 보여 주는 화면이면 본 것으로 센다
+    window.__pick = { pick: res.pick && res.pick.product.id, total: res.pick && res.pick.total, rank: res.rank, alts: res.alts.map((a) => [a.label, a.r.product.id]), ranked: res.ranked.map((r) => [r.product.id, r.total, r.out]), notes: res.notes.map((n) => n.text), conclusion: res.pick ? res.pick.conclusion : '', checks: res.pick ? res.pick.checks : [], size: res.pick ? res.pick.fit.text : '' };
+    for (const a of pickAsks()) main.append(a);
+    main.append(pickHead(res));
+    main.append(formOpen ? pickForm(res) : condSummary());
+    const box = h('section', { id: 'pickResult', 'aria-live': 'polite' });
+    if (!res.pick) {
+      const allOld = res.ranked.length && res.ranked.every((r) => /일이 지나/.test(r.out));
+      box.append(h('div', { class: 'empty', text: allOld ? '가격·재고를 확인한 지 오래돼 추천을 멈췄어요. 다시 확인한 뒤에 열어요.' : '이 조건에 맞는 상품이 아직 없어요. 꼭 지킬 조건이나 소매를 바꿔 보세요.' }));
+      if (res.notes.length) box.append(h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text }))));
+      main.append(box); return;
+    }
+    box.append(pickCard(res.pick, res));
+    if (res.alts.length) box.append(h('div', { class: 'alts', id: 'pickAlts' }, res.alts.map(altCard)));
+    if (res.notes.length) box.append(h('details', { class: 'ev', id: 'pickNotes' }, h('summary', { text: '뺀 상품과 빠진 브랜드 ' + res.notes.length + '개' }), h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text })))));
+    box.append(rankList(res));
+    box.append(h('p', { class: 'note', style: 'margin:8px 0 0', text: '기준 점수는 이 목록(' + res.about.count + '개) 안에서 고른 기준으로 매긴 점수이고 확률이 아니에요. 순서는 고른 기준으로만 정하고, 광고·입점비·제휴 수수료로 바꾸지 않아요.' }));
+    main.append(box);
+    const last = state.pickLog[state.pickLog.length - 1];
+    if (last && last.productId !== res.pick.product.id) main.append(h('p', { class: 'note', id: 'pickLast', style: 'margin-top:10px', text: '지난 추천: ' + last.label + ' · ' + md(last.at) + (last.verdict ? ' · ' + { accept: '이걸로 하기로 함', alt: '대안이 낫다고 함', reject: '아니라고 함' }[last.verdict] : '') + (last.bought === 'yes' ? ' · 샀음' : '') }));
+  }
+
+  // ---------- 살 만한 옷 (추천 + 직접 넣는 상품 목록) ----------
   function renderShop(main) {
-    main.append(h('p', { class: 'lead', text: '쇼핑하다 본 실제 상품을 직접 넣어 두면, 내 옷장에 비춰 어떤 상품이 조합을 많이 만들고 빈틈을 채우는지 순서를 매깁니다. 가격과 재고는 찾아오지 않고, 적은 값과 확인한 날만 보여 줍니다. 목록 밖의 상품을 지어내지 않습니다.' }));
+    renderPick(main);
+    const d = h('details', { class: 'ev', id: 'shopOwn', style: 'margin-top:22px' }, h('summary', { text: '목록에 없는 상품 직접 넣어 견주기' }));
+    if (ui.shopOwnOpen) d.open = true;
+    d.addEventListener('toggle', () => { ui.shopOwnOpen = d.open; });
+    main.append(d);
+    renderOwnProducts(d);
+  }
+  function renderOwnProducts(main) {
+    main.append(h('p', { class: 'lead', style: 'margin-top:8px', text: '목록에 없는 상품(예: 무신사에서 본 옷)은 직접 넣어 두면, 내 옷장에 비춰 어떤 상품이 조합을 많이 만들고 빈틈을 채우는지 순서를 매겨요. 직접 넣은 상품은 가격과 재고를 찾아오지 않고, 적은 값과 확인한 날만 보여 줘요.' }));
     const gaps = sources();
     main.append(h('div', { class: 'bar' }, h('button', { class: 'btn primary', type: 'button', id: 'addProduct', onclick: () => openProduct(null), text: '상품 추가' }),
       h('button', { class: 'btn', type: 'button', id: 'catImportBtn', onclick: () => $('#catFile').click(), text: '상품 목록 파일 열기' }),
@@ -3333,6 +5753,8 @@ const TEMPLATE = {
       const r = (x) => x.count + '/' + x.total + '명' + (x.pct == null ? '' : ' (' + x.pct + '%)');
       const rows = [['참여자', sm.n + '명 (같은 사람은 최근 의견만)', '', ''], ['활성화: 옷 5벌 이상', r(sm.activated), '절반 이상', word[vd.activated]], ['핵심 가치: 살까 말까 끝까지 1건 이상', r(sm.value), '1/3 이상', word[vd.value]],
         ['유지: 최근 30일에 3일 이상 엶', r(sm.retained), '1/3 이상(2주 뒤에 볼 것)', word[vd.retained]], ['판정 끝 합계', sm.decisions + '건', '', ''],
+        ['기준 추천을 받아 본 사람', r(sm.picked), '', ''], ['추천에서 판매처까지 연 사람', r(sm.outbound), '추천받은 사람의 40%(제안)', ''], ['"이걸로 할래요"를 누른 사람', r(sm.accepted), '', ''], ['추천에서 샀다고 한 사람', r(sm.bought), '', ''],
+        ['2주 뒤 사이즈 답', sm.pickFollow.answers + '건 (잘 맞음 ' + sm.pickFollow.fit + ')', '잘 맞음이 많을수록', ''],
         ['2주 뒤 답', sm.follow.answers + '건 (잘함 ' + sm.follow.good + ' · 그저 ' + sm.follow.ok + ' · 후회·아쉬움 ' + sm.follow.regret + ' · 결국 안 삼 ' + sm.follow.notbought + ')', '후회가 적을수록', ''],
         ['"더는 못 쓰면 매우 아쉽다"', r(sm.pmf) + ' · 답 ' + sm.pmf.answered + '명', '40%(흔히 쓰는 참고선)', word[vd.pmf]], ['추천할 마음(NPS)', sm.nps.score == null ? '답 없음' : sm.nps.score + '점 · 답 ' + sm.nps.answered + '명 (9~10점 ' + sm.nps.promoters + ', 0~6점 ' + sm.nps.detractors + ')', '', ''],
         ['오류를 겪은 사람', sm.errors + '명', '0명', ''], ['버전', sm.versions.join(', '), '', '']];
@@ -3941,12 +6363,13 @@ const TEMPLATE = {
     return ['[' + BRAND.name + ' ' + BRAND.version + ']', '옷 ' + own.length + '벌(초안 ' + own.filter(W.isDraft).length + ', 내 사진 ' + own.filter((i) => i.photo.ownImg).length + ') · 후보 ' + cands().length + ' · 판정 끝 ' + done + '건 · 상품 ' + state.catalog.products.length + '개 · 3D 걸림 ' + state.rack.length,
       '예시 옷장: ' + (state.meta.sample ? '보는 중' : '아님') + ' · 저장: ' + store.mode + (storageOk ? '' : '(실패)') + ' · 화면 ' + window.innerWidth + '×' + window.innerHeight + ' · 3D: ' + (closet.failed ? '실패' : closet.ready ? '열림' : '안 엶'),
       '연 날 ' + state.meta.days.length + '일(최근 30일 ' + state.meta.days.filter((d) => daysAgo(d) <= 30).length + '일) · 첫 사용 ' + (state.meta.days[0] || '-') + ' · 빠른 시작 ' + state.meta.quickAdded + '벌',
+      '기준 추천 ' + state.meta.pickRuns + '번 · 판매처 연 횟수 ' + state.meta.pickOut + ' · 후보로 ' + state.meta.pickCand + '벌 · 이걸로 할래요 ' + state.pickLog.filter((e) => e.verdict === 'accept').length + ' · 샀어요 ' + state.pickLog.filter((e) => e.bought === 'yes').length + ' · 2주 뒤 사이즈 잘 맞음 ' + state.pickLog.filter((e) => e.follow && e.follow.size === 'fit').length + '/' + state.pickLog.filter((e) => e.follow).length,
       (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length; return '2주 뒤 답 ' + f.length + '건(잘함 ' + c('good') + ', 그저 ' + c('ok') + ', 후회·아쉬움 ' + c('regret') + ', 결국 안 삼 ' + f.filter((d) => d.follow.worn === 'notbought').length + ') · 물을 차례 ' + W.followDue(state.decisions, today()).length + '건'; })(),
       errors.length ? '최근 오류: ' + errors.slice(-3).join(' / ') : '최근 오류 없음',
       (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length;                 // 운영자가 "받은 의견 모아 보기"에 붙여 넣으면 읽는 한 줄
         return FB.line({ id: state.meta.installId, v: BRAND.version, at: today(), own: own.length, draft: own.filter(W.isDraft).length, photo: own.filter((i) => i.photo.ownImg).length, cand: cands().length, done, prod: state.catalog.products.length,
           rack: state.rack.length, quick: state.meta.quickAdded, days: state.meta.days.length, d30: state.meta.days.filter((d) => daysAgo(d) <= 30).length, first: state.meta.days[0] || '', fol: f.length, good: c('good'), ok: c('ok'), regret: c('regret'),
-          nb: f.filter((d) => d.follow.worn === 'notbought').length, due: W.followDue(state.decisions, today()).length, pmf: a.pmf || '', nps: a.nps === '' || a.nps == null ? '' : a.nps, err: errors.length, scr: window.innerWidth + 'x' + window.innerHeight }); })()].join('\n');
+          nb: f.filter((d) => d.follow.worn === 'notbought').length, due: W.followDue(state.decisions, today()).length, pk: state.meta.pickRuns, pko: state.meta.pickOut, pkc: state.meta.pickCand, pka: state.pickLog.filter((e) => e.verdict === 'accept').length, pkb: state.pickLog.filter((e) => e.bought === 'yes').length, pkf: state.pickLog.filter((e) => e.follow).length, pkfit: state.pickLog.filter((e) => e.follow && e.follow.size === 'fit').length, pmf: a.pmf || '', nps: a.nps === '' || a.nps == null ? '' : a.nps, err: errors.length, scr: window.innerWidth + 'x' + window.innerHeight }); })()].join('\n');
   }
   function fbAnswers() { const p = document.querySelector('#fbPmf input:checked'), n = $('#fbNps').value; return { pmf: p ? p.value : '', nps: n === '' ? '' : Number(n) }; }
   function feedbackText() {
@@ -3972,7 +6395,8 @@ const TEMPLATE = {
     const b = $('#helpBody'); b.textContent = '';
     b.append(h('p', { class: 'lead', text: BRAND.name + '(' + BRAND.status + ')은 ' + BRAND.tagline + ' 판단하도록 돕는 도구입니다. 지금은 지인 대상 시험판(' + BRAND.version + ')입니다.' }),
       h('h3', { text: '처음 쓰는 법' }),
-      h('ol', null, h('li', { text: '옷장 탭의 "기본 옷 골라 넣기"로 가진 옷과 비슷한 옷을 한 번에 넣습니다. 한 벌씩 사진과 함께 넣으면 색과 밝기를 사진에서 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
+      h('ol', null, h('li', { text: '사고 싶은 옷이 있으면 "추천" 탭에서 어떻게 입을지와 중요한 기준(가성비·품질·브랜드·내 핏·스타일)을 순서대로 누릅니다. 어울이 공식 판매처 페이지에서 확인한 상품 가운데 딱 하나와 대안 둘, 그 이유와 근거(확인일·출처)를 보여 줍니다. 지금은 흰 크루넥 티셔츠부터 있습니다.' }),
+        h('li', { text: '옷장 탭의 "기본 옷 골라 넣기"로 가진 옷과 비슷한 옷을 한 번에 넣습니다. 한 벌씩 사진과 함께 넣으면 색과 밝기를 사진에서 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
         h('li', { text: '살까 고민 중인 옷은 "살까 말까" 탭의 "빠르게 넣고 판정"으로 종류와 색만 골라 봅니다. 가진 옷과 겹치는지, 새로 생기는 조합이 몇 개인지 보여 줍니다.' }),
         h('li', { text: '결정을 적으면 2주 뒤에 "몇 번 입었나, 잘 샀나"를 한 번 묻습니다. 판정이 실제로 도움이 됐는지 아는 유일한 방법이라 답해 주시면 큰 도움이 됩니다.' }),
         h('li', { text: '코디 탭에서 가진 옷으로 만든 조합을, 3D 옷장 탭에서 상의·아우터를 걸어 봅니다(셔츠·재킷 등 6종).' })),
@@ -3983,7 +6407,9 @@ const TEMPLATE = {
       h('h3', { text: '알아 두실 점' }),
       h('ul', null, h('li', { text: '판정과 코디는 색·밝기·격식·무늬 규칙으로 계산합니다. 확률이 아니고, 핏·소재·얼굴 분위기는 아직 보지 못합니다. 원피스는 한 벌로 차림 하나로 셉니다.' }),
         h('li', { text: '3D는 종류별로 미리 만든 형태에 색을 입힌 모습이라 실제 상품과 다릅니다. 사람에게 입혀 보는 기능은 아직 없습니다.' }),
-        h('li', { text: '상품 가격·재고는 찾아오지 않습니다. 직접 넣은 값과 확인한 날짜만 보여 줍니다.' })));
+        h('li', { text: '추천 상품의 가격·재고는 어울이 확인한 날의 값을 담아 둔 것이고, 앱이 실시간으로 찾아오지 않습니다. 사기 전에 판매처에서 확인해 주세요. 상품 사진은 가져오지 않고 판매처 링크만 둡니다.' }),
+        h('li', { text: '추천 순서는 고른 기준으로만 정합니다. 광고·입점비·제휴 수수료로 바꾸지 않습니다(제휴 링크를 쓰게 되면 그 사실을 화면에 밝힙니다).' }),
+        h('li', { text: '직접 넣은 상품은 가격·재고를 찾아오지 않고, 적은 값과 확인한 날짜만 보여 줍니다.' })));
   }
   $('#helpBtn').addEventListener('click', () => { renderHelp(); $('#helpDlg').showModal(); });
   $('#helpClose').addEventListener('click', () => $('#helpDlg').close());
@@ -4001,8 +6427,9 @@ const TEMPLATE = {
       const sample = (src) => () => { const s = cleanState(src); state.items = s.items; state.decisions = s.decisions; state.rack = defaultRack(s.items); state.meta.sample = true; state.meta.welcomed = true; save(); render(); };
       main.append(h('div', { class: 'notice', id: 'welcome' }, h('h2', { text: BRAND.name + '에 오신 것을 환영합니다' }),
         h('p', { text: BRAND.tagline + ' 고를 수 있게, 가진 옷을 바탕으로 비교해 드립니다.' }),
-        h('ol', null, h('li', { text: '가진 옷과 비슷한 기본 옷을 눌러 한 번에 넣습니다 (30초, 나중에 고칠 수 있습니다)' }), h('li', { text: '고민 중인 옷의 종류와 색을 골라 "살까 말까"를 봅니다' }), h('li', { text: '겹치는 옷과 새 조합을 보고 정하고, 2주 뒤 잘 샀는지 한 번 답합니다' })),
-        h('div', { class: 'bar', style: 'margin:0 0 8px' }, h('button', { class: 'btn primary', type: 'button', id: 'startQuick', onclick: () => { state.meta.welcomed = true; save(); openQuick(); }, text: '자주 입는 옷 골라 넣기' }),
+        h('ol', null, h('li', { text: '사고 싶은 옷이 있으면 "추천"에서 중요한 기준(가성비·품질·브랜드·핏·스타일)을 순서대로 눌러 딱 하나를 받습니다 — 옷장을 넣기 전에도 됩니다' }), h('li', { text: '가진 옷과 비슷한 기본 옷을 눌러 한 번에 넣으면(30초) 가진 옷과의 조합까지 계산합니다' }), h('li', { text: '고민 중인 옷은 "살까 말까"로 겹치는 옷과 새 조합을 보고 정하고, 2주 뒤 잘 샀는지 한 번 답합니다' })),
+        h('div', { class: 'bar', style: 'margin:0 0 8px' }, h('button', { class: 'btn primary', type: 'button', id: 'startPick', onclick: () => { state.meta.welcomed = true; ui.tab = 'shop'; save(); render(); }, text: '사고 싶은 옷 골라 받기' }),
+          h('button', { class: 'btn', type: 'button', id: 'startQuick', onclick: () => { state.meta.welcomed = true; save(); openQuick(); }, text: '자주 입는 옷 골라 넣기' }),
           h('button', { class: 'btn', type: 'button', id: 'startPhotos', onclick: () => { state.meta.welcomed = true; save(); $('#bulkFile').click(); }, text: '옷 사진 여러 장으로' }),
           h('button', { class: 'btn', type: 'button', id: 'startOwn', onclick: () => { state.meta.welcomed = true; save(); openWizard(null, 'owned'); }, text: '한 벌씩 자세히 넣기' })),
         h('div', { class: 'bar', style: 'margin:0' }, h('span', { class: 'note', text: '먼저 둘러보기:' }),
@@ -4013,6 +6440,7 @@ const TEMPLATE = {
     }
     const due = W.followDue(state.decisions, today());
     if (due.length && !ui.followLater) main.append(followNotice(due[0]));
+    for (const a of pickAsks()) if (a.id === 'pickFollow') main.append(a);
     if (owned().length >= 2 && !cands().length && !state.decisions.length) main.append(h('div', { class: 'notice', id: 'nextNote' },
       h('p', { text: '다음: 지금 살까 고민 중인 옷이 있다면 종류와 색만 골라 판정해 보세요. 가진 옷과 겹치는지, 새 조합이 몇 개 생기는지 보여 줍니다.' }),
       h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn small primary', type: 'button', id: 'nextJudge', onclick: () => openQuickCand(), text: '고민 중인 옷 판정해 보기' }),
@@ -4032,10 +6460,12 @@ const TEMPLATE = {
     document.head.append(sc);
   }
 
+  // 판매처 링크를 연 뒤 이 화면으로 돌아오면(3시간 안) 추천 탭 위에 "샀나요?"를 띄운다
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible' || !ui.awaitReturn) return; const a = ui.awaitReturn; ui.awaitReturn = null; if (Date.now() - a.t > 3 * 3600 * 1000) return; ui.askBought = a.id; if (ui.tab === 'shop') render(); });
   // ---------- 시작 ----------
   load().then((s) => {
     state = s;
-    window.__app = { get state() { return state; }, ui, J, R, W, C, FB, flush: () => savePromise, store, hang, unhang, brand: BRAND, usageSummary: (a) => usageSummary(a), errors };
+    window.__app = { get state() { return state; }, ui, J, R, W, C, FB, PK, PICKS, flush: () => savePromise, store, hang, unhang, brand: BRAND, usageSummary: (a) => usageSummary(a), errors };
     if (state.meta.days[state.meta.days.length - 1] !== today()) state.meta.days.push(today());
     $('#appTag').textContent = BRAND.tagline + (BRAND.beta ? ' · 시험판 ' + BRAND.version : '');
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* 무시: 오래 남게 해 달라는 요청이며 거절돼도 동작은 같다 */ }
