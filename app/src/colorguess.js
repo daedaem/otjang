@@ -34,13 +34,14 @@
       return 'gray';
     }
     if (h >= 30 && h < 60 && s < 0.4 && l >= 0.85) return 'ivory';
-    if (h < 15 || h >= 345) return l < 0.35 ? 'burgundy' : 'red';
-    if (h < 45) return l >= 0.68 ? 'beige' : l >= 0.5 ? 'khaki' : 'brown';
-    if (h < 75) return l >= 0.68 ? 'beige' : l >= 0.5 ? 'khaki' : 'olive';
+    if (h < 15 || h >= 345) return l < 0.35 ? 'burgundy' : l >= 0.7 && s >= 0.25 ? 'pink' : 'red';
+    if (h < 45) return s >= 0.6 && l >= 0.4 && l < 0.8 ? 'orange' : l >= 0.68 ? 'beige' : l >= 0.5 ? 'khaki' : 'brown';   // 채도가 높을 때만 오렌지. 베이지·카키·브라운은 채도가 낮다
+    if (h < 75) return h < 70 && s >= 0.55 && l >= 0.45 && l < 0.85 ? 'yellow' : l >= 0.68 ? 'beige' : l >= 0.5 ? 'khaki' : 'olive';
     if (h < 165) return s < 0.45 && l < 0.55 ? 'olive' : 'green';
     if (h < 200) return l > 0.6 ? 'blue' : 'green';
     if (h < 250) return l >= 0.55 ? 'blue' : l < 0.32 ? 'navy' : s >= 0.5 ? 'blue' : 'navy';
-    return l < 0.4 ? 'burgundy' : 'red';
+    if (h < 290) return 'purple';
+    return l < 0.3 ? 'burgundy' : l >= 0.6 || h >= 320 ? 'pink' : 'purple';                       // 자주·마젠타 구간: 밝으면 핑크, 아주 어두우면 버건디
   }
 
   /**

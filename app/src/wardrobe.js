@@ -3,7 +3,7 @@
  *
  * 옷 한 벌(items[])의 뼈대
  *   id, status: 'owned' | 'candidate' | 'gone'
- *   cat, kind, name, detail, family, light, formality, pattern, seasons      ← 규칙(판정·코디)이 보는 필드. 스키마 1과 같다
+ *   cat, kind, name, detail, family, light, formality, pattern, seasons      ← 규칙(판정·코디)이 보는 필드. cat 은 outer·top·bottom·dress(원피스)·shoes
  *   attrSource: 'photo-draft'(사진에서 뽑은 초안) | 'owner'(주인 입력) | 'owner-confirmed'(주인이 확인함)
  *   photo: { kind, img, ownImg, sourceName, sourceUrl, checkedAt }
  *     kind: 'own'(내 사진) | 'confirmed'(확인된 동일 제품 사진) | 'candidate'(미확인 후보 사진) | 'substitute'(대체 이미지, 내 옷 아님) | 'none'
@@ -22,30 +22,37 @@
   'use strict';
   const SCHEMA = 2;
   const SEASONS = ['봄', '여름', '가을', '겨울'];
-  const CATS = { outer: '아우터', top: '상의', bottom: '하의', shoes: '신발' };
+  const CATS = { outer: '아우터', top: '상의', bottom: '하의', dress: '원피스', shoes: '신발' };   // 원피스: 위아래가 한 벌인 옷. 규칙에서는 상의·하의 한 쌍처럼 차림 하나로 센다
   const KINDS = {
-    outer: { jacket: '재킷', blazer: '블레이저', cardigan: '카디건', coat: '코트', padding: '패딩', vest: '조끼' },
-    top: { shirt: '셔츠', tee: '티셔츠', knit: '니트', sweat: '스웻셔츠', polo: '폴로', hoodie: '후디' },
-    bottom: { denim: '데님', chino: '치노', slacks: '슬랙스', fatigue: '퍼티그 팬츠', cord: '코듀로이 팬츠', shorts: '반바지' },
-    shoes: { derby: '더비', loafer: '로퍼', sneaker: '스니커즈', boots: '부츠' },
-  };
+    outer: { jacket: '재킷', blazer: '블레이저', cardigan: '카디건', coat: '코트', padding: '패딩', vest: '조끼', trench: '트렌치코트' },
+    top: { shirt: '셔츠', tee: '티셔츠', knit: '니트', sweat: '스웻셔츠', polo: '폴로', hoodie: '후디', blouse: '블라우스', sleeveless: '민소매', turtleneck: '터틀넥' },
+    bottom: { denim: '데님', chino: '치노', slacks: '슬랙스', fatigue: '퍼티그 팬츠', cord: '코듀로이 팬츠', shorts: '반바지', skirt: '스커트', wide: '와이드 팬츠', jogger: '조거·트레이닝 팬츠', leggings: '레깅스' },
+    dress: { dress: '원피스', jumpsuit: '점프수트' },
+    shoes: { derby: '더비', loafer: '로퍼', sneaker: '스니커즈', boots: '부츠', heels: '힐', flats: '플랫슈즈', sandals: '샌들' },
+  };   // 새 종류는 뒤에 붙인다: 각 분류의 첫 종류가 모르는 값의 기본값이다
   // 색 계열: [이름, 색상(hue), 채도(%), 기본 밝기]
   const FAM = {
     white: ['흰색', 45, 25, 95], ivory: ['아이보리', 45, 40, 90], beige: ['베이지', 40, 40, 76], khaki: ['카키', 40, 35, 62],
     brown: ['브라운', 20, 38, 25], olive: ['올리브', 58, 24, 45], green: ['그린', 150, 32, 30], blue: ['블루', 215, 50, 78],
     navy: ['네이비', 222, 42, 18], indigo: ['인디고', 222, 34, 16], gray: ['그레이', 40, 4, 55], black: ['블랙', 210, 6, 12],
     red: ['레드', 5, 60, 42], burgundy: ['버건디', 345, 50, 25],
+    pink: ['핑크', 345, 70, 82], purple: ['퍼플', 275, 35, 45], yellow: ['옐로', 48, 80, 70], orange: ['오렌지', 25, 75, 55],
   };
   const PATTERNS = { solid: '무지', stripe: '줄무늬', check: '체크', graphic: '프린트' };
   const FORMAL = { 1: '편한 차림', 2: '중간', 3: '단정한 차림' };
   const REBUY = { unknown: '모르겠다', yes: '다시 산다', no: '다시 안 산다' };
   const FABRIC = { '': '적지 않음', thin: '얇다', mid: '보통', thick: '두껍다' };
   const NECK = { '': '적지 않음', low: '낮다', mid: '보통', high: '높다' };
-  const MEASURES = { top: [['length', '총장'], ['shoulder', '어깨'], ['chest', '가슴'], ['sleeve', '소매']], outer: [['length', '총장'], ['shoulder', '어깨'], ['chest', '가슴'], ['sleeve', '소매']], bottom: [['waist', '허리'], ['rise', '밑위'], ['thigh', '허벅지'], ['hem', '밑단']], shoes: [] };
+  const MEASURES = { top: [['length', '총장'], ['shoulder', '어깨'], ['chest', '가슴'], ['sleeve', '소매']], outer: [['length', '총장'], ['shoulder', '어깨'], ['chest', '가슴'], ['sleeve', '소매']], bottom: [['waist', '허리'], ['rise', '밑위'], ['thigh', '허벅지'], ['hem', '밑단']], dress: [['length', '총장'], ['shoulder', '어깨'], ['chest', '가슴'], ['waist', '허리']], shoes: [] };
   const LEAN = { buy: '살 쪽', skip: '말 쪽', unsure: '모르겠다' };
   const DECIDE = { buy: '산다', skip: '안 산다', hold: '보류' };
   const HELP = { yes: '도움이 됐다', some: '조금', no: '안 됐다' };
   const SHIFT = { same: '그대로', changed: '바뀜', settled: '정해짐', held: '보류로 바뀜' };
+  // 결정 뒤 물음(2주 뒤): 산 옷은 몇 번 입었나와 만족, 안 산 옷은 아쉬움. 판정이 실제로 도움이 됐는지의 증거로 쓴다
+  const FOLLOW_DAYS = 14;                                                                             // [제안값]
+  const WORN = { none: '0번', few: '1~2번', many: '3번 이상', notbought: '결국 안 샀다' };
+  const FEEL_BUY = { good: '잘 샀다', ok: '그저 그렇다', regret: '후회한다' };
+  const FEEL_SKIP = { good: '안 사길 잘했다', ok: '모르겠다', regret: '아쉽다' };
   const ATTR_SOURCE = { 'photo-draft': '사진에서 뽑은 초안', owner: '주인이 입력', 'owner-confirmed': '주인이 확인함' };
   const PHOTO_KIND = { own: '내 사진', confirmed: '확인된 동일 제품', candidate: '미확인 후보', substitute: '대체 이미지 · 내 옷 아님', none: '사진 없음' };
   const EVIDENCE = { logo: '사진 속 로고', text: '사진 속 글자', owner: '주인이 말함' };
@@ -117,7 +124,25 @@
     const out = { id: str(d.id, 40), itemId: str(d.itemId, 40), name: str(d.name, 80), before: { lean: d.before.lean, reason: str(d.before.reason, 200), at: str(d.before.at, 10) },
       summary: { overlaps: num(s.overlaps, 0, 999) || 0, added: num(s.added, 0, 9999) || 0, blockers: num(s.blockers, 0, 999) || 0 }, after: null };
     if (d.after && DECIDE[d.after.decision]) out.after = { decision: d.after.decision, helpful: HELP[d.after.helpful] ? d.after.helpful : 'some', note: str(d.after.note, 300), at: str(d.after.at, 10), shift: SHIFT[d.after.shift] ? d.after.shift : 'same' };
+    out.follow = out.after ? cleanFollow(d.follow, out.after.decision) : null;
     return out;
+  }
+  /** 결정 뒤 물음의 답. 산다: worn 필수, '결국 안 샀다'가 아니면 feel 필수. 안 산다: feel 필수. 보류는 묻지 않는다. 맞지 않으면 null. */
+  function cleanFollow(f, decision) {
+    if (!f || typeof f !== 'object' || !safeDate(f.at)) return null;
+    if (decision === 'buy') {
+      if (!WORN[f.worn]) return null;
+      if (f.worn === 'notbought') return { at: f.at, worn: 'notbought', feel: '' };
+      return FEEL_BUY[f.feel] ? { at: f.at, worn: f.worn, feel: f.feel } : null;
+    }
+    if (decision === 'skip') return FEEL_SKIP[f.feel] ? { at: f.at, worn: '', feel: f.feel } : null;
+    return null;
+  }
+  /** 물을 차례가 된 결정(산다·안 산다를 정한 지 days일 이상, 답 없음). 오래된 것부터. */
+  function followDue(decisions, today_, days) {
+    const lim = days == null ? FOLLOW_DAYS : days, t = Date.parse((today_ || today()) + 'T00:00:00Z');
+    return decisions.filter((d) => d.after && d.after.decision !== 'hold' && !d.follow && safeDate(d.after.at) && (t - Date.parse(d.after.at + 'T00:00:00Z')) / 86400000 >= lim)
+      .sort((a, b) => (a.after.at < b.after.at ? -1 : a.after.at > b.after.at ? 1 : 0));
   }
   /** 옷장 파일 전체를 정리한다. 스키마 1이든 2든 스키마 2로 돌려준다. 모르는 파일이면 null. */
   function cleanWardrobe(raw) {
@@ -216,7 +241,7 @@
       owner: e.body ? clone(state.owner) : { nickname: state.owner.nickname, height: null, topSize: '', bottomSize: '' }, items, decisions: e.log ? clone(state.decisions) : [] };
   }
 
-  return { SCHEMA, SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, ATTR_SOURCE, PHOTO_KIND, EVIDENCE, LOOK_KINDS, MAX_CANDS,
-    str, num, safeImg, safeLink, safeDate, today, cleanItem, cleanWardrobe, cleanDecision, migrate, isDraft, draftItems, photoLabel, attrLabel,
+  return { SCHEMA, SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, ATTR_SOURCE, PHOTO_KIND, EVIDENCE, LOOK_KINDS, MAX_CANDS, FOLLOW_DAYS, WORN, FEEL_BUY, FEEL_SKIP,
+    str, num, safeImg, safeLink, safeDate, today, cleanItem, cleanWardrobe, cleanDecision, cleanFollow, followDue, migrate, isDraft, draftItems, photoLabel, attrLabel,
     setOwnPhoto, setProductPhoto, clearProductPhoto, addCandidate, removeCandidate, confirmProduct, unconfirm, setLook3d, setAttrSource, exportWardrobe };
 });

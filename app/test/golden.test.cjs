@@ -19,3 +19,10 @@ test('골든 회귀: 지금 배포하는 스키마 2 자료(data/sample-wardrobe
   assert.deepEqual(compute(W.migrate(v2).items, tpl), golden);
   assert.deepEqual(compute(W.cleanWardrobe(v2).items, W.cleanWardrobe({ schema: 1, kind: 'template', items: tpl }).items), golden, '기본 옷장도 정리해서 넣어도 같다');
 });
+
+test('골든 회귀: 예시 B(원피스·스커트 옷장, data/sample-wardrobe-b.json)와 그 후보들도 스냅샷(sample-b-results.json)과 같다', async () => {
+  const { compute, CANDS_B } = await import('../tools/golden.mjs');
+  const goldenB = JSON.parse(fs.readFileSync(__dirname + '/golden/sample-b-results.json', 'utf8'));
+  const vB = JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe-b.json', 'utf8'));
+  assert.deepEqual(compute(W.cleanWardrobe(vB).items, tpl, CANDS_B), goldenB);
+});

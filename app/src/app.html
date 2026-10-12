@@ -58,7 +58,7 @@ textarea{resize:vertical;min-height:64px}
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .thumb.nopic{aspect-ratio:5/3}
 .thumb.nopic .lbl{display:none}
-.thumb .sw{height:56%;aspect-ratio:1/1;border-radius:10px;border:1px solid rgba(0,0,0,.12)}
+.thumb .sw{height:56%;aspect-ratio:1/1;border-radius:10px;border:1px solid var(--line2)}
 .thumb .lbl{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:var(--ink2)}
 .thumb .pk{position:absolute;left:6px;top:6px;font-size:11px;line-height:1;padding:4px 6px;border-radius:6px;background:rgba(30,34,39,.78);color:#fff}
 .thumb .pk.sub{background:rgba(168,80,42,.9)}
@@ -86,7 +86,7 @@ textarea{resize:vertical;min-height:64px}
 .row .mini{flex:none}
 .mini{width:48px;height:48px;border-radius:8px;background:var(--thumb);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .mini img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.mini .sw{width:60%;height:60%;border-radius:6px;border:1px solid rgba(0,0,0,.12)}
+.mini .sw{width:60%;height:60%;border-radius:6px;border:1px solid var(--line2)}
 .rowt{min-width:0;flex:1}
 .rowt b{display:block;font-size:14px;overflow-wrap:anywhere}
 .rowt span{font-size:12.5px;color:var(--ink2)}
@@ -186,6 +186,15 @@ a{color:var(--accent)}
 .notice.warnbox{border-color:#c47a1d}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:10px;font-size:13.5px;max-width:92vw;z-index:50}
 details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2);font-size:13.5px;margin-bottom:8px}
+/* 빠른 시작 */
+.qsec h3{font-size:13px;color:var(--ink2);font-weight:650;margin:12px 0 6px}
+.qsec:first-child h3{margin-top:0}
+.qchips{display:flex;flex-wrap:wrap;gap:6px}
+.qchip{appearance:none;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--card);border-radius:999px;padding:6px 12px 6px 7px;cursor:pointer;font-size:14px;color:var(--ink)}
+.qchip i{width:18px;height:18px;border-radius:50%;border:1px solid var(--line2);flex:none}
+.qchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
+.notice .sub2{font-size:13px;color:var(--ink2);margin:6px 0 2px}
+.notice .choices{margin:6px 0 8px}
 </style>
 </head>
 <body>
@@ -286,6 +295,34 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
     <div class="bar" style="margin:10px 0 0"><button class="btn primary" type="button" id="fbCopy">복사하기</button><span class="note" id="fbMsg"></span></div>
   </div>
 </dialog>
+<dialog id="quickDlg" aria-labelledby="qTitle">
+  <div class="dhead"><h2 id="qTitle">자주 입는 옷 골라 넣기</h2><button class="btn small" type="button" id="qClose">닫기</button></div>
+  <div class="dbody">
+    <p class="note" style="margin-bottom:12px">가진 옷과 비슷한 것을 누르세요. 색과 격식은 대표값으로 들어가고, 나중에 사진·색·이름을 고칠 수 있습니다.</p>
+    <div id="qBody"></div>
+  </div>
+  <div class="dfoot"><span class="note" id="qCount"></span><span class="grow"></span><button class="btn" type="button" id="qCancel">취소</button><button class="btn primary" type="button" id="qAdd" disabled>넣기</button></div>
+</dialog>
+<dialog id="qcDlg" aria-labelledby="qcTitle">
+  <form id="qcForm" method="dialog">
+    <div class="dhead"><h2 id="qcTitle">고민 중인 옷 바로 판정</h2><button class="btn small" type="button" id="qcClose">닫기</button></div>
+    <div class="dbody">
+      <p class="note" style="margin-bottom:12px">사진이 없어도 종류와 색만으로 판정합니다. 가격·링크·사진은 나중에 더할 수 있습니다.</p>
+      <div class="form">
+        <div class="field"><label for="qc-cat">분류</label><select id="qc-cat"></select></div>
+        <div class="field"><label for="qc-kind">종류</label><select id="qc-kind"></select></div>
+        <div class="field"><label for="qc-family">색 계열</label><select id="qc-family"></select></div>
+        <div class="field"><label for="qc-light">밝기 <span id="qc-lightv"></span></label><div class="range"><span class="sw" id="qc-sw"></span><input id="qc-light" type="range" min="0" max="100" step="1"></div></div>
+        <div class="field"><label for="qc-formality">격식</label><select id="qc-formality"></select></div>
+        <div class="field"><label for="qc-pattern">무늬</label><select id="qc-pattern"></select></div>
+        <div class="field full"><label for="qc-name">이름 (비워 두면 색과 종류로)</label><input id="qc-name" type="text" maxlength="80"></div>
+        <div class="field full"><span class="l">판정을 보기 전 지금 마음</span><div class="choices" id="qc-lean"></div><span class="note">판정이 결정에 도움이 됐는지 나중에 견줘 보려고 먼저 적어 둡니다.</span></div>
+      </div>
+      <p class="warnnote" id="qcErr" hidden></p>
+    </div>
+    <div class="dfoot"><button class="btn small" type="button" id="qcFull">사진·가격까지 자세히</button><span class="grow"></span><button class="btn" type="button" id="qcCancel">취소</button><button class="btn primary" type="submit" id="qcGo">판정 보기</button></div>
+  </form>
+</dialog>
 <dialog id="product" aria-labelledby="pdTitle">
   <form id="pdForm" method="dialog">
     <div class="dhead"><h2 id="pdTitle">상품 추가</h2><button class="btn small" type="button" id="pdClose">닫기</button></div>
@@ -322,6 +359,7 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 <script>/*@@SYNC@@*/</script>
 <script>const BRAND = /*@@BRAND@@*/;
 const SAMPLE = /*@@SAMPLE@@*/;
+const SAMPLE_B = /*@@SAMPLE_B@@*/;
 const BASE = /*@@WARDROBE@@*/;
 const TEMPLATE = /*@@TEMPLATE@@*/;</script>
 <script>/*@@CLOSET@@*/</script>
@@ -418,7 +456,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const w = W.cleanWardrobe(raw); if (!w) return null;
     const s = { schema: 2, owner: w.owner, items: w.items, decisions: w.decisions, others: [], catalog: { products: [] }, rack: [] };
     const m = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
-    s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120) };   // days: 앱을 연 날(이 기기에만 남고, 의견 보내기를 누를 때만 요약으로 붙는다)   // 예시 옷장 보는 중인지, 마지막 백업일, 첫 안내를 봤는지
+    s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120), quickAdded: num(m.quickAdded, 0, 9999) || 0 };   // quickAdded: 빠른 시작으로 넣은 옷 수   // days: 앱을 연 날(이 기기에만 남고, 의견 보내기를 누를 때만 요약으로 붙는다)   // 예시 옷장 보는 중인지, 마지막 백업일, 첫 안내를 봤는지
     s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
     const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
     const ids = new Set(s.items.map((i) => i.id)), slots = new Set();
@@ -443,7 +481,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   }
   let state = null, storageOk = true, savePromise = Promise.resolve();
   const ui = { advOpen: false, syncBase: 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
-    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null };
+    shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [] };
   function save() {
     const data = JSON.stringify(state);
     savePromise = (async () => {
@@ -548,11 +586,12 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     main.append(h('p', { class: 'lead', text: '가진 옷과 그 옷에 대한 기록입니다. 사이즈, 산 해, 오래 입어 본 후기를 적어 두면 다음에 살 때의 근거가 됩니다.' + (drafts ? ' 지금 ' + drafts + '벌은 사진에서 뽑은 초안이라 색과 종류를 직접 확인해야 합니다.' : '') }));
     const bar = h('div', { class: 'bar' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),
       Object.keys(CATS).map((c) => chip(CATS[c], ui.cat === c, () => { ui.cat = c; render(); })), h('span', { class: 'grow' }),
+      h('button', { class: 'btn', type: 'button', id: 'addQuick', onclick: () => openQuick(), text: '기본 옷 골라 넣기' }),
       h('button', { class: 'btn primary', type: 'button', id: 'addOwned', onclick: () => openWizard(null, 'owned'), text: '옷 추가' }));
     main.append(bar, h('div', { class: 'bar' }, seasonChips(ui.season, (s) => { ui.season = s; render(); })));
     const list = state.items.filter((i) => i.status !== 'gone' && (ui.cat === 'all' || i.cat === ui.cat) && J.inSeason(i, ui.season));
     if (!list.length) { if (state.items.length) main.append(h('div', { class: 'empty', text: '이 조건에 맞는 옷이 없습니다.' })); return; }
-    const order = { outer: 0, top: 1, bottom: 2, shoes: 3 };
+    const order = { outer: 0, top: 1, bottom: 2, dress: 3, shoes: 4 };
     list.sort((a, b) => (a.status === b.status ? order[a.cat] - order[b.cat] : a.status === 'candidate' ? 1 : -1));
     main.append(h('div', { class: 'grid', id: 'closetGrid' }, list.map((it) => itemCard(it, { actions: [
       h('button', { class: 'btn small', type: 'button', onclick: () => openEditor(it), text: it.status === 'candidate' ? '수정' : '기록' }),
@@ -630,15 +669,15 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const rack = new Map(state.rack.map((r) => [r.id, r]));
     const all = state.items.filter((i) => i.status !== 'gone').sort((a, b) => (a.status === b.status ? 0 : a.status === 'owned' ? -1 : 1));
     const panel = h('section', { class: 'panel', id: 'rackPanel' }, h('h2', { text: '옷장에 걸 옷 (' + state.rack.length + '/6)' }),
-      h('p', { class: 'sub', text: '3D 형태가 있는 옷만 걸 수 있습니다. 형태는 직접 고릅니다(셔츠, 블레이저, 필드 재킷, 트러커 재킷, 스웻셔츠, 카디건). 원단은 미리 만든 것 가운데 고르거나, 옷의 색·무늬로 만든 근사치를 씁니다. 바지와 신발 형태는 아직 없습니다.' }));
+      h('p', { class: 'sub', text: '3D 형태가 있는 옷만 걸 수 있습니다. 형태는 상의·아우터에서 직접 고릅니다(셔츠, 블레이저, 필드 재킷, 트러커 재킷, 스웻셔츠, 카디건). 원단은 미리 만든 것 가운데 고르거나, 옷의 색·무늬로 만든 근사치를 씁니다. 하의·원피스·신발 형태는 아직 없습니다.' }));
     const list = h('div', { class: 'list racklist' });
     for (const it of all) {
-      const r = rack.get(it.id), has = !!it.look3d;
+      const r = rack.get(it.id), has = !!it.look3d, can = has || it.cat === 'top' || it.cat === 'outer';
       const row = h('div', { class: 'row', 'data-id': it.id }, pic(it, 'mini'), h('span', { class: 'rowt' }, h('b', { text: it.name + (it.status === 'candidate' ? ' (구매 후보)' : '') }),
-        h('span', { text: has ? (r ? '걸림 · ' : '') + X.KIND[it.look3d.kind].type + ' · ' + fabricLabel(it) : '3D 형태 없음 — 고르면 걸 수 있습니다' })));
+        h('span', { text: has ? (r ? '걸림 · ' : '') + X.KIND[it.look3d.kind].type + ' · ' + fabricLabel(it) : can ? '3D 형태 없음 — 고르면 걸 수 있습니다' : '3D 형태 없음 — ' + CATS[it.cat] + ' 형태는 아직 없습니다' })));
       const acts = h('span', { class: 'acts' });
       if (has) acts.append(h('button', { class: 'btn small' + (r ? '' : ' primary'), type: 'button', onclick: () => { if (r) unhang(it.id); else if (hang(it.id)) render(); else alertLine(panel, '옷장 자리가 6곳입니다. 하나를 내린 뒤 걸어 주세요.'); }, text: r ? '내리기' : '걸기' }));
-      acts.append(h('button', { class: 'btn small', type: 'button', onclick: () => { ui.rackPick = ui.rackPick === it.id ? '' : it.id; render(); }, text: has ? '형태 바꾸기' : '형태 고르기' }));
+      if (can) acts.append(h('button', { class: 'btn small', type: 'button', onclick: () => { ui.rackPick = ui.rackPick === it.id ? '' : it.id; render(); }, text: has ? '형태 바꾸기' : '형태 고르기' }));
       row.append(acts);
       list.append(row);
       if (ui.rackPick === it.id) list.append(lookPicker(it));
@@ -667,11 +706,12 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     if (!ui.judgeId && list.length) ui.judgeId = list[0].id;
     const left = h('div', { class: 'list' }, list.map((c) => h('button', { class: 'row', type: 'button', 'aria-pressed': c.id === ui.judgeId ? 'true' : 'false', onclick: () => { ui.judgeId = c.id; render(); } },
       pic(c, 'mini'), h('span', { class: 'rowt' }, h('b', { text: c.name }), h('span', { text: [famLabel(c), kindLabel(c)].join(' · ') })))),
-      h('button', { class: 'btn primary', type: 'button', id: 'addCand', onclick: () => openWizard(null, 'candidate'), text: '후보 추가' }));
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'quickCand', onclick: () => openQuickCand(), text: '빠르게 넣고 판정' }),
+        h('button', { class: 'btn', type: 'button', id: 'addCand', onclick: () => openWizard(null, 'candidate'), text: '자세히 넣기' })));
     const right = h('div');
     main.append(h('div', { class: 'split' }, left, right));
     const c = byId(ui.judgeId);
-    if (!c) { right.append(h('div', { class: 'empty', text: '아직 후보가 없습니다. 지금 살까 고민 중인 옷 한 벌을 넣어 보세요. 사진이 없어도 종류와 색만으로 판정합니다. 살 만한 옷 탭의 상품을 후보로 넣을 수도 있습니다.' })); return; }
+    if (!c) { right.append(h('div', { class: 'empty', text: '아직 후보가 없습니다. "빠르게 넣고 판정"으로 지금 살까 고민 중인 옷 한 벌의 종류와 색만 골라 보세요. 사진이 없어도 판정합니다. 살 만한 옷 탭의 상품을 후보로 넣을 수도 있습니다.' })); return; }
     const open = openDecision(c.id);
     const past = state.decisions.filter((d) => d.itemId === c.id && d.after), last = past[past.length - 1];
     const stage = open ? 2 : last && ui.rejudge !== c.id ? 3 : 1;
@@ -720,8 +760,10 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const p2 = h('section', { class: 'panel', id: 'vCombos' }, h('h2', { text: '새로 생기는 조합' }));
     if (!v.supported || v.note) p2.append(h('p', { class: 'sub', text: v.note }));
     else {
+      const hasDress = state.items.some((i) => i.cat === 'dress' && J.isOwned(i) && i.id !== c.id);
       if (c.cat === 'outer') p2.append(h('p', { class: 'big', text: '조합 ' + v.before + '개 가운데 ' + v.added.length + '개에 걸칠 수 있습니다' }));
-      else p2.append(h('p', { class: 'big', text: '조합 ' + v.before + '개 → ' + v.after + '개' }), h('p', { class: 'sub', text: '주의 사항이 없는 상의·하의 조합의 수입니다. 이 옷으로 ' + v.added.length + '개가 새로 생깁니다.' + (v.added.length > 0 && v.added.length < 3 ? ' 3개에 못 미칩니다.' : '') }));
+      else if (c.cat === 'dress') p2.append(h('p', { class: 'big', text: '차림 ' + v.before + '개 → ' + v.after + '개' }), h('p', { class: 'sub', text: '원피스는 한 벌로 차림 하나가 됩니다. 가진 아우터 가운데 ' + v.added[0].outers.length + '벌을 주의 사항 없이 걸칠 수 있습니다.' }));
+      else p2.append(h('p', { class: 'big', text: '조합 ' + v.before + '개 → ' + v.after + '개' }), h('p', { class: 'sub', text: '주의 사항이 없는 상의·하의 조합' + (hasDress ? '과 원피스' : '') + '의 수입니다. 이 옷으로 ' + v.added.length + '개가 새로 생깁니다.' + (v.added.length > 0 && v.added.length < 3 ? ' 3개에 못 미칩니다.' : '') }));
       if (v.top3.length) p2.append(h('div', { class: 'outfits', style: 'margin-top:12px' }, v.top3.map((o) => outfitCard(o, c.id))));
     }
     const p3 = h('section', { class: 'panel', id: 'vBlock' }, h('h2', { text: '걸리는 점' }));
@@ -861,14 +903,15 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   // ---------- 기록 ----------
   function renderLog(main) {
     const done = state.decisions.filter((d) => d.after), useful = done.filter((d) => d.after.helpful !== 'no' || d.after.shift === 'changed' || d.after.shift === 'settled').length;
+    const fs_ = done.filter((d) => d.follow), due = W.followDue(state.decisions, today());
     main.append(h('p', { class: 'lead', text: '판정이 실제 결정에 도움이 됐는지 남기는 기록입니다. 이 도구를 계속 만들지 정하는 근거로 씁니다.' }));
     const gate = h('section', { class: 'panel', id: 'gate' }, h('h2', { text: '판정 기록 ' + done.length + '건' }),
-      h('p', { class: 'sub', text: '첫 문턱은 실제로 고민한 상품 3건입니다. 그중 ' + useful + '건에서 판정이 도움이 됐거나 결정이 바뀌었습니다.' }));
+      h('p', { class: 'sub', text: '첫 문턱은 실제로 고민한 상품 3건입니다. 그중 ' + useful + '건에서 판정이 도움이 됐거나 결정이 바뀌었습니다.' + (fs_.length ? ' 2주 뒤 답 ' + fs_.length + '건 가운데 후회·아쉬움은 ' + fs_.filter((d) => d.follow.feel === 'regret').length + '건입니다.' : '') + (due.length ? ' 지금 물을 차례인 결정이 ' + due.length + '건 있습니다(옷장 탭).' : '') }));
     if (done.length) {
       const tb = h('tbody');
       for (const d of done.slice().reverse()) tb.append(h('tr', null, h('td', { text: d.after.at }), h('td', { text: d.name }), h('td', { text: LEAN[d.before.lean] }), h('td', { text: DECIDE[d.after.decision] + ' (' + SHIFT[d.after.shift] + ')' }),
-        h('td', { text: HELP[d.after.helpful] }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }), h('td', { text: d.after.note })));
-      gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '후보', '보기 전', '결정', '도움', '판정 요약', '메모'].map((t) => h('th', { text: t })))), tb)));
+        h('td', { text: HELP[d.after.helpful] }), h('td', { text: followText(d) }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }), h('td', { text: d.after.note })));
+      gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '후보', '보기 전', '결정', '도움', '2주 뒤', '판정 요약', '메모'].map((t) => h('th', { text: t })))), tb)));
     } else gate.append(h('p', { class: 'note', text: '아직 기록이 없습니다. 살까 말까 탭에서 후보를 넣고 판정을 끝까지 진행하면 여기에 쌓입니다.' }));
     main.append(gate);
     // 사진 상태 요약
@@ -1119,6 +1162,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     if (next < 3) { wz.step = next; renderWizard(); return; }
     // 저장
     const prev = wz.item;
+    if (!prev && wz.status === 'owned' && state.meta.sample) { leaveSample(); toast('예시를 지우고 내 옷장으로 시작합니다.'); }
     const fromPhoto = wz.guessApplied && !wz.touched;                                               // 색·밝기를 사진 초안 그대로 두었으면 '사진에서 뽑은 초안'으로 남긴다
     const attrSource = d.confirmed ? 'owner-confirmed' : fromPhoto ? 'photo-draft' : prev ? (prev.attrSource === 'owner-confirmed' ? 'owner' : prev.attrSource) : 'owner';
     let item = W.cleanItem(Object.assign({}, prev || {}, { id: prev ? prev.id : newId(wz.status === 'candidate' ? 'c' : 'i'), status: wz.status, cat: d.cat, kind: d.kind, name: d.name, family: d.family, light: d.light, formality: d.formality, pattern: d.pattern, seasons: d.seasons,
@@ -1225,6 +1269,101 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     $('#product').close(); save(); render();
   });
 
+  // ---------- 빠른 시작: 기본 옷 골라 넣기, 고민 중인 옷 바로 판정 ----------
+  // 종류마다 처음 고르는 격식 [제안값]. 사용자가 바꿀 수 있다
+  const KIND_FORMAL = { jacket: 2, blazer: 3, cardigan: 2, coat: 3, padding: 1, vest: 2, trench: 2, shirt: 3, tee: 1, knit: 2, sweat: 1, polo: 2, hoodie: 1, blouse: 3, sleeveless: 1, turtleneck: 2,
+    denim: 2, chino: 2, slacks: 3, fatigue: 1, cord: 2, shorts: 1, skirt: 2, wide: 2, jogger: 1, leggings: 1, dress: 2, jumpsuit: 2, derby: 3, loafer: 3, sneaker: 1, boots: 2, heels: 3, flats: 2, sandals: 1 };
+  // 자주 입는 기본 옷 [이름, 분류, 종류, 색 계열, 밝기, 격식, 무늬]. 대표값이며 특정 상품이 아니다
+  const PRESETS = [
+    ['흰 셔츠', 'top', 'shirt', 'white', 95, 3], ['하늘색 셔츠', 'top', 'shirt', 'blue', 80, 3], ['흰 티셔츠', 'top', 'tee', 'white', 95, 1], ['검정 티셔츠', 'top', 'tee', 'black', 12, 1],
+    ['줄무늬 티셔츠', 'top', 'tee', 'white', 88, 1, 'stripe'], ['회색 맨투맨', 'top', 'sweat', 'gray', 60, 1], ['네이비 니트', 'top', 'knit', 'navy', 18, 2], ['아이보리 니트', 'top', 'knit', 'ivory', 90, 2],
+    ['흰 블라우스', 'top', 'blouse', 'white', 95, 3], ['검정 터틀넥', 'top', 'turtleneck', 'black', 12, 2],
+    ['진청 데님', 'bottom', 'denim', 'indigo', 18, 2], ['연청 데님', 'bottom', 'denim', 'blue', 62, 1], ['검정 슬랙스', 'bottom', 'slacks', 'black', 12, 3], ['회색 슬랙스', 'bottom', 'slacks', 'gray', 45, 3],
+    ['베이지 치노', 'bottom', 'chino', 'beige', 70, 2], ['검정 스커트', 'bottom', 'skirt', 'black', 12, 2], ['베이지 롱스커트', 'bottom', 'skirt', 'beige', 75, 2], ['검정 와이드 팬츠', 'bottom', 'wide', 'black', 12, 2],
+    ['검정 원피스', 'dress', 'dress', 'black', 12, 3], ['꽃무늬 원피스', 'dress', 'dress', 'ivory', 86, 2, 'graphic'],
+    ['네이비 블레이저', 'outer', 'blazer', 'navy', 18, 3], ['베이지 트렌치코트', 'outer', 'trench', 'beige', 72, 2], ['검정 코트', 'outer', 'coat', 'black', 12, 3], ['데님 재킷', 'outer', 'jacket', 'indigo', 30, 1],
+    ['회색 카디건', 'outer', 'cardigan', 'gray', 55, 2], ['검정 패딩', 'outer', 'padding', 'black', 12, 1],
+    ['흰 스니커즈', 'shoes', 'sneaker', 'white', 95, 1], ['검정 로퍼', 'shoes', 'loafer', 'black', 12, 3], ['검정 힐', 'shoes', 'heels', 'black', 12, 3], ['갈색 부츠', 'shoes', 'boots', 'brown', 25, 2], ['검정 플랫슈즈', 'shoes', 'flats', 'black', 12, 2],
+  ].map(([name, cat, kind, family, light, formality, pattern], i) => ({ key: 'q' + i, name, cat, kind, family, light, formality, pattern: pattern || 'solid' }));
+  function openQuick() { ui.quickPick = []; renderQuick(); $('#quickDlg').showModal(); }
+  function renderQuick() {
+    const b = $('#qBody'); b.textContent = '';
+    const have = new Set(owned().map((i) => i.name));
+    for (const cat of Object.keys(CATS)) {
+      const list = PRESETS.filter((p) => p.cat === cat); if (!list.length) continue;
+      b.append(h('div', { class: 'qsec' }, h('h3', { text: CATS[cat] }), h('div', { class: 'qchips' }, list.map((p) => h('button', { class: 'qchip', type: 'button', 'data-key': p.key, 'aria-pressed': ui.quickPick.indexOf(p.key) >= 0 ? 'true' : 'false',
+        title: have.has(p.name) ? '이미 같은 이름의 옷이 있습니다' : '', onclick: () => { const at = ui.quickPick.indexOf(p.key); if (at >= 0) ui.quickPick.splice(at, 1); else ui.quickPick.push(p.key); renderQuick(); } },
+        h('i', { style: 'background:' + swatch(p) }), p.name + (have.has(p.name) ? ' ✓' : ''))))));
+    }
+    const n = ui.quickPick.length;
+    $('#qCount').textContent = n ? n + '벌 골랐습니다' : '가진 옷과 비슷한 것을 눌러 주세요';
+    $('#qAdd').disabled = !n; $('#qAdd').textContent = n ? n + '벌 넣기' : '넣기';
+  }
+  function addQuick() {
+    const picked = PRESETS.filter((p) => ui.quickPick.indexOf(p.key) >= 0);
+    const wasSample = state.meta.sample; if (wasSample) leaveSample();                              // 예시를 보다가 내 옷을 넣으면 예시는 지우고 내 옷장으로 시작한다
+    for (const p of picked) replaceItem(W.cleanItem({ id: newId('i'), status: 'owned', cat: p.cat, kind: p.kind, name: p.name, family: p.family, light: p.light, formality: p.formality, pattern: p.pattern, seasons: [], attrSource: 'owner',
+      draftNote: '빠른 시작으로 넣은 대표값입니다. 실제 색·밝기·격식과 다르면 고쳐 주세요.' }, 0));
+    state.meta.welcomed = true; state.meta.quickAdded += picked.length; ui.quickPick = [];
+    $('#quickDlg').close(); ui.tab = 'closet'; save(); render();
+    if (picked.length) toast((wasSample ? '예시를 지우고 ' : '') + picked.length + '벌을 넣었습니다. 이제 고민 중인 옷을 판정해 볼 수 있어요.');
+  }
+  $('#qAdd').addEventListener('click', addQuick);
+  $('#qClose').addEventListener('click', () => $('#quickDlg').close());
+  $('#qCancel').addEventListener('click', () => $('#quickDlg').close());
+
+  function syncQcLight() { const v = Number($('#qc-light').value); $('#qc-lightv').textContent = lightText(v); $('#qc-sw').style.background = swatch({ family: $('#qc-family').value, light: v }); }
+  function openQuickCand() {
+    fill($('#qc-cat'), CATS, 'top'); fill($('#qc-kind'), KINDS.top, 'shirt'); fill($('#qc-family'), FAM, 'white'); $('#qc-light').value = String(FAM.white[3]);
+    fill($('#qc-formality'), FORMAL, KIND_FORMAL.shirt); fill($('#qc-pattern'), PATTERNS, 'solid'); $('#qc-name').value = ''; $('#qcErr').hidden = true;
+    const lean = $('#qc-lean'); lean.textContent = '';
+    for (const k of Object.keys(LEAN)) lean.append(h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'qcLean', value: k }), h('span', { text: LEAN[k] })));
+    syncQcLight(); $('#qcDlg').showModal();
+  }
+  $('#qc-cat').addEventListener('change', () => { fill($('#qc-kind'), KINDS[$('#qc-cat').value]); $('#qc-formality').value = String(KIND_FORMAL[$('#qc-kind').value] || 2); });
+  $('#qc-kind').addEventListener('change', () => { $('#qc-formality').value = String(KIND_FORMAL[$('#qc-kind').value] || 2); });
+  $('#qc-family').addEventListener('change', () => { $('#qc-light').value = String(FAM[$('#qc-family').value][3]); syncQcLight(); });
+  $('#qc-light').addEventListener('input', syncQcLight);
+  $('#qcClose').addEventListener('click', () => $('#qcDlg').close());
+  $('#qcCancel').addEventListener('click', () => $('#qcDlg').close());
+  $('#qcFull').addEventListener('click', () => { $('#qcDlg').close(); openWizard(null, 'candidate'); });
+  $('#qcForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const leanEl = document.querySelector('#qc-lean input:checked'), err = $('#qcErr');
+    if (!leanEl) { err.textContent = '판정을 보기 전 지금 마음을 골라 주세요.'; err.hidden = false; return; }
+    const d = { cat: $('#qc-cat').value, kind: $('#qc-kind').value, family: $('#qc-family').value, light: Number($('#qc-light').value), formality: Number($('#qc-formality').value), pattern: $('#qc-pattern').value };
+    const name = $('#qc-name').value.trim() || famLabel(d) + ' ' + kindLabel(d);
+    const it = W.cleanItem(Object.assign({ id: newId('c'), status: 'candidate', name, seasons: [], attrSource: 'owner' }, d), 0);
+    replaceItem(it);
+    state.decisions.push({ id: newId('d'), itemId: it.id, name: it.name, before: { lean: leanEl.value, reason: '', at: today() }, summary: { overlaps: 0, added: 0, blockers: 0 }, after: null, follow: null });
+    ui.judgeId = it.id; ui.rejudge = ''; ui.tab = 'judge';
+    $('#qcDlg').close(); save(); render();
+  });
+
+  // ---------- 결정 뒤 물음 (2주 뒤 한 번) ----------
+  const followText = (d) => {
+    if (d.follow) return d.after.decision === 'buy' ? (d.follow.worn === 'notbought' ? W.WORN.notbought : W.WORN[d.follow.worn] + ' 입음 · ' + W.FEEL_BUY[d.follow.feel]) : W.FEEL_SKIP[d.follow.feel];
+    if (!d.after || d.after.decision === 'hold') return '-';
+    const n = daysAgo(d.after.at); return n != null && n >= W.FOLLOW_DAYS ? '물을 차례' : (W.FOLLOW_DAYS - (n || 0)) + '일 뒤에 물음';
+  };
+  function followNotice(d) {
+    const buy = d.after.decision === 'buy', n = daysAgo(d.after.at);
+    const radios = (name, map) => h('div', { class: 'choices' }, Object.keys(map).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name, value: k }), h('span', { text: map[k] }))));
+    const box = h('div', { class: 'notice', id: 'followNote' }, h('h2', { text: n + '일 전에 "' + DECIDE[d.after.decision] + '"로 정한 ' + d.name + (buy ? ', 그동안 어땠나요?' : ', 지금은 어떤가요?') }),
+      buy ? [h('p', { class: 'sub2', text: '몇 번 입었나요?' }), radios('fWorn', W.WORN), h('p', { class: 'sub2', text: '산 것은 어떤가요? ("결국 안 샀다"면 비워 두세요)' }), radios('fFeel', W.FEEL_BUY)] : radios('fFeel', W.FEEL_SKIP),
+      h('p', { class: 'note', text: '판정이 실제로 도움이 됐는지 아는 유일한 방법이라 한 번만 묻습니다. 답은 이 기기에만 남고, 의견 보내기를 누를 때 개수만 요약에 붙습니다.' }));
+    const msg = h('p', { class: 'warnnote', hidden: true });
+    box.append(msg, h('div', { class: 'bar', style: 'margin:8px 0 0' },
+      h('button', { class: 'btn small primary', type: 'button', id: 'followSave', onclick: () => {
+        const val = (nm) => { const x = box.querySelector('input[name="' + nm + '"]:checked'); return x ? x.value : ''; };
+        const f = W.cleanFollow({ at: today(), worn: val('fWorn'), feel: val('fFeel') }, d.after.decision);
+        if (!f) { msg.textContent = buy ? '몇 번 입었는지와 산 것이 어떤지 골라 주세요.' : '하나를 골라 주세요.'; msg.hidden = false; return; }
+        d.follow = f; save(); render(); toast('고맙습니다. 기록 탭에 남았습니다.');
+      }, text: '저장' }),
+      h('button', { class: 'btn small', type: 'button', id: 'followLater', onclick: () => { ui.followLater = true; render(); }, text: '나중에' })));
+    return box;
+  }
+
   // ---------- 베타: 안내, 의견, 오류, 백업, 3D 나눠 받기 ----------
   const errors = [];
   function toast(text) { let t = $('#toast'); if (!t) { t = h('div', { class: 'toast', id: 'toast', role: 'status' }); document.body.append(t); } t.textContent = text; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 4000); }
@@ -1234,7 +1373,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const own = owned(), done = state.decisions.filter((d) => d.after).length;
     return ['[' + BRAND.name + ' ' + BRAND.version + ']', '옷 ' + own.length + '벌(초안 ' + own.filter(W.isDraft).length + ', 내 사진 ' + own.filter((i) => i.photo.ownImg).length + ') · 후보 ' + cands().length + ' · 판정 끝 ' + done + '건 · 상품 ' + state.catalog.products.length + '개 · 3D 걸림 ' + state.rack.length,
       '예시 옷장: ' + (state.meta.sample ? '보는 중' : '아님') + ' · 저장: ' + store.mode + (storageOk ? '' : '(실패)') + ' · 화면 ' + window.innerWidth + '×' + window.innerHeight + ' · 3D: ' + (closet.failed ? '실패' : closet.ready ? '열림' : '안 엶'),
-      '연 날 ' + state.meta.days.length + '일(최근 30일 ' + state.meta.days.filter((d) => daysAgo(d) <= 30).length + '일) · 첫 사용 ' + (state.meta.days[0] || '-'),
+      '연 날 ' + state.meta.days.length + '일(최근 30일 ' + state.meta.days.filter((d) => daysAgo(d) <= 30).length + '일) · 첫 사용 ' + (state.meta.days[0] || '-') + ' · 빠른 시작 ' + state.meta.quickAdded + '벌',
+      (() => { const f = state.decisions.filter((d) => d.follow), c = (k) => f.filter((d) => d.follow.feel === k).length; return '2주 뒤 답 ' + f.length + '건(잘함 ' + c('good') + ', 그저 ' + c('ok') + ', 후회·아쉬움 ' + c('regret') + ', 결국 안 삼 ' + f.filter((d) => d.follow.worn === 'notbought').length + ') · 물을 차례 ' + W.followDue(state.decisions, today()).length + '건'; })(),
       errors.length ? '최근 오류: ' + errors.slice(-3).join(' / ') : '최근 오류 없음'].join('\n');
   }
   function feedbackText() { const t = $('#fbText').value.trim(); return (t || '(내용 없음)') + ($('#fbStats').checked ? '\n\n' + usageSummary() : ''); }
@@ -1253,15 +1393,16 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const b = $('#helpBody'); b.textContent = '';
     b.append(h('p', { class: 'lead', text: BRAND.name + '(' + BRAND.status + ')은 ' + BRAND.tagline + ' 판단하도록 돕는 도구입니다. 지금은 지인 대상 시험판(' + BRAND.version + ')입니다.' }),
       h('h3', { text: '처음 쓰는 법' }),
-      h('ol', null, h('li', { text: '옷장 탭에서 가진 옷을 몇 벌 넣습니다. 사진을 넣으면 색과 밝기를 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
-        h('li', { text: '살까 고민 중인 옷은 "살까 말까" 탭에 후보로 넣습니다. 가진 옷과 겹치는지, 새로 생기는 조합이 몇 개인지 보여 줍니다.' }),
-        h('li', { text: '코디 탭에서 가진 옷으로 만든 조합을, 3D 옷장 탭에서 옷을 걸어 봅니다(셔츠·재킷 등 6종).' })),
+      h('ol', null, h('li', { text: '옷장 탭의 "기본 옷 골라 넣기"로 가진 옷과 비슷한 옷을 한 번에 넣습니다. 한 벌씩 사진과 함께 넣으면 색과 밝기를 사진에서 미리 채워 줍니다(직접 고칠 수 있습니다).' }),
+        h('li', { text: '살까 고민 중인 옷은 "살까 말까" 탭의 "빠르게 넣고 판정"으로 종류와 색만 골라 봅니다. 가진 옷과 겹치는지, 새로 생기는 조합이 몇 개인지 보여 줍니다.' }),
+        h('li', { text: '결정을 적으면 2주 뒤에 "몇 번 입었나, 잘 샀나"를 한 번 묻습니다. 판정이 실제로 도움이 됐는지 아는 유일한 방법이라 답해 주시면 큰 도움이 됩니다.' }),
+        h('li', { text: '코디 탭에서 가진 옷으로 만든 조합을, 3D 옷장 탭에서 상의·아우터를 걸어 봅니다(셔츠·재킷 등 6종).' })),
       h('h3', { text: '내 자료는 어디에' }),
       h('ul', null, h('li', { text: '옷장·사진·기록은 이 기기의 이 브라우저 안에만 저장됩니다. 운영자는 볼 수 없고, 어디로도 보내지 않습니다.' }),
         h('li', { text: '브라우저 데이터를 지우거나 오래 열지 않으면(특히 아이폰 Safari) 사라질 수 있습니다. 기록 탭에서 백업 파일을 내려받아 두세요. 홈 화면에 추가하면 더 오래 남습니다.' }),
         h('li', { text: '다른 기기로 옮길 때는 백업 파일을 내보내고 그 기기에서 가져옵니다.' })),
       h('h3', { text: '알아 두실 점' }),
-      h('ul', null, h('li', { text: '판정과 코디는 색·밝기·격식·무늬 규칙으로 계산합니다. 확률이 아니고, 핏·소재·얼굴 분위기는 아직 보지 못합니다.' }),
+      h('ul', null, h('li', { text: '판정과 코디는 색·밝기·격식·무늬 규칙으로 계산합니다. 확률이 아니고, 핏·소재·얼굴 분위기는 아직 보지 못합니다. 원피스는 한 벌로 차림 하나로 셉니다.' }),
         h('li', { text: '3D는 종류별로 미리 만든 형태에 색을 입힌 모습이라 실제 상품과 다릅니다. 사람에게 입혀 보는 기능은 아직 없습니다.' }),
         h('li', { text: '상품 가격·재고는 찾아오지 않습니다. 직접 넣은 값과 확인한 날짜만 보여 줍니다.' })));
   }
@@ -1269,21 +1410,33 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   $('#helpClose').addEventListener('click', () => $('#helpDlg').close());
   const daysAgo = (d) => (d ? Math.round((Date.parse(today() + 'T00:00:00Z') - Date.parse(d + 'T00:00:00Z')) / 86400000) : null);
   function backupNow() { download(BRAND.latin.toLowerCase() + '-backup-' + today() + '.json', W.exportWardrobe(state, Object.assign({}, ui.exp, { img: true, cands: true, price: true, body: true, log: true }))); state.meta.lastBackupAt = today(); save(); render(); toast('백업 파일을 내려받았습니다. 안전한 곳에 보관해 주세요.'); }
+  /** 예시 옷장을 지우고 내 옷장으로 시작한다. 직접 넣은 상품 목록은 예시가 아니므로 남긴다. */
+  function leaveSample() { state.items = []; state.decisions = []; state.rack = []; state.meta.sample = false; state.meta.welcomed = true; ui.judgeId = ''; ui.stageSel = null; ui.rackPick = ''; }
   function startNotices(main) {                                                                   // 옷장 탭 위: 첫 방문 안내 / 예시 옷장 표시 / 백업 알림
     if (state.meta.sample) {
       main.append(h('div', { class: 'notice', id: 'sampleNote' }, h('p', { text: '예시 옷장을 보고 있습니다. 둘러본 뒤 내 옷장으로 시작하면 예시 옷은 지워집니다.' }),
-        h('button', { class: 'btn small primary', type: 'button', id: 'leaveSample', onclick: () => { state.items = []; state.decisions = []; state.rack = []; state.catalog.products = []; state.meta.sample = false; state.meta.welcomed = true; save(); render(); }, text: '내 옷장으로 시작 (예시 지우기)' })));
+        h('button', { class: 'btn small primary', type: 'button', id: 'leaveSample', onclick: () => { leaveSample(); save(); render(); }, text: '내 옷장으로 시작 (예시 지우기)' })));
       return;
     }
     if (!state.items.length) {
+      const sample = (src) => () => { const s = cleanState(src); state.items = s.items; state.decisions = s.decisions; state.rack = defaultRack(s.items); state.meta.sample = true; state.meta.welcomed = true; save(); render(); };
       main.append(h('div', { class: 'notice', id: 'welcome' }, h('h2', { text: BRAND.name + '에 오신 것을 환영합니다' }),
         h('p', { text: BRAND.tagline + ' 고를 수 있게, 가진 옷을 바탕으로 비교해 드립니다.' }),
-        h('ol', null, h('li', { text: '가진 옷을 몇 벌 넣습니다 (사진이 있으면 색을 미리 채워 줍니다)' }), h('li', { text: '고민 중인 옷을 "살까 말까"에 넣습니다' }), h('li', { text: '겹치는 옷과 새 조합을 보고 정합니다' })),
-        h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'startOwn', onclick: () => { state.meta.welcomed = true; save(); openWizard(null, 'owned'); }, text: '첫 옷 넣기' }),
-          h('button', { class: 'btn', type: 'button', id: 'startSample', onclick: () => { const s = cleanState(SAMPLE); state.items = s.items; state.decisions = s.decisions; state.rack = defaultRack(s.items); state.meta.sample = true; state.meta.welcomed = true; save(); render(); }, text: '예시 옷장으로 둘러보기' }),
-          h('button', { class: 'btn', type: 'button', onclick: () => { renderHelp(); $('#helpDlg').showModal(); }, text: '안내 읽기' }))));
+        h('ol', null, h('li', { text: '가진 옷과 비슷한 기본 옷을 눌러 한 번에 넣습니다 (30초, 나중에 고칠 수 있습니다)' }), h('li', { text: '고민 중인 옷의 종류와 색을 골라 "살까 말까"를 봅니다' }), h('li', { text: '겹치는 옷과 새 조합을 보고 정하고, 2주 뒤 잘 샀는지 한 번 답합니다' })),
+        h('div', { class: 'bar', style: 'margin:0 0 8px' }, h('button', { class: 'btn primary', type: 'button', id: 'startQuick', onclick: () => { state.meta.welcomed = true; save(); openQuick(); }, text: '자주 입는 옷 골라 넣기' }),
+          h('button', { class: 'btn', type: 'button', id: 'startOwn', onclick: () => { state.meta.welcomed = true; save(); openWizard(null, 'owned'); }, text: '한 벌씩 자세히 넣기' })),
+        h('div', { class: 'bar', style: 'margin:0' }, h('span', { class: 'note', text: '먼저 둘러보기:' }),
+          h('button', { class: 'btn small', type: 'button', id: 'startSample', onclick: sample(SAMPLE), text: '예시 A · 셔츠·재킷' }),
+          h('button', { class: 'btn small', type: 'button', id: 'startSampleB', onclick: sample(SAMPLE_B), text: '예시 B · 원피스·스커트' }),
+          h('button', { class: 'btn small', type: 'button', onclick: () => { renderHelp(); $('#helpDlg').showModal(); }, text: '안내 읽기' }))));
       return;
     }
+    const due = W.followDue(state.decisions, today());
+    if (due.length && !ui.followLater) main.append(followNotice(due[0]));
+    if (owned().length >= 2 && !cands().length && !state.decisions.length) main.append(h('div', { class: 'notice', id: 'nextNote' },
+      h('p', { text: '다음: 지금 살까 고민 중인 옷이 있다면 종류와 색만 골라 판정해 보세요. 가진 옷과 겹치는지, 새 조합이 몇 개 생기는지 보여 줍니다.' }),
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn small primary', type: 'button', id: 'nextJudge', onclick: () => openQuickCand(), text: '고민 중인 옷 판정해 보기' }),
+        h('button', { class: 'btn small', type: 'button', id: 'moreQuick', onclick: () => openQuick(), text: '기본 옷 더 넣기' }))));
     const d = daysAgo(state.meta.lastBackupAt);
     if (owned().length >= 3 && (d == null || d > 14)) main.append(h('div', { class: 'notice warnbox', id: 'backupNote' },
       h('p', { text: (d == null ? '아직 백업한 적이 없습니다.' : '마지막 백업이 ' + d + '일 전입니다.') + ' 옷장은 이 브라우저에만 저장되어, 브라우저 데이터가 지워지면 되돌릴 수 없습니다.' }),

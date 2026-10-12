@@ -61,6 +61,11 @@
     }
     return out;
   }
+  /** 주의 사항 없는 차림: 상의·하의 쌍 + 원피스 한 벌씩(top 자리에 원피스, bottom 은 null, dress: true). */
+  function cleanOutfits(items) {
+    return cleanPairs(items).concat(items.filter((i) => i.cat === 'dress').map((d) => { const s = R.scoreDress(d); return { top: d, bottom: null, score: s.score, why: s.why, dress: true }; }));
+  }
+  const pairKey = (c) => c.top.id + (c.bottom ? c.bottom.id : '');
 
   function tally(list) {
     const m = new Map();
@@ -71,7 +76,7 @@
   /**
    * 후보 한 벌을 보유 옷에 비춰 본다.
    * 반환: { supported, overlaps, before, after, added, top3, blockers, needs, note }
-   *   before/after  주의 사항 없는 상의·하의 쌍의 수 (아우터 후보는 그 아우터를 걸칠 수 있는 쌍의 수)
+   *   before/after  주의 사항 없는 차림(상의·하의 쌍 + 원피스)의 수 (아우터 후보는 그 아우터를 걸칠 수 있는 차림의 수)
    *   added         후보로 새로 생기는 쌍
    *   top3          대표 조합 3개. 가능한 한 서로 다른 옷과 짝짓는다
    *   blockers      조합이 안 되는 이유와 그 이유에 걸린 옷의 수
@@ -82,7 +87,7 @@
     const overlaps = findOverlaps(candidate, owned);
     const base = { supported: true, overlaps, before: 0, after: 0, added: [], top3: [], blockers: [], needs: [], note: '' };
     const tops = owned.filter((i) => i.cat === 'top'), bottoms = owned.filter((i) => i.cat === 'bottom'), outers = owned.filter((i) => i.cat === 'outer');
-    const pairsBefore = cleanPairs(owned);
+    const pairsBefore = cleanOutfits(owned);
 
     if (candidate.cat === 'top' || candidate.cat === 'bottom') {
       const partners = candidate.cat === 'top' ? bottoms : tops;
@@ -128,8 +133,8 @@
       }
       const cautions = [];
       for (const p of pairsBefore) {
-        const s = R.scoreOuter(candidate, p.top, p.bottom);
-        if (!s.caution.length) base.added.push({ top: p.top, bottom: p.bottom, partner: p.top, score: p.score + s.score, why: p.why.concat(s.why), outers: [] });
+        const s = p.dress ? R.scoreDressOuter(candidate, p.top) : R.scoreOuter(candidate, p.top, p.bottom);
+        if (!s.caution.length) base.added.push(Object.assign({ top: p.top, bottom: p.bottom, partner: p.top, score: p.score + s.score, why: p.why.concat(s.why), outers: [] }, p.dress ? { dress: true } : {}));
         else cautions.push.apply(cautions, s.caution);
       }
       // 지금 아우터들이 걸칠 수 있는 쌍의 수와 견줄 수 있게, 기준은 "쌍의 수"로 둔다
@@ -137,10 +142,28 @@
       base.after = base.added.length;
       base.blockers = tally(cautions).map((b) => Object.assign(b, { total: pairsBefore.length, word: '조합' }));
       const seenTop = new Set(), picked = [];
-      const sorted = base.added.slice().sort((a, b) => b.score - a.score || (a.top.id + a.bottom.id < b.top.id + b.bottom.id ? -1 : 1));
+      const sorted = base.added.slice().sort((a, b) => b.score - a.score || (pairKey(a) < pairKey(b) ? -1 : 1));
       for (const c of sorted) { if (picked.length < 3 && !seenTop.has(c.top.id)) { picked.push(c); seenTop.add(c.top.id); } }
       for (const c of sorted) { if (picked.length < 3 && picked.indexOf(c) < 0) picked.push(c); }
-      base.top3 = picked.map((c) => ({ top: c.top, bottom: c.bottom, outer: candidate, score: c.score, why: c.why }));
+      base.top3 = picked.map((c) => Object.assign({ top: c.top, bottom: c.bottom, outer: candidate, score: c.score, why: c.why }, c.dress ? { dress: true } : {}));
+      return base;
+    }
+
+    if (candidate.cat === 'dress') {
+      // 원피스는 혼자서 차림 하나가 된다. 걸칠 수 있는 아우터를 함께 본다
+      const self = R.scoreDress(candidate), cautions = [], ok = [];
+      for (const o of outers) {
+        const s = R.scoreDressOuter(o, candidate);
+        if (!s.caution.length) ok.push({ o, s }); else cautions.push.apply(cautions, s.caution);
+      }
+      ok.sort((a, b) => b.s.score - a.s.score || (a.o.id < b.o.id ? -1 : 1));
+      base.added = [{ top: candidate, bottom: null, partner: candidate, score: self.score, why: self.why, outers: ok.map((x) => x.o), dress: true }];
+      base.before = pairsBefore.length;
+      base.after = pairsBefore.length + 1;
+      base.blockers = tally(cautions).map((b) => Object.assign(b, { total: outers.length, word: '아우터' }));
+      base.top3 = ok.length ? ok.slice(0, 3).map((x) => ({ top: candidate, bottom: null, outer: x.o, score: self.score + x.s.score, why: self.why.concat(x.s.why), dress: true }))
+        : [{ top: candidate, bottom: null, outer: null, score: self.score, why: self.why, dress: true }];
+      if (outers.length && !ok.length) base.needs.push('이 원피스와 색이나 격식이 다른 아우터가 있으면 겹쳐 입을 수 있습니다.');
       return base;
     }
 
@@ -180,5 +203,5 @@
     return { both, onlyTheirs, onlyMine };
   }
 
-  return { LIGHT_NEAR, similarity, findOverlaps, cleanPairs, judgeCandidate, compareWardrobes, matchKind, inSeason, isOwned };
+  return { LIGHT_NEAR, similarity, findOverlaps, cleanPairs, cleanOutfits, judgeCandidate, compareWardrobes, matchKind, inSeason, isOwned };
 });
