@@ -1,0 +1,1492 @@
+{
+ "today": "2026-10-12",
+ "products": [
+  {
+   "id": "p-knit-navy",
+   "brand": "예시 브랜드 C",
+   "name": "네이비 크루넥 니트",
+   "code": "",
+   "cat": "top",
+   "kind": "knit",
+   "family": "navy",
+   "light": 18,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "가을",
+    "겨울"
+   ],
+   "link": "https://shop.example/knit",
+   "price": 129000,
+   "checkedAt": "2026-09-01",
+   "img": "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
+   "note": "빈틈을 채우는 상품. 가격은 오래됨",
+   "addedAt": ""
+  },
+  {
+   "id": "p-sweat-navy",
+   "brand": "",
+   "name": "네이비 그래픽 스웻",
+   "code": "",
+   "cat": "top",
+   "kind": "sweat",
+   "family": "navy",
+   "light": 18,
+   "formality": 1,
+   "pattern": "graphic",
+   "seasons": [],
+   "link": "",
+   "price": 59000,
+   "checkedAt": "2026-10-12",
+   "img": "",
+   "note": "",
+   "addedAt": ""
+  },
+  {
+   "id": "p-shirt-white",
+   "brand": "예시 브랜드 D",
+   "name": "흰 옥스퍼드 셔츠",
+   "code": "OX-1",
+   "cat": "top",
+   "kind": "shirt",
+   "family": "white",
+   "light": 95,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [],
+   "link": "",
+   "price": 89000,
+   "checkedAt": "2026-10-05",
+   "img": "",
+   "note": "",
+   "addedAt": ""
+  },
+  {
+   "id": "p-knit-burgundy",
+   "brand": "",
+   "name": "버건디 크루넥 니트",
+   "code": "",
+   "cat": "top",
+   "kind": "knit",
+   "family": "burgundy",
+   "light": 30,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [],
+   "link": "",
+   "price": null,
+   "checkedAt": "",
+   "img": "",
+   "note": "",
+   "addedAt": ""
+  },
+  {
+   "id": "p-slacks-gray",
+   "brand": "",
+   "name": "그레이 슬랙스",
+   "code": "",
+   "cat": "bottom",
+   "kind": "slacks",
+   "family": "gray",
+   "light": 45,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [],
+   "link": "",
+   "price": 99000,
+   "checkedAt": "",
+   "img": "",
+   "note": "",
+   "addedAt": ""
+  },
+  {
+   "id": "p-harrington",
+   "brand": "",
+   "name": "베이지 해링턴 재킷",
+   "code": "",
+   "cat": "outer",
+   "kind": "jacket",
+   "family": "beige",
+   "light": 76,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을"
+   ],
+   "link": "",
+   "price": null,
+   "checkedAt": "",
+   "img": "",
+   "note": "",
+   "addedAt": ""
+  },
+  {
+   "id": "p-sneaker",
+   "brand": "",
+   "name": "흰 캔버스 스니커즈",
+   "code": "",
+   "cat": "shoes",
+   "kind": "sneaker",
+   "family": "white",
+   "light": 92,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "여름"
+   ],
+   "link": "",
+   "price": null,
+   "checkedAt": "",
+   "img": "",
+   "note": "",
+   "addedAt": ""
+  }
+ ],
+ "rank": {
+  "all": [
+   {
+    "id": "p-harrington",
+    "score": 8,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 10개 생깁니다.",
+     "견준 옷장에는 있고 내게 없는 \"베이지 해링턴 재킷\" 자리를 채웁니다."
+    ],
+    "cautions": [],
+    "added": 10,
+    "overlaps": [],
+    "blockers": [],
+    "gap": "o-harrington",
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     },
+     {
+      "top": "s-tee-white",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-knit-navy",
+    "score": 4,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다.",
+     "견준 옷장에는 있고 내게 없는 \"네이비 크루넥 니트\" 자리를 채웁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": "t-knit-navy",
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-field-olive",
+      "score": 5
+     },
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-slacks-gray",
+      "outer": "s-field-olive",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-sneaker",
+    "score": 3,
+    "reasons": [
+     "견준 옷장에는 있고 내게 없는 \"흰 캔버스 스니커즈\" 자리를 채웁니다."
+    ],
+    "cautions": [
+     "신발과 소품은 조합 규칙이 아직 없어 겹치는 옷만 보여 줍니다."
+    ],
+    "added": 0,
+    "overlaps": [],
+    "blockers": [],
+    "gap": "s-sneaker-white",
+    "stale": false,
+    "supported": false,
+    "top3": []
+   },
+   {
+    "id": "p-knit-burgundy",
+    "score": 1,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "걸리는 점: 상의와 하의의 밝기가 비슷합니다. (2/3)"
+    ],
+    "added": 1,
+    "overlaps": [],
+    "blockers": [
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 2,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-burgundy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-blazer-navy",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-shirt-white",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 3개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 흰색 옥스퍼드 버튼다운 셔츠",
+     "일부 겹치는 보유 옷이 1벌 있습니다: 흰 티셔츠"
+    ],
+    "added": 3,
+    "overlaps": [
+     {
+      "id": "s-ocbd-white",
+      "name": "흰색 옥스퍼드 버튼다운 셔츠",
+      "level": "strong"
+     },
+     {
+      "id": "s-tee-white",
+      "name": "흰 티셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-denim-raw",
+      "outer": "s-cardigan-gray",
+      "score": 7
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-chino-khaki",
+      "outer": "s-cardigan-gray",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-slacks-gray",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 그레이 울 슬랙스",
+     "걸리는 점: 상의와 하의의 격식 차이가 큽니다. (2/5) / 상의와 하의의 밝기가 비슷합니다. (1/5)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-slacks-gray",
+      "name": "그레이 울 슬랙스",
+      "level": "strong"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 2,
+      "total": 5,
+      "word": "상의"
+     },
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 1,
+      "total": 5,
+      "word": "상의"
+     }
+    ],
+    "gap": null,
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 7
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-sweat-navy",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3) / 상의와 하의의 격식 차이가 큽니다. (1/3)"
+    ],
+    "added": 1,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     },
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-sweat-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-field-olive",
+      "score": 6
+     }
+    ]
+   }
+  ],
+  "겨울": [
+   {
+    "id": "p-knit-navy",
+    "score": 4,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다.",
+     "견준 옷장에는 있고 내게 없는 \"네이비 크루넥 니트\" 자리를 채웁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": "t-knit-navy",
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-trucker-cord",
+      "score": 5
+     },
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-slacks-gray",
+      "outer": "s-trucker-cord",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-knit-burgundy",
+    "score": 1,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "걸리는 점: 상의와 하의의 밝기가 비슷합니다. (2/3)"
+    ],
+    "added": 1,
+    "overlaps": [],
+    "blockers": [
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 2,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-burgundy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-blazer-navy",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-shirt-white",
+    "score": 1,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 3개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 흰색 옥스퍼드 버튼다운 셔츠"
+    ],
+    "added": 3,
+    "overlaps": [
+     {
+      "id": "s-ocbd-white",
+      "name": "흰색 옥스퍼드 버튼다운 셔츠",
+      "level": "strong"
+     }
+    ],
+    "blockers": [],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-denim-raw",
+      "outer": "s-cardigan-gray",
+      "score": 7
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-chino-khaki",
+      "outer": "s-cardigan-gray",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-slacks-gray",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 그레이 울 슬랙스",
+     "걸리는 점: 상의와 하의의 격식 차이가 큽니다. (1/4) / 상의와 하의의 밝기가 비슷합니다. (1/4)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-slacks-gray",
+      "name": "그레이 울 슬랙스",
+      "level": "strong"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 1,
+      "total": 4,
+      "word": "상의"
+     },
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 1,
+      "total": 4,
+      "word": "상의"
+     }
+    ],
+    "gap": null,
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 7
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-sweat-navy",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3) / 상의와 하의의 격식 차이가 큽니다. (1/3)"
+    ],
+    "added": 1,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     },
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-sweat-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-trucker-cord",
+      "score": 6
+     }
+    ]
+   }
+  ],
+  "noGaps": [
+   {
+    "id": "p-harrington",
+    "score": 5,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 10개 생깁니다."
+    ],
+    "cautions": [],
+    "added": 10,
+    "overlaps": [],
+    "blockers": [],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     },
+     {
+      "top": "s-tee-white",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-knit-burgundy",
+    "score": 1,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "걸리는 점: 상의와 하의의 밝기가 비슷합니다. (2/3)"
+    ],
+    "added": 1,
+    "overlaps": [],
+    "blockers": [
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 2,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-burgundy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-blazer-navy",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-knit-navy",
+    "score": 1,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-field-olive",
+      "score": 5
+     },
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-slacks-gray",
+      "outer": "s-field-olive",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-shirt-white",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 3개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 흰색 옥스퍼드 버튼다운 셔츠",
+     "일부 겹치는 보유 옷이 1벌 있습니다: 흰 티셔츠"
+    ],
+    "added": 3,
+    "overlaps": [
+     {
+      "id": "s-ocbd-white",
+      "name": "흰색 옥스퍼드 버튼다운 셔츠",
+      "level": "strong"
+     },
+     {
+      "id": "s-tee-white",
+      "name": "흰 티셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-denim-raw",
+      "outer": "s-cardigan-gray",
+      "score": 7
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-chino-khaki",
+      "outer": "s-cardigan-gray",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-slacks-gray",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 그레이 울 슬랙스",
+     "걸리는 점: 상의와 하의의 격식 차이가 큽니다. (2/5) / 상의와 하의의 밝기가 비슷합니다. (1/5)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-slacks-gray",
+      "name": "그레이 울 슬랙스",
+      "level": "strong"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 2,
+      "total": 5,
+      "word": "상의"
+     },
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 1,
+      "total": 5,
+      "word": "상의"
+     }
+    ],
+    "gap": null,
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 7
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-sneaker",
+    "score": 0,
+    "reasons": [],
+    "cautions": [
+     "신발과 소품은 조합 규칙이 아직 없어 겹치는 옷만 보여 줍니다."
+    ],
+    "added": 0,
+    "overlaps": [],
+    "blockers": [],
+    "gap": null,
+    "stale": false,
+    "supported": false,
+    "top3": []
+   },
+   {
+    "id": "p-sweat-navy",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3) / 상의와 하의의 격식 차이가 큽니다. (1/3)"
+    ],
+    "added": 1,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     },
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-sweat-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-field-olive",
+      "score": 6
+     }
+    ]
+   }
+  ],
+  "stale30": [
+   {
+    "id": "p-harrington",
+    "score": 8,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 10개 생깁니다.",
+     "견준 옷장에는 있고 내게 없는 \"베이지 해링턴 재킷\" 자리를 채웁니다."
+    ],
+    "cautions": [],
+    "added": 10,
+    "overlaps": [],
+    "blockers": [],
+    "gap": "o-harrington",
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     },
+     {
+      "top": "s-tee-white",
+      "bottom": "s-denim-raw",
+      "outer": "p-harrington",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-knit-navy",
+    "score": 4,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다.",
+     "견준 옷장에는 있고 내게 없는 \"네이비 크루넥 니트\" 자리를 채웁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": "t-knit-navy",
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-field-olive",
+      "score": 5
+     },
+     {
+      "top": "p-knit-navy",
+      "bottom": "s-slacks-gray",
+      "outer": "s-field-olive",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-sneaker",
+    "score": 3,
+    "reasons": [
+     "견준 옷장에는 있고 내게 없는 \"흰 캔버스 스니커즈\" 자리를 채웁니다."
+    ],
+    "cautions": [
+     "신발과 소품은 조합 규칙이 아직 없어 겹치는 옷만 보여 줍니다."
+    ],
+    "added": 0,
+    "overlaps": [],
+    "blockers": [],
+    "gap": "s-sneaker-white",
+    "stale": false,
+    "supported": false,
+    "top3": []
+   },
+   {
+    "id": "p-knit-burgundy",
+    "score": 1,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "걸리는 점: 상의와 하의의 밝기가 비슷합니다. (2/3)"
+    ],
+    "added": 1,
+    "overlaps": [],
+    "blockers": [
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 2,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-knit-burgundy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-blazer-navy",
+      "score": 4
+     }
+    ]
+   },
+   {
+    "id": "p-shirt-white",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 3개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 흰색 옥스퍼드 버튼다운 셔츠",
+     "일부 겹치는 보유 옷이 1벌 있습니다: 흰 티셔츠"
+    ],
+    "added": 3,
+    "overlaps": [
+     {
+      "id": "s-ocbd-white",
+      "name": "흰색 옥스퍼드 버튼다운 셔츠",
+      "level": "strong"
+     },
+     {
+      "id": "s-tee-white",
+      "name": "흰 티셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-denim-raw",
+      "outer": "s-cardigan-gray",
+      "score": 7
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     },
+     {
+      "top": "p-shirt-white",
+      "bottom": "s-chino-khaki",
+      "outer": "s-cardigan-gray",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-slacks-gray",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 2개 생깁니다."
+    ],
+    "cautions": [
+     "많이 겹치는 보유 옷이 1벌 있습니다: 그레이 울 슬랙스",
+     "걸리는 점: 상의와 하의의 격식 차이가 큽니다. (2/5) / 상의와 하의의 밝기가 비슷합니다. (1/5)"
+    ],
+    "added": 2,
+    "overlaps": [
+     {
+      "id": "s-slacks-gray",
+      "name": "그레이 울 슬랙스",
+      "level": "strong"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 2,
+      "total": 5,
+      "word": "상의"
+     },
+     {
+      "text": "상의와 하의의 밝기가 비슷합니다.",
+      "count": 1,
+      "total": 5,
+      "word": "상의"
+     }
+    ],
+    "gap": null,
+    "stale": true,
+    "supported": true,
+    "top3": [
+     {
+      "top": "s-ocbd-stripe",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 7
+     },
+     {
+      "top": "s-ocbd-white",
+      "bottom": "p-slacks-gray",
+      "outer": "s-blazer-navy",
+      "score": 6
+     }
+    ]
+   },
+   {
+    "id": "p-sweat-navy",
+    "score": 0,
+    "reasons": [
+     "가진 옷과 주의 사항 없는 조합이 1개 생깁니다."
+    ],
+    "cautions": [
+     "일부 겹치는 보유 옷이 1벌 있습니다: 네이비 스웻셔츠",
+     "걸리는 점: 상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다. (1/3) / 상의와 하의의 격식 차이가 큽니다. (1/3)"
+    ],
+    "added": 1,
+    "overlaps": [
+     {
+      "id": "s-sweat-navy",
+      "name": "네이비 스웻셔츠",
+      "level": "partial"
+     }
+    ],
+    "blockers": [
+     {
+      "text": "상의와 하의가 비슷한 색이라 한 덩어리로 보일 수 있습니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     },
+     {
+      "text": "상의와 하의의 격식 차이가 큽니다.",
+      "count": 1,
+      "total": 3,
+      "word": "하의"
+     }
+    ],
+    "gap": null,
+    "stale": false,
+    "supported": true,
+    "top3": [
+     {
+      "top": "p-sweat-navy",
+      "bottom": "s-chino-khaki",
+      "outer": "s-field-olive",
+      "score": 6
+     }
+    ]
+   }
+  ]
+ },
+ "toCandidate": [
+  {
+   "id": "cp-knit-navy-20261012",
+   "status": "candidate",
+   "cat": "top",
+   "kind": "knit",
+   "name": "네이비 크루넥 니트",
+   "detail": "빈틈을 채우는 상품. 가격은 오래됨",
+   "family": "navy",
+   "light": 18,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "가을",
+    "겨울"
+   ],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "confirmed",
+    "img": "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
+    "ownImg": "",
+    "sourceName": "상품 목록에서 넣음",
+    "sourceUrl": "https://shop.example/knit",
+    "checkedAt": "2026-10-12"
+   },
+   "product": {
+    "brand": "예시 브랜드 C",
+    "name": "네이비 크루넥 니트",
+    "code": "",
+    "confirmedAt": "2026-10-12"
+   },
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "예시 브랜드 C",
+   "model": "네이비 크루넥 니트",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "https://shop.example/knit",
+   "price": 129000,
+   "checkedAt": "2026-09-01"
+  },
+  {
+   "id": "cp-sweat-navy-20261012",
+   "status": "candidate",
+   "cat": "top",
+   "kind": "sweat",
+   "name": "네이비 그래픽 스웻",
+   "detail": "",
+   "family": "navy",
+   "light": 18,
+   "formality": 1,
+   "pattern": "graphic",
+   "seasons": [],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "none",
+    "img": "",
+    "ownImg": "",
+    "sourceName": "",
+    "sourceUrl": "",
+    "checkedAt": ""
+   },
+   "product": null,
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "",
+   "model": "네이비 그래픽 스웻",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "",
+   "price": 59000,
+   "checkedAt": "2026-10-12"
+  },
+  {
+   "id": "cp-shirt-white-20261012",
+   "status": "candidate",
+   "cat": "top",
+   "kind": "shirt",
+   "name": "흰 옥스퍼드 셔츠",
+   "detail": "",
+   "family": "white",
+   "light": 95,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "none",
+    "img": "",
+    "ownImg": "",
+    "sourceName": "",
+    "sourceUrl": "",
+    "checkedAt": ""
+   },
+   "product": null,
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "예시 브랜드 D",
+   "model": "흰 옥스퍼드 셔츠 (OX-1)",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "",
+   "price": 89000,
+   "checkedAt": "2026-10-05"
+  },
+  {
+   "id": "cp-knit-burgundy-20261012",
+   "status": "candidate",
+   "cat": "top",
+   "kind": "knit",
+   "name": "버건디 크루넥 니트",
+   "detail": "",
+   "family": "burgundy",
+   "light": 30,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "none",
+    "img": "",
+    "ownImg": "",
+    "sourceName": "",
+    "sourceUrl": "",
+    "checkedAt": ""
+   },
+   "product": null,
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "",
+   "model": "버건디 크루넥 니트",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "",
+   "price": null,
+   "checkedAt": ""
+  },
+  {
+   "id": "cp-slacks-gray-20261012",
+   "status": "candidate",
+   "cat": "bottom",
+   "kind": "slacks",
+   "name": "그레이 슬랙스",
+   "detail": "",
+   "family": "gray",
+   "light": 45,
+   "formality": 3,
+   "pattern": "solid",
+   "seasons": [],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "none",
+    "img": "",
+    "ownImg": "",
+    "sourceName": "",
+    "sourceUrl": "",
+    "checkedAt": ""
+   },
+   "product": null,
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "",
+   "model": "그레이 슬랙스",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "",
+   "price": 99000,
+   "checkedAt": ""
+  },
+  {
+   "id": "cp-harrington-20261012",
+   "status": "candidate",
+   "cat": "outer",
+   "kind": "jacket",
+   "name": "베이지 해링턴 재킷",
+   "detail": "",
+   "family": "beige",
+   "light": 76,
+   "formality": 2,
+   "pattern": "solid",
+   "seasons": [
+    "봄",
+    "가을"
+   ],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "none",
+    "img": "",
+    "ownImg": "",
+    "sourceName": "",
+    "sourceUrl": "",
+    "checkedAt": ""
+   },
+   "product": null,
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "",
+   "model": "베이지 해링턴 재킷",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "",
+   "price": null,
+   "checkedAt": ""
+  },
+  {
+   "id": "cp-sneaker-20261012",
+   "status": "candidate",
+   "cat": "shoes",
+   "kind": "sneaker",
+   "name": "흰 캔버스 스니커즈",
+   "detail": "",
+   "family": "white",
+   "light": 92,
+   "formality": 1,
+   "pattern": "solid",
+   "seasons": [
+    "여름"
+   ],
+   "attrSource": "owner",
+   "draftNote": "",
+   "photo": {
+    "kind": "none",
+    "img": "",
+    "ownImg": "",
+    "sourceName": "",
+    "sourceUrl": "",
+    "checkedAt": ""
+   },
+   "product": null,
+   "matchCandidates": [],
+   "look3d": null,
+   "brand": "",
+   "model": "흰 캔버스 스니커즈",
+   "size": "",
+   "boughtYear": null,
+   "review": "",
+   "rebuy": "unknown",
+   "fabric": "",
+   "neck": "",
+   "measures": {},
+   "link": "",
+   "price": null,
+   "checkedAt": ""
+  }
+ ],
+ "stale": [
+  [
+   "p-knit-navy",
+   true,
+   41
+  ],
+  [
+   "p-sweat-navy",
+   false,
+   0
+  ],
+  [
+   "p-shirt-white",
+   false,
+   7
+  ],
+  [
+   "p-knit-burgundy",
+   false,
+   null
+  ],
+  [
+   "p-slacks-gray",
+   true,
+   null
+  ],
+  [
+   "p-harrington",
+   false,
+   null
+  ],
+  [
+   "p-sneaker",
+   false,
+   null
+  ]
+ ]
+}

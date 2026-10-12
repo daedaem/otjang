@@ -42,3 +42,8 @@ shots/
 /blender/web-closet*/
 /blender/out/
 /blender/.venv/
+
+# 서버(server/): 빌드 결과, 로컬 사진 폴더, IDE
+/server/target/
+/server/data/
+/server/.mvn/wrapper/maven-wrapper.jar
