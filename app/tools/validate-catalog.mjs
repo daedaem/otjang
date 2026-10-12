@@ -31,6 +31,10 @@ export function validate(raw, today) {
     if (l.value && !(isNum(l.value.lo) && isNum(l.value.hi) && l.value.lo > 0 && l.value.hi > l.value.lo)) e('lines.' + k, 'value.lo < value.hi 인 숫자여야 한다');
   }
   for (const [k, b] of Object.entries(brands)) if (!/^[a-z0-9-]{1,30}$/.test(k) || k === 'constructor' || !b.name) e('brands.' + k, '키 형식 또는 이름');
+  {                                                                                                  // 브랜드 별칭이 두 브랜드를 가리키면 '보던 상품'의 브랜드를 잘못 알아본다
+    const seen = new Map(), norm = (t) => String(t || '').toLowerCase().replace(/[\s'’`.&\-_,·]+/g, '');
+    for (const [k, b] of Object.entries(brands)) for (const a of [k, b.name, b.ko].concat(Array.isArray(b.aliases) ? b.aliases : [])) { const n = norm(a); if (!n) continue; if (seen.has(n) && seen.get(n) !== k) e('brands.' + k, '별칭 "' + a + '" 이 ' + seen.get(n) + ' 와 겹친다'); else seen.set(n, k); }
+  }
   if (fx.USD) {
     if (!(isNum(fx.USD.krw) && fx.USD.krw > 500 && fx.USD.krw < 3000)) e('fx.USD', '환율 범위(숫자)');
     if (!date(fx.USD.date)) e('fx.USD', '날짜 형식'); else { const a = days(fx.USD.date); if (a < -1) e('fx.USD', '날짜가 미래'); else if (a > 30) wn('fx.USD', a + '일 전 환율'); }
@@ -46,6 +50,14 @@ export function validate(raw, today) {
     if (own(lines, p.line) && (lines[p.line].cat !== p.cat || (lines[p.line].kind && lines[p.line].kind !== p.kind))) e(id, '품목과 분류·종류가 다름');
     if (!own(W.FAM, p.family)) e(id, '모르는 색 계열 ' + p.family);
     if (['short', 'long'].indexOf(p.sleeve) < 0) e(id, 'sleeve 는 short|long');
+    if (p.light != null && !(isNum(p.light) && p.light >= 0 && p.light <= 100)) e(id, 'light 는 0~100 숫자');
+    if (p.pattern != null && !own(W.PATTERNS, p.pattern)) e(id, '모르는 무늬 ' + p.pattern);
+    if (p.formality != null && [1, 2, 3].indexOf(p.formality) < 0) e(id, 'formality 는 1|2|3');
+    if (p.seasons != null && !(Array.isArray(p.seasons) && p.seasons.every((x) => W.SEASONS.indexOf(x) >= 0))) e(id, '모르는 계절 ' + JSON.stringify(p.seasons));
+    if (p.store && p.store.type != null && ['official', 'retailer'].indexOf(p.store.type) < 0) e(id, 'store.type 은 official|retailer');
+    if (p.offered != null && !(Array.isArray(p.offered) && p.offered.every((x) => typeof x === 'string' && x.trim()))) e(id, 'offered 는 글자 배열');
+    if (p.lengthFrom != null && ['cb', 'hps'].indexOf(p.lengthFrom) < 0) e(id, 'lengthFrom 은 cb(뒤 중심)|hps(옆목점)');
+    if (p.sizeDoubt != null && typeof p.sizeDoubt !== 'string') e(id, 'sizeDoubt 는 글자(치수표를 믿기 어려운 이유)');
     if (!own(PRICE, p.currency)) e(id, '통화 ' + p.currency);
     else if (!(isNum(p.price) && p.price >= PRICE[p.currency][0] && p.price <= PRICE[p.currency][1])) e(id, '가격 범위 밖(숫자여야 함) ' + JSON.stringify(p.price) + ' ' + p.currency);
     if (p.currency !== 'KRW' && !own(fx, p.currency)) e(id, '환율 없는 통화');
@@ -66,7 +78,7 @@ export function validate(raw, today) {
     if (f.fiber != null && !own(P.FIBERS, f.fiber)) e(id, '모르는 원사 ' + f.fiber);
     if (f.knit != null && !own(P.KNITS, f.knit)) e(id, '모르는 편직 ' + f.knit);
     if (f.thick != null && !own(P.THICK, f.thick)) e(id, '모르는 두께 ' + f.thick);
-    for (const [k, v] of [['compSrc', f.compSrc], ['fiberSrc', f.fiberSrc], ['knitSrc', f.knitSrc], ['thickSrc', f.thickSrc], ['neckSrc', p.neckSrc], ['buildSrc', p.buildSrc], ['sizeSrc', p.sizeSrc], ['logoSrc', p.logoSrc]]) {
+    for (const [k, v] of [['compSrc', f.compSrc], ['fiberSrc', f.fiberSrc], ['knitSrc', f.knitSrc], ['thickSrc', f.thickSrc], ['neckSrc', p.neckSrc], ['buildSrc', p.buildSrc], ['sizeSrc', p.sizeSrc], ['logoSrc', p.logoSrc], ['fitSrc', p.fitSrc]]) {
       if (v == null) continue;
       if (!own(P.SRC, v)) e(id, '모르는 출처 ' + k + '=' + v);
       else if (v === 'user') e(id, k + '=user: 카탈로그에는 직접 입력 출처를 쓸 수 없다(확인한 값만)');
@@ -84,11 +96,13 @@ export function validate(raw, today) {
     if (p.logo != null && !p.logoNote && !p.logoSrc) wn(id, '로고에 근거(logoNote 또는 logoSrc)가 없음');
     if (p.logo === 'tab' && !/밑단|소매|옆/.test(p.logoNote || '')) wn(id, '탭 로고 위치 모름 — 받쳐 입기 조건에서 ?로 보인다');
     if (p.fit != null && !own(P.FIT, p.fit)) e(id, '모르는 핏 ' + p.fit);
+    if (p.fit != null && !p.fitSrc) e(id, '핏에는 출처(fitSrc)가 있어야 한다');
     for (const s of p.styles || []) if (!own(P.STYLES, s)) e(id, '모르는 스타일 ' + s);
     const labels = new Set();
     for (const s of p.sizes || []) {
       if (!s || !s.label) { e(id, '사이즈 이름 없음'); continue; }
       if (labels.has(s.label)) e(id, '사이즈 이름 중복 ' + s.label); labels.add(s.label);
+      if (s.alias != null && ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].indexOf(P.normSize(s.alias)) < 0) e(id, s.label + ' 별칭이 표준 사이즈가 아님: ' + s.alias);
       for (const k of ['chest', 'chestCirc', 'length', 'shoulder', 'sleeve']) if (s[k] != null && !isNum(s[k])) e(id, s.label + ' ' + k + ' 는 숫자여야 한다: ' + JSON.stringify(s[k]));
       const chest = isNum(s.chest) ? s.chest : isNum(s.chestCirc) ? s.chestCirc / 2 : null;
       if (chest != null && !(chest >= 35 && chest <= 90)) e(id, s.label + ' 가슴 너비 ' + chest);
@@ -107,6 +121,7 @@ export function validate(raw, today) {
     if (!p.stock || !date(p.stock.checkedAt)) e(id, '재고 확인일(실제 날짜)');
     else {
       if (days(p.stock.checkedAt) < -1) e(id, '재고 확인일이 미래');
+      else if (days(p.stock.checkedAt) > P.STALE_DAYS) wn(id, '재고를 확인한 지 ' + days(p.stock.checkedAt) + '일 — 화면에서 재고를 이유로 쓰지 않는다');
       if (p.stock.inStock != null && typeof p.stock.inStock !== 'boolean') e(id, 'stock.inStock 은 true|false 여야 한다: ' + JSON.stringify(p.stock.inStock));
       if (p.stock.sizes != null && !(Array.isArray(p.stock.sizes) && p.stock.sizes.every((s) => typeof s === 'string'))) e(id, 'stock.sizes 는 글자 배열이어야 한다');
     }
@@ -117,11 +132,21 @@ export function validate(raw, today) {
       if (s.currency != null && s.currency !== p.currency) e(id, '배송비 통화(' + s.currency + ')가 상품 통화(' + p.currency + ')와 다름');
       if (s.freeOver != null && !isNum(s.freeOver)) e(id, 'freeOver 는 숫자');
       if (s.checkedAt != null && !date(s.checkedAt)) e(id, '배송비 확인일 형식');
-    }
+      if (s.estimate != null && typeof s.estimate !== 'boolean') e(id, 'shipping.estimate 는 true|false');
+    } else if (p.currency === 'KRW') e(id, '배송비(shipping)가 없음 — 원화 상품은 배송비를 모르면 지금 낼 돈이 낮게 잡혀 유리해진다(무료면 fee: 0)');
     if (p.currency !== 'KRW' && !p.shipping) wn(id, '해외 상품인데 배송비(shipping)가 없음 — 가성비를 중간 이하로 본다');
     if (!p.logo) wn(id, '로고 위치 모름'); if (!p.fabric || p.fabric.thick == null) wn(id, '두께 모름');
   }
-  for (const [k, v] of Object.entries(staleByLine)) if (v.n && v.stale / v.n >= 0.3) wn('lines.' + k, '상품 ' + v.n + '개 중 ' + v.stale + '개가 확인한 지 ' + P.STALE_DAYS + '일이 지남 — 다시 확인할 때');
+  for (const [k, v] of Object.entries(staleByLine)) if (v.n && v.stale / v.n >= 0.3) e('lines.' + k, '[만료] 상품 ' + v.n + '개 중 ' + v.stale + '개가 확인한 지 ' + P.STALE_DAYS + '일이 지남 — 다시 확인한 뒤 배포한다');
+  // 받쳐 입기 조건을 판단할 근거가 얼마나 있는지(조건별 확인율). 모르는 값은 화면에서 ?로 보인다
+  for (const k of Object.keys(lines)) {
+    const ps = raw.products.filter((x) => x && x.line === k), n = ps.length, strong = (src) => own(P.STRONG, src);
+    if (!n) continue;
+    const cov = (has, ok) => ps.filter(has).length + '/' + n + '(확인 ' + ps.filter((x) => has(x) && ok(x)).length + ')';
+    wn('lines.' + k, '조건 근거 — 목 립 ' + cov((x) => x.neck != null, (x) => strong(x.neckSrc)) + ' · 두께 ' + cov((x) => x.fabric && x.fabric.thick != null, (x) => strong(x.fabric.thickSrc)) + ' · 로고 ' + cov((x) => x.logo != null, (x) => x.logo === 'none' || strong(x.logoSrc)) + ' · 핏 ' + cov((x) => x.fit != null, (x) => strong(x.fitSrc)));
+    const noNeck = ps.filter((x) => x.neck == null).map((x) => x.id);
+    if (noNeck.length) wn('lines.' + k, '목 립 정보 없음 ' + noNeck.length + '개(받쳐 입기에서 ?): ' + noNeck.join(', '));
+  }
   // 앱 정리 함수가 빼거나 바꾸는 값이 없어야 한다(조용히 사라지거나 바뀌는 것을 막는다)
   const clean = P.cleanPicks(raw);
   if (!clean) e('', '앱이 이 파일을 읽지 못한다');
@@ -136,9 +161,13 @@ export function validate(raw, today) {
       same(c.shipping ? c.shipping.fee : null, r.shipping ? r.shipping.fee : null, '배송비');
       same(c.stock ? c.stock.inStock : null, r.stock && r.stock.inStock != null ? r.stock.inStock : null, '재고 여부');
       same(c.styles.length, (r.styles || []).length, '스타일 수');
+      if (r.light != null) same(c.light, Math.round(r.light), 'light'); if (r.pattern != null) same(c.pattern, r.pattern, 'pattern'); if (r.formality != null) same(c.formality, r.formality, 'formality');
+      same(c.seasons.length, (r.seasons || []).length, '계절 수'); if (r.store && r.store.type != null) same(c.store.type, r.store.type, 'store.type');
+      if (r.fit != null) same(c.fit, r.fit, 'fit'); if (r.logo != null) same(c.logo, r.logo, 'logo'); if (r.neck != null) same(c.neck, r.neck, 'neck');
+      if (r.lengthFrom != null) same(c.lengthFrom, r.lengthFrom, 'lengthFrom'); same(c.offered ? c.offered.length : null, Array.isArray(r.offered) ? r.offered.length : null, '판매 사이즈 수');
     }
   }
-  for (const n of raw.brandNotes || []) { if (!own(brands, n.brand)) e('brandNotes', '등록 안 된 브랜드 ' + n.brand); if (n.checkedAt != null && !date(n.checkedAt)) e('brandNotes', n.brand + ' 확인일 형식'); }
+  for (const n of raw.brandNotes || []) { if (!own(brands, n.brand)) e('brandNotes', '등록 안 된 브랜드 ' + n.brand); if (n.line != null && !own(lines, n.line)) e('brandNotes', n.brand + ' 등록 안 된 품목 ' + n.line); if (n.checkedAt != null && !date(n.checkedAt)) e('brandNotes', n.brand + ' 확인일 형식'); }
   return { errors, warnings };
 }
 

@@ -54,8 +54,8 @@ for (const m of [{ name: 'light', w: 1280, h: 900, scheme: 'light' }, { name: 'd
   await page.evaluate(() => document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a[target="_blank"]'); if (a) e.preventDefault(); }, true));
   await page.click('#pickTop a.btn.primary');
   await page.evaluate(() => { for (const v of ['hidden', 'visible']) { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); } });
-  await audit('판매처에서 돌아온 뒤 "샀나요?"', '#askBought'); await page.click('#boughtYes'); await audit('산 사이즈 고르기', '#askBought'); await page.click('#boughtSave');
-  await ensureOpen('#nowBox'); await page.fill('#now-price', '39000'); await page.click('#nowGo'); await audit('지금 보는 상품(입력·결과)', '#nowBox'); await page.click('#nowClear');
+  await audit('판매처에서 돌아온 뒤 "샀나요?"', '#askBought'); await page.click('#boughtYes'); await audit('산 사이즈 고르기', '#askBought'); await page.locator('#askBought [role="radio"]', { hasText: '(추천)' }).click(); await page.click('#boughtSave');
+  await ensureOpen('#nowBox'); await page.fill('#now-price', '39000'); await page.fill('#now-size', 'M'); await page.fill('#now-chest', '56'); await page.click('#nowGo'); await ensureOpen('#nowMore'); await audit('보던 흰 티(입력·두 칸 비교·결정)', '#nowBox'); await page.click('#nowClear');
   await page.evaluate((d) => { const s = window.__app.state; const e = s.pickLog[s.pickLog.length - 1]; e.boughtAt = d; }, new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10));
   await page.click('#tabbtn-closet'); await page.click('#tabbtn-shop'); await audit('산 지 2주: 사이즈·만족 물음', '#pickFollow');
   await page.evaluate(() => { const s = window.__app.state, e = s.pickLog[s.pickLog.length - 1]; s.items = s.items.filter((i) => !e || i.id !== e.ownedId); s.pickLog = []; });

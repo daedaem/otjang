@@ -38,10 +38,14 @@ test('카탈로그 검사기: 실제 카탈로그는 오류 없이 통과하고,
   bad.products[0].kind = 'tshirt'; bad.products[1].line = 'white-teee'; bad.products[2].price = 0; bad.products[3].checkedAt = '2027-01-01'; bad.products[4].sizes[0].chest = 530;
   bad.products[5].sizes[0].length = '67.5'; bad.products[6].checkedAt = '2026-10-32'; bad.products[7].fabric.compSrc = undefined; bad.products[7].fabric.cotton100 = true;
   bad.products[8].stock.inStock = 'false'; bad.products[9].fabric.thickSrc = 'user'; bad.products[10].shipping = { fee: 6.99, currency: 'USD' };
+  bad.products[11].fitSrc = undefined; bad.products[12].lengthFrom = 'center'; delete bad.products[13].shipping; bad.products[14].light = 150; bad.products[14].store.type = 'offical';
+  bad.products[15].offered = 'S,M'; bad.products[16].pattern = 'stripes'; bad.brands.uniqlo.aliases = bad.brands.uniqlo.aliases.concat(['폴로']); bad.brandNotes[0].line = 'white-teee';
   const rb = validate(bad, TODAY).errors.join('\n');
-  for (const want of ['모르는 종류', '등록 안 된 품목', '가격 범위 밖', '확인일이 미래', '가슴 너비', 'length 는 숫자여야', '실제 날짜가 아님', '혼용률에는 출처', 'inStock 은 true|false', '직접 입력 출처', '배송비 통화']) assert.ok(rb.includes(want), want);
+  for (const want of ['모르는 종류', '등록 안 된 품목', '가격 범위 밖', '확인일이 미래', '가슴 너비', 'length 는 숫자여야', '실제 날짜가 아님', '혼용률에는 출처', 'inStock 은 true|false', '직접 입력 출처', '배송비 통화',
+    '핏에는 출처', 'lengthFrom', '배송비(shipping)가 없음', 'light 는', 'store.type', 'offered 는', '모르는 무늬', '별칭', 'brandNotes: lvc 등록 안 된 품목']) assert.ok(rb.includes(want), want);
   const old = validate(RAW, '2026-11-20').errors;
-  assert.ok(old.length === RAW.products.length && old.every((x) => /\[만료\]/.test(x)), '30일이 지나면 [만료] 오류로 빌드를 막는다');
+  assert.ok(old.length === RAW.products.length + 1 && old.every((x) => /\[만료\]/.test(x)), '30일이 지나면 [만료] 오류로 빌드를 막는다');
+  assert.ok(validate(RAW, '2026-10-28').errors.some((x) => /^lines\.white-tee: \[만료\] 상품 17개 중 17개/.test(x)), '한 품목의 30% 넘게 14일이 지나면 다시 확인할 때까지 배포를 막는다');
 });
 
 test('정리: 0원·오타 가격, 모르는 종류·품목, 환율 없는 외화, 없는 날짜, 사전의 기본 속성 이름은 받지 않는다', () => {
@@ -63,7 +67,9 @@ test('정리: 0원·오타 가격, 모르는 종류·품목, 환율 없는 외�
 test('품질 근거: 출처 등급으로 가중하고(상품명 0.5, 판매처 설명 0.3), 루프휠과 통짜를 두 번 세지 않는다', () => {
   const bronson = P.qualityOf(by('bronson-loopwheel-white')), brooks = P.qualityOf(by('brooks-bbnpmm5192a')), polo = P.qualityOf(by('polo-480590-white'));
   assert.ok(bronson.parts.some((t) => /루프휠/.test(t)) && !bronson.parts.some((t) => /통짜$/.test(t)), '루프휠이면 통짜 가점을 따로 주지 않는다');
-  assert.equal(bronson.score, 3 + 1 + 0.75 + 1.5);
+  assert.equal(bronson.score, Math.round((3 + 1 + 0.75 * 0.6 + 1.5 * 0.6) * 100) / 100, '루프휠·링스펀은 인증 없는 브랜드 설명이라 0.6배');
+  assert.ok(bronson.parts.some((t) => /루프휠.*브랜드 설명, 인증 없음/.test(t)));
+  assert.deepEqual(P.qualityOf(by('uniqlo-e455365-white')).items.map((x) => x.text), ['수피마 코튼', '면 100%'], '결론에는 무게가 큰 근거부터');
   assert.ok(brooks.parts.some((t) => /수피마 코튼 \(상품명에만\)/.test(t)), '상품명에만 있는 수피마는 그렇게 적는다');
   assert.equal(brooks.score, 3 + 1 + 0.75);
   assert.equal(polo.score, 4);
@@ -153,7 +159,10 @@ test('내 핏: 실측과 가장 가까운 사이즈와 차이(cm). 공개 치수
 test('해외 상품·묶음·배송비: 배송비를 알면 지금 낼 돈에 넣고, 모르면 가성비를 중간 이하로 본다', () => {
   const b = by('bronson-loopwheel-white');
   const u = P.unitPrice(b, cat);
-  assert.equal(u.landed, true); assert.equal(u.krw, Math.round((28.99 + 6.99) * cat.fx.USD.krw)); assert.equal(u.pay, u.krw);
+  assert.equal(u.landed, false, '결제 화면에서 바뀔 수 있는 배송비(estimate)는 확실하지 않다'); assert.equal(u.shipEst, true); assert.equal(u.shipKnown, false);
+  assert.equal(u.krw, Math.round((28.99 + 6.99) * cat.fx.USD.krw)); assert.equal(u.pay, u.krw);
+  const br = rec({ priorities: ['value'], use: 'any', sleeve: 'any' }).ranked.find((x) => x.product.id === 'bronson-loopwheel-white');
+  assert.ok(br.crit.value <= 0.5 && br.cautions.some((t) => /배송비가 결제 화면에서 바뀔 수 있고/.test(t)) && br.cautions.some((t) => /배송비 약 \$6\.99/.test(t)));
   const c = variant((raw) => { delete raw.products.find((x) => x.id === 'bronson-loopwheel-white').shipping; });
   const r = rec({ priorities: ['value'], use: 'any', sleeve: 'any' }, c);
   const row = r.ranked.find((x) => x.product.id === 'bronson-loopwheel-white');
@@ -204,7 +213,7 @@ test('대안: 서로 다르고 이름이 겹치지 않으며("(2)" 없음), 25�
       assert.ok(!a.r.conds.some((c) => c.status === 'warn' || c.status === 'fail'));
       if (q.use === 'layer' && r.pick.product.fit !== 'relaxed') assert.notEqual(a.r.product.fit, 'relaxed');
       if (q.priorities[0] === 'fit' && !a.r.fit.neutral) assert.ok(a.r.fit.score >= 0.5 && !(a.r.fit.maxDiff > 4));
-      if (q.priorities[0] === 'value') assert.ok(a.r.unit.krw <= r.pick.unit.krw * 2);
+      if (q.priorities[0] === 'value') assert.ok(a.r.unit.krw <= r.pick.unit.krw * 2 || a.r.unit.krw - r.pick.unit.krw <= 15000, '가성비 1순위인데 값이 크게 비싼 대안');
     }
   }
 });
@@ -213,8 +222,10 @@ test('결론은 고른 기준·확인된 표시만 말한다: 고르지 않은 �
   for (const q of grid()) {
     const r = rec(q); if (!r.pick) continue;
     const t = r.pick.conclusion;
-    assert.match(t, /(요|\))\.( 다만 .*\.)?$/, t);
-    assert.ok(!/은\(는\)|이\(가\)|을\(를\)|와\(과\)|으로\(로\)/.test(t), '조사: ' + t);
+    assert.ok(/\.$/.test(t) && !/\.\./.test(t) && t.split('. ').length <= 3, '결론은 세 문장 안: ' + t);
+    assert.ok(!/은\(는\)|이\(가\)|을\(를\)|와\(과\)|으로\(로\)|\(이\)에요/.test(t), '조사: ' + t);
+    assert.ok(!/\([^()]*\([^()]*\)[^()]*\)/.test(t), '괄호 안 괄호: ' + t);
+    for (const x of r.ranked) if (x !== r.pick) assert.ok(!/가장 높아요|합한 점수가 가장/.test(x.conclusion), '1등이 아닌데: ' + x.conclusion);
     if (!q.brands.length) assert.ok(!/좋아하는/.test(t), '브랜드를 안 골랐는데: ' + t);
     if (!q.styles.length) assert.ok(!/고른 스타일/.test(t), '스타일을 안 골랐는데: ' + t);
     if (!q.size && !q.ref) assert.ok(!/사이즈가 잘|재고가 있어요/.test(t), '사이즈를 안 넣었는데: ' + t);
@@ -222,10 +233,12 @@ test('결론은 고른 기준·확인된 표시만 말한다: 고르지 않은 �
     for (const c of r.pick.checks.filter((x) => x.group === 'pri')) if (c.mark === 'none') assert.ok(/고르지 않았|넣으면/.test(c.text), c.text);
   }
   const r = rec(FOUNDER);
-  assert.equal(r.pick.conclusion, '좋아하는 브랜드(포터리)예요. 로고 안 보이게는 확인됐어요. 두께는 약한 근거(판매처 설명)로 봤어요. 다만 목 립 폭은 확인 못 했어요.');
+  assert.equal(r.pick.conclusion, '좋아하는 브랜드(포터리)예요. 로고 안 보이게는 확인됐지만 목 립 폭은 확인 못 했어요.');
   const labels = r.pick.checks.map((c) => c.label);
   assert.ok(labels.indexOf('로고 안 보이게') >= 0 && labels.indexOf('브랜드 1순위') > labels.indexOf('목 립 좁게') && labels.indexOf('품질(소재·봉제) 2순위') > labels.indexOf('브랜드 1순위'));
-  assert.match(r.gapWhy, /^2위 포터리 .*와는 공개된 품질 근거에서 갈렸어요/);
+  assert.match(r.gapWhy, /^2위 포터리 Short Sleeve Comfort T-Shirt와는 조건 확인에서 갈렸어요\(박시하지 않게\)\. 2위는 루즈·박스핏이라 받쳐 입기 대안에서는 뺐어요\.$/);
+  const q1 = rec({ priorities: ['quality', 'value'], use: 'layer', sleeve: 'short', size: 'M' });
+  assert.match(q1.pick.conclusion, /^품질\(1순위\)은 '보통'이지만 견준 \d+개 중 가장 높아요: 수피마 코튼, 면 100%\./, '1순위가 보통이면 그렇다고 먼저 말한다');
   assert.ok(!r.pick.checks.some((c) => /1점당|\/10/.test(c.text)), '내부 숫자를 보이지 않는다');
 });
 
@@ -259,12 +272,14 @@ test('예산: 지금 낼 돈(묶음 전체·아는 배송비)이 넘으면 1등 
 
 test('지금 보는 상품: 직접 넣은 값으로 같은 기준에 끼워 순위를 매기고, 직접 입력 출처로 표시한다', () => {
   const u = P.userProduct({ name: '오버핏 반팔 티', brand: '아웃스탠딩', price: 39000, link: 'https://www.musinsa.com/products/1', storeName: '무신사', logo: 'none', thick: 'thin', neck: 'narrow', cotton100: true, size: 'M', chest: 56, length: 71, shoulder: 52, fit: 'relaxed' }, cat, 'white-tee', TODAY);
-  assert.ok(u && u.user && u.brand === 'outstanding' && u.store.url && u.fabric.thickSrc === 'user');
+  assert.ok(u && u.user && u.brand === 'outstanding' && u.store.url && u.fabric.thickSrc === 'user' && /^user-[a-z0-9]+$/.test(u.id));
   const r = rec(Object.assign({}, FOUNDER, { extra: [u] }));
   const row = r.ranked.find((x) => x.product.user);
-  assert.ok(row && !row.out, '조건을 지킨 직접 입력 상품은 순위에 든다');
-  assert.ok(row.conds.every((c) => c.status === 'ok'), '직접 입력은 확인으로 본다');
-  assert.ok(row.cautions.some((t) => /직접 넣은 값/.test(t)));
+  assert.ok(row && !row.out, '어긴 게 확인되지 않은 직접 입력 상품은 순위에 든다');
+  assert.ok(row.conds.every((c) => c.status !== 'ok'), '직접 적은 값은 약한 확인(카탈로그의 확인보다 약하게)');
+  assert.equal(row.conds.find((c) => c.key === 'notLoose').status, 'warn', '직접 적은 루즈핏은 경고');
+  assert.ok(row.cautions.some((t) => /직접 적은 값/.test(t)));
+  assert.ok(!/가장 높아요/.test(row.conclusion));
   assert.ok(!r.pick.product.user && r.alts.every((a) => !a.r.product.user), '1등·대안은 확인한 상품 안에서만');
   assert.ok(r.userRank && r.userRank.n === r.eligible.length + 1 && r.userRank.idx >= 0);
   assert.equal(r.about.count, rec(FOUNDER).about.count, '카탈로그 개수에는 넣지 않는다');
@@ -293,3 +308,99 @@ test('중립성: 상품에 제휴 수수료·광고비 같은 값을 붙여도 �
   assert.ok(!('commission' in paid.products[1]) && !('affiliate' in paid.products[1].store), '정리할 때 그런 값은 아예 버린다');
 });
 
+
+test('직접 넣은 상품은 1등·대안·좋아하는 브랜드 줄·뺀 상품 알림·순위 문장을 바꾸지 않는다(조건 격자)', () => {
+  const us = [P.userProduct({ name: '아웃스탠딩 반팔 티', brand: '아웃스탠딩', price: 39000, logo: 'none', thick: 'thin', neck: 'narrow', cotton100: true, size: 'M', chest: 56, length: 71 }, cat, 'white-tee', TODAY),
+    P.userProduct({ name: '무지 티', price: 9000, size: 'M', chest: 52, length: 69, shoulder: 45 }, cat, 'white-tee', TODAY)];
+  for (const q of grid().filter((_, i) => i % 5 === 0)) for (const u of us) {
+    const a = rec(q), b = rec(Object.assign({}, q, { extra: [u] }));
+    assert.equal(b.pick && b.pick.product.id, a.pick && a.pick.product.id, JSON.stringify(q));
+    assert.deepEqual(b.alts.map((x) => [x.label, x.r.product.id]), a.alts.map((x) => [x.label, x.r.product.id]));
+    assert.equal(b.favNote, a.favNote); assert.deepEqual(b.notes.map((n) => n.text), a.notes.map((n) => n.text)); assert.deepEqual(b.rank, a.rank);
+    assert.equal(b.gapWhy.replace(/^확인한 상품 중 /, ''), a.gapWhy);
+  }
+  assert.notEqual(us[0].id, us[1].id, '보던 상품마다 다른 id(기록이 섞이지 않게)');
+});
+
+test('이름에서 읽기: 브랜드(띄어쓰기·문장부호 무시), 오버핏·슬림, 묶음 수, 소매. 보던 상품은 안 적은 핏을 이름에서 채운다(출처 상품명)', () => {
+  assert.equal(P.brandKey(cat, '폴로랄프로렌'), 'polo'); assert.equal(P.brandKey(cat, 'LEVI’S'), 'levis'); assert.equal(P.brandKey(cat, '퍼플라벨'), 'rlpl'); assert.equal(P.brandKey(cat, '없는 브랜드'), '');
+  const g = P.guessFromName(cat, '[무신사] 아웃스탠딩 오버핏 3P 반팔 티셔츠');
+  assert.deepEqual(g, { brand: 'outstanding', fit: 'relaxed', packCount: 3, sleeve: 'short' });
+  assert.equal(P.guessFromName(cat, '리바이스 슬림 롱슬리브 티').fit, 'slim'); assert.equal(P.guessFromName(cat, '리바이스 슬림 롱슬리브 티').sleeve, 'long');
+  assert.equal(P.guessFromName(cat, '2XL 티').packCount, null, '2XL 은 묶음 수가 아니다');
+  const u = P.userProduct({ name: '헤비 오버핏 티 2팩', price: 30000 }, cat, 'white-tee', TODAY);
+  assert.equal(u.fit, 'relaxed'); assert.equal(u.fitSrc, 'name'); assert.equal(u.packCount, 2);
+  assert.equal(P.userProduct({ name: '헤비 오버핏 티 2팩', price: 30000, fit: 'regular', packCount: 1 }, cat, 'white-tee', TODAY).fit, 'regular', '사용자가 고른 값이 먼저');
+});
+
+test('카디건 총장: 2cm 넘게 짧으면 확인, 거의 같으면 애매, 1.5cm까지 길면 경고(!), 그보다 길면 공식 치수로는 어김. 뒤 중심 총장은 2cm 더하고 약한 확인', () => {
+  const base = { id: 't', sizes: [{ label: 'M', length: 70, chest: 52 }], sizeSrc: 'official', fabric: {}, build: [], stock: null, offered: null };
+  const at = (L, extra) => P.condOf(Object.assign({}, base, extra), 'notLonger', { outerLen: L, fit: { size: 'M' } });
+  assert.equal(at(72).status, 'ok'); assert.match(at(72).text, /2cm 짧아요/);
+  assert.equal(at(71).status, 'weak'); assert.equal(at(71).kind, 'partial'); assert.match(at(70).text, /카디건\(70cm\)과 같아요/);
+  assert.equal(at(69).status, 'warn'); assert.match(at(69).text, /1cm 길어 밑단이 살짝 보일 수 있어요/);
+  assert.equal(at(68.4).status, 'fail'); assert.equal(at(68.4, { sizeSrc: 'seller' }).status, 'warn', '판매처 치수표로는 어김을 확정하지 않는다');
+  const cb = at(74, { lengthFrom: 'cb' });
+  assert.equal(cb.status, 'weak', '보정(추정)이 들어가면 확인이 아니다'); assert.match(cb.text, /뒤 중심 치수라 약 72cm로 봄/);
+  assert.equal(at(70, { sizeDoubt: '같은 표' }).status, 'unknown');
+  const f = P.fitOf(by('uniqlo-e455365-white'), { ref: { chest: 53, length: 70, shoulder: 45 } });
+  assert.match(f.text, /뒤 중심 치수에 2cm 더해 견줌/);
+});
+
+test('카디건 단추를 잠그면 가슴 작은 자수는 애매(빼지 않음), 큰 자수·프린트는 그대로 어김. 받쳐 입기의 박시하지 않게는 핏 출처로 나눈다', () => {
+  const brooks = by('brooks-bbnpmm5192a'), polo = by('polo-480590-white');
+  assert.equal(P.condOf(brooks, 'noLogo').status, 'fail');
+  const c = P.condOf(brooks, 'noLogo', { closed: true }); assert.equal(c.status, 'weak'); assert.equal(c.kind, 'partial'); assert.match(c.text, /단추를 잠그면 대개 가려져요/);
+  assert.equal(P.condOf(polo, 'noLogo', { closed: true }).status, 'fail');
+  const r = rec(Object.assign({}, FOUNDER, { closed: true }));
+  assert.ok(r.eligible.some((x) => x.product.id === 'brooks-bbnpmm5192a'), '단추를 잠그면 브룩스도 후보');
+  assert.equal(P.condOf(by('levis-005gy0000'), 'notLoose').status, 'fail', '공식 루즈핏은 어김');
+  assert.equal(P.condOf(by('pottery-ss-comfort-white'), 'notLoose').status, 'warn', '판매처 설명의 루즈핏은 경고');
+  assert.equal(P.condOf(by('uniqlo-e455365-white'), 'notLoose').status, 'ok'); assert.equal(P.condOf(by('uniqlo-e422992-white'), 'notLoose').status, 'unknown');
+});
+
+test('대안 이름은 1등보다 나은 점이다: 나은 점 없는 대안·"조금 더 써도"·"다음 후보" 없음, 더 싸게는 두 값 모두, 14일 지난 가격은 이유로 안 씀(조건 격자)', () => {
+  let n = 0;
+  for (const q of grid()) for (const today of [TODAY, '2026-10-29']) {
+    const r = rec(Object.assign({}, q, { today })); if (!r.pick) continue;
+    for (const a of r.alts) {
+      n++;
+      assert.ok(!/조금 더 써도|다음 후보/.test(a.label), a.label);
+      const deal = / 대신 값을 보면$/.test(a.label);
+      assert.ok(deal || a.adv.indexOf(a.label) >= 0, '나은 점이 이름이어야: ' + a.label + ' / ' + a.adv);
+      if (a.label === '더 싸게') assert.ok(a.r.unit.krw <= r.pick.unit.krw * 0.85 && a.r.unit.pay <= r.pick.unit.pay, '더 싸게인데 지금 낼 돈이 많음');
+      if (deal) assert.ok(q.priorities[0] && !(q.priorities[0] === 'brand' && !q.brands.length) && !(q.priorities[0] === 'fit' && !q.size && !q.ref), '고르지 않은 기준 이름: ' + a.label + ' ' + JSON.stringify(q));
+      if (today !== TODAY) assert.ok(!/더 싸게|한 장 값을 줄이려면|대신 값을 보면/.test(a.label), '오래된 가격을 이유로: ' + a.label);
+    }
+    if (today !== TODAY && r.gapWhy) assert.ok(!/가성비에서 갈렸어요/.test(r.gapWhy), r.gapWhy);
+  }
+  assert.ok(n > 500, '본 대안 ' + n);
+});
+
+test('재고: 14일 지난 재고는 "재고 있음"을 이유로 쓰지 않지만 점수는 그대로다', () => {
+  const p = by('uniqlo-e455365-white');
+  const a = P.fitOf(p, { size: 'M', today: TODAY }), b = P.fitOf(p, { size: 'M', today: '2026-10-29' });
+  assert.equal(a.score, b.score); assert.match(a.text, /M 재고 있음/); assert.match(b.text, /재고는 16일 전 확인이라 판매처에서 봐 주세요/);
+  const r = rec({ priorities: ['fit'], size: 'M', today: '2026-10-29' });
+  assert.ok(!/재고가 있어요/.test(r.pick.conclusion), r.pick.conclusion);
+});
+
+test('치수표를 믿기 어려운 상품(sizeDoubt)은 실측 비교에 쓰지 않는다', () => {
+  const f = P.fitOf(by('hanes-blue-3p-white'), { ref: { chest: 49, length: 72 }, size: 'M' });
+  assert.ok(f.byRefFailed); assert.match(f.text, /치수표를 믿기 어려워/); assert.ok(!f.byRef);
+});
+
+test('보던 상품과 1등 두 칸 비교: 배송비를 모르면 "넘게" 싸다고만, 조건·사이즈·품질 근거에서 나은 쪽을 적는다', () => {
+  const u = P.userProduct({ name: '아웃스탠딩 흰 반팔 티', brand: '아웃스탠딩', price: 39000, logo: 'none', size: 'M', chest: 56, length: 71 }, cat, 'white-tee', TODAY);
+  const r = rec(Object.assign({}, FOUNDER, { priorities: ['value', 'quality'], extra: [u] }));
+  const c = P.contrast(r.user, r.pick, cat);
+  assert.equal(c.rows[0].key, 'pay'); assert.equal(c.payWin, 'b'); assert.match(c.sum, /^1위 .* 넘게 싸요\(보던 상품 배송비는 빼고 셈\)\./);
+  assert.ok(c.rows.some((x) => x.key === 'cond:noLogo' && x.a.status === 'weak'), '직접 적은 로고 없음은 약한 확인');
+  assert.equal(P.contrast(r.pick, r.pick, cat), null);
+  const pay = rec({ priorities: ['value'] }).pick.unit.pay;
+  const cheap = P.userProduct({ name: '무지 티', price: pay - 9000 }, cat, 'white-tee', TODAY), near = P.userProduct({ name: '무지 티 2', price: pay - 1000 }, cat, 'white-tee', TODAY);
+  const r2 = rec({ priorities: ['value'], extra: [cheap] }), r3 = rec({ priorities: ['value'], extra: [near] });
+  assert.match(P.contrast(r2.user, r2.pick, cat).sum, /^보던 상품이 9,000원 싸요\(보던 상품 배송비는 빼고 셈\)/, '국내 배송비(보통 5,000원 아래)보다 큰 차이면 싸다고 말한다');
+  assert.match(P.contrast(r3.user, r3.pick, cat).sum, /^보던 상품이 1,000원 싸지만 배송비를 몰라 확실하지 않아요/);
+  assert.ok(c.rows.every((x) => x.a.text.length <= 40 && x.b.text.length <= 60), '표 칸은 짧게(출처 꼬리·긴 설명은 뗀다)');
+});

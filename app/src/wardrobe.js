@@ -242,7 +242,45 @@
       owner: e.body ? clone(state.owner) : { nickname: state.owner.nickname, height: null, topSize: '', bottomSize: '' }, items, decisions: e.log ? clone(state.decisions) : [] };
   }
 
+  /**
+   * 상품 이름·공유 글에서 옷의 종류·색·무늬를 짐작한다(붙여 넣은 글을 칸에 미리 채우는 데만 쓴다. 사용자가 고친다).
+   * 더 구체적인 말이 먼저다: '케이블 니트 … 카디건'은 카디건, '티셔츠'는 셔츠가 아니라 티. 브랜드 이름 '폴로'는 폴로 셔츠로 보지 않는다.
+   * 반환: { cat, kind, family, light, pattern, hits: [짐작에 쓴 말] } — 모르는 것은 null.
+   */
+  const GUESS_KIND = [
+    ['outer', 'cardigan', /카디건|가디건|cardigan/i], ['outer', 'blazer', /블레이저|blazer|테일러드\s*재킷/i], ['outer', 'trench', /트렌치|trench/i], ['outer', 'padding', /패딩|다운\s*재킷|푸퍼|puffer|down\s*jacket/i],
+    ['outer', 'coat', /코트|coat/i], ['outer', 'vest', /조끼|베스트(?!셀러)|vest|gilet/i], ['outer', 'jacket', /재킷|자켓|점퍼|블루종|jacket|blouson|트러커|봄버|bomber|파카|parka/i],
+    ['top', 'hoodie', /후디|후드\s*티|후드티|hoodie/i], ['top', 'sweat', /맨투맨|스웻\s*셔츠|스웨트\s*셔츠|스웻|sweat\s*shirt|sweatshirt|crewneck\s*sweat/i], ['top', 'turtleneck', /터틀넥|폴라\s*니트|목폴라|turtle\s*neck|turtleneck/i],
+    ['top', 'polo', /폴로\s*셔츠|폴로셔츠|폴로\s*티|피케|pique|polo\s*shirt/i], ['top', 'tee', /티셔츠|t-?shirt|반팔\s*티|긴팔\s*티|롱\s*슬리브\s*티|\btee\b|크루넥\s*티|헨리넥/i],
+    ['top', 'blouse', /블라우스|blouse/i], ['top', 'sleeveless', /민소매|나시|탱크\s*톱|sleeveless|tank\s*top/i], ['top', 'shirt', /셔츠|남방|옥스퍼드|버튼\s*다운|shirt|oxford|button[\s-]*down/i],
+    ['top', 'knit', /니트|스웨터|sweater|knit|풀오버|pullover/i],
+    ['bottom', 'chino', /치노|chino/i], ['bottom', 'slacks', /슬랙스|slacks|트라우저|trouser/i], ['bottom', 'cord', /코듀로이\s*팬츠|골덴\s*바지|corduroy\s*pants/i], ['bottom', 'fatigue', /퍼티그|fatigue|카고\s*팬츠|cargo/i],
+    ['bottom', 'jogger', /조거|트레이닝\s*팬츠|jogger|track\s*pants|sweat\s*pants/i], ['bottom', 'leggings', /레깅스|leggings/i], ['bottom', 'shorts', /반바지|쇼츠|shorts/i], ['bottom', 'skirt', /스커트|치마|skirt/i],
+    ['bottom', 'wide', /와이드\s*팬츠|wide\s*pants/i], ['bottom', 'denim', /데님\s*팬츠|청바지|진\s*팬츠|jeans|denim\s*pants|셀비지|\b50[1-5]\b/i],
+    ['dress', 'jumpsuit', /점프\s*수트|jumpsuit/i], ['dress', 'dress', /원피스|드레스|dress/i],
+    ['shoes', 'loafer', /로퍼|loafer|페니\s*로퍼/i], ['shoes', 'derby', /더비|derby|옥스퍼드\s*슈즈|oxford\s*shoes/i], ['shoes', 'boots', /부츠|boots?\b|워커/i], ['shoes', 'sneaker', /스니커즈|운동화|sneakers?/i],
+    ['shoes', 'heels', /힐|heels?\b|펌프스/i], ['shoes', 'flats', /플랫\s*슈즈|flats?\b|발레리나/i], ['shoes', 'sandals', /샌들|슬리퍼|sandals?/i],
+    ['top', 'tee', /크루넥\s*t(?![a-z])|브이넥\s*t(?![a-z])|반팔|반소매|crew\s*neck|크루넥/i],                    // 종류 낱말이 없을 때: 유니클로 '크루넥T', '반팔'만 적힌 글
+  ];
+  const GUESS_COLOR = [
+    ['ivory', /아이보리|크림|에크루|오프\s*화이트|ivory|cream|ecru|off[\s-]*white/i], ['white', /흰색|흰\s|^흰|화이트|white|하양/i], ['beige', /베이지|샌드|카멜|beige|sand|camel|탄\b|tan\b/i], ['khaki', /카키|khaki/i],
+    ['olive', /올리브|olive/i], ['navy', /네이비|남색|navy/i], ['indigo', /인디고|진청|생지|indigo|raw\s*denim/i], ['blue', /하늘|스카이|연청|블루|파랑|blue|sky/i], ['green', /그린|초록|녹색|green/i],
+    ['burgundy', /버건디|와인|burgundy|wine/i], ['brown', /브라운|갈색|초콜릿|모카|brown|chocolate|mocha/i], ['black', /블랙|검정|검은|black/i], ['gray', /그레이|회색|차콜|멜란지|gray|grey|charcoal|melange/i],
+    ['red', /레드|빨강|빨간|red\b/i], ['pink', /핑크|분홍|pink/i], ['purple', /퍼플|보라|purple|lavender|라벤더/i], ['yellow', /옐로|노랑|노란|머스타드|yellow|mustard/i], ['orange', /오렌지|주황|orange/i],
+  ];
+  const GUESS_PATTERN = [['stripe', /스트라이프|줄무늬|보더|stripe/i], ['check', /체크|깅엄|타탄|플래드|check|gingham|tartan|plaid/i], ['graphic', /프린트|그래픽|꽃무늬|플로럴|print|graphic|floral/i]];
+  function guessFromText(text) {
+    const s = String(text || '').slice(0, 400).replace(/\[[^\]]{0,20}\]/g, ' ');                  // [무신사] 같은 상점 꼬리표는 뺀다
+    const out = { cat: null, kind: null, family: null, light: null, pattern: null, hits: [] };
+    for (const [cat, kind, re] of GUESS_KIND) { const m = re.exec(s); if (m) { out.cat = cat; out.kind = kind; out.hits.push(m[0].trim()); break; } }
+    let best = null;
+    for (const [fam, re] of GUESS_COLOR) { const m = re.exec(s); if (m && (!best || m.index < best.at)) best = { fam, at: m.index, word: m[0].trim() }; }   // 글에서 먼저 나온 색
+    if (best) { out.family = best.fam; out.light = /차콜|charcoal/i.test(best.word) ? 28 : FAM[best.fam][3]; out.hits.push(best.word); }
+    for (const [pat, re] of GUESS_PATTERN) { const m = re.exec(s); if (m) { out.pattern = pat; out.hits.push(m[0].trim()); break; } }
+    return out;
+  }
+
   return { SCHEMA, SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, ATTR_SOURCE, PHOTO_KIND, EVIDENCE, LOOK_KINDS, MAX_CANDS, FOLLOW_DAYS, WORN, FEEL_BUY, FEEL_SKIP,
     str, num, safeImg, safeLink, safeDate, today, cleanItem, cleanWardrobe, cleanDecision, cleanFollow, followDue, migrate, isDraft, draftItems, photoLabel, attrLabel,
-    setOwnPhoto, setProductPhoto, clearProductPhoto, addCandidate, removeCandidate, confirmProduct, unconfirm, setLook3d, setAttrSource, exportWardrobe };
+    setOwnPhoto, setProductPhoto, clearProductPhoto, addCandidate, removeCandidate, confirmProduct, unconfirm, setLook3d, setAttrSource, exportWardrobe, guessFromText };
 });

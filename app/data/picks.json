@@ -81,7 +81,10 @@
    "ko": "아웃스탠딩",
    "aliases": [
     "아웃스탠딩",
-    "outstanding"
+    "outstanding",
+    "아웃스탠딩앤코",
+    "아웃스탠딩 앤 코",
+    "outstanding & co"
    ]
   },
   "uniqlo": {
@@ -113,7 +116,7 @@
    "brand": "outstanding",
    "line": "white-tee",
    "checkedAt": "2026-10-13",
-   "text": "아웃스탠딩은 공식 온라인몰을 찾지 못했고, 주 판매처인 무신사는 자동 수집을 막고 있어 확인한 상품이 없어요. 무신사에서 본 상품은 '살까 말까'에 링크를 붙여 넣으면 가진 옷과 겹치는지·새 조합이 생기는지(색·밝기 규칙)는 볼 수 있어요."
+   "text": "아웃스탠딩은 공식 온라인몰을 찾지 못했고, 주 판매처인 무신사는 자동 수집을 막고 있어 확인한 상품이 없어요. 무신사에서 본 아웃스탠딩 흰 티는 이 탭 맨 위 '보던 흰 티'에 가격과 치수를 적으면 같은 기준으로 견줘 드려요."
   }
  ],
  "lines": {
@@ -128,7 +131,7 @@
     "note": "품질 1점당 가격(원)의 고정 기준선. 2,500원 이하면 가성비 최고, 50,000원 이상이면 최저로 본다 [제안값]"
    },
    "styleRole": "tiebreak",
-   "styleNote": "흰 무지 티는 스타일 차이가 작아 스타일은 동점일 때만 본다"
+   "styleNote": "흰 무지 티는 스타일 차이가 작아 스타일은 동점일 때만 봐요"
   }
  },
  "products": [
@@ -148,6 +151,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "slim",
+   "fitSrc": "official",
    "fitNote": "체스트와 허리에 걸쳐 약간 슬림한 핏(공식)",
    "fabric": {
     "comp": "면 100%",
@@ -247,6 +251,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "slim",
+   "fitSrc": "official",
    "fitNote": "체스트와 허리에 걸쳐 약간 슬림한 핏(공식)",
    "fabric": {
     "comp": "면 100%",
@@ -434,6 +439,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "regular",
+   "fitSrc": "seller",
    "fitNote": "레귤러핏(판매처 표기)",
    "fabric": {
     "comp": "면 100%",
@@ -542,6 +548,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "regular",
+   "fitSrc": "seller",
    "fitNote": "레귤러핏(판매처 표기), 남녀 공용",
    "fabric": {
     "comp": "Cotton 100%",
@@ -663,6 +670,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "relaxed",
+   "fitSrc": "seller",
    "fitNote": "루즈·릴랙스핏(판매처 표기), 남녀 공용",
    "fabric": {
     "comp": "Cotton 100%",
@@ -784,6 +792,7 @@
    "seasons": [],
    "sleeve": "long",
    "fit": "regular",
+   "fitSrc": "seller",
    "fitNote": "레귤러 핏(판매처 설명), 남녀 공용",
    "fabric": {
     "comp": "Supima Cotton 100%",
@@ -906,12 +915,13 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "regular",
+   "fitSrc": "official",
    "fitNote": "미국식 레귤러 핏, 평소 사이즈 권장(공식)",
    "fabric": {
     "comp": "면 100%",
     "cotton100": true,
     "fiber": "ringspun",
-    "fiberSrc": "official",
+    "fiberSrc": "claim",
     "knit": "loopwheel",
     "weight": "10.5oz",
     "thick": "thick",
@@ -921,7 +931,7 @@
      "면사로 박음질(공식)"
     ],
     "compSrc": "official",
-    "knitSrc": "official"
+    "knitSrc": "claim"
    },
    "build": [
     "tubular",
@@ -962,7 +972,7 @@
    "evidence": [
     {
      "url": "https://bronsonshop.com/products/bronson-mens-original-series-ringspun-cotton-short-sleeve-tubular-t-shirt",
-     "what": "달러 가격·사이즈별 재고, 10.5온스 링스펀·루프휠·통짜 몸판(상세), 로고 없음·목 립 모양(사진)",
+     "what": "달러 가격·사이즈별 재고, Details 탭: 10.5 oz 링스펀 코튼 100%·통짜 몸판·면사 박음질, 루프휠 편직(설명), 로고 없음·목 립 모양(사진)",
      "seen": "2026-10-13"
     },
     {
@@ -984,7 +994,8 @@
     "currency": "USD",
     "note": "99달러 넘는 주문은 무료, 아니면 6.99달러(공식 배송 안내). 중국 창고(일부 미국)에서 보내며 나라별 배송 방법·요금은 결제 화면에서 바뀔 수 있음. 한국 관세·부가세는 따로 확인",
     "url": "https://bronsonshop.com/pages/shipping-policy",
-    "checkedAt": "2026-10-13"
+    "checkedAt": "2026-10-13",
+    "estimate": true
    },
    "buildSrc": "official"
   },
@@ -1054,7 +1065,8 @@
     }
    ],
    "sizeSrc": "official",
-   "sizeNote": "유니클로 공식 치수(가슴은 너비). 소매는 등 중심부터 재서 다른 브랜드와 견주지 않는다",
+   "sizeNote": "유니클로 공식 치수(가슴은 너비, 전체 길이는 뒤 중심). 소매는 등 중심부터 재서 다른 브랜드와 견주지 않는다",
+   "lengthFrom": "cb",
    "price": 19900,
    "currency": "KRW",
    "listPrice": null,
@@ -1171,7 +1183,8 @@
     }
    ],
    "sizeSrc": "official",
-   "sizeNote": "유니클로 공식 치수(가슴은 너비)",
+   "sizeNote": "유니클로 공식 치수(가슴은 너비, 전체 길이는 뒤 중심)",
+   "lengthFrom": "cb",
    "price": 29900,
    "currency": "KRW",
    "listPrice": null,
@@ -1244,6 +1257,7 @@
    ],
    "sleeve": "long",
    "fit": "regular",
+   "fitSrc": "official",
    "fitNote": "깔끔한 레귤러 실루엣(공식)",
    "fabric": {
     "comp": "면 100%",
@@ -1294,7 +1308,8 @@
     }
    ],
    "sizeSrc": "official",
-   "sizeNote": "유니클로 공식 치수(가슴은 너비)",
+   "sizeNote": "유니클로 공식 치수(가슴은 너비, 전체 길이는 뒤 중심)",
+   "lengthFrom": "cb",
    "price": 29900,
    "currency": "KRW",
    "listPrice": null,
@@ -1363,6 +1378,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "relaxed",
+   "fitSrc": "official",
    "fitNote": "스케이트 티셔츠에서 따온 루즈 핏(공식)",
    "fabric": {
     "comp": "면 100%",
@@ -1448,6 +1464,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "relaxed",
+   "fitSrc": "official",
    "fitNote": "릴렉스드(루즈) 핏(공식)",
    "fabric": {
     "comp": "면 100%",
@@ -1531,6 +1548,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "regular",
+   "fitSrc": "seller",
    "fitNote": "레귤러핏(판매처 표기), 남녀 공용",
    "fabric": {
     "comp": "COTTON 100%",
@@ -1645,6 +1663,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "relaxed",
+   "fitSrc": "seller",
    "fitNote": "박스 실루엣(판매처 표기), 남녀 공용",
    "fabric": {
     "comp": "COTTON 75%·POLYESTER 25%",
@@ -1701,6 +1720,7 @@
    ],
    "sizeSrc": "seller",
    "sizeNote": "코오롱몰이 레드 라벨과 같은 치수표를 올려 두었어요(판매처가 \"AI로 자동 추출한 정보\"라고 밝힘). 박스 실루엣이라는 설명과 다를 수 있어 사기 전에 상세정보를 봐 주세요",
+   "sizeDoubt": "레드 라벨과 같은 표, 판매처 AI 자동 추출",
    "packCount": 3,
    "price": 31000,
    "currency": "KRW",
@@ -1759,6 +1779,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": "regular",
+   "fitSrc": "official",
    "fitNote": "남녀 공용 · 레귤러 핏(공식 표기)",
    "fabric": {
     "comp": "면 100%",
@@ -1821,6 +1842,7 @@
    ],
    "sizeSrc": "official",
    "sizeNote": "유니클로 공식 치수(가슴은 너비, 전체 길이는 뒤 중심). 소매는 등 중심부터 재서 다른 브랜드와 견주지 않는다",
+   "lengthFrom": "cb",
    "price": 19900,
    "currency": "KRW",
    "listPrice": null,
@@ -1883,7 +1905,7 @@
    "id": "uniqlo-e482522-white",
    "line": "white-tee",
    "brand": "uniqlo",
-   "name": "AIRism 코튼 크루넥T (반팔)",
+   "name": "AIRism 코튼 크루넥T",
    "code": "490746",
    "colorName": "00 WHITE",
    "cat": "top",
@@ -1895,7 +1917,7 @@
    "seasons": [],
    "sleeve": "short",
    "fit": null,
-   "fitNote": "남성",
+   "fitNote": "남성 이너웨어(에어리즘 코튼) · 반팔(공식 치수: 등 중심부터 소매까지 M 43cm)",
    "fabric": {
     "comp": "면 61%·폴리에스터 33%·폴리우레탄 6%",
     "cotton100": false,
@@ -1956,6 +1978,7 @@
    ],
    "sizeSrc": "official",
    "sizeNote": "유니클로 공식 치수(가슴은 너비, 전체 길이는 뒤 중심). 소매는 등 중심부터 재서 다른 브랜드와 견주지 않는다",
+   "lengthFrom": "cb",
    "price": 14900,
    "currency": "KRW",
    "listPrice": null,
@@ -2004,7 +2027,7 @@
    "evidence": [
     {
      "url": "https://www.uniqlo.com/kr/ko/products/E482522-000/00?colorDisplayCode=00",
-     "what": "가격·흰색 사이즈별 재고(페이지가 쓰는 재고 자료)·공식 치수·소재·제조국·상세 설명·로고 없음(사진)",
+     "what": "가격·흰색 사이즈별 재고(페이지가 쓰는 재고 자료)·공식 치수(전체 길이는 뒤 중심)·소재·제조국·상세 설명·분류(남성 이너웨어 > 에어리즘 코튼)·로고 없음(사진)",
      "seen": "2026-10-13"
     },
     {

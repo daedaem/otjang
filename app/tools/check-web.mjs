@@ -40,7 +40,7 @@ const modes = process.env.QUICK ? [{ name: 'web-desk', w: 1280, h: 900, scheme: 
 const ago = (n) => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 for (const m of modes) {
   console.log(m.name);
-  const ctx = await browser.newContext({ viewport: { width: m.w, height: m.h }, colorScheme: m.scheme, acceptDownloads: true });
+  const ctx = await browser.newContext({ viewport: { width: m.w, height: m.h }, colorScheme: m.scheme, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await ctx.newPage();
   const logs = [], ext = [], files = [];
   page.on('console', (x) => { if (x.type() === 'error' || x.type() === 'warning') logs.push(x.text().slice(0, 200)); });
@@ -88,16 +88,19 @@ for (const m of modes) {
     '딱 하나: 좋아하는 브랜드 가운데 고른 조건(로고·두께)을 어기지 않는 것, 대안 둘. 고른 조건은 위에 한 줄로 접힌다', { pick: pk.pick, alts: pk.alts });
   ok(/요\.( 다만 .*\.)?$/.test(pk.conclusion) && !/좋아하는 브랜드와 같은 계열/.test(pk.conclusion) && pk.checks.some((c) => c.label === '로고 안 보이게') && pk.checks.some((c) => c.label === '브랜드 1순위') && /^조건을 어기지 않은 \d+개 중 1위/.test(pk.rank.text) && /^2위 /.test(pk.gapWhy) && /^좋아하는 브랜드 6곳 중/.test(pk.favNote),
     '결론 한 문장, 2위와 갈린 이유, 좋아하는 브랜드가 빠진 이유, 조건·기준 체크 목록, "조건을 어기지 않은 N개 중 1위"가 보인다', { c: pk.conclusion, g: pk.gapWhy });
-  ok((await page.locator('#pickConds .ck.weak .ml').innerText()) === '약한 확인' && (await page.locator('#pickConds .ck.unknown .ml').innerText()) === '모름' && (await page.locator('#pickSize').innerText()).includes('추천 사이즈'),
-    '판매처 설명으로만 본 값은 "약한 확인", 모르는 값은 "모름"이라고 글자로도 보이고, 추천 사이즈가 따로 보인다');
+  ok((await page.locator('#pickConds .ck.weak .ml').first().innerText()) === '약한 확인' && (await page.locator('#pickConds .ck.unknown .ml').first().innerText()) === '모름' && (await page.locator('#pickSize').innerText()).includes('추천 사이즈') && (await page.locator('#pickChecks .ck .ml, #pickChecks .ck .sr').allInnerTexts()).join().includes('강점'),
+    '판매처 설명으로만 본 값은 "약한 확인", 모르는 값은 "모름"이라고 글자로도 보이고(내 기준은 강점·보통·약점), 추천 사이즈가 따로 보인다');
+  const cta = await page.evaluate(() => { const a = document.querySelector('#pickTop .cta a.btn.primary'); const r = a.getBoundingClientRect(); return { bottom: r.bottom, h: window.innerHeight, clip: a.scrollWidth > a.clientWidth + 1 }; });
+  ok(cta.bottom <= cta.h && !cta.clip, '"딱 하나 보기" 직후 첫 화면에 판매처 버튼이 보이고 버튼 이름이 잘리지 않는다', cta);
   ok(pk.ranked.some((r) => (r[2] || '').includes('조건에 안 맞아요')) && pk.notes.some((n) => n.includes('LVC')) && pk.notes.some((n) => n.includes('아웃스탠딩')), '조건으로 뺀 상품(이유 포함)과 확인한 상품이 없는 브랜드(LVC·아웃스탠딩)를 숨기지 않고 알린다', pk.notes.map((n) => n.slice(0, 30)));
   const links = await page.locator('#pickResult a[target="_blank"]').evaluateAll((as) => as.map((a) => [a.getAttribute('href'), a.getAttribute('rel'), a.getAttribute('aria-label') || a.textContent]));
   ok(links.length >= 3 && links.every(([href, rel, name]) => /^https:\/\//.test(href) && rel.includes('noopener') && rel.includes('noreferrer') && name.length > 3), '판매처·근거는 이름 있는 새 창 링크(noopener noreferrer)로만 두고 앱이 가져오지 않는다', links.length);
   ok(/\d+월 \d+일 확인/.test(pkTxt) && pkTxt.includes('확률이 아니에요') && pkTxt.includes('사진 아님') && !/1점당|\/10/.test(pkTxt) && (await page.locator('#pickTop svg.tee').count()) === 1 && !(await overflow()), '가격 옆 확인일, 확률이 아니라는 설명, 사진 대신 공개 정보로 그린 모양이 있고, 내부 계산 숫자·가로 넘침이 없다');
   await page.screenshot({ path: path.join(shots, m.name + '-1b-pick.png'), fullPage: true });
   await page.click('#pickShare');
+  await page.waitForFunction(() => window.__app.state.meta.pickShare >= 1, null, { timeout: 3000 }).catch(() => {});
   const sh = await page.evaluate(() => ({ t: window.__shareText || '', n: window.__app.state.meta.pickShare }));
-  ok(sh.n === 1 && sh.t.includes('어울이 고른 이유') && sh.t.includes('포터리') && !/흰 셔츠|옷장/.test(sh.t), '"친구에게 물어보기"는 상품·값·이유만 담고 내 옷장 정보는 넣지 않는다', sh);
+  ok(sh.n === 1 && sh.t.includes('어울이 고른 이유') && sh.t.includes('포터리') && sh.t.startsWith('카디건 안에 받쳐 입을 흰 티로 이거 어때?') && !/흰 셔츠|옷장/.test(sh.t), '"친구에게 물어보기"는 용도·상품·값·이유만 담고 내 옷장 정보는 넣지 않으며, 실제로 복사·공유했을 때만 센다', sh);
   await page.click('#pk-wish-oxford');
   ok((await page.evaluate(() => window.__app.state.prefs.wish.join())) === 'oxford' && (await page.locator('#pk-wish-oxford').getAttribute('aria-pressed')) === 'true', '다음에 받고 싶은 옷(옥스퍼드 셔츠)을 눌러 둘 수 있다');
   await page.click('#pv-reject');
@@ -129,11 +132,15 @@ for (const m of modes) {
   await setVis('hidden'); await setVis('visible');
   ok(await page.locator('#pickTop #askBought').isVisible() && await inView('#askBought'), '판매처에서 돌아오면 그 추천 카드 안에 "샀나요?"가 뜨고 화면에 보이게 옮긴다');
   await page.click('#boughtYes');
-  const defSize = await page.locator('#askBought [role="radio"][aria-checked="true"]').innerText();
+  const noDef = await page.locator('#askBought [role="radio"][aria-checked="true"]').count();
+  await page.click('#boughtSave');
+  ok(noDef === 0 && await page.locator('#askErr').isVisible() && (await page.evaluate(() => window.__app.state.pickLog.slice(-1)[0].bought)) === '', '산 사이즈는 미리 골라 두지 않고, 고르지 않고 저장하면 고르라고 알린다(추천 사이즈 일치율이 부풀지 않게)');
+  const defSize = await page.locator('#askBought [role="radio"]', { hasText: '(추천)' }).innerText();
+  await page.locator('#askBought [role="radio"]', { hasText: '(추천)' }).click();
   await page.click('#boughtSave');
   const bought = await page.evaluate(() => { const s = window.__app.state, e = s.pickLog[s.pickLog.length - 1], it = s.items.find((i) => i.id === e.ownedId); return { b: e.bought, size: e.boughtSize, it: it && { status: it.status, size: it.size, chest: it.measures.chest, link: it.link } }; });
-  ok(defSize === '2(M)' && bought.b === 'yes' && bought.size === '2' && bought.it && bought.it.status === 'owned' && bought.it.size === '2(M)' && bought.it.chest === 54.5 && !(await page.locator('#askBought').count()),
-    '"샀어요"는 추천 사이즈(2(M))를 기본으로 산 사이즈를 받고, 그 치수와 함께 내 옷장에 넣는다', { defSize, bought });
+  ok(defSize === '2(M) (추천)' && bought.b === 'yes' && bought.size === '2' && bought.it && bought.it.status === 'owned' && bought.it.size === '2(M)' && bought.it.chest === 54.5 && !(await page.locator('#askBought').count()) && (await page.locator('#pickBought').innerText()).includes('샀어요 · 2(M)'),
+    '"샀어요"는 추천 사이즈에 (추천)을 붙여 산 사이즈를 받고, 그 치수와 함께 내 옷장에 넣으며, 카드에 "샀어요 · 2(M)"이 남는다', { defSize, bought });
   await page.evaluate(() => window.__app.flush()); await page.reload(); await page.waitForFunction(() => window.__app);
   const again = await page.evaluate(() => ({ tab: window.__app.ui.tab, ask: !!document.querySelector('#askBought'), b: window.__app.state.pickLog.filter((e) => e.bought === 'yes').length }));
   ok(!again.ask && again.b === 1, '다시 열어도 이미 답한 상품은 다시 묻지 않는다', again);
@@ -152,34 +159,43 @@ for (const m of modes) {
   // 1d. 지금 보는 상품(쐐기): 무신사에서 보던 흰 티를 적어 같은 기준으로 견준다(링크는 열지 않는다)
   await ensureOpen('#nowBox');
   await page.fill('#now-link', '[무신사] 아웃스탠딩 오버핏 반팔 티셔츠 https://www.musinsa.com/products/123');
-  ok((await page.inputValue('#now-name')) === '아웃스탠딩 오버핏 반팔 티셔츠', '붙여 넣은 공유 글에서 판매처 이름을 빼고 상품 이름을 채운다', await page.inputValue('#now-name'));
+  const fillN = await page.evaluate(() => ({ name: document.querySelector('#now-name').value, brand: document.querySelector('#now-brand').value, fit: document.querySelector('#now-fit').value, note: document.querySelector('#nowFill').textContent }));
+  ok(fillN.name === '아웃스탠딩 오버핏 반팔 티셔츠' && fillN.brand === '아웃스탠딩' && fillN.fit === 'relaxed' && fillN.note.includes('브랜드'), '붙여 넣은 공유 글에서 [무신사] 꼬리표를 빼고 이름·브랜드·핏(오버핏)을 채우고, 채운 것을 알린다', fillN);
   await page.click('#nowGo');
   ok(await page.locator('#nowErr').isVisible(), '가격 없이 누르면 가격을 넣으라고 알린다');
-  await page.fill('#now-brand', '아웃스탠딩'); await page.fill('#now-price', '39000');
-  await page.selectOption('#now-logo', 'none'); await page.selectOption('#now-thick', 'thin');
+  await page.fill('#now-price', '39000');
+  await ensureOpen('#nowMore'); await page.selectOption('#now-logo', 'none'); await page.selectOption('#now-thick', 'thin');
   await page.fill('#now-size', 'M'); await page.fill('#now-chest', '56'); await page.fill('#now-length', '71');
-  await page.click('#nowGo');
-  const now = await page.evaluate(() => ({ u: window.__pick.user, runs: window.__app.state.meta.nowRuns, txt: (document.querySelector('#nowRes') || {}).textContent || '' }));
-  ok(now.u && now.u.idx >= 0 && /\d+개 중 \d+위예요|1위예요/.test(now.txt) && now.txt.includes('직접 입력') && now.runs === 1 && !(await overflow()), '보던 상품이 고른 기준의 몇 위인지, 조건 확인(직접 입력)과 1위와의 값 차이를 보여 준다', now);
+  await page.click('#nowGo'); await page.click('#nowGo');
+  const now = await page.evaluate(() => ({ u: window.__pick.user, runs: window.__app.state.meta.nowRuns, head: (document.querySelector('#nowHead') || {}).textContent || '', sum: (document.querySelector('#nowSum') || {}).textContent || '', rows: document.querySelectorAll('#nowCmp tbody tr').length, txt: (document.querySelector('#nowRes') || {}).textContent || '' }));
+  ok(now.u && /^보던 .*(\d+개 중 \d+위예요|1위예요)\.$|고른 조건에 안 맞아요/.test(now.head) && now.rows >= 4 && /1위 .* 싸요|보던 상품이/.test(now.sum) && now.txt.includes('약한 확인') && !/가장 높아요/.test(now.txt) && now.runs === 1 && !(await overflow()),
+    '보던 상품이 몇 위인지 한 줄로, 1위와 두 칸 표(값·조건·사이즈·품질 근거)로, 차이를 한 문장으로 보여 주고(두 번 눌러도 한 번만 셈) 적은 값은 약한 확인이라고 밝힌다', now);
+  await page.click('#nd-alt');
+  const nd = await page.evaluate(() => { const e = window.__app.state.pickLog.find((x) => /^user-/.test(x.productId)); return e && [e.verdict, e.altId]; });
+  ok(nd && nd[0] === 'alt' && !!nd[1], '"1위로 바꿀래요"를 누르면 보던 상품 기록에 1위로 바꿨다고 남는다', nd);
+  await page.evaluate(() => window.__app.flush()); await page.reload(); await page.waitForFunction(() => window.__app);
+  ok((await page.locator('#nowRes').count()) === 1 && (await page.evaluate(() => window.__app.state.prefs.now.price)) === '39000', '새로 고쳐도 적은 값과 견준 결과가 남는다');
   await page.screenshot({ path: path.join(shots, m.name + '-1d-now.png'), fullPage: true });
   await page.click('#nowClear');
   // 카디건 총장을 넣으면 '카디건보다 짧게'가 켜지고, 고른 사이즈 총장과 견준다
   await page.click('#pickEdit');
-  await page.fill('#pk-outer', '68'); await page.locator('#pk-outer').blur();
-  const cl = await page.evaluate(() => ({ on: (document.querySelector('#pk-cond-notLonger') || {}).getAttribute && document.querySelector('#pk-cond-notLonger').getAttribute('aria-pressed'), c: window.__pick.checks.find((x) => x.label === '카디건보다 짧게') }));
-  ok(cl.on === 'true' && cl.c && /카디건\(68cm\)/.test(cl.c.text), '겉에 입을 카디건 총장을 넣으면 "카디건보다 짧게"로 밑단이 보이는지 본다', cl);
-  await page.fill('#pk-outer', ''); await page.locator('#pk-outer').blur();
+  ok(await page.locator('#pk-cond-notLonger').isDisabled() && await page.locator('#pk-closed').isVisible(), '총장을 넣기 전에는 "카디건보다 짧게" 자리가 꺼진 채로 있고, 단추 잠금 질문이 보인다');
+  await page.fill('#pk-outer', '68');
+  const on1 = await page.locator('#pk-cond-notLonger').getAttribute('aria-pressed');
   await page.click('#pickGo');
+  const cl = await page.evaluate(() => ({ s: window.__app.state.prefs.outerLen, c: window.__pick.checks.find((x) => x.label === '카디건보다 짧게') }));
+  ok(on1 === 'true' && cl.s === 68 && cl.c && /카디건\(68cm\)/.test(cl.c.text), '총장을 치는 동안 화면을 다시 그리지 않아 바로 누른 "딱 하나 보기"가 먹히고, "카디건보다 짧게"로 밑단이 보이는지 본다', cl);
+  await page.click('#pickEdit'); await page.fill('#pk-outer', ''); await page.click('#pickGo');
   // 살까 말까에 붙여 넣은 글이 흰 티면 '보던 흰 티'로 보낸다
   await page.goto(origin + '/?text=' + encodeURIComponent('[무신사] 아웃스탠딩 화이트 반팔 티셔츠 https://www.musinsa.com/products/9'));
   await page.waitForFunction(() => window.__app && document.querySelector('#qcDlg').open);
-  ok(await page.locator('#qcToPick').isVisible(), '살까 말까에 붙여 넣은 글이 흰 티로 보이면 "추천 기준으로 견줘 보기"를 준다');
+  ok(await page.locator('#qcToPick').isVisible() && (await page.inputValue('#qc-kind')) === 'tee' && (await page.inputValue('#qc-family')) === 'white', '살까 말까에 붙여 넣은 글에서 종류(티셔츠)·색(흰색)을 채우고, 흰 티면 "같은 기준으로 견주기"를 준다');
   await page.click('#qcToPick');
   ok((await page.evaluate(() => window.__app.ui.tab)) === 'shop' && (await page.locator('#nowBox').getAttribute('open')) !== null && (await page.inputValue('#now-name')) === '아웃스탠딩 화이트 반팔 티셔츠', '누르면 추천 탭의 "보던 흰 티"가 열리고 이름이 채워진다');
   await page.click('#tabbtn-closet');
 
   // 2. 예시 A 둘러보기 → 3D → 지우기
-  await page.click('#startSample');
+  await ensureOpen('#startMore'); await page.click('#startSample');
   let s = await st();
   ok(s.n === 13 && s.sample && s.rack === 5 && await page.locator('#sampleNote').isVisible(), '예시 A 둘러보기: 13벌, 예시 표시', s);
   await page.click('#tabbtn-closet3d');
@@ -191,7 +207,7 @@ for (const m of modes) {
   ok(s.n === 0 && !s.sample && s.rack === 0 && await page.locator('#startQuick').isVisible(), '내 옷장으로 시작하면 예시가 지워지고 처음 안내로 돌아간다', s);
 
   // 3. 예시 B: 원피스·스커트가 있는 옷장, 코디에 원피스 차림이 나온다, 3D 목록에서 원피스는 형태 고르기가 없다
-  await page.click('#startSampleB');
+  await ensureOpen('#startMore'); await page.click('#startSampleB');
   s = await st();
   ok(s.n === 15 && s.sample && s.rack === 3, '예시 B 둘러보기: 15벌(원피스 2·스커트 2), 3D 형태 있는 3벌', s);
   await page.click('#tabbtn-outfits');
@@ -264,11 +280,15 @@ for (const m of modes) {
   // 5b. 쇼핑 앱에서 복사한 글과 링크를 붙여 넣으면 판매처와 이름을 채운다(링크는 열지 않는다)
   await page.click('#tabbtn-judge'); await page.click('#quickCand');
   await page.fill('#qc-link', '[무신사] 미니멀 울 코트 https://www.musinsa.com/products/1234567');
-  ok((await page.locator('#qc-src').innerText()).includes('무신사') && (await page.inputValue('#qc-name')) === '무신사 미니멀 울 코트', '붙여 넣은 글에서 판매처(무신사)와 이름을 채운다', await page.inputValue('#qc-name'));
+  ok((await page.locator('#qc-src').innerText()).includes('무신사') && (await page.inputValue('#qc-name')) === '미니멀 울 코트' && (await page.inputValue('#qc-cat')) === 'outer' && (await page.inputValue('#qc-kind')) === 'coat' && (await page.locator('#qcGuess').innerText()).includes('코트'), '붙여 넣은 글에서 판매처(무신사)와 이름을 채우고, 종류(코트)를 골라 두고 알린다', await page.inputValue('#qc-name'));
+  await page.fill('#qc-link', ''); await page.fill('#qc-name', '');
+  await page.fill('#qc-link', '폴로 랄프로렌 케이블 니트 코튼 브이넥 카디건 네이비 https://www.ralphlauren.co.kr/x');
+  ok((await page.inputValue('#qc-kind')) === 'cardigan' && (await page.inputValue('#qc-family')) === 'navy', '"케이블 니트 … 카디건 네이비"는 셔츠·흰색이 아니라 카디건·네이비로 고른다(창업자의 첫 불만)', [await page.inputValue('#qc-kind'), await page.inputValue('#qc-family')]);
+  await page.fill('#qc-link', ''); await page.fill('#qc-name', ''); await page.fill('#qc-link', '[무신사] 미니멀 울 코트 https://www.musinsa.com/products/1234567');
   await page.selectOption('#qc-cat', 'outer'); await page.selectOption('#qc-kind', 'coat'); await page.selectOption('#qc-family', 'gray');
   await page.locator('#qc-lean input[value="unsure"]').check(); await page.click('#qcGo');
   await page.waitForSelector('#vCombos');
-  const linked = await page.evaluate(() => window.__app.state.items.find((i) => i.name === '무신사 미니멀 울 코트'));
+  const linked = await page.evaluate(() => window.__app.state.items.find((i) => i.name === '미니멀 울 코트'));
   ok(linked && linked.link === 'https://www.musinsa.com/products/1234567' && (await page.locator('main').innerText()).includes('무신사 · https://www.musinsa.com/products/1234567'), '후보에 링크가 남고 판정 화면에 판매처와 함께 보인다');
   await page.click('#tabbtn-closet');
 
@@ -307,14 +327,15 @@ for (const m of modes) {
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#backupNow')]);
   const bf = path.join(shots, m.name + '-backup.json'); await dl.saveAs(bf);
   const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
-  ok(bk.schema === 2 && bk.items.length === 6 && bk.decisions.length === 2 && bk.decisions[0].follow.feel === 'good' && bk.prefs && bk.prefs.pri.join() === 'brand,quality' && bk.pickLog.length === 1 && bk.pickLog[0].follow && !(await page.locator('#backupNote').count()), '백업 파일(스키마 2)에 옷 6벌과 판정 기록·2주 뒤 답, 추천 설정·기록이 들어가고 알림이 사라진다', dl.suggestedFilename());
+  ok(bk.schema === 2 && bk.items.filter((i) => i.status === 'owned').length === 6 && bk.items.filter((i) => i.status === 'candidate').length === 2 && bk.decisions.length === 2 && bk.decisions[0].follow.feel === 'good' && bk.prefs && bk.prefs.pri.join() === 'brand,quality' && bk.pickLog.length === 2 && bk.pickLog.some((e) => e.follow) && bk.meta && bk.meta.pickRuns >= 1 && !(await page.locator('#backupNote').count()),
+    '백업 파일(스키마 2)에 옷 6벌·살까 말까 후보 2벌과 판정 기록·2주 뒤 답, 추천 설정·기록·사용 횟수가 들어가고 알림이 사라진다', dl.suggestedFilename());
   // 7b. 다른 브라우저(새 환경)에서 백업을 가져오면 추천 설정과 기록도 돌아온다
   {
     const ctx2 = await browser.newContext({ viewport: { width: m.w, height: m.h }, colorScheme: m.scheme });
     const p2 = await ctx2.newPage(); await p2.goto(origin + '/'); await p2.waitForFunction(() => window.__app);
     await p2.click('#tabbtn-log'); await p2.setInputFiles('#importFile', bf); await p2.click('#importGo');
-    const got = await p2.evaluate(() => ({ n: window.__app.state.items.length, pri: window.__app.state.prefs.pri.join(), log: window.__app.state.pickLog.length, f: window.__app.state.pickLog[0] && window.__app.state.pickLog[0].follow }));
-    ok(got.n === 6 && got.pri === 'brand,quality' && got.log === 1 && got.f && got.f.size === 'fit', '백업을 새 브라우저에서 가져오면 옷·추천 설정·추천 기록(2주 뒤 답)이 돌아온다', got);
+    const got = await p2.evaluate(() => ({ n: window.__app.state.items.length, c: window.__app.state.items.filter((i) => i.status === 'candidate').length, pri: window.__app.state.prefs.pri.join(), log: window.__app.state.pickLog.length, f: window.__app.state.pickLog.some((e) => e.follow && e.follow.size === 'fit'), runs: window.__app.state.meta.pickRuns }));
+    ok(got.n === 8 && got.c === 2 && got.pri === 'brand,quality' && got.log === 2 && got.f && got.runs >= 1, '백업을 새 브라우저에서 가져오면 옷·후보·추천 설정·추천 기록(2주 뒤 답)·사용 횟수가 돌아온다', got);
     await ctx2.close();
   }
 
@@ -327,7 +348,7 @@ for (const m of modes) {
   await page.locator('#fbPmf input[value="very"]').check(); await page.selectOption('#fbNps', '9');
   const pv = await page.locator('#fbPreview').innerText();
   const mline = (pv.match(/EOUL1\|\S+/) || [''])[0];
-  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=1\|pko=1\|pkc=1\|pka=1\|pkb=1\|pkf=1\|pkfit=1\|pkr=0\|pkal=0\|pknow=1\|pksh=1\|pkx=pottery-ss-classic-white~2~fit~good\|nx=oxford\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
+  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=2\|pko=1\|pkc=1\|pka=1\|pkb=1\|pkf=1\|pkfit=1\|pkr=0\|pkal=0\|pknow=1\|pksh=1\|pkx=pottery-ss-classic-white~2~fit~good~2\|pkw=0~0~0~0~0\|nwd=0~1~0\|nx=oxford\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
     '만족도 질문(더는 못 쓰면·추천할 마음)과 운영자가 읽을 요약 한 줄이 붙는다', mline);
   ok(pv.includes('시험 의견') && pv.includes(VER) && pv.includes('옷 6벌') && pv.includes('후보 2') && pv.includes('연 날 1일') && pv.includes('빠른 시작 5벌') && pv.includes('2주 뒤 답 1건(잘함 1') && !pv.includes('흰 셔츠') && !pv.includes('트렌치') && !pv.includes('스커트') && !pv.includes('musinsa'),
     '의견 미리보기에 사용 요약(빠른 시작·2주 뒤 답 포함)은 있고 옷 이름은 없다', pv.split('\n').slice(2));
@@ -341,7 +362,7 @@ for (const m of modes) {
   const older = other.replace('at=2026-10-20', 'at=2026-10-19').replace('own=2', 'own=1');
   await page.click('#tabbtn-log');
   const plb = await page.locator('#pickLogBox').innerText().catch(() => '');
-  ok(plb.includes('샀음 2') && plb.includes('잘 맞음') && !(await page.locator('#advanced').count()), '기록 탭에 추천 기록(샀음·산 사이즈·2주 뒤 답)이 남고, 개발용 서버 맞추기는 웹판에 없다', plb.slice(0, 120));
+  ok(plb.includes('샀음 · 2(M)') && plb.includes('잘 맞음') && plb.includes('1위로 바꿀래요') && !(await page.locator('#advanced').count()), '기록 탭에 추천 기록(샀음·산 사이즈·2주 뒤 답, 보던 상품 결정)이 줄 목록으로 남고, 개발용 서버 맞추기는 웹판에 없다', plb.slice(0, 160));
   await page.click('#opsBox > summary');
   await page.fill('#opsText', '[민지] 오후 9:01\n' + mine + '\n[준호] 오후 9:30 써 봤어요\n' + older + '\n[준호] 오후 10:00\n' + other);
   await page.click('#opsGo');

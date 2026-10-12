@@ -27,14 +27,15 @@ const origin = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const nets = [['느린 4G(가정 1.6Mbps·150ms)', 1.6, 0.75, 150], ['보통 LTE(가정 12Mbps·40ms)', 12, 4, 40]];
 for (const [label, down, up, rtt] of nets) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  // 서비스 워커가 받는 요청(closet.js 등)은 페이지에 건 회선 흉내를 거치지 않아 너무 빠르게 잰다(0.8.0 에서 발견: 느린 4G 3D 4초). 재는 동안은 서비스 워커를 막는다.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const page = await ctx.newPage(), cdp = await ctx.newCDPSession(page);
   await cdp.send('Network.enable');
   await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: rtt, downloadThroughput: down * 125000, uploadThroughput: up * 125000 });
   const t0 = Date.now();
   await page.goto(origin + '/'); await page.waitForSelector('#welcome');
   const first = Date.now() - t0;
-  await page.click('#startSample');
+  await page.click('#startMore > summary'); await page.click('#startSample');
   const t1 = Date.now();
   await page.click('#tabbtn-closet3d');
   await page.waitForFunction(() => window.__closet && Object.keys(window.__closet.things).length >= 5 && !window.__closet.busy, null, { timeout: 600000 });

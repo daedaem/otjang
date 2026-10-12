@@ -36,7 +36,20 @@ test('지표: 활성화(5벌)·핵심 가치(판정 끝)·유지(30일 3일)·2�
   assert.deepEqual([s.nps.answered, s.nps.promoters, s.nps.detractors, s.nps.score], [4, 1, 2, -25]);
   assert.equal(s.errors, 1);
   const v = F.verdicts(s);
-  assert.deepEqual(v, { activated: 'pass', value: 'pass', retained: 'pass', pmf: 'few' });          // PMF 는 답한 사람이 5명 미만이라 판단하지 않는다
+  assert.deepEqual(v, { picked: 'below', outbound: 'below', bought: 'below', fit: 'few', now: 'below', retained: 'pass', pmf: 'few', activated: 'pass', value: 'pass' });   // PMF·사이즈는 답이 5개 미만이라 판단하지 않는다
   assert.deepEqual(F.verdicts(F.summarize(es.slice(0, 3))).activated, 'few');                         // 5명 미만이면 판단하지 않는다
   assert.deepEqual(F.summarize([]).activated, { count: 0, total: 0, pct: null });
+});
+
+test('추천 지표: 추천 받음·판매처·샀어요·사이즈 잘 맞음·보던 상품, 아닌 이유(pkw)·보던 상품 결정(nwd)·추천 사이즈가 든 pkx', () => {
+  const es = [mk({ id: 'a', pk: 2, pko: 1, pkb: 1, pkf: 1, pkfit: 1, pknow: 1, pkw: '1~0~2~0~0', nwd: '1~1~0', pkx: 'pottery-ss-classic-white~2~fit~good~2' }), mk({ id: 'b', pk: 1, pko: 1, pkr: 1, pkw: '0~0~0~1~0' }),
+    mk({ id: 'c', pk: 1 }), mk({ id: 'd', pk: 0 }), mk({ id: 'e', pk: 3, pko: 2, pkb: 1, pknow: 2, nwd: '0~0~2' })].map(F.parseOne);
+  const s = F.summarize(es), v = F.verdicts(s);
+  assert.deepEqual([s.picked.count, s.outbound.count, s.bought.count, s.nowUsers.count], [4, 3, 2, 2]);
+  assert.deepEqual(s.rejectWhy, { price: 1, brand: 0, fit: 2, have: 1, other: 0 });
+  assert.deepEqual(s.nowDecide, { keep: 1, switch: 1, skip: 2 });
+  assert.deepEqual(s.fitOutcomes[0], { product: 'pottery-ss-classic-white', size: '2', fit: 'fit', feel: 'good', rec: '2' });
+  assert.deepEqual([v.picked, v.outbound, v.bought, v.fit, v.now], ['pass', 'pass', 'pass', 'few', 'pass']);
+  assert.equal(F.parseOne('EOUL1|id=x|pkx=a-b~M~fit~good').pkx[0].rec, '', '예전 형식(추천 사이즈 없음)도 읽는다');
+  assert.deepEqual(F.parseOne('EOUL1|id=x|pkw=9~x~-1|nwd=abc').pkw, { price: 9, brand: 0, fit: 0, have: 0, other: 0 });
 });

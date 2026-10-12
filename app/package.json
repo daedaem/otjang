@@ -1,6 +1,6 @@
 {
   "name": "otjang",
-  "version": "0.7.0-beta",
+  "version": "0.8.0-beta",
   "private": true,
   "type": "commonjs",
   "description": "어울(EOUL, 가칭) 시험판: 기준으로 딱 하나 추천(검증 카탈로그), 옷장 기록, 살까 말까 판정, 3D 옷장. 서버 없이 동작한다.",
