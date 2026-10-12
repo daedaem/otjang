@@ -54,6 +54,9 @@ if (split) {
     share_target: { action: './', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
     icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 1));
   for (const n of ['icon-192.png', 'icon-512.png']) if (fs.existsSync(path.join(dir, 'web', n))) fs.copyFileSync(path.join(dir, 'web', n), path.join(dir, split, n));
+  // 서비스 워커: 캐시 이름에 이번 빌드의 해시를 넣어, 새로 배포하면 새 캐시로 바뀌고 옛 캐시는 지워진다
+  const swVer = crypto.createHash('sha256').update(src).update(ver).digest('hex').slice(0, 10);
+  fs.writeFileSync(path.join(dir, split, 'sw.js'), read('web/sw.js').replace('@@VER@@', swVer));
 } else {
   src = src.replace('/*@@CLOSET@@*/', () => closet.replace(/<\/script/g, '<\\/script'));
   src = src.replace('<!--@@HEAD_EXTRA@@-->', '');

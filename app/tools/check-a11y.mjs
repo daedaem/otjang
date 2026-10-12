@@ -49,6 +49,9 @@ for (const m of [{ name: 'light', w: 1280, h: 900, scheme: 'light' }, { name: 'd
   await page.click('#helpBtn'); await audit('안내 창', '#helpDlg'); await page.click('#helpClose');
   await page.click('#fbBtn'); await audit('의견 보내기 창', '#fbDlg'); await page.click('#fbClose');
   await page.click('#tabbtn-closet'); await page.click('#addOwned'); await audit('옷 추가 마법사', '#wizard'); await page.click('#wzCancel');
+  const px = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNgYGD4z8DAwMDAwMDAAAAJAAH/AbQhAAAAAElFTkSuQmCC', 'base64');   // 2×2 PNG
+  await page.setInputFiles('#bulkFile', [{ name: 'a.png', mimeType: 'image/png', buffer: px }, { name: 'b.png', mimeType: 'image/png', buffer: px }]);
+  await page.waitForFunction(() => document.querySelectorAll('#bkList .brow').length === 2); await audit('사진으로 여러 벌 넣기 창', '#bulkDlg'); await page.click('#bkCancel');
   await ctx.close();
 }
 await browser.close(); server.close();

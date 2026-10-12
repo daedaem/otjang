@@ -8,6 +8,17 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
+// 시험용 단색 PNG(가운데에 옷 색, 가장자리는 흰 배경)를 의존성 없이 만든다
+function makePng(w, h, rgb) {
+  const crcT = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (t, d) => { const len = Buffer.alloc(4); len.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const inside = x > w * 0.12 && x < w * 0.88 && y > h * 0.08 && y < h * 0.92, o = y * (w * 3 + 1) + 1 + x * 3; const c = inside ? rgb : [250, 250, 250]; raw[o] = c[0]; raw[o + 1] = c[1]; raw[o + 2] = c[2]; }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+}
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const web = path.join(root, process.env.WEB || 'dist/web');
 const shots = path.join(root, 'shots'); fs.mkdirSync(shots, { recursive: true });
@@ -46,6 +57,8 @@ for (const m of modes) {
   ok(!files.includes('closet.js'), '처음에는 3D 파일(closet.js)을 받지 않는다', files);
   ok(!(await overflow()), '첫 화면에 가로 넘침이 없다');
   await page.screenshot({ path: path.join(shots, m.name + '-1-welcome.png'), fullPage: true });
+  const swOn = await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null, { timeout: 15000 }).then(() => true, () => false);
+  ok(swOn, '서비스 워커가 이 폴더만 맡는다(끊겨도 열리게)', await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()) ? (await navigator.serviceWorker.getRegistration()).scope : ''));
 
   // 2. 예시 A 둘러보기 → 3D → 지우기
   await page.click('#startSample');
@@ -141,6 +154,25 @@ for (const m of modes) {
   ok(linked && linked.link === 'https://www.musinsa.com/products/1234567' && (await page.locator('main').innerText()).includes('무신사 · https://www.musinsa.com/products/1234567'), '후보에 링크가 남고 판정 화면에 판매처와 함께 보인다');
   await page.click('#tabbtn-closet');
 
+  // 5c. 옷 사진 여러 장으로 넣기: 사진마다 색 초안, 분류·종류는 사람이 고른다
+  await page.setInputFiles('#bulkFile', [{ name: 'a.png', mimeType: 'image/png', buffer: makePng(120, 160, [32, 42, 78]) }, { name: 'b.png', mimeType: 'image/png', buffer: makePng(120, 160, [214, 190, 150]) }, { name: 'c.png', mimeType: 'image/png', buffer: makePng(120, 160, [140, 60, 120]) }]);
+  await page.waitForFunction(() => document.querySelectorAll('#bkList .brow').length === 3);
+  const fams = await page.evaluate(() => Array.from(document.querySelectorAll('#bkList .brow')).map((r) => r.querySelectorAll('select')[2].value));
+  ok(fams.join(',') === 'navy,beige,purple', '사진 3장의 색 초안(네이비·베이지·퍼플)을 뽑는다', fams);
+  await page.screenshot({ path: path.join(shots, m.name + '-5-bulk.png') });
+  await page.locator('#bkList .brow').nth(1).locator('select').first().selectOption('bottom');
+  await page.locator('#bkList .brow').nth(1).locator('select').nth(1).selectOption('chino');
+  await page.locator('#bkList .brow').nth(2).getByRole('button', { name: '빼기' }).click();
+  ok((await page.locator('#bkAdd').innerText()).includes('2벌'), '뺀 사진은 세지 않는다');
+  await page.click('#bkAdd');
+  const bulk = await page.evaluate(() => window.__app.state.items.filter((i) => i.photo.ownImg).map((i) => [i.cat, i.kind, i.family, i.attrSource, i.photo.kind]));
+  ok(bulk.length === 2 && bulk[0].join() === 'top,shirt,navy,photo-draft,own' && bulk[1].join() === 'bottom,chino,beige,photo-draft,own', '두 벌이 내 사진과 함께 "사진에서 뽑은 초안"으로 들어간다', bulk);
+  await page.locator('#closetGrid .card', { hasText: '네이비 셔츠' }).getByRole('button', { name: '기록' }).click();
+  await page.click('#edDelete'); await page.click('#edDelete');
+  await page.locator('#closetGrid .card', { hasText: '베이지 치노' }).last().getByRole('button', { name: '기록' }).click();
+  await page.click('#edDelete'); await page.click('#edDelete');
+  ok((await st()).owned === 5, '시험으로 넣은 두 벌을 지우면 다시 5벌');
+
   // 6. 한 벌 자세히 넣기(마법사): 새 종류 스커트
   await page.click('#addOwned');
   await page.selectOption('#z-cat', 'bottom'); await page.selectOption('#z-kind', 'skirt'); await page.fill('#z-name', '회색 플리츠 스커트'); await page.click('#wzNext');
@@ -198,6 +230,15 @@ for (const m of modes) {
   await page.click('#qcCancel');
   ok(ext.length === 0, '인터넷으로 나간 요청이 없다', ext);
   ok(logs.length === 0, '콘솔 오류·경고가 없다(보안 정책 위반 없음)', logs);
+  // 10b. 인터넷이 끊겨도: 한 번 연 앱과 한 번 받은 3D 는 그대로 열리고, 옷장도 그대로다
+  await ctx.setOffline(true);
+  await page.goto(origin + '/'); await page.waitForFunction(() => window.__app);
+  const off = await st();
+  await page.click('#tabbtn-closet3d');
+  const off3d = await page.waitForFunction(() => window.__closet && document.querySelector('#stageLoad').hidden, null, { timeout: 60000 }).then(() => true, () => false);
+  ok(off.owned === 6 && off.cand === 2 && off3d && !(await page.locator('#stageMsg').isVisible()), '인터넷이 끊겨도 앱과 3D 옷장이 열리고 옷장 자료가 그대로다', off);
+  await ctx.setOffline(false);
+  await page.click('#tabbtn-closet');
   // 11. 보안 정책: 이 페이지에서 외부 주소로 보내려 해도 막힌다
   const csp = await page.evaluate(async () => ({ meta: !!document.querySelector('meta[http-equiv="Content-Security-Policy"]'), robots: (document.querySelector('meta[name="robots"]') || {}).content || '',
     fetch: await fetch('https://example.com/collect').then(() => 'sent', () => 'blocked'), script: await new Promise((res) => { const sc = document.createElement('script'); sc.src = 'https://example.com/x.js'; sc.onload = () => res('ran'); sc.onerror = () => res('blocked'); document.head.append(sc); }) }));
