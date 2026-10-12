@@ -84,9 +84,10 @@ create table item_match_candidate (
     evidence text     not null check (evidence in ('logo', 'text', 'owner')),
     note     text     not null default '',
     url      text     not null default '',
-    unique (item_id, position),
     check (brand <> '' or name <> '')
 );
+-- (item_id, position) 유일 제약은 두지 않는다: JPA 가 후보 목록을 통째로 바꿀 때 새 행 insert 가 옛 행 delete 보다 먼저 나가므로(Hibernate 플러시 순서) 유일 제약이 걸린다. 순서는 position 으로만 쓴다
+create index item_match_candidate_item_idx on item_match_candidate (item_id, position);
 comment on table item_match_candidate is '미확인 브랜드·상품 후보. 내 옷 정보가 아니다. 사용자가 확인하면 item.product_* 로 올라가고 여기서 빠진다';
 
 create table decision (

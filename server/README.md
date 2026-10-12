@@ -8,7 +8,7 @@
 | 항목 | 상태 |
 |---|---|
 | `domain` 패키지(규칙·정리·상태 전이·내보내기, 의존성 없는 순수 Java) | **컴파일·실행 확인.** `GoldenParity`: 앱(JS)의 골든 스냅샷(`app/test/golden/sample-results.json`, 판정 12건·코디 10건·비교 5건)과 상품 순위 스냅샷(`src/test/resources/golden/catalog-rank.json`, 4종 순위·상품→후보 7건·재확인 판정)이 **모두 일치**. `DomainChecks` 25개 단언 통과. 규칙을 일부러 바꾸면(예: 밝기 문턱) 차이가 잡히는 것도 확인 |
-| `V1__init.sql` 스키마 | **PostgreSQL 16.15 에 적용 확인.** 제약 시험: 확인 기록 없는 "확인됨" 거부, 내 사진 상태에 product 거부, 같은 client_id 중복 거부, 후보 6번째 자리 거부, 빈 후보 거부, 멱등 키 중복 거부 — 모두 기대대로 |
+| `V1__init.sql` 스키마 | **PostgreSQL 16.15 에 적용 확인.** 제약 시험: 확인 기록 없는 "확인됨" 거부, 내 사진 상태에 product 거부, 같은 client_id 중복 거부, 후보 6번째 자리 거부, 빈 후보 거부, 멱등 키 중복 거부 — 모두 기대대로. (item_id, position) 유일 제약은 Hibernate 플러시 순서(insert 가 delete 보다 먼저) 때문에 두지 않았다 |
 | Spring 계층(`api`, `persistence`, `service`, `store`), `pom.xml`, `ApiFlowTest` | **컴파일·실행 미실행.** 작업 환경에서 Maven Central(repo.maven.apache.org)이 프록시에 막혀 의존성을 받을 수 없었다. 네트워크가 되는 곳에서 `mvn -q test` 를 먼저 돌려 컴파일 오류를 잡아야 한다(Spring Boot 4 의 바뀐 패키지·스타터 이름은 공식 문서로 확인해 썼다: `spring-boot-starter-webmvc`, `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`, Testcontainers 2.0.5 `org.testcontainers.postgresql.PostgreSQLContainer`) |
 
 의존성 없이 지금 확인할 수 있는 것(JDK 21 + Maven 배포판의 gson):
