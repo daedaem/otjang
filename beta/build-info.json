@@ -1,14 +1,14 @@
 {
  "source_repository": "daedaem/otjang",
  "source_branch": "feat/beta-eoul",
- "source_commit": "668cf651091ec928e67a69e854cf071cb1134d7e",
- "version": "0.6.0-beta",
- "built_at": "2026-10-12T18:19:13.553Z",
+ "source_commit": "f6e63c34c43544bf63cbdd5bdfcbd072517cde04",
+ "version": "0.7.0-beta",
+ "built_at": "2026-10-12T19:54:02.085Z",
  "note": "지인 비공개 베타(어울 가칭). 개인 사진·옷장 자료 없음. 검색 제외(noindex). 추천 카탈로그는 공식 판매처에서 2026-10-13 확인한 값(상품 사진 없음).",
  "files": {
   "index.html": {
-   "bytes": 389457,
-   "sha256": "f39e4ad31df14c6b8b11e1510da7873854d20bbe099efc701bcca5a9f465574f"
+   "bytes": 461400,
+   "sha256": "9dfe3a0d3902528315255fe7ff145b193d0c621086bef29e1258f19d77cac795"
   },
   "closet.js": {
    "bytes": 11678806,
@@ -16,7 +16,7 @@
   },
   "sw.js": {
    "bytes": 1745,
-   "sha256": "a827e940ddd5c361a30e5062e57cab849c35f0621d336305a0455db5e4312018"
+   "sha256": "9726c6d7befc4a05c43442ac433e72e85c8c648b63a70d70c02a5161bfff686d"
   },
   "manifest.webmanifest": {
    "bytes": 502,
