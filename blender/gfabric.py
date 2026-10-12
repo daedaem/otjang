@@ -142,6 +142,8 @@ PRESETS2 = {
     'mine-tartan': dict(fn='tartan', sett=[('B', 16), ('K', 3), ('B', 3), ('K', 3), ('B', 3), ('K', 14), ('G', 22), ('K', 3), ('G', 10)],
                         colors=dict(B='#25324a', K='#141918', G='#365c4c')),
     'mine-cord': dict(fn='corduroy', base='#33211d', dark='#120a09'),
+    # 스웻셔츠(기모 면 저지, 헤더 그레이): 가는 능직 결에 보풀을 많이 (2026-10-12)
+    'sweat-gray': dict(warp='#86888c', weft='#9a9c9f', fleck='#c9cbcf', weave='twill', fuzz=0.7, nstrength=0.3, blotk=0.03),
 }
 SHEEN = {'ocbd': dict(k=0.3, rough=0.5), 'stripe': dict(k=0.3, rough=0.5), 'field': dict(k=0.35, rough=0.55), 'blazer': dict(k=0.6, rough=0.75)}
 

@@ -22,15 +22,15 @@ Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-pro
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
 npm test                                     # 규칙·스키마·상품·색 초안 테스트 46개 (Node 22)
-npm run assets && npm run build              # dist/index.html (약 9MB). 브라우저로 열면 된다
-npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 64항목 × 두 환경)
+npm run assets && npm run build              # dist/index.html (약 10MB). 브라우저로 열면 된다
+npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 65항목 × 두 환경)
 ```
 
 저장소의 옷장 자료는 합성 예시(`app/data/sample-wardrobe.json`)입니다. 본인 자료는 `app/data/wardrobe.json`(.gitignore)에 두면 빌드가 그것을 씁니다.
 
 ## 확인한 것과 아닌 것
 
-- **검증 사실**(2026-10-12, 리눅스 클라우드): 테스트 46개, 빌드, 헤드리스 Chromium 두 환경(1280×900 밝음, 390×844 어두움)에서 환경당 64항목 통과. 외부 요청 0건. 빌드 결과에 사진 데이터 없음. 서버는 규칙 Java 이식의 골든 교차 검증과 PostgreSQL 16 스키마 적용까지 확인(Spring 계층 컴파일은 미실행 — server/README.md).
+- **검증 사실**(2026-10-12, 리눅스 클라우드): 테스트 46개, 빌드, 헤드리스 Chromium 두 환경(1280×900 밝음, 390×844 어두움)에서 환경당 65항목 통과. 외부 요청 0건. 빌드 결과에 사진 데이터 없음. 서버는 규칙 Java 이식의 골든 교차 검증과 PostgreSQL 16 스키마 적용까지 확인(Spring 계층 컴파일은 미실행 — server/README.md).
 - **미실행**: 실제 휴대폰·Safari·맥에서 열기, 본인이 살까 말까 판정을 실제로 써 본 기록(0건), 3D 체감 성능.
 - 실제 상품 자동 추천, 실사 착장, 정확한 핏 판정, 다중 사용자 서버, 다른 PC 동기화는 완료된 기능으로 소개하지 않습니다.
 

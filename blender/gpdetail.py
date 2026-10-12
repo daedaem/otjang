@@ -299,10 +299,10 @@ def relax_neck(D, P, reach=0.09, its=40):
     return P
 
 
-SMOOTH = {'shirt': 4, 'field': 10, 'blazer': 8}
+SMOOTH = {'shirt': 4, 'field': 10, 'blazer': 8, 'sweat': 6}
 TIDY = True
 LAST = None
-PRESS = {'shirt': 0.3, 'field': 0.35, 'blazer': 0.25}
+PRESS = {'shirt': 0.3, 'field': 0.35, 'blazer': 0.25, 'sweat': 0.3}
 MIRROR_OF = {'sleeveR': 'sleeveL', 'sleeveL': 'sleeveR', 'lapelR': 'lapelL', 'lapelL': 'lapelR'}
 
 
@@ -413,6 +413,7 @@ def build(cache, preset):
     if kind == 'field': return build_field(D, P2, N2, fm, S, fab, inner, hw)
     if kind == 'trucker': return build_trucker(D, P1, P2, N2, fm, S, fab, inner, hw)
     if kind == 'blazer': return build_blazer(D, P2, N2, fm, S, fab, inner, hw)
+    if kind == 'sweat': return build_sweat(D, P2, N2, fm, S, fab, inner)
     front_follow = gscene.follower(P1, P2, F, set(i for i, nm in enumerate(D['piece_of']) if nm in ('front', 'back')))
     patch(fm, 'placket', [[-0.0175, -S['neck_df'] + 0.004], [0.0175, -S['neck_df'] + 0.004], [0.0175, S['hem_f'] + 0.003], [-0.0175, S['hem_f'] + 0.003]], 6, 90, 0.0016, fab, inner)
     patch(fm, 'pocket', [[0.058, -0.222], [0.162, -0.222], [0.162, -0.34], [0.058, -0.34]], 14, 16, lambda u, v: 0.0018 + 0.0015 * math.sin(math.pi * u) * math.sin(math.pi * v), fab, inner,
@@ -514,6 +515,30 @@ def build_blazer(D, P2, N2, fm, S, fab, inner, hw):
     if 'leaf' in D['offs']: flat_stitch(FlatMap(D, 'leaf', P2, N2), inset(D, 'leaf', 'outer', 0.005, trim=0.006), 0.0014)
     stitch_mesh('stitch', (0.16, 0.19, 0.28), w=0.0006)
     return finish('blazer')
+
+
+def build_sweat(D, P2, N2, fm, S, fab, inner):
+    """스웻셔츠(크루넥, 기모): 리브 넥밴드(꿰맨 세운 조각), 리브 밑단 밴드(앞·뒤), 리브 커프스(단추 없음), 박음질(진동·어깨·옆선·밑단 두 줄). 로고·프린트는 그리지 않는다. 2026-10-12"""
+    hem = S['hem_f']; band = 0.06
+    bm_ = FlatMap(D, 'back', P2, N2)
+    for m_, nm in ((fm, 'front'), (bm_, 'back')):                                                      # 밑단 리브 밴드 6cm: 조금 두껍게 얹고 위·아래 가장자리 박음질
+        poly = piece_poly(D, nm); xs = poly[:, 0]; x0, x1 = xs.min() + 0.002, xs.max() - 0.002
+        patch(m_, 'rib-' + nm, [[x0, hem + band], [x1, hem + band], [x1, hem + 0.002], [x0, hem + 0.002]], 60, 5, 0.0024, fab, inner, thick=0.0018)
+        flat_stitch(m_, line((x0 + 0.004, hem + band - 0.004), (x1 - 0.004, hem + band - 0.004)), 0.0024 + 0.0018 + 0.0004)
+        flat_stitch(m_, line((x0 + 0.004, hem + 0.006), (x1 - 0.004, hem + 0.006)), 0.0024 + 0.0018 + 0.0004)
+        for sg_ in ('armR', 'armL', 'shoulderR', 'shoulderL'): flat_stitch(m_, inset(D, nm, sg_, 0.006, trim=0.008), 0.0012)
+    for sg_ in ('sideR', 'sideL'): flat_stitch(fm, inset(D, 'front', sg_, 0.006, trim=0.008), 0.0012)
+    if 'stand' in D['offs']:                                                                          # 넥밴드(꿰맨 조각) 아래 가장자리 박음질: 넥밴드 조각의 아랫선을 따라
+        o = D['offs']['stand']; sg = D['seg']['stand']
+        for key in ('lo1', 'lo2', 'lo3', 'lo4'):
+            idx = [o + i for i in sg[key]]; pts = [P2[i] + N2[i] * 0.0016 for i in idx]; nrm = [N2[i] for i in idx]
+            STITCHES.append((pts, nrm))
+    sm = {nm: FlatMap(D, nm, P2, N2) for nm in ('sleeveR', 'sleeveL')}
+    for nm in ('sleeveR', 'sleeveL'):
+        flat_stitch(sm[nm], inset(D, nm, 'underF', 0.006, trim=0.03), 0.0012)
+        cuff(D, P2, nm, fab, inner, height=0.06, circ_target=0.21)                                      # 리브 커프스 6cm, 둘레 약 21cm, 단추 없음
+    stitch_mesh('stitch', (0.52, 0.53, 0.56))
+    return finish('sweat')
 
 
 def build_trucker(D, P1, P2, N2, fm, S, fab, inner, hw):

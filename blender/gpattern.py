@@ -42,6 +42,9 @@ BLAZER = dict(neck_w=0.08, neck_df=0.0, neck_db=0.022, sp=(0.24, -0.038), chest=
               hem_f=-0.765, hem_b=-0.74, cut_y=-0.64, sl_len=0.62, bicep=0.37, wrist=0.28, ease=0.03, placket=0.0,
               r1=(0.068, -0.016), break_y=-0.40, gorge_y=-0.105,
               lapel=[(0.10, -0.132), (0.128, -0.15), (0.127, -0.2), (0.106, -0.28), (0.066, -0.35), (0.024, -0.392)])
+# 스웻셔츠(크루넥): 셔츠 옷본을 넓고 짧게, 밑단 곧게(리브 밴드가 붙는다), 떨어진 어깨, 넓고 둥근 목둘레(리브 넥밴드), 소매 끝은 좁게(리브 커프스). 2026-10-12 추가
+SWEAT = dict(neck_w=0.095, neck_df=0.085, neck_db=0.026, sp=(0.255, -0.058), chest=0.305, ah_y=-0.285, waist=(0.302, -0.45), hem_side=(0.30, -0.64),
+             hem_f=-0.64, hem_b=-0.64, sl_len=0.60, bicep=0.44, wrist=0.24, ease=0.012, placket=0.0)
 GARMENTS = {
     'shirt': dict(dims=SHIRT, collar=dict(COLLAR), cloth=dict(mass=0.3, tension=15, shear=5, bend=0.12), hanger=dict(half=0.19, ry=0.011, rz=0.02)),
     'blazer': dict(dims=BLAZER, collar=dict(h_back=0.03, h_side=0.026, h_v=0.006, leaf=0.044, point=0.018, blazer=True),
@@ -50,6 +53,9 @@ GARMENTS = {
                     cloth=dict(mass=0.4, tension=30, shear=10, bend=0.6), hanger=dict(half=0.205, ry=0.012, rz=0.022)),
     'field': dict(dims=FIELD, collar=dict(h_back=0.052, h_front=0.046, gap=0.0, leaf=False),
                   cloth=dict(mass=0.42, tension=30, shear=10, bend=0.3), hanger=dict(half=0.215, ry=0.013, rz=0.026)),
+    # 넥밴드(리브)는 세운 깃 조각(leaf 없음)을 낮게(2.2cm) 만들어 목둘레에 꿰맨다. 기모 원단: 무겁고 부드럽게 늘어진다
+    'sweat': dict(dims=SWEAT, collar=dict(h_back=0.018, h_front=0.018, gap=0.0, leaf=False),
+                  cloth=dict(mass=0.45, tension=20, shear=8, bend=0.22), hanger=dict(half=0.215, ry=0.013, rz=0.026)),
 }
 KIND = 'shirt'; CLOTH = GARMENTS['shirt']['cloth']; HANGER = GARMENTS['shirt']['hanger']
 
@@ -605,7 +611,7 @@ def simulate(name, h=0.012, sew_frames=45, hang_frames=70, settle_frames=40, kin
         v2 = M[nm]['v2']
         for i in np.where(v2[:, 1] < -SHIRT['sl_len'] + 0.025)[0]: stiff[offs[nm] + int(i)] = 0.33
     for nm in [x for x in ('stand', 'leaf', 'lapelR', 'lapelL') if x in M]:                            # 깃·라펠: 심지가 들어 가장 뻣뻣하다
-        for i in range(len(M[nm]['v2'])): stiff[offs[nm] + i] = 1.0
+        for i in range(len(M[nm]['v2'])): stiff[offs[nm] + i] = 0.3 if KIND == 'sweat' else 1.0      # 스웻셔츠 넥밴드는 리브라 부드럽다 (뻣뻣하면 차이나 깃처럼 선다)
     if KIND == 'blazer':                                                                               # 재킷: 앞판 전체에 심지(캔버스), 어깨에 패드
         for nm, base_w in (('front', 0.5), ('back', 0.2)):
             v2 = M[nm]['v2']; sl = np.interp(np.abs(v2[:, 0]), [0, SHIRT['neck_w'], SHIRT['sp'][0]], [0, 0, SHIRT['sp'][1]])

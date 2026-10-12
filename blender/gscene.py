@@ -23,6 +23,7 @@ PRESETS = {
     'mine-tartan': dict(weave='oxford', c1='#365c4c', c2='#25324a'),
     'mine-field': dict(weave='twill', c1='#7c785e', c2='#6a6650', rough=0.85, sheen=0.2, buttons='snap'),
     'mine-cord': dict(weave='twill', c1='#3d2722', c2='#170e0c', rough=0.9, sheen=0.4, buttons='horn'),
+    'sweat-gray': dict(weave='twill', c1='#8b8d90', c2='#74767a', rough=0.95, sheen=0.35),                   # 기모 스웻셔츠(헤더 그레이). 2026-10-12
 }
 hexrgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
 def lin(c): c = c / 255.0; return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4

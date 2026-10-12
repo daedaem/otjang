@@ -10,7 +10,7 @@
  *     img: 화면에 거는 사진. ownImg: 내가 찍은 사진(상품 사진을 걸어도 남겨 둔다). sourceName·sourceUrl·checkedAt: 상품 사진의 출처와 확인일
  *   product: null | { brand, name, code, confirmedAt }                         ← photo.kind가 'confirmed'일 때만. 사용자가 확인해야 생긴다
  *   matchCandidates: [{ brand, name, evidence: 'logo' | 'text' | 'owner', note, url }]   ← 내 옷 정보가 아니다. 확인 전 후보
- *   look3d: null | { kind: 'shirt' | 'blazer' | 'field' | 'trucker', fabric }            ← 3D 옷장에 거는 종류와 원단. 종류로 그린 모습이지 상품 재현이 아니다
+ *   look3d: null | { kind: 'shirt' | 'blazer' | 'field' | 'trucker' | 'sweat', fabric }            ← 3D 옷장에 거는 종류와 원단. 종류로 그린 모습이지 상품 재현이 아니다
  *   brand, model, size, boughtYear, review, rebuy, fabric, neck, measures, link, price, checkedAt   ← 주인이 직접 적은 내 옷 기록
  *
  * 상태는 자동으로 오르지 않는다. 대체 이미지 → 미확인 후보 → 확인된 동일 제품은 모두 사용자 동작(아래 함수 호출)으로만 바뀐다.
@@ -49,7 +49,7 @@
   const ATTR_SOURCE = { 'photo-draft': '사진에서 뽑은 초안', owner: '주인이 입력', 'owner-confirmed': '주인이 확인함' };
   const PHOTO_KIND = { own: '내 사진', confirmed: '확인된 동일 제품', candidate: '미확인 후보', substitute: '대체 이미지 · 내 옷 아님', none: '사진 없음' };
   const EVIDENCE = { logo: '사진 속 로고', text: '사진 속 글자', owner: '주인이 말함' };
-  const LOOK_KINDS = { shirt: '셔츠(버튼다운)', blazer: '블레이저', field: '필드 재킷', trucker: '트러커 재킷' };
+  const LOOK_KINDS = { shirt: '셔츠(버튼다운)', blazer: '블레이저', field: '필드 재킷', trucker: '트러커 재킷', sweat: '스웻셔츠(크루넥)' };
   const MAX_CANDS = 5;
 
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');

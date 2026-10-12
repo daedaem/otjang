@@ -244,11 +244,12 @@ for (const m of modes) {
     ok(await page.evaluate(() => Object.keys(window.__closet.things).length) === 5, '3D 옷장에 형태가 있는 5벌이 걸린다');
     ok((await page.locator('#rackPanel').innerText()).includes('3D 형태 없음') && (await page.locator('#rackPanel .row').count()) >= 14, '걸 옷 목록에 형태 없는 옷이 표시된다');
     await page.locator('#rackPanel .row', { hasText: '네이비 스웻셔츠' }).getByRole('button', { name: '형태 고르기' }).click();
-    await page.selectOption('#lk-kind', 'shirt'); await page.click('#lk-save');
+    ok((await page.locator('#lk-kind').inputValue()) === 'sweat', '스웻셔츠는 형태 고르기에서 스웻셔츠 형태가 먼저 골라져 있다');
+    await page.click('#lk-save');
     await page.locator('#rackPanel .row', { hasText: '네이비 스웻셔츠' }).getByRole('button', { name: '걸기' }).click();
     await page.waitForFunction(() => Object.keys(window.__closet.things).length >= 6 && !window.__closet.busy, null, { timeout: 180000 }).catch(() => logs.push('3d timeout 2'));
     const r5 = await page.evaluate(() => ({ things: Object.keys(window.__closet.things).length, rack: window.__app.state.rack.length, look: window.__app.state.items.find((i) => i.id === 's-sweat-navy').look3d }));
-    ok(r5.things === 6 && r5.rack === 6 && r5.look && r5.look.kind === 'shirt' && r5.look.fabric === '', '형태를 고르면(색으로 만든 원단) 옷장에 걸린다', r5);
+    ok(r5.things === 6 && r5.rack === 6 && r5.look && r5.look.kind === 'sweat' && r5.look.fabric === '', '형태를 고르면(색으로 만든 원단) 옷장에 걸린다', r5);
     await page.evaluate(() => window.__closet.rest());
     await shot('9-closet3d', { fullPage: false });
     await page.locator('#stageChips button').first().click();

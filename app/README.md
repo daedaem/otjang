@@ -33,7 +33,7 @@ npm test                     # 규칙·스키마·상품·색 초안 테스트 4
 npm run assets               # assets/closet → src/closet/assets.gen.js
 npm run build                # dist/index.html (약 9MB, 3D 포함). NO3D=1 이면 3D 없이, NO_MESHOPT=1 이면 WebAssembly 없이(더 크다)
 npm run build:empty          # dist/otjang-empty.html (빈 옷장)
-npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인: 환경당 64항목 × 두 환경(3D 탭 포함. NO3D=1로 건너뛸 수 있음, QUICK=1이면 한 환경). 기대값은 예시 옷장 기준
+npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인: 환경당 65항목 × 두 환경(3D 탭 포함. NO3D=1로 건너뛸 수 있음, QUICK=1이면 한 환경). 기대값은 예시 옷장 기준
 npm run golden               # 규칙 결과 스냅샷 다시 만들기 (규칙을 일부러 바꿀 때만)
 npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (meshopt 압축)
 ```
@@ -54,7 +54,7 @@ npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (
 | `src/closet/cloth.js` | 흔들림용 거친 물리 천(PBD)과 보이는 옷을 붙이는 Skin |
 | `src/closet/fabric.js` | 무채색 결 그림에 색을 곱해 원단을 만든다(줄무늬·체크 포함) |
 | `src/closet/decoder.js`, `decoder-none.js` | meshopt 압축 glb 해제(WebAssembly). `NO_MESHOPT=1` 빌드는 해제기 없이 `assets/closet-src/`의 원본 glb를 넣는다 |
-| `assets/closet/` | Blender로 구운 자산: 옷장·방(glb, 라이트맵, 질감), 옷 4종(glb, 라이트맵, 그림자), 원단 5종(+노멀), 결 그림 4종, `meta.json`. glb는 meshopt로 압축한 것(`assets/closet-src/`가 원본). 만드는 법은 `../blender/README.md` |
+| `assets/closet/` | Blender로 구운 자산: 옷장·방(glb, 라이트맵, 질감), 옷 5종(glb, 라이트맵, 그림자), 원단 6종(+노멀), 결 그림 4종, `meta.json`. glb는 meshopt로 압축한 것(`assets/closet-src/`가 원본). 만드는 법은 `../blender/README.md` |
 | `data/sample-wardrobe.json` | 합성 예시 옷장 13벌 (스키마 2, 사진 없음). `template-ivy.json` 기본 옷장 초안 15벌. `empty.json` 빈 판 |
 | `test/` | 규칙·스키마·상품 테스트, 골든 스냅샷(`golden/sample-results.json`: 예시 옷장의 규칙 결과. 스키마 1 자료를 옮겨도 같아야 한다), 스키마 1 예시(`fixtures/wardrobe-v1.json`) |
 | `tools/` | `check.mjs` 브라우저 확인, `golden.mjs` 스냅샷, `gen-assets.mjs` 자산 묶기, `compress-glb.mjs` 압축, `shot.mjs` 화면 찍기 |
@@ -81,7 +81,7 @@ npm run compress             # assets/closet-src/*.glb → assets/closet/*.glb (
 
 ## 알려진 한계
 
-- 3D 형태는 4종이다. 다른 종류(바지, 신발, 니트, 블루종, 스웻셔츠)는 "3D 형태 없음"으로 목록에만 보인다. 다른 종류로 대신 그리지 않는다.
+- 3D 형태는 5종이다(셔츠·블레이저·필드 재킷·트러커 재킷·크루넥 스웻셔츠, 스웻셔츠는 v0.4.2). 다른 종류(바지, 신발, 니트·카디건, 블루종, 후디)는 "3D 형태 없음"으로 목록에만 보인다. 다른 종류로 대신 그리지 않는다.
 - 브라우저에서 만든 원단은 근사치다(옥스퍼드·능직·홉색 결에 색을 곱함). 코듀로이 결은 미리 만든 원단에서만 쓴다.
 - 3D 옷장 자리는 6곳이다. 7벌 이상은 걸 옷을 바꿔 가며 본다.
 - 파일이 약 9MB다. 실제 휴대폰과 Safari에서는 확인하지 않았다(헤드리스 Chromium에서 1280px·390px 확인).

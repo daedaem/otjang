@@ -40,7 +40,7 @@ public final class Vocab {
     public static final Map<String, String> ATTR_SOURCE = ordered("photo-draft", "사진에서 뽑은 초안", "owner", "주인이 입력", "owner-confirmed", "주인이 확인함");
     public static final Map<String, String> PHOTO_KIND = ordered("own", "내 사진", "confirmed", "확인된 동일 제품", "candidate", "미확인 후보", "substitute", "대체 이미지 · 내 옷 아님", "none", "사진 없음");
     public static final Map<String, String> EVIDENCE = ordered("logo", "사진 속 로고", "text", "사진 속 글자", "owner", "주인이 말함");
-    public static final Map<String, String> LOOK_KINDS = ordered("shirt", "셔츠(버튼다운)", "blazer", "블레이저", "field", "필드 재킷", "trucker", "트러커 재킷");
+    public static final Map<String, String> LOOK_KINDS = ordered("shirt", "셔츠(버튼다운)", "blazer", "블레이저", "field", "필드 재킷", "trucker", "트러커 재킷", "sweat", "스웻셔츠(크루넥)");
     public static final int MAX_CANDS = 5;
     public static final Set<String> STATUSES = Set.of("owned", "candidate", "gone");
 
