@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>어울 (가칭)</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-JMoVQywhtAPPbqva8UqLH1ivNfjwIqc2oK9InL9ZoKg=' 'sha256-uBQua/+lbz7FH1J4NT8kE7rINU39gyBHKMjkZCyKUSI=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-Q2GaMJj3mvc7JyaXIG5Q3fDT0F6pCq50mdJ3BKWVmHE=' 'sha256-X9WY5/Bn2pLmOlws79K6UH6yUvwpGTfMjwDYKyo+NuY=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-MZzi7hhSBCh7bfIm9BFnXAmjDSYWleeq6mZRzmKa77k=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-JMoVQywhtAPPbqva8UqLH1ivNfjwIqc2oK9InL9ZoKg=' 'sha256-uBQua/+lbz7FH1J4NT8kE7rINU39gyBHKMjkZCyKUSI=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-Q2GaMJj3mvc7JyaXIG5Q3fDT0F6pCq50mdJ3BKWVmHE=' 'sha256-X9WY5/Bn2pLmOlws79K6UH6yUvwpGTfMjwDYKyo+NuY=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-RfnWiz0JEFwHQB8sUugxFqazNPwNTequqfJa07A1AZY=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
@@ -200,6 +200,13 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 .qchip i{width:18px;height:18px;border-radius:50%;border:1px solid var(--line2);flex:none}
 .qchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
 .notice .sub2{font-size:13px;color:var(--ink2);margin:6px 0 2px}
+/* 사진 여러 장 */
+.brow{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.brow:first-child{border-top:0}
+.brow .thumb{width:64px;height:64px;border-radius:8px;aspect-ratio:auto}
+.brow .bf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.brow .bf .full{grid-column:1/-1}
+.brow .bf .inl .sw{width:22px;height:22px;border-radius:6px;border:1px solid var(--line2);flex:none}
 .notice .choices{margin:6px 0 8px}
 </style>
 </head>
@@ -306,7 +313,7 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
 <dialog id="quickDlg" aria-labelledby="qTitle">
   <div class="dhead"><h2 id="qTitle">자주 입는 옷 골라 넣기</h2><button class="btn small" type="button" id="qClose">닫기</button></div>
   <div class="dbody">
-    <p class="note" style="margin-bottom:12px">가진 옷과 비슷한 것을 누르세요. 색과 격식은 대표값으로 들어가고, 나중에 사진·색·이름을 고칠 수 있습니다.</p>
+    <p class="note" style="margin-bottom:12px">가진 옷과 비슷한 것을 누르세요. 색과 격식은 대표값으로 들어가고, 나중에 사진·색·이름을 고칠 수 있습니다. 옷 사진이 있으면 <button class="btn small" type="button" id="qPhotos">사진으로 여러 벌 넣기</button>가 색이 더 정확합니다.</p>
     <div id="qBody"></div>
   </div>
   <div class="dfoot"><span class="note" id="qCount"></span><span class="grow"></span><button class="btn" type="button" id="qCancel">취소</button><button class="btn primary" type="button" id="qAdd" disabled>넣기</button></div>
@@ -332,6 +339,16 @@ details.adv{margin-top:14px}details.adv>summary{cursor:pointer;color:var(--ink2)
     <div class="dfoot"><button class="btn small" type="button" id="qcFull">사진·가격까지 자세히</button><span class="grow"></span><button class="btn" type="button" id="qcCancel">취소</button><button class="btn primary" type="submit" id="qcGo">판정 보기</button></div>
   </form>
 </dialog>
+<dialog id="bulkDlg" aria-labelledby="bkTitle">
+  <div class="dhead"><h2 id="bkTitle">사진으로 여러 벌 넣기</h2><button class="btn small" type="button" id="bkClose">닫기</button></div>
+  <div class="dbody">
+    <p class="note" style="margin-bottom:8px">사진마다 분류와 종류를 골라 주세요. 색은 사진 가운데에서 뽑은 <b>초안</b>이라 조명 때문에 다를 수 있고, 나중에 확인할 수 있습니다. 사진은 이 브라우저 안에만 저장됩니다.</p>
+    <div id="bkList"></div>
+    <p class="warnnote" id="bkErr" hidden></p>
+  </div>
+  <div class="dfoot"><span class="note" id="bkCount"></span><span class="grow"></span><button class="btn" type="button" id="bkCancel">취소</button><button class="btn primary" type="button" id="bkAdd" disabled>넣기</button></div>
+</dialog>
+<input type="file" id="bulkFile" accept="image/*" multiple hidden>
 <dialog id="shareDlg" aria-labelledby="shTitle">
   <div class="dhead"><h2 id="shTitle">친구에게 물어보기</h2><button class="btn small" type="button" id="shClose">닫기</button></div>
   <div class="dbody">
@@ -2933,6 +2950,7 @@ const TEMPLATE = {
     const bar = h('div', { class: 'bar' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),
       Object.keys(CATS).map((c) => chip(CATS[c], ui.cat === c, () => { ui.cat = c; render(); })), h('span', { class: 'grow' }),
       h('button', { class: 'btn', type: 'button', id: 'addQuick', onclick: () => openQuick(), text: '기본 옷 골라 넣기' }),
+      h('button', { class: 'btn', type: 'button', id: 'addPhotos', onclick: () => $('#bulkFile').click(), text: '사진으로 여러 벌' }),
       h('button', { class: 'btn primary', type: 'button', id: 'addOwned', onclick: () => openWizard(null, 'owned'), text: '옷 추가' }));
     main.append(bar, h('div', { class: 'bar' }, seasonChips(ui.season, (s) => { ui.season = s; render(); })));
     const list = state.items.filter((i) => i.status !== 'gone' && (ui.cat === 'all' || i.cat === ui.cat) && J.inSeason(i, ui.season));
@@ -3723,6 +3741,58 @@ const TEMPLATE = {
     $('#qcDlg').close(); save(); render();
   });
 
+  // ---------- 사진으로 여러 벌 넣기 (색은 사진에서 뽑은 초안) ----------
+  const bk = { rows: [] };
+  const MAX_BULK = 20;
+  $('#qPhotos').addEventListener('click', () => { $('#quickDlg').close(); $('#bulkFile').click(); });
+  $('#bulkFile').addEventListener('change', async () => {
+    const files = Array.from($('#bulkFile').files || []).slice(0, MAX_BULK); $('#bulkFile').value = '';
+    if (!files.length) return;
+    bk.rows = []; $('#bkErr').hidden = true; $('#bkList').textContent = ''; $('#bkCount').textContent = '사진을 읽는 중…'; $('#bkAdd').disabled = true; $('#bulkDlg').showModal();
+    let bad = 0;
+    for (const f of files) {
+      const img = await readImage(f), g = img ? await guessColor(f) : null;
+      if (!img) { bad++; continue; }
+      bk.rows.push({ img, guess: g, cat: 'top', kind: 'shirt', family: g ? g.family : 'gray', light: g ? g.light : 50, touched: false, name: '', drop: false });
+    }
+    if (bad) { $('#bkErr').textContent = bad + '장은 읽지 못해 뺐습니다.'; $('#bkErr').hidden = false; }
+    renderBulk();
+  });
+  function renderBulk() {
+    const list = $('#bkList'); list.textContent = '';
+    bk.rows.forEach((r, i) => {
+      if (r.drop) return;
+      const cat = h('select', { 'aria-label': (i + 1) + '번 사진 분류' }), kind = h('select', { 'aria-label': (i + 1) + '번 사진 종류' }), fam = h('select', { 'aria-label': (i + 1) + '번 사진 색 계열' });
+      fill(cat, CATS, r.cat); fill(kind, KINDS[r.cat], r.kind); fill(fam, FAM, r.family);
+      const sw = h('span', { class: 'sw', style: 'background:' + swatch(r) });
+      const name = h('input', { type: 'text', maxlength: '80', 'aria-label': (i + 1) + '번 사진 이름', value: r.name, placeholder: famLabel(r) + ' ' + kindLabel(r) });
+      cat.addEventListener('change', () => { r.cat = cat.value; r.kind = Object.keys(KINDS[r.cat])[0]; renderBulk(); });
+      kind.addEventListener('change', () => { r.kind = kind.value; name.placeholder = famLabel(r) + ' ' + kindLabel(r); });
+      fam.addEventListener('change', () => { r.family = fam.value; r.light = FAM[r.family][3]; r.touched = true; sw.style.background = swatch(r); name.placeholder = famLabel(r) + ' ' + kindLabel(r); });
+      name.addEventListener('input', () => { r.name = name.value; });
+      list.append(h('div', { class: 'brow', 'data-i': String(i) }, h('div', { class: 'thumb' }, h('img', { src: r.img, alt: (i + 1) + '번 옷 사진' })),
+        h('div', { class: 'bf' }, cat, kind, h('div', { class: 'inl' }, sw, fam), h('button', { class: 'btn small', type: 'button', onclick: () => { r.drop = true; renderBulk(); }, text: '빼기' }),
+          h('div', { class: 'full' }, name), r.guess && !r.touched ? h('span', { class: 'note full', text: '사진에서 뽑은 색: ' + FAM[r.guess.family][0] + ', 밝기 ' + r.guess.light }) : null)));
+    });
+    const n = bk.rows.filter((r) => !r.drop).length;
+    $('#bkCount').textContent = n ? n + '벌' : '넣을 사진이 없습니다';
+    $('#bkAdd').disabled = !n; $('#bkAdd').textContent = n ? n + '벌 넣기' : '넣기';
+  }
+  $('#bkAdd').addEventListener('click', () => {
+    const rows = bk.rows.filter((r) => !r.drop);
+    if (state.meta.sample) leaveSample();
+    for (const r of rows) {
+      const draft = !r.touched && r.guess;
+      let it = W.cleanItem({ id: newId('i'), status: 'owned', cat: r.cat, kind: r.kind, name: r.name.trim() || famLabel(r) + ' ' + kindLabel(r), family: r.family, light: r.light, formality: KIND_FORMAL[r.kind] || 2, pattern: 'solid', seasons: [],
+        attrSource: draft ? 'photo-draft' : 'owner', draftNote: draft ? '사진 가운데 색에서 뽑은 초안 (대표색 ' + G.hex(r.guess.rgb) + ')' : '' }, 0);
+      it = W.setOwnPhoto(it, r.img); replaceItem(it);
+    }
+    state.meta.welcomed = true; bk.rows = []; $('#bulkDlg').close(); ui.tab = 'closet'; save(); render();
+    toast(rows.length + '벌을 넣었습니다. 색은 초안이라 "확인하기"로 고칠 수 있어요.');
+  });
+  const closeBulk = () => { bk.rows = []; $('#bulkDlg').close(); };
+  $('#bkClose').addEventListener('click', closeBulk); $('#bkCancel').addEventListener('click', closeBulk);
+
   // ---------- 쇼핑 링크, 친구에게 물어보기 ----------
   // 판매처 이름은 주소의 도메인으로만 붙인다. 링크를 열거나 내용을 읽지 않는다
   const SHOPS = [['musinsa.com', '무신사'], ['29cm.co.kr', '29CM'], ['wconcept.co.kr', 'W컨셉'], ['zigzag.kr', '지그재그'], ['a-bly.com', '에이블리'], ['kream.co.kr', 'KREAM'], ['coupang.com', '쿠팡'],
@@ -3918,6 +3988,7 @@ const TEMPLATE = {
         h('p', { text: BRAND.tagline + ' 고를 수 있게, 가진 옷을 바탕으로 비교해 드립니다.' }),
         h('ol', null, h('li', { text: '가진 옷과 비슷한 기본 옷을 눌러 한 번에 넣습니다 (30초, 나중에 고칠 수 있습니다)' }), h('li', { text: '고민 중인 옷의 종류와 색을 골라 "살까 말까"를 봅니다' }), h('li', { text: '겹치는 옷과 새 조합을 보고 정하고, 2주 뒤 잘 샀는지 한 번 답합니다' })),
         h('div', { class: 'bar', style: 'margin:0 0 8px' }, h('button', { class: 'btn primary', type: 'button', id: 'startQuick', onclick: () => { state.meta.welcomed = true; save(); openQuick(); }, text: '자주 입는 옷 골라 넣기' }),
+          h('button', { class: 'btn', type: 'button', id: 'startPhotos', onclick: () => { state.meta.welcomed = true; save(); $('#bulkFile').click(); }, text: '옷 사진 여러 장으로' }),
           h('button', { class: 'btn', type: 'button', id: 'startOwn', onclick: () => { state.meta.welcomed = true; save(); openWizard(null, 'owned'); }, text: '한 벌씩 자세히 넣기' })),
         h('div', { class: 'bar', style: 'margin:0' }, h('span', { class: 'note', text: '먼저 둘러보기:' }),
           h('button', { class: 'btn small', type: 'button', id: 'startSample', onclick: sample(SAMPLE), text: '예시 A · 셔츠·재킷' }),
@@ -3953,6 +4024,8 @@ const TEMPLATE = {
     if (state.meta.days[state.meta.days.length - 1] !== today()) state.meta.days.push(today());
     $('#appTag').textContent = BRAND.tagline + (BRAND.beta ? ' · 시험판 ' + BRAND.version : '');
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* 무시: 오래 남게 해 달라는 요청이며 거절돼도 동작은 같다 */ }
+    // 웹 배포판에서만: 한 번 연 뒤에는 인터넷이 끊겨도 열리게(sw.js). 옷장 자료는 다루지 않는다
+    try { if (window.__CLOSET_SRC && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) { /* 지원하지 않는 브라우저 */ }
     save(); render();
     // 설치한 앱(안드로이드)에서 쇼핑 앱의 "공유"로 들어오면: 링크와 글로 고민 중인 옷 넣기를 연다. 주소창의 값은 바로 지운다
     try {
