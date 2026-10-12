@@ -597,7 +597,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     const rack = new Map(state.rack.map((r) => [r.id, r]));
     const all = state.items.filter((i) => i.status !== 'gone').sort((a, b) => (a.status === b.status ? 0 : a.status === 'owned' ? -1 : 1));
     const panel = h('section', { class: 'panel', id: 'rackPanel' }, h('h2', { text: '옷장에 걸 옷 (' + state.rack.length + '/6)' }),
-      h('p', { class: 'sub', text: '3D 형태가 있는 옷만 걸 수 있습니다. 형태는 직접 고릅니다(셔츠, 블레이저, 필드 재킷, 트러커 재킷, 스웻셔츠). 원단은 미리 만든 것 가운데 고르거나, 옷의 색·무늬로 만든 근사치를 씁니다. 바지와 신발 형태는 아직 없습니다.' }));
+      h('p', { class: 'sub', text: '3D 형태가 있는 옷만 걸 수 있습니다. 형태는 직접 고릅니다(셔츠, 블레이저, 필드 재킷, 트러커 재킷, 스웻셔츠, 카디건). 원단은 미리 만든 것 가운데 고르거나, 옷의 색·무늬로 만든 근사치를 씁니다. 바지와 신발 형태는 아직 없습니다.' }));
     const list = h('div', { class: 'list racklist' });
     for (const it of all) {
       const r = rack.get(it.id), has = !!it.look3d;
@@ -615,7 +615,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   function alertLine(panel, text) { let m = $('.warnnote', panel); if (!m) { m = h('p', { class: 'warnnote' }); panel.append(m); } m.textContent = text; }
   function lookPicker(it) {
     const kindSel = h('select', { id: 'lk-kind' }); for (const k in LOOK_KINDS) kindSel.append(h('option', { value: k, text: LOOK_KINDS[k] }));
-    kindSel.value = it.look3d ? it.look3d.kind : (it.kind === 'sweat' ? 'sweat' : it.cat === 'top' ? 'shirt' : it.kind === 'blazer' ? 'blazer' : 'field');
+    kindSel.value = it.look3d ? it.look3d.kind : (it.kind === 'sweat' ? 'sweat' : it.kind === 'cardigan' ? 'cardigan' : it.cat === 'top' ? 'shirt' : it.kind === 'blazer' ? 'blazer' : 'field');
     const fabSel = h('select', { id: 'lk-fabric' });
     const fillFab = () => { fabSel.textContent = ''; fabSel.append(h('option', { value: '', text: '옷의 색·무늬로 만들기 (근사)' })); for (const id in X.TILES) if (X.TILES[id].kind === kindSel.value) fabSel.append(h('option', { value: id, text: X.TILES[id].name + ' (미리 만든 원단)' })); fabSel.value = it.look3d && X.TILES[it.look3d.fabric] && X.TILES[it.look3d.fabric].kind === kindSel.value ? it.look3d.fabric : ''; };
     fillFab(); kindSel.addEventListener('change', fillFab);

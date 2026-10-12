@@ -18,10 +18,10 @@ CRES = int(sys.argv[4]) if len(sys.argv) > 4 else 2048
 GRES = int(sys.argv[5]) if len(sys.argv) > 5 else 1536
 QUICK = len(sys.argv) > 6 and sys.argv[6] == 'quick'
 SMP = dict(closet=24 if QUICK else 40, room=16 if QUICK else 32, garment=16 if QUICK else int(os.environ.get('GSMP', 64)), decal=8 if QUICK else 32)
-BAKE_PRESET = {'shirt': 'ocbd-white', 'blazer': 'blazer-navy', 'field': 'field-olive', 'trucker': 'mine-cord', 'sweat': 'sweat-gray'}
-WEB_PRESETS = {'shirt': ['ocbd-white', 'ocbd-blue', 'ocbd-navy', 'stripe-blue'], 'blazer': ['blazer-navy'], 'field': ['field-olive'], 'trucker': ['mine-cord'], 'sweat': ['sweat-gray']}
+BAKE_PRESET = {'shirt': 'ocbd-white', 'blazer': 'blazer-navy', 'field': 'field-olive', 'trucker': 'mine-cord', 'sweat': 'sweat-gray', 'cardigan': 'cardigan-gray'}
+WEB_PRESETS = {'shirt': ['ocbd-white', 'ocbd-blue', 'ocbd-navy', 'stripe-blue'], 'blazer': ['blazer-navy'], 'field': ['field-olive'], 'trucker': ['mine-cord'], 'sweat': ['sweat-gray'], 'cardigan': ['cardigan-gray']}
 if os.environ.get('MINE') == '1':                                                                   # 사용자 옷: 사진 색을 참고한 원단
-    WEB_PRESETS = {'shirt': ['mine-stripe', 'mine-tartan'], 'field': ['mine-field'], 'trucker': ['mine-cord'], 'blazer': ['blazer-navy'], 'sweat': ['sweat-gray']}
+    WEB_PRESETS = {'shirt': ['mine-stripe', 'mine-tartan'], 'field': ['mine-field'], 'trucker': ['mine-cord'], 'blazer': ['blazer-navy'], 'sweat': ['sweat-gray'], 'cardigan': ['cardigan-gray']}
     BAKE_PRESET['field'] = 'mine-field'
 enc = lambda c: np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(np.maximum(c, 0), 1 / 2.4) - 0.055)
 LOG = []

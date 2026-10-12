@@ -16,6 +16,7 @@ export const KIND = {
   blazer: { type: '싱글 블레이저', parts: '노치 라펠 · 금장 단추 · 뚜껑 주머니', weave: 'hopsack' },
   field: { type: '필드 재킷', parts: '세운 깃 · 뚜껑 주머니 4개 · 견장', weave: 'twill' },
   trucker: { type: '트러커 재킷', parts: '뾰족 깃 · 가슴 뚜껑 주머니 · 앞 요크 · 허리 밴드', weave: 'twill' },
+  cardigan: { type: 'V넥 카디건', parts: 'V 목둘레 · 앞여밈 단추 5개 · 리브 밑단·커프스 (케이블 무늬 없이)', weave: 'hopsack' },
   sweat: { type: '크루넥 스웻셔츠', parts: '리브 넥밴드 · 리브 밑단 · 리브 커프스 (그래픽 없이)', weave: 'twill' },
 };
 // 미리 만든 원단(Blender 쪽에서 실 한 올 단위로 그린 것). 이름, 칩 색, 광택 색
@@ -25,6 +26,7 @@ export const TILES = {
   'mine-field': { kind: 'field', name: '세이지 올리브 면 능직', sw: '#7c785e', tone: '#7c785e' },
   'mine-cord': { kind: 'trucker', name: '다크 브라운 코듀로이', sw: '#33211d', tone: '#33211d' },
   'blazer-navy': { kind: 'blazer', name: '네이비 울 홉색', sw: '#1c2741', tone: '#1c2741' },
+  'cardigan-gray': { kind: 'cardigan', name: '미들 그레이 울 니트', sw: '#7d7f83', tone: '#7d7f83' },
   'sweat-gray': { kind: 'sweat', name: '헤더 그레이 기모 저지', sw: '#8b8d90', tone: '#8b8d90' },
 };
 export const SLOT_COUNT = M.closet.SLOTS.length;
@@ -32,7 +34,7 @@ export { familyColor };
 export const available = () => !!(AC && AC.glb);
 
 // 종류별 원단 느낌: 면 셔츠(잔잔한 광택), 면 능직(결이 또렷), 울 홉색(털 때문에 가장자리가 은은하게 밝다)
-const LOOK = { shirt: { n: 0.9, sr: 0.5, sk: 0.3, spec: 0.2, thread: 0.22 }, field: { n: 1.0, sr: 0.55, sk: 0.35, spec: 0.15, thread: 0.28 }, blazer: { n: 0.7, sr: 0.75, sk: 0.7, spec: 0.12, thread: 0.08 }, trucker: { n: 1.2, sr: 0.55, sk: 0.9, spec: 0.1, thread: 0.18 }, sweat: { n: 0.6, sr: 0.7, sk: 0.6, spec: 0.06, thread: 0.12 } };
+const LOOK = { shirt: { n: 0.9, sr: 0.5, sk: 0.3, spec: 0.2, thread: 0.22 }, field: { n: 1.0, sr: 0.55, sk: 0.35, spec: 0.15, thread: 0.28 }, blazer: { n: 0.7, sr: 0.75, sk: 0.7, spec: 0.12, thread: 0.08 }, trucker: { n: 1.2, sr: 0.55, sk: 0.9, spec: 0.1, thread: 0.18 }, sweat: { n: 0.6, sr: 0.7, sk: 0.6, spec: 0.06, thread: 0.12 }, cardigan: { n: 0.8, sr: 0.8, sk: 0.75, spec: 0.05, thread: 0.1 } };
 const EXPO = 0.86, EXPO_G = 0.88;
 const I = (k) => Math.PI * k * EXPO, IG = (k) => Math.PI * k * EXPO_G;
 const CL = M.closet;

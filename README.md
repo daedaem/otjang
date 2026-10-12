@@ -22,7 +22,7 @@ Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-pro
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
 npm test                                     # 규칙·스키마·상품·색 초안·서버 맞추기 테스트 52개 (Node 22)
-npm run assets && npm run build              # dist/index.html (약 10MB). 브라우저로 열면 된다
+npm run assets && npm run build              # dist/index.html (약 11MB). 브라우저로 열면 된다
 npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 72항목 × 두 환경)
 ```
 

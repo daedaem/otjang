@@ -134,5 +134,6 @@ test('look3d: 아는 종류만 받고, 원단 이름은 영문·숫자·하이�
   const it = W.setLook3d(W.cleanItem({ cat: 'top', kind: 'shirt', name: 'x' }, 0), { kind: 'shirt', fabric: 'mine-stripe<script>' });
   assert.deepEqual(it.look3d, { kind: 'shirt', fabric: 'mine-stripescript' });
   assert.equal(W.setLook3d(it, { kind: 'pants' }).look3d, null);
+  for (const k of ['sweat', 'cardigan']) assert.equal(W.setLook3d(it, { kind: k, fabric: '' }).look3d.kind, k, k + ' 형태(10-12 추가)');
   assert.equal(W.migrate(v2).items.filter((i) => i.look3d).length, 5, '예시 자료에는 3D 형태가 있는 옷이 5벌이다');
 });

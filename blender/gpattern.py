@@ -45,6 +45,9 @@ BLAZER = dict(neck_w=0.08, neck_df=0.0, neck_db=0.022, sp=(0.24, -0.038), chest=
 # 스웻셔츠(크루넥): 셔츠 옷본을 넓고 짧게, 밑단 곧게(리브 밴드가 붙는다), 떨어진 어깨, 넓고 둥근 목둘레(리브 넥밴드), 소매 끝은 좁게(리브 커프스). 2026-10-12 추가
 SWEAT = dict(neck_w=0.095, neck_df=0.085, neck_db=0.026, sp=(0.255, -0.058), chest=0.305, ah_y=-0.285, waist=(0.302, -0.45), hem_side=(0.30, -0.64),
              hem_f=-0.64, hem_b=-0.64, sl_len=0.60, bicep=0.44, wrist=0.24, ease=0.012, placket=0.0)
+# 카디건(니트, 앞여밈): 스웻셔츠보다 조금 슬림, 앞 목둘레를 깊게(V), 깃 없음, 밑단 곧게(리브). 앞여밈 단은 걸린 모양 위에 얹는다. 2026-10-12 추가
+CARDIGAN = dict(neck_w=0.085, neck_df=0.27, neck_db=0.024, sp=(0.24, -0.052), chest=0.29, ah_y=-0.275, waist=(0.282, -0.45), hem_side=(0.282, -0.66),
+                hem_f=-0.66, hem_b=-0.66, sl_len=0.60, bicep=0.40, wrist=0.23, ease=0.012, placket=0.016)
 GARMENTS = {
     'shirt': dict(dims=SHIRT, collar=dict(COLLAR), cloth=dict(mass=0.3, tension=15, shear=5, bend=0.12), hanger=dict(half=0.19, ry=0.011, rz=0.02)),
     'blazer': dict(dims=BLAZER, collar=dict(h_back=0.03, h_side=0.026, h_v=0.006, leaf=0.044, point=0.018, blazer=True),
@@ -56,6 +59,9 @@ GARMENTS = {
     # 넥밴드(리브)는 세운 깃 조각(leaf 없음)을 낮게(2.2cm) 만들어 목둘레에 꿰맨다. 기모 원단: 무겁고 부드럽게 늘어진다
     'sweat': dict(dims=SWEAT, collar=dict(h_back=0.018, h_front=0.018, gap=0.0, leaf=False),
                   cloth=dict(mass=0.45, tension=20, shear=8, bend=0.22), hanger=dict(half=0.215, ry=0.013, rz=0.026)),
+    # 니트: 가볍고 잘 늘어진다. 깃 조각 없음(pieces=False) → 옷걸이에서는 목둘레를 잡는다
+    'cardigan': dict(dims=CARDIGAN, collar=dict(h_back=0.03, h_front=0.03, gap=0.0, pieces=False),
+                     cloth=dict(mass=0.36, tension=12, shear=5, bend=0.12), hanger=dict(half=0.205, ry=0.012, rz=0.022)),
 }
 KIND = 'shirt'; CLOTH = GARMENTS['shirt']['cloth']; HANGER = GARMENTS['shirt']['hanger']
 
@@ -71,6 +77,8 @@ def draft_shirt(D=None):
     """남성 셔츠 M 기준 (완성 가슴둘레 112, 어깨너비 46.4, 앞길이 77, 뒷길이 80, 소매 57+커프스). 반쪽을 그리고 좌우로 뒤집는다."""
     nw, sp, ch, ay = D['neck_w'], D['sp'], D['chest'], D['ah_y']
     neck_f = curve(lambda t: (nw * math.sin(t), -D['neck_df'] * math.cos(t)), 0, math.pi / 2)          # 앞 목둘레: 앞중심 → 옆목점
+    if KIND == 'cardigan':                                                                            # 카디건: 거의 곧은 V 선이 옆목점 가까이에서 둥글게 이어진다
+        df = D['neck_df']; neck_f = bez((0.0, -df), (nw * 0.32, -df * 0.66), (nw * 0.92, -df * 0.2), (nw, 0.0))
     neck_b = curve(lambda t: (nw * math.sin(t), -D['neck_db'] * math.cos(t)), 0, math.pi / 2)          # 뒤 목둘레
     shoulder = np.array([[nw, 0.0], list(sp)]); shoulder = np.linspace(shoulder[0], shoulder[1], 40)  # 옆목점 → 어깨끝
     arm_f = bez(sp, (sp[0] - 0.014, -0.12), (sp[0] - 0.007, ay + 0.015), (ch, ay))                     # 앞 진동: 가슴 쪽으로 더 파임
@@ -489,6 +497,7 @@ def build_mesh(M, seams, pieces_order):
         P3 = place(name, m['v2'])
         if name in ('front', 'back'):
             if KIND == 'blazer': P3 = adjust_neck_blazer(name, m['v2'], P3, m['seg'])
+            elif KIND == 'cardigan' and name == 'front': pass                                               # 카디건 앞 V 목둘레는 목 고리로 옮기지 않는다(옮기면 V가 목까지 말려 올라간다)
             else: P3 = adjust_neck(name, m['v2'], P3, m['seg']['neckR'] + m['seg']['neckL'])
         PLACED[name] = Map3(m['v2'], m['faces'], P3)
         V3 += P3.tolist()
@@ -624,7 +633,8 @@ def simulate(name, h=0.012, sew_frames=45, hang_frames=70, settle_frames=40, kin
     # 2-1) 몸통에 둘러 꿰매기 (중력 없음)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     rest3 = {i: V3[i] for i, nm in enumerate(piece_of) if nm in PRESSED}
-    neck_pins = sorted(set(offs[nm] + i for nm in ('front', 'back') for s_ in ('neckR', 'neckL') for i in M[nm]['seg'][s_]))
+    neck_pins = sorted(set(offs[nm] + i for nm in ('front', 'back') for s_ in ('neckR', 'neckL') for i in M[nm]['seg'][s_]
+                           if not (KIND == 'cardigan' and nm == 'front' and M[nm]['v2'][i][1] < -0.06)))   # 카디건: 앞 V 목둘레는 잡지 않고 떨어지게(옆목점 근처만 잡는다)
     collar_pins = sorted(set(offs['stand'] + i for s_ in ('topL', 'topM', 'topR') if s_ in M['stand']['seg'] for i in M['stand']['seg'][s_])) if 'stand' in M else []
     hang_neck = [] if 'stand' in M else neck_pins[:]                                                    # 깃 조각이 없으면 옷걸이에서는 목둘레를 잡는다 (셔츠 pshirt-11과 같은 방식)
     neck_pins = sorted(set(neck_pins) | set(collar_pins))

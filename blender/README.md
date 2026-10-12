@@ -59,7 +59,7 @@ cd blender
 ## 새 옷을 더하는 길
 
 - **있는 종류에 새 원단**: `gfabric.PRESETS2`와 `gscene.PRESETS`에 원단 추가 → `gcloset_export.WEB_PRESETS[종류]`에 이름 추가 → 원단 그림만 새로 만들면 되고 형태와 빛은 그대로 쓴다 → 앱 `src/closet/index.js`의 `TILES`에 추가 → 빌드. 다만 v0.4부터 색만 다른 옷은 브라우저에서 만든 원단으로 그릴 수 있어, 미리 만든 원단은 결이 특별한 경우(코듀로이, 타탄)에만 더하면 된다.
-- **새 종류**(카디건, 블루종, 바지, 신발. 스웻셔츠는 2026-10-12에 이 길로 더했다 — 아래 "스웻셔츠를 더한 기록"): 옷본(`gpattern.GARMENTS`), 디테일(`gpdetail.build_*`), 굽기 기본 원단(`BAKE_PRESET`), 앱의 `KIND`가 모두 필요하다. 바지는 옷장에 거는 방식(집게 옷걸이 / 봉에 반 접기 / 선반에 개기)을 사용자가 먼저 정해야 한다. 신발은 천이 아니라 따로 모델링한다.
+- **새 종류**(블루종, 바지, 신발. 스웻셔츠·카디건은 2026-10-12에 이 길로 더했다 — 아래 기록): 옷본(`gpattern.GARMENTS`), 디테일(`gpdetail.build_*`), 굽기 기본 원단(`BAKE_PRESET`), 앱의 `KIND`가 모두 필요하다. 바지는 옷장에 거는 방식(집게 옷걸이 / 봉에 반 접기 / 선반에 개기)을 사용자가 먼저 정해야 한다. 신발은 천이 아니라 따로 모델링한다.
 
 ## 스웻셔츠를 더한 기록 (2026-10-12)
 
@@ -69,6 +69,13 @@ cd blender
 3. `gscene.PRESETS['sweat-gray']`, `gfabric.PRESETS2['sweat-gray']`(헤더 그레이 기모: 능직 결 + 보풀), `gcloset_export` 의 `BAKE_PRESET`/`WEB_PRESETS`.
 4. 명령: `python gpattern.py psweat-2 0.01 50 70 40 sweat`(약 3분) → `python prender.py cache/psweat-2.pkl sweat-gray out.png` 로 확인 → 앱 자산 복사본에 `CACHES=sweat=cache/psweat-2.pkl SKIP_ROOM=1 GSMP=40 CLOSET_OUT=<복사본> python gcloset_export.py x x x 2048 1024`(굽기 약 3분) → `sweat*.webp`·`meta.json` 의 `garments.sweat` 를 `app/assets/closet/` 에, `sweat.glb` 를 `app/assets/closet-src/` 에 → `npm run compress && npm run assets && npm run build`.
 5. 앱: `src/closet/index.js` 의 `KIND.sweat`·`TILES['sweat-gray']`·`LOOK.sweat`, `src/wardrobe.js` 의 `LOOK_KINDS.sweat`. 서버: `Vocab.LOOK_KINDS`, `V2__look3d_sweat.sql`.
+
+## 카디건을 더한 기록 (2026-10-12)
+
+스웻셔츠와 같은 순서(`CARDIGAN` 치수, `GARMENTS['cardigan']` 깃 조각 없음, `build_cardigan`, `cardigan-gray` 원단, `pcardigan-1`, `V3__look3d_cardigan.sql`). 다른 점 두 가지:
+- 앞 목둘레를 거의 곧은 V 선으로 그린다(`draft_shirt` 안의 `KIND == 'cardigan'` 분기).
+- 처음 배치에서 앞 목둘레를 목 고리로 옮기지 않고(`place`), 꿰매기·걸기에서 앞 V 선을 잡지 않는다(`neck_pins`). 그렇게 하지 않으면 27cm 깊이의 V 가 목 높이까지 말려 올라가 크루넥처럼 보였다(첫 시험에서 V 꼭짓점이 옆목점보다 5cm 아래에 머묾 → 고친 뒤 21cm 아래).
+- 케이블 무늬는 그리지 않았다(니트 결은 홉색 결 + 보풀로 근사).
 
 주의: `gcloset_export` 는 `meta.json` 을 새로 쓰면서 `weaves`·`note` 키를 버린다. 복사본에서 굽고 `garments.<종류>` 만 앱의 `meta.json` 에 합친다.
 
@@ -81,3 +88,4 @@ cd blender
 - 흰 셔츠가 따뜻한 조명에서 크림색으로 보인다. 코듀로이는 약간 붉게 보인다.
 - 스트라이프 셔츠는 멀리서 흰 셔츠에 가깝게 보일 수 있다.
 - 스웻셔츠: 리브 커프스가 소매보다 조금 굵은 원통처럼 보인다. 리브 골(세로 결)은 그리지 않았다.
+- 카디건: 니트 코(편물 결)가 아니라 홉색 결에 보풀을 얹은 근사다. 케이블 무늬 없음. 목둘레 리브 단은 박음질 두 줄로만 보인다. 앱 화면에서 그레이(색으로 만든 원단)가 따뜻한 조명 때문에 베이지처럼 보이고, 밑단 가운데(앞여밈 단과 리브 밴드가 겹치는 곳)에 검은 얼룩이 보인다(2026-10-12 화면 캡처로 확인, 고치지 않음).
