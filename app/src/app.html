@@ -631,7 +631,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       h('button', { class: 'btn small', type: 'button', onclick: () => openEditor(it), text: it.status === 'candidate' ? '수정' : '기록' }),
       W.isDraft(it) || (!it.brand && !it.model) ? h('button', { class: 'btn small', type: 'button', onclick: () => openWizard(it), text: '확인하기' }) : null,
       h('button', { class: 'btn small', type: 'button', onclick: () => openMatch(it.id), text: it.photo.kind === 'own' || it.photo.kind === 'none' ? '상품 사진' : '사진·확인' }),
-      it.status === 'candidate' ? h('button', { class: 'btn small', type: 'button', onclick: () => { ui.judgeId = it.id; ui.tab = 'judge'; render(); }, text: '판정 보기' }) : null] }))));
+      it.status === 'candidate' ? h('button', { class: 'btn small', type: 'button', onclick: () => { ui.judgeId = it.id; ui.tab = 'judge'; render(); }, text: '판정 보기' }) : null,
+      h('button', { class: 'btn small danger', type: 'button', 'aria-label': it.name + ' 삭제', onclick: () => deleteItem(it), text: '삭제' })] }))));
   }
 
   // ---------- 3D 옷장 ----------
@@ -761,7 +762,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
           last.after.decision === 'buy' ? h('button', { class: 'btn primary', type: 'button', id: 'moveOwned', onclick: () => { const o = Object.assign({}, c, { status: 'owned', boughtYear: c.boughtYear || YEAR }); replaceItem(W.cleanItem(o, 0)); save(); ui.tab = 'closet'; render(); }, text: '샀어요. 보유로 옮기기' }) : null,
           h('button', { class: 'btn', type: 'button', onclick: () => { ui.rejudge = c.id; render(); }, text: '다시 판정하기' }),
           h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
-          X && c.look3d ? h('button', { class: 'btn', type: 'button', onclick: () => { if (hang(c.id)) { ui.tab = 'closet3d'; render(); } }, text: '3D 옷장에 걸어 보기' }) : null)));
+          X && c.look3d ? h('button', { class: 'btn', type: 'button', onclick: () => { if (hang(c.id)) { ui.tab = 'closet3d'; render(); } }, text: '3D 옷장에 걸어 보기' }) : null,
+          h('button', { class: 'btn danger', type: 'button', onclick: () => deleteItem(c), text: '후보 삭제' }))));
       renderVerdict(right, c, null);
       return;
     }
@@ -774,7 +776,8 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
       } }, h('h2', { text: c.name }), h('p', { class: 'sub', text: '판정을 보기 전에 지금 마음을 적어 둡니다. 나중에 판정이 결정에 도움이 됐는지 견줘 보기 위해서입니다.' }),
         h('div', { class: 'choices' }, Object.keys(LEAN).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'lean', value: k, required: true }), h('span', { text: LEAN[k] })))),
         h('div', { class: 'field' }, h('label', { for: 'beforeReason', text: '그렇게 생각하는 이유 (선택)' }), h('input', { id: 'beforeReason', type: 'text', maxlength: '200' })),
-        h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn primary', type: 'submit', id: 'showVerdict', text: '판정 보기' }), h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' })));
+        h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn primary', type: 'submit', id: 'showVerdict', text: '판정 보기' }), h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
+          h('button', { class: 'btn danger', type: 'button', onclick: () => deleteItem(c), text: '후보 삭제' })));
       right.append(form);
       return;
     }
@@ -818,7 +821,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
     if (c.product) kv.append(h('dt', { text: '상품' }), h('dd', { text: [c.product.brand, c.product.name, c.product.code].filter(Boolean).join(' ') + ' (확인 ' + c.product.confirmedAt + ')' }));
     const p4 = h('section', { class: 'panel' }, h('h2', { text: '직접 넣은 구매 정보' }), kv.children.length ? kv : h('p', { class: 'sub', text: '가격과 링크를 넣지 않았습니다. 이 화면은 가격과 재고를 찾아오지 않습니다.' }));
     root.append(h('div', { class: 'bar', style: 'margin:0 0 12px' }, h('button', { class: 'btn small', type: 'button', id: 'askFriend', onclick: () => openShare(c), text: '친구에게 물어보기' }),
-      h('span', { class: 'note', text: '판정 요약을 그림으로 보냅니다. 내 옷장 사진·이름은 넣지 않습니다.' })), p1, p2, p3, p4);
+      h('span', { class: 'note grow', text: '판정 요약을 그림으로 보냅니다. 내 옷장 사진·이름은 넣지 않습니다.' }), dec ? h('button', { class: 'btn small danger', type: 'button', id: 'delCand', onclick: () => deleteItem(c), text: '후보 삭제' }) : null), p1, p2, p3, p4);
     if (!dec) return;
     const form = h('form', { class: 'panel', id: 'afterForm', onsubmit: (e) => {
       e.preventDefault();
@@ -1105,10 +1108,7 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
   $('#edClose').addEventListener('click', () => $('#editor').close());
   $('#edCancel').addEventListener('click', () => $('#editor').close());
   $('#f-match').addEventListener('click', () => { if (ed.item) { $('#editor').close(); openMatch(ed.item.id); } });
-  $('#edDelete').addEventListener('click', () => {
-    if (!ui.delArm) { ui.delArm = true; $('#edDelete').textContent = '한 번 더 누르면 삭제'; return; }
-    state.items = state.items.filter((i) => i.id !== ed.item.id); state.rack = state.rack.filter((r) => r.id !== ed.item.id); if (ui.stageSel === ed.item.id) ui.stageSel = null; $('#editor').close(); save(); render();
-  });
+  $('#edDelete').addEventListener('click', () => { const it = ed.item; if (!it) return; $('#editor').close(); deleteItem(it); });
   $('#edForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('#edErr'); err.hidden = true;
@@ -1588,7 +1588,22 @@ const TEMPLATE = /*@@TEMPLATE@@*/;</script>
 
   // ---------- 베타: 안내, 의견, 오류, 백업, 3D 나눠 받기 ----------
   const errors = [];
-  function toast(text) { let t = $('#toast'); if (!t) { t = h('div', { class: 'toast', id: 'toast', role: 'status' }); document.body.append(t); } t.textContent = text; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 4000); }
+  /** 아래에 잠깐 뜨는 알림. action: { label, fn } 이면 버튼(예: 되돌리기)을 붙이고 조금 더 오래 둔다. */
+  function toast(text, action) {
+    let t = $('#toast'); if (!t) { t = h('div', { class: 'toast', id: 'toast', role: 'status' }); document.body.append(t); }
+    t.textContent = text; t.hidden = false;
+    if (action) t.append(h('button', { class: 'btn small', type: 'button', id: 'toastAct', style: 'margin-left:10px', onclick: () => { t.hidden = true; clearTimeout(toast.t); action.fn(); }, text: action.label }));
+    clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, action ? 7000 : 4000);
+  }
+  /** 옷 한 벌을 바로 지운다. 결정 전 판정 기록과 3D 자리도 함께 지우고, 7초 동안 되돌릴 수 있다. 끝난 판정 기록(결정한 것)은 기록으로 남긴다. */
+  function deleteItem(it) {
+    const snap = { items: state.items.slice(), rack: state.rack.slice(), decisions: state.decisions.slice() };
+    state.items = state.items.filter((i) => i.id !== it.id); state.rack = state.rack.filter((r) => r.id !== it.id);
+    state.decisions = state.decisions.filter((d) => !(d.itemId === it.id && !d.after));
+    if (ui.stageSel === it.id) ui.stageSel = null; if (ui.judgeId === it.id) ui.judgeId = '';
+    save(); render();
+    toast('"' + it.name + '"을(를) 지웠습니다.', { label: '되돌리기', fn: () => { state.items = snap.items; state.rack = snap.rack; state.decisions = snap.decisions; save(); render(); } });
+  }
   window.addEventListener('error', (e) => { errors.push(str(String(e.message || e.error || '오류'), 160)); if (errors.length === 1) toast('문제가 생겼습니다. "의견 보내기"로 알려 주시면 고치겠습니다.'); });
   window.addEventListener('unhandledrejection', (e) => { errors.push(str(String((e.reason && e.reason.message) || e.reason || '오류'), 160)); });
   function usageSummary(ans) {

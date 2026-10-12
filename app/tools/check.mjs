@@ -135,7 +135,7 @@ for (const m of modes) {
   const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '네이비 니트 (사진)'); return i && { src: i.attrSource, family: i.family, light: i.light, note: i.draftNote, photo: i.photo.kind }; });
   ok(gi && gi.src === 'photo-draft' && gi.family === 'navy' && gi.photo === 'own' && gi.note.includes('대표색 #'), '사진 초안을 그대로 두고 저장하면 attrSource 가 photo-draft 이고 대표색이 기록된다', gi);
   await page.locator('#closetGrid .card', { hasText: '네이비 니트 (사진)' }).getByRole('button', { name: '기록' }).click();
-  await page.click('#edDelete'); await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
+  await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
   ok(await page.evaluate(() => !window.__app.state.items.some((x) => x.name === '네이비 니트 (사진)')), '시험용 옷을 지웠다');
 
   // 3. 살까 말까: 마법사로 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로

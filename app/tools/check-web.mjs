@@ -167,11 +167,15 @@ for (const m of modes) {
   await page.click('#bkAdd');
   const bulk = await page.evaluate(() => window.__app.state.items.filter((i) => i.photo.ownImg).map((i) => [i.cat, i.kind, i.family, i.attrSource, i.photo.kind]));
   ok(bulk.length === 2 && bulk[0].join() === 'top,shirt,navy,photo-draft,own' && bulk[1].join() === 'bottom,chino,beige,photo-draft,own', '두 벌이 내 사진과 함께 "사진에서 뽑은 초안"으로 들어간다', bulk);
-  await page.locator('#closetGrid .card', { hasText: '네이비 셔츠' }).getByRole('button', { name: '기록' }).click();
-  await page.click('#edDelete'); await page.click('#edDelete');
+  // 지우기: 카드의 "삭제"는 바로 지우고 7초 동안 되돌릴 수 있다. 기록 창의 "삭제"도 한 번에 지운다
+  await page.locator('#closetGrid .card', { hasText: '네이비 셔츠' }).getByRole('button', { name: '삭제' }).click();
+  const del1 = (await st()).owned;
+  await page.click('#toastAct');
+  const undo = await page.evaluate(() => window.__app.state.items.some((i) => i.name === '네이비 셔츠' && i.photo.ownImg));
+  await page.locator('#closetGrid .card', { hasText: '네이비 셔츠' }).getByRole('button', { name: '삭제' }).click();
   await page.locator('#closetGrid .card', { hasText: '베이지 치노' }).last().getByRole('button', { name: '기록' }).click();
-  await page.click('#edDelete'); await page.click('#edDelete');
-  ok((await st()).owned === 5, '시험으로 넣은 두 벌을 지우면 다시 5벌');
+  await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
+  ok(del1 === 6 && undo && (await st()).owned === 5, '카드의 삭제는 바로 지우고 되돌리기가 되며, 기록 창의 삭제도 한 번에 지운다', { del1, undo });
 
   // 6. 한 벌 자세히 넣기(마법사): 새 종류 스커트
   await page.click('#addOwned');
