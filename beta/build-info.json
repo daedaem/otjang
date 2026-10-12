@@ -1,0 +1,30 @@
+{
+ "source_repository": "daedaem/otjang",
+ "source_branch": "feat/beta-eoul",
+ "source_commit": "d88d86d44c63e164593fcb8ca93e96a757c9d314",
+ "version": "0.5.0-beta",
+ "built_at": "2026-10-12T15:17:13.531Z",
+ "note": "지인 비공개 베타(어울 가칭). 개인 사진·옷장 자료 없음. 검색 제외(noindex).",
+ "files": {
+  "index.html": {
+   "bytes": 261869,
+   "sha256": "d605e8beb838d01829deb523145f99313393585fd457ee227444a942efbc3346"
+  },
+  "closet.js": {
+   "bytes": 11678806,
+   "sha256": "cf930fd2eb2d01007ddb2201ba991b26c9928e902bd84f3b48fcb58afc91bde9"
+  },
+  "manifest.webmanifest": {
+   "bytes": 502,
+   "sha256": "edac10b1c692e526fea3f385fe7eaa347883e889a80da1830bdfd6ce8c7d4a2b"
+  },
+  "icon-192.png": {
+   "bytes": 6135,
+   "sha256": "b0d15250802a5c298a299b59acc28b27cd010cf3040b6db3e9cfa6f2939ea3f7"
+  },
+  "icon-512.png": {
+   "bytes": 16070,
+   "sha256": "d5e693debfe52d3b4ed7ad22ab3d089227ec3f1b3d3e83d7fca8ab37270a488c"
+  }
+ }
+}
