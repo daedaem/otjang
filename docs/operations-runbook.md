@@ -121,6 +121,8 @@ node release-tools/local-beta.mjs status
 
 로그인 계정의 자료 쓰기는 `Authorization: Bearer …`와 `X-Eoul-Contract: 2`를 사용한다. 전체 `/api/wardrobe/import`, `/api/catalog/import`, `/api/backup/restore`에는 현재 조회 응답 `X-Wardrobe-Version`을 큰따옴표로 감싼 `If-Match: "<revision>"`가 필수다. 다른 자료 쓰기도 앱은 알고 있는 버전을 보낸다. header의 revision은 날짜나 앱 버전이 아니다.
 
+재로그인에서 `syncStamp`가 누락·무효여도 같은 origin·인증 owner의 유효한 ack가 남으면 앱은 그 알려진 `serverVersion`을 유지한다. ack revision 7과 최신 서버 revision 8의 차이는 409로 보호할 충돌이다. 최신 번호를 다시 조회해 조건만 올리거나 ack를 지워 첫 보내기로 바꾸지 않는다. 양쪽 백업을 보관하고 받기 화면에서 실제 변경을 대조한다. 정상 stamp가 있는 재로그인은 기존에도 이 조건부 쓰기 보호가 동작했다.
+
 서버는 owner 행의 잠금 안에서 버전 확인, 변경, 응답 버퍼링, 커밋을 처리한다. 실패 응답은 트랜잭션을 롤백한다. 서버 자료 쓰기 성공의 revision을 다음 요청의 기준으로 사용한다. 전체 보내기는 옷장 import와 카탈로그 import **두 요청**이므로 첫 요청 성공 뒤 두 번째 요청이 실패할 수 있다. 현재의 전체 보내기가 묶음 원자적 v2 sync는 아니다.
 
 앱은 먼저 `/api/meta`로 지원을 확인한다. 구 서버로 반품·사이즈·반품 사유를 보내려 하면 전체 보내기를 차단한다. 구 클라이언트가 새 서버에 쓰면 409 `CLIENT_UPGRADE_REQUIRED`로 차단한다. 서버가 지원 정보를 잘못 반환하거나 새 스키마 파일이 들어와도 자료를 정리해서 일부만 저장하는 대신 중단한다.
@@ -289,7 +291,7 @@ tail -n 80 server/data/beta-runtime/server.log
 | --- | --- |
 | Java 21 / Maven 3.9.11, 실제 PostgreSQL 16 Testcontainers의 `mvn test` | **검증 사실: 130개 통과, 실패/오류/건너뜀 0.** 로컬 surefire XML 합계도 확인. 계약 fixture 88건, API 계약 테스트 8건, V7→V8/DB 제약·인증·계정 격리·revision 포함 |
 | Node 22.23.2, 새 `package-lock.json`의 분리된 의존성 설치 | **검증 사실: 임시 분리 폴더의 `npm ci --ignore-scripts --no-audit --no-fund` 성공, 27개 패키지와 최상위 고정 의존성 8개 일치.** 설치 스크립트는 실행하지 않은 검사이며 그 설치본의 빌드 검증은 진행 중 |
-| 최신 앱 테스트·전체/모바일 빌드·CAS·baseline 저장 | 전체 Node **184개 통과**, 기본 3D 포함·빈 모바일 빌드와 생성 JS 구문 성공. CAS/실제 앱 함수는 합성 어댑터 회귀이며 실제 브라우저는 별도. 자세한 결과는 [검증 기록](verification-2026-10-13.md) |
+| 최신 앱 테스트·빌드·CAS·baseline 저장 | 최초 전체 Node 184개 통과 후 재로그인 회귀 4개를 더한 최신 **188개 통과**. 최신 분리 웹·모바일 빌드 성공. 최초 기본 3D 포함 빌드와 생성 JS 구문 검사도 성공. CAS/실제 상태 정리·계정 진입·sync 함수는 합성 어댑터 회귀이며 실제 브라우저는 별도. 자세한 결과는 [검증 기록](verification-2026-10-13.md) |
 | 최신 브라우저 전체 흐름·실제 휴대폰/Safari·3D 체감 성능 | 미실행. 해당 환경에서 별도 확인 필요 |
 | production 기동·공개 배포·TLS/proxy/CORS 실구성 | 미실행 |
 | 사용자 브라우저/서버 백업 실제 복원, 전체 DB+사진 복구 훈련 | 미실행. API 자동 테스트 성공과 운영 복구 성공은 별도 증거 |

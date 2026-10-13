@@ -1896,12 +1896,20 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       requirePushSupport(wardrobe.decisions, discovery);
       if (ui.syncVersion == null) {
         if (discovery.status !== 200 || discovery.meta?.contract < SY.CONTRACT || !SY.checkPushSupport([], discovery).ok) throw new Error('계정 자료의 버전을 먼저 확인해 주세요. 서버를 업데이트한 뒤 다시 보내 주세요.');
-        const probe = await syncFetch('/api/wardrobe'), probeRaw = await probe.json(), version = probe.headers.get('X-Wardrobe-Version');
-        requireSyncSource(source);
-        if (!W.cleanWardrobe(probeRaw) || version == null || !/^\d+$/.test(version) || !Number.isSafeInteger(Number(version))) throw new Error('서버 자료와 버전을 확인할 수 없습니다. 현재 자료는 보내지 않았습니다.');
-        // The explicit push may repair old lost followups. Merely reading the
-        // current revision must not adopt the server data or a new baseline.
-        ui.syncVersion = Number(version);
+        const known = SY.cleanFollowupAck(state.syncFollowupAck);
+        if (known && known.origin === source.origin && known.ownerId === source.ownerId) {
+          // A missing stamp does not erase the last acknowledged revision.
+          // Keep its conservative precondition: a newer remote edit must return
+          // 409 and go through pull/explicit conflict resolution, not a probe.
+          ui.syncVersion = known.serverVersion;
+        } else {
+          const probe = await syncFetch('/api/wardrobe'), probeRaw = await probe.json(), version = probe.headers.get('X-Wardrobe-Version');
+          requireSyncSource(source);
+          if (!W.cleanWardrobe(probeRaw) || version == null || !/^\d+$/.test(version) || !Number.isSafeInteger(Number(version))) throw new Error('서버 자료와 버전을 확인할 수 없습니다. 현재 자료는 보내지 않았습니다.');
+          // An explicit first push can repair old lost followups when there is
+          // no trusted local revision. Reading it does not adopt a baseline.
+          ui.syncVersion = Number(version);
+        }
       }
       const wb = JSON.stringify(wardrobe), cb = JSON.stringify(SY.catalogPayload(state, { photos }));
       const wardrobeKey = await SY.idempotencyKey(wb); requireSyncSource(source);

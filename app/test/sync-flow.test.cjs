@@ -7,6 +7,9 @@ const vm = require('node:vm');
 const S = require('../src/sync.js'), W = require('../src/wardrobe.js'), C = require('../src/catalog.js'), B = require('../src/beta.js');
 const html = fs.readFileSync(__dirname + '/../src/app.html', 'utf8');
 const code = html.slice(html.indexOf('  async function syncFetch('), html.indexOf('  function renderSync()'));
+const cleanStateCode = html.slice(html.indexOf('  function cleanState(raw)'), html.indexOf('  function defaultRack('));
+const betaUi = fs.readFileSync(__dirname + '/../src/beta-ui.js', 'utf8');
+const enterAccountCode = betaUi.slice(betaUi.indexOf('async function enterAccount('), betaUi.indexOf('async function leaveAccount('));
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const meta = { contract: 2, wardrobeSchema: 2, followup: { outcomes: ['purchased', 'not-purchased', 'pending', 'returned'], sizeResults: ['right', 'small', 'large', 'unknown'], returnReasons: ['size', 'fit', 'color', 'material', 'quality', 'changed', 'price', 'other', 'unknown'] } };
 function setup(options = {}) {
@@ -24,6 +27,7 @@ function setup(options = {}) {
       requests.push({ path, method: request.method || 'GET', headers, body });
       const response = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'X-Wardrobe-Version': String(srv.version) } });
       if (path === '/api/meta') return response(meta);
+      if (path === '/api/auth/me') return response({ ownerId: 77, username: 'synthetic' });
       if (path === '/api/wardrobe') return response(srv.wardrobe);
       if (path === '/api/catalog') return response(srv.catalog);
       if (path === '/api/wardrobe/import' || path === '/api/catalog/import') {
@@ -36,6 +40,26 @@ function setup(options = {}) {
     } });
   vm.runInContext(code, ctx);
   return { ctx, requests, receipts, srv, decision, saves: () => saves };
+}
+
+// Exercise the actual cache cleaner and login entry before syncPush. Unrelated
+// preference adapters are synthetic; stamp/ack validation is production code.
+async function reloadAccount(t, stamp, ack) {
+  t.ctx.state.syncStamp = stamp; t.ctx.state.syncFollowupAck = ack;
+  const cached = JSON.stringify(t.ctx.state);
+  Object.assign(t.ctx, { store: { db: {}, revision: 0, persistedSnapshots: new Map(), conflicts: new Set(), conflict: false },
+    savePromise: Promise.resolve(), kvGet: async () => cached, lsSnapshot: () => null,
+    num: W.num, cleanPrefs: () => ({}), cleanPickLog: () => [] });
+  t.ctx.accountScope = () => t.ctx.ui.syncScope || 'state';
+  t.ctx.localStorageKey = () => 'local:' + t.ctx.accountScope();
+  t.ctx.ui.syncScope = ''; t.ctx.ui.syncVersion = null;
+  vm.runInContext(cleanStateCode + '\n' + enterAccountCode, t.ctx);
+  await t.ctx.enterAccount({ token: 'x'.repeat(43), user: { ownerId: 77, username: 'synthetic' } }, t.ctx.ui.syncBase);
+}
+const ackFor = (t, serverVersion, extra = {}) => S.makeFollowupAck({ origin: t.ctx.ui.syncOrigin, ownerId: 77, serverVersion, capture: 'pull', completeSnapshot: true, ...extra }, t.ctx.state.decisions);
+function remoteCorrection(t) {
+  t.srv.wardrobe.decisions[0].followup = { ...clone(t.decision.followup), outcome: 'purchased', sizeResult: 'right', returnReason: 'unknown', note: '다른 기기의 최신 구매 정정' };
+  t.srv.wardrobe.items[0].status = 'owned';
 }
 
 test('실제 앱 push: 로컬 복원으로 버전이 없을 때만 현재 revision을 읽고 반환·사이즈를 복구한다', async () => {
@@ -72,4 +96,63 @@ test('실제 앱 push: 성공 후 baseline 저장 실패는 승인하지 않고 
   assert.equal(t.srv.writes, 2, '재전송은 새로운 서버 수정 없이 영수증 재생');
   assert.equal(t.ctx.state.syncFollowupAck.decisions[0].fingerprint, S.followupFingerprint(t.decision));
   assert.match(t.ctx.ui.syncMsg, /저장된 결과/);
+});
+
+test('실제 재로그인: 정상 stamp·ack의 이전 revision은 최신 서버 정정을 409로 보호한다', async () => {
+  const t = setup(), origin = t.ctx.ui.syncOrigin, ack = ackFor(t, 7);
+  remoteCorrection(t);
+  await reloadAccount(t, { origin, ownerId: 77, version: 7 }, ack);
+  assert.equal(t.ctx.ui.syncVersion, 7);
+  const before = clone(t.ctx.state), remote = clone(t.srv.wardrobe);
+  await t.ctx.syncPush();
+  assert.deepEqual(t.requests.map((r) => r.path), ['/api/auth/me', '/api/meta', '/api/wardrobe/import']);
+  assert.equal(t.requests[2].headers.get('If-Match'), '"7"');
+  assert.equal(t.srv.writes, 0); assert.deepEqual(t.srv.wardrobe, remote);
+  assert.deepEqual(clone(t.ctx.state), before); assert.match(t.ctx.ui.syncMsg, /409/);
+});
+
+test('실제 재로그인: stamp가 없거나 무효여도 같은 계정 ack의 이전 revision을 복원하며 probe·재시도하지 않는다', async () => {
+  for (const stamp of [undefined, null,
+    { origin: 'http://127.0.0.1:8124', ownerId: 77, version: '7' },
+    { origin: 'http://127.0.0.1:8124', ownerId: 77, version: -1 },
+    { origin: 'http://127.0.0.1:8124', ownerId: 78, version: 8 }]) {
+    const t = setup(), ack = ackFor(t, 7); remoteCorrection(t);
+    await reloadAccount(t, stamp, ack);
+    assert.equal(t.ctx.ui.syncVersion, null);
+    const before = clone(t.ctx.state), remote = clone(t.srv.wardrobe);
+    await t.ctx.syncPush(); await t.ctx.syncPush();
+    assert.deepEqual(t.requests.map((r) => r.path), ['/api/auth/me', '/api/meta', '/api/wardrobe/import', '/api/meta', '/api/wardrobe/import']);
+    assert.ok(t.requests.filter((r) => r.method === 'POST').every((r) => r.headers.get('If-Match') === '"7"' && r.headers.get('X-Eoul-Contract') === '2'));
+    assert.equal(t.ctx.ui.syncVersion, 7); assert.equal(t.srv.writes, 0);
+    assert.deepEqual(t.srv.wardrobe, remote); assert.deepEqual(clone(t.ctx.state), before);
+    assert.match(t.ctx.ui.syncMsg, /409/);
+  }
+});
+
+test('실제 재로그인: 다른 계정·출처 또는 손상 ack는 쓰기 버전으로 쓰지 않고 명시 첫 보내기를 유지한다', async () => {
+  for (const kind of ['none', 'owner', 'origin', 'invalid']) {
+    const t = setup();
+    const ack = kind === 'none' ? null : kind === 'owner' ? ackFor(t, 7, { ownerId: 78 }) : kind === 'origin' ? ackFor(t, 7, { origin: 'http://localhost:8124' }) : { ...ackFor(t, 7), serverVersion: '7' };
+    await reloadAccount(t, null, ack);
+    assert.equal(t.ctx.ui.syncVersion, null);
+    await t.ctx.syncPush();
+    assert.deepEqual(t.requests.map((r) => r.path), ['/api/auth/me', '/api/meta', '/api/wardrobe', '/api/wardrobe/import', '/api/catalog/import']);
+    assert.equal(t.requests[3].headers.get('If-Match'), '"8"'); assert.equal(t.srv.writes, 2);
+    assert.deepEqual(t.srv.wardrobe.decisions[0].followup, t.decision.followup);
+    assert.equal(t.ctx.state.syncFollowupAck.origin, t.ctx.ui.syncOrigin);
+    assert.equal(t.ctx.state.syncFollowupAck.ownerId, 77);
+  }
+});
+
+test('실제 재로그인: stamp 없이도 현재 revision의 ack는 미전송 로컬 결과를 정상 저장한다', async () => {
+  const t = setup(), ack = ackFor(t, 8);
+  t.srv.wardrobe.decisions = [clone(t.decision)];
+  t.ctx.state.decisions[0].followup.note = '이번 기기의 미전송 정정';
+  await reloadAccount(t, null, ack);
+  await t.ctx.syncPush();
+  assert.deepEqual(t.requests.map((r) => r.path), ['/api/auth/me', '/api/meta', '/api/wardrobe/import', '/api/catalog/import']);
+  assert.equal(t.requests[2].headers.get('If-Match'), '"8"'); assert.equal(t.requests[3].headers.get('If-Match'), '"9"');
+  assert.equal(t.srv.writes, 2); assert.equal(t.srv.wardrobe.decisions[0].followup.note, '이번 기기의 미전송 정정');
+  assert.equal(t.ctx.state.syncFollowupAck.serverVersion, 9);
+  assert.equal(t.ctx.state.syncFollowupAck.decisions[0].fingerprint, S.followupFingerprint(t.ctx.state.decisions[0]));
 });
