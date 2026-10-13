@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "2494c09bb001ad41b8d085f1fa7110f0ccb48e08",
+  "claudeBaseCommit": "272ef5a395cc74177df34fad18380e8d11e3b4d8",
+  "branch": "feat/instant-wardrobe-demo-20261014",
+  "builtAt": "2026-10-13T21:44:45.064405+00:00",
+  "files": {
+    "index.html": {
+      "bytes": 167784,
+      "sha256": "dfc67afec892a2e7dc2707cc994a986e43351275f0f4c5821eacc18ad96ae0ca"
+    }
+  },
+  "tests": {
+    "passed": 23,
+    "failed": 0,
+    "browserRenderingVerified": false
+  }
+}

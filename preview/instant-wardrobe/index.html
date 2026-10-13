@@ -1,0 +1,3788 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FAFAF8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121312" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="내 스타일과 옷장에 맞는 실제 브랜드 아이템을 바로 추천합니다.">
+  <title>어울</title>
+  <style>
+:root {
+  --bg: #FAFAF8;
+  --surface: #FFFFFF;
+  --sunk: #F2F1ED;
+  --ink: #141413;
+  --ink-2: #57574F;
+  --ink-3: #8F8E86;
+  --line: #E9E7E1;
+  --accent: #1F4D3A;
+  --accent-soft: #E6EFE9;
+  --heart: #D6453D;
+  --art-line: #B9B6AD;
+  --shadow: 0 1px 2px rgba(20, 20, 19, .04), 0 8px 24px rgba(20, 20, 19, .06);
+  --radius: 18px;
+  --nav-h: 64px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121312; --surface: #1B1C1B; --sunk: #232523; --ink: #F3F3EF; --ink-2: #BDBDB5; --ink-3: #8A8A83;
+    --line: #2C2E2C; --accent: #8FD1B0; --accent-soft: #1E3329; --art-line: #7D7D76; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121312; --surface: #1B1C1B; --sunk: #232523; --ink: #F3F3EF; --ink-2: #BDBDB5; --ink-3: #8A8A83;
+  --line: #2C2E2C; --accent: #8FD1B0; --accent-soft: #1E3329; --art-line: #7D7D76; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+.app { max-width: 560px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); }
+
+/* 상단 */
+.top { padding: 12px 16px 4px; padding-top: calc(12px + env(safe-area-inset-top)); }
+.top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; }
+.brand small { font-size: 12px; font-weight: 600; color: var(--ink-3); letter-spacing: 0; margin-left: 6px; }
+.profile-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--sunk); font-size: 13px; font-weight: 600; color: var(--ink-2); }
+
+.ask { margin-top: 12px; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 16px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--line); }
+.ask svg { color: var(--ink-3); flex: none; }
+.ask input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 16px; }
+.ask input::placeholder { color: var(--ink-3); }
+.ask .clear { width: 36px; height: 36px; display: grid; place-items: center; color: var(--ink-3); border-radius: 10px; }
+
+.suggest-pop { margin-top: 10px; padding: 12px 14px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.suggest-pop .suggest { padding-top: 8px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 2px; margin: 0 -16px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips > :first-child { margin-left: 16px; }
+.chip { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; font-weight: 600; color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip.ghost { background: transparent; }
+.chip.soft { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+/* 섹션 */
+.section { padding: 22px 16px 4px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.section h2 { font-size: 20px; line-height: 1.3; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.section .sub { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.link { font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+
+/* 코디 카드 */
+.looks { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 2px 16px 8px; scrollbar-width: none; }
+.looks::-webkit-scrollbar { display: none; }
+.look { flex: none; width: 84%; scroll-snap-align: start; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; text-align: left; border: 1px solid var(--line); }
+.look-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; background: var(--line); aspect-ratio: 1 / 1; }
+.look-grid.n3 > :first-child { grid-row: span 2; }
+.look-grid.n5 > :nth-child(n+5) { display: none; }
+.tile { position: relative; background: var(--sunk); overflow: hidden; display: grid; place-items: center; }
+.tile img { width: 100%; height: 100%; object-fit: cover; }
+.tile .art { width: 62%; height: 62%; }
+.tile .badge { position: absolute; left: 8px; top: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--accent); color: var(--bg); }
+.look-body { padding: 14px 16px 16px; }
+.look-title { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.look-note { font-size: 13.5px; color: var(--ink-2); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.look-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+.look-meta b { color: var(--ink); font-size: 15px; }
+
+/* 아이템 카드 */
+.list { display: grid; gap: 10px; }
+.item { display: grid; grid-template-columns: 104px 1fr; gap: 14px; padding: 10px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--line); position: relative; text-align: left; }
+.thumb { aspect-ratio: 4 / 5; border-radius: 12px; background: var(--sunk); overflow: hidden; display: grid; place-items: center; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb .art { width: 70%; height: 70%; }
+.item-body { min-width: 0; padding: 2px 34px 0 0; display: flex; flex-direction: column; }
+.brand-name { font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: 0.01em; }
+.name { font-size: 14.5px; font-weight: 600; line-height: 1.35; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.price { font-size: 16px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; }
+.rating { font-size: 12px; color: var(--ink-3); display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-weight: 500; }
+.rating svg { color: #E2A33B; }
+.reason { margin-top: auto; padding-top: 8px; font-size: 13px; color: var(--accent); font-weight: 600; line-height: 1.4; }
+.heart { position: absolute; top: 8px; right: 8px; width: 38px; height: 38px; display: grid; place-items: center; color: var(--ink-3); border-radius: 12px; }
+.heart[aria-pressed="true"] { color: var(--heart); }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 10px; }
+.card { text-align: left; position: relative; }
+.card .thumb { border-radius: 14px; }
+.card .heart { top: 6px; right: 6px; background: color-mix(in srgb, var(--surface) 85%, transparent); }
+.card .name { font-size: 13.5px; margin-top: 8px; }
+.card .brand-name { margin-top: 8px; }
+.card .brand-name + .name { margin-top: 1px; }
+.card .price { font-size: 15px; margin-top: 4px; }
+.card .reason { font-size: 12px; padding-top: 4px; }
+
+/* 검색 결과 머리 */
+.result-head { padding: 18px 16px 0; }
+.result-head h2 { font-size: 19px; margin: 0; font-weight: 800; letter-spacing: -0.03em; }
+.result-head .terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.notice { margin: 12px 16px 0; padding: 12px 14px; border-radius: 14px; background: var(--sunk); font-size: 13.5px; color: var(--ink-2); }
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0 0; }
+
+/* 옷장 */
+.closet-group { margin-top: 18px; }
+.closet-group h3 { font-size: 14px; color: var(--ink-3); font-weight: 700; margin: 0 0 10px; }
+.closet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.own { position: relative; padding: 10px 8px 12px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--line); text-align: center; }
+.own .art { width: 56px; height: 56px; margin: 2px auto 6px; }
+.own span { font-size: 12.5px; font-weight: 600; line-height: 1.3; display: block; color: var(--ink-2); }
+.own[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.own[aria-pressed="true"] span { color: var(--ink); }
+.own .tick { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--bg); opacity: 0; transform: scale(.6); transition: .15s; }
+.own[aria-pressed="true"] .tick { opacity: 1; transform: none; }
+.progress { height: 6px; border-radius: 99px; background: var(--sunk); overflow: hidden; margin-top: 12px; }
+.progress i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .2s; }
+
+.empty { text-align: center; padding: 48px 24px; color: var(--ink-3); font-size: 14px; }
+.empty b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
+.total { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; margin-top: 12px; border-radius: 16px; background: var(--sunk); font-size: 14px; }
+.total b { font-size: 17px; }
+
+/* 하단 내비 */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(16px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+.nav-inner { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); height: var(--nav-h); }
+.nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11.5px; font-weight: 600; color: var(--ink-3); position: relative; }
+.nav button[aria-current="page"] { color: var(--ink); }
+.nav .count { position: absolute; top: 8px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--ink); color: var(--bg); font-size: 10.5px; display: grid; place-items: center; }
+
+/* 버튼 */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 52px; padding: 0 20px; border-radius: 14px; font-weight: 700; font-size: 16px; background: var(--ink); color: var(--bg); width: 100%; }
+.btn.secondary { background: var(--sunk); color: var(--ink); }
+.btn.small { height: 40px; font-size: 14px; border-radius: 12px; width: auto; }
+
+/* 시트 */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.36); z-index: 40; animation: fade .18s ease; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-width: 560px; margin: 0 auto; max-height: 92dvh; overflow-y: auto; background: var(--bg); border-radius: 24px 24px 0 0; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); animation: up .24s cubic-bezier(.2,.8,.2,1); overscroll-behavior: contain; }
+.grabber { width: 40px; height: 5px; border-radius: 99px; background: var(--line); margin: 4px auto 10px; }
+.sheet-close { position: absolute; right: 12px; top: 12px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: var(--ink-2); background: var(--sunk); z-index: 2; }
+.hero { aspect-ratio: 1 / 1; border-radius: 20px; background: var(--sunk); overflow: hidden; display: grid; place-items: center; }
+.hero img { width: 100%; height: 100%; object-fit: cover; }
+.hero .art { width: 60%; height: 60%; }
+.detail-title { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.35; margin: 4px 0 0; }
+.detail-price { font-size: 22px; font-weight: 800; margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.fine { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.why { margin: 16px 0 0; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.why h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
+.why ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
+.why li + li { margin-top: 4px; }
+.row-scroll { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px; scrollbar-width: none; }
+.row-scroll::-webkit-scrollbar { display: none; }
+.row-scroll .card { flex: none; width: 128px; }
+.sheet h3.block { font-size: 16px; font-weight: 800; margin: 22px 0 10px; }
+.cta { position: sticky; bottom: calc(-24px - env(safe-area-inset-bottom)); margin: 18px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); display: flex; gap: 8px; }
+.cta .btn.secondary { width: 56px; flex: none; padding: 0; }
+.look-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); text-align: left; width: 100%; }
+.look-row .thumb { border-radius: 10px; }
+.look-row .role { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+.look-row .nm { font-size: 14px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.look-row .pr { font-size: 14px; font-weight: 800; white-space: nowrap; }
+
+.opt-group { margin-top: 18px; }
+.opt-group h3 { font-size: 14px; margin: 0 0 10px; color: var(--ink-2); }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* 시작 화면 */
+.onboard { position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow-y: auto; }
+.onboard-inner { max-width: 480px; margin: 0 auto; padding: calc(56px + env(safe-area-inset-top)) 20px 40px; }
+.onboard .logo { font-size: 40px; font-weight: 800; letter-spacing: -0.05em; }
+.onboard .lead { font-size: 24px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.35; margin: 18px 0 6px; }
+.onboard .lead-sub { color: var(--ink-2); font-size: 15px; }
+.step { margin-top: 32px; }
+.step h2 { font-size: 15px; color: var(--ink-3); margin: 0 0 12px; font-weight: 700; }
+.pick2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pick { text-align: left; border-radius: 18px; padding: 16px; border: 1.5px solid var(--line); background: var(--surface); }
+.pick[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.pick b { display: block; font-size: 17px; }
+.pick span { font-size: 13px; color: var(--ink-3); }
+.style-pick { display: grid; gap: 10px; }
+.style-pick .pick { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; }
+.mini { display: flex; gap: 4px; }
+.mini > div { width: 52px; height: 64px; border-radius: 10px; overflow: hidden; background: var(--sunk); display: grid; place-items: center; }
+.mini img { width: 100%; height: 100%; object-fit: cover; }
+.mini .art { width: 70%; height: 70%; }
+.onboard .privacy { margin-top: 20px; font-size: 12.5px; color: var(--ink-3); text-align: center; }
+
+.toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px); transform: translate(-50%, 20px); z-index: 60; background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; opacity: 0; pointer-events: none; transition: .2s; max-width: calc(100% - 32px); width: max-content; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { color: var(--accent-soft); font-weight: 700; text-decoration: underline; }
+
+.footer { padding: 28px 16px 8px; font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+
+@keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (min-width: 600px) { .look { width: 300px; } }
+
+.section .notice { margin: 0; }
+
+.demo-banner { margin: 16px 16px 0; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--accent-soft); }
+.demo-heading { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: space-between; align-items: center; }
+.demo-heading b { font-size: 14px; }
+.demo-heading .link { display: inline-flex; align-items: center; min-height: 40px; color: var(--accent); }
+.demo-banner p { margin: 2px 0 10px; font-size: 13px; color: var(--ink-2); }
+.demo-garments { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100%; }
+.demo-garments span { display: grid; place-items: center; min-width: 0; padding: 6px; aspect-ratio: 1; border-radius: 10px; background: var(--surface); }
+.demo-garments svg { width: 100%; height: 100%; }
+.owned-grid { margin-top: 18px; }
+.closet-add { margin-top: 20px; }
+.closet-add summary { padding: 12px 14px; border-radius: 12px; background: var(--sunk); font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div id="app" class="app"></div>
+  <div id="sheet-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module">
+(() => {
+// ── src/data/slots.js
+// 아이템 자리(slot): "화이트 옥스퍼드 셔츠"처럼 옷장에서 한 역할을 맡는 아이템 종류.
+// 실제 상품(products.js)은 각 자리에 연결된다. 스타일 점수와 설명은 편집자 판단이다.
+//
+// style: 스타일별 중요도 0~3 (3 = 그 스타일 옷장의 기본)
+// occ: 어울리는 상황 daily 데일리 · work 출근 · date 데이트 · weekend 주말·여행 · formal 격식·하객
+// seasons: spring summer fall winter
+// shape: 대체 그림 모양, color: 대체 그림 색
+
+const STYLES = {
+  classic: { label: '클래식', desc: '셔츠 · 치노 · 로퍼' },
+  minimal: { label: '미니멀', desc: '모노톤 · 깔끔한 핏' },
+  casual: { label: '캐주얼', desc: '편한 데일리 · 워크웨어' },
+};
+
+const OCCASIONS = {
+  daily: '데일리',
+  work: '출근',
+  date: '데이트',
+  weekend: '주말·여행',
+  formal: '격식·하객',
+};
+
+const CATS = {
+  outer: '아우터',
+  top: '상의',
+  dress: '원피스',
+  bottom: '하의',
+  shoes: '신발',
+  acc: '소품',
+};
+
+const ALL = ['spring', 'summer', 'fall', 'winter'];
+const SFW = ['spring', 'fall', 'winter'];
+const SF = ['spring', 'fall'];
+const FW = ['fall', 'winter'];
+
+const SLOTS = [
+  // ── 남성 상의
+  { id: 'm-oxford-white', g: 'M', cat: 'top', shape: 'shirt', color: '#F4F3EF', name: '화이트 옥스퍼드 셔츠',
+    style: { classic: 3, minimal: 2, casual: 1 }, occ: ['work', 'date', 'formal', 'daily'], seasons: ALL, formal: 4,
+    why: '블레이저·니트·치노 어디에나 붙는 셔츠 한 장', tip: '단추 하나 풀고 소매를 두 번 접으면 덜 딱딱해 보여요' },
+  { id: 'm-oxford-blue', g: 'M', cat: 'top', shape: 'shirt', color: '#A9C1DE', name: '블루 옥스퍼드 셔츠',
+    style: { classic: 3, minimal: 1, casual: 2 }, occ: ['work', 'daily', 'date', 'weekend'], seasons: ALL, formal: 3,
+    why: '흰 셔츠보다 편하고 티셔츠보다 단정한 중간값', tip: '네이비 니트 안에 깃만 꺼내 입으면 가장 쉬운 클래식이에요' },
+  { id: 'm-stripe-shirt', g: 'M', cat: 'top', shape: 'shirt', color: '#C9D6E8', name: '스트라이프 셔츠',
+    style: { classic: 2, minimal: 1, casual: 2 }, occ: ['daily', 'work', 'weekend'], seasons: ALL, formal: 3,
+    why: '무지 옷만 있는 옷장에 리듬을 주는 줄무늬', tip: '하의는 무지(치노·데님)로 두세요' },
+  { id: 'm-flannel', g: 'M', cat: 'top', shape: 'shirt', color: '#7A3B33', pattern: 'check', name: '플란넬 체크 셔츠',
+    style: { classic: 1, minimal: 0, casual: 3 }, occ: ['daily', 'weekend'], seasons: FW, formal: 2,
+    why: '가을·겨울 캐주얼에 온기와 색을 더하는 셔츠', tip: '단추를 다 풀고 흰 티 위에 재킷처럼 걸쳐도 돼요' },
+  { id: 'm-tee-white', g: 'M', cat: 'top', shape: 'tee', color: '#F7F7F5', name: '화이트 티셔츠',
+    style: { classic: 1, minimal: 3, casual: 3 }, occ: ['daily', 'weekend', 'date'], seasons: ALL, formal: 1,
+    why: '여름엔 단독, 나머지 계절엔 이너로 쓰는 기본', tip: '목이 늘어지지 않는 도톰한 원단을 고르세요' },
+  { id: 'm-longtee', g: 'M', cat: 'top', shape: 'longtee', color: '#2B2B2B', name: '무지 긴팔 티셔츠',
+    style: { classic: 0, minimal: 3, casual: 3 }, occ: ['daily', 'weekend'], seasons: SF, formal: 1,
+    why: '환절기에 셔츠보다 편하게 입는 한 장', tip: '슬랙스와 입으면 미니멀, 데님과 입으면 캐주얼이 돼요' },
+  { id: 'm-knit-crew', g: 'M', cat: 'top', shape: 'knit', color: '#2C3A55', name: '크루넥 울 니트',
+    style: { classic: 3, minimal: 3, casual: 2 }, occ: ['work', 'date', 'daily'], seasons: SFW, formal: 3,
+    why: '셔츠 위에 겹쳐 입는 가을·겨울 출근의 기본', tip: '셔츠 깃과 밑단을 살짝 보이게 입어 보세요' },
+  { id: 'm-knit-cable', g: 'M', cat: 'top', shape: 'knit', color: '#E7DFCF', name: '케이블 니트',
+    style: { classic: 3, minimal: 1, casual: 2 }, occ: ['date', 'daily', 'weekend'], seasons: FW, formal: 2,
+    why: '꽈배기 짜임 하나로 코디가 완성되는 겨울 니트', tip: '하의는 생지 데님이나 그레이 슬랙스가 가장 잘 받아요' },
+  { id: 'm-cardigan', g: 'M', cat: 'outer', shape: 'cardigan', color: '#8C8F86', name: '울 카디건',
+    style: { classic: 2, minimal: 3, casual: 2 }, occ: ['daily', 'work', 'date'], seasons: SF, formal: 2,
+    why: '재킷 대신 걸치는 가벼운 아우터', tip: '티셔츠 위에 단추를 잠가 니트처럼 입어도 좋아요' },
+  { id: 'm-sweat', g: 'M', cat: 'top', shape: 'sweat', color: '#A7A9AC', name: '그레이 스웻셔츠',
+    style: { classic: 2, minimal: 1, casual: 3 }, occ: ['daily', 'weekend'], seasons: SFW, formal: 1,
+    why: '주말 옷차림을 가장 빨리 끝내 주는 맨투맨', tip: '셔츠 깃을 꺼내면 아이비 느낌이 나요' },
+  { id: 'm-polo', g: 'M', cat: 'top', shape: 'polo', color: '#1F2A44', name: '피케 폴로 셔츠',
+    style: { classic: 3, minimal: 1, casual: 2 }, occ: ['daily', 'work', 'date'], seasons: ['spring', 'summer'], formal: 2,
+    why: '여름 출근에 티셔츠 대신 입는 깃 달린 상의', tip: '치노 안에 넣어 입고 벨트를 보이게 하세요' },
+  { id: 'm-rugby', g: 'M', cat: 'top', shape: 'polo', color: '#2F4A3A', pattern: 'stripe', name: '럭비 셔츠',
+    style: { classic: 2, minimal: 0, casual: 3 }, occ: ['weekend', 'daily'], seasons: SF, formal: 1,
+    why: '굵은 줄무늬로 주말 코디에 포인트', tip: '하의는 베이지 치노가 가장 안전해요' },
+
+  // ── 남성 아우터
+  { id: 'm-blazer', g: 'M', cat: 'outer', shape: 'blazer', color: '#1E2A44', name: '네이비 블레이저',
+    style: { classic: 3, minimal: 2, casual: 1 }, occ: ['work', 'formal', 'date'], seasons: SFW, formal: 5,
+    why: '청바지에도 슬랙스에도 맞는 가장 활용도 높은 재킷', tip: '면접·하객부터 데님 데이트까지 한 벌로 돼요' },
+  { id: 'm-trucker', g: 'M', cat: 'outer', shape: 'jacket', color: '#3F5E8C', name: '데님 트러커 재킷',
+    style: { classic: 2, minimal: 0, casual: 3 }, occ: ['daily', 'weekend'], seasons: SF, formal: 1,
+    why: '봄·가을 내내 걸치는 캐주얼 아우터', tip: '하의는 데님 말고 치노나 퍼티그 팬츠로 톤을 나누세요' },
+  { id: 'm-chore', g: 'M', cat: 'outer', shape: 'jacket', color: '#6B5B3E', name: '초어 재킷',
+    style: { classic: 1, minimal: 1, casual: 3 }, occ: ['daily', 'weekend', 'work'], seasons: SF, formal: 2,
+    why: '셔츠처럼 가볍고 재킷처럼 단정한 워크웨어', tip: '니트 위에 걸치면 늦가을까지 입어요' },
+  { id: 'm-field', g: 'M', cat: 'outer', shape: 'jacket', color: '#5B6340', name: '필드 재킷',
+    style: { classic: 2, minimal: 0, casual: 3 }, occ: ['daily', 'weekend'], seasons: SF, formal: 2,
+    why: '주머니 많은 올리브 재킷, 가을 캐주얼의 정석', tip: '안에는 흰 티나 옥스퍼드 셔츠가 잘 맞아요' },
+  { id: 'm-harrington', g: 'M', cat: 'outer', shape: 'jacket', color: '#C8B48A', name: '해링턴 재킷',
+    style: { classic: 3, minimal: 1, casual: 2 }, occ: ['daily', 'date', 'weekend'], seasons: SF, formal: 2,
+    why: '짧고 깔끔해서 셔츠·치노와 가장 잘 맞는 봄가을 재킷', tip: '지퍼를 반쯤 올려 셔츠 깃을 보여 주세요' },
+  { id: 'm-balmacaan', g: 'M', cat: 'outer', shape: 'coat', color: '#9A8A72', name: '발마칸 코트',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'date', 'daily'], seasons: FW, formal: 4,
+    why: '정장에도 니트에도 맞는 둥근 깃의 롱코트', tip: '무릎 근처 기장이 키와 상관없이 가장 무난해요' },
+  { id: 'm-trench', g: 'M', cat: 'outer', shape: 'coat', color: '#CDB993', name: '트렌치 코트',
+    style: { classic: 2, minimal: 3, casual: 1 }, occ: ['work', 'date'], seasons: SF, formal: 4,
+    why: '환절기 출근과 데이트를 한 번에 해결하는 코트', tip: '벨트는 묶지 말고 뒤로 돌려 묶으면 편해 보여요' },
+  { id: 'm-down', g: 'M', cat: 'outer', shape: 'down', color: '#23262B', name: '패딩 재킷',
+    style: { classic: 1, minimal: 2, casual: 3 }, occ: ['daily', 'weekend', 'work'], seasons: ['winter'], formal: 1,
+    why: '한겨울 출퇴근의 현실적인 선택', tip: '하의를 슬랙스로 두면 패딩도 단정해 보여요' },
+  { id: 'm-barbour', g: 'M', cat: 'outer', shape: 'jacket', color: '#3A4232', name: '왁스 재킷',
+    style: { classic: 3, minimal: 0, casual: 2 }, occ: ['daily', 'weekend'], seasons: FW, formal: 2,
+    why: '입을수록 멋이 드는 영국식 클래식 재킷', tip: '케이블 니트나 플란넬 셔츠와 가장 잘 어울려요' },
+
+  // ── 남성 하의
+  { id: 'm-chino', g: 'M', cat: 'bottom', shape: 'pants', color: '#C9B48E', name: '베이지 치노 팬츠',
+    style: { classic: 3, minimal: 1, casual: 3 }, occ: ['daily', 'work', 'date', 'weekend'], seasons: ALL, formal: 3,
+    why: '네이비·화이트·블루 상의와 모두 맞는 바지', tip: '밑단을 한 번 접어 발목을 살짝 보이면 가벼워 보여요' },
+  { id: 'm-denim', g: 'M', cat: 'bottom', shape: 'jeans', color: '#2E3F5C', name: '생지 데님 스트레이트',
+    style: { classic: 3, minimal: 2, casual: 3 }, occ: ['daily', 'date', 'weekend'], seasons: SFW, formal: 2,
+    why: '진한 색 데님은 블레이저와도 어울리는 만능 바지', tip: '처음엔 진한 인디고 하나만 있으면 충분해요' },
+  { id: 'm-slacks-grey', g: 'M', cat: 'bottom', shape: 'pants', color: '#8A8D91', name: '그레이 울 슬랙스',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'formal', 'date'], seasons: SFW, formal: 4,
+    why: '네이비 블레이저와 짝을 이루는 출근 바지', tip: '구두는 브라운 로퍼면 클래식, 블랙 더비면 미니멀이에요' },
+  { id: 'm-slacks-wide', g: 'M', cat: 'bottom', shape: 'pants', color: '#1C1C1E', name: '블랙 와이드 슬랙스',
+    style: { classic: 0, minimal: 3, casual: 2 }, occ: ['daily', 'work', 'date'], seasons: ALL, formal: 3,
+    why: '흰 티 하나만 입어도 정돈돼 보이는 바지', tip: '상의는 짧거나 넣어 입어 비율을 맞추세요' },
+  { id: 'm-fatigue', g: 'M', cat: 'bottom', shape: 'pants', color: '#5C6143', name: '퍼티그 팬츠',
+    style: { classic: 1, minimal: 0, casual: 3 }, occ: ['daily', 'weekend'], seasons: SFW, formal: 1,
+    why: '데님 다음으로 활용도 높은 올리브 바지', tip: '상의는 흰색·네이비·그레이로 차분하게' },
+
+  // ── 남성 신발·소품
+  { id: 'm-loafer', g: 'M', cat: 'shoes', shape: 'loafer', color: '#5A3624', name: '페니 로퍼',
+    style: { classic: 3, minimal: 2, casual: 1 }, occ: ['work', 'date', 'formal', 'daily'], seasons: ALL, formal: 4,
+    why: '치노·슬랙스·데님 모두 정리해 주는 구두', tip: '양말은 바지 색이나 흰색으로 맞추세요' },
+  { id: 'm-derby', g: 'M', cat: 'shoes', shape: 'loafer', color: '#1A1A1A', name: '블랙 더비 슈즈',
+    style: { classic: 2, minimal: 3, casual: 1 }, occ: ['work', 'formal', 'date'], seasons: ALL, formal: 5,
+    why: '하객·면접까지 가능한 끈 구두', tip: '와이드 슬랙스와 신으면 미니멀 출근룩이 돼요' },
+  { id: 'm-sneaker-leather', g: 'M', cat: 'shoes', shape: 'sneaker', color: '#F2F2F0', name: '화이트 레더 스니커즈',
+    style: { classic: 1, minimal: 3, casual: 2 }, occ: ['daily', 'date', 'weekend'], seasons: ALL, formal: 2,
+    why: '슬랙스와 신어도 어색하지 않은 깔끔한 운동화', tip: '깨끗하게 관리하는 것만으로 코디가 살아요' },
+  { id: 'm-chuck', g: 'M', cat: 'shoes', shape: 'sneaker', color: '#EDE8DC', name: '캔버스 스니커즈',
+    style: { classic: 2, minimal: 1, casual: 3 }, occ: ['daily', 'weekend'], seasons: ['spring', 'summer', 'fall'], formal: 1,
+    why: '치노·데님과 신는 아이비 캐주얼 운동화', tip: '아이보리 색은 흰색보다 덜 튀어요' },
+  { id: 'm-nb', g: 'M', cat: 'shoes', shape: 'sneaker', color: '#9EA3A8', name: '그레이 러닝 스니커즈',
+    style: { classic: 1, minimal: 1, casual: 3 }, occ: ['daily', 'weekend'], seasons: ALL, formal: 1,
+    why: '오래 걸어도 편한 회색 운동화', tip: '회색은 거의 모든 바지 색과 부딪히지 않아요' },
+  { id: 'm-boots', g: 'M', cat: 'shoes', shape: 'boot', color: '#6E4B32', name: '스웨이드 첼시 부츠',
+    style: { classic: 2, minimal: 2, casual: 2 }, occ: ['date', 'daily', 'work'], seasons: FW, formal: 3,
+    why: '가을·겨울 데님 코디를 한 단계 올려 주는 부츠', tip: '바지 밑단이 부츠에 살짝 걸치는 길이가 좋아요' },
+  { id: 'm-cap', g: 'M', cat: 'acc', shape: 'cap', color: '#1F2A44', name: '코튼 볼캡',
+    style: { classic: 1, minimal: 1, casual: 3 }, occ: ['weekend', 'daily'], seasons: ALL, formal: 1,
+    why: '주말 코디를 마무리하는 가장 쉬운 소품', tip: '로고가 작은 것을 고르면 오래 써요' },
+  { id: 'm-belt', g: 'M', cat: 'acc', shape: 'belt', color: '#4A2E1E', name: '가죽 벨트',
+    style: { classic: 3, minimal: 2, casual: 1 }, occ: ['work', 'formal', 'date'], seasons: ALL, formal: 4,
+    why: '셔츠를 넣어 입을 때 완성도를 정하는 소품', tip: '신발 색과 맞추면 실패가 없어요' },
+
+  // ── 여성
+  { id: 'f-shirt-white', g: 'F', cat: 'top', shape: 'shirt', color: '#F4F3EF', name: '화이트 코튼 셔츠',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'date', 'formal', 'daily'], seasons: ALL, formal: 4,
+    why: '슬랙스·스커트·데님 어디에나 맞는 셔츠', tip: '앞자락만 살짝 넣어 입으면 다리가 길어 보여요' },
+  { id: 'f-shirt-stripe', g: 'F', cat: 'top', shape: 'shirt', color: '#C9D6E8', name: '스트라이프 셔츠',
+    style: { classic: 3, minimal: 1, casual: 2 }, occ: ['daily', 'work', 'weekend'], seasons: ALL, formal: 3,
+    why: '트렌치·데님과 짝을 이루는 클래식 셔츠', tip: '단추를 풀어 이너 위에 걸쳐도 좋아요' },
+  { id: 'f-tee', g: 'F', cat: 'top', shape: 'tee', color: '#F7F7F5', name: '베이직 티셔츠',
+    style: { classic: 1, minimal: 3, casual: 3 }, occ: ['daily', 'weekend'], seasons: ALL, formal: 1,
+    why: '모든 레이어드의 시작이 되는 티셔츠', tip: '흰색과 검정 하나씩이면 충분해요' },
+  { id: 'f-knit', g: 'F', cat: 'top', shape: 'knit', color: '#E3D9C6', name: '크루넥 니트',
+    style: { classic: 3, minimal: 3, casual: 2 }, occ: ['work', 'date', 'daily'], seasons: SFW, formal: 3,
+    why: '가을·겨울 출근과 데이트에 두루 쓰는 니트', tip: '어깨에 다른 니트를 둘러 포인트를 줘도 좋아요' },
+  { id: 'f-cardigan', g: 'F', cat: 'outer', shape: 'cardigan', color: '#2C3A55', name: '카디건',
+    style: { classic: 3, minimal: 2, casual: 2 }, occ: ['daily', 'work', 'date'], seasons: SF, formal: 2,
+    why: '원피스와 셔츠 위에 걸치는 가벼운 아우터', tip: '단추를 잠가 상의처럼 입어도 돼요' },
+  { id: 'f-blazer', g: 'F', cat: 'outer', shape: 'blazer', color: '#1E2A44', name: '블레이저',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'formal', 'date'], seasons: SFW, formal: 5,
+    why: '티셔츠와 데님도 출근복으로 바꿔 주는 재킷', tip: '소매를 살짝 걷어 손목을 보이면 가벼워져요' },
+  { id: 'f-trench', g: 'F', cat: 'outer', shape: 'coat', color: '#CDB993', name: '트렌치 코트',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'date', 'daily'], seasons: SF, formal: 4,
+    why: '봄·가을 어떤 옷 위에도 맞는 코트', tip: '벨트를 뒤로 묶으면 실루엣이 편해 보여요' },
+  { id: 'f-coat', g: 'F', cat: 'outer', shape: 'coat', color: '#8C7B68', name: '울 코트',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'date', 'formal'], seasons: ['winter', 'fall'], formal: 4,
+    why: '겨울 내내 입는 가장 중요한 한 벌', tip: '베이지·그레이·네이비 중 가진 옷과 맞는 색을 고르세요' },
+  { id: 'f-jacket', g: 'F', cat: 'outer', shape: 'jacket', color: '#5E7FAE', name: '데님 재킷',
+    style: { classic: 1, minimal: 0, casual: 3 }, occ: ['daily', 'weekend'], seasons: SF, formal: 1,
+    why: '원피스·스커트에 캐주얼을 더하는 재킷', tip: '하의는 데님 말고 다른 소재로 고르세요' },
+  { id: 'f-padding', g: 'F', cat: 'outer', shape: 'down', color: '#23262B', name: '숏패딩',
+    style: { classic: 1, minimal: 2, casual: 3 }, occ: ['daily', 'weekend'], seasons: ['winter'], formal: 1,
+    why: '한겨울 데일리를 책임지는 짧은 패딩', tip: '와이드 바지와 입으면 비율이 좋아요' },
+  { id: 'f-denim', g: 'F', cat: 'bottom', shape: 'jeans', color: '#3F5E8C', name: '스트레이트 데님',
+    style: { classic: 2, minimal: 2, casual: 3 }, occ: ['daily', 'date', 'weekend'], seasons: SFW, formal: 2,
+    why: '셔츠·니트·블레이저 모두 받쳐 주는 기본 청바지', tip: '발목이 보이는 기장이 가장 가볍게 떨어져요' },
+  { id: 'f-slacks', g: 'F', cat: 'bottom', shape: 'pants', color: '#2A2A2C', name: '와이드 슬랙스',
+    style: { classic: 2, minimal: 3, casual: 2 }, occ: ['work', 'daily', 'date'], seasons: ALL, formal: 4,
+    why: '편하면서 단정한 출근 바지', tip: '앞코가 둥근 로퍼나 메리제인과 신어 보세요' },
+  { id: 'f-skirt', g: 'F', cat: 'bottom', shape: 'skirt', color: '#8B7A63', name: '롱 스커트',
+    style: { classic: 3, minimal: 2, casual: 2 }, occ: ['date', 'work', 'daily'], seasons: ALL, formal: 3,
+    why: '니트·셔츠와 함께 단정한 분위기를 내는 스커트', tip: '상의를 짧게 넣어 허리선을 보여 주세요' },
+  { id: 'f-dress', g: 'F', cat: 'dress', shape: 'dress', color: '#3E4C63', name: '셔츠 원피스',
+    style: { classic: 3, minimal: 2, casual: 2 }, occ: ['date', 'work', 'formal'], seasons: ['spring', 'summer', 'fall'], formal: 3,
+    why: '한 벌로 끝나는 출근·데이트 원피스', tip: '카디건이나 트렌치를 걸치면 가을까지 입어요' },
+  { id: 'f-loafer', g: 'F', cat: 'shoes', shape: 'loafer', color: '#1A1A1A', name: '로퍼',
+    style: { classic: 3, minimal: 3, casual: 1 }, occ: ['work', 'date', 'daily', 'formal'], seasons: ALL, formal: 4,
+    why: '슬랙스·스커트·데님 모두 정리해 주는 구두', tip: '흰 양말을 신으면 캐주얼하게 바뀌어요' },
+  { id: 'f-maryjane', g: 'F', cat: 'shoes', shape: 'loafer', color: '#2B2B2B', name: '메리제인',
+    style: { classic: 2, minimal: 2, casual: 1 }, occ: ['date', 'work', 'formal'], seasons: ALL, formal: 3,
+    why: '스커트·원피스를 한층 사랑스럽게 만드는 구두', tip: '발목 양말과 함께 신어도 좋아요' },
+  { id: 'f-sneaker', g: 'F', cat: 'shoes', shape: 'sneaker', color: '#F2F2F0', name: '스니커즈',
+    style: { classic: 1, minimal: 2, casual: 3 }, occ: ['daily', 'weekend'], seasons: ALL, formal: 1,
+    why: '어떤 하의에도 무난한 데일리 운동화', tip: '흰색이나 회색이면 실패가 적어요' },
+  { id: 'f-bag', g: 'F', cat: 'acc', shape: 'bag', color: '#5A3624', name: '숄더백',
+    style: { classic: 3, minimal: 3, casual: 2 }, occ: ['work', 'date', 'daily'], seasons: ALL, formal: 3,
+    why: '매일 드는 가방 하나가 코디의 마무리', tip: '신발 색과 맞추면 정돈돼 보여요' },
+];
+
+const SLOT_BY_ID = Object.fromEntries(SLOTS.map((s) => [s.id, s]));
+
+// ── src/data/looks.js
+// 코디 공식(look): 스타일리스트가 실제로 권하는 조합을 역할별 아이템 자리로 적어 둔 것.
+// 각 역할의 자리 목록은 선호 순서다. 엔진은 가진 옷을 먼저 쓰고, 없는 자리만 실제 상품으로 채운다.
+
+const LOOKS = [
+  // ── 남성 클래식
+  { id: 'm-navy-work', g: 'M', title: '네이비 블레이저 출근룩', styles: ['classic', 'minimal'], occ: ['work', 'formal', 'date'], seasons: ['spring', 'fall', 'winter'],
+    note: '블레이저·흰 셔츠·그레이 슬랙스는 가장 실패 없는 출근 공식이에요.',
+    roles: { outer: ['m-blazer'], top: ['m-oxford-white', 'm-oxford-blue', 'm-stripe-shirt'], bottom: ['m-slacks-grey', 'm-chino'], shoes: ['m-loafer', 'm-derby'], acc: ['m-belt'] } },
+  { id: 'm-ivy-daily', g: 'M', title: '셔츠·치노 아이비 데일리', styles: ['classic'], occ: ['daily', 'date', 'weekend'], seasons: ['spring', 'fall'],
+    note: '짧은 재킷에 옥스퍼드 셔츠와 치노, 로퍼로 마무리하는 기본 아이비 룩이에요.',
+    roles: { outer: ['m-harrington', 'm-trucker', 'm-field'], top: ['m-oxford-blue', 'm-oxford-white', 'm-stripe-shirt'], bottom: ['m-chino', 'm-denim'], shoes: ['m-loafer', 'm-chuck'] } },
+  { id: 'm-knit-layer', g: 'M', title: '셔츠 위 니트 레이어드', styles: ['classic', 'minimal'], occ: ['work', 'date', 'daily'], seasons: ['fall', 'winter'],
+    note: '니트 안에 셔츠 깃을 꺼내 입으면 출근과 데이트에 모두 맞아요.',
+    roles: { outer: ['m-balmacaan', 'm-trench'], top: ['m-knit-crew', 'm-knit-cable'], bottom: ['m-chino', 'm-slacks-grey', 'm-denim'], shoes: ['m-loafer', 'm-boots'] } },
+  { id: 'm-winter-date', g: 'M', title: '케이블 니트 겨울 데이트', styles: ['classic', 'casual'], occ: ['date', 'daily'], seasons: ['winter', 'fall'],
+    note: '케이블 니트와 생지 데님, 스웨이드 부츠는 겨울 데이트의 정석이에요.',
+    roles: { outer: ['m-balmacaan', 'm-barbour', 'm-down'], top: ['m-knit-cable', 'm-knit-crew'], bottom: ['m-denim', 'm-slacks-grey'], shoes: ['m-boots', 'm-loafer'] } },
+  { id: 'm-summer-polo', g: 'M', title: '폴로 셔츠 여름 출근', styles: ['classic'], occ: ['work', 'daily', 'date'], seasons: ['summer', 'spring'],
+    note: '깃 있는 폴로를 치노에 넣어 입으면 더운 날에도 단정해요.',
+    roles: { top: ['m-polo', 'm-oxford-white'], bottom: ['m-chino', 'm-slacks-grey'], shoes: ['m-loafer', 'm-sneaker-leather'], acc: ['m-belt'] } },
+  { id: 'm-weekend-rugby', g: 'M', title: '럭비 셔츠 주말룩', styles: ['classic', 'casual'], occ: ['weekend', 'daily'], seasons: ['spring', 'fall'],
+    note: '줄무늬 하나에 치노와 캔버스 운동화만 더하면 끝나는 주말 코디예요.',
+    roles: { top: ['m-rugby', 'm-sweat'], bottom: ['m-chino', 'm-denim'], shoes: ['m-chuck', 'm-nb'], acc: ['m-cap'] } },
+  { id: 'm-wax-weekend', g: 'M', title: '왁스 재킷 브리티시 캐주얼', styles: ['classic', 'casual'], occ: ['weekend', 'daily'], seasons: ['fall', 'winter'],
+    note: '왁스 재킷 안에 플란넬이나 니트를 입으면 늦가을까지 따뜻해요.',
+    roles: { outer: ['m-barbour', 'm-field'], top: ['m-flannel', 'm-knit-cable', 'm-oxford-blue'], bottom: ['m-denim', 'm-chino'], shoes: ['m-boots', 'm-loafer'] } },
+
+  // ── 남성 캐주얼
+  { id: 'm-trucker-daily', g: 'M', title: '트러커 재킷 데일리', styles: ['casual'], occ: ['daily', 'weekend'], seasons: ['spring', 'fall'],
+    note: '데님 재킷에 흰 티와 올리브 바지, 회색 운동화로 색을 나눠요.',
+    roles: { outer: ['m-trucker', 'm-chore'], top: ['m-tee-white', 'm-longtee'], bottom: ['m-fatigue', 'm-chino'], shoes: ['m-nb', 'm-chuck'], acc: ['m-cap'] } },
+  { id: 'm-flannel-layer', g: 'M', title: '플란넬 셔츠 레이어드', styles: ['casual'], occ: ['daily', 'weekend'], seasons: ['fall', 'winter'],
+    note: '흰 티 위에 체크 셔츠를 열어 입는 가장 쉬운 가을 캐주얼이에요.',
+    roles: { outer: ['m-flannel'], top: ['m-tee-white', 'm-longtee'], bottom: ['m-denim', 'm-fatigue'], shoes: ['m-boots', 'm-nb'] } },
+  { id: 'm-winter-casual', g: 'M', title: '패딩 겨울 데일리', styles: ['casual', 'minimal'], occ: ['daily', 'weekend', 'work'], seasons: ['winter'],
+    note: '패딩 안은 니트나 맨투맨, 하의는 진한 색으로 무게를 맞춰요.',
+    roles: { outer: ['m-down'], top: ['m-sweat', 'm-knit-crew'], bottom: ['m-denim', 'm-slacks-wide', 'm-fatigue'], shoes: ['m-nb', 'm-sneaker-leather'] } },
+  { id: 'm-chore-work', g: 'M', title: '초어 재킷 캐주얼 출근', styles: ['casual', 'minimal'], occ: ['work', 'daily'], seasons: ['spring', 'fall'],
+    note: '자유 복장 출근이라면 초어 재킷과 슬랙스가 가장 편하고 단정해요.',
+    roles: { outer: ['m-chore', 'm-cardigan'], top: ['m-oxford-white', 'm-longtee'], bottom: ['m-slacks-wide', 'm-chino'], shoes: ['m-sneaker-leather', 'm-derby'] } },
+
+  // ── 남성 미니멀
+  { id: 'm-mono-coat', g: 'M', title: '모노톤 코트 출근', styles: ['minimal'], occ: ['work', 'date', 'formal'], seasons: ['fall', 'winter'],
+    note: '코트·니트·와이드 슬랙스를 비슷한 톤으로 맞추면 차분해 보여요.',
+    roles: { outer: ['m-balmacaan', 'm-trench'], top: ['m-knit-crew', 'm-oxford-white'], bottom: ['m-slacks-wide', 'm-slacks-grey'], shoes: ['m-derby', 'm-loafer'] } },
+  { id: 'm-mono-daily', g: 'M', title: '카디건 미니멀 데일리', styles: ['minimal'], occ: ['daily', 'date', 'weekend'], seasons: ['spring', 'fall'],
+    note: '긴팔 티에 카디건을 걸치고 흰 스니커즈로 가볍게 마무리해요.',
+    roles: { outer: ['m-cardigan', 'm-trench'], top: ['m-longtee', 'm-tee-white'], bottom: ['m-slacks-wide', 'm-denim'], shoes: ['m-sneaker-leather', 'm-derby'] } },
+  { id: 'm-mono-summer', g: 'M', title: '흰 티·블랙 슬랙스 여름', styles: ['minimal', 'casual'], occ: ['daily', 'date', 'work'], seasons: ['summer'],
+    note: '좋은 흰 티 한 장과 검은 와이드 슬랙스면 여름 코디가 끝나요.',
+    roles: { top: ['m-tee-white'], bottom: ['m-slacks-wide', 'm-chino'], shoes: ['m-sneaker-leather', 'm-loafer'] } },
+
+  // ── 여성
+  { id: 'f-blazer-work', g: 'F', title: '블레이저 셔츠 출근룩', styles: ['classic', 'minimal'], occ: ['work', 'formal', 'date'], seasons: ['spring', 'fall', 'winter'],
+    note: '블레이저·흰 셔츠·슬랙스에 로퍼면 회의 날에도 안심이에요.',
+    roles: { outer: ['f-blazer'], top: ['f-shirt-white', 'f-knit', 'f-shirt-stripe'], bottom: ['f-slacks', 'f-skirt'], shoes: ['f-loafer'], acc: ['f-bag'] } },
+  { id: 'f-trench-daily', g: 'F', title: '트렌치 스트라이프 데일리', styles: ['classic'], occ: ['daily', 'date', 'work'], seasons: ['spring', 'fall'],
+    note: '트렌치 안에 줄무늬 셔츠와 데님, 로퍼를 더하는 클래식 공식이에요.',
+    roles: { outer: ['f-trench'], top: ['f-shirt-stripe', 'f-knit', 'f-tee'], bottom: ['f-denim', 'f-slacks'], shoes: ['f-loafer', 'f-sneaker'], acc: ['f-bag'] } },
+  { id: 'f-coat-winter', g: 'F', title: '울 코트 니트 스커트', styles: ['classic', 'minimal'], occ: ['date', 'work'], seasons: ['winter', 'fall'],
+    note: '코트·니트·롱 스커트는 겨울에 가장 우아한 조합이에요.',
+    roles: { outer: ['f-coat'], top: ['f-knit'], bottom: ['f-skirt', 'f-slacks'], shoes: ['f-loafer', 'f-maryjane'], acc: ['f-bag'] } },
+  { id: 'f-cardigan-daily', g: 'F', title: '카디건 미니멀 데일리', styles: ['minimal', 'casual'], occ: ['daily', 'weekend', 'work'], seasons: ['spring', 'fall'],
+    note: '티셔츠 위 카디건, 와이드 슬랙스, 스니커즈로 편하고 단정하게.',
+    roles: { outer: ['f-cardigan'], top: ['f-tee', 'f-shirt-white'], bottom: ['f-slacks', 'f-denim'], shoes: ['f-sneaker', 'f-loafer'] } },
+  { id: 'f-dress-date', g: 'F', title: '셔츠 원피스 데이트', styles: ['classic', 'minimal'], occ: ['date', 'formal', 'work'], seasons: ['spring', 'summer', 'fall'],
+    note: '원피스 하나에 카디건이나 트렌치를 걸치면 날씨 걱정이 없어요.',
+    roles: { dress: ['f-dress'], outer: ['f-cardigan', 'f-trench'], shoes: ['f-maryjane', 'f-loafer'], acc: ['f-bag'] } },
+  { id: 'f-denim-weekend', g: 'F', title: '데님 재킷 주말룩', styles: ['casual'], occ: ['weekend', 'daily'], seasons: ['spring', 'fall'],
+    note: '데님 재킷에 롱 스커트를 매치하면 캐주얼하지만 여성스러워요.',
+    roles: { outer: ['f-jacket'], top: ['f-tee'], bottom: ['f-skirt', 'f-slacks'], shoes: ['f-sneaker'] } },
+  { id: 'f-padding-daily', g: 'F', title: '숏패딩 겨울 데일리', styles: ['casual', 'minimal'], occ: ['daily', 'weekend'], seasons: ['winter'],
+    note: '짧은 패딩에 니트와 스트레이트 데님으로 비율을 살려요.',
+    roles: { outer: ['f-padding'], top: ['f-knit'], bottom: ['f-denim', 'f-slacks'], shoes: ['f-sneaker'] } },
+  { id: 'f-summer', g: 'F', title: '셔츠·스커트 여름', styles: ['classic', 'casual', 'minimal'], occ: ['daily', 'date', 'work'], seasons: ['summer'],
+    note: '얇은 셔츠나 티에 롱 스커트, 메리제인으로 시원하게.',
+    roles: { top: ['f-shirt-white', 'f-tee'], bottom: ['f-skirt', 'f-denim'], shoes: ['f-maryjane', 'f-sneaker'], acc: ['f-bag'] } },
+];
+
+const ROLE_ORDER = ['outer', 'top', 'dress', 'bottom', 'shoes', 'acc'];
+
+// ── src/data/products.js
+// 자동 생성 파일: app/tools/catalog/make-products.mjs 로 다시 만든다. 직접 고치지 않는다.
+// 상품명·브랜드·가격·평점·후기 수·이미지는 무신사 상품 페이지의 구조화 데이터(schema.org Product)에서 읽은 값이다.
+// 가격은 확인 시점의 판매가이며 쿠폰·회원 할인·배송비는 반영하지 않는다.
+const CATALOG = {"store":"무신사","checkedAt":"2026-10-13","checkedLabel":"2026년 10월 13일","count":157};
+
+const PRODUCTS = [
+ {
+  "id": "ms-404474",
+  "slot": "m-longtee",
+  "color": "black",
+  "brand": "브렌슨",
+  "name": "베이직 긴팔티셔츠 4종",
+  "price": 19900,
+  "img": "https://image.msscdn.net/images/goods_img/20160902/404474/404474_17917686145790_500.jpg",
+  "url": "https://www.musinsa.com/products/404474",
+  "rating": 4.7,
+  "reviews": 56125,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-728000",
+  "slot": "m-oxford-white",
+  "color": "white",
+  "brand": "무신사 스탠다드",
+  "name": "베이식 옥스포드 셔츠 [화이트]",
+  "price": 33890,
+  "img": "https://image.msscdn.net/images/goods_img/20180305/728000/728000_17286256542856_500.jpg",
+  "url": "https://www.musinsa.com/products/728000",
+  "rating": 4.7,
+  "reviews": 21040,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-854339",
+  "slot": "m-oxford-blue",
+  "color": "blue",
+  "brand": "무신사 스탠다드",
+  "name": "릴렉스 핏 옥스포드 셔츠 [블루]",
+  "price": 33890,
+  "img": "https://image.msscdn.net/images/goods_img/20180910/854339/854339_17829578371552_500.jpg",
+  "url": "https://www.musinsa.com/products/854339",
+  "rating": 4.8,
+  "reviews": 7929,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1026638",
+  "slot": "m-boots",
+  "color": "brown",
+  "brand": "라반타노",
+  "name": "첼시 부츠 - 딥 브라운",
+  "price": 240000,
+  "img": "https://image.msscdn.net/images/goods_img/20190425/1026638/1026638_1_500.jpg",
+  "url": "https://www.musinsa.com/products/1026638",
+  "rating": 4.5,
+  "reviews": 4,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1115031",
+  "slot": "f-sneaker",
+  "color": "white",
+  "brand": "닥터마틴",
+  "name": "단테 - 화이트",
+  "price": 84990,
+  "img": "https://image.msscdn.net/images/goods_img/20190809/1115031/1115031_3_500.jpg",
+  "url": "https://www.musinsa.com/products/1115031",
+  "rating": 4.8,
+  "reviews": 1844,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1191521",
+  "slot": "m-knit-crew",
+  "color": "beige",
+  "brand": "테이크이지",
+  "name": "램스울 크루넥 오버 니트 (베이지)",
+  "price": 27000,
+  "img": "https://image.msscdn.net/images/goods_img/20191017/1191521/1191521_17634466116629_500.jpg",
+  "url": "https://www.musinsa.com/products/1191521",
+  "rating": 4.6,
+  "reviews": 2113,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1387956",
+  "slot": "m-polo",
+  "color": "navy",
+  "brand": "무신사 스탠다드",
+  "name": "롱 슬리브 피케 폴로 셔츠 [네이비]",
+  "price": 37890,
+  "img": "https://image.msscdn.net/images/goods_img/20200407/1387956/1387956_1_500.jpg",
+  "url": "https://www.musinsa.com/products/1387956",
+  "rating": 4.8,
+  "reviews": 622,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1387960",
+  "slot": "m-polo",
+  "color": "black",
+  "brand": "무신사 스탠다드",
+  "name": "베이식 피케 폴로 셔츠 [블랙]",
+  "price": 29900,
+  "img": "https://image.msscdn.net/images/goods_img/20200407/1387960/1387960_17507503016609_500.jpg",
+  "url": "https://www.musinsa.com/products/1387960",
+  "rating": 4.8,
+  "reviews": 6607,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1498093",
+  "slot": "m-polo",
+  "color": "blue",
+  "brand": "폴로 랄프 로렌",
+  "name": "커스텀 슬림핏 메시 폴로 셔츠 - 블루",
+  "price": 199000,
+  "img": "https://image.msscdn.net/images/goods_img/20200626/1498093/1498093_1_500.jpg",
+  "url": "https://www.musinsa.com/products/1498093",
+  "rating": 4.9,
+  "reviews": 620,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1498103",
+  "slot": "m-oxford-blue",
+  "color": "blue",
+  "brand": "폴로 랄프 로렌",
+  "name": "커스텀핏 버튼다운 옥스포드 셔츠 - 블루",
+  "price": 259000,
+  "img": "https://image.msscdn.net/images/goods_img/20200626/1498103/1498103_2_500.jpg",
+  "url": "https://www.musinsa.com/products/1498103",
+  "rating": 4.8,
+  "reviews": 1522,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1599217",
+  "slot": "m-knit-crew",
+  "color": "grey",
+  "brand": "테이크이지",
+  "name": "램스울 크루넥 오버 니트 (연차콜)",
+  "price": 27000,
+  "img": "https://image.msscdn.net/images/goods_img/20200912/1599217/1599217_17634473347084_500.jpg",
+  "url": "https://www.musinsa.com/products/1599217",
+  "rating": 4.7,
+  "reviews": 13419,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1633322",
+  "slot": "m-rugby",
+  "color": "navy",
+  "brand": "무신사 스탠다드",
+  "name": "스트라이프 럭비 셔츠 [네이비/그린]",
+  "price": 27890,
+  "img": "https://image.msscdn.net/images/goods_img/20201005/1633322/1633322_1_500.jpg",
+  "url": "https://www.musinsa.com/products/1633322",
+  "rating": 4.8,
+  "reviews": 1114,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1736058",
+  "slot": "m-knit-crew",
+  "color": "blue",
+  "brand": "테이크이지",
+  "name": "램스울 크루넥 오버 니트 (헤더블루)",
+  "price": 27000,
+  "img": "https://image.msscdn.net/images/goods_img/20210105/1736058/1736058_17634476794439_500.jpg",
+  "url": "https://www.musinsa.com/products/1736058",
+  "rating": 4.8,
+  "reviews": 6259,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1792946",
+  "slot": "m-denim",
+  "color": "navy",
+  "brand": "랩원오원",
+  "name": "생지 스트레이트 데님 팬츠 (DARK BLUE)",
+  "price": 49500,
+  "img": "https://image.msscdn.net/images/goods_img/20210215/1792946/1792946_17168804192600_500.jpg",
+  "url": "https://www.musinsa.com/products/1792946",
+  "rating": 4.8,
+  "reviews": 965,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1797622",
+  "slot": "f-blazer",
+  "color": "beige",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 오버사이즈 블레이저 [더스티 베이지]",
+  "price": 79890,
+  "img": "https://image.msscdn.net/images/goods_img/20210217/1797622/1797622_17536902767703_500.jpg",
+  "url": "https://www.musinsa.com/products/1797622",
+  "rating": 4.9,
+  "reviews": 2268,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1836799",
+  "slot": "m-chino",
+  "color": "beige",
+  "brand": "폴로 랄프 로렌",
+  "name": "스트레치 슬림핏 치노 팬츠 - 라이트 베이지",
+  "price": 199000,
+  "img": "https://image.msscdn.net/images/goods_img/20210310/1836799/1836799_1_500.jpg",
+  "url": "https://www.musinsa.com/products/1836799",
+  "rating": 4.9,
+  "reviews": 34,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1841337",
+  "slot": "m-tee-white",
+  "color": "white",
+  "brand": "무신사 스탠다드",
+  "name": "헤비웨이트 릴렉스드 크루 넥 티셔츠 [화이트]",
+  "price": 25900,
+  "img": "https://image.msscdn.net/images/goods_img/20210312/1841337/1841337_2_500.jpg",
+  "url": "https://www.musinsa.com/products/1841337",
+  "rating": 4.9,
+  "reviews": 2422,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-1848778",
+  "slot": "m-sweat",
+  "color": "grey",
+  "brand": "폴로 랄프 로렌",
+  "name": "플리스 크루넥 스웨트셔츠 - 그레이",
+  "price": 259000,
+  "img": "https://image.msscdn.net/images/goods_img/20210317/1848778/1848778_2_500.jpg",
+  "url": "https://www.musinsa.com/products/1848778",
+  "rating": 4.9,
+  "reviews": 534,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2086102",
+  "slot": "m-belt",
+  "color": "brown",
+  "brand": "도프제이슨",
+  "name": "미니멀 스퀘어 하드레더 벨트 (다크브라운)",
+  "price": 34000,
+  "img": "https://image.msscdn.net/images/goods_img/20210825/2086102/2086102_17171302045719_500.jpg",
+  "url": "https://www.musinsa.com/products/2086102",
+  "rating": 4.8,
+  "reviews": 1156,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2149254",
+  "slot": "m-longtee",
+  "color": "black",
+  "brand": "무신사 스탠다드",
+  "name": "베이식 긴소매 티셔츠 2팩",
+  "price": 37790,
+  "img": "https://image.msscdn.net/images/goods_img/20210928/2149254/2149254_17138588137724_500.jpg",
+  "url": "https://www.musinsa.com/products/2149254",
+  "rating": 4.9,
+  "reviews": 80728,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2321890",
+  "slot": "f-tee",
+  "color": "grey",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "[쿨탠다드] 우먼즈 베이식 크루 넥 티셔츠 [미디엄 그레이]",
+  "price": 15890,
+  "img": "https://image.msscdn.net/images/goods_img/20220124/2321890/2321890_17833980710169_500.jpg",
+  "url": "https://www.musinsa.com/products/2321890",
+  "rating": 4.8,
+  "reviews": 897,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2325572",
+  "slot": "m-barbour",
+  "color": "beige",
+  "brand": "론트",
+  "name": "007 Beige Wax",
+  "price": 177000,
+  "img": "https://image.msscdn.net/images/goods_img/20220125/2325572/2325572_16788446035386_500.jpg",
+  "url": "https://www.musinsa.com/products/2325572",
+  "rating": 4.8,
+  "reviews": 79,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2406919",
+  "slot": "m-oxford-white",
+  "color": "white",
+  "brand": "폴로 랄프 로렌",
+  "name": "[White Collection] 커스텀핏 클래식 옥스포드 셔츠 - 화이트",
+  "price": 199000,
+  "img": "https://image.msscdn.net/images/goods_img/20220308/2406919/2406919_4_500.jpg",
+  "url": "https://www.musinsa.com/products/2406919",
+  "rating": 4.9,
+  "reviews": 2749,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2422238",
+  "slot": "m-slacks-wide",
+  "color": "black",
+  "brand": "드로우핏",
+  "name": "밴딩 와이드 슬랙스 [BLACK]",
+  "price": 49800,
+  "img": "https://image.msscdn.net/images/goods_img/20220316/2422238/2422238_17567927110795_500.jpg",
+  "url": "https://www.musinsa.com/products/2422238",
+  "rating": 4.8,
+  "reviews": 5564,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2578996",
+  "slot": "m-slacks-wide",
+  "color": "black",
+  "brand": "시그니처",
+  "name": "더블턱 와이드 슬랙스[블랙]",
+  "price": 39990,
+  "img": "https://image.msscdn.net/images/goods_img/20220524/2578996/2578996_17870331293023_500.jpg",
+  "url": "https://www.musinsa.com/products/2578996",
+  "rating": 4.8,
+  "reviews": 18706,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2725428",
+  "slot": "f-denim",
+  "color": "navy",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 스트레이트 데님 팬츠 [딥 인디고]",
+  "price": 34930,
+  "img": "https://image.msscdn.net/images/goods_img/20220818/2725428/2725428_17678589908559_500.jpg",
+  "url": "https://www.musinsa.com/products/2725428",
+  "rating": 4.8,
+  "reviews": 863,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2727694",
+  "slot": "m-longtee",
+  "color": "black",
+  "brand": "크림소다랩",
+  "name": "솔리드 베이직 롱슬리브 블랙",
+  "price": 18880,
+  "img": "https://image.msscdn.net/images/goods_img/20220818/2727694/2727694_1_500.jpg",
+  "url": "https://www.musinsa.com/products/2727694",
+  "rating": 4.7,
+  "reviews": 55,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-2897238",
+  "slot": "m-sneaker-leather",
+  "color": "white",
+  "brand": "리복",
+  "name": "클럽 C 85 - 화이트:그린",
+  "price": 44500,
+  "img": "https://image.msscdn.net/images/goods_img/20221027/2897238/2897238_16847302834143_500.jpg",
+  "url": "https://www.musinsa.com/products/2897238",
+  "rating": 4.8,
+  "reviews": 468,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3084874",
+  "slot": "m-trucker",
+  "color": "blue",
+  "brand": "리바이스",
+  "name": "타입 I 트러커 자켓",
+  "price": 149000,
+  "img": "https://image.msscdn.net/images/goods_img/20230215/3084874/3084874_17790691437470_500.jpg",
+  "url": "https://www.musinsa.com/products/3084874",
+  "rating": 4.9,
+  "reviews": 207,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3097193",
+  "slot": "f-knit",
+  "color": "ivory",
+  "brand": "폴로 랄프 로렌",
+  "name": "W 케이블 니트 코튼 크루넥 스웨터 - 아이보리",
+  "price": 279000,
+  "img": "https://image.msscdn.net/images/goods_img/20230221/3097193/3097193_16808335747127_500.jpg",
+  "url": "https://www.musinsa.com/products/3097193",
+  "rating": 4.9,
+  "reviews": 336,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3612506",
+  "slot": "f-jacket",
+  "color": "blue",
+  "brand": "민더리",
+  "name": "BIG POCKET DENIM JACKET - INDIGO",
+  "price": 226800,
+  "img": "https://image.msscdn.net/images/goods_img/20231008/3612506/3612506_16967750511755_500.jpg",
+  "url": "https://www.musinsa.com/products/3612506",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3665190",
+  "slot": "m-slacks-grey",
+  "color": "grey",
+  "brand": "솔티",
+  "name": "Reve Pleats Wool Trousers (Gray)",
+  "price": 168000,
+  "img": "https://image.msscdn.net/images/goods_img/20231027/3665190/3665190_16993409859865_500.jpg",
+  "url": "https://www.musinsa.com/products/3665190",
+  "rating": 4.7,
+  "reviews": 51,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3693497",
+  "slot": "m-stripe-shirt",
+  "color": "blue",
+  "brand": "매너그램",
+  "name": "옥스포드 코튼다운 스탠다드 셔츠 스트라이프",
+  "price": 144000,
+  "img": "https://image.msscdn.net/images/goods_img/20231108/3693497/3693497_16994015235516_500.jpg",
+  "url": "https://www.musinsa.com/products/3693497",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3731476",
+  "slot": "f-loafer",
+  "color": "black",
+  "brand": "커스텀에이드 우먼",
+  "name": "4.5cm 라운드토 청키 페니로퍼 몬드",
+  "price": 41360,
+  "img": "https://image.msscdn.net/images/goods_img/20231124/3731476/3731476_17664702504222_500.jpg",
+  "url": "https://www.musinsa.com/products/3731476",
+  "rating": 4.6,
+  "reviews": 48,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3757147",
+  "slot": "m-fatigue",
+  "color": "olive",
+  "brand": "무신사 스탠다드",
+  "name": "레플리카 퍼티그 팬츠 [올리브]",
+  "price": 43890,
+  "img": "https://image.msscdn.net/images/goods_img/20231215/3757147/3757147_17827087342061_500.jpg",
+  "url": "https://www.musinsa.com/products/3757147",
+  "rating": 4.9,
+  "reviews": 2007,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3779117",
+  "slot": "m-denim",
+  "color": "navy",
+  "brand": "무신사 스탠다드",
+  "name": "셀비지 스트레이트 데님 팬츠 [딥 인디고]",
+  "price": 62890,
+  "img": "https://image.msscdn.net/images/goods_img/20240105/3779117/3779117_17421805923099_500.jpg",
+  "url": "https://www.musinsa.com/products/3779117",
+  "rating": 4.7,
+  "reviews": 266,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3792520",
+  "slot": "m-fatigue",
+  "color": "olive",
+  "brand": "아웃스탠딩",
+  "name": "BACK SATIN FATIGUE PANTS(ORIGINAL FIT) OLIVE GREEN",
+  "price": 97200,
+  "img": "https://image.msscdn.net/images/goods_img/20240112/3792520/3792520_17691436496368_500.jpg",
+  "url": "https://www.musinsa.com/products/3792520",
+  "rating": 4.9,
+  "reviews": 357,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3821705",
+  "slot": "f-cardigan",
+  "color": "grey",
+  "brand": "로라로라",
+  "name": "V NECK BASIC CARDIGAN GRAY",
+  "price": 62100,
+  "img": "https://image.msscdn.net/images/goods_img/20240125/3821705/3821705_17086551793917_500.jpg",
+  "url": "https://www.musinsa.com/products/3821705",
+  "rating": 4.9,
+  "reviews": 1171,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3830417",
+  "slot": "m-belt",
+  "color": "brown",
+  "brand": "미나브",
+  "name": "미니멀 리얼 레더 벨트 [브라운]",
+  "price": 31200,
+  "img": "https://image.msscdn.net/images/goods_img/20240129/3830417/3830417_17194485746743_500.jpg",
+  "url": "https://www.musinsa.com/products/3830417",
+  "rating": 4.8,
+  "reviews": 894,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3879282",
+  "slot": "m-oxford-blue",
+  "color": "blue",
+  "brand": "토마스모어",
+  "name": "옥스포드 버튼다운 셔츠",
+  "price": 50960,
+  "img": "https://image.msscdn.net/images/goods_img/20240219/3879282/3879282_17439950180780_500.jpg",
+  "url": "https://www.musinsa.com/products/3879282",
+  "rating": 4.9,
+  "reviews": 783,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3911166",
+  "slot": "f-loafer",
+  "color": "black",
+  "brand": "솔트앤초콜릿",
+  "name": "라운드 토 페니 로퍼 (3.7cm)",
+  "price": 66750,
+  "img": "https://image.msscdn.net/images/goods_img/20240228/3911166/3911166_17726009232219_500.png",
+  "url": "https://www.musinsa.com/products/3911166",
+  "rating": 4.7,
+  "reviews": 168,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3976350",
+  "slot": "m-sneaker-leather",
+  "color": "white",
+  "brand": "나이키",
+  "name": "에어 포스 1 07 M - 화이트",
+  "price": 149000,
+  "img": "https://image.msscdn.net/images/goods_img/20240321/3976350/3976350_17115804993997_500.jpg",
+  "url": "https://www.musinsa.com/products/3976350",
+  "rating": 4.9,
+  "reviews": 11054,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-3998376",
+  "slot": "m-derby",
+  "color": "black",
+  "brand": "조셉트",
+  "name": "VINCENT BLACK [VIBRAM]",
+  "price": 136000,
+  "img": "https://image.msscdn.net/images/goods_img/20240327/3998376/3998376_17133408545190_500.jpg",
+  "url": "https://www.musinsa.com/products/3998376",
+  "rating": 4.9,
+  "reviews": 122,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4100432",
+  "slot": "m-loafer",
+  "color": "brown",
+  "brand": "락포트",
+  "name": "클래식 로퍼 페니 CLASSIC LOAFER PENNY",
+  "price": 157500,
+  "img": "https://image.msscdn.net/images/goods_img/20240502/4100432/4100432_17291216752295_500.jpg",
+  "url": "https://www.musinsa.com/products/4100432",
+  "rating": 4.9,
+  "reviews": 46,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4209292",
+  "slot": "m-balmacaan",
+  "color": "beige",
+  "brand": "무신사 스탠다드",
+  "name": "캐시미어 블렌드 오버사이즈 미니멀 발마칸 코트 [토프]",
+  "price": 218390,
+  "img": "https://image.msscdn.net/images/goods_img/20240620/4209292/4209292_17364968941519_500.jpg",
+  "url": "https://www.musinsa.com/products/4209292",
+  "rating": 4.9,
+  "reviews": 181,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4299742",
+  "slot": "f-jacket",
+  "color": "blue",
+  "brand": "리",
+  "name": "우먼 데님 자켓 인디고 미듐",
+  "price": 45000,
+  "img": "https://image.msscdn.net/images/goods_img/20240806/4299742/4299742_17285443843873_500.jpg",
+  "url": "https://www.musinsa.com/products/4299742",
+  "rating": 5,
+  "reviews": 11,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4299875",
+  "slot": "f-dress",
+  "color": "navy",
+  "brand": "리",
+  "name": "셔츠 롱 원피스 인디고 로우",
+  "price": 35000,
+  "img": "https://image.msscdn.net/images/goods_img/20240806/4299875/4299875_17261035787160_500.jpg",
+  "url": "https://www.musinsa.com/products/4299875",
+  "rating": 5,
+  "reviews": 9,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4305642",
+  "slot": "m-chore",
+  "color": "navy",
+  "brand": "드로우핏",
+  "name": "가르니 포켓 초어 자켓 [NAVY]",
+  "price": 118400,
+  "img": "https://image.msscdn.net/images/goods_img/20240807/4305642/4305642_17235239854033_500.jpg",
+  "url": "https://www.musinsa.com/products/4305642",
+  "rating": 4.7,
+  "reviews": 30,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4333594",
+  "slot": "m-tee-white",
+  "color": "white",
+  "brand": "유나이티드 애슬",
+  "name": "9.1oz 헤비 듀티 반팔 티셔츠 화이트",
+  "price": 22900,
+  "img": "https://image.msscdn.net/images/goods_img/20240815/4333594/4333594_17846157967516_500.png",
+  "url": "https://www.musinsa.com/products/4333594",
+  "rating": 4.9,
+  "reviews": 28,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4350295",
+  "slot": "m-cardigan",
+  "color": "black",
+  "brand": "쿠어",
+  "name": "탑필 울 V넥 가디건 (블랙)",
+  "price": 93600,
+  "img": "https://image.msscdn.net/images/goods_img/20240820/4350295/4350295_17242418596924_500.jpg",
+  "url": "https://www.musinsa.com/products/4350295",
+  "rating": 4.9,
+  "reviews": 118,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4373644",
+  "slot": "m-slacks-grey",
+  "color": "grey",
+  "brand": "넌블랭크",
+  "name": "울 플란넬 세미 와이드 핏 슬랙스 DARK GREY",
+  "price": 81000,
+  "img": "https://image.msscdn.net/images/goods_img/20240827/4373644/4373644_17249329636328_500.png",
+  "url": "https://www.musinsa.com/products/4373644",
+  "rating": 4.8,
+  "reviews": 52,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4386834",
+  "slot": "f-shirt-stripe",
+  "color": "blue",
+  "brand": "미드나잇 무브",
+  "name": "st shirt [blue]",
+  "price": 28200,
+  "img": "https://image.msscdn.net/images/goods_img/20240829/4386834/4386834_17249281786829_500.jpg",
+  "url": "https://www.musinsa.com/products/4386834",
+  "rating": 4.8,
+  "reviews": 38,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4400132",
+  "slot": "m-cap",
+  "color": "beige",
+  "brand": "비버리힐스 폴로클럽",
+  "name": "남여 공용 코튼 치노 베이스 볼캡",
+  "price": 23910,
+  "img": "https://image.msscdn.net/images/goods_img/20240903/4400132/4400132_17434819960424_500.jpg",
+  "url": "https://www.musinsa.com/products/4400132",
+  "rating": 4.8,
+  "reviews": 348,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4404223",
+  "slot": "m-denim",
+  "color": "navy",
+  "brand": "리바이스",
+  "name": "501® 오리지널 RIGID 진",
+  "price": 99000,
+  "img": "https://image.msscdn.net/images/goods_img/20240904/4404223/4404223_17254355347324_500.jpg",
+  "url": "https://www.musinsa.com/products/4404223",
+  "rating": 4.8,
+  "reviews": 551,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4462506",
+  "slot": "m-derby",
+  "color": "black",
+  "brand": "금강",
+  "name": "리차드 남성 플레인토 더비 구두",
+  "price": 87000,
+  "img": "https://image.msscdn.net/images/goods_img/20240925/4462506/4462506_17760634728669_500.jpg",
+  "url": "https://www.musinsa.com/products/4462506",
+  "rating": 5,
+  "reviews": 16,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4468621",
+  "slot": "m-rugby",
+  "color": "red",
+  "brand": "챔피온",
+  "name": "리버스위브 럭비 스웨트셔츠 Normal Red",
+  "price": 58000,
+  "img": "https://image.msscdn.net/images/goods_img/20240926/4468621/4468621_17472061469597_500.jpg",
+  "url": "https://www.musinsa.com/products/4468621",
+  "rating": 5,
+  "reviews": 2,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4511861",
+  "slot": "m-slacks-grey",
+  "color": "grey",
+  "brand": "시그니처",
+  "name": "울 라이크 노턱 와이드핏 슬랙스[그레이]",
+  "price": 41900,
+  "img": "https://image.msscdn.net/images/goods_img/20241014/4511861/4511861_17297729267359_500.jpg",
+  "url": "https://www.musinsa.com/products/4511861",
+  "rating": 4.9,
+  "reviews": 27,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4537762",
+  "slot": "m-sneaker-leather",
+  "color": "white",
+  "brand": "무신사 스탠다드",
+  "name": "클래식 트레이너 스니커즈 [화이트]",
+  "price": 79900,
+  "img": "https://image.msscdn.net/images/goods_img/20241021/4537762/4537762_17326065570562_500.jpg",
+  "url": "https://www.musinsa.com/products/4537762",
+  "rating": 5,
+  "reviews": 44,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4593967",
+  "slot": "f-trench",
+  "color": "beige",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 오버사이즈 싱글 트렌치 코트 [라이트 베이지]",
+  "price": 97930,
+  "img": "https://image.msscdn.net/images/goods_img/20241106/4593967/4593967_17368476607026_500.jpg",
+  "url": "https://www.musinsa.com/products/4593967",
+  "rating": 4.7,
+  "reviews": 64,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4594017",
+  "slot": "m-trench",
+  "color": "black",
+  "brand": "무신사 스탠다드",
+  "name": "오버사이즈 발마칸 트렌치 코트 [블랙]",
+  "price": 139900,
+  "img": "https://image.msscdn.net/images/goods_img/20241106/4594017/4594017_17369119667186_500.jpg",
+  "url": "https://www.musinsa.com/products/4594017",
+  "rating": 4.9,
+  "reviews": 130,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4619956",
+  "slot": "f-blazer",
+  "color": "black",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 레귤러 핏 3버튼 블레이저 [블랙]",
+  "price": 99900,
+  "img": "https://image.msscdn.net/images/goods_img/20241118/4619956/4619956_17836670737424_500.jpg",
+  "url": "https://www.musinsa.com/products/4619956",
+  "rating": 4.9,
+  "reviews": 106,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4645906",
+  "slot": "m-chino",
+  "color": "beige",
+  "brand": "메르고",
+  "name": "노스트 와이드 치노 팬츠 [베이지]",
+  "price": 39200,
+  "img": "https://image.msscdn.net/images/goods_img/20241202/4645906/4645906_17630184287449_500.jpg",
+  "url": "https://www.musinsa.com/products/4645906",
+  "rating": 4.7,
+  "reviews": 121,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4672683",
+  "slot": "f-shirt-stripe",
+  "color": "grey",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 스트라이프 슬림 핏 셔츠 [그레이]",
+  "price": 35890,
+  "img": "https://image.msscdn.net/images/goods_img/20241219/4672683/4672683_17467725059023_500.jpg",
+  "url": "https://www.musinsa.com/products/4672683",
+  "rating": 4.8,
+  "reviews": 135,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4681684",
+  "slot": "f-loafer",
+  "color": "black",
+  "brand": "질바이질스튜어트",
+  "name": "[알렌] 슬림 라운드 베이직 로퍼",
+  "price": 54000,
+  "img": "https://image.msscdn.net/images/goods_img/20241226/4681684/4681684_17358807539230_500.jpg",
+  "url": "https://www.musinsa.com/products/4681684",
+  "rating": 4.5,
+  "reviews": 18,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4705635",
+  "slot": "m-flannel",
+  "color": "green",
+  "brand": "리메인세컨드",
+  "name": "레트로 오버핏 코튼 플란넬 포켓 체크 셔츠 [그린]",
+  "price": 32500,
+  "img": "https://image.msscdn.net/images/goods_img/20250108/4705635/4705635_17670774272725_500.jpg",
+  "url": "https://www.musinsa.com/products/4705635",
+  "rating": 4.8,
+  "reviews": 1261,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4727091",
+  "slot": "m-nb",
+  "color": "grey",
+  "brand": "뉴발란스",
+  "name": "530 스니커즈 (실버)",
+  "price": 129000,
+  "img": "https://image.msscdn.net/images/goods_img/20250117/4727091/4727091_17593636262078_500.jpg",
+  "url": "https://www.musinsa.com/products/4727091",
+  "rating": 4.9,
+  "reviews": 794,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4727100",
+  "slot": "m-nb",
+  "color": "grey",
+  "brand": "뉴발란스",
+  "name": "530 스니커즈 (그레이)",
+  "price": 139000,
+  "img": "https://image.msscdn.net/images/goods_img/20250117/4727100/4727100_17593635377879_500.jpg",
+  "url": "https://www.musinsa.com/products/4727100",
+  "rating": 4.9,
+  "reviews": 545,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4740635",
+  "slot": "m-trench",
+  "color": "beige",
+  "brand": "지오다노",
+  "name": "트렌치코트",
+  "price": 95000,
+  "img": "https://image.msscdn.net/images/goods_img/20250123/4740635/4740635_17376198970143_500.jpg",
+  "url": "https://www.musinsa.com/products/4740635",
+  "rating": 4.8,
+  "reviews": 40,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4751649",
+  "slot": "m-trucker",
+  "color": "blue",
+  "brand": "리바이스",
+  "name": "타입 II 트러커 자켓",
+  "price": 144000,
+  "img": "https://image.msscdn.net/images/goods_img/20250203/4751649/4751649_17581573633050_500.jpg",
+  "url": "https://www.musinsa.com/products/4751649",
+  "rating": 4.4,
+  "reviews": 38,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4766707",
+  "slot": "f-tee",
+  "color": "white",
+  "brand": "라이크더모스트",
+  "name": "U 라운드 베이직 롱 슬리브 티셔츠 화이트",
+  "price": 16720,
+  "img": "https://image.msscdn.net/images/goods_img/20250207/4766707/4766707_17394074036533_500.jpg",
+  "url": "https://www.musinsa.com/products/4766707",
+  "rating": 4.4,
+  "reviews": 119,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4789185",
+  "slot": "f-blazer",
+  "color": "black",
+  "brand": "탑텐",
+  "name": "오버핏 테일러드 재킷",
+  "price": 35900,
+  "img": "https://image.msscdn.net/images/goods_img/20250214/4789185/4789185_17395063416272_500.jpg",
+  "url": "https://www.musinsa.com/products/4789185",
+  "rating": 4.9,
+  "reviews": 19,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4791368",
+  "slot": "m-chore",
+  "color": "blue",
+  "brand": "무신사 스탠다드",
+  "name": "백 사틴 쇼트 초어 재킷 [프렌치 블루]",
+  "price": 53890,
+  "img": "https://image.msscdn.net/images/goods_img/20250214/4791368/4791368_17411643727029_500.jpg",
+  "url": "https://www.musinsa.com/products/4791368",
+  "rating": 4.6,
+  "reviews": 31,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4797720",
+  "slot": "f-sneaker",
+  "color": "white",
+  "brand": "뉴발란스",
+  "name": "740 스니커즈 (화이트·네이비)",
+  "price": 149000,
+  "img": "https://image.msscdn.net/images/goods_img/20250218/4797720/4797720_17411596402542_500.jpg",
+  "url": "https://www.musinsa.com/products/4797720",
+  "rating": 4.9,
+  "reviews": 694,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4893307",
+  "slot": "f-tee",
+  "color": "white",
+  "brand": "비버리힐스 폴로클럽",
+  "name": "여성 베이직 코튼 반팔티",
+  "price": 24900,
+  "img": "https://image.msscdn.net/images/goods_img/20250313/4893307/4893307_17471996325851_500.jpg",
+  "url": "https://www.musinsa.com/products/4893307",
+  "rating": 4.8,
+  "reviews": 67,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-4982765",
+  "slot": "m-stripe-shirt",
+  "color": "blue",
+  "brand": "에잇세컨즈",
+  "name": "클린 스트라이프 버튼다운 셔츠 스카이 블루",
+  "price": 29900,
+  "img": "https://image.msscdn.net/images/goods_img/20250403/4982765/4982765_17436548618271_500.jpg",
+  "url": "https://www.musinsa.com/products/4982765",
+  "rating": 4.9,
+  "reviews": 14,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5065864",
+  "slot": "f-dress",
+  "color": "blue",
+  "brand": "제로스트릿",
+  "name": "소프트 셔츠 원피스",
+  "price": 78000,
+  "img": "https://image.msscdn.net/images/goods_img/20250425/5065864/5065864_17876439513226_500.jpg",
+  "url": "https://www.musinsa.com/products/5065864",
+  "rating": 4.9,
+  "reviews": 84,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5260947",
+  "slot": "m-stripe-shirt",
+  "color": "blue",
+  "brand": "유니폼브릿지",
+  "name": "button down oxford shirt blue stripe",
+  "price": 69900,
+  "img": "https://image.msscdn.net/images/goods_img/20250721/5260947/5260947_17530970184336_500.jpg",
+  "url": "https://www.musinsa.com/products/5260947",
+  "rating": 5,
+  "reviews": 8,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5310832",
+  "slot": "m-chore",
+  "color": "navy",
+  "brand": "프리즘웍스",
+  "name": "COMBINE CHORE JACKET NAVY",
+  "price": 82800,
+  "img": "https://image.msscdn.net/images/goods_img/20250811/5310832/5310832_17556798223193_500.jpg",
+  "url": "https://www.musinsa.com/products/5310832",
+  "rating": 4.9,
+  "reviews": 21,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5316168",
+  "slot": "m-blazer",
+  "color": "navy",
+  "brand": "아웃스탠딩",
+  "name": "HIGH DENSITY COTTON CLASSIC 3-BUTTON JACKET NAVY",
+  "price": 133200,
+  "img": "https://image.msscdn.net/images/goods_img/20250812/5316168/5316168_17688037123838_500.jpg",
+  "url": "https://www.musinsa.com/products/5316168",
+  "rating": 4.8,
+  "reviews": 85,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5316898",
+  "slot": "m-trench",
+  "color": "navy",
+  "brand": "엘무드",
+  "name": "레이븐 오버사이즈 트렌치 코트 다크 네이비",
+  "price": 180000,
+  "img": "https://image.msscdn.net/images/goods_img/20250812/5316898/5316898_17706376947547_500.png",
+  "url": "https://www.musinsa.com/products/5316898",
+  "rating": 4.9,
+  "reviews": 11,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5321121",
+  "slot": "f-sneaker",
+  "color": "brown",
+  "brand": "아디다스",
+  "name": "가젤 로우 프로 - 다크브라운:크림화이트",
+  "price": 75990,
+  "img": "https://image.msscdn.net/images/goods_img/20250813/5321121/5321121_17555052123912_500.jpg",
+  "url": "https://www.musinsa.com/products/5321121",
+  "rating": 4.9,
+  "reviews": 283,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5335741",
+  "slot": "m-flannel",
+  "color": "black",
+  "brand": "무신사 스탠다드",
+  "name": "릴렉스드 플란넬 옴브레 체크 셔츠 [블랙/아이보리]",
+  "price": 56890,
+  "img": "https://image.msscdn.net/images/goods_img/20250819/5335741/5335741_17574816540164_500.jpg",
+  "url": "https://www.musinsa.com/products/5335741",
+  "rating": 4.9,
+  "reviews": 336,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5380360",
+  "slot": "m-sweat",
+  "color": "grey",
+  "brand": "챔피온",
+  "name": "리버스위브 루즈핏 기모 크루넥 스웨트셔츠 Light Grey",
+  "price": 76300,
+  "img": "https://image.msscdn.net/images/goods_img/20250829/5380360/5380360_17567098167411_500.jpg",
+  "url": "https://www.musinsa.com/products/5380360",
+  "rating": 5,
+  "reviews": 7,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5402401",
+  "slot": "f-cardigan",
+  "color": "ivory",
+  "brand": "커스텀어클락 우먼",
+  "name": "베이직 브이넥 가디건",
+  "price": 44800,
+  "img": "https://image.msscdn.net/images/goods_img/20250904/5402401/5402401_17896994534510_500.jpg",
+  "url": "https://www.musinsa.com/products/5402401",
+  "rating": 4.6,
+  "reviews": 41,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5596303",
+  "slot": "m-balmacaan",
+  "color": "beige",
+  "brand": "무드인사이드",
+  "name": "오버핏 울 발마칸 코트",
+  "price": 89900,
+  "img": "https://image.msscdn.net/images/goods_img/20251015/5596303/5596303_17605142526875_500.jpg",
+  "url": "https://www.musinsa.com/products/5596303",
+  "rating": 4.6,
+  "reviews": 15,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5657916",
+  "slot": "f-shirt-stripe",
+  "color": "blue",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 스트라이프 릴렉스드 포플린 셔츠 [스카이 블루]",
+  "price": 39900,
+  "img": "https://image.msscdn.net/images/goods_img/20251029/5657916/5657916_17718885510368_500.jpg",
+  "url": "https://www.musinsa.com/products/5657916",
+  "rating": 4.8,
+  "reviews": 95,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5676361",
+  "slot": "m-knit-cable",
+  "color": "ivory",
+  "brand": "유라이프지",
+  "name": "베이직 꽈배기 케이블 라운드넥 니트",
+  "price": 27300,
+  "img": "https://image.msscdn.net/images/goods_img/20251103/5676361/5676361_17894508833494_500.jpg",
+  "url": "https://www.musinsa.com/products/5676361",
+  "rating": 4.8,
+  "reviews": 11,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5721297",
+  "slot": "f-trench",
+  "color": "ivory",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 싱글 하프 트렌치 코트 [크림]",
+  "price": 110390,
+  "img": "https://image.msscdn.net/images/goods_img/20251112/5721297/5721297_17683717856571_500.jpg",
+  "url": "https://www.musinsa.com/products/5721297",
+  "rating": 4.8,
+  "reviews": 39,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5759484",
+  "slot": "m-knit-cable",
+  "color": "navy",
+  "brand": "오리지널데이",
+  "name": "오버핏 라운드 케이블 니트 Navy",
+  "price": 35900,
+  "img": "https://image.msscdn.net/images/goods_img/20251120/5759484/5759484_17652518707229_500.jpg",
+  "url": "https://www.musinsa.com/products/5759484",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5797030",
+  "slot": "f-denim",
+  "color": "navy",
+  "brand": "로우그",
+  "name": "로우 스탠다드 데님 팬츠 인디고",
+  "price": 44800,
+  "img": "https://image.msscdn.net/images/goods_img/20251202/5797030/5797030_17678521713507_500.jpg",
+  "url": "https://www.musinsa.com/products/5797030",
+  "rating": 4.8,
+  "reviews": 18,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5803563",
+  "slot": "m-chuck",
+  "color": "ivory",
+  "brand": "컨버스",
+  "name": "척 70 헤이 데이",
+  "price": 47500,
+  "img": "https://image.msscdn.net/images/goods_img/20251204/5803563/5803563_17652623372667_500.jpg",
+  "url": "https://www.musinsa.com/products/5803563",
+  "rating": 4.9,
+  "reviews": 24,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5803578",
+  "slot": "m-chuck",
+  "color": "ivory",
+  "brand": "컨버스",
+  "name": "척 70 타임 어게인",
+  "price": 47500,
+  "img": "https://image.msscdn.net/images/goods_img/20251204/5803578/5803578_17652624179585_500.jpg",
+  "url": "https://www.musinsa.com/products/5803578",
+  "rating": 4.8,
+  "reviews": 28,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5828029",
+  "slot": "f-denim",
+  "color": "blue",
+  "brand": "스파오",
+  "name": "스트레이트 진",
+  "price": 24900,
+  "img": "https://image.msscdn.net/images/goods_img/20251215/5828029/5828029_17725111490909_500.jpg",
+  "url": "https://www.musinsa.com/products/5828029",
+  "rating": 4.8,
+  "reviews": 77,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5862870",
+  "slot": "m-loafer",
+  "color": "brown",
+  "brand": "무신사 스탠다드",
+  "name": "스웨이드 클래식 페니 로퍼 [다크 브라운]",
+  "price": 109900,
+  "img": "https://image.msscdn.net/images/goods_img/20251231/5862870/5862870_17701040143553_500.jpg",
+  "url": "https://www.musinsa.com/products/5862870",
+  "rating": 4.7,
+  "reviews": 34,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5880911",
+  "slot": "f-shirt-stripe",
+  "color": "blue",
+  "brand": "제너럴아이디어",
+  "name": "클래식 스트라이프 리벳 셔츠 [BLUE]",
+  "price": 40000,
+  "img": "https://image.msscdn.net/images/goods_img/20260109/5880911/5880911_17679286650554_500.jpg",
+  "url": "https://www.musinsa.com/products/5880911",
+  "rating": 4.8,
+  "reviews": 26,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5897707",
+  "slot": "m-blazer",
+  "color": "navy",
+  "brand": "포터리",
+  "name": "Washed Sports Jacket",
+  "price": 298000,
+  "img": "https://image.msscdn.net/images/goods_img/20260115/5897707/5897707_17688169806581_500.jpg",
+  "url": "https://www.musinsa.com/products/5897707",
+  "rating": 4.9,
+  "reviews": 20,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5921050",
+  "slot": "f-shirt-white",
+  "color": "white",
+  "brand": "수아레 우먼",
+  "name": "퓨어 코튼 스탠다드 셔츠",
+  "price": 29900,
+  "img": "https://image.msscdn.net/images/goods_img/20260121/5921050/5921050_17702555304736_500.jpg",
+  "url": "https://www.musinsa.com/products/5921050",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5977410",
+  "slot": "m-harrington",
+  "color": "olive",
+  "brand": "무븐",
+  "name": "2WAY 코튼 해링턴 자켓 카키",
+  "price": 67800,
+  "img": "https://image.msscdn.net/images/goods_img/20260204/5977410/5977410_17715691533916_500.jpg",
+  "url": "https://www.musinsa.com/products/5977410",
+  "rating": 5,
+  "reviews": 3,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5977417",
+  "slot": "m-loafer",
+  "color": "brown",
+  "brand": "슈펜",
+  "name": "[올데이] 베이직 캐주얼 페니 로퍼",
+  "price": 44910,
+  "img": "https://image.msscdn.net/images/goods_img/20260204/5977417/5977417_17701628965625_500.jpg",
+  "url": "https://www.musinsa.com/products/5977417",
+  "rating": 5,
+  "reviews": 13,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-5977558",
+  "slot": "m-boots",
+  "color": "brown",
+  "brand": "비에스큐티바이클래시",
+  "name": "모티 스플릿 스웨이드 첼시 부츠",
+  "price": 110200,
+  "img": "https://image.msscdn.net/images/goods_img/20260204/5977558/5977558_17701665377221_500.jpg",
+  "url": "https://www.musinsa.com/products/5977558",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6101998",
+  "slot": "m-blazer",
+  "color": "navy",
+  "brand": "수아레",
+  "name": "린넨 싱글 블레이저 셋업 네이비",
+  "price": 79900,
+  "img": "https://image.msscdn.net/images/goods_img/20260309/6101998/6101998_17739852939208_500.jpg",
+  "url": "https://www.musinsa.com/products/6101998",
+  "rating": 4.9,
+  "reviews": 21,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6102472",
+  "slot": "m-boots",
+  "color": "brown",
+  "brand": "에렌",
+  "name": "폴 첼시 부츠 (딥브라운 스웨이드)",
+  "price": 167700,
+  "img": "https://image.msscdn.net/images/goods_img/20260309/6102472/6102472_17730964164054_500.jpg",
+  "url": "https://www.musinsa.com/products/6102472",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6116333",
+  "slot": "m-cap",
+  "color": "beige",
+  "brand": "폴로 랄프 로렌",
+  "name": "스트레치 코튼 트윌 볼 캡-라이트 베이지",
+  "price": 69300,
+  "img": "https://image.msscdn.net/images/goods_img/20260311/6116333/6116333_17762338142995_500.jpg",
+  "url": "https://www.musinsa.com/products/6116333",
+  "rating": 4.9,
+  "reviews": 51,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6191112",
+  "slot": "m-chino",
+  "color": "brown",
+  "brand": "디키즈",
+  "name": "오리지널 874 워크팬츠 Khaki Brown",
+  "price": 50200,
+  "img": "https://image.msscdn.net/images/goods_img/20260325/6191112/6191112_17751957878882_500.jpg",
+  "url": "https://www.musinsa.com/products/6191112",
+  "rating": 4.8,
+  "reviews": 47,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6257542",
+  "slot": "m-oxford-blue",
+  "color": "blue",
+  "brand": "폴로 랄프 로렌",
+  "name": "커스텀핏 가먼트 다이 옥스포드 셔츠-블루",
+  "price": 219000,
+  "img": "https://image.msscdn.net/images/goods_img/20260406/6257542/6257542_17767340522278_500.jpg",
+  "url": "https://www.musinsa.com/products/6257542",
+  "rating": 4.9,
+  "reviews": 13,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6341386",
+  "slot": "f-knit",
+  "color": "ivory",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 에센셜 라운드 넥 니트 [버터 크림]",
+  "price": 39900,
+  "img": "https://image.msscdn.net/images/goods_img/20260420/6341386/6341386_17912723115878_500.jpg",
+  "url": "https://www.musinsa.com/products/6341386",
+  "rating": 4.9,
+  "reviews": 42,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6365296",
+  "slot": "m-chino",
+  "color": "beige",
+  "brand": "애습",
+  "name": "에센셜 와이드 치노 팬츠 - 워시드 베이지",
+  "price": 69300,
+  "img": "https://image.msscdn.net/images/goods_img/20260423/6365296/6365296_17769256748759_500.jpg",
+  "url": "https://www.musinsa.com/products/6365296",
+  "rating": 4.8,
+  "reviews": 93,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6397616",
+  "slot": "f-slacks",
+  "color": "black",
+  "brand": "스파오",
+  "name": "와이드 핀턱 팬츠",
+  "price": 24900,
+  "img": "https://image.msscdn.net/images/goods_img/20260429/6397616/6397616_17774278485947_500.jpg",
+  "url": "https://www.musinsa.com/products/6397616",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6433549",
+  "slot": "f-tee",
+  "color": "white",
+  "brand": "누아트 스튜디오",
+  "name": "우먼 솔리드 반팔 티셔츠",
+  "price": 19880,
+  "img": "https://image.msscdn.net/images/goods_img/20260507/6433549/6433549_17803848151818_500.jpg",
+  "url": "https://www.musinsa.com/products/6433549",
+  "rating": 4.7,
+  "reviews": 73,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6450015",
+  "slot": "f-denim",
+  "color": "blue",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 에센셜 스트레이트 데님 팬츠 [미디엄 인디고]",
+  "price": 42390,
+  "img": "https://image.msscdn.net/images/goods_img/20260511/6450015/6450015_17847017970466_500.jpg",
+  "url": "https://www.musinsa.com/products/6450015",
+  "rating": 4.8,
+  "reviews": 67,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6604456",
+  "slot": "f-knit",
+  "color": "grey",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 레이어드 크루 넥 니트 [미디엄 그레이]",
+  "price": 45900,
+  "img": "https://image.msscdn.net/images/goods_img/20260604/6604456/6604456_17888514551185_500.jpg",
+  "url": "https://www.musinsa.com/products/6604456",
+  "rating": 4.9,
+  "reviews": 40,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6617040",
+  "slot": "m-polo",
+  "color": "black",
+  "brand": "폴로 랄프 로렌",
+  "name": "커스텀 슬림핏 메시 폴로 셔츠-블랙",
+  "price": 199000,
+  "img": "https://image.msscdn.net/images/goods_img/20260605/6617040/6617040_17809723322197_500.jpg",
+  "url": "https://www.musinsa.com/products/6617040",
+  "rating": 4.9,
+  "reviews": 107,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6625270",
+  "slot": "m-chuck",
+  "color": "ivory",
+  "brand": "컨버스",
+  "name": "척 70 X 파치먼트",
+  "price": 105000,
+  "img": "https://image.msscdn.net/images/goods_img/20260608/6625270/6625270_17823660925027_500.jpg",
+  "url": "https://www.musinsa.com/products/6625270",
+  "rating": 5,
+  "reviews": 14,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6625301",
+  "slot": "m-chuck",
+  "color": "ivory",
+  "brand": "컨버스",
+  "name": "척 70 X 파치먼트",
+  "price": 99000,
+  "img": "https://image.msscdn.net/images/goods_img/20260608/6625301/6625301_17827819149323_500.jpg",
+  "url": "https://www.musinsa.com/products/6625301",
+  "rating": 4.8,
+  "reviews": 18,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6710477",
+  "slot": "m-sweat",
+  "color": "grey",
+  "brand": "무신사 스탠다드",
+  "name": "오버사이즈 스웨트셔츠 [미디엄 그레이]",
+  "price": 39900,
+  "img": "https://image.msscdn.net/images/goods_img/20260622/6710477/6710477_17852886369999_500.jpg",
+  "url": "https://www.musinsa.com/products/6710477",
+  "rating": 4.9,
+  "reviews": 28,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6769967",
+  "slot": "f-skirt",
+  "color": "ivory",
+  "brand": "미쏘",
+  "name": "셔링밴딩 롱 스커트",
+  "price": 41930,
+  "img": "https://image.msscdn.net/images/goods_img/20260702/6769967/6769967_17858948019524_500.jpg",
+  "url": "https://www.musinsa.com/products/6769967",
+  "rating": 4.7,
+  "reviews": 6,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6849481",
+  "slot": "f-slacks",
+  "color": "beige",
+  "brand": "무신사 스탠다드 우먼",
+  "name": "우먼즈 브러쉬드 딥 턱 와이드 슬랙스 [토프]",
+  "price": 59900,
+  "img": "https://image.msscdn.net/images/goods_img/20260715/6849481/6849481_17907490179255_500.jpg",
+  "url": "https://www.musinsa.com/products/6849481",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6967992",
+  "slot": "m-field",
+  "color": "olive",
+  "brand": "디키즈",
+  "name": "워시드 M-65 필드 재킷 Olive",
+  "price": 189000,
+  "img": "https://image.msscdn.net/images/goods_img/20260731/6967992/6967992_17888558736598_500.jpg",
+  "url": "https://www.musinsa.com/products/6967992",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-6969017",
+  "slot": "f-padding",
+  "color": "white",
+  "brand": "스파오",
+  "name": "여성 후드 푸퍼",
+  "price": 79900,
+  "img": "https://image.msscdn.net/images/goods_img/20260731/6969017/6969017_17865164599493_500.jpg",
+  "url": "https://www.musinsa.com/products/6969017",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7008627",
+  "slot": "m-barbour",
+  "color": "black",
+  "brand": "후브스",
+  "name": "디파이언트 왁스 자켓[브라운]",
+  "price": 129600,
+  "img": "https://image.msscdn.net/images/goods_img/20260806/7008627/7008627_17878192040292_500.jpg",
+  "url": "https://www.musinsa.com/products/7008627",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7061876",
+  "slot": "f-cardigan",
+  "color": "blue",
+  "brand": "세터",
+  "name": "로렌 울 블렌드 크루넥 니트 가디건 블루",
+  "price": 179000,
+  "img": "https://image.msscdn.net/images/goods_img/20260812/7061876/7061876_17877321027169_500.jpg",
+  "url": "https://www.musinsa.com/products/7061876",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7078618",
+  "slot": "m-knit-cable",
+  "color": "grey",
+  "brand": "폴로 랄프 로렌",
+  "name": "케이블 니트 코튼 스웨터-그레이",
+  "price": 299000,
+  "img": "https://image.msscdn.net/images/goods_img/20260814/7078618/7078618_17884143498889_500.jpg",
+  "url": "https://www.musinsa.com/products/7078618",
+  "rating": 5,
+  "reviews": 5,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7082725",
+  "slot": "f-dress",
+  "color": "black",
+  "brand": "어반드레스",
+  "name": "세렌 포그 카라 롱 슬리브 원피스 BLACK",
+  "price": 65600,
+  "img": "https://image.msscdn.net/images/goods_img/20260814/7082725/7082725_17873006929377_500.jpg",
+  "url": "https://www.musinsa.com/products/7082725",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7094069",
+  "slot": "f-coat",
+  "color": "grey",
+  "brand": "스파오",
+  "name": "[울블렌드] 하프 코트",
+  "price": 99900,
+  "img": "https://image.msscdn.net/images/goods_img/20260818/7094069/7094069_17890196443828_500.jpg",
+  "url": "https://www.musinsa.com/products/7094069",
+  "rating": 5,
+  "reviews": 3,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7122764",
+  "slot": "m-balmacaan",
+  "color": "beige",
+  "brand": "트릴리온",
+  "name": "캐시미어 울 발마칸 롱 코트",
+  "price": 179000,
+  "img": "https://image.msscdn.net/images/goods_img/20260820/7122764/7122764_17896282370611_500.jpg",
+  "url": "https://www.musinsa.com/products/7122764",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7144756",
+  "slot": "f-shirt-stripe",
+  "color": "blue",
+  "brand": "어반드레스",
+  "name": "듄 스트라이프 슬림핏 셔츠",
+  "price": 49600,
+  "img": "https://image.msscdn.net/images/goods_img/20260824/7144756/7144756_17875505583851_500.jpg",
+  "url": "https://www.musinsa.com/products/7144756",
+  "rating": 5,
+  "reviews": 3,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7147517",
+  "slot": "m-fatigue",
+  "color": "olive",
+  "brand": "오어슬로우",
+  "name": "SUMMER FATIGUE PANTS (GREEN M16)",
+  "price": 279000,
+  "img": "https://image.msscdn.net/images/goods_img/20260824/7147517/7147517_17883364399108_500.jpg",
+  "url": "https://www.musinsa.com/products/7147517",
+  "rating": 5,
+  "reviews": 2,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7156511",
+  "slot": "f-coat",
+  "color": "grey",
+  "brand": "애즈온",
+  "name": "MARLOW HIGH NECK COAT / CHARCOAL",
+  "price": 215000,
+  "img": "https://image.msscdn.net/images/goods_img/20260825/7156511/7156511_17909098274334_500.jpg",
+  "url": "https://www.musinsa.com/products/7156511",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7178856",
+  "slot": "f-shirt-white",
+  "color": "white",
+  "brand": "더바넷",
+  "name": "Dain Cotton Shirt White",
+  "price": 98100,
+  "img": "https://image.msscdn.net/images/goods_img/20260827/7178856/7178856_17884259602341_500.jpg",
+  "url": "https://www.musinsa.com/products/7178856",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7219229",
+  "slot": "f-padding",
+  "color": "grey",
+  "brand": "타입서비스",
+  "name": "Stand Collar Padded Jacket [Charcoal]",
+  "price": 170100,
+  "img": "https://image.msscdn.net/images/goods_img/20260901/7219229/7219229_17899792974839_500.jpg",
+  "url": "https://www.musinsa.com/products/7219229",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7225460",
+  "slot": "m-slacks-wide",
+  "color": "black",
+  "brand": "커스텀어클락",
+  "name": "원턱 와이드 슬랙스 블랙",
+  "price": 55200,
+  "img": "https://image.msscdn.net/images/goods_img/20260902/7225460/7225460_17893739821732_500.jpg",
+  "url": "https://www.musinsa.com/products/7225460",
+  "rating": 4.9,
+  "reviews": 29,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7226766",
+  "slot": "f-skirt",
+  "color": "brown",
+  "brand": "커스텀어클락 우먼",
+  "name": "포멀 슬릿 H라인 맥시 스커트 스웨이드 브라운",
+  "price": 49600,
+  "img": "https://image.msscdn.net/images/goods_img/20260902/7226766/7226766_17897244868060_500.jpg",
+  "url": "https://www.musinsa.com/products/7226766",
+  "rating": 5,
+  "reviews": 2,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7260535",
+  "slot": "m-field",
+  "color": "olive",
+  "brand": "파르티멘토",
+  "name": "코튼 트윌 필드 자켓 올리브",
+  "price": 99900,
+  "img": "https://image.msscdn.net/images/goods_img/20260907/7260535/7260535_17887585091944_500.jpg",
+  "url": "https://www.musinsa.com/products/7260535",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7260601",
+  "slot": "m-tee-white",
+  "color": "white",
+  "brand": "샤카웨어",
+  "name": "7.5oz 맥스 헤비웨이트 티셔츠 White",
+  "price": 16800,
+  "img": "https://image.msscdn.net/images/goods_img/20260907/7260601/7260601_17897205898125_500.jpg",
+  "url": "https://www.musinsa.com/products/7260601",
+  "rating": 4.8,
+  "reviews": 2564,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7266977",
+  "slot": "f-maryjane",
+  "color": "black",
+  "brand": "식스핏",
+  "name": "[+5cm] HI MOLLY MARYJANE (BLACK)",
+  "price": 54900,
+  "img": "https://image.msscdn.net/images/prd_img/20260907/7266977/detail_7266977_17896097324498_500.jpg",
+  "url": "https://www.musinsa.com/products/7266977",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7275813",
+  "slot": "m-harrington",
+  "color": "grey",
+  "brand": "스파오",
+  "name": "[울블렌드] 헤링턴 집업 재킷",
+  "price": 89900,
+  "img": "https://image.msscdn.net/images/goods_img/20260908/7275813/7275813_17905778571537_500.jpg",
+  "url": "https://www.musinsa.com/products/7275813",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7280804",
+  "slot": "f-bag",
+  "color": "brown",
+  "brand": "돈키",
+  "name": "아렌 숄더백",
+  "price": 100300,
+  "img": "https://image.msscdn.net/images/goods_img/20260908/7280804/7280804_17900559535973_500.jpg",
+  "url": "https://www.musinsa.com/products/7280804",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7283010",
+  "slot": "m-flannel",
+  "color": "blue",
+  "brand": "쿠어",
+  "name": "옴브레 플란넬 원 포켓 체크 셔츠 V.2 (블루그레이)",
+  "price": 225000,
+  "img": "https://image.msscdn.net/images/goods_img/20260909/7283010/7283010_17896080430850_500.jpg",
+  "url": "https://www.musinsa.com/products/7283010",
+  "rating": 5,
+  "reviews": 5,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7285124",
+  "slot": "f-bag",
+  "color": "brown",
+  "brand": "벵디",
+  "name": "Cleo Shoulder Bag Dusty Brown",
+  "price": 68640,
+  "img": "https://image.msscdn.net/images/goods_img/20260909/7285124/7285124_17889244096995_500.jpg",
+  "url": "https://www.musinsa.com/products/7285124",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7285541",
+  "slot": "m-down",
+  "color": "black",
+  "brand": "컬럼비아",
+  "name": "남성 호프 파인스 포레스트 III 옴니히트 패딩 자켓",
+  "price": 259000,
+  "img": "https://image.msscdn.net/images/goods_img/20260909/7285541/7285541_17909220033726_500.jpg",
+  "url": "https://www.musinsa.com/products/7285541",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7290261",
+  "slot": "f-maryjane",
+  "color": "black",
+  "brand": "에잇세컨즈",
+  "name": "플랫폼 메리제인(FW) 블랙",
+  "price": 69900,
+  "img": "https://image.msscdn.net/images/goods_img/20260909/7290261/7290261_17889438316656_500.jpg",
+  "url": "https://www.musinsa.com/products/7290261",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7291670",
+  "slot": "f-slacks",
+  "color": "black",
+  "brand": "유젠",
+  "name": "어드저스트 와이드 밴딩 슬랙스 블랙",
+  "price": 39900,
+  "img": "https://image.msscdn.net/images/goods_img/20260909/7291670/7291670_17891134621092_500.jpg",
+  "url": "https://www.musinsa.com/products/7291670",
+  "rating": 4,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7304486",
+  "slot": "f-cardigan",
+  "color": "grey",
+  "brand": "퍼머넌트 아카이브",
+  "name": "[우먼] 에어 플렉스 라운드 넥 가디건 (딥그레이)",
+  "price": 39200,
+  "img": "https://image.msscdn.net/images/goods_img/20260910/7304486/7304486_17900493566145_500.jpg",
+  "url": "https://www.musinsa.com/products/7304486",
+  "rating": 4.9,
+  "reviews": 8,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7310999",
+  "slot": "f-coat",
+  "color": "brown",
+  "brand": "미레코",
+  "name": "TULIP DOUBLE HALF WOOL COAT BROWN",
+  "price": 178200,
+  "img": "https://image.msscdn.net/images/goods_img/20260911/7310999/7310999_17895227317419_500.jpg",
+  "url": "https://www.musinsa.com/products/7310999",
+  "rating": 4.7,
+  "reviews": 3,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7311615",
+  "slot": "m-cardigan",
+  "color": "navy",
+  "brand": "유니온블루",
+  "name": "HARU CASHMERE WOOL CROP COLLAR CARDIGAN [DARK NAVY]",
+  "price": 133200,
+  "img": "https://image.msscdn.net/images/goods_img/20260911/7311615/7311615_17893503593798_500.jpg",
+  "url": "https://www.musinsa.com/products/7311615",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7312027",
+  "slot": "m-harrington",
+  "color": "grey",
+  "brand": "드로우핏",
+  "name": "울 블렌드 해링턴 자켓 [M.CHARCOAL]",
+  "price": 155200,
+  "img": "https://image.msscdn.net/images/goods_img/20260911/7312027/7312027_17912492965521_500.jpg",
+  "url": "https://www.musinsa.com/products/7312027",
+  "rating": 5,
+  "reviews": 1,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7323129",
+  "slot": "f-bag",
+  "color": "black",
+  "brand": "코치",
+  "name": "첼시 숄더 백 26 B4/BK",
+  "price": 450000,
+  "img": "https://image.msscdn.net/images/goods_img/20260914/7323129/7323129_17893696946045_500.jpg",
+  "url": "https://www.musinsa.com/products/7323129",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7325355",
+  "slot": "m-trucker",
+  "color": "blue",
+  "brand": "리바이스",
+  "name": "타입 II 셀비지 트러커 재킷",
+  "price": 219000,
+  "img": "https://image.msscdn.net/images/goods_img/20260914/7325355/7325355_17893759109073_500.jpg",
+  "url": "https://www.musinsa.com/products/7325355",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7332146",
+  "slot": "m-sweat",
+  "color": "grey",
+  "brand": "뉴발란스",
+  "name": "올데이 맨투맨 (그레이)",
+  "price": 89900,
+  "img": "https://image.msscdn.net/images/goods_img/20260915/7332146/7332146_17894525844388_500.jpg",
+  "url": "https://www.musinsa.com/products/7332146",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7335885",
+  "slot": "m-down",
+  "color": "grey",
+  "brand": "커버낫",
+  "name": "레이크 패딩 후드 자켓 라이트그레이",
+  "price": 152100,
+  "img": "https://image.msscdn.net/images/goods_img/20260915/7335885/7335885_17897056042009_500.jpg",
+  "url": "https://www.musinsa.com/products/7335885",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7341165",
+  "slot": "m-down",
+  "color": "grey",
+  "brand": "커스텀어클락",
+  "name": "라이트웨이트 후드 덕다운 패딩 자켓 쉘그레이",
+  "price": 104250,
+  "img": "https://image.msscdn.net/images/goods_img/20260916/7341165/7341165_17901243453196_500.jpg",
+  "url": "https://www.musinsa.com/products/7341165",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7367133",
+  "slot": "f-trench",
+  "color": "beige",
+  "brand": "프렌치시크",
+  "name": "펠로우 하이넥 롱 트렌치코트",
+  "price": 151200,
+  "img": "https://image.msscdn.net/images/goods_img/20260918/7367133/7367133_17897146851133_500.jpg",
+  "url": "https://www.musinsa.com/products/7367133",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7367139",
+  "slot": "f-trench",
+  "color": "beige",
+  "brand": "프렌치시크",
+  "name": "크레마 하프 트렌치 코트",
+  "price": 115200,
+  "img": "https://image.msscdn.net/images/goods_img/20260918/7367139/7367139_17897146991209_500.jpg",
+  "url": "https://www.musinsa.com/products/7367139",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7389182",
+  "slot": "f-padding",
+  "color": "beige",
+  "brand": "노스페이스",
+  "name": "여성 노벨티 눕시 다운 자켓 (RDS) CREAM BEIGE",
+  "price": 388000,
+  "img": "https://image.msscdn.net/images/goods_img/20260922/7389182/7389182_17900419690156_500.jpg",
+  "url": "https://www.musinsa.com/products/7389182",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7397459",
+  "slot": "m-derby",
+  "color": "black",
+  "brand": "포컬트",
+  "name": "플루이드 더비슈즈",
+  "price": 98700,
+  "img": "https://image.msscdn.net/images/goods_img/20260922/7397459/7397459_17900852944853_500.jpg",
+  "url": "https://www.musinsa.com/products/7397459",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7400935",
+  "slot": "m-cardigan",
+  "color": "grey",
+  "brand": "트릴리온",
+  "name": "워셔블 토글 울 니트 가디건",
+  "price": 39990,
+  "img": "https://image.msscdn.net/images/goods_img/20260923/7400935/7400935_17907510379337_500.jpg",
+  "url": "https://www.musinsa.com/products/7400935",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ },
+ {
+  "id": "ms-7444092",
+  "slot": "m-sweat",
+  "color": "grey",
+  "brand": "모더먼트",
+  "name": "썸홀 래글런 스웨트셔츠 [블루그레이]",
+  "price": 40600,
+  "img": "https://image.msscdn.net/images/goods_img/20261002/7444092/7444092_17909067659051_500.jpg",
+  "url": "https://www.musinsa.com/products/7444092",
+  "rating": null,
+  "reviews": 0,
+  "store": "무신사",
+  "checkedAt": "2026-10-13"
+ }
+];
+
+// ── src/query.js
+// 한 줄 요청을 조건으로 바꾼다. 예) "출근용 셔츠 10만원 이하", "청바지에 어울리는 신발", "겨울 데이트 코트"
+// 이해한 조건은 terms로 돌려줘 화면에 칩으로 보여 준다(사용자가 해석을 확인하고 지울 수 있게).
+
+const OCCASION_WORDS = [
+  [/출근|회사|오피스|직장|사무실|미팅|비즈니스/, 'work', '출근'],
+  [/하객|결혼식|격식|면접|상견례|돌잔치|정장/, 'formal', '격식'],
+  [/데이트|소개팅|기념일|약속/, 'date', '데이트'],
+  [/주말|여행|나들이|캠퍼스|학교|등교|캠핑|산책/, 'weekend', '주말'],
+  [/데일리|평소|매일|일상|편하게|편한/, 'daily', '데일리'],
+];
+
+const SEASON_WORDS = [
+  [/겨울|한겨울|추운/, 'winter', '겨울'],
+  [/여름|더운|한여름/, 'summer', '여름'],
+  [/봄/, 'spring', '봄'],
+  [/가을|환절기|선선/, 'fall', '가을'],
+];
+
+const STYLE_WORDS = [
+  [/클래식|아이비|프레피|댄디|트래디셔널|올드머니/, 'classic', '클래식'],
+  [/미니멀|모노톤|심플|깔끔/, 'minimal', '미니멀'],
+  [/캐주얼|스트릿|워크웨어|아메카지|편한 옷/, 'casual', '캐주얼'],
+];
+
+const COLOR_WORDS = [
+  [/흰|화이트|하얀|흰색/, 'white', '화이트'],
+  [/검정|블랙|검은/, 'black', '블랙'],
+  [/네이비|남색/, 'navy', '네이비'],
+  [/회색|그레이|차콜/, 'grey', '그레이'],
+  [/베이지|샌드|카멜/, 'beige', '베이지'],
+  [/카키|올리브/, 'olive', '올리브'],
+  [/갈색|브라운/, 'brown', '브라운'],
+  [/하늘|파란|블루|청색/, 'blue', '블루'],
+  [/아이보리|크림|오트밀/, 'ivory', '아이보리'],
+  [/초록|그린/, 'green', '그린'],
+];
+
+// 아이템 단어 → 아이템 자리 판별 함수. 위에서부터 더 구체적인 단어를 먼저 본다.
+const ITEM_WORDS = [
+  [/트러커|청자켓|청재킷|데님\s*(재킷|자켓)/, (s) => ['m-trucker', 'f-jacket'].includes(s.id), '데님 재킷'],
+  [/옥스(포|퍼)드/, (s) => /oxford/.test(s.id), '옥스퍼드 셔츠'],
+  [/스트라이프|줄무늬/, (s) => /stripe|rugby/.test(s.id), '스트라이프'],
+  [/플란넬|체크/, (s) => s.id === 'm-flannel', '체크 셔츠'],
+  [/폴로|카라\s*티|pk|피케/, (s) => s.id === 'm-polo', '폴로 셔츠'],
+  [/럭비/, (s) => s.id === 'm-rugby', '럭비 셔츠'],
+  [/케이블|꽈배기/, (s) => s.id === 'm-knit-cable', '케이블 니트'],
+  [/카디건|가디건/, (s) => s.shape === 'cardigan', '카디건'],
+  [/니트|스웨터/, (s) => s.shape === 'knit', '니트'],
+  [/맨투맨|스웻/, (s) => s.shape === 'sweat', '맨투맨'],
+  [/긴팔|롱슬리브/, (s) => s.shape === 'longtee', '긴팔 티'],
+  [/티셔츠|반팔|\b티\b|티\s/, (s) => s.shape === 'tee' || s.shape === 'longtee', '티셔츠'],
+  [/블레이저|정장\s*재킷|수트\s*재킷/, (s) => s.shape === 'blazer', '블레이저'],
+  [/트렌치/, (s) => /trench/.test(s.id), '트렌치 코트'],
+  [/발마칸/, (s) => s.id === 'm-balmacaan', '발마칸 코트'],
+  [/코트/, (s) => s.shape === 'coat', '코트'],
+  [/패딩|다운/, (s) => s.shape === 'down', '패딩'],
+  [/왁스|바버/, (s) => s.id === 'm-barbour', '왁스 재킷'],
+  [/해링턴/, (s) => s.id === 'm-harrington', '해링턴 재킷'],
+  [/필드/, (s) => s.id === 'm-field', '필드 재킷'],
+  [/초어|워크\s*재킷/, (s) => s.id === 'm-chore', '초어 재킷'],
+  [/재킷|자켓|점퍼|블루종/, (s) => s.cat === 'outer' && ['jacket', 'blazer'].includes(s.shape), '재킷'],
+  [/아우터|겉옷/, (s) => s.cat === 'outer', '아우터'],
+  [/셔츠|남방/, (s) => s.shape === 'shirt', '셔츠'],
+  [/청바지|데님|진\b|jeans/, (s) => s.shape === 'jeans', '청바지'],
+  [/치노|면바지/, (s) => s.id === 'm-chino', '치노'],
+  [/슬랙스|정장\s*바지/, (s) => /slacks/.test(s.id), '슬랙스'],
+  [/퍼티그|카고|군복/, (s) => s.id === 'm-fatigue', '퍼티그 팬츠'],
+  [/바지|팬츠|하의/, (s) => s.cat === 'bottom' && s.shape !== 'skirt', '바지'],
+  [/스커트|치마/, (s) => s.shape === 'skirt', '스커트'],
+  [/원피스|드레스/, (s) => s.cat === 'dress', '원피스'],
+  [/상의|윗옷|탑/, (s) => s.cat === 'top', '상의'],
+  [/로퍼/, (s) => /loafer/.test(s.id), '로퍼'],
+  [/메리제인/, (s) => s.id === 'f-maryjane', '메리제인'],
+  [/더비|구두/, (s) => s.cat === 'shoes' && s.shape === 'loafer', '구두'],
+  [/부츠/, (s) => s.shape === 'boot', '부츠'],
+  [/스니커즈|운동화|컨버스|뉴발/, (s) => s.shape === 'sneaker', '스니커즈'],
+  [/신발|슈즈/, (s) => s.cat === 'shoes', '신발'],
+  [/가방|백\b|숄더/, (s) => s.shape === 'bag', '가방'],
+  [/모자|캡|볼캡/, (s) => s.shape === 'cap', '모자'],
+  [/벨트/, (s) => s.shape === 'belt', '벨트'],
+];
+
+// "X에 어울리는 Y", "X랑 입을 Y", "X와 매치할 Y"
+const ANCHOR_SPLIT = /(.+?)(?:에|랑|이랑|하고|와|과|이랑도|에도)\s*(?:잘\s*)?(?:어울리는|어울릴|맞는|입을|신을|매치할|매치하기\s*좋은|코디할|같이\s*입을|받쳐\s*입을)\s*(.*)/;
+
+function itemMatchers(text) {
+  const matched = [];
+  for (const [re, fn, label] of ITEM_WORDS) {
+    if (re.test(text)) {
+      matched.push({ fn, label });
+      text = text.replace(re, ' ');
+    }
+  }
+  return matched;
+}
+
+function objectParticle(word) {
+  const code = word.trim().slice(-1).charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return '를';
+  return code % 28 ? '을' : '를';
+}
+
+function firstMatch(table, text) {
+  for (const [re, value, label] of table) if (re.test(text)) return { value, label };
+  return null;
+}
+
+function parseQuery(raw = '') {
+  const text = ` ${raw.trim().toLowerCase()} `;
+  const terms = [];
+
+  let anchorText = '';
+  let targetText = text;
+  const split = text.match(ANCHOR_SPLIT);
+  if (split) {
+    anchorText = split[1];
+    targetText = split[2] || '';
+  }
+
+  const anchors = itemMatchers(anchorText);
+  const targets = itemMatchers(targetText);
+  for (const a of anchors) terms.push(`${a.label}와 함께`);
+  for (const t of targets) terms.push(t.label);
+
+  const occ = firstMatch(OCCASION_WORDS, text);
+  if (occ) terms.push(occ.label);
+  const season = firstMatch(SEASON_WORDS, text);
+  if (season) terms.push(season.label);
+  const style = firstMatch(STYLE_WORDS, text);
+  if (style) terms.push(style.label);
+  const color = firstMatch(COLOR_WORDS, targetText);
+  if (color) terms.push(color.label);
+
+  let gender = null;
+  if (/여자|여성|여친|여자친구/.test(text)) gender = 'F';
+  else if (/남자|남성|남친|남자친구/.test(text)) gender = 'M';
+
+  let maxPrice = null;
+  const won = text.match(/(\d+(?:\.\d+)?)\s*만\s*(?:원)?\s*(대)?/);
+  const plain = text.match(/(\d{4,7})\s*원/);
+  if (won) {
+    const n = parseFloat(won[1]);
+    maxPrice = Math.round(n * 10000) + (won[2] ? (n < 10 ? 9999 : 99999) : 0);
+  } else if (plain) {
+    maxPrice = parseInt(plain[1], 10);
+  }
+  const cheap = /저렴|가성비|싼|저가|부담\s*없/.test(text);
+  const premium = /고급|명품|비싸도|좋은\s*거|퀄리티|오래\s*입을/.test(text);
+  if (!maxPrice && cheap) maxPrice = 60000;
+  if (maxPrice) terms.push(`${Math.round(maxPrice / 10000)}만원 이하`);
+  if (premium) terms.push('품질 우선');
+
+  const occLabel = { work: '출근', formal: '격식 있는 자리', date: '데이트', weekend: '주말', daily: '데일리' }[occ?.value] || '';
+  const what = targets.map((t) => t.label).join('·') || (anchors.length ? '함께 입을 아이템' : '');
+  let summary = '';
+  if (what || occLabel) {
+    const noun = what || '아이템';
+    const head = [
+      anchors.length ? `${anchors.map((a) => a.label).join('·')}에 어울리는` : '',
+      season ? season.label : '',
+      occLabel ? `${occLabel}용` : '',
+      color ? color.label : '',
+      noun,
+    ].filter(Boolean).join(' ');
+    summary = `${head}${objectParticle(noun)} ${maxPrice ? `${Math.round(maxPrice / 10000)}만원 이하로 ` : ''}골랐어요`;
+  }
+
+  return {
+    raw,
+    summary,
+    terms,
+    occasion: occ?.value || null,
+    season: season?.value || null,
+    style: style?.value || null,
+    color: color?.value || null,
+    gender,
+    maxPrice,
+    premium,
+    slotNamed: targets.length > 0,
+    anchorMatch: (slot) => anchors.some((a) => a.fn(slot)),
+    targetMatch: (slot) => targets.some((t) => t.fn(slot)),
+  };
+}
+
+// ── src/engine.js
+// 추천 엔진: 스타일·상황·계절·예산·가진 옷으로 실제 상품과 코디를 고른다.
+// 같은 입력이면 같은 결과가 나오는 규칙 기반 계산이며, 개인 정보는 이 기기 밖으로 나가지 않는다.
+
+
+
+
+
+const SEASON_LABEL = { spring: '봄', summer: '여름', fall: '가을', winter: '겨울' };
+const OPTIONAL_ROLES = new Set(['acc']);
+
+function seasonOf(date = new Date()) {
+  const m = date.getMonth() + 1;
+  if (m >= 3 && m <= 5) return 'spring';
+  if (m >= 6 && m <= 8) return 'summer';
+  if (m >= 9 && m <= 11) return 'fall';
+  return 'winter';
+}
+
+// 받침 여부로 조사를 고른다: 치노와 / 셔츠와 / 로퍼와 / 슬랙스와
+function josa(word, withFinal, withoutFinal) {
+  const ch = word.trim().slice(-1);
+  const code = ch.charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return withoutFinal;
+  return code % 28 ? withFinal : withoutFinal;
+}
+
+const PRODUCTS_BY_SLOT = PRODUCTS.reduce((acc, p) => {
+  (acc[p.slot] ||= []).push(p);
+  return acc;
+}, {});
+
+function quality(p) {
+  const rating = p.rating ?? 4.5;
+  return rating * Math.log10((p.reviews ?? 0) + 10);
+}
+
+function withinBudget(p, maxPrice) {
+  return !maxPrice || p.price <= maxPrice;
+}
+
+function productsFor(slotId, { maxPrice = null, hidden = [], color = null } = {}) {
+  const hide = new Set(hidden);
+  return (PRODUCTS_BY_SLOT[slotId] || [])
+    .filter((p) => !hide.has(p.id) && withinBudget(p, maxPrice) && (!color || p.color === color))
+    .sort((a, b) => quality(b) - quality(a) || a.price - b.price);
+}
+
+function ctx(state) {
+  return {
+    gender: state.gender || 'M',
+    style: state.style || 'classic',
+    occasion: state.occasion || null,
+    season: state.season || seasonOf(state.now ? new Date(state.now) : new Date()),
+    maxPrice: state.budget || null,
+    owned: new Set(state.owned || []),
+    hidden: state.hidden || [],
+  };
+}
+
+function matchingLooks(c, { occasion = c.occasion } = {}) {
+  return LOOKS.filter(
+    (l) => l.g === c.gender && l.styles.includes(c.style) && l.seasons.includes(c.season) && (!occasion || l.occ.includes(occasion)),
+  );
+}
+
+function slotsInLook(look) {
+  return Object.values(look.roles).flat();
+}
+
+// 한 아이템 자리의 점수와 이유
+function scoreSlot(slot, c, looks = matchingLooks(c)) {
+  let score = (slot.style[c.style] || 0) * 2;
+  const reasons = [];
+
+  const inSeason = slot.seasons.includes(c.season);
+  score += inSeason ? 2 : -6;
+
+  if (c.occasion) score += slot.occ.includes(c.occasion) ? 2.5 : -2;
+
+  const pairs = new Set();
+  let lookCount = 0;
+  for (const look of looks) {
+    const ids = slotsInLook(look);
+    if (!ids.includes(slot.id)) continue;
+    lookCount += 1;
+    for (const other of ids) if (other !== slot.id && c.owned.has(other) && SLOT_BY_ID[other].cat !== slot.cat) pairs.add(other);
+  }
+  score += Math.min(lookCount, 3) * 1;
+  score += Math.min(pairs.size, 4) * 1.5;
+
+  if (pairs.size) {
+    const names = [...pairs].slice(0, 2).map((id) => shortName(SLOT_BY_ID[id]));
+    const last = names[names.length - 1];
+    reasons.push(`가진 ${names.join('·')}${josa(last, '과', '와')} 바로 입을 수 있어요`);
+  }
+  if (slot.style[c.style] === 3) reasons.push(`${STYLES[c.style].label} 옷장의 기본이에요`);
+  if (c.occasion && slot.occ.includes(c.occasion)) reasons.push(`${OCCASIONS[c.occasion]}에 잘 맞아요`);
+  if (inSeason && slot.seasons.length < 4) reasons.push(`${SEASON_LABEL[c.season]}에 많이 입어요`);
+
+  return { score, reasons, pairs: [...pairs], inSeason };
+}
+
+const SHORT = {
+  'm-oxford-white': '흰 셔츠', 'm-oxford-blue': '블루 셔츠', 'f-shirt-white': '흰 셔츠', 'm-tee-white': '흰 티', 'f-tee': '티셔츠',
+  'm-denim': '청바지', 'f-denim': '청바지', 'm-chino': '치노', 'm-slacks-grey': '그레이 슬랙스', 'm-slacks-wide': '와이드 슬랙스', 'f-slacks': '슬랙스',
+  'm-knit-crew': '니트', 'f-knit': '니트', 'm-knit-cable': '케이블 니트', 'm-loafer': '로퍼', 'f-loafer': '로퍼', 'm-derby': '구두',
+  'm-sneaker-leather': '흰 스니커즈', 'm-chuck': '캔버스 스니커즈', 'm-nb': '운동화', 'f-sneaker': '스니커즈', 'm-boots': '부츠',
+  'm-blazer': '블레이저', 'f-blazer': '블레이저', 'm-sweat': '맨투맨', 'm-longtee': '긴팔 티', 'f-skirt': '롱 스커트',
+};
+function shortName(slot) {
+  return SHORT[slot.id] || slot.name.replace(/^(화이트|블루|베이지|그레이|블랙|네이비|생지|페니|스웨이드|코튼|울|피케|무지|베이직)\s+/, '');
+}
+
+const CAT_LIMIT = { acc: 1 };
+
+// 지금 사면 좋은 아이템
+function recommendItems(state, { limit = 8 } = {}) {
+  const c = ctx(state);
+  const looks = matchingLooks(c);
+  const ranked = SLOTS.filter((s) => s.g === c.gender && !c.owned.has(s.id))
+    .map((slot) => ({ slot, ...scoreSlot(slot, c, looks) }))
+    .filter((r) => r.inSeason && r.score > 3)
+    .sort((a, b) => b.score - a.score);
+
+  const out = [];
+  const perCat = {};
+  const perBrand = {};
+  for (const r of ranked) {
+    const products = productsFor(r.slot.id, { maxPrice: c.maxPrice, hidden: c.hidden });
+    if (!products.length) continue;
+    const limitForCat = CAT_LIMIT[r.slot.cat] ?? 2;
+    if ((perCat[r.slot.cat] || 0) >= limitForCat) continue;
+    perCat[r.slot.cat] = (perCat[r.slot.cat] || 0) + 1;
+    // 한 브랜드가 목록을 채우지 않도록 두 번까지만 먼저 고른다
+    const product = products.find((p) => (perBrand[p.brand] || 0) < 2) || products[0];
+    perBrand[product.brand] = (perBrand[product.brand] || 0) + 1;
+    const pair = r.reasons.find((x) => x.startsWith('가진 '));
+    const reasons = pair ? [pair, r.slot.why] : [r.slot.why, ...r.reasons];
+    out.push({ slot: r.slot, product, alternatives: products.filter((p) => p !== product).slice(0, 3), score: r.score, reasons: reasons.slice(0, 2) });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function fillLook(look, c, { anchorSlots = new Set(), product = null } = {}) {
+  const items = [];
+  for (const role of ROLE_ORDER) {
+    const candidates = look.roles[role];
+    if (!candidates) continue;
+    // 검색의 기준 아이템("청바지에 어울리는")을 먼저, 그다음 가진 옷
+    // 상품 상세에서 연 코디에는 선택한 상품 자체를 넣는다.
+    if (product && candidates.includes(product.slot)) {
+      items.push({ role, slot: SLOT_BY_ID[product.slot], owned: false, product });
+      continue;
+    }
+    const anchorId = candidates.find((id) => anchorSlots.has(id));
+    const ownedId = anchorId && c.owned.has(anchorId) ? anchorId : !anchorId ? candidates.find((id) => c.owned.has(id)) : null;
+    if (ownedId) {
+      items.push({ role, slot: SLOT_BY_ID[ownedId], owned: true });
+      continue;
+    }
+    const inSeason = anchorId ? [anchorId] : candidates.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
+    if (!inSeason.length) continue; // 이 계절엔 필요 없는 역할(예: 여름 아우터)
+    let picked = null;
+    for (const id of inSeason) {
+      const product = productsFor(id, { maxPrice: c.maxPrice, hidden: c.hidden })[0];
+      if (product) {
+        picked = { role, slot: SLOT_BY_ID[id], owned: false, product };
+        break;
+      }
+    }
+    if (picked) items.push(picked);
+    else if (!OPTIONAL_ROLES.has(role)) return null; // 코디의 핵심 역할을 채울 수 없으면 보여 주지 않는다
+  }
+  const buy = items.filter((i) => !i.owned);
+  return {
+    look,
+    items,
+    ownedCount: items.length - buy.length,
+    buyCount: buy.length,
+    buyTotal: buy.reduce((sum, i) => sum + i.product.price, 0),
+  };
+}
+
+// 오늘의 코디
+function recommendLooks(state, { limit = 3, anchorSlots = [], product = null, occasion } = {}) {
+  const c = ctx(state);
+  const force = new Set(anchorSlots);
+  let looks = matchingLooks(c, { occasion: occasion ?? c.occasion });
+  if (!looks.length) looks = matchingLooks(c, { occasion: null });
+  if (force.size) looks = looks.filter((l) => slotsInLook(l).some((id) => force.has(id)));
+  if (product) looks = looks.filter((l) => slotsInLook(l).includes(product.slot));
+  return looks
+    .map((look) => fillLook(look, c, { anchorSlots: force, product }))
+    .filter(Boolean)
+    .map((r) => {
+      const styleScore = r.look.styles[0] === c.style ? 2 : 1;
+      const occScore = c.occasion && r.look.occ[0] === c.occasion ? 1.5 : 0;
+      const ownedScore = (r.ownedCount / r.items.length) * 4;
+      return { ...r, score: styleScore + occScore + ownedScore };
+    })
+    .sort((a, b) => b.score - a.score || a.buyTotal - b.buyTotal)
+    .slice(0, limit);
+}
+
+// 자연어 한 줄 검색: "출근용 셔츠 10만원 이하", "청바지에 어울리는 신발"
+function search(state, text) {
+  const q = parseQuery(text);
+  const c = ctx({
+    ...state,
+    gender: q.gender || state.gender,
+    style: q.style || state.style,
+    occasion: q.occasion || state.occasion || null,
+    season: q.season || state.season,
+    budget: q.maxPrice ?? state.budget,
+  });
+
+  const genderSlots = SLOTS.filter((s) => s.g === c.gender);
+  const anchors = genderSlots.filter((s) => q.anchorMatch(s));
+  let targets = genderSlots.filter((s) => q.targetMatch(s));
+  if (!targets.length && anchors.length) targets = genderSlots.filter((s) => !anchors.some((a) => a.cat === s.cat));
+  const understood = q.terms.length > 0;
+  if (!targets.length) targets = genderSlots;
+
+  const looks = LOOKS.filter((l) => l.g === c.gender);
+  const anchorIds = new Set(anchors.map((a) => a.id));
+  const results = [];
+  for (const slot of targets) {
+    if (anchorIds.has(slot.id)) continue;
+    const base = scoreSlot(slot, { ...c, owned: new Set([...c.owned, ...anchorIds]) }, matchingLooks(c, { occasion: null }));
+    let score = base.score;
+    let reasons = [slot.why, ...base.reasons].slice(0, 2);
+    if (anchors.length) {
+      const a = shortName(anchors[0]);
+      reasons = [`${a}${josa(a, '과', '와')} 잘 어울려요`, ...base.reasons.filter((r) => !r.startsWith('가진 '))].slice(0, 2);
+      const together = looks.filter((l) => slotsInLook(l).includes(slot.id) && slotsInLook(l).some((id) => anchorIds.has(id))).length;
+      score += together * 3;
+      if (!together) score -= 4;
+    }
+    // 계절을 말했으면 그 계절 옷만, 아이템을 콕 집었으면 계절이 지나도 보여 준다
+    if (!base.inSeason && (q.season || !q.slotNamed)) continue;
+    let products = productsFor(slot.id, { maxPrice: c.maxPrice, hidden: c.hidden, color: q.color });
+    if (q.premium) products = [...products].sort((a, b) => b.price - a.price);
+    products.slice(0, 3).forEach((product, i) => {
+      results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3, reasons });
+    });
+  }
+  results.sort((a, b) => b.score - a.score);
+
+  const items = results.slice(0, 12);
+  const outfit = anchors.length || c.occasion
+    ? recommendLooks({ ...state, gender: c.gender, style: c.style, season: c.season, budget: c.maxPrice, occasion: c.occasion }, { limit: 1, anchorSlots: [...anchorIds] })[0] || null
+    : null;
+
+  return { query: q, understood, items, outfit, season: c.season, gender: c.gender };
+}
+
+function formatPrice(n) {
+  return `${n.toLocaleString('ko-KR')}원`;
+}
+
+// ── src/icons.js
+// 상품 사진이 없거나 내 옷(사진 없음)을 보여 줄 때 쓰는 단순한 옷 그림.
+
+const SHAPES = {
+  shirt: 'M30 18 L42 12 L50 20 L58 12 L70 18 L86 30 L78 44 L70 40 L70 88 L30 88 L30 40 L22 44 L14 30 Z M50 20 L50 88',
+  tee: 'M32 16 L42 12 Q50 20 58 12 L68 16 L88 30 L80 44 L70 38 L70 88 L30 88 L30 38 L20 44 L12 30 Z',
+  longtee: 'M32 16 L42 12 Q50 20 58 12 L68 16 L84 26 L90 70 L80 72 L70 38 L70 88 L30 88 L30 38 L20 72 L10 70 L16 26 Z',
+  polo: 'M32 16 L42 12 L50 22 L58 12 L68 16 L88 30 L80 44 L70 38 L70 88 L30 88 L30 38 L20 44 L12 30 Z M50 22 L50 36',
+  knit: 'M32 16 L42 12 Q50 18 58 12 L68 16 L84 26 L90 72 L80 74 L70 40 L70 86 L30 86 L30 40 L20 74 L10 72 L16 26 Z M30 80 L70 80',
+  sweat: 'M32 16 L42 12 Q50 18 58 12 L68 16 L84 26 L90 72 L80 74 L70 40 L70 86 L30 86 L30 40 L20 74 L10 72 L16 26 Z M30 80 L70 80',
+  cardigan: 'M32 14 L44 12 L50 40 L56 12 L68 14 L84 26 L90 74 L80 76 L70 40 L70 88 L30 88 L30 40 L20 76 L10 74 L16 26 Z M50 40 L50 88',
+  blazer: 'M30 14 L42 10 L50 44 L58 10 L70 14 L86 26 L90 80 L78 82 L72 42 L72 90 L28 90 L28 42 L22 82 L10 80 L14 26 Z M42 10 L36 30 L44 34 M58 10 L64 30 L56 34 M50 44 L50 90',
+  jacket: 'M30 14 L42 10 Q50 16 58 10 L70 14 L86 26 L90 74 L78 76 L72 42 L72 80 L28 80 L28 42 L22 76 L10 74 L14 26 Z M50 14 L50 80',
+  coat: 'M32 10 L42 8 L50 34 L58 8 L68 10 L84 24 L88 80 L78 82 L74 40 L76 94 L24 94 L26 40 L22 82 L12 80 L16 24 Z M50 34 L50 94',
+  down: 'M30 12 L42 8 Q50 14 58 8 L70 12 L86 26 L90 76 L78 78 L72 42 L72 84 L28 84 L28 42 L22 78 L10 76 L14 26 Z M28 36 L72 36 M28 52 L72 52 M28 68 L72 68 M50 12 L50 84',
+  pants: 'M30 10 L70 10 L74 92 L56 92 L50 34 L44 92 L26 92 Z M30 18 L70 18',
+  jeans: 'M30 10 L70 10 L74 92 L56 92 L50 34 L44 92 L26 92 Z M30 18 L70 18 M36 18 Q38 28 46 26',
+  skirt: 'M34 12 L66 12 L80 88 L20 88 Z M34 20 L66 20',
+  dress: 'M38 8 L44 8 Q50 16 56 8 L62 8 L66 30 L60 38 L78 90 L22 90 L40 38 L34 30 Z M40 38 L60 38',
+  loafer: 'M12 62 Q14 48 30 48 L52 50 Q70 52 82 58 Q92 62 90 70 L88 74 L14 74 Z M40 52 L62 54',
+  sneaker: 'M10 64 Q12 44 28 46 L44 50 Q60 46 76 56 Q92 60 90 70 L88 76 L12 76 Z M10 70 L90 70 M36 52 L40 60 M44 52 L48 60',
+  boot: 'M30 20 L58 20 L60 56 Q80 58 88 66 L88 78 L28 78 Z M58 30 L60 50',
+  cap: 'M18 58 Q20 26 50 24 Q80 26 82 58 Z M18 58 Q50 64 94 62 L92 68 Q50 72 18 64 Z',
+  belt: 'M8 44 L92 44 L92 56 L8 56 Z M60 40 L74 40 L74 60 L60 60 Z',
+  bag: 'M18 40 L82 40 L78 88 L22 88 Z M34 40 Q34 16 50 16 Q66 16 66 40',
+};
+
+function shade(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const r = clamp((n >> 16) + amount);
+  const g = clamp(((n >> 8) & 255) + amount);
+  const b = clamp((n & 255) + amount);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+function garmentSvg(slot, { size = '100%' } = {}) {
+  const d = SHAPES[slot.shape] || SHAPES.tee;
+  const fill = slot.color || '#cccccc';
+  const n = parseInt(fill.slice(1), 16);
+  const luma = 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
+  // 아주 밝거나 어두운 옷은 테마의 선 색으로 윤곽을 그려 배경에 묻히지 않게 한다
+  const stroke = luma > 200 || luma < 60 ? 'var(--art-line)' : shade(fill, -40);
+  let pattern = '';
+  let fillRef = fill;
+  if (slot.pattern === 'stripe' || slot.pattern === 'check') {
+    const id = `p-${slot.id}`;
+    const lines = slot.pattern === 'stripe'
+      ? `<rect width="10" height="10" fill="${fill}"/><rect width="10" height="3" fill="${shade(fill, 70)}"/>`
+      : `<rect width="10" height="10" fill="${fill}"/><path d="M0 5H10M5 0V10" stroke="${shade(fill, 60)}" stroke-width="1.6"/>`;
+    pattern = `<defs><pattern id="${id}" width="10" height="10" patternUnits="userSpaceOnUse">${lines}</pattern></defs>`;
+    fillRef = `url(#${id})`;
+  }
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${pattern}<path d="${d}" fill="${fillRef}" style="stroke:${stroke}" stroke-width="1.6" stroke-linejoin="round" fill-rule="evenodd"/></svg>`;
+}
+
+const ICON = {
+  search: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  close: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
+  heartFill: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
+  hanger: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a2 2 0 1 1 2-2c0 1.2-2 1.6-2 3v1"/><path d="M12 9L3 16.5c-.6.5-.3 1.5.5 1.5h17c.8 0 1.1-1 .5-1.5z"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  star: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  user: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+};
+
+// ── src/main.js
+
+
+
+
+
+const KEY = 'eoul:v1';
+const PRODUCT_BY_ID = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]));
+const BUDGETS = [
+  [null, '예산 전체'],
+  [50000, '5만원 이하'],
+  [100000, '10만원 이하'],
+  [200000, '20만원 이하'],
+];
+const ROLE_LABEL = { outer: '아우터', top: '상의', dress: '원피스', bottom: '하의', shoes: '신발', acc: '소품' };
+const EXAMPLES = {
+  M: ['출근용 셔츠 10만원 이하', '청바지에 어울리는 신발', '겨울 데이트 코트', '가성비 니트', '하객룩 재킷'],
+  F: ['출근용 셔츠 10만원 이하', '원피스에 어울리는 신발', '겨울 코트 20만원 이하', '가성비 니트', '데이트 스커트'],
+};
+
+const defaults = { onboarded: false, gender: null, style: null, occasion: null, budget: null, owned: [], saved: [], hidden: [], tab: 'home' };
+const DEMO_OWNED = {
+  M: ['m-oxford-white', 'm-oxford-blue', 'm-tee-white', 'm-denim', 'm-chino', 'm-sneaker-leather'],
+  F: ['f-shirt-white', 'f-tee', 'f-knit', 'f-denim', 'f-slacks', 'f-sneaker'],
+};
+function demoState(gender = 'M') {
+  return { ...defaults, onboarded: true, gender, style: 'classic', demo: true, owned: [...DEMO_OWNED[gender]], saved: [], hidden: [] };
+}
+let state = load();
+let query = '';
+let lastLooks = [];
+let lastSearch = null;
+let closetPickerOpen = false;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? { ...defaults, demo: false, ...JSON.parse(raw), tab: 'home' } : demoState();
+  } catch {
+    return demoState();
+  }
+}
+function persist() {
+  try {
+    const { tab, ...rest } = state;
+    localStorage.setItem(KEY, JSON.stringify(rest));
+  } catch {
+    /* 저장이 막힌 브라우저에서도 화면은 그대로 동작한다 */
+  }
+}
+function set(patch, { rerender = true } = {}) {
+  state = { ...state, ...patch };
+  persist();
+  if (rerender) render();
+}
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const $app = document.getElementById('app');
+const $sheet = document.getElementById('sheet-root');
+const $toast = document.getElementById('toast');
+const ownedLabel = () => state.demo ? '예시 옷' : '내 옷';
+const reasonText = (text) => state.demo ? text.replace(/^가진 /, '예시 옷장 속 ') : text;
+
+function demoBanner() {
+  if (!state.demo) return '';
+  const owned = state.owned.filter((id) => SLOT_BY_ID[id]?.g === state.gender);
+  return `<aside class="demo-banner" aria-label="예시 옷장 체험">
+    <div class="demo-heading"><b>예시 옷 ${owned.length}벌로 바로 체험 중</b><button class="link" data-action="start-personal">내 옷으로 바꾸기 ${ICON.chevron}</button></div>
+    <p>옷을 등록하지 않아도 코디와 추천을 볼 수 있어요.</p>
+    <button class="demo-garments" data-action="tab" data-tab="closet" aria-label="예시 옷장 살펴보기">${owned.slice(0, 6).map((id) => `<span title="${esc(SLOT_BY_ID[id].name)}">${garmentSvg(SLOT_BY_ID[id])}</span>`).join('')}</button>
+  </aside>`;
+}
+
+// ── 공통 조각
+function picture(product, slot, cls = 'thumb') {
+  const art = `<div class="art">${garmentSvg(slot)}</div>`;
+  if (!product?.img) return `<div class="${cls}">${art}</div>`;
+  return `<div class="${cls}"><img src="${esc(product.img)}" alt="${esc(product.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-slot="${slot.id}"></div>`;
+}
+function stars(p) {
+  if (!p.rating) return '';
+  return `<span class="rating">${ICON.star}${p.rating.toFixed(1)}${p.reviews ? ` (${p.reviews.toLocaleString('ko-KR')})` : ''}</span>`;
+}
+function heartBtn(p) {
+  const on = state.saved.includes(p.id);
+  return `<button class="heart" data-action="save" data-id="${p.id}" aria-pressed="${on}" aria-label="${on ? '찜 해제' : '찜하기'}">${on ? ICON.heartFill : ICON.heart}</button>`;
+}
+function itemCard({ slot, product, reasons }) {
+  return `<article class="item">
+    <button data-action="open-item" data-id="${product.id}" aria-label="${esc(product.brand)} ${esc(product.name)} 자세히">${picture(product, slot)}</button>
+    <div class="item-body">
+      <div class="brand-name">${esc(product.brand)}</div>
+      <button class="name" data-action="open-item" data-id="${product.id}" style="text-align:left">${esc(product.name)}</button>
+      <div class="price">${formatPrice(product.price)}${stars(product)}</div>
+      <div class="reason">${esc(reasonText(reasons?.[0] || slot.why))}</div>
+    </div>
+    ${heartBtn(product)}
+  </article>`;
+}
+function gridCard({ slot, product, reasons }) {
+  return `<article class="card">
+    <button data-action="open-item" data-id="${product.id}" style="display:block;width:100%;text-align:left">
+      ${picture(product, slot)}
+      <div class="brand-name">${esc(product.brand)}</div>
+      <div class="name">${esc(product.name)}</div>
+      <div class="price">${formatPrice(product.price)}</div>
+      ${reasons?.[0] ? `<div class="reason">${esc(reasonText(reasons[0]))}</div>` : ''}
+    </button>
+    ${heartBtn(product)}
+  </article>`;
+}
+function lookCard(r, index, { wide = false } = {}) {
+  const tiles = r.items.filter((i) => i.role !== 'acc').slice(0, 4);
+  const n = tiles.length;
+  return `<button class="look" data-action="open-look" data-index="${index}" ${wide ? 'style="width:100%"' : ''}>
+    <div class="look-grid n${n}">
+      ${tiles.map((i) => `<div class="tile">${i.owned ? `<span class="badge">${ownedLabel()}</span><div class="art">${garmentSvg(i.slot)}</div>` : i.product.img ? `<img src="${esc(i.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-slot="${i.slot.id}">` : `<div class="art">${garmentSvg(i.slot)}</div>`}</div>`).join('')}
+    </div>
+    <div class="look-body">
+      <div class="look-title">${esc(r.look.title)}</div>
+      <div class="look-note">${esc(r.look.note)}</div>
+      <div class="look-meta">
+        <span>${r.ownedCount ? `${ownedLabel()} ${r.ownedCount}개 + ` : ''}새로 ${r.buyCount}개</span>
+        <b>${r.buyCount ? formatPrice(r.buyTotal) : `${ownedLabel()}으로 완성`}</b>
+      </div>
+    </div>
+  </button>`;
+}
+
+// ── 시작 화면 (두 번 누르면 끝)
+function renderOnboarding() {
+  const g = state.gender;
+  // 스타일마다 그 스타일다운 아이템(다른 스타일보다 점수가 높은 것)을 겹치지 않게 3개씩 보여 준다
+  const used = new Set();
+  const styleTiles = g
+    ? Object.entries(STYLES).map(([key, s]) => {
+        const others = (x) => Math.max(...Object.keys(STYLES).filter((k) => k !== key).map((k) => x.style[k] || 0));
+        const picks = SLOTS.filter((x) => x.g === g && x.style[key] >= 2 && x.cat !== 'acc' && !used.has(x.id))
+          .sort((a, b) => (b.style[key] - others(b)) - (a.style[key] - others(a)) || b.style[key] - a.style[key])
+          .map((slot) => ({ slot, product: productsFor(slot.id)[0] }))
+          .filter((x) => x.product)
+          .slice(0, 3);
+        picks.forEach((x) => used.add(x.slot.id));
+        return `<button class="pick" data-action="pick-style" data-style="${key}" aria-pressed="${state.style === key}">
+          <div><b>${s.label}</b><span>${s.desc}</span></div>
+          <div class="mini">${picks.map((x) => `<div>${x.product.img ? `<img src="${esc(x.product.img)}" alt="" referrerpolicy="no-referrer" data-slot="${x.slot.id}">` : `<div class="art">${garmentSvg(x.slot)}</div>`}</div>`).join('')}</div>
+        </button>`;
+      }).join('')
+    : '';
+  return `<div class="onboard"><div class="onboard-inner">
+    <div class="logo">어울</div>
+    <p class="lead">나에게 어울리는<br>다음 한 벌을 바로 골라 드릴게요</p>
+    <p class="lead-sub">가입 없이 두 번만 누르면 실제 브랜드 상품을 추천해요.</p>
+    <div class="step">
+      <h2>1. 누구의 옷을 찾으세요?</h2>
+      <div class="pick2">
+        <button class="pick" data-action="pick-gender" data-g="M" aria-pressed="${g === 'M'}"><b>남성 옷</b><span>셔츠·재킷·치노</span></button>
+        <button class="pick" data-action="pick-gender" data-g="F" aria-pressed="${g === 'F'}"><b>여성 옷</b><span>셔츠·원피스·코트</span></button>
+      </div>
+    </div>
+    ${g ? `<div class="step"><h2>2. 끌리는 스타일을 골라 주세요</h2><div class="style-pick">${styleTiles}</div></div>` : ''}
+    <p class="privacy">선택한 내용은 이 기기에만 저장돼요.</p>
+  </div></div>`;
+}
+
+// ── 홈
+function topBar() {
+  const budgetLabel = BUDGETS.find(([v]) => v === state.budget)?.[1] || '예산 전체';
+  return `<header class="top">
+    <div class="top-row">
+      <div class="brand">어울<small>다음 한 벌</small></div>
+      <button class="profile-btn" data-action="open-profile">${ICON.user}${state.gender === 'F' ? '여성' : '남성'} · ${STYLES[state.style].label}</button>
+    </div>
+    <form class="ask" data-action="ask" role="search">
+      ${ICON.search}
+      <input id="ask-input" name="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="예) ${esc(EXAMPLES[state.gender][0])}" value="${esc(query)}" aria-label="찾는 옷을 한 줄로 적어 주세요">
+      ${query ? `<button type="button" class="clear" data-action="clear-q" aria-label="검색 지우기">${ICON.close}</button>` : ''}
+    </form>
+    <div class="suggest-pop" id="suggest" hidden><div class="sub">이렇게 물어보세요</div><div class="suggest">${EXAMPLES[state.gender].map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>
+    <div class="chips" role="group" aria-label="상황과 예산">
+      ${Object.entries(OCCASIONS).map(([k, v]) => `<button class="chip" data-action="occasion" data-occ="${k}" aria-pressed="${state.occasion === k}">${v}</button>`).join('')}
+      <button class="chip ghost" data-action="open-budget" aria-pressed="${!!state.budget}">${budgetLabel}${ICON.chevron}</button>
+    </div>
+  </header>`;
+}
+
+function renderHome() {
+  if (query) return renderSearch();
+  const season = seasonOf();
+  lastLooks = recommendLooks(state, { limit: 4 });
+  const items = recommendItems(state, { limit: 8 });
+  const ctxLine = [SEASON_LABEL[season], STYLES[state.style].label, state.occasion ? OCCASIONS[state.occasion] : null].filter(Boolean).join(' · ');
+  const ownedCount = state.owned.filter((id) => SLOT_BY_ID[id]?.g === state.gender).length;
+  return `
+    <section class="section">
+      <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${ctxLine}${ownedCount ? ` · ${ownedLabel()} ${ownedCount}개 반영` : ''}</div></div></div>
+      ${lastLooks.length ? `<div class="looks">${lastLooks.map((r, i) => lookCard(r, i)).join('')}</div>` : `<div class="notice">이 조건에 맞는 코디가 아직 없어요. 예산이나 상황을 바꿔 보세요.</div>`}
+      ${ownedCount ? '' : `<div class="notice" style="margin:8px 0 0">가진 옷을 알려 주면 그 옷을 살린 코디로 바꿔 드려요. <button class="link" data-action="tab" data-tab="closet" style="text-decoration:underline">옷장 채우기</button></div>`}
+    </section>
+    <section class="section">
+      <div class="section-head"><div><h2>${state.demo ? '예시 옷장' : '내 옷장'}에 더할 한 벌</h2><div class="sub">${ownedCount ? `${ownedLabel()}을 활용할 코디가 많은 순서예요` : `${STYLES[state.style].label} 옷장의 기본부터 골랐어요`}</div></div></div>
+      ${items.length ? `<div class="list">${items.map(itemCard).join('')}</div>` : `<div class="empty"><b>추천할 아이템이 없어요</b>예산을 넓히거나 다른 상황을 골라 보세요.</div>`}
+    </section>
+    ${footer()}`;
+}
+
+function renderSearch() {
+  const r = search(state, query);
+  lastSearch = r;
+  lastLooks = r.outfit ? [r.outfit] : [];
+  const head = `<div class="result-head">
+    <h2>${r.query.summary ? esc(r.query.summary) : `‘${esc(query)}’`}</h2>
+    ${r.query.terms.length ? `<div class="terms">${r.query.terms.map((t) => `<span class="chip soft">${esc(t)}</span>`).join('')}</div>` : ''}
+  </div>`;
+  const notice = r.understood ? '' : `<div class="notice">아직 이해하지 못한 표현이에요. 대신 지금 ${STYLES[state.style].label} 스타일에 맞는 아이템을 보여 드릴게요.<div class="suggest">${EXAMPLES[state.gender].map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>`;
+  const outfit = r.outfit ? `<section class="section"><div class="section-head"><div><h2>이렇게 입어 보세요</h2><div class="sub">${esc(r.outfit.look.title)}</div></div></div>${lookCard(r.outfit, 0, { wide: true })}</section>` : '';
+  const items = r.items.length
+    ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
+    : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>예산을 조금 넓히거나 다른 표현으로 찾아보세요.</div>`;
+  return head + notice + outfit + items + footer();
+}
+
+function renderCloset() {
+  const mine = SLOTS.filter((s) => s.g === state.gender);
+  const owned = mine.filter((s) => state.owned.includes(s.id));
+  const ownButton = (s) => `<button class="own" data-action="toggle-own" data-slot="${s.id}" aria-pressed="${state.owned.includes(s.id)}"><i class="tick">${ICON.check}</i><div class="art">${garmentSvg(s)}</div><span>${esc(s.name)}</span></button>`;
+  const groups = Object.entries(CATS)
+    .map(([cat, label]) => [label, mine.filter((s) => s.cat === cat && !state.owned.includes(s.id))])
+    .filter(([, list]) => list.length);
+  return `<section class="section">
+    <h2>${state.demo ? '예시 옷장' : '내 옷장'} · ${owned.length}벌</h2>
+    <div class="sub">${state.demo ? '체험용 옷이에요. 눌러서 빼면 추천이 달라져요.' : '비슷한 옷을 눌러 추가해 주세요. 한 벌만 있어도 시작할 수 있어요.'}</div>
+    ${owned.length ? `<div class="closet-grid owned-grid">${owned.map(ownButton).join('')}</div>` : ''}
+    <details class="closet-add" ${closetPickerOpen || !owned.length ? 'open' : ''}><summary>옷 추가하기</summary>
+    ${groups.map(([label, list]) => `<div class="closet-group"><h3>${label}</h3><div class="closet-grid">
+      ${list.map(ownButton).join('')}
+    </div></div>`).join('')}
+    </details>
+    <div style="margin-top:24px"><button class="btn" data-action="tab" data-tab="home">이 옷장으로 추천 보기</button></div>
+  </section>`;
+}
+
+function renderSaved() {
+  const list = state.saved.map((id) => PRODUCT_BY_ID[id]).filter(Boolean);
+  if (!list.length) return `<section class="section"><h2>찜</h2><div class="empty"><b>아직 찜한 아이템이 없어요</b>마음에 드는 상품의 ♡를 눌러 모아 두세요.</div></section>`;
+  const total = list.reduce((s, p) => s + p.price, 0);
+  return `<section class="section">
+    <h2>찜</h2><div class="sub">구매는 각 상품의 판매 페이지에서 해요.</div>
+    <div class="list" style="margin-top:14px">${list.map((p) => itemCard({ slot: SLOT_BY_ID[p.slot], product: p, reasons: [SLOT_BY_ID[p.slot].why] })).join('')}</div>
+    <div class="total"><span>찜한 ${list.length}개</span><b>${formatPrice(total)}</b></div>
+  </section>`;
+}
+
+function footer() {
+  return `<p class="footer">상품명·가격·평점은 ${esc(CATALOG.store)} 판매 페이지에서 ${esc(CATALOG.checkedLabel)}에 확인한 값이에요. 할인·쿠폰·재고에 따라 달라질 수 있으니 구매 전에 판매 페이지에서 확인해 주세요. 내 옷장과 찜 목록은 이 기기에만 저장돼요.</p>`;
+}
+
+function nav() {
+  const tabs = [
+    ['home', '추천', ICON.sparkle, 0],
+    ['closet', '내 옷장', ICON.hanger, state.owned.filter((id) => SLOT_BY_ID[id]?.g === state.gender).length],
+    ['saved', '찜', ICON.heart, state.saved.length],
+  ];
+  return `<nav class="nav" aria-label="주요 메뉴"><div class="nav-inner">${tabs.map(([k, label, icon, n]) => `<button data-action="tab" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">${icon}${label}${n ? `<span class="count">${n}</span>` : ''}</button>`).join('')}</div></nav>`;
+}
+
+function render() {
+  if (!state.onboarded || !state.gender || !state.style) {
+    $app.innerHTML = renderOnboarding();
+    return;
+  }
+  const body = state.tab === 'closet' ? renderCloset() : state.tab === 'saved' ? renderSaved() : renderHome();
+  $app.innerHTML = (state.tab === 'home' ? topBar() : '') + demoBanner() + `<main>${body}</main>` + nav();
+}
+
+// ── 시트
+function openSheet(html) {
+  $sheet.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div><button class="sheet-close" data-action="close-sheet" aria-label="닫기">${ICON.close}</button>${html}</div>`;
+  document.body.style.overflow = 'hidden';
+  $sheet.querySelector('.sheet-close')?.focus({ preventScroll: true });
+}
+function closeSheet() {
+  $sheet.innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+function itemSheet(id) {
+  const p = PRODUCT_BY_ID[id];
+  if (!p) return;
+  const slot = SLOT_BY_ID[p.slot];
+  const c = { gender: state.gender, style: state.style, occasion: state.occasion, season: seasonOf(), owned: new Set(state.owned) };
+  const { reasons } = scoreSlot(slot, c);
+  const alts = productsFor(slot.id).filter((x) => x.id !== p.id).slice(0, 6);
+  const withLooks = recommendLooks({ ...state, budget: null }, { limit: 1, product: p });
+  const look = withLooks[0];
+  openSheet(`
+    ${picture(p, slot, 'hero')}
+    <div style="margin-top:14px" class="brand-name">${esc(p.brand)}</div>
+    <h2 class="detail-title">${esc(p.name)}</h2>
+    <div class="detail-price">${formatPrice(p.price)}${stars(p)}</div>
+    <div class="fine">${esc(p.store)} 판매가 · ${esc(CATALOG.checkedLabel)} 확인</div>
+    <div class="why"><h3>이래서 추천해요</h3><ul>
+      ${[...new Set([slot.why, ...reasons])].slice(0, 3).map((r) => `<li>${esc(reasonText(r))}</li>`).join('')}
+      <li>이렇게 입어요: ${esc(slot.tip)}</li>
+    </ul></div>
+    ${look ? `<h3 class="block">이 아이템으로 만든 코디</h3>${lookRows(look)}` : ''}
+    ${alts.length ? `<h3 class="block">같은 아이템, 다른 선택</h3><div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : ''}
+    <div class="cta">
+      <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
+      <a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>
+    </div>
+    <div style="text-align:center;margin-top:6px"><button class="link" data-action="own" data-slot="${slot.id}" style="padding:10px">${state.demo ? '예시 옷장에 넣기' : state.owned.includes(slot.id) ? '이미 옷장에 있어요' : '비슷한 옷이 이미 있어요'}</button></div>
+  `);
+}
+
+function lookRows(r) {
+  return r.items.map((i) => i.owned
+    ? `<div class="look-row"><div class="thumb"><div class="art">${garmentSvg(i.slot)}</div></div><div><div class="role">${ROLE_LABEL[i.role]} · ${ownedLabel()}</div><div class="nm">${esc(i.slot.name)}</div></div><span class="badge">${state.demo ? '예시' : '보유'}</span></div>`
+    : `<button class="look-row" data-action="open-item" data-id="${i.product.id}">${picture(i.product, i.slot)}<div><div class="role">${ROLE_LABEL[i.role]} · ${esc(i.product.brand)}</div><div class="nm">${esc(i.product.name)}</div></div><span class="pr">${formatPrice(i.product.price)}</span></button>`).join('');
+}
+
+function lookSheet(index) {
+  const r = lastLooks[index];
+  if (!r) return;
+  const buyIds = r.items.filter((i) => !i.owned).map((i) => i.product.id);
+  openSheet(`
+    <h2 class="detail-title" style="padding-right:48px">${esc(r.look.title)}</h2>
+    <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
+    ${lookRows(r)}
+    <div class="total"><span>${r.buyCount ? `새로 살 것 ${r.buyCount}개` : `${ownedLabel()}으로 완성`}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
+    ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">필요한 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
+  `);
+}
+
+function optionSheet(kind) {
+  const budgetOpts = BUDGETS.map(([v, label]) => `<button class="chip" data-action="set-budget" data-v="${v ?? ''}" aria-pressed="${state.budget === v}">${label}</button>`).join('');
+  if (kind === 'budget') {
+    openSheet(`<h2 class="detail-title">한 벌 예산</h2><p class="sub" style="margin-top:4px">이 가격 이하 상품만 추천해요.</p><div class="opts" style="margin-top:16px">${budgetOpts}</div>`);
+    return;
+  }
+  openSheet(`
+    <h2 class="detail-title">내 취향</h2>
+    <div class="opt-group"><h3>누구의 옷</h3><div class="opts">
+      <button class="chip" data-action="set-gender" data-g="M" aria-pressed="${state.gender === 'M'}">남성</button>
+      <button class="chip" data-action="set-gender" data-g="F" aria-pressed="${state.gender === 'F'}">여성</button>
+    </div></div>
+    <div class="opt-group"><h3>스타일</h3><div class="opts">
+      ${Object.entries(STYLES).map(([k, s]) => `<button class="chip" data-action="set-style" data-style="${k}" aria-pressed="${state.style === k}">${s.label} · ${s.desc}</button>`).join('')}
+    </div></div>
+    <div class="opt-group"><h3>한 벌 예산</h3><div class="opts">${budgetOpts}</div></div>
+    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·찜·취향은 이 기기의 브라우저에만 있어요.</p>
+      <button class="chip" data-action="reset" style="margin-top:10px">모두 지우고 처음부터</button></div>
+  `);
+}
+
+// ── 알림
+let toastTimer;
+function toast(message, undo) {
+  clearTimeout(toastTimer);
+  $toast.innerHTML = `<span>${esc(message)}</span>${undo ? '<button data-action="undo">되돌리기</button>' : ''}`;
+  $toast.classList.add('show');
+  toast.undo = undo;
+  toastTimer = setTimeout(() => $toast.classList.remove('show'), 3200);
+}
+
+function refreshHearts(id) {
+  const on = state.saved.includes(id);
+  document.querySelectorAll(`[data-action="save"][data-id="${CSS.escape(id)}"]`).forEach((b) => {
+    b.setAttribute('aria-pressed', String(on));
+    b.innerHTML = on ? ICON.heartFill : ICON.heart;
+    if (b.classList.contains('secondary')) b.style.color = on ? 'var(--heart)' : 'inherit';
+  });
+  const navCount = state.saved.length;
+  const savedBtn = document.querySelector('.nav [data-tab="saved"]');
+  if (savedBtn) savedBtn.innerHTML = `${ICON.heart}찜${navCount ? `<span class="count">${navCount}</span>` : ''}`;
+}
+
+function toggleOwn(slotId, { fromItem = false } = {}) {
+  const had = state.owned.includes(slotId);
+  if (fromItem && had) {
+    closeSheet();
+    toast('이미 옷장에 있어요');
+    return;
+  }
+  closetPickerOpen = !!document.querySelector('.closet-add')?.open;
+  const before = state.owned;
+  set({ owned: had ? state.owned.filter((x) => x !== slotId) : [...state.owned, slotId] });
+  if (fromItem) {
+    closeSheet();
+    const name = SLOT_BY_ID[slotId].name;
+    toast(`${name}${josa(name, '을', '를')} ${state.demo ? '예시 ' : ''}옷장에 넣었어요`, () => set({ owned: before }));
+  }
+}
+
+// ── 이벤트
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const a = el.dataset.action;
+  if (a === 'ask') return;
+  switch (a) {
+    case 'start-personal':
+      query = '';
+      closetPickerOpen = true;
+      set({ demo: false, owned: [], tab: 'closet' });
+      window.scrollTo(0, 0);
+      break;
+    case 'pick-gender':
+      set({ gender: el.dataset.g, style: null });
+      requestAnimationFrame(() => document.querySelector('.style-pick')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+      break;
+    case 'pick-style':
+      set({ style: el.dataset.style, onboarded: true, tab: 'home' });
+      window.scrollTo(0, 0);
+      break;
+    case 'occasion':
+      set({ occasion: state.occasion === el.dataset.occ ? null : el.dataset.occ });
+      break;
+    case 'open-budget': optionSheet('budget'); break;
+    case 'open-profile': optionSheet('profile'); break;
+    case 'set-budget':
+      set({ budget: el.dataset.v ? Number(el.dataset.v) : null });
+      closeSheet();
+      break;
+    case 'set-gender': set({ gender: el.dataset.g, ...(state.demo ? { owned: [...DEMO_OWNED[el.dataset.g]] } : {}) }); optionSheet('profile'); break;
+    case 'set-style': set({ style: el.dataset.style }); optionSheet('profile'); break;
+    case 'reset':
+      if (el.dataset.armed !== '1') {
+        el.dataset.armed = '1';
+        el.textContent = '한 번 더 누르면 모두 지워져요';
+        break;
+      }
+      state = { ...defaults };
+      persist();
+      closeSheet();
+      render();
+      break;
+    case 'clear-q': query = ''; render(); document.getElementById('ask-input')?.focus(); break;
+    case 'example': query = el.dataset.q; render(); window.scrollTo(0, 0); break;
+    case 'tab':
+      closeSheet();
+      if (el.dataset.tab === 'home' && state.tab === 'home' && query) query = '';
+      set({ tab: el.dataset.tab });
+      window.scrollTo(0, 0);
+      break;
+    case 'open-item': e.preventDefault(); itemSheet(el.dataset.id); break;
+    case 'open-look': lookSheet(Number(el.dataset.index)); break;
+    case 'close-sheet': closeSheet(); break;
+    case 'save': {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const on = state.saved.includes(id);
+      set({ saved: on ? state.saved.filter((x) => x !== id) : [...state.saved, id] }, { rerender: state.tab === 'saved' });
+      refreshHearts(id);
+      if (!on) toast('찜했어요');
+      break;
+    }
+    case 'save-all': {
+      const ids = el.dataset.ids.split(',');
+      set({ saved: [...new Set([...state.saved, ...ids])] }, { rerender: false });
+      ids.forEach(refreshHearts);
+      closeSheet();
+      toast(`${ids.length}개를 찜했어요`);
+      break;
+    }
+    case 'own': toggleOwn(el.dataset.slot, { fromItem: true }); break;
+    case 'toggle-own': toggleOwn(el.dataset.slot); break;
+    case 'undo': toast.undo?.(); $toast.classList.remove('show'); break;
+    default: break;
+  }
+});
+
+document.addEventListener('submit', (e) => {
+  const form = e.target.closest('form[data-action="ask"]');
+  if (!form) return;
+  e.preventDefault();
+  query = form.q.value.trim();
+  form.q.blur();
+  render();
+  window.scrollTo(0, 0);
+});
+
+// 검색창을 비운 채 누르면 예시 요청을 보여 준다
+document.addEventListener('focusin', (e) => {
+  if (e.target.id === 'ask-input' && !e.target.value) document.getElementById('suggest')?.removeAttribute('hidden');
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'ask-input') document.getElementById('suggest')?.toggleAttribute('hidden', !!e.target.value);
+});
+document.addEventListener('focusout', (e) => {
+  if (e.target.id === 'ask-input') setTimeout(() => document.getElementById('suggest')?.setAttribute('hidden', ''), 180);
+});
+document.addEventListener('mousedown', (e) => {
+  if (e.target.closest('#suggest')) e.preventDefault();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $sheet.innerHTML) closeSheet();
+});
+
+// 상품 사진을 못 불러오면 옷 그림으로 바꾼다
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.slot) return;
+  const slot = SLOT_BY_ID[img.dataset.slot];
+  const art = document.createElement('div');
+  art.className = 'art';
+  art.innerHTML = garmentSvg(slot);
+  img.replaceWith(art);
+}, true);
+
+render();
+
+})();
+</script>
+</body>
+</html>
