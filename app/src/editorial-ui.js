@@ -6,28 +6,22 @@ function editorialImage() {
 }
 function renderEditorialHero(main, plan) {
   const has = plan.total > 0;
-  const needsButtonClass = 'btn';
-  const copy = h('div', { class: 'hero-copy' }, h('p', { class: 'eyebrow', text: has ? 'YOUR WARDROBE, RECONSIDERED' : 'A NEW LOOK AT WHAT YOU OWN' }),
-    h('h1', null, h('span', { text: has ? '나의 옷,' : '내 옷을,' }), h('span', { text: has ? '다음의 가능성.' : '다시 발견하다.' })),
-    h('p', { text: has ? '다른 앱에서 본 옷을 가져오면, 이미 가진 옷과 겹치는지와 새 조합이 생기는지 살펴봅니다.' : '지금 보고 있는 상품을 가져오세요. 함께 입을 옷 몇 벌과 먼저 비교할 수 있습니다.' }),
-    h('div', { class: 'bar' }, h('button', { type: 'button', class: 'btn primary', id: 'heroImport', onclick: () => openQuickCand(), text: '지금 보는 옷 가져오기' }),
-      h('button', { type: 'button', class: needsButtonClass, id: has ? 'heroNeeds' : 'startNeedsOwned', onclick: has ? openNeeds : () => openQuickItem(null, 'owned', { returnTab: 'closet' }), text: has ? '필요한 한 벌 보기' : '함께 입을 옷 추가' }),
-      !has ? h('button', { type: 'button', class: 'btn', id: 'heroPhotos', onclick: () => $('#bulkFile').click(), text: '사진으로 시작' }) : null));
-  if (!has) copy.append(h('button', { type: 'button', class: 'text-link', onclick: () => { $('#startMore').open = true; $('#startMore').scrollIntoView({ block: 'center', behavior: 'smooth' }); }, text: '등록 전에 예시 옷장 둘러보기' }));
-  if (BRAND.mobilePreview) copy.append(h('p', { class: 'note', text: '모바일 미리보기 · 옷과 사진은 이 브라우저에 저장돼요. PC와 자동으로 맞춰지지 않습니다.' }));
+  const copy = h('div', { class: 'hero-copy' }, h('p', { class: 'eyebrow', text: 'YOUR WARDROBE, RECONSIDERED' }),
+    h('h1', null, h('span', { text: has ? '나의 옷,' : '자주 입는 옷,' }), h('span', { text: has ? '필요한 다음 한 벌.' : '사진 한 장부터.' })),
+    h('p', { text: has ? '이미 가진 옷에서 부족한 종류와 어울릴 새 상품을 찾아보세요. 브랜드와 가격까지 함께 볼 수 있어요.' : '사진을 고르고, 어떤 옷인지 한 번만 선택하세요. 브랜드나 가격은 몰라도 괜찮아요.' }),
+    h('div', { class: 'bar' }, h('button', { type: 'button', class: 'btn primary', id: has ? 'heroNeeds' : 'heroEasyEntry', onclick: has ? openNeeds : () => openEasyEntry(), text: has ? '필요한 새 옷 추천 보기' : '사진으로 내 옷 추가' })));
+  copy.append(h('div', { class: 'entry-options' }, h('button', { type: 'button', class: 'entry-option', onclick: () => openEasyEntry({ withoutPhoto: true }), text: '사진 없이 종류만 선택' }),
+    has ? h('button', { type: 'button', class: 'entry-option', onclick: () => openEasyEntry(), text: '내 옷 한 벌 더 추가' }) : h('button', { type: 'button', class: 'entry-option', onclick: () => { $('#startMore').open = true; $('#startMore').scrollIntoView({ block: 'center' }); }, text: '예시 옷장 먼저 보기' })));
+  if (BRAND.mobilePreview) copy.append(h('p', { class: 'note', text: '사진은 이 브라우저에 저장돼요. PC와 자동으로 맞춰지지 않아요.' }));
   const image = editorialImage();
   const photos = owned().filter((it) => it.photo?.img && it.photo.kind === 'own').slice(0, 3);
   if (has && photos.length) {
     image.textContent = ''; image.classList.add('owned-hero-image');
     image.append(h('div', { class: 'owned-photo-collage' }, photos.map((it) => h('img', { src: it.photo.img, alt: it.name, decoding: 'async' }))), h('figcaption', { text: '내 옷장에 등록한 사진' }));
   }
-  main.append(h('section', { class: 'editorial-hero' + (has ? ' has-items' : ''), 'aria-label': '내 옷장에서 시작하는 추천' }, copy, image));
-  if (!has) main.append(h('div', { class: 'onboard-steps' }, [
-    ['01', '가진 옷부터', '자주 입는 옷 몇 벌이면 충분해요. 사진이나 간단한 정보로 시작하세요.'],
-    ['02', '나에게 필요한 한 벌', '내 옷장에 없는 종류와 함께 입을 수 있는 옷을 살펴보세요.'],
-    ['03', '사기 전에 한 번 더', '고민 중인 옷이 이미 가진 옷과 겹치는지 비교해 보세요.'],
-  ].map(([n, title, text]) => h('div', { class: 'onboard-step' }, h('span', { text: n }), h('div', null, h('h3', { text: title }), h('p', { text }))))));
+  main.append(h('section', { class: 'editorial-hero' + (has ? ' has-items' : ''), 'aria-label': '사진에서 시작하는 내 옷장' }, copy, image));
 }
+
 function draftFields(it) {
   return [W.CATS[it.cat], W.KINDS[it.cat]?.[it.kind], W.FAM[it.family]?.[0], it.light == null ? '' : '밝기 ' + it.light,
     W.FORMAL[it.formality], W.PATTERNS[it.pattern], it.seasons?.length ? it.seasons.join(' · ') : '계절 미확인'].filter(Boolean).join(' · ');
@@ -52,7 +46,7 @@ function openDraftReview(drafts) {
       h('h3', { text: it.name }), attrs,
       missing.length ? h('p', { class: 'warnnote', text: '필수 정보가 비어 있어 먼저 입력해야 합니다.' }) : h('label', { class: 'draft-review-check' },
         h('input', { type: 'checkbox', 'data-confirm-draft': it.id, onchange: syncSelection }), ' 사진과 위 속성이 맞는지 확인했습니다'),
-      h('button', { class: 'btn small', type: 'button', onclick: () => { dialog.close(); openQuickItem(it, null, { returnTab: 'closet' }); }, text: missing.length ? '정보 채우기' : '정보 수정' })));
+      h('button', { class: 'btn small', type: 'button', onclick: () => { dialog.close(); openAttributeCheck([it], { onComplete: () => render() }); }, text: missing.length ? '정보 채우기' : '정보 수정' })));
     list.append(row);
   }
   apply.addEventListener('click', async () => {
@@ -108,11 +102,11 @@ function renderEditorialCloset(main) {
     for (const it of list) {
       const card = itemCard(it);
       const photo = card.firstElementChild;
-      const open = () => W.isDraft(it) || !W.assessment(it).ready ? openQuickItem(it, null, { returnTab: 'closet' }) : openEditor(it);
+      const open = () => W.isDraft(it) || !W.assessment(it).ready ? openAttributeCheck([it], { onComplete: () => render() }) : openEditor(it);
       const photoButton = h('button', { type: 'button', class: 'closet-photo-button', 'aria-label': it.name + ' 자세히 보기', onclick: open });
       photo.replaceWith(photoButton); photoButton.append(photo);
       const tools = h('details', { class: 'item-tools' }, h('summary', { text: '더 보기' }), h('div', { class: 'bar' },
-        h('button', { class: 'btn small', type: 'button', onclick: () => openEditor(it), text: '기록 수정' }),
+        h('button', { class: 'btn small', type: 'button', onclick: () => openEditor(it), text: '정보 더하기' }),
         h('button', { class: 'btn small', type: 'button', onclick: () => openMatch(it.id), text: '상품 사진' }),
         it.status === 'candidate' ? h('button', { class: 'btn small', type: 'button', onclick: () => { ui.judgeId = it.id; ui.tab = 'judge'; render(); }, text: '판정 보기' }) : null,
         h('button', { class: 'btn small danger', type: 'button', 'aria-label': it.name + ' 삭제', onclick: () => deleteItem(it), text: '삭제' })));

@@ -331,6 +331,19 @@ table.cmp td.win{background:var(--sel);font-weight:650}
 .needs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:12px;margin-top:14px}.need-card{margin:0;display:flex;flex-direction:column;min-width:0}.need-card h2{font-size:20px}.need-card h3{font-size:14px;margin:14px 0 8px}.need-heading{display:flex;gap:12px;align-items:center}.need-heading .mini{flex-shrink:0}.need-silhouette{color:var(--line2)}.need-silhouette svg{width:80%;height:88%;overflow:visible}.need-heading .rank{margin:0 0 3px}.need-actions{margin:14px 0 0;padding-top:8px}.need-outfit{display:flex;gap:8px;padding:10px;background:var(--paper);border:1px solid var(--line);border-radius:10px;margin-bottom:8px}.need-piece{display:flex;flex:1;min-width:0;flex-direction:column;gap:6px;align-items:center;text-align:center;font-size:12px}.need-piece .mini{width:64px;height:76px;flex:none}.needs-review-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.needs-review-row .mini{flex-shrink:0}.needs-review-row .note{margin:4px 0 0}.needs-review-row .grow{min-width:0}.needs-pending summary,#pickCatalog>summary{cursor:pointer;font-weight:650}.needs-pending summary{margin-bottom:12px}#pickCatalog>div{padding-top:18px}
 @media(max-width:600px){.inventory-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.inventory-category{padding:10px}.needs-entry{align-items:stretch;flex-direction:column}.needs-entry .btn{align-self:flex-start}.needs-controls{align-items:center}.needs-controls select{max-width:calc(100% - 54px)}.needs-grid{grid-template-columns:1fr}.needs-review-row{flex-wrap:wrap}.needs-review-row .grow{flex-basis:calc(100% - 90px)}.needs-review-row .btn{margin-left:74px}}
 /*@@EDITORIAL_CSS@@*/
+.discovery-card{min-width:0;grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.discovery-card>.need-body{min-width:0}.discovery-card h2,.discovery-card h3,.discovery-card p{overflow-wrap:anywhere}.discovery-card .discovery-price{font-size:20px;font-weight:600;margin:12px 0}.discovery-card .discovery-model{font-size:12px;color:var(--ink2)}.discovery-card .bar{flex-wrap:wrap;gap:8px}.discovery-card .btn,.discovery-card .segmented button{min-height:44px}.discovery-partners{display:flex;gap:10px;overflow:auto;align-items:stretch;padding:4px 0 8px}.discovery-partners .need-piece{min-width:88px;max-width:150px}.discovery-partners .mini{min-height:90px}.discovery-partners .note{font-size:11px}
+@media(max-width:520px){.discovery-card .bar .btn{flex:1;min-width:130px}.discovery-partners{gap:8px}.discovery-partners .need-piece{min-width:80px}.discovery-card .discovery-price{font-size:18px}}
+
+.attribute-group{margin:20px 0}.attribute-group h4{font-size:13px;font-weight:600;margin:0 0 10px}.attribute-options{display:flex;flex-wrap:wrap;gap:8px}.attribute-chip{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px!important;padding:10px 12px!important;font-size:12px!important;min-width:80px}.attribute-other-colors>summary{cursor:pointer;min-height:44px;font-size:12px;padding:12px 0}.attribute-other-colors .attribute-group{margin-top:6px}.attribute-swatch{width:16px;height:16px;display:inline-block;flex:none;border:1px solid var(--line2);border-radius:50%}.attribute-suggestion{padding:14px;background:var(--tint);border-radius:10px;margin:18px 0}.attribute-suggestion .note{margin:0 0 8px}
+
+/* Photo-first wardrobe entry and concise attribute confirmation. */
+.entry-preview-label{font-size:11px;color:var(--ink2);padding:12px 0;border-bottom:1px solid var(--line);letter-spacing:.02em}
+.easy-entry-dialog{width:min(560px,calc(100vw - 24px));max-width:calc(100vw - 24px);padding:0;border:1px solid var(--line);border-radius:16px;background:var(--paper);color:var(--ink)}
+.easy-entry-dialog::backdrop{background:rgba(0,0,0,.42)}.easy-entry-dialog .dhead{gap:12px;padding:16px 22px}.easy-entry-dialog .dhead h2{font-size:15px;margin:0;flex:1}.easy-entry-dialog .dbody{padding:24px}.easy-entry-dialog .dfoot{padding:16px 24px;background:var(--paper);border-top:1px solid var(--line)}
+.easy-entry-dialog button{min-height:44px}.easy-entry-dialog button:focus-visible,.easy-entry-dialog input:focus-visible,.easy-entry-dialog summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.easy-entry-dialog .entry-back{border:0;background:none;color:var(--ink2);padding:8px;font:inherit;font-size:12px}.entry-question{font-size:clamp(24px,5vw,31px);font-weight:600;letter-spacing:-.045em;line-height:1.4;margin:0 0 10px}.entry-sub{font-size:13px;line-height:1.8;color:var(--ink2);margin:0 0 24px}.entry-photo{display:flex;align-items:center;justify-content:center;background:var(--tint);min-height:200px;margin:0 0 22px;border-radius:12px;overflow:hidden}.entry-photo>img{width:100%;max-height:300px;object-fit:contain}.entry-photo.empty{font-size:13px;color:var(--ink2);border:1px dashed var(--line2)}.entry-photo.compact{min-height:110px;width:100px;flex-shrink:0;margin:0}.entry-photo.compact>img{height:120px}.entry-context{display:flex;gap:18px;align-items:center;margin-bottom:24px}.entry-context .entry-sub{margin:0}.entry-primary{width:100%;min-height:50px!important;font-size:15px!important}.entry-option{border:0;background:none;text-decoration:underline;text-underline-offset:4px;color:var(--ink2);font:inherit;font-size:12px;padding:8px 0;min-height:44px;cursor:pointer}.entry-options{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 0}.entry-kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.entry-kind{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:12px 5px;min-height:58px!important;font:inherit;font-size:12px;cursor:pointer;line-height:1.3}.entry-kind[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--paper)}.entry-other{margin-top:18px;font-size:12px}.entry-other>summary{cursor:pointer;padding:10px 0;min-height:44px}.entry-kind-heading{font-size:12px;color:var(--ink2);margin:18px 0 8px}.entry-kind-more{grid-template-columns:repeat(3,minmax(0,1fr))}.entry-status{font-size:12px;line-height:1.7;margin:16px 0 0;min-height:1.7em;color:var(--ink2)}.entry-status.error{color:var(--warn)}.entry-selected{font-size:12px;color:var(--ink2);margin:15px 0 0}.entry-kind-note{font-size:11px;color:var(--ink2);line-height:1.7;margin:18px 0 0}.entry-counts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:18px 0 22px}.entry-count{background:var(--tint);padding:14px 3px;text-align:center;border-radius:8px;font-size:10px;color:var(--ink2)}.entry-count strong{display:block;font-size:22px;color:var(--ink);margin-top:5px}.entry-total{font-size:14px;margin:16px 0 0}.entry-crop-canvas{display:block;width:100%;touch-action:none;background:var(--tint);max-height:50dvh;object-fit:contain;border-radius:8px}.entry-crop-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:16px 0}.entry-crop-fields label{font-size:11px;display:block}.entry-crop-fields input{width:100%;min-height:44px;font:inherit;padding:6px;box-sizing:border-box}
+@media(max-width:520px){.easy-entry-dialog .dbody{padding:22px 18px}.easy-entry-dialog .dhead{padding:12px 16px}.easy-entry-dialog .dfoot{padding:14px 18px}.entry-kinds{grid-template-columns:repeat(4,minmax(0,1fr))}.entry-kind{font-size:11px}.entry-kind-more{grid-template-columns:repeat(3,minmax(0,1fr))}.entry-counts{gap:4px}.entry-count{font-size:9px;padding:12px 2px}.entry-context{gap:14px}.entry-preview-label{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.easy-entry-dialog *{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
 </style>
 </head>
 <body>
@@ -501,6 +514,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
 <script>/*@@CATALOG_LIB@@*/</script>
 <script>/*@@PICK@@*/</script>
 <script>/*@@NEEDS@@*/</script>
+<script>/*@@DISCOVERY@@*/</script>
 <script>/*@@COLORGUESS@@*/</script>
 <script>/*@@PHOTO_INTAKE@@*/</script>
 <script>/*@@SYNC@@*/
@@ -513,14 +527,15 @@ const SAMPLE = /*@@SAMPLE@@*/;
 const SAMPLE_B = /*@@SAMPLE_B@@*/;
 const BASE = /*@@WARDROBE@@*/;
 const TEMPLATE = /*@@TEMPLATE@@*/;
-const PICKS_RAW = /*@@PICKS@@*/;</script>
+const PICKS_RAW = /*@@PICKS@@*/;
+const DISCOVERY_RAW = /*@@DISCOVERY_PRODUCTS@@*/;</script>
 <script>/*@@CLOSET@@*/</script>
 <script>
 (function () {
   'use strict';
   // 웹 시험판: 다른 사이트가 이 페이지를 틀(iframe) 안에 넣어 띄우면 열지 않는다(클릭 가로채기 방지. 메타 태그 보안 정책으로는 막을 수 없어서). 같은 주소 안의 틀은 괜찮다
   if (window.__CLOSET_SRC && window.top !== window.self) { let same = false; try { same = window.top.location.origin === location.origin; } catch (e) { same = false; } if (!same) { document.body.textContent = '이 페이지는 다른 사이트 안에서는 열 수 없어요. 주소창에 직접 열어 주세요.'; return; } }
-  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, SC = window.StorageCas, FB = window.Feedback, PK = window.Pick, N = window.WardrobeNeeds;
+  const R = window.Recommend, J = window.Judge, W = window.Wardrobe, C = window.Catalog, G = window.ColorGuess, SY = window.Sync, SC = window.StorageCas, FB = window.Feedback, PK = window.Pick, N = window.WardrobeNeeds, D = window.WardrobeDiscovery;
   const PICKS = PK.cleanPicks(PICKS_RAW) || { products: [], brands: {}, lines: {}, brandNotes: [], fx: {} };   // 검증 카탈로그: 공식 판매처 페이지에서 확인한 상품(가격·재고는 확인한 날의 값)
   let X = window.OtjangCloset || null;                                                              // 3D 옷장: 한 파일 빌드에서는 바로 있고, 나눈 빌드(웹 배포)에서는 3D 탭을 열 때 closet.js 를 내려받는다
   const { SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, PHOTO_KIND, EVIDENCE, LOOK_KINDS, str, num, safeImg, safeLink, today } = W;
@@ -1029,6 +1044,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   /*@@BETA_UI@@*/
 /*@@NEEDS_UI@@*/
 /*@@EDITORIAL_UI@@*/
+/*@@ENTRY_UI@@*/
 
   // ---------- 공통 조각 ----------
   function pic(it, cls) {

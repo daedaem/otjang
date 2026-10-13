@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 const dir = path.dirname(fileURLToPath(import.meta.url));   // 한글·공백이 든 경로에서도 동작
 const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
 const split = process.env.SPLIT_DIR || '';                                                           // SPLIT_DIR=dist/web: 웹 배포용. 3D(closet.js)를 따로 둔다
@@ -32,7 +33,7 @@ if (!process.env.NO3D) {
 }
 
 let src = read('src/app.html').replace('/*@@EDITORIAL_CSS@@*/', () => read('src/editorial.css'));
-const parts = { '/*@@RECORD_LIMITS@@*/': fs.readFileSync(path.join(dir, '../contracts/record-limits.json'), 'utf8'), '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@PICK@@*/': read('src/pick.js'), '/*@@EDITORIAL_UI@@*/': read('src/editorial-ui.js'), '/*@@EDITORIAL_IMAGE@@*/': JSON.stringify('data:image/jpeg;base64,' + fs.readFileSync(path.join(dir, 'src/assets/editorial/wardrobe-studio.jpg')).toString('base64')), '/*@@NEEDS@@*/': read('src/needs.js'), '/*@@NEEDS_UI@@*/': read('src/needs-ui.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@PHOTO_INTAKE@@*/': read('src/photo-intake.js'), '/*@@BETA@@*/': read('src/beta.js'), '/*@@BETA_UI@@*/': read('src/beta-ui.js'), '/*@@SYNC@@*/': read('src/sync.js'), '/*@@FEEDBACK@@*/': read('src/feedback.js'),
+const parts = { '/*@@RECORD_LIMITS@@*/': fs.readFileSync(path.join(dir, '../contracts/record-limits.json'), 'utf8'), '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@PICK@@*/': read('src/pick.js'), '/*@@EDITORIAL_UI@@*/': read('src/editorial-ui.js'), '/*@@ENTRY_UI@@*/': read('src/entry-ui.js'), '/*@@EDITORIAL_IMAGE@@*/': JSON.stringify('data:image/jpeg;base64,' + fs.readFileSync(path.join(dir, 'src/assets/editorial/wardrobe-studio.jpg')).toString('base64')), '/*@@NEEDS@@*/': read('src/needs.js'), '/*@@DISCOVERY@@*/': read('src/discovery.js'), '/*@@NEEDS_UI@@*/': read('src/needs-ui.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@PHOTO_INTAKE@@*/': read('src/photo-intake.js'), '/*@@BETA@@*/': read('src/beta.js'), '/*@@BETA_UI@@*/': read('src/beta-ui.js'), '/*@@SYNC@@*/': read('src/sync.js'), '/*@@FEEDBACK@@*/': read('src/feedback.js'),
   '/*@@STORAGE_CAS@@*/': read('src/storage-cas.js'),
   '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json'), '/*@@SAMPLE@@*/': read('data/sample-wardrobe.json'), '/*@@SAMPLE_B@@*/': read('data/sample-wardrobe-b.json'), '/*@@BRAND@@*/': JSON.stringify(brand) };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -55,6 +56,19 @@ if (/https?:\/\/(?!")/.test(src.replace(/document\.createElementNS\('http:\/\/ww
   if (picks.includes('</')) throw new Error('picks.json 이 script 태그를 닫을 수 있습니다');
   if (!src.includes('/*@@PICKS@@*/')) throw new Error('marker missing /*@@PICKS@@*/');
   src = src.replace('/*@@PICKS@@*/', () => picks);
+}
+// Official product facts contain outbound store/source links, not fetched images.
+// Insert their JSON after the application-code remote-request scanner, like PICKS.
+{
+  const discovery = read('data/discovery-products.json'), require = createRequire(import.meta.url);
+  const W = require('./src/wardrobe.js'), D = require('./src/discovery.js');
+  const today = process.env.TODAY || W.today();
+  if (!W.safeDate(today)) throw new Error('Invalid TODAY for discovery catalog validation');
+  const checked = D.inspectCatalog(JSON.parse(discovery), { today });
+  if (checked.issues.length) throw new Error('Discovery catalog evidence errors: ' + checked.issues.map((issue) => (issue.id || 'row ' + issue.index) + '/' + issue.field + ': ' + issue.reason).join(' | '));
+  if (discovery.includes('</')) throw new Error('discovery-products.json closes a script tag');
+  if (!src.includes('/*@@DISCOVERY_PRODUCTS@@*/')) throw new Error('marker missing /*@@DISCOVERY_PRODUCTS@@*/');
+  src = src.replace('/*@@DISCOVERY_PRODUCTS@@*/', () => discovery);
 }
 if (!src.includes('/*@@CLOSET@@*/')) throw new Error('marker missing /*@@CLOSET@@*/');
 src = src.split('@@APP_NAME@@').join(esc(brand.name + (brand.status ? ' (' + brand.status + ')' : '')));

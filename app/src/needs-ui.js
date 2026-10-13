@@ -1,4 +1,5 @@
 // Inside the app closure. Recommendations are derived; no imaginary product is saved.
+function wardrobeDiscovery() { return D.recommend(state.items, DISCOVERY_RAW, { purpose: state.prefs.needsPurpose, season: state.prefs.needsSeason, budget: ui.discoveryBudget || 0, today: today() }); }
 function wardrobePlan() { return N.analyze(state.items, { purpose: state.prefs.needsPurpose, season: state.prefs.needsSeason }); }
 function needVisual(it) {
   if (it.photo?.img || it.img) return pic(it, 'mini');
@@ -9,7 +10,7 @@ function renderWardrobeOverview(main) {
   const plan = wardrobePlan();
   const box = h('section', { class: 'panel wardrobe-overview', id: 'wardrobeOverview', 'aria-labelledby': 'wardrobeOverviewTitle' },
     h('div', { class: 'section-heading' }, h('div', null, h('p', { class: 'eyebrow', text: 'THE PERSONAL COLLECTION' }), h('h2', { id: 'wardrobeOverviewTitle' }, '지금 내 옷장', h('span', { class: 'count', text: String(plan.total).padStart(2, '0') }))),
-      h('button', { type: 'button', class: 'btn', id: 'addOwned', onclick: () => openQuickItem(null, 'owned', { returnTab: 'closet' }), text: '+ 옷 등록' })));
+      h('button', { type: 'button', class: 'btn', id: 'addOwned', onclick: () => openEasyEntry({ returnTab: 'closet' }), text: '+ 옷 등록' })));
   box.append(h('div', { class: 'inventory-grid' }, plan.inventory.map((c) => h('button', { type: 'button', class: 'inventory-category', 'aria-pressed': ui.cat === c.cat ? 'true' : 'false', 'data-inventory-cat': c.cat, onclick: () => { ui.cat = c.cat; ui.season = ''; render(); } },
     h('span', { class: 'inventory-label', text: c.name }), h('strong', { text: String(c.count) }),
     h('span', { class: 'note', text: c.kinds.map((k) => k.name + ' ' + k.count).concat(c.unknown ? ['종류 미확인 ' + c.unknown] : []).join(' · ') || '아직 등록하지 않았어요' })))));
@@ -81,69 +82,154 @@ function needOutfit(outfit, candidate) {
   return h('div', { class: 'need-outfit' }, pieces.map((it) => h('div', { class: 'need-piece' }, needVisual(it),
     h('span', { text: (it.id === candidate.id ? '추가할 옷 · ' : '보유 · ') + it.name }))));
 }
-function renderNeeds(main) {
-  const plan = wardrobePlan();
-  const box = h('section', { id: 'wardrobeNeeds', 'aria-labelledby': 'needsTitle' });
-  const intro = h('header', { class: 'needs-intro' }, h('div', null, h('p', { class: 'eyebrow', text: 'THE NEXT PIECE' }),
-    h('h1', { id: 'needsTitle', text: '내 옷장에 더할 한 벌.' }),
-    h('p', { class: 'lead', text: '가진 옷을 더 자주 입게 해 줄 다음 한 벌. 필요한 이유와 함께 입을 옷을 살펴보세요.' })));
-  const context = h('div', { class: 'needs-context' }); intro.append(context); box.append(intro);
-  const purpose = h('select', { id: 'needsPurpose', onchange: () => { state.prefs.needsPurpose = purpose.value; save(); render(); } });
-  for (const [value, text] of Object.entries(N.PURPOSES)) purpose.append(h('option', { value, text }));
-  purpose.value = plan.purpose;
-  const season = h('select', { id: 'needsSeason', onchange: () => { state.prefs.needsSeason = season.value; save(); render(); } }, h('option', { value: '', text: '계절 전체' }));
-  for (const s of SEASONS) season.append(h('option', { value: s, text: s })); season.value = plan.season;
-  context.append(h('div', { class: 'bar needs-controls' }, h('label', { for: 'needsPurpose', text: '입을 때' }), purpose, h('label', { for: 'needsSeason', text: '계절' }), season),
-    h('p', { class: 'note', id: 'needsCoverage', text: '보유 ' + plan.total + '벌 중 이 조건으로 비교할 수 있는 ' + plan.assessed + '벌을 살펴봤어요. 브랜드·품명은 필수가 아니에요.' }));
-  if (!plan.total) box.append(h('section', { class: 'panel needs-empty', id: 'needsEmpty' }, h('div', { class: 'empty-copy' }, h('p', { class: 'eyebrow', text: 'START WITH YOUR WARDROBE' }), h('h2', { text: '좋은 추천은 내 옷을 아는 것부터.' }),
-    h('p', { class: 'sub', text: '자주 입는 상의와 하의부터 알려 주세요. 브랜드와 품명은 몰라도 괜찮아요.' }),
-    h('div', { class: 'bar' }, h('button', { class: 'btn primary', type: 'button', onclick: () => openQuickItem(null, 'owned', { returnTab: 'shop' }), text: '보유 옷부터 넣기' }),
-      h('button', { class: 'btn', type: 'button', onclick: () => $('#bulkFile').click(), text: '옷 사진 등록하기' }))), editorialImage()));
-  if (plan.pending.length) {
-    const pending = h('details', { class: 'panel needs-pending', id: 'needsPending', open: !plan.assessed },
-      h('summary', { text: '추천에 쓸 정보 확인 · ' + plan.pending.length + '벌' }),
-      h('p', { class: 'note', text: '사진 초안을 확정된 옷으로 계산하지 않았어요. 한 벌씩 사진과 정보를 확인해 주세요. 같은 종류의 미확인 옷이 있으면 추가 구매 제안을 보류해요.' }));
-    const photoDrafts = plan.pending.map((row) => row.item).filter(W.isDraft);
-    if (photoDrafts.length) pending.append(draftReviewButton(photoDrafts, '사진 초안 한 번에 확인 · ' + photoDrafts.length + '벌', true));
-    const first = ['top', 'bottom', 'dress', 'outer', 'shoes'].map((cat) => plan.pending.find((r) => r.item.cat === cat)).filter(Boolean);
-    const queue = first.concat(plan.pending.filter((r) => !first.includes(r)));
-    const reviewRow = (row) => h('div', { class: 'needs-review-row' }, needVisual(row.item),
-      h('div', { class: 'grow' }, h('b', { text: row.item.name }), h('p', { class: 'note', text: row.missing.map((k) => FIELD_NAMES[k] || k).join(' · ') })),
-      h('button', { class: 'btn small', type: 'button', 'data-needs-confirm': row.item.id, onclick: () => openQuickItem(row.item, null, { returnTab: 'shop' }), text: '정보 확인' }));
-    queue.slice(0, 3).forEach((row) => pending.append(reviewRow(row)));
-    if (queue.length > 3) pending.append(h('details', { class: 'ev' }, h('summary', { text: '나머지 ' + (queue.length - 3) + '벌 확인하기' }), queue.slice(3).map(reviewRow)));
-    box.append(pending);
-  }
-  if (plan.ideas.length) box.append(h('section', { class: 'notice', id: 'needsIdeas' }, h('h2', { text: '등록 목록에 아직 없는 종류' }),
-    h('p', { text: plan.ideas.map((r) => r.name).join(' · ') }),
-    h('p', { class: 'note', text: '확인 전 목록과 비교한 참고 항목이며 구매 우선순위는 아니에요. 보유 옷을 확인하면 함께 입을 조합이 생기는 종류부터 추천할게요.' })));
-  if (plan.recommendations.length) {
-    box.append(h('p', { class: 'note', text: '없는 분류를 먼저 보고, 기존에 짝이 없던 옷을 활용하는지와 함께 입을 옷 수를 비교했어요. 종류가 골고루 보이도록 최대 3개를 제안해요.' }));
-    const list = h('div', { class: 'needs-grid', id: 'needsResults' });
-    plan.recommendations.forEach((r, i) => {
-      const cover = h('div', { class: 'need-cover' }, h('span', { class: 'need-index', text: String(i + 1).padStart(2, '0') }), needVisual(r.candidate), h('span', { class: 'note', text: '종류 제안 · 실제 판매 상품 아님' }));
-      const body = h('div', { class: 'need-body' }, h('div', { class: 'need-heading' }, h('p', { class: 'rank', text: i === 0 ? 'FIRST TO CONSIDER' : 'ALSO WORTH A LOOK' }), h('h2', { text: r.name })),
-        h('ul', { class: 'why' }, r.reasons.map((reason) => h('li', { text: reason }))));
-      if (r.outfits.length) {
-        body.append(h('h3', { text: '이 옷들과 함께' }), needOutfit(r.outfits[0], r.candidate));
-        if (r.outfits.length > 1) body.append(h('details', { class: 'ev' }, h('summary', { text: '다른 조합 ' + (r.outfits.length - 1) + '개 보기' }), r.outfits.slice(1).map((o) => needOutfit(o, r.candidate))));
+
+// Correct only an unchanged tentative candidate, in the exact actor's latest
+// acknowledged snapshot. Later edits/references are independent user actions.
+function removeTentativeDiscovery(target, operation) {
+  const row = target.items.find((it) => it.id === operation.candidate.id);
+  const linked = (target.decisions || []).some((d) => d.itemId === operation.candidate.id) ||
+    (target.pickLog || []).some((d) => d.candidateId === operation.candidate.id || d.ownedId === operation.candidate.id);
+  if (!row) return true;
+  if (linked || JSON.stringify(row) !== operation.installed) return false;
+  target.items = target.items.filter((it) => it.id !== row.id);
+  target.rack = (target.rack || []).filter((it) => it.id !== row.id);
+  return true;
+}
+function repairDiscoveryCandidate(operation) {
+  const repair = async () => {
+    try {
+      const written = store.writtenSnapshots?.get(operation.scope), expected = store.persistedSnapshots?.get(operation.scope);
+      if (!written || written.target !== operation.target) return { ok: true, retained: false };
+      if (!expected || (written.data !== expected.idbValue && written.data !== expected.lsValue) || store.recoveryByScope?.has(operation.scope)) return { ok: false, retained: true };
+      const corrected = JSON.parse(written.data), removed = removeTentativeDiscovery(corrected, operation);
+      if (JSON.stringify(corrected) === written.data) return { ok: true, retained: !removed };
+      const data = JSON.stringify({ ...corrected, _storageRevision: ++store.revision });
+      let local; try { local = window.localStorage; } catch (error) { /* inaccessible */ }
+      const result = await SC.commitSnapshot({ db: store.db, mode: store.mode, idbKey: operation.scope, lsKey: operation.lsKey,
+        expectedIdb: expected.idbValue, expectedLs: expected.lsValue, data, locks: navigator.locks, localStorage: local });
+      if (!result.ok) { if (result.conflict) store.conflicts.add(operation.scope); return { ok: false, retained: true }; }
+      store.persistedSnapshots.set(operation.scope, { idbValue: result.idbValue === undefined ? expected.idbValue : result.idbValue, lsValue: result.lsValue === undefined ? expected.lsValue : result.lsValue });
+      store.writtenSnapshots.set(operation.scope, { ...written, data });
+      store.conflicts.delete(operation.scope);
+      return { ok: true, retained: !removed };
+    } catch (error) { return { ok: false, retained: true }; }
+  };
+  const pending = savePromise.then(repair, repair);
+  // Keep the shared save queue boolean-valued for requireFreshStorage callers.
+  savePromise = pending.then((result) => result.ok, () => false);
+  return pending;
+}
+function compareDiscoveryProduct(row) {
+  const target = state, scope = accountScope();
+  const p = D.inspectCatalog(DISCOVERY_RAW, { today: today() }).products.find((it) => it.id === row.product?.id && it.link === row.product?.link);
+  if (!p) { toast('확인된 상품을 찾지 못했습니다. 추천을 다시 열어 주세요.'); return Promise.resolve(false); }
+  ui.discoverySaves ||= new Map();
+  const key = p.id + '\u0000' + p.link, existing = ui.discoverySaves.get(key);
+  if (existing?.target === target && existing.scope === scope) return existing.promise;
+  const operation = { target, scope, lsKey: localStorageKey() };
+  ui.discoverySaves.set(key, operation);
+  operation.promise = (async () => {
+    const active = () => state === target && accountScope() === scope;
+    try {
+      await requireFreshStorage();
+      if (!active()) return false;
+      if (ui.pullSaving || ui.syncBusy) throw new Error('다른 기기와 옷장을 맞추는 중이에요. 끝난 뒤 다시 비교해 주세요.');
+      const dup = target.items.find((it) => it.status === 'candidate' && it.link === p.link && it.product?.code === p.model && it.brand === p.brand);
+      if (dup) {
+        const saving = ui.candidateSaves?.get(dup.id);
+        if (saving?.state === target && await saving.promise !== true) return false;
+        if (!active() || !target.items.includes(dup)) return false;
+        ui.judgeId = dup.id; ui.tab = 'judge'; render(); return true;
       }
-      body.append(h('p', { class: 'note', text: r.cautions.join(' ') }));
-      body.append(r.line ? needOfferCard(r) : h('section', { class: 'need-product need-product-empty', 'aria-label': '상품 준비 상태' },
-        h('p', { class: 'eyebrow', text: '실제 상품 추천은 준비 중' }),
-        h('p', { class: 'note', text: '이 종류는 아직 검증한 상품명·판매가·구매 링크가 없어요.' })));
-      body.append(h('div', { class: 'bar need-actions' },
-        h('button', { class: 'btn primary small', type: 'button', 'data-need-candidate': r.id, onclick: () => openNeedProduct(r), text: '보고 있는 상품과 비교하기 ↗' }),
-        r.line ? h('button', { class: 'text-link', type: 'button', onclick: openNeedCatalog, text: '흰 티 다른 상품과 비교' }) : null));
-      list.append(h('article', { class: 'need-card', 'data-need-id': r.id }, cover, body));
-    });
-    box.append(list);
-  } else if (plan.assessed) box.append(h('div', { class: 'panel', id: 'needsNoBuy' }, h('h2', { text: '지금 정보로는 추가 구매를 먼저 권할 근거가 적어요' }),
-    h('p', { class: 'sub', text: plan.held.length ? '이미 비슷한 옷이 있거나, 같은 종류의 미확인 옷이 있어요. 정보를 확인한 뒤 다시 살펴보세요.' : '현재 비교하는 기본 종류가 있거나 새 조합이 확인되지 않았어요. 지금 가진 옷부터 활용해 보세요.' }),
-    h('button', { class: 'btn', type: 'button', onclick: () => { ui.tab = 'outfits'; render(); }, text: '보유 옷 코디 보기' })));
-  else if (plan.total && !plan.pending.length) box.append(h('p', { class: 'empty', text: '선택한 계절로 등록된 옷이 없어요. 계절을 바꾸거나 보유 옷의 계절 정보를 확인해 주세요.' }));
-  if (plan.covered.length || plan.held.length) box.append(h('details', { class: 'ev', id: 'needsCovered' }, h('summary', { text: '추가 구매를 먼저 권하지 않은 종류' }),
-    h('ul', { class: 'why' }, plan.covered.map((r) => h('li', { text: r.name + ': ' + r.items.map((it) => it.name).join(' · ') + ' 보유' })),
-      plan.held.map((r) => h('li', { text: r.name + ': 같은 분류의 ' + r.items.length + '벌 정보 확인 후 판단' })))));
+      if (!canAdd('items', 1)) return false;
+      const catalogProduct = C.cleanProduct({ ...p, code: p.model, price: p.priceKRW, note: '공식 상품 정보와 편집 분류로 비교. 사이즈·실제 착용감은 확인 전.' }, 0);
+      const candidate = C.toCandidate(catalogProduct, today()); candidate.id = newId('c');
+      operation.candidate = candidate; operation.installed = JSON.stringify(candidate);
+      target.items.push(candidate);
+      let ok = false;
+      try { ok = await save() === true; } catch (error) { /* failure is handled below */ }
+      if (!ok) {
+        const removed = removeTentativeDiscovery(target, operation), repaired = await repairDiscoveryCandidate(operation);
+        const warning = !repaired.ok ? '상품 등록과 복구 저장을 마치지 못했습니다. 후보가 남아 있을 수 있어요. 기록 탭에서 전체 백업을 보관하고 저장 상태를 확인해 주세요.' :
+          !removed || repaired.retained ? '첫 저장에 실패했습니다. 이후 편집하거나 연결한 후보는 유지했어요. 저장 상태를 확인한 뒤 다시 비교해 주세요.' : '상품을 저장하지 못했습니다. 다시 시도해 주세요.';
+        (store.discoveryRepairFailures ||= new Map()).set(scope, warning);
+        if (active()) { render(); toast(warning); }
+        return false;
+      }
+      store.discoveryRepairFailures?.delete(scope);
+      if (!active() || !target.items.includes(candidate)) return false;
+      ui.judgeId = candidate.id; ui.tab = 'judge'; render(); return true;
+    } catch (error) { if (active()) toast(error.message || '상품을 저장하지 못했습니다. 저장 상태를 확인해 주세요.'); return false; }
+    finally { if (ui.discoverySaves.get(key) === operation) ui.discoverySaves.delete(key); }
+  })();
+  return operation.promise;
+}
+function discoveryProductCard(row, index, exploring) {
+  const p = row.product, pending = ui.discoverySaves?.get(p.id + '\u0000' + p.link);
+  const body = h('div', { class: 'need-body' },
+    h('p', { class: 'eyebrow', text: exploring ? '정보 확인 후 비교할 상품' : row.matchStatus === 'kind-gap' ? '등록 목록에 없는 신발 종류' : '내 옷과 함께 입을 상품' }),
+    h('p', { class: 'need-product-brand', text: p.brand }),
+    h('h2', { class: 'need-product-name', text: p.name }),
+    h('p', { class: 'note discovery-model', text: '품번 ' + p.model + (p.colorName ? ' · ' + p.colorName : '') }),
+    h('p', { class: 'need-product-price', text: p.priceKRW == null ? '현재 가격은 판매처에서 확인' : won(p.priceKRW) }),
+    h('ul', { class: 'why' }, row.reasons.map((reason) => h('li', { text: reason }))));
+  if (row.outfits?.length) body.append(h('h3', { text: '내 옷과 이렇게' }), needOutfit(row.outfits[0], row.candidate));
+  else if (row.partners?.length) body.append(h('div', { class: 'need-outfit discovery-partners' }, row.partners.slice(0, 3).map((it) => h('div', { class: 'need-piece' }, needVisual(it), h('span', { text: it.name })))));
+  if (row.cautions.length) body.append(h('p', { class: 'note', text: row.cautions.join(' ') }));
+  body.append(h('p', { class: 'need-product-source note', text: p.storeName + ' · ' + p.checkedAt + ' 확인. 가격·재고는 바뀔 수 있어요.' }),
+    h('div', { class: 'bar need-actions need-product-actions' },
+      h('button', { class: 'btn primary small', type: 'button', 'data-discovery-compare': p.id,
+        disabled: pending?.target === state && pending.scope === accountScope(), onclick: () => compareDiscoveryProduct(row), text: '내 옷과 비교' }),
+      h('a', { class: 'btn small', href: p.link, target: '_blank', rel: 'noopener noreferrer', text: '공식 판매처 ↗', 'aria-label': p.brand + ' ' + p.name + ' 공식 판매처 상품 페이지 (새 창)' })));
+  return h('article', { class: 'need-card panel discovery-card', 'data-discovery-product': p.id, 'data-match-status': row.matchStatus, 'aria-label': p.brand + ' ' + p.name }, body);
+}
+function renderNeeds(main) {
+  const plan = wardrobeDiscovery();
+  const box = h('section', { id: 'wardrobeNeeds', 'aria-labelledby': 'needsTitle' });
+  box.append(h('header', { class: 'needs-intro' }, h('div', null, h('p', { class: 'eyebrow', text: 'THE NEXT PIECE' }),
+    h('h1', { id: 'needsTitle', text: '내 옷에 맞는 다음 한 벌' }),
+    h('p', { class: 'lead', text: '무엇이 있는지 보고, 함께 입을 실제 상품을 골라요.' }))));
+  box.append(segmented('discovery-purpose', '입을 때', Object.entries(N.PURPOSES), state.prefs.needsPurpose || 'daily', (value) => { state.prefs.needsPurpose = value; save(); render(); }),
+    h('p', { class: 'note', id: 'needsCoverage', text: '보유 ' + plan.total + '벌 · 조합에 쓸 정보가 확인된 ' + plan.assessed + '벌. 브랜드·품명·가격을 입력할 필요는 없어요.' }));
+  const repairWarning = store.discoveryRepairFailures?.get(accountScope());
+  if (repairWarning) box.append(h('p', { class: 'warnnote', text: repairWarning }));
+  if (!plan.total) {
+    box.append(h('section', { class: 'panel needs-empty', id: 'needsEmpty' }, h('h2', { text: '자주 입는 옷부터 넣어 주세요' }),
+      h('p', { class: 'sub', text: '상의와 하의 몇 벌로 시작해요. 사진을 고르고 종류만 눌러 등록할 수 있어요.' }),
+      h('button', { class: 'btn primary', type: 'button', id: 'discoveryStart', onclick: () => openEasyEntry({ returnTab: 'shop' }), text: '내 옷 사진 넣기' })));
+    main.append(box); return;
+  }
+  if (plan.pending.length) {
+    const queue = ['top', 'bottom', 'dress', 'outer', 'shoes'].map((cat) => plan.pending.find((r) => r.item.cat === cat)).filter(Boolean);
+    const first = queue.slice(0, 2).map((r) => r.item);
+    box.append(h('section', { class: 'panel needs-pending', id: 'needsPending' },
+      h('h2', { text: plan.assessed ? '몇 번만 눌러 추천을 더 정확하게' : '색과 무늬만 확인하면 내 옷과 비교해요' }),
+      h('p', { class: 'note', text: '브랜드는 몰라도 괜찮아요. 사진으로 잡은 색은 제안이며, 확인한 정보로만 코디를 계산해요.' }),
+      h('div', { class: 'bar' }, h('button', { class: 'btn primary', type: 'button', 'data-discovery-confirm': first.map((it) => it.id).join(','),
+        onclick: () => openAttributeCheck(first, { season: state.prefs.needsSeason, onComplete: () => { ui.tab = 'shop'; render(); } }), text: first.length + '벌 간단 확인' }),
+        plan.pending.length > first.length ? h('button', { class: 'text-link', type: 'button', onclick: () => openAttributeCheck(plan.pending.map((r) => r.item), { season: state.prefs.needsSeason, onComplete: () => { ui.tab = 'shop'; render(); } }), text: '확인 전 옷 ' + plan.pending.length + '벌 모두 보기' }) : null)));
+  }
+  const filters = h('details', { class: 'ev discovery-filters' }, h('summary', { text: '예산·계절 조정' }),
+    segmented('discovery-budget', '상품 가격 상한', [['0', '전체'], ['50000', '5만원 이하'], ['100000', '10만원 이하']], String(ui.discoveryBudget || 0), (value) => { ui.discoveryBudget = Number(value); render(); }));
+  const season = h('select', { id: 'needsSeason', onchange: () => { state.prefs.needsSeason = season.value; save(); render(); } }, h('option', { value: '', text: '계절 전체' }));
+  SEASONS.forEach((s) => season.append(h('option', { value: s, text: s }))); season.value = state.prefs.needsSeason || '';
+  filters.append(h('label', { for: 'needsSeason', text: '계절 ' }), season); box.append(filters);
+  if (plan.recommendations.length) {
+    box.append(h('h2', { text: '이 상품을 먼저 살펴보세요' }),
+      h('div', { class: 'needs-grid', id: 'needsResults' }, plan.recommendations.map((row, index) => discoveryProductCard(row, index, false))));
+  } else if (plan.assessed) box.append(h('section', { class: 'panel', id: 'needsNoBuy' }, h('h2', { text: '지금은 구매를 서두르지 않아도 돼요' }),
+    h('p', { class: 'sub', text: '확인된 상품 목록에서 추가할 근거가 있는 옷을 찾지 못했어요. 같은 종류가 있거나 선택한 조건에 맞는 새 조합이 없어요.' }),
+    h('button', { class: 'btn', type: 'button', onclick: () => { ui.tab = 'outfits'; render(); }, text: '내 옷으로 코디 보기' })));
+  if (plan.explore.length) box.append(h('details', { class: 'discovery-explore', open: !plan.recommendations.length },
+    h('summary', { text: plan.recommendations.length ? '정보 확인 후 비교할 다른 실제 상품' : '등록 목록에 없는 종류의 실제 상품' }),
+    h('p', { class: 'note', text: '종류를 기준으로 찾은 후보예요. 아직 색·무늬 조합이 확인된 추천은 아니에요.' }),
+    h('div', { class: 'needs-grid', id: 'needsExplore' }, plan.explore.map((row, index) => discoveryProductCard(row, index, true)))));
+  if (!plan.recommendations.length && !plan.explore.length && !plan.assessed) box.append(h('p', { class: 'note', text: '위의 간단 확인을 마치면 내 옷과 비교할 상품을 찾을 수 있어요.' }));
+  if (plan.held.length || plan.covered.length) {
+    const reasons = { 'registered-kind-covered': '이미 같은 역할의 옷이 있어요.', 'strong-overlap': '보유 옷과 색·종류가 많이 겹쳐요.', 'confirm-existing-kind': '같은 종류의 보유 옷 정보를 먼저 확인해요.' };
+    box.append(h('details', { class: 'ev', id: 'needsCovered' }, h('summary', { text: '이미 가진 종류·구매를 보류한 이유' }),
+      h('ul', { class: 'why' }, [...plan.covered, ...plan.held].map((row) => h('li', { text: row.product.brand + ' ' + row.product.name + ' · ' + (reasons[row.reason] || '보유 옷부터 살펴봐요.') + ' ' + (row.items || []).map((it) => it.name).join(' · ') })))));
+  }
+  box.append(h('p', { class: 'note', text: '등록된 옷과 확인한 공식 상품 목록 안에서 제안해요. 취향·사이즈·핏과 실시간 최저가는 아직 확인하지 않아요.' }));
   main.append(box);
 }
