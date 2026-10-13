@@ -3,6 +3,8 @@
 기준일: 2026-10-14. 대상: `feat/editorial-mobile-20261013`의 작업 소스. 반품·사이즈 계약과 후속 기록 동기화 보호를 구현했고 서버·Node 자동 검증을 실행했다. 실제 브라우저와 운영 배포 검증은 남아 있다. 이 문서는 개발자가 코드를 찾아 수정하는 길잡이이며 출시 완료 보고서가 아니다.
 기록 용량 보호와 실제 상품 비교 연결의 검증 대상 코드는 `d7dfa70cc80c6f3d71ba0870476a03571755d9f3`다. 기존 `e508ecb` 이후 변경 23개 파일의 동결 원문과 커밋 blob SHA-256 일치를 확인했고, GitHub 기능 브랜치와 초안 PR #10의 동일 SHA 게시를 확인했다. 실제 앱 운영 배포는 하지 않았다.
 받기 저장 실패·계정 전환·대기 중 편집 보호의 검증 대상 코드 `2cef23332dcae2270df5eb97512298fa0f8be6d7`는 **GitHub 기능 브랜치와 초안 PR #10에 게시됐다**. 코드 3개 파일의 동결 원문/커밋 blob 바이트·SHA-256과 원격 코드 SHA, 게시 범위 Node 278개(기존 231개 + 신규 47개)와 세 빌드, 독립 집중 회귀 90개를 확인했다. 독립 검토가 제보한 연속 후속 제출 P1은 실제 재현해 해결을 확인했으며 이번 범위의 추가 확정 P0/P1은 없었다. 실제 운영 서버 배포는 하지 않았다. 대상 소스 SHA와 미실행 범위는 [검증 기록](verification-2026-10-13.md)을 따른다.
+최신 비교 진입 코드 `b359d6002a8cac2521b9abfbcf2986d9aec008b9`는 구매 전 마음 입력 없이 카탈로그 후보의 결과를 바로 보여 준다. 가짜 before/판정 기록을 만들지 않으며 기존 실제 기록을 보존한다. 게시 대상 Node 359개·독립 핵심 81개·세 빌드와 동결 코드 11개 파일/커밋 일치를 확인했다. 검증 코드 `b359d60`의 GitHub 기능 브랜치·초안 PR #10 게시를 확인했다. 같은 [핵심 흐름 미리보기](https://daedaem.github.io/otjang/preview/core-flow/)도 최신 소스로 재게시됐고 Pages 커밋 `85355ccbd833a81dd7a73a402e704c055e6bb8a5`의 build `built`·7개 파일 HTTP 200·바이트/SHA-256 일치를 확인했다. 아래 `296eaf2` 미리보기는 이전 게시 이력이며 실제 브라우저 렌더·운영 서버 배포와 구분한다.
+핵심 등록·실제 상품 추천의 결과 우선·사진 색 확인 코드 `296eaf2bcbc7929bf2beb3736e0dae473fb9bfdd`는 로컬 커밋·동결 코드 10개 파일과 게시 대상 Node 353개·독립 신규 75개·세 빌드로 검증했다. 실제 상품을 정보 확인보다 먼저 보여 주고, 좋은 사진의 색 제안을 명시적 확인부터 받도록 보완했다. 검증 코드 `296eaf2`의 GitHub 기능 브랜치·초안 PR #10 게시를 확인했다. 앞선 [핵심 흐름 미리보기](https://daedaem.github.io/otjang/preview/core-flow/)는 해당 코드 `296eaf2`로 공개 게시됐고 생성된 7개 파일의 HTTP 200·바이트·SHA-256 일치를 확인했다. 빈 자료로 시작하는 정적 미리보기이며 실제 브라우저 렌더·카메라·운영 서버 검증과 구분한다. 첫 통합 `3f80f6a`의 350개/72개 이력과 최신 결과는 [검증 기록](verification-2026-10-13.md)을 따른다.
 사용자 검토용 [빈 자료 미리보기](https://daedaem.github.io/otjang/preview/review-86c5bae/)는 앞선 `86c5bae` 소스다. 생성된 7개 파일과 Pages 게시 원문의 일치를 확인했지만 브라우저 렌더는 미확인이다. 이번 받기 보호나 별도 입력 UX 시안이 반영된 화면으로 읽지 않는다.
 
 ## 처음 읽는 순서
@@ -22,10 +24,12 @@
 | --- | --- |
 | [app/build.mjs](../app/build.mjs) | HTML 안의 `/*@@…@@*/` 마커에 JS·JSON·CSS 삽입; 3D 번들, CSP, PWA 산출물 생성 |
 | [app/src/app.html](../app/src/app.html) | 앱 상태, 화면, 이벤트, 저장, 파일 가져오기, `syncFetch`·`syncPush`·`syncPull` |
-| [app/src/beta-ui.js](../app/src/beta-ui.js) | 간단 등록, 확인 전 안내, 후속 결과, 전체 백업, 계정별 저장 전환; app.html 클로저 안에 삽입 |
+| [app/src/beta-ui.js](../app/src/beta-ui.js) | 기존 상세/빠른 편집, 확인 전 안내, 후속 결과, 전체 백업, 계정별 저장 전환; app.html 클로저 안에 삽입 |
+| [app/src/entry-ui.js](../app/src/entry-ui.js) · [editorial-ui.js](../app/src/editorial-ui.js) | 사진·종류 중심의 보유 등록, 짧은 속성 확인, 저장 실패의 선별 복구와 홈 진입 |
 | [app/src/wardrobe.js](../app/src/wardrobe.js) | 어휘·스키마, `cleanItem`·`cleanDecision`, 사진 상태, 상품 확인, 내보내기 |
 | [app/src/judge.js](../app/src/judge.js) · [recommend.js](../app/src/recommend.js) | 후보의 겹침·추가 조합·판정 보류와 보유 옷 코디 규칙 |
-| [app/src/needs.js](../app/src/needs.js) · [needs-ui.js](../app/src/needs-ui.js) | 보유 종류 집계, 목적·계절별 빈틈, 실제 후보 연결 화면 |
+| [app/src/needs.js](../app/src/needs.js) · [needs-ui.js](../app/src/needs-ui.js) | 보유 종류 집계, 목적·계절별 빈틈, 실제 상품 카드와 동일 후보 비교 화면 |
+| [app/src/discovery.js](../app/src/discovery.js) · [discovery-products.json](../app/data/discovery-products.json) | 공식 상품 시드의 구조·근거 검사와 여러 종류의 실제 상품 추천; `WardrobeDiscovery.inspectCatalog`/`recommend` |
 | [app/src/pick.js](../app/src/pick.js) · [catalog.js](../app/src/catalog.js) | 편집 카탈로그 추천/근거와 사용자가 넣은 상품 목록의 정리/순위; 서로 다른 입력 모델 |
 | [app/src/sync.js](../app/src/sync.js) · [beta.js](../app/src/beta.js) | 네트워크 없는 동기화 계산·계약 보호·baseline과 전체 백업 형식 검증 |
 | [app/src/storage-cas.js](../app/src/storage-cas.js) | 같은 계정의 마지막 성공 원문과 현재 IDB/LS 복사본 비교, 원자적 쓰기, 검증된 장애의 대체 저장 |
@@ -72,16 +76,27 @@ flowchart LR
 
 ### 옷 등록과 거친 사진
 
-`needs-ui.js` 등록 버튼 → `beta-ui.js::openQuickItem` → `Wardrobe.cleanItem` → `replaceItem` → `await save()` 순서다. 간단 등록은 이름·분류부터 받고 모르는 속성은 비워 둔다. 저장 실패 시 이전 items로 되돌리고 안내한다.
-사진 등록은 app.html의 `readImage`, 일괄 사진/크롭 흐름, `PhotoIntake.quality`, `ColorGuess.guess`를 함께 본다. 기본 `readImage`는 긴 변 480px 이하로 다시 인코딩한다. 품질 검사와 색 초안은 브랜드·상품명·핏을 식별하지 않는다. 원본 재촬영·한 벌씩 크롭·사용자 확인 경로와 품질 측정은 계속 필요하다.
+`editorial-ui.js`·`needs-ui.js`의 보유 옷 등록 → `entry-ui.js::openEasyEntry` → `Wardrobe.cleanItem` → `commitEasyChanges` → `replaceItem` → `await save()` 순서다. 사진과 종류만 고르면 이름은 종류명으로 저장한다. 사진 없이 시작할 수 있고 모르는 색·무늬·격식은 null이다. 보유 옷에 브랜드·품명·가격·실측을 요구하지 않는다. 기존 상세 편집은 이미 등록한 옷과 직접 입력한 상품을 수정할 때 사용할 수 있다. 저장 키는 유지하므로 새 화면을 열기 위해 자료를 지우거나 별도 시안 namespace로 옮기지 않는다.
+
+등록 완료의 `필요한 새 옷 추천 보기`는 `openNeeds`를 연다. `renderNeeds`는 등록한 보유 목록에서 실제 상품과 보류 이유를 보여 준다. 실제 추천/탐색 결과가 짧은 속성 확인보다 먼저 나오며 품번·세부 근거는 접어서 볼 수 있다. 판매처·가격 확인일·가격은 그대로 표시한다. 조합 정보가 부족하면 우선 분류가 다른 1~2벌을 골라 `openAttributeCheck(items, {season, onComplete})`를 호출한다. 한 벌씩 빠진 종류·색·밝기·무늬·입을 느낌을 선택하며, 목적상 필요한 경우 계절도 확인한다. 알고 있는 수동 값·사진·상품 확인·실측을 덮지 않는다. 모름은 비워 두고 해당 계산을 보류한다. `onComplete`는 저장 성공 뒤 확인된/남은 ID를 전달한다.
+
+사진은 app.html의 `readImage`로 긴 변 480px 이하로 다시 인코딩한다. `PhotoIntake.quality`와 `ColorGuess.guess`는 이 브라우저에서 대표 색 초안을 제안한다. 배경·조명 때문에 틀릴 수 있고 「맞아요」 등 사용자가 명시적으로 확인한 값만 조합에 쓴다. 좋은 사진의 제안은 「맞아요」/「다른 색 직접 선택」부터 보이고 수동 색·밝기 선택은 필요할 때 펼친다. 어둡거나 단색에 가까워 근거가 부족한 사진은 수동 선택으로 이어진다. 이 경로는 브랜드·상품명·핏 식별 모델이 아니다. 한 벌 크롭은 선택 기능이며 실제 카메라·파일 선택·크롭의 기기 검증은 남아 있다.
+
 상품 사진의 `candidate`/`substitute`/`confirmed`와 속성의 `photo-draft`/`owner`/`owner-confirmed`는 다른 축이다. `confirmedAt` 없이 동일 상품으로 확정하지 않으며 사용자 입력을 자동 추정으로 덮지 않는다.
 
-### 빈틈 발견과 살까 말까
+### 실제 상품 찾기와 살까 말까
 
-`needs-ui.js::wardrobePlan` → `Needs.analyze`는 보유 종류와 목적·계절별 역할을 계산한다. 종류 제안에서 `openNeedProduct`로 실제 상품을 입력하거나 `Pick.recommend`로 편집 카탈로그 후보를 연결한다. 추천된 종류 자체를 실재 상품으로 저장하지 않는다.
-작업 소스의 `needOfferCard` → `compareNeedOffer`는 표시한 실제 상품을 `pickToCand`로 저장한 뒤 그 후보의 판정 화면을 연다. 브랜드·상품명·가격·확인일·판매처 링크와 추천 기록의 `candidateId` 연결을 유지한다. 같은 상품은 중복 생성하지 않으며 저장 실패·계정 전환이면 성공 이동하지 않는다. 현재 편집 카탈로그의 자동 추천 종류는 `white-tee`뿐이다. 다른 빈틈은 수동 상품 입력으로 이어지며 확인된 상품이 없을 때 가상 상품이나 구매 링크를 만들지 않는다.
-판정 화면은 추천 전 마음을 `decisions[].before`에 저장하고 `Judge.judgeCandidate`를 호출한다. 결과에는 겹치는 옷, 추가 조합, blockers와 `ready/partial/needs-confirmation`이 있다. 확인 전 속성을 계산에서 제외하고, 이유를 보여 준다. 결정은 `after`, 실제 후속 결과는 `followup`이다.
-서버 경로는 [RulesController](../server/src/main/java/otjang/api/RulesController.java) → `WardrobeService` 조회 → `Judge`/`Recommend`이며 앱은 로컬에서 직접 계산할 수 있다. 편집 추천의 `pick.js` 전체가 Java로 이식된 것은 아니다.
+`needs-ui.js::wardrobeDiscovery` → `WardrobeDiscovery.recommend(state.items, DISCOVERY_RAW, {purpose, season, budget, today})`가 현재 상품 화면의 기준이다. `needs.js`는 보유 종류 집계·기존 종류 제안에 계속 사용한다. `discovery.js`는 `inspectCatalog`로 상품 ID·브랜드·품명·품번·HTTPS 구매 링크·출처 필드·실제 달력 날짜·가격 근거를 검사한다. 중복 ID·잘못된 증거·미래 날짜 등은 추천에 통과시키지 않는다. 빌드도 같은 검사를 호출해 오류가 있으면 중단한다. 구조가 맞다는 사실만으로 공식 페이지 내용의 사실성을 독립 검증한 것은 아니다.
+
+상품 시드는 12개·9종류·6브랜드(H&M, UNIQLO, SPAO, Nike, Converse, Dr. Martens)이며 당시 가격 확인은 11개다. UNIQLO 니트 가격 null을 0원으로 바꾸지 않는다. H&M 의류 6개는 현재 조합에 필요한 속성이 있고, 나머지 의류의 미확인 무늬는 탐색에 남는다. 신발은 기능적 종류의 빈자리만 제안하며 색 어울림·코디 수·착화감은 계산하지 않는다. `attrEvidence`의 밝기·격식·활용 계절은 편집 판단이다. 상품 이미지와 개인 사진은 시드에 포함하지 않는다.
+
+결과의 `recommendations`는 확인된 의류 규칙으로 추가 조합을 만들거나 신발 종류의 빈자리가 있는 상품이다. `explore`는 실제 품명은 알지만 조합 속성이 부족한 탐색 후보, `held`는 같은 종류의 확인 전 보유 옷 때문에 중복 구매를 보류한 상품, `covered`는 역할이 이미 충족되거나 강하게 겹치는 상품이다. 부족함은 전체 실제 옷장에 대한 단정이 아니라 등록된 범위다. 편한 차림의 보유 옷으로 단정한 목적의 역할까지 덮지 않으며, 근거가 없으면 구매를 강제하지 않는다. 목적은 간단 선택, 예산·계절은 선택적인 조정이다.
+
+`discoveryProductCard` → `compareDiscoveryProduct`는 카드의 상품을 현재 시드에서 재검사하고 `Catalog.cleanProduct`/`toCandidate`로 같은 브랜드·품명·품번·가격·확인일·링크의 후보를 만든다. 같은 계정·state에서 저장 성공한 뒤 그 후보의 비교 결과로 이동한다. 새 카탈로그 후보는 구매 전 마음 입력을 다시 요구하지 않는다. 중복 탭·재시도는 후보를 재사용하고, 실패·용량 초과·CAS 충돌·계정 전환이면 성공 이동하지 않는다. `removeTentativeDiscovery`·`repairDiscoveryCandidate`는 변경되지 않은 잠정 후보만 제거하고 해당 계정의 뒤 저장 큐를 CAS로 보상한다. 이후 편집/판정과 연결된 후보는 보존하며, 보상 실패 안내를 완료로 바꾸지 않는다.
+
+보유 등록·속성 확인의 `commitEasyChanges`도 before/after를 불변 복사해 대기 중 객체 직접 편집을 잃지 않도록 한다. 실패 시 시도한 값과 같은 묶음만 역변경하고 뒤 큐는 시작한 계정 키로 보상한다. 이 경로는 일반 원자적 저장이나 outbox가 아니다(ADR-18).
+
+앞선 `d7dfa70`의 `needOfferCard` → `compareNeedOffer` → `pickToCand`는 흰 티셔츠 편집 비교의 보조 경로로 남긴다. 종류 제안 자체를 실재 상품으로 저장하지 않는다. `renderJudge`는 새 카탈로그 후보를 `renderVerdict(right, candidate, null)`로 바로 비교한다. 수동 후보도 `previewVerdict`의 「입력 없이 비교 결과 보기」를 누를 수 있고, `ui.judgePreview`는 계정·state·후보 ID에 한정된다. 결과만 볼 때 가짜 `before`나 decision을 만들지 않는다. 진짜 구매 전 마음을 직접 남긴 기존 open/완료 판정은 원래 경로로 이어지고, 결정은 `after`, 실제 후속 결과는 `followup`이다. 미리보기에도 후보 수정·삭제가 남으며 callback은 시작한 계정·state·후보 객체를 확인한다. 카탈로그 브랜드·가격은 「상품 목록 정보」/「목록 확인가」로 표시한다. 서버 [RulesController](../server/src/main/java/otjang/api/RulesController.java) → `WardrobeService` → `Judge`/`Recommend`와 앱 로컬 계산을 구분한다. `needs.js`·`pick.js`·`discovery.js` 전체가 Java에 대응하는 것은 아니다.
 
 ### 구매·착용·반품 결과
 
@@ -125,7 +140,7 @@ app.html의 `syncFetch`가 인증/계약/If-Match 헤더와 응답 버전을 처
 1. 재현 가능한 합성 입력, 기대 결과, 이슈의 완료 기준을 먼저 적는다. 개인 자료·사진·토큰·대화 원문을 테스트나 커밋에 넣지 않는다.
 2. 파일/어휘를 바꾸면 JS `wardrobe.js`와 Java DTO/cleaner/validator/mapper/엔티티를 함께 검토한다. API 거부와 로컬 정규화의 의도된 차이도 fixture로 기록한다.
 3. DB 변경은 새 Flyway V번호로 추가한다. 적용된 이전 파일을 고치지 않는다. 기존 행 보존·업그레이드·DB 제약 거부를 테스트한다.
-4. 판정/코디/상품 순위의 공통 규칙은 JS·Java를 함께 바꾸고 골든 교차 비교한다. `needs.js`·`pick.js`처럼 대응 Java가 없는 모듈은 동등한 서버 구현이 있다고 가정하지 않는다.
+4. 판정/코디/상품 순위의 공통 규칙은 JS·Java를 함께 바꾸고 골든 교차 비교한다. `needs.js`·`pick.js`·`discovery.js`처럼 대응 Java가 없는 모듈은 동등한 서버 구현이 있다고 가정하지 않는다.
 5. UI 동작은 해당 app.html/beta-ui.js와 순수 계산 모듈을 나눠 확인한다. `build.mjs` 삽입 조각은 단독 스크립트와 실행 범위가 다르므로 실제 빌드도 검사한다.
 6. 저장 성공을 기다린 뒤 성공 안내를 내고, 실패 시 변경을 되돌리거나 미저장 상태를 명확히 표시한다. 네트워크 await 뒤 현재 상태가 전송한 자료와 같다고 가정하지 않는다.
 7. 실행 로그·대상 SHA·환경·실패/건너뜀·미실행 범위를 함께 남긴다. push, PR, 배포, 공개 화면 확인은 별도로 기록한다.
@@ -146,7 +161,8 @@ npm run build:mobile
 
 서버 전체 테스트는 `server/`에서 `mvn test`로 실행한다. API 테스트가 disposable PostgreSQL Testcontainers를 띄우므로 운영 DB를 연결할 필요가 없다. 결과는 `server/target/surefire-reports/`에 있으며 실패·오류·건너뜀까지 확인한다. 실제 서버 실행은 [운영 기준](../server/OPERATIONS-BETA.md)과 로컬 실행 도구를 따른다.
 
-핵심 회귀 위치는 `followup-contract.test.cjs`, `sync.test.cjs`, `sync-flow.test.cjs`, `storage-cas.test.cjs`, `app-persistence.test.cjs`, `purchase-persistence.test.cjs`, `pull-persistence.test.cjs`, `capacity-flow.test.cjs`, `needs-offer-flow.test.cjs`, `backup-schema.test.cjs`, `calendar-integrity.test.cjs`, `readiness.test.cjs`와 서버 `FollowupContractTest`, `FollowupApiContractTest`, `AccountCapacityTest`, `ContractGuardTest`, `AuthIsolationTest`, `RevisionConcurrencyTest`, `GoldenParityTest`다. 앱 흐름 회귀는 실제 함수 본문을 추출해 합성 HTTP/저장 어댑터로 실행하며 실제 브라우저 검사는 아니다.
+핵심 회귀 위치는 `followup-contract.test.cjs`, `sync.test.cjs`, `sync-flow.test.cjs`, `storage-cas.test.cjs`, `app-persistence.test.cjs`, `purchase-persistence.test.cjs`, `pull-persistence.test.cjs`, `capacity-flow.test.cjs`, `needs-offer-flow.test.cjs`, `entry-ui.test.cjs`, `discovery.test.cjs`, `discovery-flow.test.cjs`, `judge-entry.test.cjs`, `backup-schema.test.cjs`, `calendar-integrity.test.cjs`, `readiness.test.cjs`와 서버 `FollowupContractTest`, `FollowupApiContractTest`, `AccountCapacityTest`, `ContractGuardTest`, `AuthIsolationTest`, `RevisionConcurrencyTest`, `GoldenParityTest`다. 앱 흐름 회귀는 실제 함수 본문을 추출해 합성 HTTP/저장 어댑터로 실행하며 실제 브라우저 검사는 아니다.
+최신 핵심 흐름만 재현할 때는 `node --test test/entry-ui.test.cjs test/discovery.test.cjs test/discovery-flow.test.cjs test/judge-entry.test.cjs`를 `app/`에서 실행한다(81개). 미게시 `record-sync.test.cjs` 실험 43개를 포함한 작업 폴더의 `npm test` 수를 최신 게시 대상 359개와 같다고 기록하지 않는다. 공개 코드만 체크아웃한 상태의 테스트 목록과 구분한다.
 골든 기대값 생성은 의도한 규칙 변경 때만 `npm run golden`과 `node server/tools/gen-rank-golden.mjs`를 사용한다. 실패를 없애려고 기대값을 먼저 갱신하지 않는다.
 브라우저 환경이 준비되면 `npx playwright install chromium` 뒤 `npm run check`, `check:storage`, `check:import`, `check:beta`, `check:web`, `check:a11y`, `check:perf`를 해당 산출물·환경에 맞게 실행한다. Node 테스트·빌드 성공은 이 검사의 실행이나 실제 휴대폰 확인을 대신하지 않는다.
 
@@ -154,6 +170,7 @@ npm run build:mobile
 
 | 관찰한 문제 | 코드에서 확인할 경계 |
 | --- | --- |
+| 실제 상품이 없거나 추천이 보류됨 | `wardrobeDiscovery`의 `pending`/`held`/`covered`/`catalogIssues`, 상품 속성 null·선택 목적/계절/예산 확인. 모르는 값·가상 상품을 채워서 통과시키지 않기 |
 | 저장 실패 또는 다시 열면 예전 자료 | app.html `save`/`load`, storageRevision과 IDB/LS 모드, 호출부의 save 결과 처리 |
 | 401 로그인 필요 | `syncFetch`와 `BearerFilter`/`AuthService`; 토큰 원문을 로그에 남기지 않기 |
 | 409 `CLIENT_UPGRADE_REQUIRED` | meta 응답, `X-Eoul-Contract`, `AuthenticatedRevisionFilter`의 계약 검사 |
@@ -173,8 +190,11 @@ npm run build:mobile
 | 공유 사례 | 88건의 계약 입력/정규화/거부 사례; DB/API 테스트 수와 같은 숫자는 아님 |
 | 클라이언트 | 게시 이력은 최초 184개 → 재로그인 수정 188개 → 구매 저장 수정 203개 통과. 용량·상품 연결 `d7dfa70`의 Node 22.23.2 전체 231개 통과, 실패/건너뜀 0; 용량 VM 22개·구매 15개·상품 연결 6개 포함. 기본 12.24 MB·분리 웹/모바일 각 1.10 MB + 3D 11.14 MB 빌드 성공. 독립 검토자는 해당 43개를 재실행하고 소스를 검토해 이번 범위의 추가 확정 P0/P1을 찾지 못함; 전체 231개는 로그 확인이며 독립 전체 재실행은 아님. 코드 23개 파일의 동결 원문/커밋 일치와 원격 브랜치·PR SHA를 확인함 |
 | 받기 저장 실패 보호 `2cef233` | 게시 범위 Node 278개 통과(기존 231개 + 신규 47개), 실패/건너뜀 0. 세 빌드·각 14 scripts 구문/계약·제출 출처 주입 검사 통과. 독립 집중 회귀 90개 직접 재실행, 연속 제출 제보 해결 확인 및 이번 범위의 추가 확정 P0/P1 없음. 전체 278개와 빌드는 로그 확인이며 독립 전체 재실행은 아님. 코드 3개 파일의 동결 원문/커밋 blob과 원격 기능 브랜치·PR 코드 SHA 일치 확인. 실제 브라우저·두 기기·운영 배포는 별도 확인 대상. 서버 141개를 이번 JS 변경에서 새로 실행한 결과로 쓰지 않음 |
+| 핵심 등록·실제 상품 추천 첫 통합 `3f80f6a` | 게시 대상 Node 350개(기존 278 + 신규 72) 통과, 실패/건너뜀 0. 신규 등록 27·순수 추천 30·상품 UI 15는 독립 72개 직접 재실행. 대기 중 직접 편집 P1 재현 해결, 실제 시드·출처 구조·15 scripts 검사 확인. 세 빌드는 기본 12.33 MB·빈 웹/모바일 각 1.19 MB + 3D 11.14 MB. 첫 통합 동결 코드 10개 파일·로컬 커밋 일치; 후속 UI 코드·원격/미리보기 게시 상태는 최신 검증 절을 따름 |
+| 결과 우선·사진 색 UI `296eaf2` | 게시 대상 Node **353개** 통과, 실패/건너뜀 0. 독립 신규 **75개** 직접 재실행(등록 29·순수 추천 30·상품 UI 16), 두 P1 해결 이후 추가 확정 P0/P1 없음. 결과/탐색 우선·세부 근거 접기·명시적 사진 색 확인을 실제 callback 회귀로 확인. 기본 12,928,896 bytes·빈 웹 1,251,552 bytes·모바일 1,251,573 bytes + 3D 11.14 MB, 15 scripts 구문/마커/CSP 검사. 최종 동결 코드 10개 파일/로컬 커밋 일치. 검증 코드 `296eaf2`의 GitHub 기능 브랜치·초안 PR #10 게시 확인. 공개 `core-flow` 미리보기 7개 파일은 HTTP 200·바이트/SHA 일치 확인; 브라우저·카메라·실제 기기는 미실행 |
+| 최신 비교 진입 `b359d60` | 게시 대상 Node **359개** 통과, 독립 핵심 **81개** 직접 재실행(순수 30·등록 29·상품 UI 16·비교 진입 6), 추가 확정 P0/P1 없음. 실제 카탈로그 후보의 즉시 비교·수동 입력 없는 미리보기·가짜 before 없음·기존 진짜 before 유지·계정/state/후보 경계·수정/삭제 도구 확인. 세 빌드: 기본 12,930,430 bytes·빈 웹 1,253,086 bytes·모바일 1,253,107 bytes(각 약 1.20 MB) + 3D 11.14 MB. 각 15 scripts·미확장 마커 0·모바일 CSP 15개 일치. 동결 코드 11개 파일/로컬 커밋 일치; 검증 코드 `b359d60`의 기능 브랜치·초안 PR #10 게시 확인. 최신 Pages `85355cc` build `built`·`core-flow` 7개 파일 HTTP 200·바이트/SHA 일치 확인; 실제 브라우저·카메라·서버 배포는 별도 |
 | 브라우저/실제 기기/운영 복구 | 현재 변경의 전체 E2E, 실제 휴대폰·Safari, 배포 복구/성능은 별도 검증 필요 |
 
 AI가 설계 제안·구현·테스트·이 문서를 작성했다. 사용자는 핵심 규칙과 대안을 이해하고 실제 옷장·구매 후보로 결과의 타당성을 확인해야 한다. 자동 테스트는 패션 취향, 상품 정보의 사실성, 사진 체감 품질이나 사업성을 입증하지 않는다.
-용량·상품 연결과 받기 저장 실패 보호 코드의 검증·게시를 확인했다. 다음에는 일반 미전송 자료의 pull 손실과 명시적 삭제/tombstone을 먼저 해결한다. 단계 A 순수 모듈 초안은 별도 실험이며 앱의 실제 송수신에 통합하지 않았고 이번 게시에서 제외한다. 이후 원자적 v2 sync/outbox, PurchaseCase 이전, 복원 epoch·CI gate, 실제 기기, 상품·가격 출처 검증을 이어간다. 현재 FASHN v1.5 착용 품질은 불합격으로 채택 보류했다(ADR-14). 다른 방식도 같은 인물·상품의 자연스러움과 상품 형태 보존을 검증해야 한다. 실제 상품 자동 수집·전체 시장 최저가·실사 착장·정확한 핏·3D 품질 완성은 완료 기능으로 소개하지 않는다.
+용량·상품 연결과 받기 저장 실패 보호 코드의 검증·게시를 확인한 뒤 사용자 요청에 따라 등록 → 실제 상품 추천의 핵심 흐름을 우선 구현했다. 이어서 실제 사용자 동선·모바일 검증과 상품 근거 재확인을 진행하고, 일반 미전송 자료의 pull 손실과 명시적 삭제/tombstone도 해결해야 한다. 단계 A 순수 모듈 초안은 별도 실험이며 앱의 실제 송수신에 통합하지 않았고 핵심 흐름의 게시 대상에서 제외한다. 실험 43개 통과도 일반 pull의 여섯 손실 유형 해결이나 단계 B 구현 완료를 뜻하지 않는다. 이후 원자적 v2 sync/outbox, PurchaseCase 이전, 복원 epoch·CI gate, 실제 기기, 상품·가격 출처 검증을 이어간다. 현재 FASHN v1.5 착용 품질은 불합격으로 채택 보류했다(ADR-14). 다른 방식도 같은 인물·상품의 자연스러움과 상품 형태 보존을 검증해야 한다. 실제 상품 자동 수집·전체 시장 최저가·실사 착장·정확한 핏·3D 품질 완성은 완료 기능으로 소개하지 않는다.
 다음 담당자는 [알파 완료 기준](system-design-alpha.md#완료-확인)을 재현한 뒤 후속 작업을 이어간다. 사업 평가는 문제 해결·차별화·검증 계획을 별도로 보고, 서비스 시작 전 사용자·거래·매출 수치를 점수로 채우지 않는다.
