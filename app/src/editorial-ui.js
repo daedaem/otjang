@@ -70,20 +70,27 @@ function openDraftReview(drafts) {
       h('div', { class: 'bar' }, apply, h('button', { class: 'btn', type: 'button', onclick: () => dialog.close(), text: '나중에' }))));
   document.body.append(dialog); dialog.addEventListener('close', () => dialog.remove(), { once: true }); dialog.showModal();
 }
+function draftReviewButton(drafts, label, small) {
+  const ready = drafts.filter((it) => !W.assessment(it).missing.some((key) => key !== 'confirmation')).length;
+  const attrs = { class: 'btn primary' + (small ? ' small' : ''), type: 'button', onclick: () => openDraftReview(drafts),
+    text: label || (ready ? '사진과 속성 확인하기 · ' + ready + '벌 확인 가능' : '사진 초안 정보 채우기') };
+  if (!small) attrs.id = 'reviewPhotoDrafts';
+  return h('button', attrs);
+}
+function draftReviewCallout(drafts) {
+  return h('section', { class: 'panel draft-confirm-panel', id: 'draftConfirmPanel' },
+    h('div', null, h('h2', { text: '사진으로 등록한 옷 ' + drafts.length + '벌' }),
+      h('p', { class: 'sub', text: '사진에서 추정한 속성은 확인 전까지 추천 계산에서 제외됩니다. 사진과 맞는 옷만 골라 한 번에 반영하세요.' })),
+    draftReviewButton(drafts));
+}
 function renderEditorialCloset(main) {
   const plan = wardrobePlan();
   renderEditorialHero(main, plan);
   if (!state.items.length) { startNotices(main); return; }
   if (state.meta.sample) startNotices(main);
-  renderWardrobeOverview(main);
   const drafts = owned().filter(W.isDraft);
-  if (drafts.length) {
-    const ready = drafts.filter((it) => !W.assessment(it).missing.some((key) => key !== 'confirmation')).length;
-    main.append(h('section', { class: 'panel draft-confirm-panel', id: 'draftConfirmPanel' },
-      h('div', null, h('h2', { text: '사진으로 등록한 옷 ' + drafts.length + '벌' }),
-        h('p', { class: 'sub', text: '사진에서 추정한 속성은 확인 전까지 추천 계산에서 제외됩니다. 맞는 옷만 확인해 한 번에 반영하세요.' })),
-      h('button', { class: 'btn primary', type: 'button', id: 'reviewPhotoDrafts', onclick: () => openDraftReview(drafts), text: ready ? '사진과 속성 확인하기 · ' + ready + '벌 확인 가능' : '정보를 채워야 비교할 수 있어요' })));
-  }
+  if (drafts.length) main.append(draftReviewCallout(drafts));
+  renderWardrobeOverview(main);
   const search = h('input', { type: 'search', id: 'closetSearch', placeholder: '이름 · 종류 · 브랜드로 찾기', value: ui.closetSearch || '', 'aria-label': '내 옷 검색' });
   const toolbar = h('div', { class: 'closet-toolbar' }, h('div', { class: 'bar', 'aria-label': '옷 분류' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),
     Object.keys(CATS).map((c) => chip(CATS[c], ui.cat === c, () => { ui.cat = c; render(); }))), h('label', { class: 'closet-search' }, search));

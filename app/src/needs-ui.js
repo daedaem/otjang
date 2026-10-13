@@ -85,6 +85,8 @@ function renderNeeds(main) {
     const pending = h('details', { class: 'panel needs-pending', id: 'needsPending', open: !plan.assessed },
       h('summary', { text: '추천에 쓸 정보 확인 · ' + plan.pending.length + '벌' }),
       h('p', { class: 'note', text: '사진 초안을 확정된 옷으로 계산하지 않았어요. 한 벌씩 사진과 정보를 확인해 주세요. 같은 종류의 미확인 옷이 있으면 추가 구매 제안을 보류해요.' }));
+    const photoDrafts = plan.pending.map((row) => row.item).filter(W.isDraft);
+    if (photoDrafts.length) pending.append(draftReviewButton(photoDrafts, '사진 초안 한 번에 확인 · ' + photoDrafts.length + '벌', true));
     const first = ['top', 'bottom', 'dress', 'outer', 'shoes'].map((cat) => plan.pending.find((r) => r.item.cat === cat)).filter(Boolean);
     const queue = first.concat(plan.pending.filter((r) => !first.includes(r)));
     const reviewRow = (row) => h('div', { class: 'needs-review-row' }, needVisual(row.item),

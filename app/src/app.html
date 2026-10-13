@@ -947,8 +947,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
           h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
           X && c.look3d ? h('button', { class: 'btn', type: 'button', onclick: () => { if (hang(c.id)) { ui.tab = 'closet3d'; render(); } }, text: '3D 옷장에 걸어 보기' }) : null,
           h('button', { class: 'btn danger', type: 'button', onclick: () => deleteItem(c), text: '후보 삭제' }))));
-      renderVerdict(right, c, null);
       renderFollowup(right, last);
+      renderVerdict(right, c, null);
       return;
     }
     if (stage === 1) {

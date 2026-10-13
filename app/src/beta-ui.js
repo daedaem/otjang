@@ -1,5 +1,5 @@
 // Inserted inside the app closure by build.mjs; all data stays local until an explicit sync.
-const FIELD_NAMES = { kind: '종류', family: '색 계열', light: '밝기', formality: '격식', pattern: '무늬', seasons: '계절', confirmation: '직접 확인' };
+const FIELD_NAMES = { kind: '종류', family: '색 계열', light: '밝기', formality: '격식', pattern: '무늬', seasons: '계절', confirmation: '확인 필요' };
 function optionSelect(id, map, value, label) {
   const s = h('select', { id });
   s.append(h('option', { value: '', text: label || '모름 · 확인 전' }));
@@ -67,12 +67,25 @@ function renderPending(root, c, v) {
   if (v.missing?.length) pending.append(h('p', { class: 'warnnote', text: '구매 후보: ' + v.missing.map(k => FIELD_NAMES[k] || k).join(' · ') }), h('button', { class: 'btn primary', id: 'confirmCandidate', type: 'button', onclick: () => openQuickItem(c), text: '후보 정보 확인' }));
   if (v.excludedItems?.length) {
     pending.append(h('p', { class: 'sub', text: '확인 전 보유 옷 ' + v.excludedItems.length + '벌은 계산에서 제외했습니다. 비교에 쓸 몇 벌부터 확인해 주세요.' }));
+    const photoDrafts = v.excludedItems.map((row) => row.item).filter(W.isDraft);
+    if (photoDrafts.length) pending.append(draftReviewButton(photoDrafts, '사진 초안 한 번에 확인 · ' + photoDrafts.length + '벌', true));
     for (const row of v.excludedItems) pending.append(h('div', { class: 'bar', style: 'margin:8px 0' }, pic(row.item, 'mini'), h('span', { class: 'grow', text: row.item.name + ' · ' + row.missing.map(k => FIELD_NAMES[k] || k).join(' · ') }), h('button', { class: 'btn small', type: 'button', 'data-confirm-item': row.item.id, onclick: () => openQuickItem(row.item), text: '확인하기' })));
   }
   pending.append(h('button', { class: 'btn', id: v.status === 'partial' ? 'addRelatedOwnedPending' : 'addRelatedOwned', type: 'button', onclick: () => openQuickItem(null, 'owned'), text: '함께 입을 보유 옷 추가' })); root.append(pending);
 }
 const FOLLOWUP_OUTCOMES = { purchased: '구매했다', 'not-purchased': '사지 않았다', pending: '아직 결정 중', returned: '구매 후 반품했다' };
 function followupLabel(outcome) { return FOLLOWUP_OUTCOMES[outcome] || '기록 없음'; }
+function moveOwnedAfterPurchaseButton(d, dialog) {
+  const item = state.items.find((it) => it.id === d.itemId);
+  if (d.followup?.outcome !== 'purchased' || item?.status !== 'candidate') return null;
+  return h('button', { class: 'btn primary', type: 'button', id: dialog ? 'moveOwnedAfterPurchaseDialog' : 'moveOwnedAfterPurchase', onclick: async () => {
+    const before = Object.assign({}, item);
+    replaceItem(W.cleanItem(Object.assign({}, item, { status: 'owned', boughtYear: item.boughtYear || YEAR }), 0));
+    if (!await save()) { replaceItem(W.cleanItem(before, 0)); toast('옷장에 저장하지 못했습니다. 다시 시도해 주세요.'); return; }
+    if (dialog?.open) dialog.close();
+    ui.tab = 'closet'; render();
+  }, text: '구매한 옷을 내 옷장에 등록' });
+}
 function openFollowupDialog(d) {
   const dialog = h('dialog', { id: 'followupDialog' });
   dialog.append(h('div', { class: 'dhead' }, h('h2', { text: d.name + ' · 구매 결과' }), h('button', { class: 'btn small', type: 'button', onclick: () => dialog.close(), text: '닫기' })));
@@ -87,7 +100,9 @@ function renderFollowup(root, d, options) {
       h('h2', { text: '구매 뒤 결과도 이어서 기록하세요' }),
       h('p', { class: 'sub', text: '결제와 배송·반품은 판매처에서 진행하고, 실제로 샀는지·입어 봤는지·반품했는지는 이 화면에서 남길 수 있습니다.' }),
       old.outcome ? h('p', { class: 'note', id: 'followupStatus', text: '마지막 기록: ' + followupLabel(old.outcome) + (old.at ? ' · ' + old.at : '') }) : null,
-      h('button', { class: 'btn primary', type: 'button', id: 'openPurchaseFollowup', onclick: () => openFollowupDialog(d), text: old.outcome ? '구매·반품 결과 수정' : '구매·반품 결과 기록' })));
+      h('div', { class: 'bar', style: 'margin:0' },
+        h('button', { class: 'btn primary', type: 'button', id: 'openPurchaseFollowup', onclick: () => openFollowupDialog(d), text: old.outcome ? '구매·반품 결과 수정' : '구매·반품 결과 기록' }),
+        moveOwnedAfterPurchaseButton(d, null))));
     return;
   }
   const outcome = optionSelect('followupOutcome', FOLLOWUP_OUTCOMES, old.outcome, '실제 결과를 골라 주세요'); outcome.required = true;
@@ -114,13 +129,8 @@ function renderFollowup(root, d, options) {
   } },
     h('h2', { text: '구매 이후의 결과' }), h('p', { class: 'sub', text: '판매처에서 결제·배송·반품을 처리합니다. 여기에는 실제로 산 옷, 보류한 이유, 반품 여부를 기록해 다음 판단에 활용합니다. 반품을 선택하면 해당 후보나 보유 옷은 옷장에서 빠지고 기록에는 남습니다.' }),
     h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'followupOutcome', text: '실제 선택' }), outcome), h('div', { class: 'field' }, h('label', { for: 'followupWorn', text: '구매한 옷 착용' }), worn), h('div', { class: 'field' }, h('label', { for: 'followupRegret', text: '선택에 대한 후회' }), regret), h('div', { class: 'field full' }, h('label', { for: 'followupNote', text: '후속 메모' }), note)), error, h('button', { class: 'btn primary', id: 'saveFollowup', type: 'submit', text: old.outcome ? '결과 수정' : '결과 저장' })));
-  const item = state.items.find((it) => it.id === d.itemId);
-  if (old.outcome === 'purchased' && item?.status === 'candidate') root.append(h('div', { class: 'bar', style: 'margin-top:10px' }, h('button', { class: 'btn primary', type: 'button', id: 'moveOwnedAfterPurchase', onclick: async () => {
-    const before = Object.assign({}, item);
-    replaceItem(W.cleanItem(Object.assign({}, item, { status: 'owned', boughtYear: item.boughtYear || YEAR }), 0));
-    if (!await save()) { replaceItem(W.cleanItem(before, 0)); toast('옷장에 저장하지 못했습니다. 다시 시도해 주세요.'); return; }
-    ui.tab = 'closet'; render();
-  }, text: '구매한 옷을 내 옷장에 등록' })));
+  const moveButton = moveOwnedAfterPurchaseButton(d, options.dialog);
+  if (moveButton) root.append(h('div', { class: 'bar', style: 'margin-top:10px' }, moveButton));
 }
 function renderFullBackup(main) {
   const input = h('input', { type: 'file', accept: '.json,application/json', id: 'backupFile', hidden: true, onchange: async () => {
