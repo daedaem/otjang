@@ -202,7 +202,14 @@ for (const m of modes) {
   await page.click('#quickCand'); await page.fill('#q-paste', '무신사 흰색 반팔 티셔츠 https://www.musinsa.com/products/5755268');
   const pastedCandidate = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, link: document.querySelector('#q-link').value, kind: document.querySelector('#q-kind').value, family: document.querySelector('#q-family').value }));
   ok(pastedCandidate.name.includes('흰색') && pastedCandidate.link === 'https://www.musinsa.com/products/5755268' && pastedCandidate.kind === 'tee' && pastedCandidate.family === 'white', '상품 링크·공유 글을 같은 등록 화면에서 읽어 이름과 확인 전 추측값을 채운다', pastedCandidate);
+  await page.fill('#q-name', '직접 확인한 상품명'); await page.selectOption('#q-family', 'black'); await page.fill('#q-paste', '무신사 흰색 반팔 티셔츠 https://www.musinsa.com/products/5755268');
+  const keptCandidateEdits = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, family: document.querySelector('#q-family').value }));
+  ok(keptCandidateEdits.name === '직접 확인한 상품명' && keptCandidateEdits.family === 'black', '사용자가 상품명이나 추측값을 고친 뒤에는 붙여넣기 내용이 이를 덮어쓰지 않는다', keptCandidateEdits);
   await page.click('#quickCancel'); await noOpenDialogs('붙여넣기 후보 입력을 취소하면 열린 대화상자가 남지 않는다');
+  await page.click('#quickCand'); await page.fill('#q-paste', 'https://www.musinsa.com/products/5755268');
+  const linkOnlyCandidate = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, link: document.querySelector('#q-link').value, cat: document.querySelector('#q-cat').value }));
+  ok(linkOnlyCandidate.name === '공유한 상품' && linkOnlyCandidate.link === 'https://www.musinsa.com/products/5755268' && !linkOnlyCandidate.cat, '상품 설명 없이 링크만 붙여도 주소가 보존되고 분류는 사용자가 고른다', linkOnlyCandidate);
+  await page.click('#quickCancel'); await noOpenDialogs('링크만 붙인 후보 입력을 취소하면 열린 대화상자가 남지 않는다');
   await page.click('#firstCompare');
   ok(await page.locator('#quickItemForm').isVisible() && (await page.inputValue('#q-light')) === '', '후보 빠른 등록은 모르는 밝기를 비워 두고 시작한다');
   await page.selectOption('#q-cat', 'top'); await page.selectOption('#q-kind', 'sweat'); await page.fill('#q-name', '그레이 스웻셔츠');

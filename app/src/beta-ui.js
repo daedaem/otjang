@@ -42,6 +42,7 @@ function openQuickItem(item, status, options) {
       const raw = paste.value, parsed = pastedLink(raw), pastedName = nowName({ url: parsed.url, name: parsed.name || (parsed.url ? '' : raw.trim()) });
       if (parsed.url) link.value = parsed.url;
       if (pastedName && !edited.name) name.value = pastedName.slice(0, 80);
+      else if (parsed.url && !edited.name && !name.value.trim()) name.value = '공유한 상품';
       const guess = W.guessFromText((pastedName || '') + ' ' + raw);
       if (guess.kind && !edited.kind && (!edited.cat || KINDS[cat.value]?.[guess.kind])) {
         if (!edited.cat) cat.value = guess.cat;
@@ -80,7 +81,9 @@ function openQuickItem(item, status, options) {
       h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (모르면 비워 두세요)' }), seasons),
       h('div', { class: 'field full' }, h('label', null, confirmed, ' 종류·색·밝기·격식·무늬를 직접 확인했습니다'))), err,
     h('div', { class: 'bar' }, h('button', { id: 'quickSave', class: 'btn primary', type: 'submit', text: options.returnTab === 'shop' ? '저장하고 추천 갱신' : options.returnTab === 'closet' ? '옷장에 저장하기' : '저장하고 비교하기' }), h('button', { id: 'quickCancel', class: 'btn', type: 'button', onclick: () => dialog.close(), text: '취소' })));
-  dialog.append(form); document.body.append(dialog); dialog.showModal(); if (options.focusPaste && paste) paste.focus();
+  dialog.append(form); document.body.append(dialog); dialog.showModal();
+  if (paste && options.pasteText) paste.dispatchEvent(new Event('input', { bubbles: true }));
+  if (options.focusPaste && paste) paste.focus();
 }
 function renderWelcome(main) {
   main.append(h('section', { class: 'panel', id: 'firstComparePanel' }, h('h2', { text: '다음 한 벌, 가진 옷과 함께 볼까요?' }),
