@@ -7,6 +7,7 @@ import { parseQuery } from '../src/query.js';
 import { SLOTS, SLOT_BY_ID, STYLES, COLORS } from '../src/data/slots.js';
 import { LOOKS, ROLE_ORDER } from '../src/data/looks.js';
 import { PRODUCTS } from '../src/data/products.js';
+import fs from 'node:fs';
 
 const OCT = '2026-10-13T12:00:00+09:00';
 const base = { gender: 'M', styles: ['classic'], now: OCT, closet: [], hidden: [], brands: [] };
@@ -153,5 +154,17 @@ test('모든 종류 정의가 올바르다', () => {
     assert.ok(['M', 'F'].includes(s.g));
     assert.ok(s.why && s.tip && s.name && s.colors.every((c) => COLORS[c]), s.id);
     for (const k of Object.keys(s.style)) assert.ok(STYLES[k]?.g.includes(s.g), `${s.id} ${k}`);
+  }
+});
+
+test('한 파일 빌드에서 모듈의 최상위 이름이 겹치지 않는다', () => {
+  const files = ['data/slots.js', 'data/looks.js', 'data/products.js', 'query.js', 'engine.js', 'icons.js', 'main.js'];
+  const seen = new Map();
+  for (const f of files) {
+    const src = fs.readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
+    for (const m of src.matchAll(/^(?:export\s+)?(?:const|let|function|class)\s+([A-Za-z_$][\w$]*)/gm)) {
+      assert.ok(!seen.has(m[1]), `${m[1]}: ${seen.get(m[1])} / ${f}`);
+      seen.set(m[1], f);
+    }
   }
 });
