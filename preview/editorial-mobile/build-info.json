@@ -1,17 +1,17 @@
 {
   "sourceRepository": "daedaem/otjang",
   "sourceBranch": "feat/editorial-mobile-20261013",
-  "sourceCommit": "c5e545f270e27f8d03efa4ae6b23647a0402f336",
+  "sourceCommit": "e6519942adb0e725fe4dcd141b5c8bdbe1d5620f",
   "build": "MOBILE_PREVIEW=1 WARDROBE=data/empty.json SPLIT_DIR=dist/mobile node build.mjs",
-  "builtAt": "2026-10-13T02:00:17.117Z",
+  "builtAt": "2026-10-13T02:35:53Z",
   "emptySeed": true,
   "testsPassed": 135,
   "files": {
     "closet.js": "cf930fd2eb2d01007ddb2201ba991b26c9928e902bd84f3b48fcb58afc91bde9",
     "icon-192.png": "b0d15250802a5c298a299b59acc28b27cd010cf3040b6db3e9cfa6f2939ea3f7",
     "icon-512.png": "d5e693debfe52d3b4ed7ad22ab3d089227ec3f1b3d3e83d7fca8ab37270a488c",
-    "index.html": "ef8b8264965cc056448e93c858d382552a03030e234af7ac5e5155260b14c22e",
+    "index.html": "9a1dde0e080d56a2984efa62a9549a982db89544fb28561599d3e70fe8cdb37c",
     "manifest.webmanifest": "b311f3a50bcb5cd0e71841659922a2622c26bfda4e658b5b622922f9628df5a3",
-    "sw.js": "bc8f5c58703c6448ca4f0afe56ad2d35de0f437f0f4c7d423b001a648f5a35e9"
+    "sw.js": "c6eb7927b1ddecdfdb8307608250878c2cb5e75ed0e407b509468ba8311be595"
   }
 }
