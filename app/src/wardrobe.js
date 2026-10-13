@@ -16,10 +16,12 @@
  * 상태는 자동으로 오르지 않는다. 대체 이미지 → 미확인 후보 → 확인된 동일 제품은 모두 사용자 동작(아래 함수 호출)으로만 바뀐다.
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.Wardrobe = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('../../contracts/record-limits.json'));
+  else root.Wardrobe = factory(root.RecordLimits);
+})(typeof self !== 'undefined' ? self : this, function (limits) {
   'use strict';
+  if (!limits || limits.version !== 1 || !['createLimit', 'pickLogCreateLimit', 'otherWardrobeCreateLimit', 'readCeiling'].every((k) => Number.isSafeInteger(limits[k]) && limits[k] > 0) || limits.readCeiling < Math.max(limits.createLimit, limits.pickLogCreateLimit, limits.otherWardrobeCreateLimit)) throw new Error('Record limits contract is missing or invalid');
+  const RECORD_LIMITS = Object.freeze({ ...limits });
   const SCHEMA = 2;
   const SEASONS = ['봄', '여름', '가을', '겨울'];
   const CATS = { outer: '아우터', top: '상의', bottom: '하의', dress: '원피스', shoes: '신발' };   // 원피스: 위아래가 한 벌인 옷. 규칙에서는 상의·하의 한 쌍처럼 차림 하나로 센다
@@ -163,10 +165,11 @@
   /** 옷장 파일 전체를 정리한다. 스키마 1이든 2든 스키마 2로 돌려준다. 모르는 파일이면 null. */
   function cleanWardrobe(raw) {
     if (!raw || typeof raw !== 'object' || (raw.schema !== 1 && raw.schema !== 2) || !Array.isArray(raw.items)) return null;
+    if (raw.items.length > RECORD_LIMITS.readCeiling || (Array.isArray(raw.decisions) && raw.decisions.length > RECORD_LIMITS.readCeiling)) return null;
     const o = raw.owner && typeof raw.owner === 'object' ? raw.owner : {};
     const ids = new Set();
-    const items = raw.items.slice(0, 500).map(cleanItem).filter(Boolean).filter((it) => (ids.has(it.id) ? false : ids.add(it.id)));
-    const decisions = Array.isArray(raw.decisions) ? raw.decisions.slice(0, 500).map(cleanDecision).filter(Boolean) : [];
+    const items = raw.items.map(cleanItem).filter(Boolean).filter((it) => (ids.has(it.id) ? false : ids.add(it.id)));
+    const decisions = Array.isArray(raw.decisions) ? raw.decisions.map(cleanDecision).filter(Boolean) : [];
     return { schema: SCHEMA, kind: raw.kind === 'template' ? 'template' : 'wardrobe', name: str(raw.name, 60), draft: raw.draft === true, note: str(raw.note, 200),
       owner: { nickname: str(o.nickname, 30), height: num(o.height, 100, 230), topSize: str(o.topSize, 20), bottomSize: str(o.bottomSize, 20) }, items, decisions };
   }
@@ -311,7 +314,7 @@
     return out;
   }
 
-  return { SCHEMA, SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, ATTR_SOURCE, PHOTO_KIND, EVIDENCE, LOOK_KINDS, MAX_CANDS, FOLLOW_DAYS, WORN, FEEL_BUY, FEEL_SKIP,
+  return { RECORD_LIMITS, SCHEMA, SEASONS, CATS, KINDS, FAM, PATTERNS, FORMAL, REBUY, FABRIC, NECK, MEASURES, LEAN, DECIDE, HELP, SHIFT, ATTR_SOURCE, PHOTO_KIND, EVIDENCE, LOOK_KINDS, MAX_CANDS, FOLLOW_DAYS, WORN, FEEL_BUY, FEEL_SKIP,
     known, str, num, safeImg, safeLink, safeDate, today, cleanItem, cleanWardrobe, cleanDecision, cleanFollow, followDue, migrate, isDraft, assessment, draftItems, photoLabel, attrLabel,
     setOwnPhoto, setProductPhoto, clearProductPhoto, addCandidate, removeCandidate, confirmProduct, unconfirm, setLook3d, setAttrSource, exportWardrobe, guessFromText };
 });

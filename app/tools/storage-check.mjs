@@ -131,14 +131,16 @@ try {
     const { page, context } = await open();
     await page.evaluate(async () => {
       const app = window.__app, valid = JSON.parse(JSON.stringify(app.state)); valid.owner.nickname = '유효한 대체 기록';
-      localStorage.setItem('otjang.v2', JSON.stringify(valid));
+      localStorage.setItem('otjang.v2', JSON.stringify({ ...valid, _storageRevision: 1 }));
       await new Promise((resolve, reject) => {
-        const tx = app.store.db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(JSON.stringify({ schema: 2, items: '잘못된 파일' }), 'state');
+        const tx = app.store.db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(JSON.stringify({ schema: 2, items: '잘못된 파일', _storageRevision: 2 }), 'state');
         tx.oncomplete = resolve; tx.onerror = reject;
       });
     });
     await reload(page); const recovered = await snapshot(page);
-    check(recovered.state.owner.nickname === '유효한 대체 기록' && recovered.state.loadedFrom === 'ls2', 'JSON 문법만 맞고 스키마가 깨진 IndexedDB는 유효한 대체 기록을 가리지 않음');
+    check(recovered.state.loadedFrom === 'recovery' && await page.locator('#storageRecovery').count() === 1, '최신 잘못된 IndexedDB 원문은 옛 LS로 자동 대체하지 않고 복구 화면에서 보존');
+    const original = await page.evaluate(async () => { const app = window.__app; return await new Promise((resolve) => { const r = app.store.db.transaction('kv').objectStore('kv').get('state'); r.onsuccess = () => resolve(r.result); }); });
+    check(JSON.parse(original)._storageRevision === 2 && JSON.parse(original).items === '잘못된 파일', '복구 화면 bootstrap 저장이 원문을 덮지 않음');
     await context.close();
   }
   check(errors.length === 0, '브라우저 JavaScript 오류 없음', errors);

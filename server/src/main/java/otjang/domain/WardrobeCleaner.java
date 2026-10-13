@@ -26,8 +26,6 @@ import java.util.Set;
 public final class WardrobeCleaner {
     private WardrobeCleaner() {}
 
-    public static final int MAX_ITEMS = 500;
-
     /** 옷 한 벌. 모르는 분류이면 null(버린다). i 는 id 가 없을 때 쓰는 자리 번호. */
     public static Item cleanItem(Object rawObj, int i) {
         Map<String, Object> raw = obj(rawObj);
@@ -177,15 +175,16 @@ public final class WardrobeCleaner {
         if (raw == null || !(raw.get("schema") instanceof Number sc) || (sc.doubleValue() != 1 && sc.doubleValue() != 2)) return null;
         List<Object> itemsRaw = arr(raw.get("items"));
         if (itemsRaw == null) return null;
+        RecordLimits.requireReadable(itemsRaw.size(), "items");
+        List<Object> draw = arr(raw.get("decisions"));
+        if (draw != null) RecordLimits.requireReadable(draw.size(), "decisions");
         Map<String, Object> o = obj(raw.get("owner"));
         if (o == null) o = Map.of();
         Set<String> ids = new HashSet<>();
         List<Item> items = new ArrayList<>();
-        List<Object> head = itemsRaw.subList(0, Math.min(MAX_ITEMS, itemsRaw.size()));
-        for (int i = 0; i < head.size(); i++) { Item it = cleanItem(head.get(i), i); if (it != null && ids.add(it.id())) items.add(it); }
+        for (int i = 0; i < itemsRaw.size(); i++) { Item it = cleanItem(itemsRaw.get(i), i); if (it != null && ids.add(it.id())) items.add(it); }
         List<Wardrobe.Decision> decisions = new ArrayList<>();
-        List<Object> draw = arr(raw.get("decisions"));
-        if (draw != null) for (Object d : draw.subList(0, Math.min(MAX_ITEMS, draw.size()))) { Wardrobe.Decision dd = cleanDecision(d); if (dd != null) decisions.add(dd); }
+        if (draw != null) for (Object d : draw) { Wardrobe.Decision dd = cleanDecision(d); if (dd != null) decisions.add(dd); }
         return new Wardrobe(Vocab.SCHEMA, "template".equals(raw.get("kind")) ? "template" : "wardrobe", str(raw.get("name"), 60), Boolean.TRUE.equals(raw.get("draft")), str(raw.get("note"), 200),
                 new Wardrobe.Owner(str(o.get("nickname"), 30), num(o.get("height"), 100, 230), str(o.get("topSize"), 20), str(o.get("bottomSize"), 20)),
                 List.copyOf(items), List.copyOf(decisions));
@@ -216,10 +215,10 @@ public final class WardrobeCleaner {
         if (raw == null || !(raw.get("schema") instanceof Number sc) || sc.doubleValue() != CatalogProduct.Catalog.SCHEMA || !"catalog".equals(raw.get("kind"))) return null;
         List<Object> praw = arr(raw.get("products"));
         if (praw == null) return null;
+        RecordLimits.requireReadable(praw.size(), "products");
         Set<String> ids = new HashSet<>();
         List<CatalogProduct> out = new ArrayList<>();
-        List<Object> head = praw.subList(0, Math.min(MAX_ITEMS, praw.size()));
-        for (int i = 0; i < head.size(); i++) { CatalogProduct p = cleanProduct(head.get(i), i); if (p != null && ids.add(p.id())) out.add(p); }
+        for (int i = 0; i < praw.size(); i++) { CatalogProduct p = cleanProduct(praw.get(i), i); if (p != null && ids.add(p.id())) out.add(p); }
         return new CatalogProduct.Catalog(CatalogProduct.Catalog.SCHEMA, str(raw.get("name"), 60), str(raw.get("note"), 200), List.copyOf(out));
     }
 }

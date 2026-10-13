@@ -188,7 +188,8 @@ class FollowupApiContractTest {
         var before = getMap("/api/backup"); String revision = version();
         for (String field : List.of("items", "decisions")) {
             Map<String, Object> raw = new LinkedHashMap<>(snapshot(List.of(returned())));
-            raw.put(field, java.util.stream.IntStream.range(0, 501).mapToObj(i -> field.equals("items") ? Map.of("id", "item-" + i, "cat", "top") : returned()).toList());
+            // Payload ceiling is distinct from the account's new-ID creation cap.
+            raw.put(field, java.util.stream.IntStream.range(0, otjang.domain.RecordLimits.READ_CEILING + 1).mapToObj(i -> field.equals("items") ? Map.of("id", "item-" + i, "cat", "top") : returned()).toList());
             mvc.perform(importRequest(raw).header("Idempotency-Key", "oversized-" + field)).andExpect(status().is(422))
                     .andExpect(jsonPath("$.code").value("WARDROBE_LIMIT")).andExpect(jsonPath("$.path").value(field));
             var after = getMap("/api/backup"); assertEquals(before.get("wardrobe"), after.get("wardrobe")); assertEquals(revision, version());

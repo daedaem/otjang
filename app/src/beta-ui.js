@@ -9,7 +9,7 @@ function optionSelect(id, map, value, label) {
 function openQuickItem(item, status, options) {
   options = options || {};
   $('#quickItem')?.remove();
-  const prev = item || null, st = item ? item.status : status || 'candidate';
+  const target = state, scope = accountScope(), prev = item || null, st = item ? item.status : status || 'candidate';
   if (!item && options.initial) item = W.cleanItem({ ...options.initial, status: st }, 0);
   const dialog = h('dialog', { id: 'quickItem' });
   const name = h('input', { id: 'q-name', type: 'text', required: true, maxlength: '80', value: item ? item.name : '' });
@@ -94,9 +94,10 @@ function openQuickItem(item, status, options) {
     if (confirmed.checked && !W.assessment(next).ready) { err.textContent = '확인할 값을 모두 적거나 확인 체크를 해제해 주세요.'; err.hidden = false; return; }
     if (photo.files[0]) { const img = await readImage(photo.files[0]); if (!img) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } next = W.setOwnPhoto(next, img); }
     if (prev && prev.cat !== next.cat) next.look3d = null;
-    if (!prev && state.items.length >= 500) { err.textContent = '옷은 500벌까지 기록할 수 있습니다.'; err.hidden = false; return; }
+    if (state !== target || accountScope() !== scope) { err.textContent = '편집 중 계정이나 옷장이 바뀌었습니다. 다시 열어 주세요.'; err.hidden = false; return; }
+    if (!canAdd('items', state.items.some((it) => it.id === next.id) ? 0 : 1)) { err.textContent = ui.capacityMessage; err.hidden = false; return; }
     const before = state.items.slice();
-    replaceItem(next);
+    if (!replaceItem(next)) return;
     if (!await save()) { state.items = before; err.textContent = '저장하지 못해 변경을 되돌렸어요. 다시 저장하거나 취소해 주세요.'; err.hidden = false; return; }
     if (st === 'candidate') ui.judgeId = next.id;
     dialog.close(); ui.tab = options.returnTab || 'judge'; render();
@@ -247,25 +248,26 @@ async function enterAccount(reply, origin) {
   if (!ui.syncScope) ui.localBeforeLogin = state;
   ui.syncToken = reply.token; ui.syncUserInfo = reply.user; ui.syncOrigin = origin;
   ui.syncScope = 'account:' + origin + ':' + reply.user.ownerId;
-  let idb = null, ls = null;
-  const read = (s) => { try { const raw = JSON.parse(s); return { state: cleanState(raw), revision: Number.isSafeInteger(raw._storageRevision) && raw._storageRevision > 0 ? raw._storageRevision : 0 }; } catch (e) { return null; } };
-  const idbRaw = store.db ? await kvGet(accountScope()) : store.idbUnverified ? undefined : null, lsRaw = lsSnapshot(localStorageKey());
-  idb = read(idbRaw); ls = read(lsRaw);
-  const chosen = idb?.state && (!ls?.state || idb.revision >= ls.revision) ? idb : ls;
-  store.persistedSnapshots.set(accountScope(), { idbValue: idbRaw, lsValue: lsRaw }); store.conflicts.delete(accountScope()); store.conflict = false;
-  state = chosen?.state || cleanState({ schema: 2, owner: { nickname: reply.user.username }, items: [], decisions: [] });
+  const scope = accountScope(), idbRaw = store.db ? await kvGet(scope) : store.idbUnverified ? undefined : null, lsRaw = lsSnapshot(localStorageKey());
+  if (accountScope() !== scope || ui.syncToken !== reply.token) throw new Error('로그인 중 계정이 바뀌었습니다. 현재 계정에서 다시 시도해 주세요.');
+  const selection = chooseStoredCopy(idbRaw, lsRaw, null);
+  store.persistedSnapshots.set(scope, { idbValue: idbRaw, lsValue: lsRaw }); store.conflicts.delete(scope); store.conflict = false;
+  state = useStoredCopy(scope, selection) || cleanState({ schema: 2, owner: { nickname: reply.user.username }, items: [], decisions: [] });
+  ui.recoveryArm = null; ui.recoveryBackedUp = false; ui.recoveryMessage = ''; ui.cleanupSelected = {}; ui.cleanupBackup = null; ui.cleanupConfirmed = false;
   ui.syncExpired = false; ui.syncProtectionBlocked = false;
   const stamp = state.syncStamp; ui.syncVersion = stamp && stamp.origin === origin && stamp.ownerId === reply.user.ownerId ? stamp.version : null;
+  const accountState = state;
   await syncFetch('/api/auth/me');
-  if (ui.syncVersion == null && !state.items.length && !state.decisions.length && !state.catalog.products.length) { ui.syncVersion = ui.syncObservedVersion; if (ui.syncVersion != null) state.syncStamp = { origin, ownerId: reply.user.ownerId, version: ui.syncVersion }; }
-  store.revision = Math.max(store.revision, chosen?.revision || 0); ui.pullArm = null; ui.judgeId = ''; ui.stageSel = null;
+  if (accountScope() !== scope || ui.syncToken !== reply.token || state !== accountState) throw new Error('로그인 확인 중 계정이 바뀌었습니다. 현재 계정 자료는 바꾸지 않았습니다.');
+  if (!recoveryFor(scope) && ui.syncVersion == null && !state.items.length && !state.decisions.length && !state.catalog.products.length) { ui.syncVersion = ui.syncObservedVersion; if (ui.syncVersion != null) state.syncStamp = { origin, ownerId: reply.user.ownerId, version: ui.syncVersion }; }
+  store.revision = Math.max(store.revision, selection.revision); ui.pullArm = null; ui.judgeId = ''; ui.stageSel = null;
   ui.syncMsg = '계정 옷장을 열었습니다. 기존 개인 옷장은 로그아웃하면 돌아옵니다. 사진과 옷을 자동으로 전송하지 않습니다.';
-  await save(); render();
+  if (!recoveryFor(scope)) await save(); render();
 }
 async function leaveAccount(revoke) {
   await savePromise;
   if (revoke && ui.syncToken) { try { await syncFetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* expiry already invalidates the token */ } }
-  const old = ui.localBeforeLogin;
+  const old = ui.localBeforeLogin; ui.recoveryArm = null; ui.recoveryBackedUp = false; ui.cleanupSelected = {}; ui.cleanupBackup = null; ui.cleanupConfirmed = false;
   ui.syncToken = ''; ui.syncUserInfo = null; ui.syncOrigin = ''; ui.syncScope = ''; ui.syncVersion = null; ui.syncObservedVersion = null; ui.syncExpired = false; ui.syncProtectionBlocked = false; ui.serverBackupArm = null; ui.localBeforeLogin = null; ui.pullArm = null;
   if (old) state = old;
   ui.judgeId = ''; ui.stageSel = null; ui.syncMsg = '로그아웃했습니다. 원래 개인 옷장을 표시합니다.'; render();

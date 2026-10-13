@@ -41,9 +41,10 @@ public class WardrobeService {
     private final ImportReceiptRepository receipts;
     private final ItemMapper mapper;
     private final otjang.store.PhotoLifecycle lifecycle;
+    private final AccountCapacity capacity;
 
-    public WardrobeService(OwnerRepository owners, ItemRepository items, DecisionRepository decisions, ImportReceiptRepository receipts, ItemMapper mapper, otjang.store.PhotoLifecycle lifecycle) {
-        this.owners = owners; this.items = items; this.decisions = decisions; this.receipts = receipts; this.mapper = mapper; this.lifecycle=lifecycle;
+    public WardrobeService(OwnerRepository owners, ItemRepository items, DecisionRepository decisions, ImportReceiptRepository receipts, ItemMapper mapper, otjang.store.PhotoLifecycle lifecycle, AccountCapacity capacity) {
+        this.owners = owners; this.items = items; this.decisions = decisions; this.receipts = receipts; this.mapper = mapper; this.lifecycle=lifecycle; this.capacity=capacity;
     }
 
     public record ImportResult(int items, int created, int updated, int decisions, boolean replayed) {}
@@ -66,6 +67,7 @@ public class WardrobeService {
 
     @Transactional
     public Wardrobe.Owner updateOwner(Map<String, Object> raw) {
+        capacity.lock(ownerId());
         OwnerEntity o = owners.findById(ownerId()).orElseThrow(() -> new ApiException(500, "사용자 옷장이 없습니다"));
         if (raw.containsKey("nickname")) o.setNickname(Sanitize.str(raw.get("nickname"), 30));
         if (raw.containsKey("height")) { Double h = Sanitize.num(raw.get("height"), 100, 230); o.setHeight(h == null ? null : BigDecimal.valueOf(h)); }
@@ -79,7 +81,9 @@ public class WardrobeService {
     @Transactional(readOnly = true)
     public List<Item> allItems(boolean withPhotos) {
         List<Item> out = new ArrayList<>();
-        for (ItemEntity e : items.findAllByOwner(ownerId())) out.add(mapper.toDomain(e, withPhotos));
+        var rows = items.findAllByOwner(ownerId());
+        AccountCapacity.requireReadable(rows.size(), "items");
+        for (ItemEntity e : rows) out.add(mapper.toDomain(e, withPhotos));
         return out;
     }
 
@@ -97,17 +101,20 @@ public class WardrobeService {
     public Item save(Map<String, Object> raw) {
         Item it = WardrobeCleaner.cleanItem(raw, 0);
         if (it == null) throw new ApiException(400, "옷으로 읽을 수 없다(cat 이 outer/top/bottom/shoes 가운데 하나여야 한다)");
-        return mapper.toDomain(items.save(mapper.apply(it, items.findByOwnerIdAndClientId(ownerId(), it.id()).orElseGet(ItemEntity::new), ownerId())), true);
+        return saveItem(it);
     }
 
     /** 이미 정리된 옷을 저장한다(같은 id 가 있으면 덮어쓴다). */
     @Transactional
     public Item saveItem(Item it) {
+        capacity.lock(ownerId());
+        capacity.requireUpsert(ownerId(), AccountCapacity.Records.ITEMS, List.of(it.id()));
         return mapper.toDomain(items.save(mapper.apply(it, items.findByOwnerIdAndClientId(ownerId(), it.id()).orElseGet(ItemEntity::new), ownerId())), true);
     }
 
     @Transactional
     public void delete(String clientId) {
+        capacity.lock(ownerId());
         lifecycle.lock();
         ItemEntity e=entity(clientId);
         lifecycle.afterCommit(java.util.List.of(e.getPhotoImgRef(),e.getPhotoOwnImgRef()));
@@ -117,6 +124,7 @@ public class WardrobeService {
     /** 사용자 동작으로 상태를 바꾼다(WardrobeOps). 바뀐 옷을 저장하고 돌려준다. */
     @Transactional
     public Item mutate(String clientId, UnaryOperator<Item> op) {
+        capacity.lock(ownerId());
         ItemEntity e = entity(clientId);
         Item before = mapper.toDomain(e, true);
         Item after;
@@ -131,6 +139,7 @@ public class WardrobeService {
     @Transactional
     public ImportResult importWardrobe(Map<String, Object> raw, String idempotencyKey, String rawBodyForHash) {
         otjang.api.FollowupWriteValidator.wardrobe(raw, "");
+        capacity.lock(ownerId());
         String hash = LocalDirPhotoStore.sha256(rawBodyForHash == null ? String.valueOf(raw) : rawBodyForHash);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var prev = receipts.findByOwnerIdAndIdempotencyKey(ownerId(), idempotencyKey);
@@ -141,6 +150,25 @@ public class WardrobeService {
         }
         Wardrobe w = WardrobeCleaner.cleanWardrobe(raw);
         if (w == null) throw new ApiException(400, "옷장 파일이 아니다(schema 1 또는 2, items 배열이 있어야 한다)");
+        // Check both collections before writing either one, including photos and receipts.
+        capacity.requireUpsert(ownerId(), AccountCapacity.Records.ITEMS, w.items().stream().map(Item::id).toList());
+        capacity.requireUpsert(ownerId(), AccountCapacity.Records.DECISIONS, w.decisions().stream().map(Wardrobe.Decision::id).filter(id -> !id.isEmpty()).toList());
+        ImportResult r = applyWardrobe(w);
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(ownerId(), idempotencyKey, hash, toJson(r)));
+        return r;
+    }
+
+    /** Only TenantDataService calls this after strict complete-backup validation and explicit replacement confirmation.
+     * Grandfathered records may be restored beyond the creation cap; this does not authenticate a backup's historical origin.
+     */
+    ImportResult restoreWardrobe(Wardrobe w) {
+        capacity.lock(ownerId());
+        otjang.domain.RecordLimits.requireReadable(w.items().size(), "items");
+        otjang.domain.RecordLimits.requireReadable(w.decisions().size(), "decisions");
+        return applyWardrobe(w);
+    }
+
+    private ImportResult applyWardrobe(Wardrobe w) {
         int created = 0, updated = 0;
         for (Item it : w.items()) {
             var existing = items.findByOwnerIdAndClientId(ownerId(), it.id());
@@ -157,9 +185,7 @@ public class WardrobeService {
             o.put("topSize", w.owner().topSize()); o.put("bottomSize", w.owner().bottomSize());
             updateOwner(o);
         }
-        ImportResult r = new ImportResult(w.items().size(), created, updated, w.decisions().size(), false);
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(ownerId(), idempotencyKey, hash, toJson(r)));
-        return r;
+        return new ImportResult(w.items().size(), created, updated, w.decisions().size(), false);
     }
 
     /** 옷장 파일(스키마 2)로 내보낸다. 보유 옷만. 선택에 따라 내 사진·남의 상품 사진·후보·가격·체형·판정 기록을 넣는다. */
@@ -175,7 +201,9 @@ public class WardrobeService {
     @Transactional(readOnly = true)
     public List<Wardrobe.Decision> allDecisions() {
         List<Wardrobe.Decision> out = new ArrayList<>();
-        for (DecisionEntity e : decisions.findByOwnerIdOrderByIdAsc(ownerId())) out.add(mapper.toDomain(e));
+        var rows = decisions.findByOwnerIdOrderByIdAsc(ownerId());
+        AccountCapacity.requireReadable(rows.size(), "decisions");
+        for (DecisionEntity e : rows) out.add(mapper.toDomain(e));
         return out;
     }
 
@@ -184,11 +212,14 @@ public class WardrobeService {
         otjang.api.FollowupWriteValidator.decision(raw, "");
         Wardrobe.Decision d = WardrobeCleaner.cleanDecision(raw);
         if (d == null || d.id().isEmpty()) throw new ApiException(400, "판정 기록으로 읽을 수 없다(id 와 before.lean 이 있어야 한다)");
+        capacity.lock(ownerId());
+        capacity.requireUpsert(ownerId(), AccountCapacity.Records.DECISIONS, List.of(d.id()));
         return mapper.toDomain(decisions.save(mapper.apply(d, decisions.findByOwnerIdAndClientId(ownerId(), d.id()).orElseGet(DecisionEntity::new), ownerId())));
     }
 
     @Transactional
     public void deleteDecision(String clientId) {
+        capacity.lock(ownerId());
         decisions.delete(decisions.findByOwnerIdAndClientId(ownerId(), clientId).orElseThrow(() -> new ApiException(404, "그런 판정 기록이 없다: " + clientId)));
     }
 }

@@ -30,6 +30,22 @@ function openNeedCatalog() {
   render();
   requestAnimationFrame(() => $('#pickCatalog')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
 }
+async function compareNeedOffer(result) {
+  const target = state, scope = accountScope();
+  let added;
+  try { added = await pickToCand(result); }
+  catch (error) {
+    if (state === target && accountScope() === scope) toast('상품을 비교 목록에 저장하지 못했습니다. 저장 상태를 확인한 뒤 다시 시도해 주세요.');
+    return false;
+  }
+  if (added !== true || state !== target || accountScope() !== scope) return false;
+  const candidate = cands().find((item) => item.name === pname(result.product) && (item.link || '') === (result.product.store.url || ''));
+  if (!candidate) return false;
+  ui.judgeId = candidate.id;
+  ui.tab = 'judge';
+  render();
+  return true;
+}
 function needOfferCard(need) {
   const result = PK.recommend(state.items, PICKS, { ...pickQuery(), line: need.line });
   const r = result.pick;
@@ -55,7 +71,9 @@ function needOfferCard(need) {
     h('p', { class: 'need-product-why' }, h('b', { text: '추천 이유 ' }), reason),
     h('p', { class: 'need-product-source', text: p.store.name + ' · ' + md(p.checkedAt) + ' 확인 · 판매처 한 곳 가격, 최저가 비교는 아님' }),
     r.stale ? h('p', { class: 'warnnote', text: '가격·재고를 다시 확인해야 해요. 판매처에서 현재 정보를 확인해 주세요.' }) : null,
-    h('div', { class: 'bar need-product-actions' }, storeLink(r, '판매처에서 상품 보기 ↗', 'btn primary small'),
+    h('div', { class: 'bar need-product-actions' },
+      h('button', { class: 'btn primary small', type: 'button', 'data-need-offer': p.id, onclick: () => compareNeedOffer(r), text: '이 상품을 내 옷과 비교' }),
+      storeLink(r, '판매처에서 상품 보기 ↗', 'btn small'),
       h('span', { class: 'note', text: '가격과 재고는 바뀔 수 있어요.' })));
 }
 function needOutfit(outfit, candidate) {

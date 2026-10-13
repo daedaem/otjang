@@ -28,15 +28,18 @@ public class CatalogService {
     private final WardrobeService wardrobe;
     private final TemplateService templates;
     private final otjang.store.PhotoLifecycle lifecycle;
+    private final AccountCapacity capacity;
 
-    public CatalogService(CatalogProductRepository products, ImportReceiptRepository receipts, ItemMapper mapper, WardrobeService wardrobe, TemplateService templates, otjang.store.PhotoLifecycle lifecycle) {
-        this.products = products; this.receipts = receipts; this.mapper = mapper; this.wardrobe = wardrobe; this.templates = templates; this.lifecycle=lifecycle;
+    public CatalogService(CatalogProductRepository products, ImportReceiptRepository receipts, ItemMapper mapper, WardrobeService wardrobe, TemplateService templates, otjang.store.PhotoLifecycle lifecycle, AccountCapacity capacity) {
+        this.products = products; this.receipts = receipts; this.mapper = mapper; this.wardrobe = wardrobe; this.templates = templates; this.lifecycle=lifecycle; this.capacity=capacity;
     }
 
     @Transactional(readOnly = true)
     public List<CatalogProduct> all(boolean withPhotos) {
         List<CatalogProduct> out = new ArrayList<>();
-        for (CatalogProductEntity e : products.findByOwnerIdOrderByIdAsc(wardrobe.ownerId())) out.add(mapper.toDomain(e, withPhotos));
+        var rows = products.findByOwnerIdOrderByIdAsc(wardrobe.ownerId());
+        AccountCapacity.requireReadable(rows.size(), "products");
+        for (CatalogProductEntity e : rows) out.add(mapper.toDomain(e, withPhotos));
         return out;
     }
 
@@ -48,6 +51,8 @@ public class CatalogService {
     public CatalogProduct save(Map<String, Object> raw) {
         CatalogProduct p = WardrobeCleaner.cleanProduct(raw, 0);
         if (p == null) throw new ApiException(400, "상품으로 읽을 수 없다(cat 과 name 이 있어야 한다)");
+        capacity.lock(wardrobe.ownerId());
+        capacity.requireUpsert(wardrobe.ownerId(), AccountCapacity.Records.PRODUCTS, List.of(p.id()));
         return mapper.toDomain(products.save(mapper.apply(p, products.findByOwnerIdAndClientId(wardrobe.ownerId(), p.id()).orElseGet(CatalogProductEntity::new), wardrobe.ownerId())), true);
     }
 
@@ -56,6 +61,7 @@ public class CatalogService {
 
     @Transactional
     public void delete(String clientId) {
+        capacity.lock(wardrobe.ownerId());
         lifecycle.lock();
         CatalogProductEntity e=entity(clientId);
         lifecycle.afterCommit(java.util.List.of(e.getImgRef()));
@@ -65,6 +71,10 @@ public class CatalogService {
     /** 상품 목록 파일(스키마 1, kind catalog)을 더한다. 같은 id 는 덮어쓴다. Idempotency-Key 규칙은 옷장 가져오기와 같다. */
     @Transactional
     public WardrobeService.ImportResult importCatalog(Map<String, Object> raw, String idempotencyKey, String rawBodyForHash) {
+        var incoming = otjang.domain.Sanitize.arr(raw.get("products"));
+        if (incoming != null && incoming.size() > otjang.domain.RecordLimits.READ_CEILING)
+            throw new ApiException(422, "상품 항목은 최대 " + otjang.domain.RecordLimits.READ_CEILING + "개입니다. 일부만 저장하지 않습니다", "CATALOG_LIMIT", "products");
+        capacity.lock(wardrobe.ownerId());
         String hash = LocalDirPhotoStore.sha256(rawBodyForHash == null ? String.valueOf(raw) : rawBodyForHash);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var prev = receipts.findByOwnerIdAndIdempotencyKey(wardrobe.ownerId(), idempotencyKey);
@@ -75,15 +85,27 @@ public class CatalogService {
         }
         CatalogProduct.Catalog c = WardrobeCleaner.cleanCatalog(raw);
         if (c == null) throw new ApiException(400, "상품 목록 파일이 아니다(schema 1, kind catalog, products 배열)");
+        capacity.requireUpsert(wardrobe.ownerId(), AccountCapacity.Records.PRODUCTS, c.products().stream().map(CatalogProduct::id).toList());
+        var r = applyCatalog(c);
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(wardrobe.ownerId(), idempotencyKey, hash, WardrobeService.toJson(r)));
+        return r;
+    }
+
+    /** Internal full-backup replacement, not an alternate public creation path. */
+    WardrobeService.ImportResult restoreCatalog(CatalogProduct.Catalog c) {
+        capacity.lock(wardrobe.ownerId());
+        otjang.domain.RecordLimits.requireReadable(c.products().size(), "products");
+        return applyCatalog(c);
+    }
+
+    private WardrobeService.ImportResult applyCatalog(CatalogProduct.Catalog c) {
         int created = 0, updated = 0;
         for (CatalogProduct p : c.products()) {
             var existing = products.findByOwnerIdAndClientId(wardrobe.ownerId(), p.id());
             if (existing.isPresent()) updated++; else created++;
             products.save(mapper.apply(p, existing.orElseGet(CatalogProductEntity::new), wardrobe.ownerId()));
         }
-        WardrobeService.ImportResult r = new WardrobeService.ImportResult(c.products().size(), created, updated, 0, false);
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(wardrobe.ownerId(), idempotencyKey, hash, WardrobeService.toJson(r)));
-        return r;
+        return new WardrobeService.ImportResult(c.products().size(), created, updated, 0, false);
     }
 
     @Transactional(readOnly = true)
@@ -106,6 +128,7 @@ public class CatalogService {
     /** 상품을 살까 말까 후보로 넣는다(옷으로 저장). 사진·링크가 있으면 '확인된 동일 제품' 상태다. */
     @Transactional
     public Item toCandidate(String clientId) {
+        capacity.lock(wardrobe.ownerId());
         CatalogProduct p = mapper.toDomain(entity(clientId), true);
         Item cand = CatalogRank.toCandidate(p, null);
         return wardrobe.saveItem(cand);

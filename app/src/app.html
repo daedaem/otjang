@@ -496,6 +496,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
 
 <script>/*@@RECOMMEND@@*/</script>
 <script>/*@@JUDGE@@*/</script>
+<script>window.RecordLimits = /*@@RECORD_LIMITS@@*/;</script>
 <script>/*@@WARDROBE_LIB@@*/</script>
 <script>/*@@CATALOG_LIB@@*/</script>
 <script>/*@@PICK@@*/</script>
@@ -553,8 +554,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   const kindLabel = (it) => (KINDS[it.cat] && KINDS[it.cat][it.kind]) || it.kind || '종류 확인 전';
   const famLabel = (it) => (FAM[it.family] ? FAM[it.family][0] : it.family || '색 확인 전');
   const fmtWon = (n) => n.toLocaleString('ko-KR') + '원';
-  function download(name, obj) {
-    const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })), download: name });
+  function download(name, obj, rawText) {
+    const a = h('a', { href: URL.createObjectURL(new Blob([rawText ? obj : JSON.stringify(obj)], { type: 'application/json' })), download: name });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   function readImage(file, max) {
@@ -588,10 +589,10 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       img.src = url;
     });
   }
-  async function readFileJson(input) { const f = input.files[0]; if (!f) return undefined; try { return JSON.parse(await f.text()); } catch (e) { return null; } }
+  async function readFileJson(input) { const f = input.files[0]; if (!f) return undefined; if (f.size > 50 * 1024 * 1024) { ui.inputError = 'JSON 파일은 50MB 이하여야 합니다.'; return null; } ui.inputError = ''; try { return JSON.parse(await f.text()); } catch (e) { return null; } }
 
   // ---------- 저장소: IndexedDB를 쓰고, 안 되면 localStorage, 그것도 안 되면 메모리 ----------
-  const store = { db: null, mode: 'memory', revision: 0, persistedSnapshots: new Map(), conflicts: new Set(), conflict: false, idbUnverified: false };
+  const store = { db: null, mode: 'memory', revision: 0, persistedSnapshots: new Map(), recoveryByScope: new Map(), conflicts: new Set(), conflict: false, idbUnverified: false };
   function openDb() {
     return new Promise((res) => {
       try {
@@ -627,9 +628,10 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   function cleanNow(raw) { const o = {}; if (raw && typeof raw === 'object') for (const k of NOW_KEYS) if (typeof raw[k] === 'string' && raw[k].trim()) o[k] = str(raw[k], k === 'link' ? 600 : 100); return o; }
   /** 추천 기록: 결정(이걸로·대안·아니요와 이유), 판매처를 연 때, 돌아왔는지, 미룸, 샀나요·산 사이즈, 2주 뒤 사이즈·만족, 그 답으로 바꾼 것. 이 브라우저에만 남는다(백업에는 들어간다). */
   function cleanPickLog(raw) {
+    if (Array.isArray(raw) && raw.length > W.RECORD_LIMITS.readCeiling) return null;
     const own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k), date = (v) => PK.realDate(v);
     const seen = new Set();
-    return (Array.isArray(raw) ? raw : []).slice(-100).map((e) => (e && typeof e === 'object' && typeof e.productId === 'string' && date(e.at) ? {
+    return (Array.isArray(raw) ? raw : []).map((e) => (e && typeof e === 'object' && typeof e.productId === 'string' && date(e.at) ? {
       id: str(e.id, 40) || 'k' + Math.random().toString(36).slice(2, 10), at: e.at, productId: str(e.productId, 60), candidateId: str(e.candidateId, 40), label: str(e.label, 120), price: num(e.price, 0, 1e9) || 0, store: str(e.store, 60),
       verdict: ['accept', 'alt', 'reject'].indexOf(e.verdict) >= 0 ? e.verdict : '', altId: str(e.altId, 60), reason: ['price', 'brand', 'fit', 'have', 'other'].indexOf(e.reason) >= 0 ? e.reason : '',
       out: num(e.out, 0, 999) || 0, outAt: date(e.outAt), outT: num(e.outT, 0, 1e14) || 0, returned: e.returned === true, snooze: date(e.snooze),
@@ -641,7 +643,10 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   /** 저장된 상태를 정리한다. 옷장 파일(스키마 1·2) + others + catalog + rack(3D 옷장에 건 옷). */
   function cleanState(raw) {
+    if (!raw || ['decisions', 'pickLog', 'others'].some((key) => raw[key] !== undefined && !Array.isArray(raw[key]))) return null;
+    if (B.newerSchemaPath(raw)) return null;
     const w = W.cleanWardrobe(raw); if (!w) return null;
+    if (w.items.length !== raw.items.length || (Array.isArray(raw.decisions) && w.decisions.length !== raw.decisions.length)) return null;
     const s = { schema: 2, owner: w.owner, items: w.items, decisions: w.decisions, others: [], catalog: { products: [] }, rack: [] };
     const m = raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
     s.meta = { sample: m.sample === true, lastBackupAt: W.safeDate(m.lastBackupAt), welcomed: m.welcomed === true, days: (Array.isArray(m.days) ? m.days : []).map(W.safeDate).filter(Boolean).slice(-120), quickAdded: num(m.quickAdded, 0, 9999) || 0,   // quickAdded: 빠른 시작으로 넣은 옷 수
@@ -649,8 +654,11 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     for (const k of ['pickRuns', 'pickOut', 'pickCand', 'nowRuns', 'pickShare']) s.meta[k] = num(m[k], 0, 99999) || 0;   // 기준 추천을 받은 횟수(날·조건마다 한 번), 판매처를 연 횟수, 후보로 넣은 수, '지금 보는 상품'을 견준 횟수
     s.meta.pickSeen = (Array.isArray(m.pickSeen) ? m.pickSeen : []).filter((x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}\|[a-z0-9]{1,8}$/.test(x)).slice(-300);
     s.prefs = cleanPrefs(raw.prefs); s.pickLog = cleanPickLog(raw.pickLog);
-    s.others = (Array.isArray(raw.others) ? raw.others : []).slice(0, 6).map(W.cleanWardrobe).filter(Boolean);
-    const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); s.catalog = { products: cat ? cat.products : [] };
+    if (!s.pickLog || (Array.isArray(raw.pickLog) && s.pickLog.length !== raw.pickLog.length)) return null;
+    const others = Array.isArray(raw.others) ? raw.others : []; if (others.length > W.RECORD_LIMITS.readCeiling) return null;
+    s.others = others.map(W.cleanWardrobe);
+    if (s.others.some((o, i) => !o || o.items.length !== others[i].items.length || (Array.isArray(others[i].decisions) && o.decisions.length !== others[i].decisions.length))) return null;
+    const cat = raw.catalog && C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, raw.catalog)); if (raw.catalog && (!cat || cat.products.length !== raw.catalog.products?.length)) return null; s.catalog = { products: cat ? cat.products : [] };
     const ids = new Set(s.items.map((i) => i.id)), slots = new Set();
     s.rack = (Array.isArray(raw.rack) ? raw.rack : []).map((r) => (r && typeof r === 'object' ? { id: str(r.id, 40), slot: num(r.slot, 0, 5) } : null)).filter((r) => r && ids.has(r.id) && r.slot != null && !slots.has(r.slot) && slots.add(r.slot));
     s.betaTrial = B.cleanTrial(raw.betaTrial);
@@ -659,6 +667,51 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     s.syncFollowupAck = SY.cleanFollowupAck(raw.syncFollowupAck);
     return s;
   }
+  // Select the newest raw copy before cleaning it. An invalid newest copy is
+  // evidence to preserve, never permission to write a seed over its CAS value.
+  function chooseStoredCopy(idbRaw, lsRaw, legacyRaw) {
+    const read = (text, from) => {
+      if (text === null || text === undefined) return null;
+      try { const raw = JSON.parse(text), hasRevision = raw && Object.prototype.hasOwnProperty.call(raw, '_storageRevision'), validRevision = Number.isSafeInteger(raw?._storageRevision) && raw._storageRevision >= 0; return { text, from, revision: hasRevision && !validRevision ? null : hasRevision ? raw._storageRevision : 0, state: cleanState(raw) }; }
+      catch (error) { return { text, from, revision: null, state: null }; }
+    };
+    const idb = read(idbRaw, 'idb'), ls = read(lsRaw, 'ls2'), copies = [idb, ls].filter(Boolean);
+    const chosen = copies.sort((a, b) => (b.revision ?? -1) - (a.revision ?? -1))[0] || read(legacyRaw, 'ls1');
+    const revision = Math.max(0, ...copies.map((c) => c.revision || 0));
+    const reason = idbRaw === undefined || lsRaw === undefined ? '저장소의 원문을 확인하지 못했습니다.' : copies.some((c) => c.revision === null) ? '읽지 못한 저장 원문이 있습니다.' : idb && ls && idb.revision === ls.revision && idb.text !== ls.text ? '같은 저장 순서의 두 사본이 서로 다릅니다.' : chosen && !chosen.state ? '저장 자료가 읽기 상한을 넘었거나 올바른 형식이 아닙니다.' : '';
+    return { chosen, revision, reason, rawCopies: [{ from: 'idb', text: idbRaw }, { from: 'ls2', text: lsRaw }, { from: 'ls1', text: legacyRaw }].filter((c) => typeof c.text === 'string') };
+  }
+  function recoveryFor(scope) { return store.recoveryByScope?.get(scope || accountScope()) || null; }
+  function useStoredCopy(scope, selection) {
+    store.recoveryByScope ||= new Map();
+    if (selection.reason) store.recoveryByScope.set(scope, selection); else store.recoveryByScope.delete(scope);
+    return selection.reason ? cleanState({ schema: 2, owner: {}, items: [], decisions: [] }) : selection.chosen?.state;
+  }
+  async function restoreRecovery(next) {
+    const scope = accountScope(), recovery = recoveryFor(scope), old = state;
+    if (!recovery || !B.readBackup(B.makeBackup(next), cleanState)) return false;
+    await savePromise; if (accountScope() !== scope || state !== old || recoveryFor(scope) !== recovery) return false;
+    state = next; state.syncFollowupAck = null; state.syncStamp = null; ui.syncVersion = null; recovery.replacement = next;
+    let ok = false; try { ok = await save(); } catch (error) { /* preserve the recovery lock */ }
+    if (ok && recoveryFor(scope) === recovery) store.recoveryByScope.delete(scope);
+    if (accountScope() === scope && state === next) { if (!ok) state = old; ui.recoveryMessage = ok ? '선택한 전체 백업으로 복구했습니다.' : '복구 저장을 하지 못했습니다. 원문은 보존되어 있습니다.'; render(); }
+    return ok;
+  }
+  function renderRecovery(main) {
+    const recovery = recoveryFor(); if (!recovery) return false;
+    const input = h('input', { id: 'recoveryFile', type: 'file', accept: '.json,application/json', hidden: true, onchange: async () => {
+      const scope = accountScope(), source = state, token = recoveryFor(scope);
+      const raw = await readFileJson(input), next = raw && B.readBackup(raw, cleanState);
+      if (accountScope() !== scope || state !== source || recoveryFor(scope) !== token) return;
+      ui.recoveryArm = next || null; ui.recoveryBackedUp = false; ui.recoveryMessage = next ? '' : '읽기 상한 이내의 완전한 전체 백업을 골라 주세요. 원문은 바뀌지 않았습니다.'; render();
+    } });
+    const panel = h('section', { class: 'panel', id: 'storageRecovery' }, h('h1', { text: '저장 원문을 먼저 보관해 주세요' }), h('p', { text: recovery.reason + ' 기존 원문을 바꾸지 않도록 편집과 동기화를 멈췄습니다.' }));
+    recovery.rawCopies.forEach((copy) => panel.append(h('button', { class: 'btn', type: 'button', 'data-raw-copy': copy.from, onclick: () => download('otjang-raw-' + copy.from + '-' + today() + '.json', copy.text, true), text: copy.from + ' 원문 받기' })));
+    panel.append(h('p', { text: '원문을 보관한 뒤 정상 전체 백업으로 명시적으로 교체할 수 있습니다. 서버 자료와 자동으로 맞추지는 않습니다.' }), h('button', { class: 'btn', type: 'button', onclick: () => input.click(), text: '정상 전체 백업 열기' }), input);
+    if (ui.recoveryArm) panel.append(h('label', null, h('input', { type: 'checkbox', checked: !!ui.recoveryBackedUp, onchange: (e) => { ui.recoveryBackedUp = e.target.checked; render(); } }), '기존 원문을 따로 보관했고 이 백업으로 교체하겠습니다'), h('button', { class: 'btn danger', id: 'recoveryReplace', type: 'button', disabled: !ui.recoveryBackedUp, onclick: async () => { const next = ui.recoveryArm, scope = accountScope(); if (!ui.recoveryBackedUp) return; await restoreRecovery(next); if (accountScope() === scope && ui.recoveryArm === next) { ui.recoveryArm = null; ui.recoveryBackedUp = false; } }, text: '전체 백업으로 복구' }));
+    if (ui.syncScope) panel.append(h('button', { class: 'btn', type: 'button', onclick: () => leaveAccount(false), text: '원래 개인 옷장으로 돌아가기' }));
+    if (ui.recoveryMessage) panel.append(h('p', { role: 'status', text: ui.recoveryMessage })); main.append(panel); return true;
+  }
   function defaultRack(items) {                                                                   // 처음에는 3D 형태가 있는 옷을 보유 옷부터 6벌까지 건다
     const can = items.filter((i) => i.status !== 'gone' && i.look3d).sort((a, b) => (a.status === b.status ? 0 : a.status === 'owned' ? -1 : 1));
     return can.slice(0, 6).map((i, k) => ({ id: i.id, slot: k }));
@@ -666,24 +719,13 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   async function load() {
     store.db = await openDb();
     // 저장 자료 안에 순서를 같이 넣는다. IDB가 실패해 localStorage로 옮겼어도 오래된 IDB 자료가 최신 기록을 가리지 않는다.
-    const readSaved = (text, from) => {
-      if (!text) return null;
-      try {
-        const raw = JSON.parse(text), state = cleanState(raw);
-        if (!state) return null;
-        const revision = Number.isSafeInteger(raw._storageRevision) && raw._storageRevision > 0 ? raw._storageRevision : 0;
-        return { state, from, revision };
-      } catch (e) { return null; }
-    };
     const idbRaw = store.db ? await kvGet('state') : store.idbUnverified ? undefined : null, lsRaw = lsSnapshot(KEY2);
-    const idb = readSaved(idbRaw, 'idb'), ls2 = readSaved(lsRaw, 'ls2');
-    let saved = idb && (!ls2 || idb.revision >= ls2.revision) ? idb : ls2;
-    if (!saved) saved = readSaved(lsGet(KEY1), 'ls1');                                 // v0.3 저장소는 읽기만 한다
-    store.revision = Math.max(idb ? idb.revision : 0, ls2 ? ls2.revision : 0);
+    const selection = chooseStoredCopy(idbRaw, lsRaw, idbRaw === null && lsRaw === null ? lsGet(KEY1) : null);
+    store.revision = selection.revision;
     store.persistedSnapshots.set('state', { idbValue: idbRaw, lsValue: lsRaw });
     if (store.db) store.mode = 'idb';
     if (!store.db) { try { localStorage.setItem('__probe__', '1'); localStorage.removeItem('__probe__'); store.mode = 'ls'; } catch (e) { store.mode = 'memory'; } }
-    const s = saved ? saved.state : cleanState(BASE), from = saved ? saved.from : 'base';
+    const s = useStoredCopy('state', selection) || cleanState(BASE), from = selection.reason ? 'recovery' : selection.chosen?.from || 'base';
     if (from !== 'idb' && from !== 'ls2') s.rack = defaultRack(s.items);
     s.loadedFrom = from; return s;
   }
@@ -691,9 +733,13 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   const ui = { advOpen: false, syncBase: location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
     syncToken: '', syncUserInfo: null, syncOrigin: '', syncScope: '', syncVersion: null, syncObservedVersion: null, syncExpired: false, syncProtectionBlocked: false, localBeforeLogin: null, backupArm: null, backupMessage: '', importMessage: '', shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '', pickForm: false, tasteOpen: false, shopOwnOpen: false, awaitReturn: null, leftFor: null, buyStep: '', buySize: '', buyOwn: true, nowForm: {}, nowProduct: null, nowOpen: false, askTop: false };
   function save() {
+    const dbKey = accountScope(), recovery = store.recoveryByScope?.get(dbKey), replacement = recovery && recovery.replacement === state;
+    if (recovery && !replacement) { storageOk = false; return Promise.resolve(false); }
+    if (replacement) delete recovery.replacement;
     // 순서는 브라우저 저장 복사본에만 붙인다. 앱 상태·내보내기·서버 전송 자료에는 넣지 않는다.
-    const revision = ++store.revision, data = JSON.stringify(Object.assign({}, state, { _storageRevision: revision })), dbKey = accountScope(), lsKey = localStorageKey();
+    const revision = ++store.revision, data = JSON.stringify(Object.assign({}, state, { _storageRevision: revision })), lsKey = localStorageKey();
     const persist = async () => {
+      if (store.recoveryByScope?.get(dbKey) && (!replacement || store.recoveryByScope.get(dbKey) !== recovery)) return false;
       // Expected copies belong to this key and to its last successful save at
       // queue execution. Allocated counters cannot detect equal-counter edits.
       // State and followup baseline are one blob; stale must never fall back.
@@ -717,6 +763,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   async function requireFreshStorage() {
     await savePromise;
+    if (store.recoveryByScope?.has(accountScope())) throw new Error('저장 원문 복구가 필요합니다. 원문을 보관한 뒤 전체 백업으로 복구해 주세요.');
     const scope = accountScope(), expected = store.persistedSnapshots.get(scope);
     const idb = store.db ? await kvGet(scope) : store.idbUnverified ? undefined : null, ls = lsSnapshot(localStorageKey());
     if (!expected || idb === undefined || ls === undefined) throw new Error('브라우저의 저장된 자료를 확인할 수 없습니다. 현재 전체 백업을 받고 새로고침한 뒤 다시 시도해 주세요.');
@@ -725,9 +772,59 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   const owned = () => state.items.filter((i) => i.status === 'owned');
   const cands = () => state.items.filter((i) => i.status === 'candidate');
+  function capacityCounts(target) { return { items: target.items.length, decisions: target.decisions?.length || 0, products: target.catalog?.products?.length || 0, pickLog: target.pickLog?.length || 0, others: target.others?.length || 0 }; }
+  function canAdd(kind, amount, target, quiet) {
+    target ||= state; amount = amount == null ? 1 : amount;
+    const requests = typeof kind === 'object' ? kind : { [kind]: amount }, counts = capacityCounts(target), limits = W.RECORD_LIMITS;
+    const ceiling = { items: limits.createLimit, decisions: limits.createLimit, products: limits.createLimit, pickLog: limits.pickLogCreateLimit, others: limits.otherWardrobeCreateLimit };
+    const blocked = Object.keys(requests).find((key) => requests[key] > 0 && counts[key] + requests[key] > ceiling[key]);
+    if (store.recoveryByScope?.has(accountScope()) || blocked) {
+      if (quiet) return false;
+      ui.capacityMessage = blocked ? ({ items: '옷', decisions: '판정', products: '상품', pickLog: '추천', others: '비교 옷장' }[blocked] + ' 기록이 신규 추가 한도(' + ceiling[blocked] + ')에 닿았습니다. 기존 기록 수정과 후속 결과는 계속 남길 수 있습니다. 전체 백업 후 직접 고른 기록을 정리해 주세요.') : '저장 원문 복구가 필요합니다.';
+      toast(ui.capacityMessage, { label: '기록 정리', fn: () => { ui.tab = 'log'; render(); } }); return false;
+    }
+    return true;
+  }
+  function canImportReplace(incoming, quiet) {
+    const base = { ...state }, requests = {};
+    for (const key of ['items', 'decisions', 'pickLog']) { const have = new Set((state[key] || []).map((row) => row.id)), rows = incoming[key] || []; base[key] = rows.filter((row) => have.has(row.id)); requests[key] = rows.length - base[key].length; }
+    return canAdd(requests, null, base, quiet);
+  }
+  function cleanupList(kind, target) { return kind === 'products' ? target.catalog.products : target[kind]; }
+  function cleanupKey(kind, row, index) { return kind === 'others' ? String(index) : row.id; }
+  async function cleanupSelected(kind, selected, backup) {
+    const target = state, scope = accountScope(), list = cleanupList(kind, target);
+    if (recoveryFor() || !backup || backup.state !== target || backup.scope !== scope || backup.raw !== JSON.stringify(target) || !selected.length) return false;
+    const chosen = new Set();
+    for (const row of selected) { const index = list.findIndex((item, at) => cleanupKey(kind, item, at) === row.key); if (index < 0 || JSON.stringify(list[index]) !== row.fingerprint) return false; chosen.add(index); }
+    const removed = list.map((row, index) => ({ row, index })).filter((x) => chosen.has(x.index)), next = list.filter((row, index) => !chosen.has(index));
+    const set = (value) => { if (kind === 'products') target.catalog.products = value; else target[kind] = value; };
+    const previousRack = target.rack, nextRack = kind === 'items' ? target.rack.filter((row) => next.some((item) => item.id === row.id)) : previousRack;
+    set(next); if (kind === 'items') target.rack = nextRack; let ok = false, pending = null, repaired = true; try { pending = save(); ok = await pending === true; } catch (error) { /* preserve selected records */ }
+    if (!ok) { const current = cleanupList(kind, target); for (const { row, index } of removed) if (!current.some((item) => kind === 'others' ? item === row : item.id === row.id)) current.splice(Math.min(index, current.length), 0, row); if (kind === 'items' && target.rack === nextRack) target.rack = previousRack; }
+    if (!ok && pending && state === target && accountScope() === scope && savePromise !== pending) { try { repaired = await save() === true; } catch (error) { repaired = false; } }
+    if (state === target && accountScope() === scope) { ui.cleanupSelected = {}; ui.cleanupBackup = null; ui.cleanupConfirmed = false; ui.capacityMessage = ok ? selected.length + '개 선택 기록을 이 브라우저에서 정리했습니다.' : repaired ? '저장하지 못해 선택 기록을 다시 남겼습니다.' : '선택 기록을 되살리는 복구 저장도 하지 못했습니다. 보관한 전체 백업과 현재 저장 상태를 확인해 주세요.'; render(); }
+    return ok;
+  }
+  function renderCapacity(main) {
+    const kind = ui.cleanupKind || 'pickLog', labels = { pickLog: '추천 기록', decisions: '판정 기록', products: '상품', items: '옷', others: '비교 옷장' }, list = cleanupList(kind, state), page = ui.cleanupPage || 0;
+    ui.cleanupSelected ||= {};
+    const panel = h('section', { class: 'panel', id: 'recordCapacity' }, h('h2', { text: '백업 후 선택한 기록만 정리' }), h('p', { text: Object.entries(capacityCounts(state)).map(([k, count]) => labels[k] + ' ' + count).join(' · ') }));
+    const select = h('select', { id: 'cleanupKind', onchange: (e) => { ui.cleanupKind = e.target.value; ui.cleanupPage = 0; ui.cleanupSelected = {}; ui.cleanupBackup = null; ui.cleanupConfirmed = false; render(); } });
+    for (const [key, label] of Object.entries(labels)) select.append(h('option', { value: key, selected: key === kind, text: label }));
+    panel.append(select, h('p', { class: 'note', text: '처음에는 아무 기록도 선택하지 않습니다. 구매와 입어 본 결과가 있는 기록은 보존하는 것을 권합니다.' }));
+    if (ui.syncScope) panel.append(h('p', { class: 'warnnote', text: '이 정리는 이 브라우저에만 적용됩니다. 서버 기록의 삭제 전파는 아직 지원하지 않으므로 서버에서 받으면 다시 보일 수 있습니다.' }));
+    if (kind === 'pickLog') panel.append(h('button', { class: 'btn small', type: 'button', onclick: () => { ui.cleanupSelected = Object.fromEntries(list.map((row, index) => [row, index]).filter(([row]) => !row.bought && !row.follow).map(([row, index]) => [cleanupKey(kind, row, index), JSON.stringify(row)])); render(); }, text: '구매·2주 후 답 없는 기록 선택' }));
+    list.slice(page * 50, (page + 1) * 50).forEach((row, offset) => { const key = cleanupKey(kind, row, page * 50 + offset), fingerprint = JSON.stringify(row); panel.append(h('label', { style: 'display:block;margin:8px 0' }, h('input', { type: 'checkbox', checked: ui.cleanupSelected[key] === fingerprint, onchange: (e) => { if (e.target.checked) ui.cleanupSelected[key] = fingerprint; else delete ui.cleanupSelected[key]; render(); } }), ' ' + (row.label || row.name || row.owner?.nickname || row.id || '기록') + ((row.bought || row.after || row.follow || row.followup) ? ' · 구매 판단/후속 결과 있음' : ''))); });
+    if (page > 0) panel.append(h('button', { class: 'btn small', type: 'button', onclick: () => { ui.cleanupPage--; render(); }, text: '이전 50개' }));
+    if ((page + 1) * 50 < list.length) panel.append(h('button', { class: 'btn small', type: 'button', onclick: () => { ui.cleanupPage = page + 1; render(); }, text: '다음 50개' }));
+    panel.append(h('button', { class: 'btn', id: 'cleanupBackup', type: 'button', onclick: () => { download('otjang-before-cleanup-' + today() + '.json', B.makeBackup(state)); ui.cleanupBackup = { state, scope: accountScope(), raw: JSON.stringify(state) }; ui.cleanupConfirmed = false; render(); }, text: '현재 전체 백업 받기' }), h('label', null, h('input', { type: 'checkbox', checked: !!ui.cleanupConfirmed, disabled: !ui.cleanupBackup, onchange: (e) => { ui.cleanupConfirmed = e.target.checked; render(); } }), '백업을 보관했고 선택한 기록만 지우겠습니다'));
+    panel.append(h('button', { class: 'btn danger', id: 'cleanupApply', type: 'button', disabled: !ui.cleanupConfirmed || !Object.keys(ui.cleanupSelected).length, onclick: async () => { if (!ui.cleanupConfirmed) return; const selected = Object.entries(ui.cleanupSelected).map(([key, fingerprint]) => ({ key, fingerprint })); if (!await cleanupSelected(kind, selected, ui.cleanupBackup)) { ui.capacityMessage = '자료가 바뀌었거나 저장하지 못했습니다. 기록을 확인하고 전체 백업을 다시 받아 주세요.'; render(); } }, text: '선택 기록 ' + Object.keys(ui.cleanupSelected).length + '개 정리' }));
+    if (ui.capacityMessage) panel.append(h('p', { role: 'status', text: ui.capacityMessage })); main.append(panel);
+  }
   const byId = (id) => state.items.find((i) => i.id === id);
   const newId = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
-  function replaceItem(it) { const at = state.items.findIndex((i) => i.id === it.id); if (at >= 0) state.items[at] = it; else state.items.push(it); return it; }
+  function replaceItem(it) { const at = state.items.findIndex((i) => i.id === it.id); if (!canAdd('items', at < 0 ? 1 : 0)) return false; if (at >= 0) state.items[at] = it; else state.items.push(it); return it; }
 
   const B = Beta;
   /*@@BETA_UI@@*/
@@ -806,6 +903,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   const stageEl = $('#stage'), stageHolder = $('#stageHolder'), sq = (sel) => stageEl.querySelector(sel);   // 3D 화면은 한 번 만들어 탭 사이를 오간다 (WebGL을 다시 만들지 않게)
   function render() {
+    if (recoveryFor()) { const main = $('#main'); main.textContent = ''; $('#tabs').textContent = ''; stageHolder.hidden = true; renderRecovery(main); return; }
     renderTabs();
     stageHolder.append(stageEl); stageHolder.hidden = true;
     const main = $('#main'); main.textContent = ''; main.dataset.view = ui.tab;
@@ -956,6 +1054,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       const form = h('form', { class: 'panel', id: 'beforeForm', onsubmit: (e) => {
         e.preventDefault();
         const lean = (new FormData(form)).get('lean'); if (!lean) return;
+        if (!canAdd('decisions')) return;
         state.decisions.push({ id: newId('d'), itemId: c.id, name: c.name, before: { lean, reason: str($('#beforeReason').value, 200), at: today() }, summary: { overlaps: null, added: null, blockers: null }, after: null, follow: null, followup: null });
         ui.rejudge = ''; save(); render();
       } }, h('h2', { text: c.name }), h('p', { class: 'sub', text: '판정을 보기 전에 지금 마음을 적어 둡니다. 나중에 판정이 결정에 도움이 됐는지 견줘 보기 위해서입니다.' }),
@@ -1126,10 +1225,11 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   function logEntry(r) {
     let e = logFor(r.product.id);
     if (!e) {
+      if (!canAdd('pickLog')) return null;
       e = { id: newId('k'), at: today(), productId: r.product.id, label: pname(r.product), price: Math.round(r.krw), store: r.product.store.name, verdict: '', altId: '', reason: '', out: 0, outAt: '', outT: 0, returned: false, snooze: '',
         bought: '', boughtAt: '', boughtSize: '', ownedId: '', follow: null, learned: '', pri: state.prefs.pri.slice(0, 5), use: state.prefs.use,
         recSize: r.fit && r.fit.size ? r.fit.size : '', rank: 1, catV: PICKS.updatedAt || '' };   // 그때 추천한 사이즈·순위·카탈로그 판(사이즈 학습을 나중에 견주려고)
-      state.pickLog.push(e); if (state.pickLog.length > 100) state.pickLog.shift();
+      state.pickLog.push(e);
     }
     return e;
   }
@@ -1150,17 +1250,36 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const p = r.product;
     if (!p.store.url) return null;
     return h('a', { class: cls || 'btn small', href: p.store.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': pname(p) + ' — ' + (p.store.name || '판매처') + '에서 보기(새 창)',
-      onclick: () => { const e = logEntry(r); e.out++; e.outAt = today(); e.outT = Date.now(); e.returned = false; state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = e.id; save(); }, text: label || '판매처에서 보기 ↗' });
+      onclick: (event) => { const e = logEntry(r); if (!e) { event.preventDefault(); return; } e.out++; e.outAt = today(); e.outT = Date.now(); e.returned = false; state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = e.id; save(); }, text: label || '판매처에서 보기 ↗' });
   }
   function pickToCand(r) {
+    if (!canAdd('items', 0)) return Promise.resolve(false);
     const name = pname(r.product);
     const dup = cands().find((c) => c.name === name && (c.link || '') === (r.product.store.url || ''));
-    if (dup) { toast('이미 살까 말까에 있어요.', { label: '보기', fn: () => { ui.judgeId = dup.id; ui.tab = 'judge'; render(); } }); return; }
+    if (dup) { const pending = ui.candidateSaves?.get(dup.id); if (pending?.state === state) return pending.promise || Promise.resolve(false); toast('이미 살까 말까에 있어요.', { label: '보기', fn: () => { ui.judgeId = dup.id; ui.tab = 'judge'; render(); } }); return Promise.resolve(true); }
+    if (!canAdd({ items: 1, pickLog: logFor(r.product.id) ? 0 : 1 })) return Promise.resolve(false);
+    const target = state, scope = accountScope(), previousLog = logFor(r.product.id), previousCandidateId = previousLog?.candidateId, previousSeen = state.prefs.seen, targetPrefs = state.prefs, targetMeta = state.meta, previousCount = state.meta.pickCand;
     const c = PK.toCandidate(r.product, PICKS, today()); c.id = newId('c');
     state.items.push(c); state.meta.pickCand++;
     const entry = logEntry(r); if (!entry.candidateId) entry.candidateId = c.id;
-    state.prefs.seen = true; save(); render();
-    toast('살까 말까에 담았어요.', { label: '보기', fn: () => { ui.judgeId = c.id; ui.tab = 'judge'; render(); } });
+    state.prefs.seen = true; const tentativePrefs = JSON.stringify(state.prefs);
+    ui.candidateSaves ||= new Map(); const operation = { state: target }; ui.candidateSaves.set(c.id, operation);
+    operation.promise = (async () => {
+      let ok = false, pending = null; try { pending = save(); ok = await pending === true; } catch (error) { /* failed registration */ }
+      let repaired = true;
+      if (!ok) {
+        const index = target.items.indexOf(c); if (index >= 0) target.items.splice(index, 1);
+        if (!previousLog) target.pickLog = target.pickLog.filter((x) => x !== entry); else if (entry.candidateId === c.id) entry.candidateId = previousCandidateId;
+        if (target.meta === targetMeta && targetMeta.pickCand > previousCount) targetMeta.pickCand--;
+        if (target.prefs === targetPrefs && JSON.stringify(targetPrefs) === tentativePrefs) targetPrefs.seen = previousSeen;
+        if (pending && state === target && accountScope() === scope && typeof savePromise !== 'undefined' && savePromise !== pending) { try { repaired = await save() === true; } catch (error) { repaired = false; } }
+      }
+      if (ui.candidateSaves.get(c.id) === operation) ui.candidateSaves.delete(c.id);
+      if (state !== target || accountScope() !== scope) return false;
+      render(); if (!ok) { toast(repaired ? '후보를 저장하지 못했습니다. 현재 옷장과 기록을 유지했습니다.' : '후보 등록과 복구 저장을 마치지 못했습니다. 다른 작업과 함께 저장된 후보 기록이 남아 있을 수 있습니다. 전체 백업을 보관하고 저장 상태를 확인해 주세요.'); return false; }
+      toast('살까 말까에 담았어요.', { label: '보기', fn: () => { ui.judgeId = c.id; ui.tab = 'judge'; render(); } }); return true;
+    })();
+    return operation.promise;
   }
   /** 내 옷장과: 새 조합·비슷한 옷. 판정할 수 없을 때(하의가 없음 등)와 알릴 것이 없을 때는 보이지 않는다. */
   function closetLine(r) {
@@ -1219,6 +1338,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   function saveBought(e, p) {
     const target = state, scope = accountScope(), targetItems = target.items, targetLog = target.pickLog;
     if (!target.pickLog.includes(e) || e.bought === 'yes' || (ui.buySaving?.state === target && ui.buySaving.scope === scope)) return Promise.resolve(false);
+    if (p && !p.user && ui.buyOwn !== false) { const name = pname(p), link = p.store.url || ''; const existing = target.items.some((i) => i.name === name && (i.link || '') === link && (i.status === 'candidate' || (i.status === 'owned' && target.pickLog.some((x) => x !== e && x.ownedId === i.id && daysAgo(x.boughtAt || x.at) <= 30)))); if (!canAdd('items', existing ? 0 : 1)) return Promise.resolve(false); }
     const lock = { state: target, scope }; ui.buySaving = lock;
     const purchaseUi = { step: ui.buyStep, size: ui.buySize, own: ui.buyOwn }, size = purchaseUi.size === '?' ? '' : purchaseUi.size || '';
     const keys = ['bought', 'boughtAt', 'boughtSize', 'ownedId'], before = keys.map((key) => ({ key, present: Object.prototype.hasOwnProperty.call(e, key), value: e[key] }));
@@ -1305,7 +1425,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   function verdictRow(r) {
     const e = logFor(r.product.id), cur = e ? e.verdict : '';
     const set = (v) => () => {
-      const x = logEntry(r); x.verdict = x.verdict === v ? '' : v; if (x.verdict !== 'reject') x.reason = ''; x.altId = ''; state.prefs.seen = true; save(); render();
+      const x = logEntry(r); if (!x) return; x.verdict = x.verdict === v ? '' : v; if (x.verdict !== 'reject') x.reason = ''; x.altId = ''; state.prefs.seen = true; save(); render();
       if (x.verdict === 'accept') toast('좋아요. 사고 나서 이 화면으로 돌아오면 "샀어요"를 한 번만 눌러 주세요.');
     };
     const row = h('div', { class: 'vrow', id: 'pickVerdict', role: 'group', 'aria-label': '이 추천 어때요' }, h('span', { class: 'note', text: '이 추천 어때요?' }),
@@ -1316,7 +1436,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     return row;
   }
   function altBetter(pickRow, r) {
-    const x = logEntry(pickRow); x.verdict = 'alt'; x.altId = r.product.id; x.reason = ''; state.prefs.seen = true; save(); render();
+    const x = logEntry(pickRow); if (!x) return; x.verdict = 'alt'; x.altId = r.product.id; x.reason = ''; state.prefs.seen = true; save(); render();
     toast('기록했어요. 이 상품을 사면 판매처에서 돌아와 "샀어요"를 눌러 주세요.');
   }
   function evidence(r) {
@@ -1560,7 +1680,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       h('tbody', null, c.rows.map((x) => h('tr', null, h('th', { scope: 'row', text: x.label }), cell(x.a, x.win === 'a'), cell(x.b, x.win === 'b')))))) : null;
     const e = logFor(p.id), cur = e ? e.verdict : '';
     const decide = (v) => () => {
-      const x = logEntry(r); x.verdict = x.verdict === v ? '' : v; x.altId = v === 'alt' && pk ? pk.product.id : ''; x.reason = ''; state.prefs.seen = true; save(); render();
+      const x = logEntry(r); if (!x) return; x.verdict = x.verdict === v ? '' : v; x.altId = v === 'alt' && pk ? pk.product.id : ''; x.reason = ''; state.prefs.seen = true; save(); render();
       if (x.verdict === 'alt') { const t = $('#pickTop'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'start' }); toast('1위 카드의 판매처 버튼으로 가서 사이즈·재고를 확인해 보세요.'); }
       else if (x.verdict === 'accept') toast(p.store.url ? '좋아요. 보던 상품을 사면 돌아와서 "샀어요"를 눌러 주세요.' : '좋아요. 기록해 둘게요.');
       else if (x.verdict === 'reject') toast('알겠어요. 기록해 둘게요.');
@@ -1649,9 +1769,9 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       h('button', { class: 'btn', type: 'button', id: 'catImportBtn', onclick: () => $('#catFile').click(), text: '상품 목록 파일 열기' }),
       state.catalog.products.length ? h('button', { class: 'btn', type: 'button', id: 'catExportBtn', onclick: () => download('otjang-catalog-' + today() + '.json', { schema: 1, kind: 'catalog', name: (state.owner.nickname || '') + ' 상품 목록', products: state.catalog.products }), text: '내보내기' }) : null,
       h('input', { type: 'file', accept: 'application/json,.json', id: 'catFile', hidden: true, onchange: async () => { const raw = await readFileJson($('#catFile')); const c = raw && C.cleanCatalog(raw); ui.catImport = c && c.products.length ? c : false; render(); } })));
-    if (ui.catImport === false) main.append(h('p', { class: 'warnnote', text: '상품 목록 파일을 읽지 못했습니다. 이 탭에서 내보낸 JSON 파일인지 확인하세요.' }));
+    if (ui.catImport === false) main.append(h('p', { class: 'warnnote', text: ui.inputError || '상품 목록 파일을 읽지 못했습니다. 이 탭에서 내보낸 JSON 파일인지 확인하세요.' }));
     else if (ui.catImport) main.append(h('div', { class: 'bar' }, h('span', { class: 'warnnote', text: '파일의 상품 ' + ui.catImport.products.length + '개를 목록에 더합니다 (같은 id는 건너뜁니다).' }),
-      h('button', { class: 'btn small primary', type: 'button', id: 'catMerge', onclick: () => { const have = new Set(state.catalog.products.map((p) => p.id)); for (const p of ui.catImport.products) if (!have.has(p.id)) state.catalog.products.push(p); ui.catImport = null; save(); render(); }, text: '더하기' }),
+      h('button', { class: 'btn small primary', type: 'button', id: 'catMerge', onclick: () => { const have = new Set(state.catalog.products.map((p) => p.id)), fresh = ui.catImport.products.filter((p) => !have.has(p.id)); if (!canAdd('products', fresh.length)) return; state.catalog.products.push(...fresh); ui.catImport = null; save(); render(); }, text: '더하기' }),
       h('button', { class: 'btn small', type: 'button', onclick: () => { ui.catImport = null; render(); }, text: '취소' })));
     main.append(h('div', { class: 'bar' }, seasonChips(ui.shopSeason, (s) => { ui.shopSeason = s; render(); })),
       h('div', { class: 'bar' }, h('span', { class: 'note', text: '빈틈을 볼 옷장:' }), gaps.map((g) => chip(g.w.name || '이름 없는 옷장', ui.shopGap === g.key, () => { ui.shopGap = g.key; render(); }))));
@@ -1672,7 +1792,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
           r.reasons.length ? h('ul', { class: 'why' }, r.reasons.map((t) => h('li', { text: t }))) : null,
           r.cautions.length ? h('ul', { class: 'why warn' }, r.cautions.map((t) => h('li', { text: t }))) : null,
           p.note ? h('p', { class: 'quote', text: p.note }) : null,
-          h('div', { class: 'cfoot' }, h('button', { class: 'btn small primary', type: 'button', onclick: () => { const c = C.toCandidate(p); c.id = newId('c'); state.items.push(c); ui.judgeId = c.id; ui.tab = 'judge'; save(); render(); }, text: '후보로 넣어 판정' }),
+          h('div', { class: 'cfoot' }, h('button', { class: 'btn small primary', type: 'button', onclick: () => { const c = C.toCandidate(p); c.id = newId('c'); if (!canAdd('items')) return; state.items.push(c); ui.judgeId = c.id; ui.tab = 'judge'; save(); render(); }, text: '후보로 넣어 판정' }),
             h('button', { class: 'btn small', type: 'button', onclick: () => openProduct(p), text: '수정' }))));
       box.append(el);
     });
@@ -1694,7 +1814,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       const msg = $('#otherMsg');
       if (!w || !w.items.length) { msg.textContent = '옷장 파일을 읽지 못했습니다. 기록 탭에서 내보낸 옷장 파일인지 확인하세요.'; msg.hidden = false; return; }
       w.decisions = []; if (!w.name) w.name = w.owner.nickname ? w.owner.nickname + '의 옷장' : f.name.replace(/\.json$/i, '').slice(0, 40);
-      state.others = [w].concat(state.others).slice(0, 6); ui.src = 'o0'; save(); render();
+      if (!canAdd('others')) return; state.others = [w].concat(state.others); ui.src = 'o0'; save(); render();
     } });
     const left = h('div', { class: 'list' }, src.map((s) => h('button', { class: 'row', type: 'button', 'aria-pressed': s.key === ui.src ? 'true' : 'false', onclick: () => { ui.src = s.key; render(); } },
       h('span', { class: 'rowt' }, h('b', { text: s.w.name || '이름 없는 옷장' }), h('span', { text: s.w.items.filter(J.isOwned).length + '벌' + (s.w.kind === 'template' ? ' · 기본 옷장' : '') + (s.w.draft ? ' · 초안' : '') })))),
@@ -1714,7 +1834,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       h('p', { class: 'sub', text: '종류, 색 계열, 밝기가 가까운 옷이 내 옷장에 없는 것입니다. 후보로 넣으면 살까 말까 판정으로 이어집니다.' }));
     if (r.onlyTheirs.length) miss.append(h('div', { class: 'grid' }, r.onlyTheirs.map((it) => itemCard(it, { theirs: true, actions: [h('button', { class: 'btn small', type: 'button', onclick: () => {
       const copy = W.cleanItem(Object.assign({}, it, { id: newId('c'), status: 'candidate', attrSource: 'owner', photo: null, product: null, matchCandidates: [], look3d: null, review: '', rebuy: 'unknown', boughtYear: null, size: '', price: null, link: '', checkedAt: '', measures: {} }), 0);
-      state.items.push(copy); ui.judgeId = copy.id; ui.tab = 'judge'; save(); render();
+      if (!canAdd('items')) return; state.items.push(copy); ui.judgeId = copy.id; ui.tab = 'judge'; save(); render();
     }, text: '후보로 넣기' })] }))));
     else miss.append(h('p', { class: 'note', text: '확인한 범위에서는 빠진 것이 없습니다.' }));
     const both = h('section', { class: 'panel', id: 'cmpBoth' }, h('h2', { text: '둘 다 가진 것 ' + r.both.length + '벌' }));
@@ -1732,6 +1852,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
 
   // ---------- 기록 ----------
   function renderLog(main) {
+    renderCapacity(main);
     const done = state.decisions.filter((d) => d.after), insights = done.filter(d => d.after.insight).length, followed = done.filter(d => d.followup || d.follow).length;
     const pickByDecision = new Map(), usedPickIds = new Set();
     for (const d of done) {
@@ -1795,9 +1916,9 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const ck = (k, label) => h('label', null, h('input', { type: 'checkbox', id: 'exp-' + k, checked: ui.exp[k], onchange: (e) => { ui.exp[k] = e.target.checked; } }), ' ' + label);
     const imp = h('input', { type: 'file', accept: 'application/json,.json', id: 'importFile', hidden: true, onchange: async () => {
       const raw = await readFileJson(imp), newer = B.newerSchemaPath(raw); const w = raw && !newer && W.cleanWardrobe(raw);
-      ui.importMessage = newer ? '새 버전에서 만든 옷장 파일입니다. 앱을 업데이트한 뒤 가져와 주세요. 현재 옷장은 바뀌지 않았습니다.' : '';
-      if (w) { w.prefs = raw.prefs && typeof raw.prefs === 'object' ? cleanPrefs(raw.prefs) : null; w.pickLog = cleanPickLog(raw.pickLog); w.meta = raw.meta && typeof raw.meta === 'object' ? raw.meta : null; }
-      ui.importArm = w && (w.items.length || w.pickLog.length) && w.kind !== 'template' ? w : false; render();
+      ui.importMessage = ui.inputError || (newer ? '새 버전에서 만든 옷장 파일입니다. 앱을 업데이트한 뒤 가져와 주세요. 현재 옷장은 바뀌지 않았습니다.' : '');
+      if (w && cleanPickLog(raw.pickLog) !== null) { w.prefs = raw.prefs && typeof raw.prefs === 'object' ? cleanPrefs(raw.prefs) : null; w.pickLog = cleanPickLog(raw.pickLog); w.meta = raw.meta && typeof raw.meta === 'object' ? raw.meta : null; }
+      ui.importArm = w && w.pickLog && (w.items.length || w.pickLog.length) && w.kind !== 'template' ? w : false; render();
     } });
     const io = h('section', { class: 'panel' }, h('h2', { text: '옷장 파일' }), h('p', { class: 'sub', text: '보유한 옷과 기록을 공유용 파일로 내보냅니다. 구매 후보는 넣지 않습니다. 이 파일을 받은 사람은 옷장 구경 탭에서 열어 볼 수 있습니다. 이전 버전의 옷장 파일도 가져올 수 있습니다.' }),
       h('div', { class: 'checks', style: 'margin-bottom:12px' }, ck('img', '내 사진 포함'), ck('otherImg', '남의 상품 사진 포함'), ck('cands', '미확인 브랜드 후보 포함'), ck('price', '가격과 링크 포함'), ck('body', '키와 평소 사이즈 포함'), ck('log', '판정 기록 포함')),
@@ -1812,16 +1933,16 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (ui.importArm === false) io.append(h('p', { class: 'warnnote', id: 'importMessage', style: 'margin-top:10px', text: ui.importMessage || '옷장 파일을 읽지 못했습니다.' }));
     else if (ui.importArm) {
       const existingIds = new Set(state.items.map((it) => it.id)), additions = ui.importArm.items.filter((it) => !existingIds.has(it.id));
-      const tooMany = state.items.length + additions.length > 500;
+      const tooMany = additions.length > 0 && state.items.length + additions.length > W.RECORD_LIMITS.createLimit;
       io.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', id: 'importWarn', text: '파일의 옷 ' + ui.importArm.items.length + '벌을 읽었습니다. 기존 옷장에 새 옷 ' + additions.length + '벌을 추가할 수 있습니다. 같은 옷 번호의 기존 기록은 그대로 둡니다. 바꾸기를 누르면 지금 옷장을 지우고 파일 내용으로 바뀝니다.' }),
       h('button', { class: 'btn small primary', type: 'button', id: 'importAdd', disabled: !additions.length || tooMany, onclick: () => {
         const ids = new Set(state.items.map((it) => it.id)), fresh = ui.importArm.items.filter((it) => !ids.has(it.id));
-        if (!fresh.length || state.items.length + fresh.length > 500) return;
+        if (!fresh.length || !canAdd('items', fresh.length)) return;
         state.meta.sample = false; state.items = state.items.concat(fresh); state.syncFollowupAck = null; ui.pullArm = null; ui.importArm = null; save(); render();
       }, text: '기존 옷장에 추가 (' + additions.length + '벌)' }),
-      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.syncFollowupAck = null; ui.pullArm = null; state.meta.sample = false; if (w.prefs) state.prefs = w.prefs; state.pickLog = w.pickLog || []; mergeMeta(w.meta); state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
+      h('button', { class: 'btn small danger', type: 'button', id: 'importGo', disabled: !canImportReplace(ui.importArm, true), onclick: () => { const w = ui.importArm; if (!canImportReplace(w)) return; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.syncFollowupAck = null; ui.pullArm = null; state.meta.sample = false; if (w.prefs) state.prefs = w.prefs; state.pickLog = w.pickLog || []; mergeMeta(w.meta); state.rack = defaultRack(state.items); ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
       h('button', { class: 'btn small', type: 'button', id: 'importCancel', onclick: () => { ui.importArm = null; render(); }, text: '취소' })));
-      if (tooMany) io.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '합쳐서 500벌을 넘으면 추가할 수 없습니다. 파일의 옷을 줄여 다시 가져와 주세요.' }));
+      if (tooMany) io.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '새로 추가한 결과가 ' + W.RECORD_LIMITS.createLimit + '벌을 넘으면 추가할 수 없습니다. 파일의 옷을 줄여 다시 가져와 주세요.' }));
     }
     main.append(io);
     main.append(h('details', { class: 'adv', id: 'opsBox', open: ui.opsOpen, ontoggle: (e) => { ui.opsOpen = e.target.open; } }, h('summary', { text: '베타 운영자: 받은 의견 모아 보기' }), renderOps()));
@@ -1974,12 +2095,12 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       const context = { source, discovery, serverVersion: Number(version), resolutions: {} };
       if (B.newerSchemaPath(raw)) throw new Error('서버 옷장이 새 버전 형식입니다. 앱을 업데이트한 뒤 받아 주세요. 현재 옷장은 바뀌지 않았습니다.');
       const w = W.cleanWardrobe(raw);
-      if (!w) throw new Error('서버가 준 옷장을 읽지 못했습니다.');
+      if (!w) throw new Error('서버가 준 옷장이 읽기 상한을 넘었거나 올바른 형식이 아닙니다. 현재 자료는 바뀌지 않았습니다.');
       context.completeIncoming = SY.completePullSnapshot(raw, w);
       const protection = requirePullProtection(raw && raw.decisions, context);
       requirePullProtection(w.decisions, context);
       const rc = await syncFetch('/api/catalog'), c = C.cleanCatalog(Object.assign({ schema: 1, kind: 'catalog' }, await rc.json()));
-      const catalogVersion = rc.headers.get('X-Wardrobe-Version');
+      if (!c) throw new Error('서버 상품 목록이 읽기 상한을 넘었거나 올바른 형식이 아닙니다. 현재 자료는 바뀌지 않았습니다.'); const catalogVersion = rc.headers.get('X-Wardrobe-Version');
       if (version == null || catalogVersion !== version) throw new Error('서버가 조회 중 바뀌었거나 버전을 확인할 수 없습니다. 다시 받아 주세요.');
       ui.pullArm = { w, c, version: Number(version), context, rawDecisions: raw.decisions, plan: protection }; ui.syncMsg = '';
     } catch (e) { ui.syncMsg = e.message; }
@@ -2017,7 +2138,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       h('button', { class: 'btn small danger', type: 'button', id: 'pullGo', onclick: async () => { if (!ui.pullArm) return; const { w, c, version, context, rawDecisions } = ui.pullArm;
         let plan; try { await requireFreshStorage(); requirePullProtection(rawDecisions, context); plan = requirePullProtection(w.decisions, context); } catch (e) { ui.syncMsg = e.message; ui.pullArm = null; render(); return; }
         if (!plan.ok) { ui.pullArm.plan = plan; ui.syncMsg = '확인하는 동안 구매 결과가 달라졌습니다. 양쪽 결과를 다시 선택해 주세요. 현재 자료는 바뀌지 않았습니다.'; render(); return; }
-        const old = JSON.parse(JSON.stringify(state)); state.items = SY.mergePullPlanItems(state.items, w.items, plan); state.owner = w.owner; state.decisions = plan.decisions; if (c) state.catalog.products = c.products;
+        const incomingItems = SY.mergePullPlanItems(state.items, w.items, plan); if (incomingItems.length > W.RECORD_LIMITS.readCeiling || plan.decisions.length > W.RECORD_LIMITS.readCeiling) { ui.syncMsg = '받은 자료를 합치면 읽기 상한을 넘습니다. 현재 자료는 바뀌지 않았습니다.'; render(); return; } const old = JSON.parse(JSON.stringify(state)); state.items = SY.mergePullPlanItems(state.items, w.items, plan); state.owner = w.owner; state.decisions = plan.decisions; if (c) state.catalog.products = c.products;
         const ids = new Set(state.items.filter((i) => i.look3d).map((i) => i.id)); state.rack = state.rack.filter((r) => ids.has(r.id)); if (!state.rack.length) state.rack = defaultRack(state.items);
         state.syncStamp = { origin: ui.syncOrigin, ownerId: ui.syncUserInfo.ownerId, version }; ui.syncVersion = version;
         state.syncFollowupAck = SY.makeFollowupAck({ ...context.source, serverVersion: version, capture: 'pull', completeSnapshot: context.completeIncoming }, w.decisions);
@@ -2046,7 +2167,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (cur) box.append(h('div', { class: 'pbox' }, pic({ photo: cur, family: it.family, light: it.light }), h('p', { class: 'cap', text: PHOTO_KIND[cur.kind] })));
   }
   function openEditor(item, status) {
-    ed.item = item || null; ed.status = item ? item.status : status; ed.ownImg = item ? item.photo.ownImg : '';
+    ed.state = state; ed.scope = accountScope(); ed.item = item || null; ed.status = item ? item.status : status; ed.ownImg = item ? item.photo.ownImg : '';
     const it = item || W.cleanItem({ cat: 'top', kind: null, name: '', family: null, light: null, formality: null, pattern: null, status: ed.status }, 0);
     const cand = ed.status === 'candidate';
     $('#edTitle').textContent = item ? (cand ? '구매 후보 수정' : '옷 기록') : cand ? '구매 후보 추가' : '옷 추가';
@@ -2071,7 +2192,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   $('#edDelete').addEventListener('click', () => { const it = ed.item; if (!it) return; $('#editor').close(); deleteItem(it); });
   $('#edForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const err = $('#edErr'); err.hidden = true;
+    const err = $('#edErr'); err.hidden = true; const target = ed.state, scope = ed.scope;
     const f = $('#f-photo').files[0];
     if (f) { const d = await readImage(f); if (!d) { err.textContent = '사진을 읽지 못했습니다. 다른 파일을 골라 주세요.'; err.hidden = false; return; } ed.ownImg = d; }
     const link = $('#f-link').value.trim();
@@ -2090,7 +2211,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (!item || !raw.name) { err.textContent = '이름을 적어 주세요.'; err.hidden = false; return; }
     if (ed.ownImg !== (prev ? prev.photo.ownImg : '')) item = W.setOwnPhoto(item, ed.ownImg);
     if (prev && item.cat !== prev.cat && item.look3d) item.look3d = null;
-    replaceItem(item);
+    if (state !== target || accountScope() !== scope) { err.textContent = '편집 중 계정이나 옷장이 바뀌었습니다. 다시 열어 주세요.'; err.hidden = false; return; }
+    if (!replaceItem(item)) return;
     if (item.status === 'candidate') ui.judgeId = item.id;
     $('#editor').close(); save(); render();
   });
@@ -2099,7 +2221,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   const wz = { status: 'owned', step: 0, item: null, data: null, ownImg: '', prodImg: '', ask: null, guess: null, guessApplied: false, touched: false };
   const STEP_NAMES = ['1. 무엇인가요', '2. 색과 느낌', '3. 어떤 상품인가요'];
   function openWizard(item, status) {
-    wz.status = item ? item.status : status; wz.step = 0; wz.item = item || null; wz.ownImg = item ? item.photo.ownImg : ''; wz.prodImg = ''; wz.guess = null; wz.guessApplied = false; wz.touched = false;
+    wz.state = state; wz.scope = accountScope(); wz.status = item ? item.status : status; wz.step = 0; wz.item = item || null; wz.ownImg = item ? item.photo.ownImg : ''; wz.prodImg = ''; wz.guess = null; wz.guessApplied = false; wz.touched = false;
     const base = item || W.cleanItem({ cat: 'top', kind: null, name: '', family: null, light: null, formality: null, pattern: null, status: wz.status }, 0);
     wz.data = { cat: base.cat, kind: base.kind, name: base.name, family: base.family, light: base.light, formality: base.formality, pattern: base.pattern, seasons: base.seasons.slice(), confirmed: base.attrSource === 'owner-confirmed',
       brand: base.brand, brandUnknown: false, model: base.model, modelUnknown: false, sourceUrl: '', sourceName: '', photoKind: '', price: base.price, link: base.link, checkedAt: base.checkedAt };
@@ -2170,6 +2292,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     }
   }
   async function wizardNext() {
+    const target = wz.state, scope = wz.scope;
     const err = $('#wzErr'); err.hidden = true;
     if (wz.step === 0) { const f = $('#z-photo').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.ownImg = img; wz.guess = await guessColor(f); wz.guessApplied = false; wz.touched = false; } }
     if (wz.step === 2) { const f = $('#z-prodPhoto').files[0]; if (f) { const img = await readImage(f); if (!img) { err.textContent = '상품 사진을 읽지 못했습니다.'; err.hidden = false; return; } wz.prodImg = img; } }
@@ -2187,6 +2310,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (next < 3) { wz.step = next; renderWizard(); return; }
     // 저장
     const prev = wz.item;
+    if (state !== target || accountScope() !== scope) { err.textContent = '등록 중 계정이나 옷장이 바뀌었습니다. 다시 열어 주세요.'; err.hidden = false; return; }
+    if (!canAdd('items', prev ? 0 : 1, !prev && wz.status === 'owned' && state.meta.sample ? { ...state, items: [] } : state)) return;
     if (!prev && wz.status === 'owned' && state.meta.sample) { leaveSample(); toast('예시를 지우고 내 옷장으로 시작합니다.'); }
     const fromPhoto = wz.guessApplied && !wz.touched;                                               // 색·밝기를 사진 초안 그대로 두었으면 '사진에서 뽑은 초안'으로 남긴다
     const attrSource = d.confirmed ? 'owner-confirmed' : fromPhoto ? 'photo-draft' : prev ? (prev.attrSource === 'owner-confirmed' ? 'owner' : prev.attrSource) : 'owner';
@@ -2199,7 +2324,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       else item = W.setProductPhoto(item, d.photoKind, { img: wz.prodImg, sourceName: d.sourceName, sourceUrl: d.sourceUrl, brand: d.photoKind === 'candidate' ? d.brand : '', name: d.photoKind === 'candidate' ? d.model : '', evidence: 'owner' });
     }
     if (prev && item.cat !== prev.cat && item.look3d) item.look3d = null;
-    replaceItem(item);
+    if (state !== target || accountScope() !== scope) { err.textContent = '등록 중 계정이나 옷장이 바뀌었습니다. 다시 열어 주세요.'; err.hidden = false; return; }
+    if (!replaceItem(item)) return;
     if (item.status === 'candidate') ui.judgeId = item.id;
     $('#wizard').close(); save(); render();
   }
@@ -2264,7 +2390,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   const pd = { item: null, img: '' };
   function syncPLight() { const v = readNumber($('#p-light')); $('#p-lightv').textContent = lightText(v); $('#p-sw').style.background = swatch({ family: $('#p-family').value, light: v }); }
   function openProduct(p) {
-    pd.item = p || null; pd.img = p ? p.img : '';
+    pd.state = state; pd.scope = accountScope(); pd.item = p || null; pd.img = p ? p.img : '';
     const it = p || { brand: '', name: '', code: '', link: '', cat: 'top', kind: null, family: null, light: null, formality: null, pattern: null, seasons: [], price: null, checkedAt: '', note: '' };
     $('#pdTitle').textContent = p ? '상품 수정' : '상품 추가';
     $('#p-brand').value = it.brand; $('#p-name').value = it.name; $('#p-code').value = it.code; $('#p-link').value = it.link;
@@ -2281,7 +2407,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   $('#pdDelete').addEventListener('click', () => { if (pd.item) { state.catalog.products = state.catalog.products.filter((x) => x.id !== pd.item.id); $('#product').close(); save(); render(); } });
   $('#pdForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const err = $('#pdErr'); err.hidden = true;
+    const err = $('#pdErr'); err.hidden = true; const target = pd.state, scope = pd.scope;
     const f = $('#p-photo').files[0];
     if (f) { const d = await readImage(f); if (!d) { err.textContent = '사진을 읽지 못했습니다.'; err.hidden = false; return; } pd.img = d; }
     const link = $('#p-link').value.trim(); if (link && !safeLink(link)) { err.textContent = '주소는 http:// 또는 https://로 시작해야 합니다.'; err.hidden = false; return; }
@@ -2290,7 +2416,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       formality: Number($('#p-formality').value), pattern: $('#p-pattern').value, seasons: Array.from(document.querySelectorAll('#p-seasons input:checked')).map((x) => x.value), price, checkedAt: $('#p-checked').value.trim() || (price != null ? today() : ''), img: pd.img, note: $('#p-note').value.trim(), addedAt: pd.item ? pd.item.addedAt : today() };
     const p = C.cleanProduct(raw, 0);
     if (!p) { err.textContent = '상품명을 적어 주세요.'; err.hidden = false; return; }
-    const at = state.catalog.products.findIndex((x) => x.id === p.id); if (at >= 0) state.catalog.products[at] = p; else state.catalog.products.push(p);
+    if (state !== target || accountScope() !== scope) { err.textContent = '편집 중 계정이나 옷장이 바뀌었습니다. 다시 열어 주세요.'; err.hidden = false; return; }
+    const at = state.catalog.products.findIndex((x) => x.id === p.id); if (!canAdd('products', at < 0 ? 1 : 0)) return; if (at >= 0) state.catalog.products[at] = p; else state.catalog.products.push(p);
     $('#product').close(); save(); render();
   });
 
@@ -2329,7 +2456,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   function addQuick() {
     const picked = PRESETS.filter((p) => ui.quickPick.indexOf(p.key) >= 0);
-    const wasSample = state.meta.sample; if (wasSample) leaveSample();                              // 예시를 보다가 내 옷을 넣으면 예시는 지우고 내 옷장으로 시작한다
+    const wasSample = state.meta.sample; if (!canAdd('items', picked.length, wasSample ? { ...state, items: [] } : state)) return; if (wasSample) leaveSample();                              // 예시를 보다가 내 옷을 넣으면 예시는 지우고 내 옷장으로 시작한다
     for (const p of picked) replaceItem(W.cleanItem({ id: newId('i'), status: 'owned', cat: p.cat, kind: p.kind, name: p.name, family: p.family, light: p.light, formality: p.formality, pattern: p.pattern, seasons: [], attrSource: 'owner',
       draftNote: '빠른 시작으로 넣은 대표값입니다. 실제 색·밝기·격식과 다르면 고쳐 주세요.' }, 0));
     state.meta.welcomed = true; state.meta.quickAdded += picked.length; ui.quickPick = [];
@@ -2444,8 +2571,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     $('#bkAdd').disabled = bk.reading || !ready; $('#bkAdd').textContent = rows.length ? rows.length + '벌 저장' : '저장';
   }
   $('#bkAdd').addEventListener('click', async () => {
-    const generation = bk.generation, rows = bk.rows.filter(r => !r.drop); if (!rows.length || rows.some(r => !r.single || !r.cat)) return;
-    if ((state.meta.sample ? 0 : state.items.length) + rows.length > 500) { $('#bkErr').textContent = '옷장은 500벌까지 저장할 수 있습니다.'; $('#bkErr').hidden = false; return; }
+    const target = state, scope = accountScope(), generation = bk.generation, rows = bk.rows.filter(r => !r.drop); if (!rows.length || rows.some(r => !r.single || !r.cat)) return;
+    if (!canAdd('items', rows.length, state.meta.sample ? { ...state, items: [] } : state)) { $('#bkErr').textContent = ui.capacityMessage; $('#bkErr').hidden = false; return; }
     $('#bkAdd').disabled = true;
     try {
       const items = [];
@@ -2454,9 +2581,11 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
         let it = W.cleanItem({ id: newId('i'), status: 'owned', cat: r.cat, kind: r.kind, name: r.name.trim() || [r.family ? FAM[r.family][0] : '', r.kind ? KINDS[r.cat][r.kind] : CATS[r.cat]].filter(Boolean).join(' '), family: r.family, light: r.light, formality: null, pattern: null, seasons: [], attrSource: 'owner', draftNote: '사진으로 등록. 확인하지 않은 속성과 브랜드·품명은 비워 두었습니다.' }, 0);
         items.push(W.setOwnPhoto(it, img));
       }
-      const old = JSON.parse(JSON.stringify(state)); if (state.meta.sample) leaveSample();
+      if (state !== target || accountScope() !== scope) throw new Error('등록 중 계정이나 옷장이 바뀌었습니다. 다시 열어 주세요.');
+      if (!canAdd('items', items.length, state.meta.sample ? { ...state, items: [] } : state)) throw new Error(ui.capacityMessage); const old = JSON.parse(JSON.stringify(state)); if (state.meta.sample) leaveSample();
       items.forEach(replaceItem); state.meta.welcomed = true;
-      if (!await save()) { state = old; throw new Error('저장하지 못했습니다. 이 화면을 닫지 말고 저장 공간을 확인한 뒤 다시 시도해 주세요.'); }
+      if (!await save()) { if (state === target && accountScope() === scope) state = old; throw new Error('저장하지 못했습니다. 이 화면을 닫지 말고 저장 공간을 확인한 뒤 다시 시도해 주세요.'); }
+      if (state !== target || accountScope() !== scope) return;
       bk.rows = []; $('#bulkDlg').close(); ui.tab = 'closet'; render(); toast(items.length + '벌을 저장했습니다. 모르는 정보는 나중에 확인할 수 있어요.');
     } catch (e) { $('#bkErr').textContent = e.message; $('#bkErr').hidden = false; updateBulkButton(); }
   });

@@ -45,11 +45,11 @@
     if (newerSchemaPath(raw)) return null;
     if (!raw || raw.kind !== 'otjang-backup' || raw.version !== 1 || !raw.state || raw.state.schema !== 2) return null;
     const s = clone(raw.state);
-    if (!Array.isArray(s.items) || s.items.length > 500 || !Array.isArray(s.decisions) || s.decisions.length > 500 || !Array.isArray(s.others) || s.others.length > 6 || !Array.isArray(s.rack) || s.rack.length > 6 || !s.catalog || !Array.isArray(s.catalog.products) || s.catalog.products.length > 500) return null;
+    if (!Array.isArray(s.items) || s.items.length > W.RECORD_LIMITS.readCeiling || !Array.isArray(s.decisions) || s.decisions.length > W.RECORD_LIMITS.readCeiling || !Array.isArray(s.others) || s.others.length > W.RECORD_LIMITS.readCeiling || !Array.isArray(s.rack) || s.rack.length > 6 || !s.catalog || !Array.isArray(s.catalog.products) || s.catalog.products.length > W.RECORD_LIMITS.readCeiling) return null;
     const n = cleaner(s);
     if (!n || n.items.length !== s.items.length || n.decisions.length !== s.decisions.length || n.others.length !== s.others.length || n.rack.length !== s.rack.length || n.catalog.products.length !== s.catalog.products.length) return null;
     for (let i = 0; i < s.others.length; i++) {
-      if (!Array.isArray(s.others[i].items) || s.others[i].items.length > 500 || n.others[i].items.length !== s.others[i].items.length || !Array.isArray(s.others[i].decisions) || n.others[i].decisions.length !== s.others[i].decisions.length) return null;
+      if (!Array.isArray(s.others[i].items) || s.others[i].items.length > W.RECORD_LIMITS.readCeiling || n.others[i].items.length !== s.others[i].items.length || !Array.isArray(s.others[i].decisions) || n.others[i].decisions.length !== s.others[i].decisions.length) return null;
     }
     // A backup must restore exactly. Invalid pictures or records must not silently disappear.
     const same = (a, b) => {

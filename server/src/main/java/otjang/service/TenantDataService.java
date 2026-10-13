@@ -26,9 +26,10 @@ public class TenantDataService {
     private final OwnerRepository owners;
     private final AuthService auth;
     private final PhotoLifecycle photos;
+    private final AccountCapacity capacity;
     private final JsonMapper json=JsonMapper.builder().build();
-    public TenantDataService(WardrobeService wardrobe, CatalogService catalog, JdbcTemplate jdbc, OwnerRepository owners, AuthService auth, PhotoLifecycle photos) {
-        this.wardrobe=wardrobe;this.catalog=catalog;this.jdbc=jdbc;this.owners=owners;this.auth=auth;this.photos=photos;
+    public TenantDataService(WardrobeService wardrobe, CatalogService catalog, JdbcTemplate jdbc, OwnerRepository owners, AuthService auth, PhotoLifecycle photos, AccountCapacity capacity) {
+        this.wardrobe=wardrobe;this.catalog=catalog;this.jdbc=jdbc;this.owners=owners;this.auth=auth;this.photos=photos;this.capacity=capacity;
     }
     @Transactional(readOnly=true)
     public Map<String,Object> backup() {
@@ -38,7 +39,7 @@ public class TenantDataService {
     }
     @SuppressWarnings("unchecked")
     private static Map<String,Object> map(Object value) { if(!(value instanceof Map<?,?> m)) throw new ApiException(400,"백업 모양이 맞지 않습니다"); return (Map<String,Object>)m; }
-    private static List<?> array(Object value) { if(!(value instanceof List<?> a)||a.size()>500)throw new ApiException(400,"백업 항목은 최대 500개입니다");return a; }
+    private static List<?> array(Object value) { if(!(value instanceof List<?> a)||a.size()>otjang.domain.RecordLimits.READ_CEILING)throw new ApiException(400,"백업 항목은 최대 "+otjang.domain.RecordLimits.READ_CEILING+"개입니다. 일부만 복원하지 않습니다");return a; }
     private Object tree(Object value) { return JsonParserFactory.getJsonParser().parseMap(json.writeValueAsString(Map.of("value",value))).get("value"); }
     private static boolean same(Object a,Object b) {
         if(a==null||b==null)return a==b;
@@ -74,16 +75,16 @@ public class TenantDataService {
         if(cleanW==null||cleanC==null||!same(w.get("items"),tree(cleanW.items()))||!same(otjang.api.FollowupWriteValidator.normalizedBackupDecisions(w.get("decisions")),tree(cleanW.decisions()))||!same(w.get("owner"),tree(cleanW.owner()))||!same(c.get("products"),tree(cleanC.products())))
             throw new ApiException(400,"백업 데이터가 잘못됐습니다. 자동 보정하거나 일부만 복원하지 않습니다");
         if(!"wardrobe".equals(w.get("kind"))||((Number)w.get("schema")).intValue()!=2)throw new ApiException(400,"옷장 스키마가 맞지 않습니다");
-        long owner=OwnerScope.ownerId();photos.lock();photos.afterCommit(photos.ownerRefs(owner));
+        long owner=OwnerScope.ownerId();capacity.lock(owner);photos.lock();photos.afterCommit(photos.ownerRefs(owner));
         jdbc.update("delete from item where owner_id=?",owner);jdbc.update("delete from decision where owner_id=?",owner);
         jdbc.update("delete from catalog_product where owner_id=?",owner);jdbc.update("delete from import_receipt where owner_id=?",owner);
         wardrobe.updateOwner(map(w.get("owner")));
-        var r=wardrobe.importWardrobe(w,null,null);var cr=catalog.importCatalog(c,null,null);
+        var r=wardrobe.restoreWardrobe(cleanW);var cr=catalog.restoreCatalog(cleanC);
         return Map.of("items",r.items(),"decisions",r.decisions(),"products",cr.items());
     }
     @Transactional
     public void deleteAccount(String password) {
-        auth.requirePassword(password);long owner=OwnerScope.ownerId();photos.lock();photos.afterCommit(photos.ownerRefs(owner));
+        auth.requirePassword(password);long owner=OwnerScope.ownerId();capacity.lock(owner);photos.lock();photos.afterCommit(photos.ownerRefs(owner));
         owners.deleteById(owner);owners.flush();
     }
 }

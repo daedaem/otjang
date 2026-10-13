@@ -9,7 +9,7 @@ const section = (start, end) => {
   assert.ok(at >= 0 && until > at, start);
   return html.slice(at, until);
 };
-const code = section('  function save() {', '\n  const owned =') +
+const code = section('  function capacityCounts(', '  const newId =') + section('  function save() {', '\n  const owned =') +
   section('  function askBox(e) {', '  /** 산 지 2주:');
 const PICKS = PK.cleanPicks(require('../data/picks.json'));
 const product = PICKS.products.find((p) => p.sizes.length && !p.user);

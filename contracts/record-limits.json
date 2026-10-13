@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "createLimit": 500,
+  "pickLogCreateLimit": 1000,
+  "otherWardrobeCreateLimit": 6,
+  "readCeiling": 2000
+}

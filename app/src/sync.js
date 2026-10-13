@@ -58,7 +58,7 @@
   }
 
   function cleanFollowupAck(raw) {
-    if (!raw || typeof raw !== 'object' || !normalizeBase(raw.origin) || !Number.isSafeInteger(raw.ownerId) || raw.ownerId < 1 || !Number.isSafeInteger(raw.serverVersion) || raw.serverVersion < 0 || !Array.isArray(raw.decisions) || raw.decisions.length > 500) return null;
+    if (!raw || typeof raw !== 'object' || !normalizeBase(raw.origin) || !Number.isSafeInteger(raw.ownerId) || raw.ownerId < 1 || !Number.isSafeInteger(raw.serverVersion) || raw.serverVersion < 0 || !Array.isArray(raw.decisions) || raw.decisions.length > W.RECORD_LIMITS.readCeiling) return null;
     const seen = new Set(), decisions = [];
     for (const d of raw.decisions) {
       if (!d || typeof d.id !== 'string' || !d.id || W.str(d.id, 40) !== d.id || typeof d.itemId !== 'string' || !d.itemId || W.str(d.itemId, 40) !== d.itemId || typeof d.fingerprint !== 'string' || d.fingerprint.length > 2500) return null;
@@ -187,7 +187,7 @@
 
   function completePullSnapshot(raw, clean) {
     const stable = (v) => JSON.stringify(v, function (key, value) { return value && typeof value === 'object' && !Array.isArray(value) ? Object.fromEntries(Object.keys(value).sort().map((k) => [k, value[k]])) : value; });
-    return !!raw && !!clean && Array.isArray(clean.items) && Array.isArray(clean.decisions) && Array.isArray(raw.items) && raw.items.length <= 500 && Array.isArray(raw.decisions) && raw.decisions.length <= 500 && raw.items.length === clean.items.length && raw.decisions.length === clean.decisions.length && stable(raw.items) === stable(clean.items) && stable(raw.decisions) === stable(clean.decisions);
+    return !!raw && !!clean && Array.isArray(clean.items) && Array.isArray(clean.decisions) && Array.isArray(raw.items) && raw.items.length <= W.RECORD_LIMITS.readCeiling && Array.isArray(raw.decisions) && raw.decisions.length <= W.RECORD_LIMITS.readCeiling && raw.items.length === clean.items.length && raw.decisions.length === clean.decisions.length && stable(raw.items) === stable(clean.items) && stable(raw.decisions) === stable(clean.decisions);
   }
 
 

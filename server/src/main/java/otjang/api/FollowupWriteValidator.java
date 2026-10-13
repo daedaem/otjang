@@ -3,7 +3,7 @@ package otjang.api;
 import otjang.domain.FollowupContract;
 import otjang.domain.Sanitize;
 import otjang.domain.Vocab;
-import otjang.domain.WardrobeCleaner;
+import otjang.domain.RecordLimits;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -49,11 +49,11 @@ public final class FollowupWriteValidator {
     }
     public static void wardrobe(Map<String, Object> raw, String prefix) {
         List<Object> items = Sanitize.arr(raw.get("items"));
-        if (items != null && items.size() > WardrobeCleaner.MAX_ITEMS)
-            throw new ApiException(422, "옷장 항목은 최대 500개입니다. 일부만 저장하지 않습니다", "WARDROBE_LIMIT", prefix + "items");
+        if (items != null && items.size() > RecordLimits.READ_CEILING)
+            throw new ApiException(422, "옷장 항목은 최대 " + RecordLimits.READ_CEILING + "개입니다. 일부만 저장하지 않습니다", "WARDROBE_LIMIT", prefix + "items");
         List<Object> decisions = Sanitize.arr(raw.get("decisions"));
-        if (decisions != null && decisions.size() > WardrobeCleaner.MAX_ITEMS)
-            throw new ApiException(422, "판정 항목은 최대 500개입니다. 일부만 저장하지 않습니다", "WARDROBE_LIMIT", prefix + "decisions");
+        if (decisions != null && decisions.size() > RecordLimits.READ_CEILING)
+            throw new ApiException(422, "판정 항목은 최대 " + RecordLimits.READ_CEILING + "개입니다. 일부만 저장하지 않습니다", "WARDROBE_LIMIT", prefix + "decisions");
         if (decisions != null) for (int i = 0; i < decisions.size(); i++) decision(decisions.get(i), prefix + "decisions[" + i + "].");
     }
     /** Preserve backup strictness for all other data while allowing canonical missing/irrelevant enum defaults. */

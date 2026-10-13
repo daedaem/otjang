@@ -15,7 +15,7 @@
   'use strict';
   const SCHEMA = 1;
   const STALE_DAYS = 14;                                                                              // [제안값] 이보다 오래된 가격은 다시 확인하라고 표시한다
-  const MAX = 500;
+  const MAX = W.RECORD_LIMITS.readCeiling;
 
   function cleanProduct(raw, i) {
     if (!raw || typeof raw !== 'object') return null;
@@ -33,8 +33,9 @@
   }
   function cleanCatalog(raw) {
     if (!raw || typeof raw !== 'object' || raw.schema !== SCHEMA || raw.kind !== 'catalog' || !Array.isArray(raw.products)) return null;
+    if (raw.products.length > MAX) return null;
     const ids = new Set();
-    return { schema: SCHEMA, kind: 'catalog', name: W.str(raw.name, 60), note: W.str(raw.note, 200), products: raw.products.slice(0, MAX).map(cleanProduct).filter(Boolean).filter((p) => (ids.has(p.id) ? false : ids.add(p.id))) };
+    return { schema: SCHEMA, kind: 'catalog', name: W.str(raw.name, 60), note: W.str(raw.note, 200), products: raw.products.map(cleanProduct).filter(Boolean).filter((p) => (ids.has(p.id) ? false : ids.add(p.id))) };
   }
   function daysSince(date, today) {
     if (!W.safeDate(date)) return null;
