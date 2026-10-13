@@ -1251,6 +1251,17 @@ const DISCOVERY_RAW = /*@@DISCOVERY_PRODUCTS@@*/;</script>
     const open = openDecision(c.id);
     const past = state.decisions.filter((d) => d.itemId === c.id && d.after), last = past[past.length - 1];
     const stage = open ? 2 : last && ui.rejudge !== c.id ? 3 : 1;
+    const directPreview = stage === 1 && (c.photo?.sourceName === '상품 목록에서 넣음' ||
+      (ui.judgePreview?.target === state && ui.judgePreview.scope === accountScope() && ui.judgePreview.id === c.id));
+    if (directPreview) {
+      const previewTarget = state, previewScope = accountScope();
+      const activeCandidate = () => state === previewTarget && accountScope() === previewScope && byId(c.id) === c;
+      right.append(h('div', { class: 'bar', style: 'margin:0 0 12px' },
+        h('button', { class: 'btn small', type: 'button', id: 'editPreviewCandidate', onclick: () => { if (activeCandidate()) openEditor(c); }, text: '후보 정보 수정' }),
+        h('button', { class: 'btn small danger', type: 'button', id: 'deletePreviewCandidate', onclick: () => { if (activeCandidate()) deleteItem(c); }, text: '후보 삭제' })));
+      renderVerdict(right, c, null);
+      return;
+    }
     right.append(h('div', { class: 'steps' }, h('span', { class: 'step ' + (stage === 1 ? 'on' : 'done'), text: '1. 보기 전 내 마음' }), h('span', { class: 'step ' + (stage === 2 ? 'on' : stage === 3 ? 'done' : ''), text: '2. 판정' }), h('span', { class: 'step ' + (stage === 3 ? 'on' : ''), text: '3. 결정' })));
     if (stage === 3) {
       right.append(h('section', { class: 'panel', id: 'decided', tabindex: '-1', style: 'scroll-margin-top:112px' }, h('h2', { text: c.name }),
@@ -1266,16 +1277,18 @@ const DISCOVERY_RAW = /*@@DISCOVERY_PRODUCTS@@*/;</script>
       return;
     }
     if (stage === 1) {
+      const previewTarget = state, previewScope = accountScope();
       const form = h('form', { class: 'panel', id: 'beforeForm', onsubmit: (e) => {
         e.preventDefault();
         const lean = (new FormData(form)).get('lean'); if (!lean) return;
         if (!canAdd('decisions')) return;
         state.decisions.push({ id: newId('d'), itemId: c.id, name: c.name, before: { lean, reason: str($('#beforeReason').value, 200), at: today() }, summary: { overlaps: null, added: null, blockers: null }, after: null, follow: null, followup: null });
         ui.rejudge = ''; save(); render();
-      } }, h('h2', { text: c.name }), h('p', { class: 'sub', text: '판정을 보기 전에 지금 마음을 적어 둡니다. 나중에 판정이 결정에 도움이 됐는지 견줘 보기 위해서입니다.' }),
+      } }, h('h2', { text: c.name }), h('p', { class: 'sub', text: '비교 결과는 입력 없이 볼 수 있어요. 구매 전 마음을 남기면 나중에 결정에 도움이 됐는지 비교할 수 있어요.' }),
+        h('button', { class: 'btn primary', type: 'button', id: 'previewVerdict', onclick: () => { if (state !== previewTarget || accountScope() !== previewScope || byId(c.id) !== c) return; ui.judgePreview = { target: previewTarget, scope: previewScope, id: c.id }; render(); }, text: '입력 없이 비교 결과 보기' }),
         h('div', { class: 'choices' }, Object.keys(LEAN).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'lean', value: k, required: true }), h('span', { text: LEAN[k] })))),
         h('div', { class: 'field' }, h('label', { for: 'beforeReason', text: '그렇게 생각하는 이유 (선택)' }), h('input', { id: 'beforeReason', type: 'text', maxlength: '200' })),
-        h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn primary', type: 'submit', id: 'showVerdict', text: '판정 보기' }), h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
+        h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('button', { class: 'btn', type: 'submit', id: 'showVerdict', text: '구매 전 마음 기록하고 비교' }), h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
           h('button', { class: 'btn danger', type: 'button', onclick: () => deleteItem(c), text: '후보 삭제' })));
       right.append(form);
       return;
@@ -1321,12 +1334,13 @@ const DISCOVERY_RAW = /*@@DISCOVERY_PRODUCTS@@*/;</script>
     const used = [c].concat(v.overlaps.map((o) => o.item)).concat(v.top3.flatMap((o) => [o.top, o.bottom, o.outer].filter(Boolean)));
     const dn = draftNote(Array.from(new Set(used))); if (dn) { dn.id = 'vDraft'; p3.append(dn); }
     const kv = h('dl', { class: 'kv' });
-    if (c.brand) kv.append(h('dt', { text: '브랜드' }), h('dd', { text: c.brand + ' · 직접 입력' }));
-    if (c.price != null) kv.append(h('dt', { text: '가격' }), h('dd', { text: fmtWon(c.price) + (c.checkedAt ? ' (' + c.checkedAt + ' 직접 확인)' : ' (확인 날짜 없음)') }));
+    const fromCatalog = c.photo?.sourceName === '상품 목록에서 넣음';
+    if (c.brand) kv.append(h('dt', { text: '브랜드' }), h('dd', { text: c.brand + (fromCatalog ? ' · 상품 목록 정보' : ' · 직접 입력') }));
+    if (c.price != null) kv.append(h('dt', { text: '가격' }), h('dd', { text: fmtWon(c.price) + (c.checkedAt ? ' (' + c.checkedAt + (fromCatalog ? ' 목록 확인가)' : ' 직접 확인)') : ' (확인 날짜 없음)') }));
     if (c.link) kv.append(h('dt', { text: '구매처' }), h('dd', null, sourceOf(c.link) ? sourceOf(c.link) + ' · ' : '', h('a', { href: c.link, target: '_blank', rel: 'noopener noreferrer', text: '판매처에서 상품 보기 ↗' })));
     if (c.size) kv.append(h('dt', { text: '사이즈' }), h('dd', { text: c.size }));
     if (c.product) kv.append(h('dt', { text: '상품' }), h('dd', { text: [c.product.brand, c.product.name, c.product.code].filter(Boolean).join(' ') + ' (확인 ' + c.product.confirmedAt + ')' }));
-    const p4 = h('section', { class: 'panel' }, h('h2', { text: '직접 넣은 구매 정보' }), kv.children.length ? kv : h('p', { class: 'sub', text: '가격과 링크를 넣지 않았습니다. 이 화면은 가격과 재고를 찾아오지 않습니다.' }));
+    const p4 = h('section', { class: 'panel' }, h('h2', { text: fromCatalog ? '상품 목록의 구매 정보' : '직접 넣은 구매 정보' }), kv.children.length ? kv : h('p', { class: 'sub', text: '가격과 링크를 넣지 않았습니다. 이 화면은 가격과 재고를 찾아오지 않습니다.' }));
     p2.append(h('button', { class: 'btn', id: 'addRelatedOwned', type: 'button', onclick: () => openQuickItem(null, 'owned'), text: '함께 입을 보유 옷 추가' }));
     root.append(h('div', { class: 'bar', style: 'margin:0 0 12px' }, h('button', { class: 'btn small', type: 'button', id: 'askFriend', onclick: () => openShare(c), text: '친구에게 물어보기' }),
       h('span', { class: 'note grow', text: '판정 요약을 그림으로 보냅니다. 내 옷장 사진·이름은 넣지 않습니다.' }), dec ? h('button', { class: 'btn small danger', type: 'button', id: 'delCand', onclick: () => deleteItem(c), text: '후보 삭제' }) : null), p1, p2, p3, p4);
