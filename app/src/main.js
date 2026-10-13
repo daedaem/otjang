@@ -2,10 +2,10 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, CATS, COLORS, stylesFor } from '.
 import { ROLE_LABEL } from './data/looks.js';
 import { PRODUCTS, CATALOG } from './data/products.js';
 import {
-  recommendItems, recommendLooks, closetLooks, essentials, search, exampleCloset, productsFor, scoreSlot, seasonOf, SEASON_LABEL,
+  recommendItems, recommendLooks, closetLooks, essentials, search, exampleCloset, lookalike, productsFor, scoreSlot, seasonOf, SEASON_LABEL,
   formatPrice, josa, shortName, brandsFor, brandStyleAffinity, PRODUCT_BY_ID, styleScore,
 } from './engine.js';
-import { garmentSvg, ICON } from './icons.js';
+import { silhouetteSvg, ICON } from './icons.js';
 import { DEFAULT_STATE, canStore, loadState, saveState, makeBackup, parseBackup } from './store.js';
 
 const BUDGETS = [
@@ -143,18 +143,34 @@ const myCloset = () => state.closet.filter((i) => SLOT_BY_ID[i.slot]?.g === stat
 const hex = (c) => COLORS[c]?.hex || '#BBB';
 
 // ── 공통 조각
-function art(slot, color) {
-  return `<div class="art">${garmentSvg(slot, { color: color ? hex(color) : hex(slot.colors[0]) })}</div>`;
+// 사진이 없을 때의 색 카드: 그림 대신 옷 색과 이름으로 보여 준다
+function swatch(slot, color) {
+  const c = COLORS[color] || COLORS[slot.colors[0]];
+  return `<div class="swatch${(c.light ?? 50) < 55 ? ' dark' : ''}" style="--sw:${c.hex}">${silhouetteSvg(slot)}<span>${esc(shortName(slot))}</span></div>`;
+}
+function img(product, slot, alt = '') {
+  return `<img src="${esc(product.img)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-slot="${slot.id}" data-color="${product.color || ''}">`;
 }
 function picture(product, slot, cls = 'thumb') {
-  if (!product?.img) return `<div class="${cls}">${art(slot, product?.color)}</div>`;
-  return `<div class="${cls}"><img src="${esc(product.img)}" alt="${esc(product.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-slot="${slot.id}" data-color="${product.color || ''}"></div>`;
+  return `<div class="${cls}">${product?.img ? img(product, slot, product.name) : swatch(slot, product?.color)}</div>`;
 }
+// 종류·색만 아는 옷: 같은 종류·색의 상품 사진, 없으면 색 카드
+function slotPicture(slotId, color, cls = 'thumb', brand = null) {
+  const slot = SLOT_BY_ID[slotId];
+  const like = lookalike(slotId, color, { brand });
+  return `<div class="${cls}">${like ? img(like, slot) : swatch(slot, color)}</div>`;
+}
+// 종류를 대표하는 사진 (기본템 체크, 종류 고르기)
+function typePicture(slot, color = null) {
+  const p = (color && lookalike(slot.id, color)) || productsFor(slot.id)[0];
+  return `<div class="type-pic">${p?.img ? img(p, slot) : swatch(slot, color || slot.colors[0])}</div>`;
+}
+const similarPhoto = (item) => !item.productId && !item.photo && !!lookalike(item.slot, item.color, { brand: item.brand });
 function itemPicture(item, cls = 'thumb') {
   const slot = SLOT_BY_ID[item.slot];
   if (item.productId && PRODUCT_BY_ID[item.productId]) return picture(PRODUCT_BY_ID[item.productId], slot, cls);
-  if (item.photo && photos.has(item.id)) return `<div class="${cls}"><img src="${photos.get(item.id)}" alt="${esc(slot.name)}"></div>`;
-  return `<div class="${cls}">${art(slot, item.color)}</div>`;
+  if (item.photo) return `<div class="${cls}">${photos.has(item.id) ? `<img src="${photos.get(item.id)}" alt="${esc(slot.name)}">` : ''}</div>`;
+  return slotPicture(item.slot, item.color, cls, item.brand);
 }
 function stars(p) {
   if (!p.rating) return '';
@@ -195,10 +211,10 @@ function gridCard({ slot, product, reasons }) {
 const ownLabel = (item) => (item?.example ? '예시' : '내 옷');
 function tile(i) {
   if (i.owned) {
-    const inner = i.item ? itemPicture(i.item, 'tile-in') : `<div class="tile-in">${art(i.slot, i.color)}</div>`;
+    const inner = i.item ? itemPicture(i.item, 'tile-in') : slotPicture(i.slot.id, i.color, 'tile-in');
     return `<div class="tile"><span class="badge">${ownLabel(i.item)}</span>${inner}</div>`;
   }
-  return `<div class="tile">${i.product.img ? `<img src="${esc(i.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-slot="${i.slot.id}" data-color="${i.product.color || ''}">` : art(i.slot, i.product.color)}</div>`;
+  return `<div class="tile">${i.product.img ? img(i.product, i.slot) : swatch(i.slot, i.product.color)}</div>`;
 }
 function lookCard(r, { wide = false } = {}) {
   const index = lastLooks.push(r) - 1;
@@ -231,7 +247,7 @@ function styleTiles(g) {
     const order = state.styles.indexOf(key);
     return `<button class="pick" data-action="toggle-style" data-style="${key}" aria-pressed="${order >= 0}">
       <div><b>${s.label}${order >= 0 ? ` <span class="order">${order + 1}</span>` : ''}</b><span>${esc(s.desc[g])}</span></div>
-      <div class="mini">${picks.map((x) => `<div>${x.product.img ? `<img src="${esc(x.product.img)}" alt="" referrerpolicy="no-referrer" data-slot="${x.slot.id}">` : art(x.slot)}</div>`).join('')}</div>
+      <div class="mini">${picks.map((x) => `<div>${x.product.img ? img(x.product, x.slot) : swatch(x.slot, x.product.color)}</div>`).join('')}</div>
     </button>`;
   }).join('');
 }
@@ -361,7 +377,7 @@ function renderCloset() {
   if (!items.length) {
     return `${head}<section class="section" style="padding-top:4px">
       <div class="ways">
-        <button class="way" data-action="add-start">${ICON.hanger}<b>종류 골라 넣기</b><span>셔츠·바지 그림을 누르고 색만 고르면 돼요</span></button>
+        <button class="way" data-action="add-start">${ICON.hanger}<b>종류 골라 넣기</b><span>비슷한 종류의 사진을 누르고 색만 고르면 돼요</span></button>
         <button class="way" data-action="add-photo">${ICON.camera}<b>사진으로 넣기</b><span>사진은 이 기기에만 저장돼요</span></button>
         <button class="way" data-action="tab" data-tab="home">${ICON.sparkle}<b>상품에서 넣기</b><span>추천 상품을 열고 "이 상품 있어요"를 누르세요</span></button>
         <button class="way" data-action="example-on">${ICON.eye}<b>예시 옷장으로 먼저 보기</b><span>예시 옷 몇 벌로 "오늘 뭐 입지?"를 미리 써 봐요. 내 옷을 넣으면 예시는 사라져요</span></button>
@@ -385,7 +401,7 @@ function renderCloset() {
     <div class="closet-items">${shown.map((i) => {
       const slot = SLOT_BY_ID[i.slot];
       const p = i.productId ? PRODUCT_BY_ID[i.productId] : null;
-      return `<button class="citem" data-action="open-own" data-id="${i.id}">${itemPicture(i)}<span class="cname"><i class="dot" style="background:${hex(i.color)}"></i>${esc(shortName(slot))}</span><span class="cbrand">${i.example ? '예시 옷' : esc(p?.brand || i.brand || COLORS[i.color]?.label || '')}</span></button>`;
+      return `<button class="citem" data-action="open-own" data-id="${i.id}">${itemPicture(i)}<span class="cname"><i class="dot" style="background:${hex(i.color)}"></i>${esc(shortName(slot))}</span><span class="cbrand">${i.example ? '예시 옷' : `${esc(p?.brand || i.brand || COLORS[i.color]?.label || '')}${similarPhoto(i) ? ' · 비슷한 사진' : ''}`}</span></button>`;
     }).join('')}</div>
   </section>`;
   const keep = state.example ? '' : `<p class="footer">이 옷장은 이 기기에만 있어요. 기기를 바꾸거나 브라우저 정보를 지우기 전에 <button class="link" data-action="backup">백업 파일 받기</button></p>`;
@@ -397,7 +413,7 @@ function essentialSection(ess) {
   if (!missing.length) return '';
   return `<section class="section">
     <div class="section-head"><div><h2>기본템 체크</h2><div class="sub">${esc(myStyles().map((s) => STYLES[s].label).join('·'))} 옷장의 기본이에요. 있는 건 눌러서 넣어 주세요.</div></div></div>
-    <div class="closet-grid">${missing.map(({ slot }) => `<button class="own" data-action="add-slot" data-slot="${slot.id}">${art(slot)}<span>${esc(slot.name)}</span></button>`).join('')}</div>
+    <div class="closet-grid">${missing.map(({ slot }) => `<button class="own" data-action="add-slot" data-slot="${slot.id}">${typePicture(slot)}<span>${esc(slot.name)}</span></button>`).join('')}</div>
   </section>`;
 }
 
@@ -451,7 +467,7 @@ function closeSheet() {
 function lookRows(r) {
   return r.items.map((i) => {
     if (i.owned) {
-      const pic = i.item ? itemPicture(i.item) : `<div class="thumb">${art(i.slot, i.color)}</div>`;
+      const pic = i.item ? itemPicture(i.item) : slotPicture(i.slot.id, i.color);
       const brand = i.item?.productId ? PRODUCT_BY_ID[i.item.productId]?.brand : i.item?.brand;
       return `<div class="look-row">${pic}<div><div class="role">${ROLE_LABEL[i.role]} · ${ownLabel(i.item)}</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">${i.item?.example ? '예시' : '보유'}</span></div>`;
     }
@@ -518,6 +534,7 @@ function ownSheet(id) {
   lastLooks = [];
   openSheet(`
     ${itemPicture(item, 'hero')}
+    ${similarPhoto(item) ? `<p class="fine" style="margin-top:8px">${item.example ? '예시 옷이라 같은 종류·색의 상품 사진으로 보여 줘요.' : '사진이 없어 같은 종류·색의 상품 사진으로 보여 줘요.'}</p>` : ''}
     <div class="brand-name" style="margin-top:14px">${item.example ? '예시 옷' : esc(p?.brand || item.brand || '브랜드 미입력')}</div>
     <h2 class="detail-title">${esc(p?.name || `${COLORS[item.color]?.label || ''} ${slot.name}`)}</h2>
     <div class="fine">${esc(slot.name)} · ${esc(COLORS[item.color]?.label || '색 미입력')}</div>
@@ -525,6 +542,7 @@ function ownSheet(id) {
     ${looks.length ? `<h3 class="block">이 옷으로 만든 코디</h3><div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : '<p class="sub">이 옷이 들어가는 코디 공식이 아직 없어요.</p>'}
     <div class="sheet-links">
       ${p ? `<a class="link" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">판매 페이지</a>` : ''}
+      ${p || item.example ? '' : `<button class="link" data-action="own-photo" data-id="${item.id}">${item.photo ? '사진 바꾸기' : '내 사진 넣기'}</button>`}
       <button class="link" data-action="search-with" data-slot="${slot.id}">이 옷에 어울리는 아이템 찾기</button>
       <button class="link danger" data-action="remove-own" data-id="${item.id}">옷장에서 빼기</button>
     </div>
@@ -539,16 +557,18 @@ function addSheet() {
     openSheet(`
       <h2 class="detail-title">어떤 옷인가요?</h2>
       ${draft?.photo ? `<div class="draft-photo"><img src="${draft.photo}" alt="고른 사진"></div>` : `<p class="sub" style="margin-top:4px">비슷한 종류를 누르면 돼요. <button class="link" data-action="add-photo" style="text-decoration:underline">사진으로 넣기</button></p>`}
-      ${groups.map(([label, list]) => `<div class="closet-group"><h3>${label}</h3><div class="closet-grid">${list.map((s) => `<button class="own" data-action="draft-slot" data-slot="${s.id}">${art(s, draft?.color)}<span>${esc(s.name)}</span></button>`).join('')}</div></div>`).join('')}
+      ${groups.map(([label, list]) => `<div class="closet-group"><h3>${label}</h3><div class="closet-grid">${list.map((s) => `<button class="own" data-action="draft-slot" data-slot="${s.id}">${typePicture(s, draft?.color)}<span>${esc(s.name)}</span></button>`).join('')}</div></div>`).join('')}
     `);
     return;
   }
   const slot = SLOT_BY_ID[draft.slot];
+  const like = draft.photo ? null : lookalike(slot.id, draft.color, { brand: draft.brand });
   const colorKeys = [...new Set([...slot.colors, ...Object.keys(COLORS)])];
   const brandList = [...new Set([...state.brands, ...brandsFor(g).slice(0, 18).map((b) => b.name)])];
   openSheet(`
     <h2 class="detail-title">${esc(slot.name)}</h2>
-    <div class="draft-preview">${draft.photo ? `<img src="${draft.photo}" alt="고른 사진">` : art(slot, draft.color)}</div>
+    <div class="draft-preview">${draft.photo ? `<img src="${draft.photo}" alt="고른 사진">` : like ? img(like, slot) : swatch(slot, draft.color)}</div>
+    ${like ? '<p class="fine" style="text-align:center;margin-top:6px">고른 색과 비슷한 상품 사진이에요. 내 사진을 넣으면 그 사진으로 보여요.</p>' : ''}
     <div class="opt-group"><h3>색</h3><div class="swatches">${colorKeys.map((k) => `<button class="sw" data-action="draft-color" data-color="${k}" aria-pressed="${draft.color === k}" aria-label="${COLORS[k].label}" title="${COLORS[k].label}"><i style="background:${COLORS[k].hex}"></i></button>`).join('')}</div><div class="sub" style="margin-top:6px">${esc(COLORS[draft.color]?.label || '')}${draft.autoColor ? ' · 사진에서 고른 색이에요' : ''}</div></div>
     <div class="opt-group"><h3>브랜드 <span class="sub">(몰라도 돼요)</span></h3><div class="opts">${brandList.map((b) => `<button class="chip" data-action="draft-brand" data-brand="${esc(b)}" aria-pressed="${draft.brand === b}">${esc(b)}</button>`).join('')}</div></div>
     <div class="cta">
@@ -669,25 +689,57 @@ function guessColor(img) {
   }
   return best;
 }
-function readPhoto(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      const max = 720;
-      const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.naturalWidth * scale);
-      c.height = Math.round(img.naturalHeight * scale);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      const data = c.toDataURL('image/jpeg', 0.82);
-      const color = guessColor(img);
-      draft = { ...(draft || {}), photo: data, color: draft?.slot ? color : color, autoColor: true };
-      addSheet();
+// 고른 사진을 긴 변 720px JPEG로 줄이고 가운데 색을 짐작한다
+function loadPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const im = new Image();
+      im.onerror = () => reject(new Error('image'));
+      im.onload = () => {
+        const max = 720;
+        const scale = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(im.naturalWidth * scale);
+        c.height = Math.round(im.naturalHeight * scale);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        resolve({ data: c.toDataURL('image/jpeg', 0.82), color: guessColor(im) });
+      };
+      im.src = reader.result;
     };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
+}
+async function readPhoto(file) {
+  try {
+    const { data, color } = await loadPhoto(file);
+    draft = { ...(draft || {}), photo: data, color, autoColor: true };
+    addSheet();
+  } catch {
+    toast('사진을 읽지 못했어요. 다른 사진을 골라 주세요.');
+  }
+}
+// 이미 넣은 옷에 내 사진을 붙인다
+let photoTarget = null;
+async function attachPhoto(id, file) {
+  const item = state.closet.find((i) => i.id === id);
+  if (!item) return;
+  let data;
+  try {
+    ({ data } = await loadPhoto(file));
+  } catch {
+    toast('사진을 읽지 못했어요. 다른 사진을 골라 주세요.');
+    return;
+  }
+  if (!(await photoPut(id, data))) { toast('사진을 저장하지 못했어요. 저장 공간을 확인해 주세요.'); return; }
+  if (!item.photo && !set({ closet: state.closet.map((i) => (i.id === id ? { ...i, photo: true } : i)) }, { critical: true })) {
+    photoDelete(id);
+    return;
+  }
+  render();
+  ownSheet(id);
+  toast('사진을 넣었어요');
 }
 
 // ── 백업 파일
@@ -880,7 +932,8 @@ document.addEventListener('click', (e) => {
       addSheet();
       break;
     }
-    case 'add-photo': document.getElementById('photo-input')?.click(); break;
+    case 'add-photo': photoTarget = null; document.getElementById('photo-input')?.click(); break;
+    case 'own-photo': photoTarget = el.dataset.id; document.getElementById('photo-input')?.click(); break;
     case 'draft-slot': {
       const slot = SLOT_BY_ID[el.dataset.slot];
       draft = { ...draft, slot: slot.id, color: draft?.autoColor ? draft.color : slot.colors[0] };
@@ -919,7 +972,10 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => {
   if (e.target.id === 'brand-only') set({ brandOnly: e.target.checked });
   if (e.target.id === 'photo-input' && e.target.files?.[0]) {
-    readPhoto(e.target.files[0]);
+    const file = e.target.files[0];
+    if (photoTarget) attachPhoto(photoTarget, file);
+    else readPhoto(file);
+    photoTarget = null;
     e.target.value = '';
   }
   if (e.target.id === 'backup-input' && e.target.files?.[0]) {
@@ -955,15 +1011,13 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $sheet.innerHTML) closeSheet();
 });
 
-// 상품 사진을 못 불러오면 옷 그림으로 바꾼다
+// 상품 사진을 못 불러오면 색 카드로 바꾼다
 document.addEventListener('error', (e) => {
-  const img = e.target;
-  if (!(img instanceof HTMLImageElement) || !img.dataset.slot) return;
-  const slot = SLOT_BY_ID[img.dataset.slot];
-  const div = document.createElement('div');
-  div.className = 'art';
-  div.innerHTML = garmentSvg(slot, { color: hex(img.dataset.color || slot.colors[0]) });
-  img.replaceWith(div);
+  const el = e.target;
+  if (!(el instanceof HTMLImageElement) || !el.dataset.slot) return;
+  const t = document.createElement('template');
+  t.innerHTML = swatch(SLOT_BY_ID[el.dataset.slot], el.dataset.color || null);
+  el.replaceWith(t.content.firstChild);
 }, true);
 
 render();

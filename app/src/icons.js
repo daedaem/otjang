@@ -1,4 +1,4 @@
-// 상품 사진이 없거나 내 옷(사진 없음)을 보여 줄 때 쓰는 단순한 옷 그림.
+// 옷 모양 그림: 사진을 쓸 수 없을 때의 색 카드 실루엣과 예전 그림.
 
 const SHAPES = {
   shirt: 'M30 18 L42 12 L50 20 L58 12 L70 18 L86 30 L78 44 L70 40 L70 88 L30 88 L30 40 L22 44 L14 30 Z M50 20 L50 88',
@@ -33,6 +33,12 @@ function shade(hex, amount) {
   const g = clamp(((n >> 8) & 255) + amount);
   const b = clamp((n & 255) + amount);
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+// 사진을 쓸 수 없을 때의 색 카드에 얹는 옅은 실루엣 (색은 CSS currentColor)
+export function silhouetteSvg(slot) {
+  const d = (SHAPES[slot.shape] || SHAPES.tee).split(' M')[0];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${d}" fill="currentColor"/></svg>`;
 }
 
 export function garmentSvg(slot, { size = '100%', color = null } = {}) {

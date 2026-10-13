@@ -111,6 +111,23 @@ export function productsFor(slotId, { maxPrice = null, hidden = new Set(), color
     .sort((a, b) => (brands.has(b.brand) - brands.has(a.brand)) || quality(b) - quality(a) || a.price - b.price);
 }
 
+// 사진이 없는 내 옷·예시 옷을 보여 줄 같은 종류의 상품 사진: 같은 색, 없으면 아주 가까운 색까지만
+const NEAR_COLORS = {
+  white: ['ivory'], ivory: ['white', 'beige'], beige: ['ivory'], navy: ['indigo'], indigo: ['navy'], blue: ['indigo'],
+  charcoal: ['grey', 'black'], grey: ['charcoal'], black: ['charcoal'], olive: ['green'], green: ['olive'], red: ['pink'], pink: ['red'],
+};
+export function lookalike(slotId, color, { brand = null } = {}) {
+  const list = PRODUCTS_BY_SLOT[slotId] || [];
+  for (const c of [color, ...(NEAR_COLORS[color] || [])]) {
+    const same = list.filter((p) => p.color === c && p.img);
+    // 같은 브랜드 → 사계절 상품(반팔·린넨이 아닌 것) → 품질 순
+    const key = (p) => [p.brand === brand ? 1 : 0, p.summer ? 0 : 1, quality(p)];
+    const better = (a, b) => { const x = key(a); const y = key(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
+    if (same.length) return same.reduce((best, p) => (better(p, best) > 0 ? p : best));
+  }
+  return null;
+}
+
 function productOpts(c, extra = {}) {
   return { maxPrice: c.maxPrice, hidden: c.hidden, brands: c.brands, brandOnly: c.brandOnly, season: c.season, ...extra };
 }
@@ -323,7 +340,9 @@ export function exampleCloset(state, { size = 6 } = {}) {
   for (const r of looks) {
     for (const i of r.items) {
       if (i.role === 'acc' || out.length >= size || out.some((x) => x.slot === i.slot.id)) continue;
-      out.push({ id: `ex-${i.slot.id}`, slot: i.slot.id, color: i.color, brand: null, photo: false, example: true, addedAt: 0 });
+      // 예시는 그 종류의 대표 색으로 (코디에 뽑힌 상품이 튀는 색일 수 있다)
+      const color = i.slot.colors.includes(i.color) ? i.color : i.slot.colors.find((c) => lookalike(i.slot.id, c)) || i.color;
+      out.push({ id: `ex-${i.slot.id}`, slot: i.slot.id, color, brand: null, photo: false, example: true, addedAt: 0 });
     }
   }
   return out;
