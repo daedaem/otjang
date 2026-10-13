@@ -139,6 +139,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
     const existing = await read();
     if (existing) return existing;
     const initial = migrateLegacyWardrobe(legacyRaw);
+    if (initial.garments.some(item=>item.photoMissing)) throw new Error('이전 사진을 확인한 뒤 옷 기록을 가져와 주세요.');
     initial.legacyFingerprint = await legacyWardrobeFingerprint(legacyRaw);
     try { await commit(initial, 0); }
     catch (error) { if (error.code !== 'conflict') throw error; }

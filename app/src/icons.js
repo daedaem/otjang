@@ -20,6 +20,8 @@ const SHAPES = {
   sneaker: 'M10 64 Q12 44 28 46 L44 50 Q60 46 76 56 Q92 60 90 70 L88 76 L12 76 Z M10 70 L90 70 M36 52 L40 60 M44 52 L48 60',
   boot: 'M30 20 L58 20 L60 56 Q80 58 88 66 L88 78 L28 78 Z M58 30 L60 50',
   cap: 'M18 58 Q20 26 50 24 Q80 26 82 58 Z M18 58 Q50 64 94 62 L92 68 Q50 72 18 64 Z',
+  vest: 'M34 10 L44 10 Q50 30 56 10 L66 10 L72 30 L74 88 L26 88 L28 30 Z M50 30 L50 88',
+  beanie: 'M20 66 Q20 22 50 20 Q80 22 80 66 Z M18 62 L82 62 L82 76 L18 76 Z',
   belt: 'M8 44 L92 44 L92 56 L8 56 Z M60 40 L74 40 L74 60 L60 60 Z',
   bag: 'M18 40 L82 40 L78 88 L22 88 Z M34 40 Q34 16 50 16 Q66 16 66 40',
 };
@@ -33,9 +35,9 @@ function shade(hex, amount) {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-export function garmentSvg(slot, { size = '100%' } = {}) {
+export function garmentSvg(slot, { size = '100%', color = null } = {}) {
   const d = SHAPES[slot.shape] || SHAPES.tee;
-  const fill = slot.color || '#cccccc';
+  const fill = color || slot.color || '#cccccc';
   const n = parseInt(fill.slice(1), 16);
   const luma = 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
   // 아주 밝거나 어두운 옷은 테마의 선 색으로 윤곽을 그려 배경에 묻히지 않게 한다
@@ -43,7 +45,7 @@ export function garmentSvg(slot, { size = '100%' } = {}) {
   let pattern = '';
   let fillRef = fill;
   if (slot.pattern === 'stripe' || slot.pattern === 'check') {
-    const id = `p-${slot.id}`;
+    const id = `p-${slot.id}-${fill.slice(1)}`;
     const lines = slot.pattern === 'stripe'
       ? `<rect width="10" height="10" fill="${fill}"/><rect width="10" height="3" fill="${shade(fill, 70)}"/>`
       : `<rect width="10" height="10" fill="${fill}"/><path d="M0 5H10M5 0V10" stroke="${shade(fill, 60)}" stroke-width="1.6"/>`;
@@ -64,5 +66,7 @@ export const ICON = {
   check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   star: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   user: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
 };

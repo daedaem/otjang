@@ -144,7 +144,7 @@ test('legacy migration is deterministic and rejects a corrupt demo flag without 
   assert.deepEqual(a, b);
   assert.equal(a.garments.length, 1);
   assert.equal(a.garments[0].id, 'legacy_m-chino');
-  assert.equal(a.garments[0].attrs, null);
+  assert.equal(a.garments[0].color, null);
   assert.throws(() => migrateLegacyWardrobe(JSON.stringify({ ...JSON.parse(raw), demo: 'false' })), /원본을 보존/);
 });
 

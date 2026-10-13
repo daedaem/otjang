@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
 
-const order = ['src/data/slots.js', 'src/data/looks.js', 'src/data/products.js', 'src/wardrobe.js', 'src/wardrobe-store.js', 'src/garment-photo.js', 'src/query.js', 'src/engine.js', 'src/icons.js', 'src/main.js'];
+const order = ['src/data/slots.js', 'src/data/looks.js', 'src/data/products.js', 'src/catalog-policy.js', 'src/legacy-wardrobe.js', 'src/wardrobe.js', 'src/wardrobe-store.js', 'src/garment-photo.js', 'src/legacy-photos.js', 'src/query.js', 'src/engine.js', 'src/icons.js', 'src/main.js'];
 let js = order
   .map((file) => {
     const src = fs.readFileSync(path.join(root, file), 'utf8')

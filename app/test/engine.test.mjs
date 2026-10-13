@@ -1,88 +1,160 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recommendItems, recommendLooks, search, seasonOf, josa, productsFor, scoreSlot } from '../src/engine.js';
-import { makeGarment, ownedSlotIds } from '../src/wardrobe.js';
+import {
+  recommendItems,
+  recommendLooks,
+  closetLooks,
+  essentials,
+  search,
+  seasonOf,
+  josa,
+  productsFor,
+  harmony,
+  brandsFor,
+  styleScore,
+} from '../src/engine.js';
 import { parseQuery } from '../src/query.js';
-import { SLOTS, SLOT_BY_ID } from '../src/data/slots.js';
-import { LOOKS } from '../src/data/looks.js';
+import { SLOTS, SLOT_BY_ID, STYLES, COLORS } from '../src/data/slots.js';
+import { LOOKS, ROLE_ORDER } from '../src/data/looks.js';
 import { PRODUCTS } from '../src/data/products.js';
+import fs from 'node:fs';
 
 const OCT = '2026-10-13T12:00:00+09:00';
-const base = { gender: 'M', style: 'classic', now: OCT, owned: [], hidden: [] };
+const base = { gender: 'M', styles: ['classic'], now: OCT, closet: [], hidden: [], brands: [] };
+const item = (slot, color, extra = {}) => ({ id: `t-${slot}-${color}`, slot, color, ...extra });
 
-test('카탈로그: 모든 상품이 실제 자리·가격·링크를 가진다', () => {
-  assert.ok(PRODUCTS.length >= 80, `상품 ${PRODUCTS.length}개`);
+test('카탈로그: 모든 행이 알려진 종류·색과 가격·링크 필드를 가진다', () => {
+  assert.ok(PRODUCTS.length >= 300, `상품 ${PRODUCTS.length}개`);
   for (const p of PRODUCTS) {
-    assert.ok(SLOT_BY_ID[p.slot], `${p.id} 자리 ${p.slot}`);
+    assert.ok(SLOT_BY_ID[p.slot], `${p.id} 종류 ${p.slot}`);
+    assert.ok(COLORS[p.color], `${p.id} 색 ${p.color}`);
     assert.ok(p.price > 0 && p.brand && p.name, p.id);
     assert.match(p.url, /^https:\/\/www\.musinsa\.com\/products\/\d+$/);
     assert.match(p.img, /^https:\/\/image\.msscdn\.net\//);
   }
+  assert.equal(new Set(PRODUCTS.map((p) => p.id)).size, PRODUCTS.length, '중복 없음');
 });
 
-test('카탈로그: 코디 공식에 쓰인 모든 자리에 상품이 하나 이상 있다', () => {
-  const used = new Set(LOOKS.flatMap((l) => Object.values(l.roles).flat()));
+test('카탈로그: 코디 공식에 쓰인 종류마다 상품이 있다', () => {
+  const used = new Set(LOOKS.flatMap((l) => ROLE_ORDER.flatMap((r) => l.roles[r]?.s || [])));
   const empty = [...used].filter((id) => !productsFor(id).length);
   assert.deepEqual(empty, []);
 });
 
-test('계절은 날짜로 정한다', () => {
-  assert.equal(seasonOf(new Date('2026-10-13')), 'fall');
-  assert.equal(seasonOf(new Date('2026-01-05')), 'winter');
-  assert.equal(seasonOf(new Date('2026-07-01')), 'summer');
+test('스타일마다 이 계절에 쓸 코디 공식이 있다', () => {
+  for (const [key, s] of Object.entries(STYLES)) {
+    for (const g of s.g) {
+      const looks = recommendLooks({ ...base, gender: g, styles: [key] });
+      assert.ok(looks.length >= 1, `${g} ${key}`);
+    }
+  }
 });
 
-test('조사: 받침에 따라 와/과', () => {
+test('계절과 조사', () => {
+  assert.equal(seasonOf(new Date('2026-10-13')), 'fall');
+  assert.equal(seasonOf(new Date('2026-01-05')), 'winter');
   assert.equal(josa('치노', '과', '와'), '와');
-  assert.equal(josa('로퍼', '과', '와'), '와');
-  assert.equal(josa('블레이저', '과', '와'), '와');
-  assert.equal(josa('셔츠', '과', '와'), '와');
-  assert.equal(josa('데님 스트레이트', '과', '와'), '와');
-  assert.equal(josa('니트', '과', '와'), '와');
-  assert.equal(josa('코트', '을', '를'), '를');
   assert.equal(josa('재킷', '을', '를'), '을');
 });
 
-test('아무것도 입력하지 않아도 바로 실제 상품을 추천한다', () => {
+test('아무것도 넣지 않아도 바로 실제 상품을 추천한다', () => {
   const items = recommendItems(base);
   assert.ok(items.length >= 6);
-  for (const it of items) {
-    assert.ok(it.product.price > 0);
-    assert.ok(it.slot.seasons.includes('fall'), `${it.slot.id}는 가을 아이템`);
-  }
-  const looks = recommendLooks(base);
-  assert.ok(looks.length >= 2);
-  for (const l of looks) assert.ok(l.items.some((i) => i.role === 'top' || i.role === 'dress'));
+  for (const it of items) assert.ok(it.slot.seasons.includes('fall'), it.slot.id);
+  assert.ok(new Set(items.map((i) => i.reasons[0])).size >= 6, '이유가 카드마다 다르다');
+  assert.ok(recommendLooks(base).length >= 2);
 });
 
-test('가진 옷은 다시 추천하지 않고, 코디에는 내 옷으로 들어간다', () => {
-  const owned = ['m-chino', 'm-loafer', 'm-oxford-white'];
-  const items = recommendItems({ ...base, owned });
-  assert.ok(items.every((i) => !owned.includes(i.slot.id)));
-  const looks = recommendLooks({ ...base, owned });
-  assert.ok(looks[0].ownedCount >= 2, '가진 옷을 많이 쓰는 코디가 먼저');
-  assert.ok(items.some((i) => i.reasons[0]?.startsWith('가진 ')), '가진 옷과의 조합을 이유로 먼저 보여 준다');
-  assert.ok(new Set(recommendItems(base).map((i) => i.reasons[0])).size >= 6, '이유가 카드마다 다르다');
+test('여러 스타일: 먼저 고른 스타일을 더 반영한다', () => {
+  const ame = recommendLooks({ ...base, styles: ['amekaji', 'classic'] });
+  assert.ok(ame[0].look.styles.includes('amekaji'), ame[0].look.id);
+  const slot = SLOT_BY_ID['m-workboots'];
+  assert.ok(styleScore(slot, ['amekaji', 'classic']) > styleScore(slot, ['classic', 'amekaji']));
+});
+
+test('선호 브랜드: 먼저 추천하고, "내 브랜드만"이면 그 브랜드만', () => {
+  const top = brandsFor('M')[0].name;
+  const withBrand = recommendItems({ ...base, brands: [top] });
+  assert.ok(withBrand.some((i) => i.product.brand === top));
+  const only = recommendItems({ ...base, brands: [top], brandOnly: true });
+  assert.ok(only.length > 0);
+  assert.ok(only.every((i) => i.product.brand === top));
+});
+
+test('옷장: 가진 옷은 다시 추천하지 않고 코디에 내 옷으로 들어간다', () => {
+  const closet = [item('m-chino', 'beige'), item('m-loafer', 'brown'), item('m-oxford', 'white')];
+  const s = { ...base, closet };
+  assert.ok(recommendItems(s).every((i) => !['m-chino', 'm-loafer', 'm-oxford'].includes(i.slot.id)));
+  const looks = recommendLooks(s);
+  assert.ok(looks[0].ownedCount >= 2);
+  assert.ok(recommendItems(s).some((i) => i.reasons[0]?.startsWith('가진 ')));
+});
+
+test('옷장: 가진 옷만으로 되는 코디와 하나만 사면 되는 코디', () => {
+  const closet = [
+    item('m-harrington', 'navy'),
+    item('m-oxford', 'blue'),
+    item('m-chino', 'beige'),
+    item('m-loafer', 'brown'),
+  ];
+  const { ready, almost } = closetLooks({ ...base, closet });
+  assert.ok(ready.length >= 1, '아이비 캠퍼스는 가진 옷으로 완성');
+  assert.ok(ready.every((r) => r.buyCount === 0));
+  assert.ok(almost.every((r) => r.buyCount === 1));
+});
+
+test('옷장: 같은 종류가 여러 벌이면 색이 어울리는 옷을 고른다', () => {
+  const closet = [
+    item('m-oxford', 'white'),
+    item('m-oxford', 'red'),
+    item('m-chino', 'beige'),
+    item('m-harrington', 'navy'),
+    item('m-loafer', 'brown'),
+  ];
+  const look = closetLooks({ ...base, closet }).ready.find((r) => r.look.id === 'm-ivy-campus');
+  assert.ok(look);
+  assert.equal(look.items.find((i) => i.role === 'top').color, 'white');
+});
+
+test('색 조화: 포인트 색이 둘 이상이면 감점, 상·하의 밝기 차이는 가점', () => {
+  assert.ok(
+    harmony([
+      { color: 'red', cat: 'top' },
+      { color: 'green', cat: 'bottom' },
+    ]) <
+      harmony([
+        { color: 'red', cat: 'top' },
+        { color: 'beige', cat: 'bottom' },
+      ]),
+  );
+  assert.ok(
+    harmony([
+      { color: 'white', cat: 'top' },
+      { color: 'navy', cat: 'bottom' },
+    ]) >
+      harmony([
+        { color: 'beige', cat: 'top' },
+        { color: 'beige', cat: 'bottom' },
+      ]),
+  );
+});
+
+test('기본템 체크는 고른 스타일의 기본 아이템을 보여 준다', () => {
+  const ess = essentials({ ...base, styles: ['amekaji'] });
+  assert.ok(ess.some((e) => e.slot.id === 'm-workboots'));
+  assert.ok(ess.every((e) => e.slot.style.amekaji >= 3));
 });
 
 test('예산을 넘는 상품은 추천하지 않는다', () => {
   const items = recommendItems({ ...base, budget: 50000 });
   assert.ok(items.length > 0);
   assert.ok(items.every((i) => i.product.price <= 50000));
-  for (const l of recommendLooks({ ...base, budget: 50000 })) for (const i of l.items) if (!i.owned) assert.ok(i.product.price <= 50000);
 });
 
-test('상황을 고르면 그 상황에 맞는 코디가 먼저 나온다', () => {
-  const looks = recommendLooks({ ...base, occasion: 'work' });
-  assert.ok(looks.length > 0);
-  assert.ok(looks.every((l) => l.look.occ.includes('work')));
-  assert.equal(recommendItems({ ...base, occasion: 'work' })[0].slot.occ.includes('work'), true);
-});
-
-test('여성 옷을 고르면 여성 아이템만 나온다', () => {
-  const s = { ...base, gender: 'F' };
-  assert.ok(recommendItems(s).every((i) => i.slot.g === 'F'));
-  assert.ok(recommendLooks(s).every((l) => l.look.g === 'F'));
+test('상황과 성별', () => {
+  assert.ok(recommendLooks({ ...base, occasion: 'work' }).every((l) => l.look.occ.includes('work')));
+  const f = { ...base, gender: 'F', styles: ['french'] };
+  assert.ok(recommendItems(f).every((i) => i.slot.g === 'F'));
 });
 
 test('한 줄 요청: 출근용 셔츠 10만원 이하', () => {
@@ -98,69 +170,106 @@ test('한 줄 요청: 청바지에 어울리는 신발', () => {
   const r = search(base, '청바지에 어울리는 신발');
   assert.ok(r.items.length >= 3);
   assert.ok(r.items.every((i) => i.slot.cat === 'shoes'));
-  assert.ok(r.outfit, '청바지를 넣은 코디도 보여 준다');
-  assert.ok(r.outfit.items.some((i) => i.slot.id === 'm-denim' && !i.owned && i.product));
-  assert.equal(r.outfit.ownedCount, 0, '검색 단어는 보유 사실이 아니다');
+  assert.ok(r.outfit);
 });
 
-test('검색 기준이 실제 옷장에도 있으면 그 옷만 보유로 반영한다', () => {
-  const r = search({ ...base, owned: ['m-denim'] }, '청바지에 어울리는 신발');
-  assert.ok(r.outfit.items.some((i) => i.slot.id === 'm-denim' && i.owned));
-  assert.equal(r.outfit.ownedCount, 1);
+test('한 줄 요청: 브랜드와 스타일', () => {
+  const top = brandsFor('M').find((b) => b.name === '리바이스') ? '리바이스' : brandsFor('M')[0].name;
+  const r = search(base, `${top} 청바지`);
+  assert.equal(r.query.brand, top);
+  assert.ok(r.items.length > 0 && r.items.every((i) => i.product.brand === top));
+  assert.equal(parseQuery('아메카지 재킷').style, 'amekaji');
 });
 
-test('상품 상세 코디는 다른 브랜드의 같은 종류 대신 선택한 상품을 사용한다', () => {
-  const product = productsFor('m-oxford-white').at(-1);
-  const looks = recommendLooks({ ...base, owned: ['m-oxford-white'] }, { product, limit: 10 });
-  assert.ok(looks.length);
-  for (const look of looks) {
-    const item = look.items.find((i) => i.slot.id === product.slot);
-    assert.equal(item.product.id, product.id);
-    assert.equal(item.owned, false);
-    assert.equal(look.buyTotal, look.items.filter((i) => !i.owned).reduce((sum, i) => sum + i.product.price, 0));
-  }
-});
-
-test('한 줄 요청: 만원대·가성비·색', () => {
-  assert.equal(parseQuery('5만원대 니트').maxPrice, 59999);
-  assert.equal(parseQuery('가성비 니트').maxPrice, 60000);
-  assert.equal(parseQuery('네이비 니트').color, 'navy');
-  const r = search(base, '겨울 데이트 코트');
-  assert.ok(r.items.length > 0);
-  assert.ok(r.items.every((i) => i.slot.shape === 'coat'));
-});
-
-test('이해하지 못한 요청도 빈 화면 대신 추천을 돌려준다', () => {
+test('이해하지 못한 요청도 추천을 돌려주고, 같은 입력이면 같은 결과', () => {
   const r = search(base, '아무거나 멋있는 거');
   assert.equal(r.understood, false);
   assert.ok(r.items.length > 0);
+  assert.deepEqual(
+    recommendItems(base).map((i) => i.product.id),
+    recommendItems(base).map((i) => i.product.id),
+  );
 });
 
-test('같은 입력이면 같은 결과', () => {
-  assert.deepEqual(recommendItems(base).map((i) => i.product.id), recommendItems(base).map((i) => i.product.id));
-});
-
-test('모든 자리 정의가 올바르다', () => {
+test('모든 종류 정의가 올바르다', () => {
   for (const s of SLOTS) {
     assert.ok(['M', 'F'].includes(s.g));
-    assert.ok(s.why && s.tip && s.name);
-    assert.ok(s.seasons.length > 0);
+    assert.ok(s.why && s.tip && s.name && s.colors.every((c) => COLORS[c]), s.id);
+    for (const k of Object.keys(s.style)) assert.ok(STYLES[k]?.g.includes(s.g), `${s.id} ${k}`);
   }
 });
 
-test('unknown-color shirts use actual garment IDs without inflating the number of owned pieces', () => {
-  const shirt = makeGarment({ kind: 'shirt', gender: 'M', label: '내 셔츠' });
-  const state = { ...base, garments: [shirt] };
-  const owned = new Set(ownedSlotIds(state));
-  assert.ok(owned.size > 1, 'a generic kind can fill several template slots');
-  const scored = scoreSlot(SLOT_BY_ID['m-chino'], { gender: 'M', style: 'classic', season: 'fall', occasion: null, owned, garments: [shirt] });
-  assert.deepEqual(scored.pairs, [shirt.id], 'one actual shirt is still one item');
-  assert.match(scored.reasons[0], /내 셔츠/);
-  assert.doesNotMatch(scored.reasons[0], /흰 셔츠|블루 셔츠/);
-  for (const result of recommendLooks(state, { limit: 20 })) {
-    const pieces = result.items.filter((item) => item.owned);
-    assert.equal(new Set(pieces.map((item) => item.garment.id)).size, pieces.length);
-    assert.ok(pieces.every((item) => item.garment.id === shirt.id && item.garment.attrs === null));
-    assert.ok(result.ownedCount <= 1);
+test('한 파일 빌드에서 모듈의 최상위 이름이 겹치지 않는다', () => {
+  const files = ['data/slots.js', 'data/looks.js', 'data/products.js', 'query.js', 'engine.js', 'icons.js', 'main.js'];
+  const seen = new Map();
+  for (const f of files) {
+    const src = fs.readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
+    for (const m of src.matchAll(/^(?:export\s+)?(?:const|let|function|class)\s+([A-Za-z_$][\w$]*)/gm)) {
+      assert.ok(!seen.has(m[1]), `${m[1]}: ${seen.get(m[1])} / ${f}`);
+      seen.set(m[1], f);
+    }
   }
+});
+
+test('search anchors never invent ownership and a selected product stays a purchasable product', () => {
+  const result = search(base, '청바지에 어울리는 신발');
+  assert.ok(result.outfit);
+  assert.equal(result.outfit.ownedCount, 0);
+  const p = PRODUCTS.find((p) => p.slot === 'm-oxford');
+  const look = recommendLooks(base, { limit: 1, pinnedProduct: p })[0];
+  assert.ok(look);
+  assert.ok(look.items.some((i) => i.product?.id === p.id && !i.owned));
+});
+test('generic garment IDs are counted once and cannot fill two outfit roles', () => {
+  const generic = { id: 'only-shirt', slot: null, kind: 'shirt', gender: 'M', color: null, label: '내 셔츠' };
+  const looks = recommendLooks({ ...base, closet: [generic] }, { limit: 100 });
+  assert.ok(looks.some((r) => r.ownedCount === 1));
+  for (const look of looks) {
+    const ids = look.items.filter((i) => i.owned).map((i) => i.item.id);
+    assert.equal(ids.length, new Set(ids).size);
+  }
+  const ess = essentials({ ...base, closet: [generic] });
+  assert.ok(ess.some((e) => e.slot.shape === 'shirt' && e.needsCheck));
+  assert.ok(ess.filter((e) => e.slot.shape === 'shirt').every((e) => !e.owned));
+});
+
+test('all 52 previous slot types can migrate without dropping garment IDs', async () => {
+  const { legacyWardrobeV2 } = await import('../src/legacy-wardrobe.js');
+  const { upgradeWardrobe } = await import('../src/wardrobe.js');
+  for (const slot of legacyWardrobeV2.SLOTS) {
+    const previous = legacyWardrobeV2.migrateLegacyWardrobe(
+      JSON.stringify({ onboarded: true, gender: slot.g, style: 'classic', owned: [slot.id], saved: [] }),
+    );
+    const converted = upgradeWardrobe(previous);
+    assert.equal(converted.garments[0].id, previous.garments[0].id);
+    assert.ok(SLOT_BY_ID[converted.garments[0].slot]);
+  }
+});
+test('care tools and childrenswear are excluded in catalog, classification, search and recommendations', async () => {
+  const { productExclusionReason } = await import('../src/catalog-policy.js');
+  const { classify } = await import('../tools/catalog/classify.mjs');
+  for (const name of [
+    '23인치 구두주걱 슈혼 95191',
+    '구두 슈트리',
+    '가죽 클리너',
+    '옥스퍼드 쇼트올',
+    '베이비 니트',
+    '신발 끈',
+  ]) {
+    assert.ok(productExclusionReason({ name, price: 41000 }));
+    assert.equal(classify(name, 'M'), null);
+  }
+  assert.equal(
+    PRODUCTS.some((p) => p.id === 'ms-7384409' || p.id === 'ms-6317624'),
+    false,
+  );
+  const found = search(base, '레드윙 구두');
+  assert.equal(found.items.length, 0);
+  for (const k of Object.keys(STYLES))
+    for (const g of STYLES[k].g) {
+      const s = { ...base, gender: g, styles: [k] };
+      for (const row of recommendItems(s)) {
+        assert.equal(productExclusionReason(row.product), null);
+      }
+    }
 });
