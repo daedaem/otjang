@@ -1,0 +1,73 @@
+{
+  "sourceRepository": "daedaem/otjang",
+  "baseCommit": "86c5baee5e19cab4770be59d8ebd5ec22734c14b",
+  "mode": "isolated input-flow review, not yet integrated in the feature branch",
+  "builtAt": "2026-10-13T15:11:18.784661Z",
+  "build": "MOBILE_PREVIEW=1 WARDROBE=data/empty.json SPLIT_DIR=dist/easy-entry node build.mjs",
+  "storageNamespace": "eoul.easy-entry-preview",
+  "emptySeed": true,
+  "inputGroups": {
+    "before": 13,
+    "after": 2,
+    "requiredTextOrNumberInputs": 0
+  },
+  "validation": {
+    "build": "passed",
+    "inlineScripts": 14,
+    "nodeVmSmoke": 6,
+    "browserAndRealDevice": "not run"
+  },
+  "limitations": [
+    "unknown color and attributes keep outfit recommendations pending",
+    "recommendation information still opens the existing detailed editor",
+    "no product identification, VTON or account server is added"
+  ],
+  "sourceFiles": [
+    {
+      "path": "app/src/entry-ui.js",
+      "bytes": 17965,
+      "sha256": "d780ab56ea85f5b6edef75a9fc52ebcbfef56e12b081c4e68f0f1cc846da6126"
+    },
+    {
+      "path": "app/src/app.html",
+      "bytes": 336582,
+      "sha256": "5c9c5548f8497ca09d1388b536bd05aad1f2955efc60d324093c0fbd00fb88f8"
+    },
+    {
+      "path": "app/src/editorial-ui.js",
+      "bytes": 11378,
+      "sha256": "f112eda4a61398c67407d4584bf084d42104d5ee6431b1b96296aa82f7890ea8"
+    },
+    {
+      "path": "app/build.mjs",
+      "bytes": 11827,
+      "sha256": "1fb344fc2d89b0a180971c2f9a5dd7355e864ee807e013bebe1104bb9813803f"
+    }
+  ],
+  "files": {
+    "index.html": {
+      "bytes": 1170990,
+      "sha256": "2bdf18578cff52a06bad03541a8970d6b1fb03519fd0da686dbfb80ab590f8f8"
+    },
+    "closet.js": {
+      "bytes": 11678806,
+      "sha256": "cf930fd2eb2d01007ddb2201ba991b26c9928e902bd84f3b48fcb58afc91bde9"
+    },
+    "manifest.webmanifest": {
+      "bytes": 502,
+      "sha256": "b311f3a50bcb5cd0e71841659922a2622c26bfda4e658b5b622922f9628df5a3"
+    },
+    "sw.js": {
+      "bytes": 1958,
+      "sha256": "b7622a562802156929caecb5323e178af0464097bef3b6b803a54271d652dd74"
+    },
+    "icon-192.png": {
+      "bytes": 6135,
+      "sha256": "b0d15250802a5c298a299b59acc28b27cd010cf3040b6db3e9cfa6f2939ea3f7"
+    },
+    "icon-512.png": {
+      "bytes": 16070,
+      "sha256": "d5e693debfe52d3b4ed7ad22ab3d089227ec3f1b3d3e83d7fca8ab37270a488c"
+    }
+  }
+}
