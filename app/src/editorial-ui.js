@@ -26,12 +26,64 @@ function renderEditorialHero(main, plan) {
     ['03', '사기 전에 한 번 더', '고민 중인 옷이 이미 가진 옷과 겹치는지 비교해 보세요.'],
   ].map(([n, title, text]) => h('div', { class: 'onboard-step' }, h('span', { text: n }), h('div', null, h('h3', { text: title }), h('p', { text }))))));
 }
+function draftFields(it) {
+  return [W.CATS[it.cat], W.KINDS[it.cat]?.[it.kind], W.FAM[it.family]?.[0], it.light == null ? '' : '밝기 ' + it.light,
+    W.FORMAL[it.formality], W.PATTERNS[it.pattern], it.seasons?.length ? it.seasons.join(' · ') : '계절 미확인'].filter(Boolean).join(' · ');
+}
+function openDraftReview(drafts) {
+  $('#draftReview')?.remove();
+  const dialog = h('dialog', { id: 'draftReview', class: 'draft-review-dialog' });
+  const list = h('div', { class: 'draft-review-list' });
+  const selected = h('p', { class: 'note', id: 'draftReviewCount', 'aria-live': 'polite', text: '확인한 옷을 선택해 주세요.' });
+  const error = h('p', { class: 'warnnote', id: 'draftReviewError', hidden: true, role: 'alert' });
+  const apply = h('button', { class: 'btn primary', id: 'applyDraftConfirmation', type: 'button', disabled: true, text: '확인한 옷을 비교에 반영' });
+  const syncSelection = () => {
+    const count = list.querySelectorAll('[data-confirm-draft]:checked').length;
+    selected.textContent = count ? count + '벌을 선택했습니다. 확인한 속성만 비교에 반영됩니다.' : '확인한 옷을 선택해 주세요.';
+    apply.disabled = count === 0;
+    apply.textContent = count ? '확인한 ' + count + '벌을 비교에 반영' : '확인한 옷을 비교에 반영';
+  };
+  for (const it of drafts) {
+    const missing = W.assessment(it).missing.filter((key) => key !== 'confirmation');
+    const attrs = h('p', { class: 'sub draft-review-attrs', text: draftFields(it) || '입력된 속성이 없습니다.' });
+    const row = h('article', { class: 'draft-review-row' }, pic(it, 'mini'), h('div', { class: 'draft-review-copy' },
+      h('h3', { text: it.name }), attrs,
+      missing.length ? h('p', { class: 'warnnote', text: '필수 정보가 비어 있어 먼저 입력해야 합니다.' }) : h('label', { class: 'draft-review-check' },
+        h('input', { type: 'checkbox', 'data-confirm-draft': it.id, onchange: syncSelection }), ' 사진과 위 속성이 맞는지 확인했습니다'),
+      h('button', { class: 'btn small', type: 'button', onclick: () => { dialog.close(); openQuickItem(it, null, { returnTab: 'closet' }); }, text: missing.length ? '정보 채우기' : '정보 수정' })));
+    list.append(row);
+  }
+  apply.addEventListener('click', async () => {
+    const ids = new Set(Array.from(list.querySelectorAll('[data-confirm-draft]:checked'), (input) => input.getAttribute('data-confirm-draft')));
+    const targets = state.items.filter((it) => ids.has(it.id) && W.isDraft(it) && !W.assessment(it).missing.some((key) => key !== 'confirmation'));
+    if (!targets.length) { error.textContent = '확인할 수 있는 옷이 없습니다. 정보를 다시 확인해 주세요.'; error.hidden = false; return; }
+    const before = state.items.slice();
+    for (const it of targets) replaceItem(W.setAttrSource(it, 'owner-confirmed'));
+    apply.disabled = true; apply.textContent = '저장하는 중…'; error.hidden = true;
+    if (!await save()) {
+      state.items = before; apply.disabled = false; error.textContent = '저장하지 못했습니다. 옷장 상태는 되돌렸습니다. 다시 시도해 주세요.'; error.hidden = false; syncSelection(); return;
+    }
+    dialog.close(); render();
+  });
+  dialog.append(h('div', { class: 'dhead' }, h('h2', { text: '사진으로 등록한 옷 확인' }), h('button', { class: 'btn small', type: 'button', onclick: () => dialog.close(), text: '닫기' })),
+    h('div', { class: 'dbody' }, h('p', { class: 'sub', text: '사진과 분류·색·밝기·격식·무늬를 확인한 옷만 골라 주세요. 이 확인은 코디 계산에 쓸 속성에 대한 확인이며, 브랜드·상품명이나 동일 제품을 확인하는 절차가 아닙니다.' }), list, selected, error,
+      h('div', { class: 'bar' }, apply, h('button', { class: 'btn', type: 'button', onclick: () => dialog.close(), text: '나중에' }))));
+  document.body.append(dialog); dialog.addEventListener('close', () => dialog.remove(), { once: true }); dialog.showModal();
+}
 function renderEditorialCloset(main) {
   const plan = wardrobePlan();
   renderEditorialHero(main, plan);
   if (!state.items.length) { startNotices(main); return; }
   if (state.meta.sample) startNotices(main);
   renderWardrobeOverview(main);
+  const drafts = owned().filter(W.isDraft);
+  if (drafts.length) {
+    const ready = drafts.filter((it) => !W.assessment(it).missing.some((key) => key !== 'confirmation')).length;
+    main.append(h('section', { class: 'panel draft-confirm-panel', id: 'draftConfirmPanel' },
+      h('div', null, h('h2', { text: '사진으로 등록한 옷 ' + drafts.length + '벌' }),
+        h('p', { class: 'sub', text: '사진에서 추정한 속성은 확인 전까지 추천 계산에서 제외됩니다. 맞는 옷만 확인해 한 번에 반영하세요.' })),
+      h('button', { class: 'btn primary', type: 'button', id: 'reviewPhotoDrafts', onclick: () => openDraftReview(drafts), text: ready ? '사진과 속성 확인하기 · ' + ready + '벌 확인 가능' : '정보를 채워야 비교할 수 있어요' })));
+  }
   const search = h('input', { type: 'search', id: 'closetSearch', placeholder: '이름 · 종류 · 브랜드로 찾기', value: ui.closetSearch || '', 'aria-label': '내 옷 검색' });
   const toolbar = h('div', { class: 'closet-toolbar' }, h('div', { class: 'bar', 'aria-label': '옷 분류' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),
     Object.keys(CATS).map((c) => chip(CATS[c], ui.cat === c, () => { ui.cat = c; render(); }))), h('label', { class: 'closet-search' }, search));

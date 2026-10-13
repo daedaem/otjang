@@ -81,7 +81,16 @@ function openFollowupDialog(d) {
 }
 function renderFollowup(root, d, options) {
   options = options || {};
-  const old = d.followup || {}, outcome = optionSelect('followupOutcome', FOLLOWUP_OUTCOMES, old.outcome, '실제 결과를 골라 주세요'); outcome.required = true;
+  const old = d.followup || {};
+  if (!options.dialog) {
+    root.append(h('section', { class: 'panel', id: 'purchaseFollowup' },
+      h('h2', { text: '구매 뒤 결과도 이어서 기록하세요' }),
+      h('p', { class: 'sub', text: '결제와 배송·반품은 판매처에서 진행하고, 실제로 샀는지·입어 봤는지·반품했는지는 이 화면에서 남길 수 있습니다.' }),
+      old.outcome ? h('p', { class: 'note', id: 'followupStatus', text: '마지막 기록: ' + followupLabel(old.outcome) + (old.at ? ' · ' + old.at : '') }) : null,
+      h('button', { class: 'btn primary', type: 'button', id: 'openPurchaseFollowup', onclick: () => openFollowupDialog(d), text: old.outcome ? '구매·반품 결과 수정' : '구매·반품 결과 기록' })));
+    return;
+  }
+  const outcome = optionSelect('followupOutcome', FOLLOWUP_OUTCOMES, old.outcome, '실제 결과를 골라 주세요'); outcome.required = true;
   const worn = optionSelect('followupWorn', { yes: '입었다', no: '아직 입지 않았다', unknown: '해당 없음 · 모름' }, old.worn || 'unknown');
   const regret = optionSelect('followupRegret', { yes: '후회한다', no: '후회하지 않는다', unknown: '아직 모르겠다' }, old.regret || 'unknown');
   const note = h('input', { id: 'followupNote', type: 'text', maxlength: '300', value: old.note || '', placeholder: '반품 이유, 실제 착용 조합, 구매를 미룬 이유' });
