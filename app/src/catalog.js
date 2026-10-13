@@ -19,15 +19,16 @@
 
   function cleanProduct(raw, i) {
     if (!raw || typeof raw !== 'object') return null;
-    const cat = W.CATS[raw.cat] ? raw.cat : null;
+    const own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k);
+    const cat = own(W.CATS, raw.cat) ? raw.cat : null;
     if (!cat) return null;
     const name = W.str(raw.name, 80).trim();
     if (!name) return null;
     return {
       id: W.str(raw.id, 40) || 'p' + (i || 0), brand: W.str(raw.brand, 60).trim(), name, code: W.str(raw.code, 60).trim(),
-      cat, kind: W.KINDS[cat][raw.kind] ? raw.kind : Object.keys(W.KINDS[cat])[0], family: W.FAM[raw.family] ? raw.family : 'gray',
+      cat, kind: own(W.KINDS[cat], raw.kind) ? raw.kind : Object.keys(W.KINDS[cat])[0], family: own(W.FAM, raw.family) ? raw.family : 'gray',
       light: W.num(raw.light, 0, 100) == null ? 50 : Math.round(raw.light), formality: [1, 2, 3].indexOf(raw.formality) >= 0 ? raw.formality : 2,
-      pattern: W.PATTERNS[raw.pattern] ? raw.pattern : 'solid', seasons: Array.isArray(raw.seasons) ? W.SEASONS.filter((s) => raw.seasons.indexOf(s) >= 0) : [],
+      pattern: own(W.PATTERNS, raw.pattern) ? raw.pattern : 'solid', seasons: Array.isArray(raw.seasons) ? W.SEASONS.filter((s) => raw.seasons.indexOf(s) >= 0) : [],
       link: W.safeLink(raw.link), price: W.num(raw.price, 0, 1e9), checkedAt: W.safeDate(raw.checkedAt), img: W.safeImg(raw.img), note: W.str(raw.note, 200), addedAt: W.safeDate(raw.addedAt),
     };
   }

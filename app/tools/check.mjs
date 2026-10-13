@@ -135,7 +135,7 @@ for (const m of modes) {
   const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '네이비 니트 (사진)'); return i && { src: i.attrSource, family: i.family, light: i.light, note: i.draftNote, photo: i.photo.kind }; });
   ok(gi && gi.src === 'photo-draft' && gi.family === 'navy' && gi.photo === 'own' && gi.note.includes('대표색 #'), '사진 초안을 그대로 두고 저장하면 attrSource 가 photo-draft 이고 대표색이 기록된다', gi);
   await page.locator('#closetGrid .card', { hasText: '네이비 니트 (사진)' }).getByRole('button', { name: '기록' }).click();
-  await page.click('#edDelete'); await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
+  await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
   ok(await page.evaluate(() => !window.__app.state.items.some((x) => x.name === '네이비 니트 (사진)')), '시험용 옷을 지웠다');
 
   // 3. 살까 말까: 마법사로 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로
@@ -188,6 +188,7 @@ for (const m of modes) {
 
   // 5. 살 만한 옷: 상품을 직접 넣고, 목록 안에서만 순서를 매기고, 후보로 넣는다
   await page.click('#tabbtn-shop');
+  await page.click('#shopOwn > summary');
   ok(await page.locator('#shopEmpty').count() === 1, '상품이 없으면 비어 있다고 알려 준다 (지어내지 않는다)');
   await page.click('#addProduct');
   await page.fill('#p-brand', '어느 브랜드'); await page.fill('#p-name', '네이비 크루넥 니트'); await page.selectOption('#p-cat', 'top'); await page.selectOption('#p-kind', 'knit'); await page.selectOption('#p-family', 'navy');
@@ -235,6 +236,7 @@ for (const m of modes) {
   ok(bought.photo.kind === 'confirmed' && bought.photo.img === '' && bought.product.brand === '브랜드' && data.items[0].photo.img.startsWith('data:image') && data.items.every((i) => i.matchCandidates.length === 0), '남의 상품 사진과 브랜드 후보는 기본으로 빠지고, 내 사진과 확인된 상품 정보는 남는다');
   await shot('7-log');
   // 7b. 내 서버와 맞추기 (흉내 서버): 보내기 → 같은 내용 다시 보내기(멱등 키 같음) → 받기 → 바꾸기
+  await page.locator('#advanced > summary').click();
   ok((await page.isChecked('#syncPhotos')) === false || (await page.inputValue('#syncBase')).includes('localhost'), '기본 주소는 이 컴퓨터(localhost)다');
   await page.fill('#syncBase', 'http://192.168.0.10:8099'); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
   ok((await page.isChecked('#syncPhotos')) === false, '이 컴퓨터가 아닌 주소면 사진은 기본으로 보내지 않는다');

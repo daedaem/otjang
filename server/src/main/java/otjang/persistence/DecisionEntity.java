@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 
-/** decision 표. 살까 말까 판정 기록(보기 전 마음 → 규칙 결과 요약 → 결정). */
+/** decision 표. 살까 말까 판정 기록(보기 전 마음 → 규칙 결과 요약 → 결정 → 2주 뒤 물음의 답). */
 @Entity
 @Table(name = "decision")
 public class DecisionEntity {
@@ -46,6 +46,12 @@ public class DecisionEntity {
     private LocalDate afterAt;
     @Column(name = "after_shift")
     private String afterShift;
+    @Column(name = "follow_at")
+    private LocalDate followAt;
+    @Column(name = "follow_worn")
+    private String followWorn;
+    @Column(name = "follow_feel")
+    private String followFeel;
 
     public Long getId() { return id; }
     public Long getOwnerId() { return ownerId; }
@@ -78,4 +84,10 @@ public class DecisionEntity {
     public void setAfterAt(LocalDate v) { afterAt = v; }
     public String getAfterShift() { return afterShift; }
     public void setAfterShift(String v) { afterShift = v; }
+    public LocalDate getFollowAt() { return followAt; }
+    public void setFollowAt(LocalDate v) { followAt = v; }
+    public String getFollowWorn() { return followWorn; }
+    public void setFollowWorn(String v) { followWorn = v; }
+    public String getFollowFeel() { return followFeel; }
+    public void setFollowFeel(String v) { followFeel = v; }
 }

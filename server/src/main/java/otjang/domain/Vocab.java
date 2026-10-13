@@ -14,29 +14,40 @@ public final class Vocab {
 
     public static final int SCHEMA = 2;
     public static final List<String> SEASONS = List.of("봄", "여름", "가을", "겨울");
-    public static final Map<String, String> CATS = ordered("outer", "아우터", "top", "상의", "bottom", "하의", "shoes", "신발");
+    /** 원피스(dress): 위아래가 한 벌인 옷. 규칙에서는 상의·하의 한 쌍처럼 차림 하나로 센다 (앱 0.5.0-beta). */
+    public static final Map<String, String> CATS = ordered("outer", "아우터", "top", "상의", "bottom", "하의", "dress", "원피스", "shoes", "신발");
+    /** 새 종류는 뒤에 붙인다: 각 분류의 첫 종류가 모르는 값의 기본값이다. */
     public static final Map<String, Map<String, String>> KINDS = Map.of(
-            "outer", ordered("jacket", "재킷", "blazer", "블레이저", "cardigan", "카디건", "coat", "코트", "padding", "패딩", "vest", "조끼"),
-            "top", ordered("shirt", "셔츠", "tee", "티셔츠", "knit", "니트", "sweat", "스웻셔츠", "polo", "폴로", "hoodie", "후디"),
-            "bottom", ordered("denim", "데님", "chino", "치노", "slacks", "슬랙스", "fatigue", "퍼티그 팬츠", "cord", "코듀로이 팬츠", "shorts", "반바지"),
-            "shoes", ordered("derby", "더비", "loafer", "로퍼", "sneaker", "스니커즈", "boots", "부츠"));
+            "outer", ordered("jacket", "재킷", "blazer", "블레이저", "cardigan", "카디건", "coat", "코트", "padding", "패딩", "vest", "조끼", "trench", "트렌치코트"),
+            "top", ordered("shirt", "셔츠", "tee", "티셔츠", "knit", "니트", "sweat", "스웻셔츠", "polo", "폴로", "hoodie", "후디", "blouse", "블라우스", "sleeveless", "민소매", "turtleneck", "터틀넥"),
+            "bottom", ordered("denim", "데님", "chino", "치노", "slacks", "슬랙스", "fatigue", "퍼티그 팬츠", "cord", "코듀로이 팬츠", "shorts", "반바지",
+                    "skirt", "스커트", "wide", "와이드 팬츠", "jogger", "조거·트레이닝 팬츠", "leggings", "레깅스"),
+            "dress", ordered("dress", "원피스", "jumpsuit", "점프수트"),
+            "shoes", ordered("derby", "더비", "loafer", "로퍼", "sneaker", "스니커즈", "boots", "부츠", "heels", "힐", "flats", "플랫슈즈", "sandals", "샌들"));
     /** 색 계열 → 이름. 기본 밝기는 FAM_LIGHT. */
     public static final Map<String, String> FAM = ordered("white", "흰색", "ivory", "아이보리", "beige", "베이지", "khaki", "카키", "brown", "브라운", "olive", "올리브",
-            "green", "그린", "blue", "블루", "navy", "네이비", "indigo", "인디고", "gray", "그레이", "black", "블랙", "red", "레드", "burgundy", "버건디");
+            "green", "그린", "blue", "블루", "navy", "네이비", "indigo", "인디고", "gray", "그레이", "black", "블랙", "red", "레드", "burgundy", "버건디",
+            "pink", "핑크", "purple", "퍼플", "yellow", "옐로", "orange", "오렌지");
     public static final Map<String, Integer> FAM_LIGHT = Map.ofEntries(Map.entry("white", 95), Map.entry("ivory", 90), Map.entry("beige", 76), Map.entry("khaki", 62),
             Map.entry("brown", 25), Map.entry("olive", 45), Map.entry("green", 30), Map.entry("blue", 78), Map.entry("navy", 18), Map.entry("indigo", 16),
-            Map.entry("gray", 55), Map.entry("black", 12), Map.entry("red", 42), Map.entry("burgundy", 25));
+            Map.entry("gray", 55), Map.entry("black", 12), Map.entry("red", 42), Map.entry("burgundy", 25),
+            Map.entry("pink", 82), Map.entry("purple", 45), Map.entry("yellow", 70), Map.entry("orange", 55));
     public static final Map<String, String> PATTERNS = ordered("solid", "무지", "stripe", "줄무늬", "check", "체크", "graphic", "프린트");
     public static final Map<String, String> REBUY = ordered("unknown", "모르겠다", "yes", "다시 산다", "no", "다시 안 산다");
     public static final Map<String, String> FABRIC = ordered("", "적지 않음", "thin", "얇다", "mid", "보통", "thick", "두껍다");
     public static final Map<String, String> NECK = ordered("", "적지 않음", "low", "낮다", "mid", "보통", "high", "높다");
     public static final Map<String, List<String>> MEASURES = Map.of(
             "top", List.of("length", "shoulder", "chest", "sleeve"), "outer", List.of("length", "shoulder", "chest", "sleeve"),
-            "bottom", List.of("waist", "rise", "thigh", "hem"), "shoes", List.of());
+            "bottom", List.of("waist", "rise", "thigh", "hem"), "dress", List.of("length", "shoulder", "chest", "waist"), "shoes", List.of());
     public static final Map<String, String> LEAN = ordered("buy", "살 쪽", "skip", "말 쪽", "unsure", "모르겠다");
     public static final Map<String, String> DECIDE = ordered("buy", "산다", "skip", "안 산다", "hold", "보류");
     public static final Map<String, String> HELP = ordered("yes", "도움이 됐다", "some", "조금", "no", "안 됐다");
     public static final Map<String, String> SHIFT = ordered("same", "그대로", "changed", "바뀜", "settled", "정해짐", "held", "보류로 바뀜");
+    /** 결정 뒤 물음(2주 뒤 한 번): 산 옷은 착용 횟수와 만족, 안 산 옷은 아쉬움. 보류는 묻지 않는다 (앱 wardrobe.js FOLLOW_*). */
+    public static final int FOLLOW_DAYS = 14;
+    public static final Map<String, String> WORN = ordered("none", "0번", "few", "1~2번", "many", "3번 이상", "notbought", "결국 안 샀다");
+    public static final Map<String, String> FEEL_BUY = ordered("good", "잘 샀다", "ok", "그저 그렇다", "regret", "후회한다");
+    public static final Map<String, String> FEEL_SKIP = ordered("good", "안 사길 잘했다", "ok", "모르겠다", "regret", "아쉽다");
     public static final Map<String, String> ATTR_SOURCE = ordered("photo-draft", "사진에서 뽑은 초안", "owner", "주인이 입력", "owner-confirmed", "주인이 확인함");
     public static final Map<String, String> PHOTO_KIND = ordered("own", "내 사진", "confirmed", "확인된 동일 제품", "candidate", "미확인 후보", "substitute", "대체 이미지 · 내 옷 아님", "none", "사진 없음");
     public static final Map<String, String> EVIDENCE = ordered("logo", "사진 속 로고", "text", "사진 속 글자", "owner", "주인이 말함");
@@ -47,7 +58,8 @@ public final class Vocab {
     /** 멀리서 보면 한 색으로 읽히는 계열 묶음 (recommend.js GROUP). 없는 계열은 자기 이름이 묶음이다. */
     public static final Map<String, String> GROUP = Map.ofEntries(Map.entry("navy", "deep-blue"), Map.entry("indigo", "deep-blue"), Map.entry("black", "black"),
             Map.entry("gray", "gray"), Map.entry("olive", "olive"), Map.entry("brown", "brown"), Map.entry("khaki", "khaki"), Map.entry("beige", "khaki"),
-            Map.entry("blue", "light-blue"), Map.entry("green", "green"), Map.entry("white", "white"), Map.entry("ivory", "white"), Map.entry("red", "red"), Map.entry("burgundy", "red"));
+            Map.entry("blue", "light-blue"), Map.entry("green", "green"), Map.entry("white", "white"), Map.entry("ivory", "white"), Map.entry("red", "red"), Map.entry("burgundy", "red"),
+            Map.entry("pink", "pink"), Map.entry("purple", "purple"), Map.entry("yellow", "yellow"), Map.entry("orange", "orange"));
 
     public static String group(Garment g) {
         return GROUP.getOrDefault(g.family(), g.family());
