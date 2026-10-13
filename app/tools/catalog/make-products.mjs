@@ -72,10 +72,12 @@ const groups = {};
 for (const p of brandProducts) {
   if (exclude.has(p.id) || products.has(p.id)) continue;
   const fix = fixes[p.id] || {};
-  const slot = fix.slot || p.slot;
+  let slot = fix.slot || p.slot;
   if (!slot || fix.slot === null) continue;
   const color = fix.color || p.color || imageColors[p.id] || null;
   if (!color) continue;
+  // 흰색이 아닌 가죽 스니커즈는 '화이트 스니커즈'가 아니다
+  if (slot === 'm-white-sneaker' && !['white', 'ivory'].includes(color)) slot = 'm-runner';
   const key = `${p.brand}|${slot}`;
   (groups[key] ||= []).push({ ...p, slot, color, name: fix.name || p.name });
 }
