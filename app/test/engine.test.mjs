@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  recommendItems, recommendLooks, closetLooks, essentials, search, seasonOf, josa, productsFor, harmony, brandsFor, styleScore, exampleCloset,
+  recommendItems, recommendLooks, closetLooks, essentials, search, seasonOf, josa, productsFor, harmony, brandsFor, styleScore, exampleCloset, lookalike,
 } from '../src/engine.js';
 import { parseQuery } from '../src/query.js';
 import { SLOTS, SLOT_BY_ID, STYLES, COLORS } from '../src/data/slots.js';
@@ -226,5 +226,18 @@ test('예시 옷장: 어떤 스타일이든 6벌로 "오늘 뭐 입지?" 코디�
       const { ready } = closetLooks({ ...st, closet, example: true });
       assert.ok(ready.length >= 1, `${g} ${key}`);
     }
+  }
+});
+
+test('사진이 없는 옷은 같은 종류·색(또는 아주 가까운 색)의 상품 사진으로 보여 준다', () => {
+  const p = lookalike('m-chino', 'beige');
+  assert.equal(p.slot, 'm-chino');
+  assert.equal(p.color, 'beige');
+  const brand = productsFor('m-chino').find((x) => x.color === 'beige' && x.brand !== p.brand)?.brand;
+  if (brand) assert.equal(lookalike('m-chino', 'beige', { brand }).brand, brand, '고른 브랜드 우선');
+  assert.equal(lookalike('m-chore', 'purple'), null, '맞는 색이 없으면 다른 색 사진을 쓰지 않는다');
+  for (const s of SLOTS) for (const c of s.colors) {
+    const x = lookalike(s.id, c);
+    if (x) assert.ok(x.slot === s.id && x.img, `${s.id} ${c}`);
   }
 });
