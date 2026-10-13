@@ -1675,8 +1675,20 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   // ---------- 기록 ----------
   function renderLog(main) {
     const done = state.decisions.filter((d) => d.after), insights = done.filter(d => d.after.insight).length, followed = done.filter(d => d.followup || d.follow).length;
-    const linkedDone = new Set(done.filter((d) => state.pickLog.some((e) => e.candidateId === d.itemId)).map((d) => d.itemId));
-    const standalonePickLogs = state.pickLog.filter((e) => !e.candidateId || !linkedDone.has(e.candidateId));
+    const pickByDecision = new Map(), usedPickIds = new Set();
+    for (const d of done) {
+      let pick = state.pickLog.slice().reverse().find((e) => e.candidateId === d.itemId && !usedPickIds.has(e.id));
+      if (!pick) {
+        const item = state.items.find((it) => it.id === d.itemId);
+        if (item?.link) pick = state.pickLog.slice().reverse().find((e) => {
+          const product = PICKS.products.find((p) => p.id === e.productId) || state.catalog.products.find((p) => p.id === e.productId);
+          const productLink = product?.store?.url || product?.link || '';
+          return !usedPickIds.has(e.id) && productLink === item.link && (e.label === item.name || e.label === [product?.brand, product?.name].filter(Boolean).join(' '));
+        });
+      }
+      if (pick) { pickByDecision.set(d.itemId, pick); usedPickIds.add(pick.id); }
+    }
+    const standalonePickLogs = state.pickLog.filter((e) => !usedPickIds.has(e.id));
     const fs_ = done.filter((d) => d.follow), due = W.followDue(state.decisions, today());
     main.append(h('p', { class: 'lead', text: '받은 추천과 살까 말까 판정에 실제로 어떻게 정했는지 남는 곳입니다. 이 브라우저에만 저장됩니다.' }));
     // 추천 기록: 받은 추천에 무엇을 했는지(이걸로·아니에요·샀어요·2주 뒤). 휴대폰에서도 읽히게 줄 목록으로
@@ -1696,7 +1708,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (done.length) {
       const tb = h('tbody');
       for (const d of done.slice().reverse()) {
-        const pick = state.pickLog.slice().reverse().find((e) => e.candidateId === d.itemId);
+        const pick = pickByDecision.get(d.itemId);
         const pickTrail = pick ? ['추천에서 가져옴', pick.verdict ? ({ accept: '추천 선택', alt: '대안 선택', reject: '추천 거절' }[pick.verdict]) : '', pick.out ? '판매처 ' + pick.out + '회 확인' : '', pick.bought === 'yes' ? '구매' + (pick.boughtSize ? ' · ' + pick.boughtSize : '') : pick.bought === 'no' ? '미구매' : '', pick.follow ? '2주 뒤 ' + ({ fit: '잘 맞음', small: '작음', big: '큼' }[pick.follow.size]) : ''].filter(Boolean).join(' → ') : '';
         tb.append(h('tr', null,
         h('td', null, h('button', { class: 'btn small', type: 'button', onclick: () => openFollowupDialog(d), text: d.followup ? '구매·반품 기록 수정' : '구매·반품 결과 기록' })),
