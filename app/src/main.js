@@ -19,17 +19,25 @@ const EXAMPLES = {
 };
 
 const defaults = { onboarded: false, gender: null, style: null, occasion: null, budget: null, owned: [], saved: [], hidden: [], tab: 'home' };
+const DEMO_OWNED = {
+  M: ['m-oxford-white', 'm-oxford-blue', 'm-tee-white', 'm-denim', 'm-chino', 'm-sneaker-leather'],
+  F: ['f-shirt-white', 'f-tee', 'f-knit', 'f-denim', 'f-slacks', 'f-sneaker'],
+};
+function demoState(gender = 'M') {
+  return { ...defaults, onboarded: true, gender, style: 'classic', demo: true, owned: [...DEMO_OWNED[gender]], saved: [], hidden: [] };
+}
 let state = load();
 let query = '';
 let lastLooks = [];
 let lastSearch = null;
+let closetPickerOpen = false;
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...defaults, ...JSON.parse(raw), tab: 'home' } : { ...defaults };
+    return raw ? { ...defaults, demo: false, ...JSON.parse(raw), tab: 'home' } : demoState();
   } catch {
-    return { ...defaults };
+    return demoState();
   }
 }
 function persist() {
@@ -50,6 +58,18 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const $app = document.getElementById('app');
 const $sheet = document.getElementById('sheet-root');
 const $toast = document.getElementById('toast');
+const ownedLabel = () => state.demo ? '예시 옷' : '내 옷';
+const reasonText = (text) => state.demo ? text.replace(/^가진 /, '예시 옷장 속 ') : text;
+
+function demoBanner() {
+  if (!state.demo) return '';
+  const owned = state.owned.filter((id) => SLOT_BY_ID[id]?.g === state.gender);
+  return `<aside class="demo-banner" aria-label="예시 옷장 체험">
+    <div class="demo-heading"><b>예시 옷 ${owned.length}벌로 바로 체험 중</b><button class="link" data-action="start-personal">내 옷으로 바꾸기 ${ICON.chevron}</button></div>
+    <p>옷을 등록하지 않아도 코디와 추천을 볼 수 있어요.</p>
+    <button class="demo-garments" data-action="tab" data-tab="closet" aria-label="예시 옷장 살펴보기">${owned.slice(0, 6).map((id) => `<span title="${esc(SLOT_BY_ID[id].name)}">${garmentSvg(SLOT_BY_ID[id])}</span>`).join('')}</button>
+  </aside>`;
+}
 
 // ── 공통 조각
 function picture(product, slot, cls = 'thumb') {
@@ -72,7 +92,7 @@ function itemCard({ slot, product, reasons }) {
       <div class="brand-name">${esc(product.brand)}</div>
       <button class="name" data-action="open-item" data-id="${product.id}" style="text-align:left">${esc(product.name)}</button>
       <div class="price">${formatPrice(product.price)}${stars(product)}</div>
-      <div class="reason">${esc(reasons?.[0] || slot.why)}</div>
+      <div class="reason">${esc(reasonText(reasons?.[0] || slot.why))}</div>
     </div>
     ${heartBtn(product)}
   </article>`;
@@ -84,7 +104,7 @@ function gridCard({ slot, product, reasons }) {
       <div class="brand-name">${esc(product.brand)}</div>
       <div class="name">${esc(product.name)}</div>
       <div class="price">${formatPrice(product.price)}</div>
-      ${reasons?.[0] ? `<div class="reason">${esc(reasons[0])}</div>` : ''}
+      ${reasons?.[0] ? `<div class="reason">${esc(reasonText(reasons[0]))}</div>` : ''}
     </button>
     ${heartBtn(product)}
   </article>`;
@@ -94,14 +114,14 @@ function lookCard(r, index, { wide = false } = {}) {
   const n = tiles.length;
   return `<button class="look" data-action="open-look" data-index="${index}" ${wide ? 'style="width:100%"' : ''}>
     <div class="look-grid n${n}">
-      ${tiles.map((i) => `<div class="tile">${i.owned ? `<span class="badge">내 옷</span><div class="art">${garmentSvg(i.slot)}</div>` : i.product.img ? `<img src="${esc(i.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-slot="${i.slot.id}">` : `<div class="art">${garmentSvg(i.slot)}</div>`}</div>`).join('')}
+      ${tiles.map((i) => `<div class="tile">${i.owned ? `<span class="badge">${ownedLabel()}</span><div class="art">${garmentSvg(i.slot)}</div>` : i.product.img ? `<img src="${esc(i.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-slot="${i.slot.id}">` : `<div class="art">${garmentSvg(i.slot)}</div>`}</div>`).join('')}
     </div>
     <div class="look-body">
       <div class="look-title">${esc(r.look.title)}</div>
       <div class="look-note">${esc(r.look.note)}</div>
       <div class="look-meta">
-        <span>${r.ownedCount ? `내 옷 ${r.ownedCount}개 + ` : ''}새로 ${r.buyCount}개</span>
-        <b>${r.buyCount ? formatPrice(r.buyTotal) : '가진 옷으로 완성'}</b>
+        <span>${r.ownedCount ? `${ownedLabel()} ${r.ownedCount}개 + ` : ''}새로 ${r.buyCount}개</span>
+        <b>${r.buyCount ? formatPrice(r.buyTotal) : `${ownedLabel()}으로 완성`}</b>
       </div>
     </div>
   </button>`;
@@ -170,15 +190,15 @@ function renderHome() {
   lastLooks = recommendLooks(state, { limit: 4 });
   const items = recommendItems(state, { limit: 8 });
   const ctxLine = [SEASON_LABEL[season], STYLES[state.style].label, state.occasion ? OCCASIONS[state.occasion] : null].filter(Boolean).join(' · ');
-  const ownedCount = state.owned.length;
+  const ownedCount = state.owned.filter((id) => SLOT_BY_ID[id]?.g === state.gender).length;
   return `
     <section class="section">
-      <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${ctxLine}${ownedCount ? ` · 내 옷 ${ownedCount}개 반영` : ''}</div></div></div>
+      <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${ctxLine}${ownedCount ? ` · ${ownedLabel()} ${ownedCount}개 반영` : ''}</div></div></div>
       ${lastLooks.length ? `<div class="looks">${lastLooks.map((r, i) => lookCard(r, i)).join('')}</div>` : `<div class="notice">이 조건에 맞는 코디가 아직 없어요. 예산이나 상황을 바꿔 보세요.</div>`}
       ${ownedCount ? '' : `<div class="notice" style="margin:8px 0 0">가진 옷을 알려 주면 그 옷을 살린 코디로 바꿔 드려요. <button class="link" data-action="tab" data-tab="closet" style="text-decoration:underline">옷장 채우기</button></div>`}
     </section>
     <section class="section">
-      <div class="section-head"><div><h2>지금 사면 좋은 아이템</h2><div class="sub">${ownedCount ? '가진 옷과 가장 많이 어울리는 순서예요' : `${STYLES[state.style].label} 옷장의 기본부터 골랐어요`}</div></div></div>
+      <div class="section-head"><div><h2>${state.demo ? '예시 옷장' : '내 옷장'}에 더할 한 벌</h2><div class="sub">${ownedCount ? `${ownedLabel()}을 활용할 코디가 많은 순서예요` : `${STYLES[state.style].label} 옷장의 기본부터 골랐어요`}</div></div></div>
       ${items.length ? `<div class="list">${items.map(itemCard).join('')}</div>` : `<div class="empty"><b>추천할 아이템이 없어요</b>예산을 넓히거나 다른 상황을 골라 보세요.</div>`}
     </section>
     ${footer()}`;
@@ -202,18 +222,20 @@ function renderSearch() {
 
 function renderCloset() {
   const mine = SLOTS.filter((s) => s.g === state.gender);
-  const owned = mine.filter((s) => state.owned.includes(s.id)).length;
+  const owned = mine.filter((s) => state.owned.includes(s.id));
+  const ownButton = (s) => `<button class="own" data-action="toggle-own" data-slot="${s.id}" aria-pressed="${state.owned.includes(s.id)}"><i class="tick">${ICON.check}</i><div class="art">${garmentSvg(s)}</div><span>${esc(s.name)}</span></button>`;
   const groups = Object.entries(CATS)
-    .map(([cat, label]) => [label, mine.filter((s) => s.cat === cat)])
+    .map(([cat, label]) => [label, mine.filter((s) => s.cat === cat && !state.owned.includes(s.id))])
     .filter(([, list]) => list.length);
   return `<section class="section">
-    <h2>내 옷장</h2>
-    <div class="sub">가진 옷을 누르면 추천이 바로 바뀌어요. 비슷하면 눌러도 돼요.</div>
-    <div class="progress" aria-hidden="true"><i style="width:${Math.round((owned / mine.length) * 100)}%"></i></div>
-    <div class="sub" style="margin-top:6px">${mine.length}가지 중 ${owned}가지 있음</div>
+    <h2>${state.demo ? '예시 옷장' : '내 옷장'} · ${owned.length}벌</h2>
+    <div class="sub">${state.demo ? '체험용 옷이에요. 눌러서 빼면 추천이 달라져요.' : '비슷한 옷을 눌러 추가해 주세요. 한 벌만 있어도 시작할 수 있어요.'}</div>
+    ${owned.length ? `<div class="closet-grid owned-grid">${owned.map(ownButton).join('')}</div>` : ''}
+    <details class="closet-add" ${closetPickerOpen || !owned.length ? 'open' : ''}><summary>옷 추가하기</summary>
     ${groups.map(([label, list]) => `<div class="closet-group"><h3>${label}</h3><div class="closet-grid">
-      ${list.map((s) => `<button class="own" data-action="toggle-own" data-slot="${s.id}" aria-pressed="${state.owned.includes(s.id)}"><i class="tick">${ICON.check}</i><div class="art">${garmentSvg(s)}</div><span>${esc(s.name)}</span></button>`).join('')}
+      ${list.map(ownButton).join('')}
     </div></div>`).join('')}
+    </details>
     <div style="margin-top:24px"><button class="btn" data-action="tab" data-tab="home">이 옷장으로 추천 보기</button></div>
   </section>`;
 }
@@ -248,7 +270,7 @@ function render() {
     return;
   }
   const body = state.tab === 'closet' ? renderCloset() : state.tab === 'saved' ? renderSaved() : renderHome();
-  $app.innerHTML = (state.tab === 'home' ? topBar() : '') + `<main>${body}</main>` + nav();
+  $app.innerHTML = (state.tab === 'home' ? topBar() : '') + demoBanner() + `<main>${body}</main>` + nav();
 }
 
 // ── 시트
@@ -269,7 +291,7 @@ function itemSheet(id) {
   const c = { gender: state.gender, style: state.style, occasion: state.occasion, season: seasonOf(), owned: new Set(state.owned) };
   const { reasons } = scoreSlot(slot, c);
   const alts = productsFor(slot.id).filter((x) => x.id !== p.id).slice(0, 6);
-  const withLooks = recommendLooks({ ...state, budget: null }, { limit: 6, occasion: null }).filter((r) => r.items.some((i) => i.slot.id === slot.id)).slice(0, 1);
+  const withLooks = recommendLooks({ ...state, budget: null }, { limit: 1, product: p });
   const look = withLooks[0];
   openSheet(`
     ${picture(p, slot, 'hero')}
@@ -278,7 +300,7 @@ function itemSheet(id) {
     <div class="detail-price">${formatPrice(p.price)}${stars(p)}</div>
     <div class="fine">${esc(p.store)} 판매가 · ${esc(CATALOG.checkedLabel)} 확인</div>
     <div class="why"><h3>이래서 추천해요</h3><ul>
-      ${[...new Set([slot.why, ...reasons])].slice(0, 3).map((r) => `<li>${esc(r)}</li>`).join('')}
+      ${[...new Set([slot.why, ...reasons])].slice(0, 3).map((r) => `<li>${esc(reasonText(r))}</li>`).join('')}
       <li>이렇게 입어요: ${esc(slot.tip)}</li>
     </ul></div>
     ${look ? `<h3 class="block">이 아이템으로 만든 코디</h3>${lookRows(look)}` : ''}
@@ -287,13 +309,13 @@ function itemSheet(id) {
       <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
       <a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>
     </div>
-    <div style="text-align:center;margin-top:6px"><button class="link" data-action="own" data-slot="${slot.id}" style="padding:10px">비슷한 옷이 이미 있어요</button></div>
+    <div style="text-align:center;margin-top:6px"><button class="link" data-action="own" data-slot="${slot.id}" style="padding:10px">${state.demo ? '예시 옷장에 넣기' : state.owned.includes(slot.id) ? '이미 옷장에 있어요' : '비슷한 옷이 이미 있어요'}</button></div>
   `);
 }
 
 function lookRows(r) {
   return r.items.map((i) => i.owned
-    ? `<div class="look-row"><div class="thumb"><div class="art">${garmentSvg(i.slot)}</div></div><div><div class="role">${ROLE_LABEL[i.role]} · 내 옷</div><div class="nm">${esc(i.slot.name)}</div></div><span class="badge">보유</span></div>`
+    ? `<div class="look-row"><div class="thumb"><div class="art">${garmentSvg(i.slot)}</div></div><div><div class="role">${ROLE_LABEL[i.role]} · ${ownedLabel()}</div><div class="nm">${esc(i.slot.name)}</div></div><span class="badge">${state.demo ? '예시' : '보유'}</span></div>`
     : `<button class="look-row" data-action="open-item" data-id="${i.product.id}">${picture(i.product, i.slot)}<div><div class="role">${ROLE_LABEL[i.role]} · ${esc(i.product.brand)}</div><div class="nm">${esc(i.product.name)}</div></div><span class="pr">${formatPrice(i.product.price)}</span></button>`).join('');
 }
 
@@ -305,7 +327,7 @@ function lookSheet(index) {
     <h2 class="detail-title" style="padding-right:48px">${esc(r.look.title)}</h2>
     <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
     ${lookRows(r)}
-    <div class="total"><span>${r.buyCount ? `새로 살 것 ${r.buyCount}개` : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
+    <div class="total"><span>${r.buyCount ? `새로 살 것 ${r.buyCount}개` : `${ownedLabel()}으로 완성`}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
     ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">필요한 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
   `);
 }
@@ -355,12 +377,18 @@ function refreshHearts(id) {
 
 function toggleOwn(slotId, { fromItem = false } = {}) {
   const had = state.owned.includes(slotId);
+  if (fromItem && had) {
+    closeSheet();
+    toast('이미 옷장에 있어요');
+    return;
+  }
+  closetPickerOpen = !!document.querySelector('.closet-add')?.open;
   const before = state.owned;
   set({ owned: had ? state.owned.filter((x) => x !== slotId) : [...state.owned, slotId] });
   if (fromItem) {
     closeSheet();
     const name = SLOT_BY_ID[slotId].name;
-    toast(`${name}${josa(name, '을', '를')} 옷장에 넣고 추천을 바꿨어요`, () => set({ owned: before }));
+    toast(`${name}${josa(name, '을', '를')} ${state.demo ? '예시 ' : ''}옷장에 넣었어요`, () => set({ owned: before }));
   }
 }
 
@@ -371,6 +399,12 @@ document.addEventListener('click', (e) => {
   const a = el.dataset.action;
   if (a === 'ask') return;
   switch (a) {
+    case 'start-personal':
+      query = '';
+      closetPickerOpen = true;
+      set({ demo: false, owned: [], tab: 'closet' });
+      window.scrollTo(0, 0);
+      break;
     case 'pick-gender':
       set({ gender: el.dataset.g, style: null });
       requestAnimationFrame(() => document.querySelector('.style-pick')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
@@ -388,7 +422,7 @@ document.addEventListener('click', (e) => {
       set({ budget: el.dataset.v ? Number(el.dataset.v) : null });
       closeSheet();
       break;
-    case 'set-gender': set({ gender: el.dataset.g }); optionSheet('profile'); break;
+    case 'set-gender': set({ gender: el.dataset.g, ...(state.demo ? { owned: [...DEMO_OWNED[el.dataset.g]] } : {}) }); optionSheet('profile'); break;
     case 'set-style': set({ style: el.dataset.style }); optionSheet('profile'); break;
     case 'reset':
       if (el.dataset.armed !== '1') {

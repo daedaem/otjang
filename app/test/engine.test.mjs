@@ -98,7 +98,26 @@ test('한 줄 요청: 청바지에 어울리는 신발', () => {
   assert.ok(r.items.length >= 3);
   assert.ok(r.items.every((i) => i.slot.cat === 'shoes'));
   assert.ok(r.outfit, '청바지를 넣은 코디도 보여 준다');
+  assert.ok(r.outfit.items.some((i) => i.slot.id === 'm-denim' && !i.owned && i.product));
+  assert.equal(r.outfit.ownedCount, 0, '검색 단어는 보유 사실이 아니다');
+});
+
+test('검색 기준이 실제 옷장에도 있으면 그 옷만 보유로 반영한다', () => {
+  const r = search({ ...base, owned: ['m-denim'] }, '청바지에 어울리는 신발');
   assert.ok(r.outfit.items.some((i) => i.slot.id === 'm-denim' && i.owned));
+  assert.equal(r.outfit.ownedCount, 1);
+});
+
+test('상품 상세 코디는 다른 브랜드의 같은 종류 대신 선택한 상품을 사용한다', () => {
+  const product = productsFor('m-oxford-white').at(-1);
+  const looks = recommendLooks({ ...base, owned: ['m-oxford-white'] }, { product, limit: 10 });
+  assert.ok(looks.length);
+  for (const look of looks) {
+    const item = look.items.find((i) => i.slot.id === product.slot);
+    assert.equal(item.product.id, product.id);
+    assert.equal(item.owned, false);
+    assert.equal(look.buyTotal, look.items.filter((i) => !i.owned).reduce((sum, i) => sum + i.product.price, 0));
+  }
 });
 
 test('한 줄 요청: 만원대·가성비·색', () => {

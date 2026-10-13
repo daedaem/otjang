@@ -143,18 +143,24 @@ export function recommendItems(state, { limit = 8 } = {}) {
   return out;
 }
 
-function fillLook(look, c, { forceOwned = new Set() } = {}) {
+function fillLook(look, c, { anchorSlots = new Set(), product = null } = {}) {
   const items = [];
   for (const role of ROLE_ORDER) {
     const candidates = look.roles[role];
     if (!candidates) continue;
     // 검색의 기준 아이템("청바지에 어울리는")을 먼저, 그다음 가진 옷
-    const ownedId = candidates.find((id) => forceOwned.has(id)) || candidates.find((id) => c.owned.has(id));
+    // 상품 상세에서 연 코디에는 선택한 상품 자체를 넣는다.
+    if (product && candidates.includes(product.slot)) {
+      items.push({ role, slot: SLOT_BY_ID[product.slot], owned: false, product });
+      continue;
+    }
+    const anchorId = candidates.find((id) => anchorSlots.has(id));
+    const ownedId = anchorId && c.owned.has(anchorId) ? anchorId : !anchorId ? candidates.find((id) => c.owned.has(id)) : null;
     if (ownedId) {
       items.push({ role, slot: SLOT_BY_ID[ownedId], owned: true });
       continue;
     }
-    const inSeason = candidates.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
+    const inSeason = anchorId ? [anchorId] : candidates.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
     if (!inSeason.length) continue; // 이 계절엔 필요 없는 역할(예: 여름 아우터)
     let picked = null;
     for (const id of inSeason) {
@@ -178,14 +184,15 @@ function fillLook(look, c, { forceOwned = new Set() } = {}) {
 }
 
 // 오늘의 코디
-export function recommendLooks(state, { limit = 3, forceOwned = [], occasion } = {}) {
+export function recommendLooks(state, { limit = 3, anchorSlots = [], product = null, occasion } = {}) {
   const c = ctx(state);
-  const force = new Set(forceOwned);
+  const force = new Set(anchorSlots);
   let looks = matchingLooks(c, { occasion: occasion ?? c.occasion });
   if (!looks.length) looks = matchingLooks(c, { occasion: null });
   if (force.size) looks = looks.filter((l) => slotsInLook(l).some((id) => force.has(id)));
+  if (product) looks = looks.filter((l) => slotsInLook(l).includes(product.slot));
   return looks
-    .map((look) => fillLook(look, c, { forceOwned: force }))
+    .map((look) => fillLook(look, c, { anchorSlots: force, product }))
     .filter(Boolean)
     .map((r) => {
       const styleScore = r.look.styles[0] === c.style ? 2 : 1;
@@ -243,7 +250,7 @@ export function search(state, text) {
 
   const items = results.slice(0, 12);
   const outfit = anchors.length || c.occasion
-    ? recommendLooks({ ...state, gender: c.gender, style: c.style, season: c.season, budget: c.maxPrice, occasion: c.occasion }, { limit: 1, forceOwned: [...anchorIds] })[0] || null
+    ? recommendLooks({ ...state, gender: c.gender, style: c.style, season: c.season, budget: c.maxPrice, occasion: c.occasion }, { limit: 1, anchorSlots: [...anchorIds] })[0] || null
     : null;
 
   return { query: q, understood, items, outfit, season: c.season, gender: c.gender };
