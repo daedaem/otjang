@@ -1,7 +1,9 @@
 # 개발자 인수인계
 
-기준일: 2026-10-13. 대상: `feat/editorial-mobile-20261013`의 작업 소스. 반품·사이즈 계약과 후속 기록 동기화 보호를 구현했고 서버·Node 자동 검증을 실행했다. 실제 브라우저와 운영 배포 검증은 남아 있다. 이 문서는 개발자가 코드를 찾아 수정하는 길잡이이며 출시 완료 보고서가 아니다.
+기준일: 2026-10-14. 대상: `feat/editorial-mobile-20261013`의 작업 소스. 반품·사이즈 계약과 후속 기록 동기화 보호를 구현했고 서버·Node 자동 검증을 실행했다. 실제 브라우저와 운영 배포 검증은 남아 있다. 이 문서는 개발자가 코드를 찾아 수정하는 길잡이이며 출시 완료 보고서가 아니다.
 기록 용량 보호와 실제 상품 비교 연결의 검증 대상 코드는 `d7dfa70cc80c6f3d71ba0870476a03571755d9f3`다. 기존 `e508ecb` 이후 변경 23개 파일의 동결 원문과 커밋 blob SHA-256 일치를 확인했고, GitHub 기능 브랜치와 초안 PR #10의 동일 SHA 게시를 확인했다. 실제 앱 운영 배포는 하지 않았다.
+받기 저장 실패·계정 전환·대기 중 편집 보호의 검증 대상 코드 `2cef23332dcae2270df5eb97512298fa0f8be6d7`는 **GitHub 기능 브랜치와 초안 PR #10에 게시됐다**. 코드 3개 파일의 동결 원문/커밋 blob 바이트·SHA-256과 원격 코드 SHA, 게시 범위 Node 278개(기존 231개 + 신규 47개)와 세 빌드, 독립 집중 회귀 90개를 확인했다. 독립 검토가 제보한 연속 후속 제출 P1은 실제 재현해 해결을 확인했으며 이번 범위의 추가 확정 P0/P1은 없었다. 실제 운영 서버 배포는 하지 않았다. 대상 소스 SHA와 미실행 범위는 [검증 기록](verification-2026-10-13.md)을 따른다.
+사용자 검토용 [빈 자료 미리보기](https://daedaem.github.io/otjang/preview/review-86c5bae/)는 앞선 `86c5bae` 소스다. 생성된 7개 파일과 Pages 게시 원문의 일치를 확인했지만 브라우저 렌더는 미확인이다. 이번 받기 보호나 별도 입력 UX 시안이 반영된 화면으로 읽지 않는다.
 
 ## 처음 읽는 순서
 
@@ -108,6 +110,8 @@ app.html의 `syncFetch`가 인증/계약/If-Match 헤더와 응답 버전을 처
 재로그인에서 `syncStamp`가 없거나 무효여도 같은 origin·인증 owner의 유효한 ack는 이전에 확인한 revision을 증명한다. 보내기는 이 값을 `If-Match`로 유지해 최신 서버 정정에 409로 멈춘다. ack를 두고 최신 revision을 probe해 조건만 올리면 오래된 로컬 자료가 덮어쓰기를 할 수 있으므로 그렇게 복구하지 않는다. 다른 계정·출처·손상 ack는 사용하지 않는다.
 
 받기는 meta/옷장/catalog 읽기 → raw 자료와 정리 결과의 손실 확인 → followup 3방향 비교 → 사용자 선택 → 적용 직전 재검사 → 상태와 baseline 저장 순서다. baseline은 성공한 정확한 자료·서버·계정·revision에 묶는다. 성공한 upsert push는 원격 목록의 부재를 증명하지 못하며, 정리 손실 없는 완전한 pull만 이를 증명한다. 기준점이 없을 때는 검증한 서버 자료에서 이 기기 결과를 유지하는 선택만 제공한다. 명시적인 원격 null 정정도 키 누락과 구분해 직접 선택한다. 일반 필드 병합·삭제 전파·outbox를 제공한다고 해석하지 않는다.
+`2cef233`의 `applySyncPull`은 시작한 state·계정 키·출처·토큰을 고정하고 저장을 기다린다. 실패 시 `undoPullSnapshot`은 이번 받기가 설치한 값만 복구한다. `save`의 `writtenSnapshots`는 계정 키별 마지막 성공 원문·target과 그 저장 시점의 제출 값·참조·성공/실패 상태를 기록하며, 뒤 큐가 잠정 받기를 포함했으면 `repairPullSnapshot`이 그 사본을 큐 끝에서 CAS 정정한다. 로그아웃·새 state·새 전체 복원의 자료와 UI를 이전 작업이 덮지 않는다. 사진/상품 확인 정보, 후속 결과/연결 item 생애 상태/rack, 분류/종류/실측을 일관된 묶음으로 유지한다. 같은 값의 새 후속 제출도 구분하고 실패한 제출은 건너뛰어 마지막 성공 결과를 보존한다. 판정 객체를 유지해 대기 중 폼의 참조가 끊기지 않도록 하고, 실제 후속 callback은 계정·state·시도 결과를 확인한 뒤 성공 UI를 적용한다. 보상 저장까지 실패하면 해당 계정에 잠정 받은 자료가 남을 수 있다는 안내를 남긴다.
+받기 대기 중 신규 생성 수는 실패 시 복구할 기록까지 예약한다. 적용 전 기존/받을 목록별 ID 합집합이 2,000개를 넘으면 변경·저장 전에 전체 거부한다. 기존 ID 수정은 허용하며 수를 맞추려고 일부 기록을 자르지 않는다. 이유와 제한은 ADR-17을 따른다. 이 경계는 아직 정상 받기의 일반 자료 병합을 제공하지 않는다.
 현재 followup 이외의 일반 미전송 로컬 옷·판정·상품은 전체 받기로 교체되며 손실될 수 있다. 용량 보호가 이 병합 결함을 해결하지 않는다. 받기 전에 양쪽 전체 백업을 보관하고 미전송 변경을 직접 대조한다. 이 결함과 명시적 삭제 전파가 용량 작업 뒤의 우선 수정 대상이다.
 서버는 `BearerFilter` → `AuthenticatedRevisionFilter` → `RevisionService` → controller/service 순서다. owner 행 잠금 안에서 버전 확인·업무 트랜잭션·revision 갱신을 하고 실패 응답은 롤백한다. import는 upsert여서 로컬 목록에서 빠졌다는 이유만으로 서버 항목을 지우지 않는다.
 
@@ -142,7 +146,7 @@ npm run build:mobile
 
 서버 전체 테스트는 `server/`에서 `mvn test`로 실행한다. API 테스트가 disposable PostgreSQL Testcontainers를 띄우므로 운영 DB를 연결할 필요가 없다. 결과는 `server/target/surefire-reports/`에 있으며 실패·오류·건너뜀까지 확인한다. 실제 서버 실행은 [운영 기준](../server/OPERATIONS-BETA.md)과 로컬 실행 도구를 따른다.
 
-핵심 회귀 위치는 `followup-contract.test.cjs`, `sync.test.cjs`, `sync-flow.test.cjs`, `storage-cas.test.cjs`, `app-persistence.test.cjs`, `purchase-persistence.test.cjs`, `capacity-flow.test.cjs`, `needs-offer-flow.test.cjs`, `backup-schema.test.cjs`, `calendar-integrity.test.cjs`, `readiness.test.cjs`와 서버 `FollowupContractTest`, `FollowupApiContractTest`, `AccountCapacityTest`, `ContractGuardTest`, `AuthIsolationTest`, `RevisionConcurrencyTest`, `GoldenParityTest`다. 앱 흐름 회귀는 실제 함수 본문을 추출해 합성 HTTP/저장 어댑터로 실행하며 실제 브라우저 검사는 아니다.
+핵심 회귀 위치는 `followup-contract.test.cjs`, `sync.test.cjs`, `sync-flow.test.cjs`, `storage-cas.test.cjs`, `app-persistence.test.cjs`, `purchase-persistence.test.cjs`, `pull-persistence.test.cjs`, `capacity-flow.test.cjs`, `needs-offer-flow.test.cjs`, `backup-schema.test.cjs`, `calendar-integrity.test.cjs`, `readiness.test.cjs`와 서버 `FollowupContractTest`, `FollowupApiContractTest`, `AccountCapacityTest`, `ContractGuardTest`, `AuthIsolationTest`, `RevisionConcurrencyTest`, `GoldenParityTest`다. 앱 흐름 회귀는 실제 함수 본문을 추출해 합성 HTTP/저장 어댑터로 실행하며 실제 브라우저 검사는 아니다.
 골든 기대값 생성은 의도한 규칙 변경 때만 `npm run golden`과 `node server/tools/gen-rank-golden.mjs`를 사용한다. 실패를 없애려고 기대값을 먼저 갱신하지 않는다.
 브라우저 환경이 준비되면 `npx playwright install chromium` 뒤 `npm run check`, `check:storage`, `check:import`, `check:beta`, `check:web`, `check:a11y`, `check:perf`를 해당 산출물·환경에 맞게 실행한다. Node 테스트·빌드 성공은 이 검사의 실행이나 실제 휴대폰 확인을 대신하지 않는다.
 
@@ -163,13 +167,14 @@ npm run build:mobile
 
 ## 확인된 범위와 남은 책임
 
-| 항목 | 2026-10-13 작성 시점 상태 |
+| 항목 | 2026-10-14 작성 시점 상태 |
 | --- | --- |
 | 서버 | 이전 계약 변경은 실제 PostgreSQL 16 Testcontainers 130개 통과. `d7dfa70` 용량 변경은 Java 21·PostgreSQL 16.15에서 전체 141개 통과, 실패/오류/건너뜀 0. 독립 서버 소스 검토에서 이 변경의 추가 확정 P0/P1 없음; 검토자가 전체 테스트를 재실행한 것은 아님 |
 | 공유 사례 | 88건의 계약 입력/정규화/거부 사례; DB/API 테스트 수와 같은 숫자는 아님 |
 | 클라이언트 | 게시 이력은 최초 184개 → 재로그인 수정 188개 → 구매 저장 수정 203개 통과. 용량·상품 연결 `d7dfa70`의 Node 22.23.2 전체 231개 통과, 실패/건너뜀 0; 용량 VM 22개·구매 15개·상품 연결 6개 포함. 기본 12.24 MB·분리 웹/모바일 각 1.10 MB + 3D 11.14 MB 빌드 성공. 독립 검토자는 해당 43개를 재실행하고 소스를 검토해 이번 범위의 추가 확정 P0/P1을 찾지 못함; 전체 231개는 로그 확인이며 독립 전체 재실행은 아님. 코드 23개 파일의 동결 원문/커밋 일치와 원격 브랜치·PR SHA를 확인함 |
+| 받기 저장 실패 보호 `2cef233` | 게시 범위 Node 278개 통과(기존 231개 + 신규 47개), 실패/건너뜀 0. 세 빌드·각 14 scripts 구문/계약·제출 출처 주입 검사 통과. 독립 집중 회귀 90개 직접 재실행, 연속 제출 제보 해결 확인 및 이번 범위의 추가 확정 P0/P1 없음. 전체 278개와 빌드는 로그 확인이며 독립 전체 재실행은 아님. 코드 3개 파일의 동결 원문/커밋 blob과 원격 기능 브랜치·PR 코드 SHA 일치 확인. 실제 브라우저·두 기기·운영 배포는 별도 확인 대상. 서버 141개를 이번 JS 변경에서 새로 실행한 결과로 쓰지 않음 |
 | 브라우저/실제 기기/운영 복구 | 현재 변경의 전체 E2E, 실제 휴대폰·Safari, 배포 복구/성능은 별도 검증 필요 |
 
 AI가 설계 제안·구현·테스트·이 문서를 작성했다. 사용자는 핵심 규칙과 대안을 이해하고 실제 옷장·구매 후보로 결과의 타당성을 확인해야 한다. 자동 테스트는 패션 취향, 상품 정보의 사실성, 사진 체감 품질이나 사업성을 입증하지 않는다.
-용량·상품 연결 코드 게시를 확인했으므로 다음에는 일반 미전송 자료의 pull 손실과 명시적 삭제/tombstone을 먼저 해결한다. 이후 원자적 v2 sync/outbox, PurchaseCase 이전, 복원 epoch·CI gate, 실제 기기, 상품·가격 출처 검증을 이어간다. 현재 FASHN v1.5 착용 품질은 불합격으로 채택 보류했다(ADR-14). 다른 방식도 같은 인물·상품의 자연스러움과 상품 형태 보존을 검증해야 한다. 실제 상품 자동 수집·전체 시장 최저가·실사 착장·정확한 핏·3D 품질 완성은 완료 기능으로 소개하지 않는다.
+용량·상품 연결과 받기 저장 실패 보호 코드의 검증·게시를 확인했다. 다음에는 일반 미전송 자료의 pull 손실과 명시적 삭제/tombstone을 먼저 해결한다. 단계 A 순수 모듈 초안은 별도 실험이며 앱의 실제 송수신에 통합하지 않았고 이번 게시에서 제외한다. 이후 원자적 v2 sync/outbox, PurchaseCase 이전, 복원 epoch·CI gate, 실제 기기, 상품·가격 출처 검증을 이어간다. 현재 FASHN v1.5 착용 품질은 불합격으로 채택 보류했다(ADR-14). 다른 방식도 같은 인물·상품의 자연스러움과 상품 형태 보존을 검증해야 한다. 실제 상품 자동 수집·전체 시장 최저가·실사 착장·정확한 핏·3D 품질 완성은 완료 기능으로 소개하지 않는다.
 다음 담당자는 [알파 완료 기준](system-design-alpha.md#완료-확인)을 재현한 뒤 후속 작업을 이어간다. 사업 평가는 문제 해결·차별화·검증 계획을 별도로 보고, 서비스 시작 전 사용자·거래·매출 수치를 점수로 채우지 않는다.
