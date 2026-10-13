@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public record Item(
         String id, String status, String cat, String kind, String name, String detail,
-        String family, int light, int formality, String pattern, List<String> seasons,
+        String family, Integer light, Integer formality, String pattern, List<String> seasons,
         String attrSource, String draftNote,
         Photo photo, Product product, List<MatchCandidate> matchCandidates, Look3d look3d,
         String brand, String model, String size, Integer boughtYear, String review, String rebuy, String fabric, String neck,

@@ -67,9 +67,9 @@ public final class WardrobeCleaner {
         return new Item(
                 id.isEmpty() ? "x" + i : id,
                 statusRaw.equals("candidate") ? "candidate" : statusRaw.equals("gone") ? "gone" : "owned",
-                cat, Vocab.KINDS.get(cat).containsKey(kindRaw) ? kindRaw : Vocab.firstKind(cat), name.isEmpty() ? "이름 없음" : name, str(raw.get("detail"), 80),
-                raw.get("family") instanceof String f && Vocab.FAM.containsKey(f) ? f : "gray", light == null ? 50 : (int) Math.round(light),
-                formality == null ? 2 : formality, raw.get("pattern") instanceof String p && Vocab.PATTERNS.containsKey(p) ? p : "solid", seasons(raw.get("seasons")),
+                cat, Vocab.KINDS.get(cat).containsKey(kindRaw) ? kindRaw : null, name.isEmpty() ? "이름 없음" : name, str(raw.get("detail"), 80),
+                raw.get("family") instanceof String f && Vocab.FAM.containsKey(f) ? f : null, light == null ? null : (int) Math.round(light),
+                formality, raw.get("pattern") instanceof String p && Vocab.PATTERNS.containsKey(p) ? p : null, seasons(raw.get("seasons")),
                 attrSource, str(raw.get("draftNote"), 200),
                 photo, product, List.copyOf(cands), cleanLook(raw.get("look3d")),
                 str(raw.get("brand"), 60), str(raw.get("model"), 80), str(raw.get("size"), 30), yearOf(raw.get("boughtYear")), str(raw.get("review"), 500),
@@ -133,16 +133,39 @@ public final class WardrobeCleaner {
         Map<String, Object> a = obj(d.get("after"));
         if (a != null && a.get("decision") instanceof String dec && Vocab.DECIDE.containsKey(dec)) {
             after = new Wardrobe.Decision.After(dec, a.get("helpful") instanceof String h && Vocab.HELP.containsKey(h) ? h : "some", str(a.get("note"), 300), str(a.get("at"), 10),
-                    a.get("shift") instanceof String sh && Vocab.SHIFT.containsKey(sh) ? sh : "same");
+                    a.get("shift") instanceof String sh && Vocab.SHIFT.containsKey(sh) ? sh : "same", str(a.get("insight"), 200),
+                    a.get("comparedWith") instanceof String cmp && List.of("none", "chatbot", "photos", "other").contains(cmp) ? cmp : "none", str(a.get("comparisonNote"), 200));
+        }
+        Wardrobe.Decision.Followup followup = null;
+        Map<String, Object> f = obj(d.get("followup"));
+        if (after != null && f != null && f.get("outcome") instanceof String outcome && List.of("purchased", "not-purchased", "pending").contains(outcome)) {
+            followup = new Wardrobe.Decision.Followup(outcome, f.get("worn") instanceof String worn && List.of("yes", "no", "unknown").contains(worn) ? worn : "unknown",
+                    f.get("regret") instanceof String regret && List.of("yes", "no", "unknown").contains(regret) ? regret : "unknown", str(f.get("note"), 300), safeDate(f.get("at")));
         }
         return new Wardrobe.Decision(str(d.get("id"), 40), str(d.get("itemId"), 40), str(d.get("name"), 80),
                 new Wardrobe.Decision.Before(lean, str(before.get("reason"), 200), str(before.get("at"), 10)),
-                new Wardrobe.Decision.Summary(count(s.get("overlaps"), 999), count(s.get("added"), 9999), count(s.get("blockers"), 999)), after);
+                new Wardrobe.Decision.Summary(count(s.get("overlaps"), 999), count(s.get("added"), 9999), count(s.get("blockers"), 999)), after, followup,
+                after == null ? null : cleanFollow(d.get("follow"), after.decision()));
     }
 
-    private static int count(Object v, int hi) {
+    /** 결정 뒤 물음의 답(wardrobe.js cleanFollow). 산다: worn 필수, 결국 안 샀다가 아니면 feel 필수. 안 산다: feel 필수. 보류·맞지 않는 값이면 null. */
+    public static Wardrobe.Decision.Follow cleanFollow(Object rawObj, String decision) {
+        Map<String, Object> f = obj(rawObj);
+        if (f == null || safeDate(f.get("at")).isEmpty()) return null;
+        String at = (String) f.get("at");
+        String worn = f.get("worn") instanceof String w ? w : "", feel = f.get("feel") instanceof String fe ? fe : "";
+        if ("buy".equals(decision)) {
+            if (!Vocab.WORN.containsKey(worn)) return null;
+            if (worn.equals("notbought")) return new Wardrobe.Decision.Follow(at, "notbought", "");
+            return Vocab.FEEL_BUY.containsKey(feel) ? new Wardrobe.Decision.Follow(at, worn, feel) : null;
+        }
+        if ("skip".equals(decision)) return Vocab.FEEL_SKIP.containsKey(feel) ? new Wardrobe.Decision.Follow(at, "", feel) : null;
+        return null;
+    }
+
+    private static Integer count(Object v, int hi) {
         Double d = num(v, 0, hi);
-        return d == null ? 0 : (int) Math.round(d);
+        return d == null ? null : (int) Math.round(d);
     }
 
     /** 옷장 파일 전체. 스키마 1이든 2든 스키마 2로. 모르는 파일이면 null. */
@@ -179,8 +202,8 @@ public final class WardrobeCleaner {
         Double light = num(raw.get("light"), 0, 100);
         Integer formality = Sanitize.formality(raw.get("formality"));
         return new CatalogProduct(id.isEmpty() ? "p" + i : id, str(raw.get("brand"), 60).strip(), name, str(raw.get("code"), 60).strip(),
-                cat, Vocab.KINDS.get(cat).containsKey(kindRaw) ? kindRaw : Vocab.firstKind(cat), raw.get("family") instanceof String f && Vocab.FAM.containsKey(f) ? f : "gray",
-                light == null ? 50 : (int) Math.round(light), formality == null ? 2 : formality, raw.get("pattern") instanceof String p && Vocab.PATTERNS.containsKey(p) ? p : "solid",
+                cat, Vocab.KINDS.get(cat).containsKey(kindRaw) ? kindRaw : null, raw.get("family") instanceof String f && Vocab.FAM.containsKey(f) ? f : null,
+                light == null ? null : (int) Math.round(light), formality, raw.get("pattern") instanceof String p && Vocab.PATTERNS.containsKey(p) ? p : null,
                 seasons(raw.get("seasons")), safeLink(raw.get("link")), whole(raw.get("price"), 0, 1e9), safeDate(raw.get("checkedAt")), safeImg(raw.get("img")),
                 str(raw.get("note"), 200), safeDate(raw.get("addedAt")));
     }

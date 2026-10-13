@@ -4,26 +4,31 @@
  * 같은 입력이면 항상 같은 결과가 나온다.
  *
  * 아이템 필드
- *   cat: 'outer' | 'top' | 'bottom' | 'shoes'
- *   family: 색 계열 (navy, indigo, black, gray, white, ivory, beige, khaki, brown, olive, green, blue, red, burgundy …)
+ *   cat: 'outer' | 'top' | 'bottom' | 'dress' | 'shoes'     dress(원피스)는 혼자서 차림 하나다. 조합에서는 top 자리에 두고 bottom 은 null, dress: true
+ *   family: 색 계열 (navy, indigo, black, gray, white, ivory, beige, khaki, brown, olive, green, blue, red, burgundy, pink, purple, yellow, orange)
  *   light: 밝기 0(검정)~100(흰색)
  *   formality: 1(편한 차림) ~ 3(단정한 차림)
  *   pattern: 'solid' | 'stripe' | 'check' | 'graphic'
  *   kind: 'shirt' | 'sweat' | 'cardigan' | 'jacket' | 'denim' | 'chino' …
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.Recommend = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(() => require('./wardrobe.js'));
+  else root.Recommend = factory(() => root.Wardrobe);
+})(typeof self !== 'undefined' ? self : this, function (getWardrobe) {
   'use strict';
 
   // 멀리서 보면 한 색으로 읽히는 계열끼리 묶는다
-  const GROUP = { navy: 'deep-blue', indigo: 'deep-blue', black: 'black', gray: 'gray', olive: 'olive', brown: 'brown', khaki: 'khaki', beige: 'khaki', blue: 'light-blue', green: 'green', white: 'white', ivory: 'white', red: 'red', burgundy: 'red' };
+  const GROUP = { navy: 'deep-blue', indigo: 'deep-blue', black: 'black', gray: 'gray', olive: 'olive', brown: 'brown', khaki: 'khaki', beige: 'khaki', blue: 'light-blue', green: 'green', white: 'white', ivory: 'white', red: 'red', burgundy: 'red',
+    pink: 'pink', purple: 'purple', yellow: 'yellow', orange: 'orange' };
+  const DRESS_BASE = 2;   // [제안값] 원피스 한 벌의 기본 점수. 무난한 상의·하의 한 쌍(밝기 차이 적당 + 격식 비슷)과 같은 수준
   const group = (it) => GROUP[it.family] || it.family;
   const patterned = (it) => it.pattern && it.pattern !== 'solid';
+  const ready = (it) => getWardrobe().assessment(it).ready;
+  function pending(items) { return { score: null, why: [], caution: ['속성 확인이 필요합니다.'], status: 'needs-confirmation', missing: items.filter((it) => !ready(it)).map((item) => ({ item, missing: getWardrobe().assessment(item).missing })) }; }
 
   /** 상의와 하의 한 쌍의 점수와 근거. */
   function scorePair(top, bottom) {
+    if (!ready(top) || !ready(bottom)) return pending([top, bottom]);
     let score = 0;
     const why = [], caution = [];
     const gap = Math.abs(top.light - bottom.light);
@@ -43,6 +48,7 @@
 
   /** 상의·하의 위에 아우터를 걸쳤을 때 더하거나 빼는 점수와 근거. */
   function scoreOuter(outer, top, bottom) {
+    if (![outer, top, bottom].every(ready)) return pending([outer, top, bottom]);
     let score = 0;
     const why = [], caution = [];
     if (group(outer) !== group(top)) { score += 1; why.push('아우터와 상의의 색이 달라 겹쳐 입은 층이 보입니다.'); }
@@ -63,8 +69,27 @@
     return { score, why, caution };
   }
 
-  /** 가능한 모든 조합에 점수를 매긴다. 아우터 없는 조합도 포함한다. */
+  /** 원피스 한 벌의 점수와 근거. 위아래 밝기·무늬 규칙이 없으므로 기본 점수만 준다. */
+  function scoreDress(dress) {
+    return { score: DRESS_BASE, why: ['원피스 한 벌로 위아래가 이어져 차림이 완성됩니다.'], caution: [] };
+  }
+
+  /** 원피스 위에 아우터를 걸쳤을 때 더하거나 빼는 점수와 근거. scoreOuter 와 같은 생각을 원피스 한 벌에 맞춘 것이다. */
+  function scoreDressOuter(outer, dress) {
+    let score = 0;
+    const why = [], caution = [];
+    if (group(outer) !== group(dress)) { score += 1; why.push('아우터와 원피스의 색이 달라 겹쳐 입은 층이 보입니다.'); }
+    else { score -= 1; caution.push('아우터와 원피스의 색이 비슷합니다.'); }
+    if (outer.light + 12 < dress.light) { score += 1; why.push('밝은 원피스 위에 어두운 아우터라 안쪽이 드러납니다.'); }
+    if (Math.abs(outer.formality - dress.formality) <= 1) { score += 1; why.push('아우터와 원피스의 격식 수준이 비슷합니다.'); }
+    else { score -= 1; caution.push('아우터와 원피스의 격식 차이가 큽니다.'); }
+    if (patterned(outer) && patterned(dress)) { score -= 2; caution.push('아우터와 원피스에 모두 무늬가 있습니다.'); }
+    return { score, why, caution };
+  }
+
+  /** 가능한 모든 조합에 점수를 매긴다. 아우터 없는 조합도 포함한다. 원피스는 혼자서 조합 하나다. */
   function allCombos(items) {
+    items = items.filter(ready);
     const tops = items.filter((i) => i.cat === 'top');
     const bottoms = items.filter((i) => i.cat === 'bottom');
     const outers = [null].concat(items.filter((i) => i.cat === 'outer'));
@@ -81,6 +106,13 @@
         });
       }
     }
+    for (const dress of items.filter((i) => i.cat === 'dress')) {
+      const d = scoreDress(dress);
+      for (const outer of outers) {
+        const o = outer ? scoreDressOuter(outer, dress) : { score: 0, why: [], caution: [] };
+        out.push({ top: dress.id, bottom: null, outer: outer ? outer.id : null, dress: true, score: d.score + o.score, why: d.why.concat(o.why), caution: d.caution.concat(o.caution) });
+      }
+    }
     // 점수가 같으면 id 순서로 정해 결과가 흔들리지 않게 한다
     const key = (c) => [c.top, c.bottom, c.outer || ''].join('|');
     out.sort((a, b) => b.score - a.score || (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
@@ -88,7 +120,7 @@
   }
 
   /**
-   * 추천 n개를 고른다. 같은 상의를 두 번 쓰지 않고, 하의와 아우터는 가능한 한 겹치지 않게 한다.
+   * 추천 n개를 고른다. 같은 상의(원피스)를 두 번 쓰지 않고, 하의와 아우터는 가능한 한 겹치지 않게 한다.
    * exclude: 빼고 싶은 조합 키('top|bottom|outer') 목록.
    */
   function recommend(items, n, exclude) {
@@ -104,13 +136,13 @@
         if (skip.has([c.top, c.bottom, c.outer || ''].join('|'))) continue;
         if (usedTop.has(c.top)) continue;
         // 첫 바퀴에서는 하의와 아우터도 새것만 고른다. 모자라면 둘째 바퀴에서 겹침을 허용한다
-        if (pass === 0 && (usedBottom.has(c.bottom) || (c.outer && usedOuter.has(c.outer)))) continue;
+        if (pass === 0 && ((c.bottom && usedBottom.has(c.bottom)) || (c.outer && usedOuter.has(c.outer)))) continue;
         picked.push(c);
-        usedTop.add(c.top); usedBottom.add(c.bottom); if (c.outer) usedOuter.add(c.outer);
+        usedTop.add(c.top); if (c.bottom) usedBottom.add(c.bottom); if (c.outer) usedOuter.add(c.outer);
       }
     }
     return picked;
   }
 
-  return { scorePair, scoreOuter, allCombos, recommend, GROUP };
+  return { scorePair, scoreOuter, scoreDress, scoreDressOuter, allCombos, recommend, GROUP, DRESS_BASE };
 });

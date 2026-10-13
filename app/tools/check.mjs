@@ -1,6 +1,7 @@
 // dist/index.html을 헤드리스 브라우저로 열어 핵심 흐름을 끝까지 실행하고 화면을 찍는다. 개발 확인용.
 // 기대값은 data/sample-wardrobe.json(예시 옷장 13벌)에 맞춰져 있다. 다른 옷장 자료로 빌드한 파일에는 그대로 쓸 수 없다.
 // 사용: node tools/check.mjs            환경 변수: PAGE(다른 파일), NO3D=1(3D 탭 건너뛰기), QUICK=1(밝은 화면만)
+// CHROMIUM_EXECUTABLE(설치된 브라우저), NATIVE_GPU=1(맥 등에서 기본 GPU로 전체 검사)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,9 +10,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, 'shots'); fs.mkdirSync(shots, { recursive: true });
 const file = pathToFileURL(path.join(root, process.env.PAGE || 'dist/index.html')).href;
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: process.env.NATIVE_GPU === '1' ? [] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let failed = 0;
-const ok = (cond, label, extra) => { if (!cond) failed++; console.log((cond ? '  ok   ' : '  FAIL ') + label + (extra !== undefined ? ' → ' + JSON.stringify(extra) : '')); };
+const results = [];
+const ok = (cond, label, extra) => { if (!cond) failed++; results.push({ pass: !!cond, label, ...(extra === undefined ? {} : { detail: extra }) }); console.log((cond ? '  ok   ' : '  FAIL ') + label + (extra !== undefined ? ' → ' + JSON.stringify(extra) : '')); };
 // 경로에 한글·공백이 있으면 Chromium 파일 선택이 조용히 실패해서, 파일 내용을 버퍼로 넘긴다
 const asFile = (f, mimeType = 'application/json') => ({ name: path.basename(f), mimeType, buffer: fs.readFileSync(f) });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR4nGP4z8DwHwYZAB5pA/1Oxp5HAAAAAElFTkSuQmCC', 'base64');   // 2×2 png
@@ -37,16 +39,24 @@ for (const m of modes) {
   const MOCK = 'http://127.0.0.1:8099';                                                              // 내 서버 흉내(page.route). 실제 서버(server/)와의 연결은 여기서 확인하지 않는다
   const syncReqs = [];
   page.on('request', (r) => { if (r.url().startsWith(MOCK)) { syncReqs.push(r.method() + ' ' + r.url().slice(MOCK.length)); return; } if (!r.url().startsWith('file:') && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) reqs.push(r.url()); });
-  const srv = { wardrobe: null, catalog: null, keys: new Set() };
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Expose-Headers': 'Idempotent-Replayed' };
+  const mockToken = 'synthetic-regression-token-000000000000000000';
+  const srv = { wardrobe: null, catalog: null, keys: new Set(), version: 0 };
+  const cors = { 'Access-Control-Allow-Origin': 'null', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Expose-Headers': 'Idempotent-Replayed,X-Wardrobe-Version' };
   await page.route(MOCK + '/**', async (route) => {
     const q = route.request(), u = new URL(q.url());
     if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    const json = (o) => route.fulfill({ status: 200, headers: Object.assign({ 'Content-Type': 'application/json' }, cors), body: JSON.stringify(o) });
+    const json = (o, status = 200) => route.fulfill({ status, headers: Object.assign({ 'Content-Type': 'application/json', 'X-Wardrobe-Version': String(srv.version) }, cors), body: JSON.stringify(o) });
+    if (q.method() === 'POST' && u.pathname === '/api/auth/login') return json({ token: mockToken, expiresAt: '2099-01-01T00:00:00Z', user: { username: 'synthetic-qa', ownerId: 77 } });
+    if (q.headers().authorization !== 'Bearer ' + mockToken) return json({ detail: '로그인이 필요합니다' }, 401);
+    if (q.method() === 'GET' && u.pathname === '/api/auth/me') return json({ username: 'synthetic-qa', ownerId: 77 });
+    if (q.method() === 'POST' && u.pathname === '/api/auth/logout') return route.fulfill({ status: 204, headers: cors });
     if (q.method() === 'POST' && (u.pathname === '/api/wardrobe/import' || u.pathname === '/api/catalog/import')) {
       const key = q.headers()['idempotency-key'] || '', body = JSON.parse(q.postData()), wardrobe = u.pathname.includes('wardrobe');
+      if (!q.headers()['if-match']) return json({ detail: '서버 버전을 확인해 주세요' }, 428);
+      if (q.headers()['if-match'] !== '"' + srv.version + '"') return json({ detail: '더 새로운 서버 기록이 있습니다' }, 409);
       const replayed = srv.keys.has(key); srv.keys.add(key);
       if (wardrobe) srv.wardrobe = body; else srv.catalog = body;
+      if (!replayed) srv.version++;
       return json({ items: (wardrobe ? body.items : body.products).length, created: replayed ? 0 : 1, updated: 0, decisions: wardrobe ? body.decisions.length : 0, replayed });
     }
     if (q.method() === 'GET' && u.pathname === '/api/wardrobe') { const w = JSON.parse(JSON.stringify(srv.wardrobe)); w.items[1].name = w.items[1].name + ' (서버)'; return json(w); }
@@ -65,6 +75,7 @@ for (const m of modes) {
   await ctx.addInitScript((s) => { try { if (!localStorage.getItem('otjang.v2') && !localStorage.getItem('__migrated')) { localStorage.setItem('otjang.v1', JSON.stringify(s)); localStorage.setItem('__migrated', '1'); } } catch (e) { /* 무시 */ } }, v1state);
   await page.goto(file);
   await page.waitForFunction(() => window.__app);
+  await page.click('#tabbtn-closet');
   const mig = await page.evaluate(() => { const s = window.__app.state; return { from: s.loadedFrom, n: s.items.length, src0: s.items[0].attrSource, src1: s.items[1].attrSource, photo0: s.items[0].photo.kind, own0: s.items[0].photo.ownImg.slice(0, 15), brand0: s.items[0].brand, v1kept: !!localStorage.getItem('otjang.v1'), rack: s.rack.length, mode: window.__app.store.mode }; });
   ok(mig.from === 'ls1' && mig.n === 13 && mig.src0 === 'owner-confirmed' && mig.src1 === 'photo-draft' && mig.photo0 === 'own' && mig.own0.startsWith('data:image/png') && mig.brand0 === 'Brand A' && mig.v1kept, 'v0.3 저장소(스키마 1)를 읽어 스키마 2로 옮기고, 예전 저장소는 그대로 둔다', mig);
   ok(mig.mode === 'idb', '저장은 IndexedDB를 쓴다', mig.mode);
@@ -79,6 +90,8 @@ for (const m of modes) {
   await page.click('#tabbtn-closet');
   const base = await page.evaluate(() => ({ n: window.__app.state.items.length, rack: window.__app.state.rack.length, drafts: window.__app.state.items.filter((i) => i.attrSource === 'photo-draft').length, cands: window.__app.state.items.filter((i) => i.matchCandidates.length).length }));
   ok(base.n === 13 && base.rack === 5 && base.drafts === 13 && base.cands === 2, '처음 상태: 13벌 모두 초안, 3D 형태 5벌이 걸려 있고, 미확인 브랜드 후보 2벌', base);
+  const draftVerdict = await page.evaluate(() => window.__app.J.judgeCandidate(window.__app.state.items, { ...window.__app.state.items[0], status: 'candidate' }));
+  ok(draftVerdict.status === 'needs-confirmation' && draftVerdict.before === null && draftVerdict.after === null, '합성 예시 초안은 확인 전 조합 수를 만들지 않는다');
 
   // 1. 옷장: 배지, 기록 편집, 확인하기(모르는 것만 묻기)
   ok(await page.locator('#closetGrid .card').count() === 13, '옷장에 13벌이 보인다');
@@ -131,26 +144,31 @@ for (const m of modes) {
   const gz = await page.evaluate(() => ({ fam: document.querySelector('#z-family').value, light: Number(document.querySelector('#z-light').value), note: document.querySelector('#z-guess').textContent }));
   ok(gz.fam === 'navy' && gz.light >= 15 && gz.light <= 25 && gz.note.includes('사진에서 뽑은 초안') && gz.note.includes('네이비'), '사진을 넣으면 색 계열·밝기 초안이 채워지고 안내가 보인다', gz);
   await page.click('#wzNext'); await page.locator('#wizard .inl button', { hasText: '모름' }).first().click(); await page.locator('#wizard .inl button', { hasText: '모름' }).nth(1).click();
+  await page.setInputFiles('#z-prodPhoto', pngFile('synthetic-product.png')); await page.click('#wzNext');
+  await page.waitForSelector('#wzErr:not([hidden])');
+  ok(await page.locator('#wzErr').isVisible() && (await page.locator('#wzErr').innerText()).includes('상태를 골라'), '상품 사진을 넣고 상태를 고르지 않으면 마법사가 저장하지 않는다');
+  await page.check('#z-photoKind input[value="substitute"]');
   await page.click('#wzNext'); await page.waitForFunction(() => !document.querySelector('#wizard').open);
-  const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '네이비 니트 (사진)'); return i && { src: i.attrSource, family: i.family, light: i.light, note: i.draftNote, photo: i.photo.kind }; });
-  ok(gi && gi.src === 'photo-draft' && gi.family === 'navy' && gi.photo === 'own' && gi.note.includes('대표색 #'), '사진 초안을 그대로 두고 저장하면 attrSource 가 photo-draft 이고 대표색이 기록된다', gi);
+  const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '네이비 니트 (사진)'); return i && { src: i.attrSource, family: i.family, light: i.light, note: i.draftNote, photo: i.photo.kind, own: i.photo.ownImg.startsWith('data:image') }; });
+  ok(gi && gi.src === 'photo-draft' && gi.family === 'navy' && gi.photo === 'substitute' && gi.own && gi.note.includes('대표색 #'), '사진 초안을 유지해 대표색을 기록하고 대체 상품 사진을 걸어도 내 사진은 남는다', gi);
   await page.locator('#closetGrid .card', { hasText: '네이비 니트 (사진)' }).getByRole('button', { name: '기록' }).click();
-  await page.click('#edDelete'); await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
+  await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
   ok(await page.evaluate(() => !window.__app.state.items.some((x) => x.name === '네이비 니트 (사진)')), '시험용 옷을 지웠다');
+  // 숫자 골든 회귀에 앞서 합성 브라우저 사본만 사용자가 확인한 상태로 만든다. 원래 예시 JSON은 수정하지 않는다.
+  await page.evaluate(() => { window.__app.state.items = window.__app.state.items.map((item) => window.__app.W.cleanItem({ ...item, attrSource: 'owner-confirmed' }, 0)); });
 
   // 3. 살까 말까: 마법사로 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로
   await page.click('#tabbtn-judge');
   await page.click('#addCand');
-  ok(await page.locator('#wzSteps .step').count() === 3, '후보 추가는 세 단계를 묻는다');
-  await page.selectOption('#z-cat', 'top'); await page.selectOption('#z-kind', 'sweat'); await page.fill('#z-name', '그레이 스웻셔츠'); await page.click('#wzNext');
-  await page.selectOption('#z-family', 'gray'); await page.selectOption('#z-formality', '1'); await page.click('#wzNext');
-  await page.fill('#z-brand', '브랜드'); await page.fill('#z-price', '89000'); await page.setInputFiles('#z-prodPhoto', pngFile('prod.png'));
-  await page.click('#wzNext'); await page.waitForSelector('#wzErr:not([hidden])');
-  ok(await page.locator('#wzErr').isVisible() && (await page.locator('#wzErr').innerText()).includes('상태를 골라'), '상품 사진을 넣고 상태를 고르지 않으면 저장하지 않는다');
-  await page.locator('#z-photoKind .choice', { hasText: '같은 상품임을 확인' }).click();
-  await page.click('#wzNext'); await page.waitForFunction(() => !document.querySelector('#wizard').open);
+  ok(await page.locator('#quickItemForm').isVisible() && (await page.inputValue('#q-light')) === '', '후보 빠른 등록은 모르는 밝기를 비워 두고 시작한다');
+  await page.selectOption('#q-cat', 'top'); await page.selectOption('#q-kind', 'sweat'); await page.fill('#q-name', '그레이 스웻셔츠');
+  await page.selectOption('#q-family', 'gray'); await page.fill('#q-light', '50'); await page.selectOption('#q-formality', '1'); await page.selectOption('#q-pattern', 'solid'); await page.check('#q-confirmed'); await page.click('#quickSave');
+  await page.locator('#beforeForm').getByRole('button', { name: '후보 수정' }).click();
+  await page.fill('#f-brand', '브랜드'); await page.fill('#f-price', '89000'); await page.click('#edSave');
+  await page.locator('#beforeForm').getByRole('button', { name: '후보 수정' }).click(); await page.click('#f-match');
+  await page.fill('#mt-brand', '브랜드'); await page.fill('#mt-name', '합성 확인 상품'); await page.setInputFiles('#mt-photo', pngFile('prod.png')); await page.click('#mtConfirm'); await page.click('#mtCancel');
   const cnd = await page.evaluate(() => { const c = window.__app.state.items.find((i) => i.status === 'candidate'); return c && { photo: c.photo.kind, product: c.product && c.product.brand, price: c.price, checkedAt: c.checkedAt, src: c.attrSource }; });
-  ok(cnd && cnd.photo === 'confirmed' && cnd.product === '브랜드' && cnd.price === 89000 && cnd.checkedAt && cnd.src === 'owner', '후보가 확인된 상품 사진과 가격·확인일을 가지고 들어간다', cnd);
+  ok(cnd && cnd.photo === 'confirmed' && cnd.product === '브랜드' && cnd.price === 89000 && cnd.checkedAt && cnd.src === 'owner-confirmed', '확인한 후보가 확인된 상품 사진과 가격·확인일을 가지고 들어간다', cnd);
   ok(await page.locator('#beforeForm').count() === 1 && await page.locator('#vCombos').count() === 0, '판정 전에는 결과가 보이지 않고 지금 마음을 먼저 묻는다');
   await page.locator('#beforeForm .choice', { hasText: '모르겠다' }).click();
   await page.fill('#beforeReason', '스웻셔츠가 이미 한 벌 있다');
@@ -158,7 +176,7 @@ for (const m of modes) {
   const v = await page.evaluate(() => window.__verdict);
   ok(v.added === 1 && v.overlaps.length === 0 && v.top3 === 1 && v.after - v.before === 1 && v.blockers.length === 3, '그레이 스웻셔츠 후보: 겹침 0, 새 조합 1개(생지 데님), 걸리는 점 3가지', v);
   ok((await page.locator('#vBlock').innerText()).includes('하의 3벌 중 1벌'), '걸리는 점에 걸린 옷의 수가 나온다');
-  ok(await page.locator('#vDraft').count() === 1 && (await page.locator('#vDraft').innerText()).includes('확인 전 속성 포함'), '판정에 쓰인 초안 옷을 알려 준다 (점수는 그대로)');
+  ok(await page.locator('#vDraft').count() === 0, '확인한 합성 옷만 계산한 결과에 초안 사용 표시가 없다');
   const priceTxt = await page.locator('main').innerText();
   ok(priceTxt.includes('89,000원') && priceTxt.includes('확인)'), '직접 넣은 가격과 확인 날짜가 보인다');
   ok(!/\d+\s?%/.test(priceTxt), '화면에 % 표시가 없다');
@@ -177,24 +195,30 @@ for (const m of modes) {
   // 4. 코디
   await page.click('#tabbtn-outfits');
   ok(await page.locator('#recGrid .outfit').count() === 3, '코디 3개가 나온다');
-  ok(await page.locator('#recGrid .draftnote').count() >= 1, '초안 옷이 쓰인 조합에는 확인 전 속성 표시가 붙는다');
+  ok(await page.locator('#recGrid .draftnote').count() === 0, '확인한 합성 옷만 코디에 사용한다');
   const before = await page.evaluate(() => window.__recs.map((c) => c.top + c.bottom + c.outer).join());
   await page.click('#moreRecs');
   const after = await page.evaluate(() => window.__recs.map((c) => c.top + c.bottom + c.outer).join());
   ok(before !== after && after.length > 0, '다른 추천 보기를 누르면 다른 조합이 나온다');
   await page.getByRole('button', { name: '여름' }).click();
-  ok(await page.evaluate(() => window.__recs.length > 0 && window.__recs.every((c) => [c.top, c.bottom, c.outer].filter(Boolean).every((id) => { const s = window.__app.state.items.find((i) => i.id === id).seasons; return !s.length || s.includes('여름'); }))), '계절을 고르면 그 계절의 옷만 쓴다 (계절을 비운 옷은 사계절로 본다)');
+  ok(await page.evaluate(() => window.__recs.length === 0) && await page.locator('#recGrid .outfit').count() === 0, '계절이 모르는 하의뿐이면 여름 조합을 확정하지 않는다');
+  await page.evaluate(() => { window.__app.state.items = window.__app.state.items.map((item) => window.__app.W.cleanItem({ ...item, seasons: item.seasons.length ? item.seasons : window.__app.W.SEASONS.slice() }, 0)); });
+  await page.getByRole('button', { name: '모든 계절', exact: true }).click(); await page.getByRole('button', { name: '여름', exact: true }).click();
+  ok(await page.evaluate(() => window.__recs.length > 0 && window.__recs.every((c) => [c.top, c.bottom, c.outer].filter(Boolean).every((id) => window.__app.state.items.find((i) => i.id === id).seasons.includes('여름')))), '합성 옷의 빈 계절을 직접 확인한 뒤 여름 옷만 추천한다');
   await shot('4-outfits');
 
   // 5. 살 만한 옷: 상품을 직접 넣고, 목록 안에서만 순서를 매기고, 후보로 넣는다
   await page.click('#tabbtn-shop');
+  await page.click('#shopOwn > summary');
   ok(await page.locator('#shopEmpty').count() === 1, '상품이 없으면 비어 있다고 알려 준다 (지어내지 않는다)');
   await page.click('#addProduct');
   await page.fill('#p-brand', '어느 브랜드'); await page.fill('#p-name', '네이비 크루넥 니트'); await page.selectOption('#p-cat', 'top'); await page.selectOption('#p-kind', 'knit'); await page.selectOption('#p-family', 'navy');
+  await page.fill('#p-light', '20'); await page.selectOption('#p-formality', '2'); await page.selectOption('#p-pattern', 'solid');
   await page.fill('#p-price', '129000'); await page.fill('#p-checked', '2026-01-05'); await page.fill('#p-link', 'https://shop.example/knit'); await page.setInputFiles('#p-photo', pngFile('p.png'));
   await page.click('#pdSave'); await page.waitForFunction(() => !document.querySelector('#product').open);
   await page.click('#addProduct');
   await page.fill('#p-name', '네이비 그래픽 스웻'); await page.selectOption('#p-cat', 'top'); await page.selectOption('#p-kind', 'sweat'); await page.selectOption('#p-family', 'navy'); await page.selectOption('#p-pattern', 'graphic'); await page.fill('#p-price', '59000');
+  await page.fill('#p-light', '20'); await page.selectOption('#p-formality', '1');
   await page.click('#pdSave'); await page.waitForFunction(() => !document.querySelector('#product').open);
   const shop = await page.evaluate(() => window.__shop);
   ok(shop.length === 2 && shop[0].gap === 't-knit-navy' && shop[0].stale === true && shop[1].stale === false && shop[0].score > shop[1].score, '두 상품이 목록 안에서만 순서가 매겨지고, 빈틈을 채우는 니트가 앞서며, 오래된 가격은 재확인 필요다', shop);
@@ -235,11 +259,20 @@ for (const m of modes) {
   ok(bought.photo.kind === 'confirmed' && bought.photo.img === '' && bought.product.brand === '브랜드' && data.items[0].photo.img.startsWith('data:image') && data.items.every((i) => i.matchCandidates.length === 0), '남의 상품 사진과 브랜드 후보는 기본으로 빠지고, 내 사진과 확인된 상품 정보는 남는다');
   await shot('7-log');
   // 7b. 내 서버와 맞추기 (흉내 서버): 보내기 → 같은 내용 다시 보내기(멱등 키 같음) → 받기 → 바꾸기
+  await page.locator('#advanced > summary').click();
   ok((await page.isChecked('#syncPhotos')) === false || (await page.inputValue('#syncBase')).includes('localhost'), '기본 주소는 이 컴퓨터(localhost)다');
   await page.fill('#syncBase', 'http://192.168.0.10:8099'); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
   ok((await page.isChecked('#syncPhotos')) === false, '이 컴퓨터가 아닌 주소면 사진은 기본으로 보내지 않는다');
   await page.fill('#syncBase', MOCK); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
   ok(await page.isChecked('#syncPhotos'), '이 컴퓨터(127.0.0.1) 주소면 사진을 기본으로 함께 보낸다');
+  const localBeforeAuth = await st();
+  const localBackupBeforeAuth = await page.evaluate(() => window.Beta.makeBackup(window.__app.state));
+  ok(await page.isDisabled('#syncPush'), '미인증 상태에서는 서버 보내기를 사용할 수 없다');
+  await page.fill('#syncUser', 'synthetic-qa'); await page.fill('#syncPassword', 'synthetic-regression-password'); await page.click('#syncLogin');
+  await page.waitForSelector('#syncLogout');
+  ok((await st()).items.length === 0 && srv.wardrobe === null, '모의 인증 후 빈 계정 옷장을 열고 기존 개인 옷장을 자동 전송하지 않는다');
+  await page.setInputFiles('#backupFile', { name: 'synthetic-account-restore.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(localBackupBeforeAuth)) });
+  await page.click('#backupRestoreConfirm'); await flush();
   await page.click('#syncPush'); await page.waitForFunction(() => /보냈습니다|닿지|답/.test((document.querySelector('#syncMsg') || {}).textContent || ''));
   const pushMsg = await page.locator('#syncMsg').innerText();
   const sw = srv.wardrobe;
@@ -250,7 +283,9 @@ for (const m of modes) {
   await page.click('#pullGo');
   const pulled = await page.evaluate(() => ({ n: window.__app.state.items.length, name1: window.__app.state.items[1].name, own0: window.__app.state.items[0].photo.ownImg.slice(0, 10) }));
   ok(pulled.name1.endsWith('(서버)') && pulled.own0 === 'data:image' && pulled.n === sw.items.length, '서버에서 받기: 확인을 누르면 서버 내용으로 바뀌고 내 사진은 남는다', pulled);
-  ok(syncReqs.filter((r) => !r.startsWith('OPTIONS')).join() === 'POST /api/wardrobe/import,POST /api/catalog/import,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/wardrobe?photos=true,GET /api/catalog', '누른 만큼만 요청한다', syncReqs);
+  ok(syncReqs.filter((r) => !r.startsWith('OPTIONS') && !r.includes('/api/auth/')).join() === 'POST /api/wardrobe/import,POST /api/catalog/import,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/wardrobe?photos=true,GET /api/catalog', '인증 외에는 누른 만큼만 자료 요청한다', syncReqs);
+  await page.click('#syncLogout');
+  ok((await st()).items.length === localBeforeAuth.items.length && (await st()).owner.nickname === localBeforeAuth.owner.nickname, '로그아웃하면 전송 전 개인 옷장으로 돌아온다');
   await page.click('#tabbtn-compare');
   await page.setInputFiles('#otherFile', asFile(exp));
   await page.waitForFunction(() => window.__app.state.others.length === 1);
@@ -311,5 +346,6 @@ for (const m of modes) {
   await ctx.close();
 }
 await browser.close();
+fs.writeFileSync(path.join(shots, 'regression-result.json'), JSON.stringify({ total: results.length, passed: results.filter(r => r.pass).length, failed, actualUserUsageRecorded: false, mockServerOnly: true, results }, null, 2) + '\n');
 console.log(failed ? failed + '건 실패' : '모두 통과');
 process.exit(failed ? 1 : 0);

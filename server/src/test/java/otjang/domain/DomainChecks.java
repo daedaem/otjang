@@ -31,7 +31,7 @@ public final class DomainChecks {
         failed = 0;
         Item base = WardrobeCleaner.cleanItem(raw("cat", "top", "kind", "shirt", "name", "x", "img", IMG), 0);
         ok(base.photo().kind().equals("own") && base.photo().img().equals(IMG) && base.photo().ownImg().equals(IMG), "스키마 1의 img 는 내 사진(own)으로 옮겨지고 ownImg 에도 남는다");
-        ok(base.attrSource().equals("owner") && base.status().equals("owned") && base.family().equals("gray") && base.light() == 50 && base.formality() == 2, "빠진 값은 기본값으로 채운다");
+        ok(base.attrSource().equals("owner") && base.status().equals("owned") && base.family() == null && base.light() == null && base.formality() == null, "미확인 값은 기본값을 만들지 않고 null로 남긴다");
 
         Item fake = WardrobeCleaner.cleanItem(raw("cat", "top", "kind", "shirt", "name", "x", "photo", raw("kind", "confirmed", "img", IMG, "sourceName", "쇼핑몰")), 0);
         ok(fake.photo().kind().equals("candidate") && fake.product() == null, "확인 기록 없는 '확인됨'은 후보로 내려간다");
@@ -90,6 +90,28 @@ public final class DomainChecks {
         ok(WardrobeCleaner.cleanWardrobe(raw("schema", 3, "items", List.of())) == null && WardrobeCleaner.cleanWardrobe(raw("schema", 2)) == null, "모르는 스키마나 items 없는 파일은 읽지 않는다");
         Wardrobe twice = WardrobeCleaner.cleanWardrobe(toRawWardrobe(cleaned));
         ok(twice.equals(cleaned), "정리는 멱등이다");
+
+        // 0.5.0-beta: 원피스·새 종류·새 색, 결정 뒤 물음
+        Item jump = WardrobeCleaner.cleanItem(raw("cat", "dress", "kind", "jumpsuit", "name", "점프수트", "family", "purple", "light", 40, "measures", raw("length", 110, "waist", 70, "rise", 30)), 0);
+        ok(jump.cat().equals("dress") && jump.kind().equals("jumpsuit") && jump.family().equals("purple") && jump.measures().equals(Map.of("length", 110.0, "waist", 70.0)), "원피스 분류·점프수트·퍼플·원피스 실측(총장·허리)이 남는다");
+        ok(WardrobeCleaner.cleanItem(raw("cat", "dress", "kind", "tee"), 0).kind() == null && WardrobeCleaner.cleanItem(raw("cat", "bottom", "kind", "skirt"), 0).kind().equals("skirt")
+                && WardrobeCleaner.cleanItem(raw("cat", "shoes", "kind", "heels"), 0).kind().equals("heels"), "모르는 원피스 종류는 미확인, 스커트·힐은 그대로");
+        Map<String, Object> after = raw("decision", "buy", "helpful", "yes", "at", "2026-09-01", "shift", "same");
+        Wardrobe.Decision d1 = WardrobeCleaner.cleanDecision(raw("id", "d", "before", raw("lean", "buy"), "after", after, "follow", raw("at", "2026-09-20", "worn", "notbought", "feel", "regret")));
+        ok(d1.follow() != null && d1.follow().worn().equals("notbought") && d1.follow().feel().isEmpty(), "결국 안 샀다면 만족은 비운다");
+        ok(WardrobeCleaner.cleanDecision(raw("id", "d", "before", raw("lean", "buy"), "after", after, "follow", raw("at", "2026-09-20", "worn", "few"))).follow() == null, "산다인데 만족을 안 고르면 받지 않는다");
+        Map<String, Object> skip = raw("decision", "skip", "helpful", "some", "at", "2026-09-01");
+        Wardrobe.Decision d2 = WardrobeCleaner.cleanDecision(raw("id", "d", "before", raw("lean", "buy"), "after", skip, "follow", raw("at", "2026-09-20", "worn", "many", "feel", "regret")));
+        ok(d2.follow() != null && d2.follow().worn().isEmpty() && d2.follow().feel().equals("regret"), "안 산다는 아쉬움만 받는다");
+        ok(WardrobeCleaner.cleanDecision(raw("id", "d", "before", raw("lean", "buy"), "follow", raw("at", "2026-09-20", "feel", "good"))).follow() == null
+                && WardrobeCleaner.cleanDecision(raw("id", "d", "before", raw("lean", "buy"), "after", raw("decision", "hold"), "follow", raw("at", "2026-09-20", "feel", "good"))).follow() == null, "결정 전이나 보류에는 물음 답이 없다");
+        Item dressN = WardrobeCleaner.cleanItem(raw("id", "dn", "cat", "dress", "kind", "dress", "family", "navy", "light", 18, "formality", 3, "pattern", "solid"), 0);
+        Item coat = WardrobeCleaner.cleanItem(raw("id", "co", "cat", "outer", "kind", "coat", "family", "black", "light", 12, "formality", 3, "pattern", "solid"), 0);
+        List<Recommend.Combo> recs = Recommend.recommend(List.of(dressN, coat), 3, null);
+        ok(recs.size() == 1 && recs.get(0).dress() && recs.get(0).bottom() == null && recs.get(0).key().equals("dn||co"), "원피스만 있어도 코디가 나오고 키는 '원피스||아우터'");
+        Item cd = WardrobeCleaner.cleanItem(raw("id", "cd", "status", "candidate", "cat", "dress", "kind", "dress", "family", "black", "light", 14, "formality", 3, "pattern", "solid"), 0);
+        Judge.Verdict vd = Judge.judgeCandidate(List.of(dressN, coat), cd, "");
+        ok(vd.supported() && vd.before() == 1 && vd.after() == 2 && vd.top3().size() == 1 && vd.top3().get(0).outer() == null && vd.blockers().size() == 1 && vd.needs().size() == 1, "원피스 후보: 차림 1 → 2, 색이 비슷한 아우터는 걸리는 점으로 센다");
         System.out.println(failed == 0 ? "모두 통과" : failed + "건 실패");
         return failed;
     }

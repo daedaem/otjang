@@ -19,8 +19,8 @@ public final class CatalogRank {
     public static final int STALE_DAYS = 14;
 
     public record OverlapRef(String id, String name, String level) {}
-    public record Ranked(CatalogProduct product, int score, List<String> reasons, List<String> cautions, int added, List<OverlapRef> overlaps,
-                         List<Judge.Blocker> blockers, Garment gap, boolean stale, boolean supported, List<Judge.Pick> top3) {}
+    public record Ranked(CatalogProduct product, Integer score, List<String> reasons, List<String> cautions, Integer added, List<OverlapRef> overlaps,
+                         List<Judge.Blocker> blockers, Garment gap, boolean stale, boolean supported, List<Judge.Pick> top3, String status, List<String> missing, List<Judge.ReviewItem> excludedItems, int assessedCount) {}
 
     /** 확인일로부터 오늘까지 며칠인지. 확인일이 없으면 null. */
     public static Integer daysSince(String date, String today) {
@@ -60,8 +60,12 @@ public final class CatalogRank {
     public static List<Ranked> rank(List<? extends Garment> items, List<CatalogProduct> products, String season, List<? extends Garment> gaps, String today, Integer staleDays) {
         List<Ranked> out = new ArrayList<>();
         for (CatalogProduct p : products) {
-            if (!p.inSeason(season)) continue;
+            if (Assessment.assess(p, season).ready() && !p.inSeason(season)) continue;
             Judge.Verdict v = Judge.judgeCandidate(items, p, season);
+            if ("needs-confirmation".equals(v.status())) {
+                out.add(new Ranked(p, null, List.of(), List.of(v.note()), null, List.of(), List.of(), null, isStale(p, today, staleDays), v.supported(), List.of(), v.status(), v.missing(), v.excludedItems(), v.assessedCount()));
+                continue;
+            }
             List<String> reasons = new ArrayList<>(), cautions = new ArrayList<>();
             int score = 0;
             List<String> strongNames = new ArrayList<>(), partialNames = new ArrayList<>();
@@ -82,9 +86,9 @@ public final class CatalogRank {
                 for (Judge.Blocker b : v.blockers()) parts.add(b.text() + " (" + b.count() + "/" + b.total() + ")");
                 cautions.add("걸리는 점: " + String.join(" / ", parts));
             }
-            out.add(new Ranked(p, score, List.copyOf(reasons), List.copyOf(cautions), v.added().size(), List.copyOf(refs), v.blockers(), gap, isStale(p, today, staleDays), v.supported(), v.top3()));
+            out.add(new Ranked(p, score, List.copyOf(reasons), List.copyOf(cautions), v.added().size(), List.copyOf(refs), v.blockers(), gap, isStale(p, today, staleDays), v.supported(), v.top3(), v.status(), v.missing(), v.excludedItems(), v.assessedCount()));
         }
-        out.sort(Comparator.comparingInt(Ranked::score).reversed().thenComparing(r -> r.product().id()));
+        out.sort(Comparator.comparing(Ranked::score, Comparator.nullsLast(Comparator.reverseOrder())).thenComparing(r -> r.product().id()));
         return out;
     }
 }

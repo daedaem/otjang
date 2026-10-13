@@ -27,32 +27,39 @@ public class CatalogService {
     private final ItemMapper mapper;
     private final WardrobeService wardrobe;
     private final TemplateService templates;
+    private final otjang.store.PhotoLifecycle lifecycle;
 
-    public CatalogService(CatalogProductRepository products, ImportReceiptRepository receipts, ItemMapper mapper, WardrobeService wardrobe, TemplateService templates) {
-        this.products = products; this.receipts = receipts; this.mapper = mapper; this.wardrobe = wardrobe; this.templates = templates;
+    public CatalogService(CatalogProductRepository products, ImportReceiptRepository receipts, ItemMapper mapper, WardrobeService wardrobe, TemplateService templates, otjang.store.PhotoLifecycle lifecycle) {
+        this.products = products; this.receipts = receipts; this.mapper = mapper; this.wardrobe = wardrobe; this.templates = templates; this.lifecycle=lifecycle;
     }
 
     @Transactional(readOnly = true)
     public List<CatalogProduct> all(boolean withPhotos) {
         List<CatalogProduct> out = new ArrayList<>();
-        for (CatalogProductEntity e : products.findByOwnerIdOrderByIdAsc(WardrobeService.OWNER_ID)) out.add(mapper.toDomain(e, withPhotos));
+        for (CatalogProductEntity e : products.findByOwnerIdOrderByIdAsc(wardrobe.ownerId())) out.add(mapper.toDomain(e, withPhotos));
         return out;
     }
 
     private CatalogProductEntity entity(String clientId) {
-        return products.findByOwnerIdAndClientId(WardrobeService.OWNER_ID, clientId).orElseThrow(() -> new ApiException(404, "그런 상품이 없다: " + clientId));
+        return products.findByOwnerIdAndClientId(wardrobe.ownerId(), clientId).orElseThrow(() -> new ApiException(404, "그런 상품이 없다: " + clientId));
     }
 
     @Transactional
     public CatalogProduct save(Map<String, Object> raw) {
         CatalogProduct p = WardrobeCleaner.cleanProduct(raw, 0);
         if (p == null) throw new ApiException(400, "상품으로 읽을 수 없다(cat 과 name 이 있어야 한다)");
-        return mapper.toDomain(products.save(mapper.apply(p, products.findByOwnerIdAndClientId(WardrobeService.OWNER_ID, p.id()).orElseGet(CatalogProductEntity::new), WardrobeService.OWNER_ID)), true);
+        return mapper.toDomain(products.save(mapper.apply(p, products.findByOwnerIdAndClientId(wardrobe.ownerId(), p.id()).orElseGet(CatalogProductEntity::new), wardrobe.ownerId())), true);
     }
+
+    @Transactional(readOnly = true)
+    public void requireExisting(String clientId) { entity(clientId); }
 
     @Transactional
     public void delete(String clientId) {
-        products.delete(entity(clientId));
+        lifecycle.lock();
+        CatalogProductEntity e=entity(clientId);
+        lifecycle.afterCommit(java.util.List.of(e.getImgRef()));
+        products.delete(e);
     }
 
     /** 상품 목록 파일(스키마 1, kind catalog)을 더한다. 같은 id 는 덮어쓴다. Idempotency-Key 규칙은 옷장 가져오기와 같다. */
@@ -60,7 +67,7 @@ public class CatalogService {
     public WardrobeService.ImportResult importCatalog(Map<String, Object> raw, String idempotencyKey, String rawBodyForHash) {
         String hash = LocalDirPhotoStore.sha256(rawBodyForHash == null ? String.valueOf(raw) : rawBodyForHash);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var prev = receipts.findByOwnerIdAndIdempotencyKey(WardrobeService.OWNER_ID, idempotencyKey);
+            var prev = receipts.findByOwnerIdAndIdempotencyKey(wardrobe.ownerId(), idempotencyKey);
             if (prev.isPresent()) {
                 if (!prev.get().getRequestHash().equals(hash)) throw new ApiException(409, "같은 Idempotency-Key 로 다른 내용이 왔다");
                 return WardrobeService.fromJson(prev.get().getResponse());
@@ -70,12 +77,12 @@ public class CatalogService {
         if (c == null) throw new ApiException(400, "상품 목록 파일이 아니다(schema 1, kind catalog, products 배열)");
         int created = 0, updated = 0;
         for (CatalogProduct p : c.products()) {
-            var existing = products.findByOwnerIdAndClientId(WardrobeService.OWNER_ID, p.id());
+            var existing = products.findByOwnerIdAndClientId(wardrobe.ownerId(), p.id());
             if (existing.isPresent()) updated++; else created++;
-            products.save(mapper.apply(p, existing.orElseGet(CatalogProductEntity::new), WardrobeService.OWNER_ID));
+            products.save(mapper.apply(p, existing.orElseGet(CatalogProductEntity::new), wardrobe.ownerId()));
         }
         WardrobeService.ImportResult r = new WardrobeService.ImportResult(c.products().size(), created, updated, 0, false);
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(WardrobeService.OWNER_ID, idempotencyKey, hash, WardrobeService.toJson(r)));
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(wardrobe.ownerId(), idempotencyKey, hash, WardrobeService.toJson(r)));
         return r;
     }
 

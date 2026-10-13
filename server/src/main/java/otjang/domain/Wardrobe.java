@@ -10,9 +10,15 @@ public record Wardrobe(int schema, String kind, String name, boolean draft, Stri
     }
 
     /** 살까 말까 판정 기록. before 는 보기 전 마음, after 는 결정. */
-    public record Decision(String id, String itemId, String name, Before before, Summary summary, After after) {
+    public record Decision(String id, String itemId, String name, Before before, Summary summary, After after, Followup followup, Follow follow) {
+        public Decision(String id, String itemId, String name, Before before, Summary summary, After after) { this(id, itemId, name, before, summary, after, null, null); }
+        public Decision(String id, String itemId, String name, Before before, Summary summary, After after, Followup followup) { this(id, itemId, name, before, summary, after, followup, null); }
+        public record Follow(String at, String worn, String feel) {}
         public record Before(String lean, String reason, String at) {}
-        public record Summary(int overlaps, int added, int blockers) {}
-        public record After(String decision, String helpful, String note, String at, String shift) {}
+        public record Summary(Integer overlaps, Integer added, Integer blockers) {}
+        public record After(String decision, String helpful, String note, String at, String shift, String insight, String comparedWith, String comparisonNote) {
+            public After(String decision, String helpful, String note, String at, String shift) { this(decision, helpful, note, at, shift, "", "none", ""); }
+        }
+        public record Followup(String outcome, String worn, String regret, String note, String at) {}
     }
 }

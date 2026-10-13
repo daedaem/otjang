@@ -37,7 +37,7 @@ public class CatalogController {
         this.service = service;
     }
 
-    public record RankedDto(CatalogProduct product, int score, List<String> reasons, List<String> cautions, int added, List<CatalogRank.OverlapRef> overlaps, List<Judge.Blocker> blockers,
+    public record RankedDto(CatalogProduct product, Integer score, List<String> reasons, List<String> cautions, Integer added, List<CatalogRank.OverlapRef> overlaps, List<Judge.Blocker> blockers,
                             RulesController.Ref gap, boolean stale, boolean supported, List<RulesController.ComboDto> top3) {}
 
     @GetMapping
@@ -64,6 +64,7 @@ public class CatalogController {
 
     @PutMapping("/products/{id}")
     public CatalogProduct replace(@PathVariable String id, @RequestBody Map<String, Object> raw) {
+        service.requireExisting(id);
         raw.put("id", id);
         return service.save(raw);
     }
@@ -80,7 +81,7 @@ public class CatalogController {
         List<RankedDto> out = new ArrayList<>();
         for (CatalogRank.Ranked r : service.rank(season, gaps, staleDays)) {
             List<RulesController.ComboDto> top3 = new ArrayList<>();
-            for (Judge.Pick p : r.top3()) top3.add(new RulesController.ComboDto(RulesController.Ref.of(p.top()), RulesController.Ref.of(p.bottom()), RulesController.Ref.of(p.outer()), p.score(), p.why()));
+            for (Judge.Pick p : r.top3()) top3.add(new RulesController.ComboDto(RulesController.Ref.of(p.top()), RulesController.Ref.of(p.bottom()), RulesController.Ref.of(p.outer()), p.score(), p.why(), p.dress()));
             out.add(new RankedDto(r.product(), r.score(), r.reasons(), r.cautions(), r.added(), r.overlaps(), r.blockers(), RulesController.Ref.of(r.gap()), r.stale(), r.supported(), top3));
         }
         return out;

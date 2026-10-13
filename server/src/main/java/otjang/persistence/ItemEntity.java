@@ -35,19 +35,14 @@ public class ItemEntity {
     private String status;
     @Column(nullable = false)
     private String cat;
-    @Column(nullable = false)
     private String kind;
     @Column(nullable = false)
     private String name;
     @Column(nullable = false)
     private String detail = "";
-    @Column(nullable = false)
     private String family;
-    @Column(nullable = false)
-    private short light;
-    @Column(nullable = false)
-    private short formality;
-    @Column(nullable = false)
+    private Short light;
+    private Short formality;
     private String pattern;
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(nullable = false, columnDefinition = "text[]")
@@ -131,10 +126,10 @@ public class ItemEntity {
     public void setDetail(String v) { detail = v; }
     public String getFamily() { return family; }
     public void setFamily(String v) { family = v; }
-    public short getLight() { return light; }
-    public void setLight(short v) { light = v; }
-    public short getFormality() { return formality; }
-    public void setFormality(short v) { formality = v; }
+    public Short getLight() { return light; }
+    public void setLight(Short v) { light = v; }
+    public Short getFormality() { return formality; }
+    public void setFormality(Short v) { formality = v; }
     public String getPattern() { return pattern; }
     public void setPattern(String v) { pattern = v; }
     public List<String> getSeasons() { return seasons; }

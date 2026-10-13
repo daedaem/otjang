@@ -2,11 +2,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const ruleFixture = require('./fixtures/rule-fixture.cjs');
 const C = require('../src/catalog.js');
 const W = require('../src/wardrobe.js');
 const J = require('../src/judge.js');
-const items = W.migrate(JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe.json', 'utf8'))).items;
-const tpl = W.cleanWardrobe(JSON.parse(fs.readFileSync(__dirname + '/../data/template-ivy.json', 'utf8'))).items;
+const items = ruleFixture(W.migrate(JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe.json', 'utf8'))).items);
+const tpl = ruleFixture(W.cleanWardrobe(JSON.parse(fs.readFileSync(__dirname + '/../data/template-ivy.json', 'utf8'))).items);
 const P = (o) => Object.assign({ id: 'p-' + o.name, name: o.name, cat: 'top', kind: 'shirt', family: 'white', light: 95, formality: 3, pattern: 'solid', seasons: [] }, o);
 
 test('빈 상품 목록이면 추천도 비어 있다. 지어낸 상품은 없다', () => {

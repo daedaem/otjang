@@ -2,9 +2,9 @@
 
 내 옷장을 바탕으로 가진 옷을 더 잘 활용하고, 다음 한 벌을 고르는 일을 돕는 개인 사이드프로젝트입니다. 사업 가능성을 검토하면서 백엔드·AI 개발 과정의 근거를 남깁니다.
 
-이름은 정해지지 않았습니다. 저장소 문서는 "WearNext", 개인판 앱 화면은 "옷장들이"를 가칭으로 쓰고 있습니다 [미결정].
+이름은 정해지지 않았습니다. 현재 앱은 "어울(EOUL)"을 가칭으로 씁니다.
 
-**현재 단계: 개인판 v0.4 동작, 본인 사용 검증 전.** 본인 전용으로 코디와 구매 판단을 충분히 완성한 뒤 공개 여부를 결정합니다. 패션 커뮤니티는 이후 검증할 성장 가설이며, 현재 사용자 모집이나 공개 운영을 시작한 상태가 아닙니다. 상태와 결정 기록은 [docs/status-2026-10-12.md](docs/status-2026-10-12.md)에 있습니다.
+**현재 단계: 개인판과 로컬 계정 베타 구현·자동 검증, 실사용 검증 전.** 미확인 속성의 판정 보류, 간단한 등록, 초대 로그인·계정별 저장, 전체 백업·복원·삭제, 오래된 저장의 덮어쓰기 방지를 반영했습니다. 사용자 모집과 공개 운영은 시작하지 않았습니다. 서버 실행과 보안 제약은 [운영 안내](server/OPERATIONS-BETA.md)를 따릅니다. 아래 2026-10-12 수치는 당시 코드의 결과입니다.
 
 ## 구성
 
@@ -16,14 +16,38 @@
 
 Codex가 만든 시안과 PRD v0.4 초안은 별도 브랜치(`feat/wearnext-prototype`, `docs/prd-v0.4`)에 있고 합의 전입니다.
 
-## 빨리 열어 보기
+## 모바일 디자인 미리보기
+
+[휴대폰에서 열기](https://daedaem.github.io/otjang/preview/editorial-mobile/) · 별도 브랜치 `feat/editorial-mobile-20261013`.
+
+빈 옷장으로 시작하며 옷·사진은 각 브라우저에만 저장됩니다. PC 자동 동기화는 제공하지 않습니다. 기존 `/beta/`와 저장소를 분리했으며, 기기를 옮길 때 전체 백업 내보내기·복원을 사용합니다. 개인 옷장·사진·서버 계정과 데이터베이스는 공개 빌드에 포함하지 않습니다.
+
+```bash
+cd app
+npm ci
+npm run assets
+npm run build:mobile
+```
+
+현재 디자인 브랜치는 Claude 0.8 기반 통합판입니다. Claude의 후속 0.9 변경은 별도 브랜치에 있으며, 아직 병합하지 않았습니다.
+
+## 로컬 계정 베타
+
+Java 21·Maven·Docker가 필요합니다. 프로젝트 루트에서 아래 명령을 실행합니다. 빈 자료로 시작하며 초대 코드는 비공개 로컬 설정에 보관합니다. 종료해도 DB와 사진을 지우지 않습니다.
+
+```bash
+node release-tools/local-beta.mjs start   # http://127.0.0.1:18085
+node release-tools/local-beta.mjs stop
+```
+
+## 개인판 열어 보기
 
 ```bash
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                                     # 규칙·스키마·상품·색 초안·서버 맞추기 테스트 52개 (Node 22)
+npm test                                     # 규칙·등록·추천·저장·캐시 테스트 135개 (Node 22)
 npm run assets && npm run build              # dist/index.html (약 11MB). 브라우저로 열면 된다
-npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 72항목 × 두 환경)
+npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 77항목 × 두 환경)
 ```
 
 저장소의 옷장 자료는 합성 예시(`app/data/sample-wardrobe.json`)입니다. 본인 자료는 `app/data/wardrobe.json`(.gitignore)에 두면 빌드가 그것을 씁니다.
@@ -32,7 +56,7 @@ npx playwright install chromium && npm run check   # 헤드리스 브라우저�
 
 - **검증 사실**(2026-10-12, 리눅스 클라우드): 테스트 52개, 빌드, 헤드리스 Chromium 두 환경(1280×900 밝음, 390×844 어두움)에서 환경당 72항목 통과. 외부 요청 0건. 빌드 결과에 사진 데이터 없음. 서버는 규칙 Java 이식의 골든 교차 검증과 PostgreSQL 16 스키마 적용까지 확인(Spring 계층 컴파일은 미실행 — server/README.md).
 - **미실행**: 실제 휴대폰·Safari·맥에서 열기, 본인이 살까 말까 판정을 실제로 써 본 기록(0건), 3D 체감 성능.
-- 실제 상품 자동 추천, 실사 착장, 정확한 핏 판정, 다중 사용자 서버, 다른 PC 동기화는 완료된 기능으로 소개하지 않습니다.
+- 실제 상품 자동 수집, 실사 착장, 정확한 핏 판정, 공개 다중 사용자 운영과 기기간 자동 병합은 완료된 기능으로 소개하지 않습니다. 계정별 저장과 버전 충돌 방지는 로컬 실제 서버에서 검증했습니다.
 
 ## 협업 방식
 

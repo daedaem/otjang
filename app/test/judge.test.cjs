@@ -3,10 +3,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const ruleFixture = require('./fixtures/rule-fixture.cjs');
 const J = require('../src/judge.js');
-const items = JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe.json', 'utf8')).items;
-const tpl = JSON.parse(fs.readFileSync(__dirname + '/../data/template-ivy.json', 'utf8')).items;
-const cand = (o) => Object.assign({ id: 'cand', status: 'candidate', formality: 2, pattern: 'solid', seasons: [] }, o);
+const items = ruleFixture(JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe.json', 'utf8')).items);
+const tpl = ruleFixture(JSON.parse(fs.readFileSync(__dirname + '/../data/template-ivy.json', 'utf8')).items);
+const cand = (o) => Object.assign({ id: 'cand', status: 'candidate', formality: 2, pattern: 'solid', seasons: ['봄', '여름', '가을', '겨울'] }, o);
 
 test('버건디 니트 후보: 겹치는 옷이 없고 카키 치노와만 조합이 생기며 어두운 하의 2벌에는 밝기 주의가 붙는다', () => {
   const r = J.judgeCandidate(items, cand({ cat: 'top', kind: 'knit', family: 'burgundy', light: 30 }));
@@ -99,8 +100,8 @@ test('기본 옷장과 견주면 가진 것과 빠진 것이 나뉜다', () => {
 });
 
 test('브랜드와 이름이 같으면 속성이 달라도 같은 옷으로 본다', () => {
-  const mine = [{ id: 'm1', status: 'owned', cat: 'top', kind: 'shirt', brand: 'Brand A', name: 'Oxford BD', family: 'white', light: 95, pattern: 'solid' }];
-  const theirs = [{ id: 't1', status: 'owned', cat: 'top', kind: 'shirt', brand: 'brand a', name: 'oxford-bd', family: 'blue', light: 70, pattern: 'solid' }];
+  const mine = [{ id: 'm1', status: 'owned', cat: 'top', kind: 'shirt', brand: 'Brand A', name: 'Oxford BD', family: 'white', light: 95, formality: 2, pattern: 'solid' }];
+  const theirs = [{ id: 't1', status: 'owned', cat: 'top', kind: 'shirt', brand: 'brand a', name: 'oxford-bd', family: 'blue', light: 70, formality: 2, pattern: 'solid' }];
   const r = J.compareWardrobes(mine, theirs);
   assert.equal(r.both.length, 1);
   assert.equal(r.both[0].how, 'exact');

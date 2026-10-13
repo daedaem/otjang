@@ -1,0 +1,263 @@
+[
+  {
+    "name": "complete-owner-input",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 95,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": "owner"
+    },
+    "season": null,
+    "missing": [],
+    "ready": true
+  },
+  {
+    "name": "all-null-rule-attributes",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": null,
+      "name": "Synthetic checked shirt",
+      "family": null,
+      "light": null,
+      "formality": null,
+      "pattern": null,
+      "seasons": [],
+      "attrSource": "owner-confirmed"
+    },
+    "season": "겨울",
+    "missing": [
+      "kind",
+      "family",
+      "light",
+      "formality",
+      "pattern",
+      "seasons"
+    ],
+    "ready": false
+  },
+  {
+    "name": "draft-with-valid-values",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 95,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": "photo-draft"
+    },
+    "season": null,
+    "missing": [
+      "confirmation"
+    ],
+    "ready": false
+  },
+  {
+    "name": "confirmed-but-missing-light",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": null,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": "owner-confirmed"
+    },
+    "season": null,
+    "missing": [
+      "light"
+    ],
+    "ready": false
+  },
+  {
+    "name": "missing-season-filter",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 95,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [],
+      "attrSource": "owner-confirmed"
+    },
+    "season": "겨울",
+    "missing": [
+      "seasons"
+    ],
+    "ready": false
+  },
+  {
+    "name": "no-season-filter-necessary",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 95,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [],
+      "attrSource": "owner-confirmed"
+    },
+    "season": null,
+    "missing": [],
+    "ready": true
+  },
+  {
+    "name": "indigo-is-valid",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "indigo",
+      "light": 16,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": "owner-confirmed"
+    },
+    "season": null,
+    "missing": [],
+    "ready": true
+  },
+  {
+    "name": "zero-brightness-is-real",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 0,
+      "formality": 1,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": "owner-confirmed"
+    },
+    "season": null,
+    "missing": [],
+    "ready": true
+  },
+  {
+    "name": "invalid-enums-and-number-types",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "__proto__",
+      "name": "Synthetic checked shirt",
+      "family": "constructor",
+      "light": "50",
+      "formality": "2",
+      "pattern": "prototype",
+      "seasons": [
+        "monsoon"
+      ],
+      "attrSource": "owner-confirmed"
+    },
+    "season": "여름",
+    "missing": [
+      "kind",
+      "family",
+      "light",
+      "formality",
+      "pattern",
+      "seasons"
+    ],
+    "ready": false
+  },
+  {
+    "name": "legacy-unconfirmed-photo",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 95,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": null,
+      "source": "photo-draft",
+      "confirmed": false
+    },
+    "season": null,
+    "missing": [
+      "confirmation"
+    ],
+    "ready": false
+  },
+  {
+    "name": "legacy-confirmed-photo",
+    "raw": {
+      "id": "checked",
+      "cat": "top",
+      "kind": "shirt",
+      "name": "Synthetic checked shirt",
+      "family": "white",
+      "light": 95,
+      "formality": 3,
+      "pattern": "solid",
+      "seasons": [
+        "봄",
+        "여름",
+        "가을",
+        "겨울"
+      ],
+      "attrSource": null,
+      "source": "photo-draft",
+      "confirmed": true
+    },
+    "season": null,
+    "missing": [],
+    "ready": true
+  }
+]

@@ -1,5 +1,7 @@
 # 옷장들이(가칭) 서버 설정. 기본값은 docker-compose.yml 의 로컬 PostgreSQL 과 맞춘다. 비밀값은 환경 변수로만 넣는다.
 spring:
+  autoconfigure:
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   application:
     name: otjang-server
   datasource:
@@ -13,10 +15,15 @@ spring:
   flyway:
     enabled: true
 server:
+  address: ${OTJANG_BIND_ADDRESS:127.0.0.1}
   port: ${OTJANG_PORT:8080}
 otjang:
   photo-dir: ${OTJANG_PHOTO_DIR:./data/photos}   # 사진 바이트를 두는 비공개 로컬 폴더. 저장소에 넣지 않는다(.gitignore)
-  cors-origins: ${OTJANG_CORS_ORIGINS:*}          # 개인판 앱(파일로 연 HTML)에서 부를 수 있게. 공개 배포 시에는 좁힌다
+  auth:
+    invite-code: ${OTJANG_INVITE_CODE:}
+    session-seconds: ${OTJANG_SESSION_SECONDS:43200}
+    require-https: ${OTJANG_REQUIRE_HTTPS:false}
+  cors-origins: ${OTJANG_CORS_ORIGINS:null,http://localhost:3000,http://127.0.0.1:3000,http://localhost:18085,http://127.0.0.1:18085}          # 개인판 앱(파일로 연 HTML)에서 부를 수 있게. 공개 배포 시에는 좁힌다
 management:
   endpoints:
     web:

@@ -47,3 +47,17 @@ shots/
 /server/target/
 /server/data/
 /server/.mvn/wrapper/maven-wrapper.jar
+
+# Generated empty beta site and local verification
+/server/src/main/resources/static/index.html
+/app/qa-storage/
+/app/qa-import/
+/baseline-files.json
+/pc-verification/
+/archives/
+
+# Local handoff and machine-specific verification notes
+/docs/beta-readiness-2026-10-13.md
+/docs/claude08-integration-2026-10-13.md
+/docs/progress-2026-10-12-local.md
+/docs/progress-2026-10-13-beta.md

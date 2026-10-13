@@ -3,8 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const ruleFixture = require('./fixtures/rule-fixture.cjs');
 const R = require('../src/recommend.js');
-const items = JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe.json', 'utf8')).items;
+const items = ruleFixture(JSON.parse(fs.readFileSync(__dirname + '/../data/sample-wardrobe.json', 'utf8')).items);
 const byId = Object.fromEntries(items.map((i) => [i.id, i]));
 
 test('밝은 셔츠와 어두운 데님은 밝기 차이로 점수를 얻는다', () => {

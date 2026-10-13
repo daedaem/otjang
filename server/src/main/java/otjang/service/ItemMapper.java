@@ -20,15 +20,18 @@ import java.util.List;
 @Component
 public class ItemMapper {
     private final PhotoStore photos;
+    private final otjang.store.PhotoLifecycle lifecycle;
 
-    public ItemMapper(PhotoStore photos) {
-        this.photos = photos;
+    public ItemMapper(PhotoStore photos, otjang.store.PhotoLifecycle lifecycle) {
+        this.photos = photos; this.lifecycle=lifecycle;
     }
 
     /** 도메인 → 엔티티(새것이거나 기존 것을 덮어씀). */
     public ItemEntity apply(Item it, ItemEntity e, Long ownerId) {
+        lifecycle.lock();
+        lifecycle.afterCommit(java.util.List.of(nz(e.getPhotoImgRef()), nz(e.getPhotoOwnImgRef())));
         e.setOwnerId(ownerId); e.setClientId(it.id()); e.setStatus(it.status()); e.setCat(it.cat()); e.setKind(it.kind()); e.setName(it.name()); e.setDetail(it.detail());
-        e.setFamily(it.family()); e.setLight((short) it.light()); e.setFormality((short) it.formality()); e.setPattern(it.pattern()); e.setSeasons(it.seasons());
+        e.setFamily(it.family()); e.setLight(it.light()==null?null:it.light().shortValue()); e.setFormality(it.formality()==null?null:it.formality().shortValue()); e.setPattern(it.pattern()); e.setSeasons(it.seasons());
         e.setAttrSource(it.attrSource()); e.setDraftNote(it.draftNote());
         Item.Photo p = it.photo();
         e.setPhotoKind(p.kind()); e.setPhotoImgRef(photos.put(p.img())); e.setPhotoOwnImgRef(photos.put(p.ownImg()));
@@ -59,41 +62,51 @@ public class ItemMapper {
         Item.Product product = e.getPhotoKind().equals("confirmed") && e.getProductConfirmedAt() != null
                 ? new Item.Product(nz(e.getProductBrand()), nz(e.getProductName()), nz(e.getProductCode()), e.getProductConfirmedAt().toString()) : null;
         Item.Look3d look = e.getLook3dKind() == null ? null : new Item.Look3d(e.getLook3dKind(), nz(e.getLook3dFabric()));
-        return new Item(e.getClientId(), e.getStatus(), e.getCat(), e.getKind(), e.getName(), e.getDetail(), e.getFamily(), e.getLight(), e.getFormality(), e.getPattern(), List.copyOf(e.getSeasons()),
+        return new Item(e.getClientId(), e.getStatus(), e.getCat(), e.getKind(), e.getName(), e.getDetail(), e.getFamily(), e.getLight()==null?null:e.getLight().intValue(), e.getFormality()==null?null:e.getFormality().intValue(), e.getPattern(), List.copyOf(e.getSeasons()),
                 e.getAttrSource(), e.getDraftNote(), photo, product, List.copyOf(cands), look, e.getBrand(), e.getModel(), e.getSize(), e.getBoughtYear() == null ? null : e.getBoughtYear().intValue(),
                 e.getReview(), e.getRebuy(), e.getFabric(), e.getNeck(), Json.parseNumberMap(e.getMeasures()), e.getLink(), e.getPrice(), str(e.getCheckedAt()));
     }
 
     public CatalogProductEntity apply(CatalogProduct p, CatalogProductEntity e, Long ownerId) {
+        lifecycle.lock();
+        lifecycle.afterCommit(java.util.List.of(nz(e.getImgRef())));
         e.setOwnerId(ownerId); e.setClientId(p.id()); e.setBrand(p.brand()); e.setName(p.name()); e.setCode(p.code()); e.setCat(p.cat()); e.setKind(p.kind()); e.setFamily(p.family());
-        e.setLight((short) p.light()); e.setFormality((short) p.formality()); e.setPattern(p.pattern()); e.setSeasons(p.seasons()); e.setLink(p.link()); e.setPrice(p.price());
+        e.setLight(p.light()==null?null:p.light().shortValue()); e.setFormality(p.formality()==null?null:p.formality().shortValue()); e.setPattern(p.pattern()); e.setSeasons(p.seasons()); e.setLink(p.link()); e.setPrice(p.price());
         e.setCheckedAt(date(p.checkedAt())); e.setImgRef(photos.put(p.img())); e.setNote(p.note()); e.setAddedAt(date(p.addedAt()));
         e.touch();
         return e;
     }
 
     public CatalogProduct toDomain(CatalogProductEntity e, boolean withPhotos) {
-        return new CatalogProduct(e.getClientId(), e.getBrand(), e.getName(), e.getCode(), e.getCat(), e.getKind(), e.getFamily(), e.getLight(), e.getFormality(), e.getPattern(),
+        return new CatalogProduct(e.getClientId(), e.getBrand(), e.getName(), e.getCode(), e.getCat(), e.getKind(), e.getFamily(), e.getLight()==null?null:e.getLight().intValue(), e.getFormality()==null?null:e.getFormality().intValue(), e.getPattern(),
                 List.copyOf(e.getSeasons()), e.getLink(), e.getPrice(), str(e.getCheckedAt()), withPhotos ? photos.get(e.getImgRef()) : "", e.getNote(), str(e.getAddedAt()));
     }
 
     public DecisionEntity apply(Wardrobe.Decision d, DecisionEntity e, Long ownerId) {
         e.setOwnerId(ownerId); e.setClientId(d.id()); e.setItemClientId(d.itemId()); e.setItemName(d.name());
         e.setBeforeLean(d.before().lean()); e.setBeforeReason(d.before().reason()); e.setBeforeAt(date(d.before().at()));
-        e.setSummaryOverlaps((short) d.summary().overlaps()); e.setSummaryAdded((short) d.summary().added()); e.setSummaryBlockers((short) d.summary().blockers());
+        e.setSummaryOverlaps(d.summary().overlaps()==null?null:d.summary().overlaps().shortValue()); e.setSummaryAdded(d.summary().added()==null?null:d.summary().added().shortValue()); e.setSummaryBlockers(d.summary().blockers()==null?null:d.summary().blockers().shortValue());
         if (d.after() != null) {
             e.setAfterDecision(d.after().decision()); e.setAfterHelpful(d.after().helpful()); e.setAfterNote(d.after().note()); e.setAfterAt(date(d.after().at())); e.setAfterShift(d.after().shift());
+            e.setAfterInsight(d.after().insight()); e.setAfterComparedWith(d.after().comparedWith()); e.setAfterComparisonNote(d.after().comparisonNote());
         } else {
-            e.setAfterDecision(null); e.setAfterHelpful(null); e.setAfterNote(""); e.setAfterAt(null); e.setAfterShift(null);
+            e.setAfterDecision(null); e.setAfterHelpful(null); e.setAfterNote(""); e.setAfterAt(null); e.setAfterShift(null); e.setAfterInsight(""); e.setAfterComparedWith("none"); e.setAfterComparisonNote("");
         }
+        if (d.follow() != null) { e.setFollowAt(date(d.follow().at())); e.setFollowWorn(d.follow().worn()); e.setFollowFeel(d.follow().feel()); }
+        else { e.setFollowAt(null); e.setFollowWorn(null); e.setFollowFeel(null); }
+        var f = d.followup();
+        e.setFollowupOutcome(f==null?null:f.outcome()); e.setFollowupWorn(f==null?null:f.worn()); e.setFollowupRegret(f==null?null:f.regret());
+        e.setFollowupNote(f==null?"":f.note()); e.setFollowupAt(f==null?null:date(f.at()));
         return e;
     }
 
     public Wardrobe.Decision toDomain(DecisionEntity e) {
         Wardrobe.Decision.After after = e.getAfterDecision() == null ? null
-                : new Wardrobe.Decision.After(e.getAfterDecision(), e.getAfterHelpful(), e.getAfterNote(), str(e.getAfterAt()), e.getAfterShift());
+                : new Wardrobe.Decision.After(e.getAfterDecision(), e.getAfterHelpful(), e.getAfterNote(), str(e.getAfterAt()), e.getAfterShift(), e.getAfterInsight(), e.getAfterComparedWith(), e.getAfterComparisonNote());
         return new Wardrobe.Decision(e.getClientId(), e.getItemClientId(), e.getItemName(), new Wardrobe.Decision.Before(e.getBeforeLean(), e.getBeforeReason(), str(e.getBeforeAt())),
-                new Wardrobe.Decision.Summary(e.getSummaryOverlaps(), e.getSummaryAdded(), e.getSummaryBlockers()), after);
+                new Wardrobe.Decision.Summary(e.getSummaryOverlaps()==null?null:e.getSummaryOverlaps().intValue(), e.getSummaryAdded()==null?null:e.getSummaryAdded().intValue(), e.getSummaryBlockers()==null?null:e.getSummaryBlockers().intValue()), after,
+                e.getFollowupOutcome()==null?null:new Wardrobe.Decision.Followup(e.getFollowupOutcome(),e.getFollowupWorn(),e.getFollowupRegret(),e.getFollowupNote(),str(e.getFollowupAt())),
+                e.getFollowAt() == null || after == null ? null : new Wardrobe.Decision.Follow(str(e.getFollowAt()), nz(e.getFollowWorn()), nz(e.getFollowFeel())));
     }
 
     /** YYYY-MM-DD 모양이고 실제 날짜일 때만 LocalDate. 아니면 null(앱의 str(…, 10) 값은 날짜 모양이 아닐 수 있다). */

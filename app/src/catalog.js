@@ -19,15 +19,15 @@
 
   function cleanProduct(raw, i) {
     if (!raw || typeof raw !== 'object') return null;
-    const cat = W.CATS[raw.cat] ? raw.cat : null;
+    const cat = W.known(W.CATS, raw.cat) ? raw.cat : null;
     if (!cat) return null;
     const name = W.str(raw.name, 80).trim();
     if (!name) return null;
     return {
       id: W.str(raw.id, 40) || 'p' + (i || 0), brand: W.str(raw.brand, 60).trim(), name, code: W.str(raw.code, 60).trim(),
-      cat, kind: W.KINDS[cat][raw.kind] ? raw.kind : Object.keys(W.KINDS[cat])[0], family: W.FAM[raw.family] ? raw.family : 'gray',
-      light: W.num(raw.light, 0, 100) == null ? 50 : Math.round(raw.light), formality: [1, 2, 3].indexOf(raw.formality) >= 0 ? raw.formality : 2,
-      pattern: W.PATTERNS[raw.pattern] ? raw.pattern : 'solid', seasons: Array.isArray(raw.seasons) ? W.SEASONS.filter((s) => raw.seasons.indexOf(s) >= 0) : [],
+      cat, kind: W.known(W.KINDS[cat], raw.kind) ? raw.kind : null, family: W.known(W.FAM, raw.family) ? raw.family : null,
+      light: W.num(raw.light, 0, 100) == null ? null : Math.round(raw.light), formality: [1, 2, 3].indexOf(raw.formality) >= 0 ? raw.formality : null,
+      pattern: W.known(W.PATTERNS, raw.pattern) ? raw.pattern : null, seasons: Array.isArray(raw.seasons) ? W.SEASONS.filter((s) => raw.seasons.indexOf(s) >= 0) : [],
       link: W.safeLink(raw.link), price: W.num(raw.price, 0, 1e9), checkedAt: W.safeDate(raw.checkedAt), img: W.safeImg(raw.img), note: W.str(raw.note, 200), addedAt: W.safeDate(raw.addedAt),
     };
   }
@@ -65,10 +65,11 @@
   function rank(items, products, opts) {
     opts = opts || {};
     const gaps = opts.gaps || [];
-    const out = products.filter((p) => J.inSeason(p, opts.season)).map((p) => {
+    const out = products.filter((p) => !W.assessment(p, opts).ready || J.inSeason(p, opts.season)).map((p) => {
       const cand = Object.assign({}, p, { status: 'candidate' });
       const v = J.judgeCandidate(items, cand, { season: opts.season });
       const reasons = [], cautions = [];
+      if (v.status === 'needs-confirmation') return { product: p, score: null, status: v.status, missing: v.missing, excludedItems: v.excludedItems, assessedCount: v.assessedCount, reasons, cautions: [v.note], added: null, overlaps: [], blockers: [], gap: null, stale: isStale(p, opts.today, opts.staleDays), supported: v.supported, top3: [] };
       let score = 0;
       const strong = v.overlaps.filter((o) => o.level === 'strong').length, partial = v.overlaps.length - strong;
       if (v.supported) {
@@ -82,9 +83,9 @@
       if (gap) { score += 3; reasons.push('견준 옷장에는 있고 내게 없는 "' + gap.name + '" 자리를 채웁니다.'); }
       if (v.blockers.length && v.supported) cautions.push('걸리는 점: ' + v.blockers.map((b) => b.text + ' (' + b.count + '/' + b.total + ')').join(' / '));
       const stale = isStale(p, opts.today, opts.staleDays);
-      return { product: p, score, reasons, cautions, added: v.added.length, overlaps: v.overlaps.map((o) => ({ id: o.item.id, name: o.item.name, level: o.level })), blockers: v.blockers, gap: gap || null, stale, supported: v.supported, top3: v.top3 };
+      return { product: p, score, status: v.status, missing: v.missing, excludedItems: v.excludedItems, assessedCount: v.assessedCount, reasons, cautions, added: v.added.length, overlaps: v.overlaps.map((o) => ({ id: o.item.id, name: o.item.name, level: o.level })), blockers: v.blockers, gap: gap || null, stale, supported: v.supported, top3: v.top3 };
     });
-    out.sort((a, b) => b.score - a.score || (a.product.id < b.product.id ? -1 : a.product.id > b.product.id ? 1 : 0));
+    out.sort((a, b) => (a.score == null) - (b.score == null) || (a.score != null && b.score != null ? b.score - a.score : 0) || (a.product.id < b.product.id ? -1 : a.product.id > b.product.id ? 1 : 0));
     return out;
   }
 

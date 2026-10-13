@@ -122,7 +122,7 @@ test('정리: 새 필드의 위험한 주소, 마크업 글자, 너무 긴 값�
   assert.equal(W.cleanWardrobe({ schema: 2, items: 'x' }), null);
 });
 
-test('draftItems: 쓰인 옷 가운데 초안 속성인 것만 돌려주고, 점수와는 무관하다', () => {
+test('draftItems: 확인할 초안 속성 목록을 돌려준다', () => {
   const w = W.migrate(v2);
   w.items[0] = W.setAttrSource(w.items[0], 'owner-confirmed');
   const used = [w.items[0].id, w.items[1].id, 'no-such'];

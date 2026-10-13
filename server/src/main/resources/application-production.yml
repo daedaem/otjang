@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${OTJANG_DB_URL}
+    username: ${OTJANG_DB_USER}
+    password: ${OTJANG_DB_PASSWORD}
+server:
+  address: ${OTJANG_BIND_ADDRESS:127.0.0.1}
+  forward-headers-strategy: none
+  ssl:
+    enabled: true
+    key-store: ${OTJANG_TLS_KEY_STORE}
+    key-store-password: ${OTJANG_TLS_KEY_STORE_PASSWORD}
+    key-store-type: PKCS12
+otjang:
+  photo-dir: ${OTJANG_PHOTO_DIR}
+  cors-origins: ${OTJANG_CORS_ORIGINS}
+  auth:
+    require-https: true

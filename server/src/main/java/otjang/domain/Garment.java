@@ -15,10 +15,10 @@ public interface Garment {
     String name();
     String brand();
     String family();
-    int light();
-    int formality();
+    Integer light();
+    Integer formality();
     String pattern();
-    /** 비어 있으면 사계절. */
+    /** 비어 있으면 미확인. */
     List<String> seasons();
 
     default boolean isOwned() {
@@ -29,9 +29,10 @@ public interface Garment {
         return pattern() != null && !pattern().equals("solid");
     }
 
-    /** 계절이 비어 있으면 모든 계절로 본다. */
+    /** 계절이 미확인인 옷은 특정 계절 비교에서 제외한다. */
     default boolean inSeason(String season) {
-        if (season == null || season.isEmpty() || seasons() == null || seasons().isEmpty()) return true;
+        if (season == null || season.isEmpty()) return true;
+        if (seasons() == null || seasons().isEmpty()) return false;
         return seasons().contains(season);
     }
 }

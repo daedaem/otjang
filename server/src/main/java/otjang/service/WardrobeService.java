@@ -33,16 +33,17 @@ import java.util.function.UnaryOperator;
 @Service
 public class WardrobeService {
     /** 로컬 개인판의 주인. V1 마이그레이션이 미리 만든다. */
-    public static final long OWNER_ID = 1L;
+    public long ownerId() { return otjang.security.OwnerScope.ownerId(); }
 
     private final OwnerRepository owners;
     private final ItemRepository items;
     private final DecisionRepository decisions;
     private final ImportReceiptRepository receipts;
     private final ItemMapper mapper;
+    private final otjang.store.PhotoLifecycle lifecycle;
 
-    public WardrobeService(OwnerRepository owners, ItemRepository items, DecisionRepository decisions, ImportReceiptRepository receipts, ItemMapper mapper) {
-        this.owners = owners; this.items = items; this.decisions = decisions; this.receipts = receipts; this.mapper = mapper;
+    public WardrobeService(OwnerRepository owners, ItemRepository items, DecisionRepository decisions, ImportReceiptRepository receipts, ItemMapper mapper, otjang.store.PhotoLifecycle lifecycle) {
+        this.owners = owners; this.items = items; this.decisions = decisions; this.receipts = receipts; this.mapper = mapper; this.lifecycle=lifecycle;
     }
 
     public record ImportResult(int items, int created, int updated, int decisions, boolean replayed) {}
@@ -59,13 +60,13 @@ public class WardrobeService {
 
     @Transactional(readOnly = true)
     public Wardrobe.Owner owner() {
-        OwnerEntity o = owners.findById(OWNER_ID).orElseThrow(() -> new ApiException(500, "owner 1 이 없다. V1 마이그레이션이 적용됐는지 확인한다"));
+        OwnerEntity o = owners.findById(ownerId()).orElseThrow(() -> new ApiException(500, "사용자 옷장이 없습니다"));
         return new Wardrobe.Owner(o.getNickname(), o.getHeight() == null ? null : o.getHeight().doubleValue(), o.getTopSize(), o.getBottomSize());
     }
 
     @Transactional
     public Wardrobe.Owner updateOwner(Map<String, Object> raw) {
-        OwnerEntity o = owners.findById(OWNER_ID).orElseThrow(() -> new ApiException(500, "owner 1 이 없다"));
+        OwnerEntity o = owners.findById(ownerId()).orElseThrow(() -> new ApiException(500, "사용자 옷장이 없습니다"));
         if (raw.containsKey("nickname")) o.setNickname(Sanitize.str(raw.get("nickname"), 30));
         if (raw.containsKey("height")) { Double h = Sanitize.num(raw.get("height"), 100, 230); o.setHeight(h == null ? null : BigDecimal.valueOf(h)); }
         if (raw.containsKey("topSize")) o.setTopSize(Sanitize.str(raw.get("topSize"), 20));
@@ -78,7 +79,7 @@ public class WardrobeService {
     @Transactional(readOnly = true)
     public List<Item> allItems(boolean withPhotos) {
         List<Item> out = new ArrayList<>();
-        for (ItemEntity e : items.findAllByOwner(OWNER_ID)) out.add(mapper.toDomain(e, withPhotos));
+        for (ItemEntity e : items.findAllByOwner(ownerId())) out.add(mapper.toDomain(e, withPhotos));
         return out;
     }
 
@@ -88,7 +89,7 @@ public class WardrobeService {
     }
 
     private ItemEntity entity(String clientId) {
-        return items.findByOwnerIdAndClientId(OWNER_ID, clientId).orElseThrow(() -> new ApiException(404, "그런 옷이 없다: " + clientId));
+        return items.findByOwnerIdAndClientId(ownerId(), clientId).orElseThrow(() -> new ApiException(404, "그런 옷이 없다: " + clientId));
     }
 
     /** 옷 한 벌을 정리해 저장한다(같은 id 가 있으면 덮어쓴다). 정리 결과가 null 이면 400. */
@@ -96,18 +97,21 @@ public class WardrobeService {
     public Item save(Map<String, Object> raw) {
         Item it = WardrobeCleaner.cleanItem(raw, 0);
         if (it == null) throw new ApiException(400, "옷으로 읽을 수 없다(cat 이 outer/top/bottom/shoes 가운데 하나여야 한다)");
-        return mapper.toDomain(items.save(mapper.apply(it, items.findByOwnerIdAndClientId(OWNER_ID, it.id()).orElseGet(ItemEntity::new), OWNER_ID)), true);
+        return mapper.toDomain(items.save(mapper.apply(it, items.findByOwnerIdAndClientId(ownerId(), it.id()).orElseGet(ItemEntity::new), ownerId())), true);
     }
 
     /** 이미 정리된 옷을 저장한다(같은 id 가 있으면 덮어쓴다). */
     @Transactional
     public Item saveItem(Item it) {
-        return mapper.toDomain(items.save(mapper.apply(it, items.findByOwnerIdAndClientId(OWNER_ID, it.id()).orElseGet(ItemEntity::new), OWNER_ID)), true);
+        return mapper.toDomain(items.save(mapper.apply(it, items.findByOwnerIdAndClientId(ownerId(), it.id()).orElseGet(ItemEntity::new), ownerId())), true);
     }
 
     @Transactional
     public void delete(String clientId) {
-        items.delete(entity(clientId));
+        lifecycle.lock();
+        ItemEntity e=entity(clientId);
+        lifecycle.afterCommit(java.util.List.of(e.getPhotoImgRef(),e.getPhotoOwnImgRef()));
+        items.delete(e);
     }
 
     /** 사용자 동작으로 상태를 바꾼다(WardrobeOps). 바뀐 옷을 저장하고 돌려준다. */
@@ -117,7 +121,7 @@ public class WardrobeService {
         Item before = mapper.toDomain(e, true);
         Item after;
         try { after = op.apply(before); } catch (IllegalArgumentException ex) { throw new ApiException(400, ex.getMessage()); }
-        return mapper.toDomain(items.save(mapper.apply(after, e, OWNER_ID)), true);
+        return mapper.toDomain(items.save(mapper.apply(after, e, ownerId())), true);
     }
 
     /**
@@ -128,7 +132,7 @@ public class WardrobeService {
     public ImportResult importWardrobe(Map<String, Object> raw, String idempotencyKey, String rawBodyForHash) {
         String hash = LocalDirPhotoStore.sha256(rawBodyForHash == null ? String.valueOf(raw) : rawBodyForHash);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var prev = receipts.findByOwnerIdAndIdempotencyKey(OWNER_ID, idempotencyKey);
+            var prev = receipts.findByOwnerIdAndIdempotencyKey(ownerId(), idempotencyKey);
             if (prev.isPresent()) {
                 if (!prev.get().getRequestHash().equals(hash)) throw new ApiException(409, "같은 Idempotency-Key 로 다른 내용이 왔다");
                 return fromJson(prev.get().getResponse());
@@ -138,13 +142,13 @@ public class WardrobeService {
         if (w == null) throw new ApiException(400, "옷장 파일이 아니다(schema 1 또는 2, items 배열이 있어야 한다)");
         int created = 0, updated = 0;
         for (Item it : w.items()) {
-            var existing = items.findByOwnerIdAndClientId(OWNER_ID, it.id());
+            var existing = items.findByOwnerIdAndClientId(ownerId(), it.id());
             if (existing.isPresent()) updated++; else created++;
-            items.save(mapper.apply(it, existing.orElseGet(ItemEntity::new), OWNER_ID));
+            items.save(mapper.apply(it, existing.orElseGet(ItemEntity::new), ownerId()));
         }
         for (Wardrobe.Decision d : w.decisions()) {
             if (d.id().isEmpty()) continue;
-            decisions.save(mapper.apply(d, decisions.findByOwnerIdAndClientId(OWNER_ID, d.id()).orElseGet(DecisionEntity::new), OWNER_ID));
+            decisions.save(mapper.apply(d, decisions.findByOwnerIdAndClientId(ownerId(), d.id()).orElseGet(DecisionEntity::new), ownerId()));
         }
         if (w.kind().equals("wardrobe") && !w.owner().nickname().isEmpty()) {
             Map<String, Object> o = new LinkedHashMap<>();
@@ -153,7 +157,7 @@ public class WardrobeService {
             updateOwner(o);
         }
         ImportResult r = new ImportResult(w.items().size(), created, updated, w.decisions().size(), false);
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(OWNER_ID, idempotencyKey, hash, toJson(r)));
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) receipts.save(ImportReceiptEntity.of(ownerId(), idempotencyKey, hash, toJson(r)));
         return r;
     }
 
@@ -170,7 +174,7 @@ public class WardrobeService {
     @Transactional(readOnly = true)
     public List<Wardrobe.Decision> allDecisions() {
         List<Wardrobe.Decision> out = new ArrayList<>();
-        for (DecisionEntity e : decisions.findByOwnerIdOrderByIdAsc(OWNER_ID)) out.add(mapper.toDomain(e));
+        for (DecisionEntity e : decisions.findByOwnerIdOrderByIdAsc(ownerId())) out.add(mapper.toDomain(e));
         return out;
     }
 
@@ -178,11 +182,11 @@ public class WardrobeService {
     public Wardrobe.Decision saveDecision(Map<String, Object> raw) {
         Wardrobe.Decision d = WardrobeCleaner.cleanDecision(raw);
         if (d == null || d.id().isEmpty()) throw new ApiException(400, "판정 기록으로 읽을 수 없다(id 와 before.lean 이 있어야 한다)");
-        return mapper.toDomain(decisions.save(mapper.apply(d, decisions.findByOwnerIdAndClientId(OWNER_ID, d.id()).orElseGet(DecisionEntity::new), OWNER_ID)));
+        return mapper.toDomain(decisions.save(mapper.apply(d, decisions.findByOwnerIdAndClientId(ownerId(), d.id()).orElseGet(DecisionEntity::new), ownerId())));
     }
 
     @Transactional
     public void deleteDecision(String clientId) {
-        decisions.delete(decisions.findByOwnerIdAndClientId(OWNER_ID, clientId).orElseThrow(() -> new ApiException(404, "그런 판정 기록이 없다: " + clientId)));
+        decisions.delete(decisions.findByOwnerIdAndClientId(ownerId(), clientId).orElseThrow(() -> new ApiException(404, "그런 판정 기록이 없다: " + clientId)));
     }
 }

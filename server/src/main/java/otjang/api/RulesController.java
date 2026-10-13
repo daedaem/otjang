@@ -41,10 +41,12 @@ public class RulesController {
         }
     }
     public record OverlapDto(Ref item, String level, List<String> same, List<String> diff) {}
-    public record ComboDto(Ref top, Ref bottom, Ref outer, int score, List<String> why) {}
-    public record VerdictDto(boolean supported, List<OverlapDto> overlaps, int before, int after, List<ComboDto> added, List<ComboDto> top3, List<Judge.Blocker> blockers, List<String> needs, String note, List<Ref> draftItems) {}
+    /** 조합 하나. 원피스 차림이면 top 이 원피스, bottom 은 null, dress 는 true. */
+    public record ComboDto(Ref top, Ref bottom, Ref outer, int score, List<String> why, boolean dress) {}
+    public record ReviewDto(Ref item, List<String> missing) {}
+    public record VerdictDto(boolean supported, List<OverlapDto> overlaps, Integer before, Integer after, List<ComboDto> added, List<ComboDto> top3, List<Judge.Blocker> blockers, List<String> needs, String note, List<Ref> draftItems, String status, List<String> missing, List<ReviewDto> excludedItems, int assessedCount) {}
     public record MatchDto(Ref mine, Ref theirs, String how) {}
-    public record ComparisonDto(List<MatchDto> both, List<Ref> onlyTheirs, List<Ref> onlyMine) {}
+    public record ComparisonDto(List<MatchDto> both, List<Ref> onlyTheirs, List<Ref> onlyMine, List<ReviewDto> unassessedMine, List<ReviewDto> unassessedTheirs, String status) {}
 
     @PostMapping("/judge")
     public VerdictDto judge(@RequestBody Map<String, Object> body) {
@@ -65,12 +67,12 @@ public class RulesController {
         List<OverlapDto> overlaps = new ArrayList<>();
         for (Judge.Overlap o : v.overlaps()) overlaps.add(new OverlapDto(Ref.of(o.item()), o.level(), o.same(), o.diff()));
         List<ComboDto> added = new ArrayList<>(), top3 = new ArrayList<>();
-        for (Judge.Added a : v.added()) added.add(new ComboDto(Ref.of(a.top()), Ref.of(a.bottom()), null, a.score(), a.why()));
-        for (Judge.Pick p : v.top3()) top3.add(new ComboDto(Ref.of(p.top()), Ref.of(p.bottom()), Ref.of(p.outer()), p.score(), p.why()));
+        for (Judge.Added a : v.added()) added.add(new ComboDto(Ref.of(a.top()), Ref.of(a.bottom()), null, a.score(), a.why(), a.dress()));
+        for (Judge.Pick p : v.top3()) top3.add(new ComboDto(Ref.of(p.top()), Ref.of(p.bottom()), Ref.of(p.outer()), p.score(), p.why(), p.dress()));
         List<Ref> drafts = new ArrayList<>();
         for (Judge.Overlap o : v.overlaps()) if (o.item() instanceof Item it && it.isDraft()) drafts.add(Ref.of(it));
-        for (Judge.Added a : v.added()) for (Garment g : List.of(a.top(), a.bottom())) if (g instanceof Item it && it.isDraft() && drafts.stream().noneMatch((d) -> d.id().equals(it.id()))) drafts.add(Ref.of(it));
-        return new VerdictDto(v.supported(), overlaps, v.before(), v.after(), added, top3, v.blockers(), v.needs(), v.note(), drafts);
+        for (Judge.Added a : v.added()) for (Garment g : java.util.Arrays.asList(a.top(), a.bottom())) if (g instanceof Item it && it.isDraft() && drafts.stream().noneMatch((d) -> d.id().equals(it.id()))) drafts.add(Ref.of(it));
+        return new VerdictDto(v.supported(), overlaps, v.before(), v.after(), added, top3, v.blockers(), v.needs(), v.note(), drafts, v.status(), v.missing(), v.excludedItems().stream().map(i -> new ReviewDto(Ref.of(i.item()), i.missing())).toList(), v.assessedCount());
     }
 
     @GetMapping("/outfits")
@@ -79,7 +81,7 @@ public class RulesController {
         for (Item i : wardrobe.allItems(false)) if (i.isOwned() && i.inSeason(season)) pool.add(i);
         List<String> skip = exclude.isEmpty() ? List.of() : List.of(exclude.split(","));
         List<ComboDto> out = new ArrayList<>();
-        for (Recommend.Combo c : Recommend.recommend(pool, Math.min(Math.max(n, 1), 10), skip)) out.add(new ComboDto(ref(pool, c.top()), ref(pool, c.bottom()), c.outer() == null ? null : ref(pool, c.outer()), c.score(), c.why()));
+        for (Recommend.Combo c : Recommend.recommend(pool, Math.min(Math.max(n, 1), 10), skip)) out.add(new ComboDto(ref(pool, c.top()), c.bottom() == null ? null : ref(pool, c.bottom()), c.outer() == null ? null : ref(pool, c.outer()), c.score(), c.why(), c.dress()));
         return out;
     }
 
@@ -105,6 +107,6 @@ public class RulesController {
         List<Ref> onlyTheirs = new ArrayList<>(), onlyMine = new ArrayList<>();
         for (Garment g : c.onlyTheirs()) onlyTheirs.add(Ref.of(g));
         for (Garment g : c.onlyMine()) onlyMine.add(Ref.of(g));
-        return new ComparisonDto(both, onlyTheirs, onlyMine);
+        return new ComparisonDto(both, onlyTheirs, onlyMine, c.unassessedMine().stream().map(i -> new ReviewDto(Ref.of(i.item()), i.missing())).toList(), c.unassessedTheirs().stream().map(i -> new ReviewDto(Ref.of(i.item()), i.missing())).toList(), c.status());
     }
 }

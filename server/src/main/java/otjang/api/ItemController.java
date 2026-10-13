@@ -60,6 +60,7 @@ public class ItemController {
 
     @PutMapping("/{id}")
     public Item replace(@PathVariable String id, @RequestBody Map<String, Object> raw) {
+        service.item(id); // replacement must not create an item in another tenant
         raw.put("id", id);
         return service.save(raw);
     }

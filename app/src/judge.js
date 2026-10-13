@@ -9,9 +9,9 @@
  * 결과에 확률이나 "사라/사지 마라"는 판정은 넣지 않는다. 규칙이 본 사실과 그 근거 문장만 돌려준다.
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./recommend.js'));
-  else root.Judge = factory(root.Recommend);
-})(typeof self !== 'undefined' ? self : this, function (R) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./recommend.js'), () => require('./wardrobe.js'));
+  else root.Judge = factory(root.Recommend, () => root.Wardrobe);
+})(typeof self !== 'undefined' ? self : this, function (R, getWardrobe) {
   'use strict';
 
   const LIGHT_NEAR = 15;   // 밝기 차이가 이 안이면 "비슷한 밝기"로 본다 [제안값]
@@ -20,16 +20,19 @@
   const samePattern = (a, b) => (patterned(a) ? a.pattern === b.pattern : !patterned(b));
   const norm = (s) => String(s || '').toLowerCase().replace(/[\s·.,/()\-_]+/g, '');
   const isOwned = (it) => it.status !== 'candidate' && it.status !== 'gone';
+  const assessment = (it, opts) => getWardrobe().assessment(it, opts);
 
-  /** 계절이 비어 있으면 모든 계절로 본다. */
+  /** 계절 미확인은 필터를 통과하지 않는다. 사계절은 네 계절을 명시한다. */
   function inSeason(item, season) {
-    if (!season || !item.seasons || !item.seasons.length) return true;
+    if (!season) return true;
+    if (!item.seasons || !item.seasons.length) return false;
     return item.seasons.indexOf(season) >= 0;
   }
 
   /** 두 옷이 겹쳐 보이는지. 같은 점과 다른 점을 문장으로 돌려준다. */
   function similarity(a, b) {
     const same = [], diff = [];
+    if (!assessment(a).ready || !assessment(b).ready) return { overlap: null, level: 'unassessed', same, diff, gap: null, status: 'needs-confirmation' };
     if (a.cat !== b.cat) return { overlap: false, level: 'none', same, diff };
     const gap = Math.abs(a.light - b.light);
     (a.kind === b.kind ? same : diff).push(a.kind === b.kind ? '종류가 같습니다' : '종류가 다릅니다');
@@ -45,7 +48,8 @@
   }
 
   function findOverlaps(candidate, items) {
-    return items.filter((it) => isOwned(it) && it.id !== candidate.id)
+    if (!assessment(candidate).ready) return [];
+    return items.filter((it) => isOwned(it) && it.id !== candidate.id && assessment(it).ready)
       .map((it) => Object.assign({ item: it }, similarity(candidate, it)))
       .filter((r) => r.overlap)
       .sort((x, y) => (x.level === y.level ? x.gap - y.gap : x.level === 'strong' ? -1 : 1));
@@ -53,6 +57,7 @@
 
   /** 상의·하의 쌍 가운데 주의 사항이 없는 것. */
   function cleanPairs(items) {
+    items = items.filter((it) => assessment(it).ready);
     const tops = items.filter((i) => i.cat === 'top'), bottoms = items.filter((i) => i.cat === 'bottom');
     const out = [];
     for (const top of tops) for (const bottom of bottoms) {
@@ -61,6 +66,11 @@
     }
     return out;
   }
+  /** 주의 사항 없는 차림: 상의·하의 쌍 + 원피스 한 벌씩(top 자리에 원피스, bottom 은 null, dress: true). */
+  function cleanOutfits(items) {
+    return cleanPairs(items).concat(items.filter((i) => i.cat === 'dress').map((d) => { const s = R.scoreDress(d); return { top: d, bottom: null, score: s.score, why: s.why, dress: true }; }));
+  }
+  const pairKey = (c) => c.top.id + (c.bottom ? c.bottom.id : '');
 
   function tally(list) {
     const m = new Map();
@@ -71,18 +81,24 @@
   /**
    * 후보 한 벌을 보유 옷에 비춰 본다.
    * 반환: { supported, overlaps, before, after, added, top3, blockers, needs, note }
-   *   before/after  주의 사항 없는 상의·하의 쌍의 수 (아우터 후보는 그 아우터를 걸칠 수 있는 쌍의 수)
+   *   before/after  주의 사항 없는 차림(상의·하의 쌍 + 원피스)의 수 (아우터 후보는 그 아우터를 걸칠 수 있는 차림의 수)
    *   added         후보로 새로 생기는 쌍
    *   top3          대표 조합 3개. 가능한 한 서로 다른 옷과 짝짓는다
    *   blockers      조합이 안 되는 이유와 그 이유에 걸린 옷의 수
    */
   function judgeCandidate(allItems, candidate, opts) {
     const season = opts && opts.season;
-    const owned = allItems.filter((it) => isOwned(it) && it.id !== candidate.id && inSeason(it, season));
-    const overlaps = findOverlaps(candidate, owned);
-    const base = { supported: true, overlaps, before: 0, after: 0, added: [], top3: [], blockers: [], needs: [], note: '' };
+    const pool = allItems.filter((it) => isOwned(it) && it.id !== candidate.id);
+    const excludedItems = pool.filter((it) => !assessment(it, opts).ready).map((item) => ({ item, missing: assessment(item, opts).missing }));
+    const owned = pool.filter((it) => assessment(it, opts).ready && inSeason(it, season));
+    const candidateState = assessment(candidate, opts);
+    const base = { supported: true, status: !candidateState.ready || !owned.length ? 'needs-confirmation' : excludedItems.length ? 'partial' : 'ready', missing: candidateState.missing, excludedItems, assessedCount: owned.length,
+      overlaps: [], before: null, after: null, added: [], top3: [], blockers: [], needs: [], note: '' };
+    if (!candidateState.ready) { base.note = '구매 후보의 속성을 확인해야 비교할 수 있습니다.'; return base; }
+    if (!owned.length) { base.note = pool.length ? '확인된 보유 옷이 없어 비교를 보류합니다.' : '비교할 보유 옷을 먼저 등록해 주세요.'; return base; }
+    base.overlaps = findOverlaps(candidate, owned); base.before = 0; base.after = 0;
     const tops = owned.filter((i) => i.cat === 'top'), bottoms = owned.filter((i) => i.cat === 'bottom'), outers = owned.filter((i) => i.cat === 'outer');
-    const pairsBefore = cleanPairs(owned);
+    const pairsBefore = cleanOutfits(owned);
 
     if (candidate.cat === 'top' || candidate.cat === 'bottom') {
       const partners = candidate.cat === 'top' ? bottoms : tops;
@@ -128,8 +144,8 @@
       }
       const cautions = [];
       for (const p of pairsBefore) {
-        const s = R.scoreOuter(candidate, p.top, p.bottom);
-        if (!s.caution.length) base.added.push({ top: p.top, bottom: p.bottom, partner: p.top, score: p.score + s.score, why: p.why.concat(s.why), outers: [] });
+        const s = p.dress ? R.scoreDressOuter(candidate, p.top) : R.scoreOuter(candidate, p.top, p.bottom);
+        if (!s.caution.length) base.added.push(Object.assign({ top: p.top, bottom: p.bottom, partner: p.top, score: p.score + s.score, why: p.why.concat(s.why), outers: [] }, p.dress ? { dress: true } : {}));
         else cautions.push.apply(cautions, s.caution);
       }
       // 지금 아우터들이 걸칠 수 있는 쌍의 수와 견줄 수 있게, 기준은 "쌍의 수"로 둔다
@@ -137,10 +153,28 @@
       base.after = base.added.length;
       base.blockers = tally(cautions).map((b) => Object.assign(b, { total: pairsBefore.length, word: '조합' }));
       const seenTop = new Set(), picked = [];
-      const sorted = base.added.slice().sort((a, b) => b.score - a.score || (a.top.id + a.bottom.id < b.top.id + b.bottom.id ? -1 : 1));
+      const sorted = base.added.slice().sort((a, b) => b.score - a.score || (pairKey(a) < pairKey(b) ? -1 : 1));
       for (const c of sorted) { if (picked.length < 3 && !seenTop.has(c.top.id)) { picked.push(c); seenTop.add(c.top.id); } }
       for (const c of sorted) { if (picked.length < 3 && picked.indexOf(c) < 0) picked.push(c); }
-      base.top3 = picked.map((c) => ({ top: c.top, bottom: c.bottom, outer: candidate, score: c.score, why: c.why }));
+      base.top3 = picked.map((c) => Object.assign({ top: c.top, bottom: c.bottom, outer: candidate, score: c.score, why: c.why }, c.dress ? { dress: true } : {}));
+      return base;
+    }
+
+    if (candidate.cat === 'dress') {
+      // 원피스는 혼자서 차림 하나가 된다. 걸칠 수 있는 아우터를 함께 본다
+      const self = R.scoreDress(candidate), cautions = [], ok = [];
+      for (const o of outers) {
+        const s = R.scoreDressOuter(o, candidate);
+        if (!s.caution.length) ok.push({ o, s }); else cautions.push.apply(cautions, s.caution);
+      }
+      ok.sort((a, b) => b.s.score - a.s.score || (a.o.id < b.o.id ? -1 : 1));
+      base.added = [{ top: candidate, bottom: null, partner: candidate, score: self.score, why: self.why, outers: ok.map((x) => x.o), dress: true }];
+      base.before = pairsBefore.length;
+      base.after = pairsBefore.length + 1;
+      base.blockers = tally(cautions).map((b) => Object.assign(b, { total: outers.length, word: '아우터' }));
+      base.top3 = ok.length ? ok.slice(0, 3).map((x) => ({ top: candidate, bottom: null, outer: x.o, score: self.score + x.s.score, why: self.why.concat(x.s.why), dress: true }))
+        : [{ top: candidate, bottom: null, outer: null, score: self.score, why: self.why, dress: true }];
+      if (outers.length && !ok.length) base.needs.push('이 원피스와 색이나 격식이 다른 아우터가 있으면 겹쳐 입을 수 있습니다.');
       return base;
     }
 
@@ -151,7 +185,7 @@
 
   /** 두 옷이 같은 자리를 채우는 옷인지 (옷장 비교용). 브랜드와 이름이 같으면 같은 옷으로 본다. */
   function matchKind(a, b) {
-    if (a.cat !== b.cat) return '';
+    if (!assessment(a).ready || !assessment(b).ready || a.cat !== b.cat) return '';
     if (a.brand && b.brand && norm(a.brand) === norm(b.brand) && norm(a.name) === norm(b.name)) return 'exact';
     // 프린트는 자리(슬롯)를 가르지 않는다. 줄무늬와 체크만 무지와 다른 자리로 본다
     const woven = (x) => x.pattern === 'stripe' || x.pattern === 'check';
@@ -165,8 +199,10 @@
    */
   function compareWardrobes(mineAll, theirsAll, opts) {
     const season = opts && opts.season;
-    const mine = mineAll.filter((it) => isOwned(it) && inSeason(it, season));
-    const theirs = theirsAll.filter((it) => isOwned(it) && inSeason(it, season));
+    const unassessedMine = mineAll.filter((it) => isOwned(it) && !assessment(it, opts).ready).map((item) => ({ item, missing: assessment(item, opts).missing }));
+    const unassessedTheirs = theirsAll.filter((it) => isOwned(it) && !assessment(it, opts).ready).map((item) => ({ item, missing: assessment(item, opts).missing }));
+    const mine = mineAll.filter((it) => isOwned(it) && assessment(it, opts).ready && inSeason(it, season));
+    const theirs = theirsAll.filter((it) => isOwned(it) && assessment(it, opts).ready && inSeason(it, season));
     const used = new Set(), both = [], onlyTheirs = [];
     for (const pass of ['exact', 'similar']) {
       for (const t of theirs) {
@@ -177,8 +213,8 @@
     }
     for (const t of theirs) if (!both.some((b) => b.theirs === t)) onlyTheirs.push(t);
     const onlyMine = mine.filter((m) => !used.has(m.id));
-    return { both, onlyTheirs, onlyMine };
+    return { both, onlyTheirs, onlyMine, unassessedMine, unassessedTheirs, status: unassessedMine.length || unassessedTheirs.length ? 'partial' : 'ready' };
   }
 
-  return { LIGHT_NEAR, similarity, findOverlaps, cleanPairs, judgeCandidate, compareWardrobes, matchKind, inSeason, isOwned };
+  return { LIGHT_NEAR, similarity, findOverlaps, cleanPairs, cleanOutfits, judgeCandidate, compareWardrobes, matchKind, inSeason, isOwned };
 });

@@ -1,0 +1,34 @@
+{
+  "asset": "wardrobe-studio.jpg",
+  "generatedBy": "built-in image_gen.imagegen",
+  "source": "wardrobe-studio.png (retained in staging; JPEG export at 1400px / quality 85)",
+  "purpose": "Decorative first-visit wardrobe editorial. Never interpreted as owned clothes.",
+  "personalPhotosUploaded": false,
+  "prompt": "Use case: photorealistic-natural. Asset type: original editorial still-life photograph for a Korean personal wardrobe web app, image only, no web UI. Create a premium contemporary fashion editorial photo, portrait 4:5 composition. A brushed chrome clothing rail stands in a pale cool-gray minimalist studio. Six beautiful everyday unbranded garments on thin dark wood hangers: an ivory cotton shirt in front, charcoal blazer, muted olive jacket, blue striped oxford, dark indigo denim trousers neatly folded over hanger, black wool cardigan. Garments drape with credible fabric weight and subtle wrinkles; detailed cotton, wool and denim textures. Rack enters near top quarter; clothing fills central and right two thirds; lower left has one pair polished black derby shoes on a low simple concrete plinth. Directional natural daylight from left, crisp editorial shadows on cool-gray plaster floor, understated modern styling, photographed on 50mm lens, no yellow/beige cast, no people. Original composition, not copying any brand. No logos, no lettering, no text, no watermark. This is a decorative mood image, not a customer's actual clothes.",
+  "references": [
+    {
+      "name": "Serotoninn",
+      "award": "Awwwards Site of the Day",
+      "date": "2026-08-04",
+      "proof": "https://www.awwwards.com/sites/serotoninn",
+      "site": "https://serotoninn.com/",
+      "observed": "Large fashion photographs, compact text navigation, strong type hierarchy."
+    },
+    {
+      "name": "Coutumes",
+      "award": "Awwwards Honorable Mention",
+      "date": "2026-09-05",
+      "proof": "https://www.awwwards.com/sites/coutumes",
+      "site": "https://coutumes.com/",
+      "observed": "Image-led collection grid, fine dividers, restrained product controls. Home and collection checked."
+    },
+    {
+      "name": "Maison AUGE",
+      "award": "Awwwards Honorable Mention",
+      "date": "2026-09-17",
+      "proof": "https://www.awwwards.com/sites/maison-auge",
+      "site": "https://maisonauge.com/",
+      "observed": "Fashion/luxury design studio, oversized sans type and generous image space. Not a fashion retailer."
+    }
+  ]
+}
