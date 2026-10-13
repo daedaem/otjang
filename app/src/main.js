@@ -697,16 +697,30 @@ async function downloadBackup() {
   await photoLoadAll({ rerender: false });
   const data = makeBackup({ ...state, closet: real, example: false }, photos);
   const missing = real.filter((i) => i.photo && !data.photos[i.id]).length;
+  const filename = `eoul-backup-${today()}.json`;
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const done = () => toast(`옷 ${real.length}벌·찜 ${state.saved.length}개를 백업 파일로 받았어요${missing ? ` (사진 ${missing}장은 읽지 못했어요)` : ''}`);
+  // claude.ai 미리보기 안에서는 파일 받기를 그 화면의 저장 기능으로 요청한다
+  const downloads = window.claude?.use ? await window.claude.use('downloads').catch(() => null) : null;
+  if (downloads) {
+    try {
+      await downloads.save({ filename, data: blob });
+      done();
+    } catch (err) {
+      toast(err?.code === 'declined' ? '백업 파일을 받지 않았어요' : '이 화면에서는 파일을 받을 수 없어요. 브라우저에서 앱 주소를 직접 열어 주세요.');
+    }
+    return;
+  }
   try {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `eoul-backup-${today()}.json`;
+    a.download = filename;
     document.body.append(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    toast(`옷 ${real.length}벌·찜 ${state.saved.length}개를 백업 파일로 받았어요${missing ? ` (사진 ${missing}장은 읽지 못했어요)` : ''}`);
+    done();
   } catch {
     toast('이 화면에서는 파일을 받을 수 없어요. 브라우저에서 앱 주소를 직접 열어 주세요.');
   }
