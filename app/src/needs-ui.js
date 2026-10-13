@@ -170,22 +170,29 @@ function discoveryProductCard(row, index, exploring) {
     h('p', { class: 'eyebrow', text: exploring ? '정보 확인 후 비교할 상품' : row.matchStatus === 'kind-gap' ? '등록 목록에 없는 신발 종류' : '내 옷과 함께 입을 상품' }),
     h('p', { class: 'need-product-brand', text: p.brand }),
     h('h2', { class: 'need-product-name', text: p.name }),
-    h('p', { class: 'note discovery-model', text: '품번 ' + p.model + (p.colorName ? ' · ' + p.colorName : '') }),
     h('p', { class: 'need-product-price', text: p.priceKRW == null ? '현재 가격은 판매처에서 확인' : won(p.priceKRW) }),
-    h('ul', { class: 'why' }, row.reasons.map((reason) => h('li', { text: reason }))));
+    h('p', { class: 'need-product-source note', text: p.checkedAt + ' · ' + p.storeName + (p.priceKRW == null ? ' · 가격 미확인' : ' 표시가') }),
+    h('p', { class: 'need-product-why', text: row.matchStatus === 'compatible' ? row.reasons[row.reasons.length - 1] : row.reasons[0] }));
   if (row.outfits?.length) body.append(h('h3', { text: '내 옷과 이렇게' }), needOutfit(row.outfits[0], row.candidate));
   else if (row.partners?.length) body.append(h('div', { class: 'need-outfit discovery-partners' }, row.partners.slice(0, 3).map((it) => h('div', { class: 'need-piece' }, needVisual(it), h('span', { text: it.name })))));
-  if (row.cautions.length) body.append(h('p', { class: 'note', text: row.cautions.join(' ') }));
-  body.append(h('p', { class: 'need-product-source note', text: p.storeName + ' · ' + p.checkedAt + ' 확인. 가격·재고는 바뀔 수 있어요.' }),
+  if (exploring) body.append(h('p', { class: 'note', text: '색·무늬 조합을 확인하기 전인 상품이에요.' }));
+  if (row.matchStatus === 'kind-gap') body.append(h('p', { class: 'note', text: '신발 종류만 제안해요. 색 어울림·착화감은 계산하지 않았어요.' }));
+  body.append(h('details', { class: 'ev discovery-proof' }, h('summary', { text: '품번·추천 근거 더 보기' }),
+    h('p', { class: 'note discovery-model', text: '품번 ' + p.model + (p.colorName ? ' · ' + p.colorName : '') }),
+    h('ul', { class: 'why' }, row.reasons.map((reason) => h('li', { text: reason }))),
+    p.attrEvidence?.note ? h('p', { class: 'note', text: '편집 분류 · ' + p.attrEvidence.note }) : null,
+    h('p', { class: 'note', text: row.cautions.join(' ') })),
     h('div', { class: 'bar need-actions need-product-actions' },
       h('button', { class: 'btn primary small', type: 'button', 'data-discovery-compare': p.id,
         disabled: pending?.target === state && pending.scope === accountScope(), onclick: () => compareDiscoveryProduct(row), text: '내 옷과 비교' }),
-      h('a', { class: 'btn small', href: p.link, target: '_blank', rel: 'noopener noreferrer', text: '공식 판매처 ↗', 'aria-label': p.brand + ' ' + p.name + ' 공식 판매처 상품 페이지 (새 창)' })));
+      h('a', { class: 'text-link', href: p.link, target: '_blank', rel: 'noopener noreferrer', text: '공식 판매처 ↗', 'aria-label': p.brand + ' ' + p.name + ' 공식 판매처 상품 페이지 (새 창)' })),
+    h('p', { class: 'note', text: '판매처에서 현재 가격·재고를 확인해 주세요.' }));
   return h('article', { class: 'need-card panel discovery-card', 'data-discovery-product': p.id, 'data-match-status': row.matchStatus, 'aria-label': p.brand + ' ' + p.name }, body);
 }
 function renderNeeds(main) {
   const plan = wardrobeDiscovery();
   const box = h('section', { id: 'wardrobeNeeds', 'aria-labelledby': 'needsTitle' });
+  let confirmation = null;
   box.append(h('header', { class: 'needs-intro' }, h('div', null, h('p', { class: 'eyebrow', text: 'THE NEXT PIECE' }),
     h('h1', { id: 'needsTitle', text: '내 옷에 맞는 다음 한 벌' }),
     h('p', { class: 'lead', text: '무엇이 있는지 보고, 함께 입을 실제 상품을 골라요.' }))));
@@ -202,12 +209,12 @@ function renderNeeds(main) {
   if (plan.pending.length) {
     const queue = ['top', 'bottom', 'dress', 'outer', 'shoes'].map((cat) => plan.pending.find((r) => r.item.cat === cat)).filter(Boolean);
     const first = queue.slice(0, 2).map((r) => r.item);
-    box.append(h('section', { class: 'panel needs-pending', id: 'needsPending' },
+    confirmation = h('section', { class: 'panel needs-pending', id: 'needsPending' },
       h('h2', { text: plan.assessed ? '몇 번만 눌러 추천을 더 정확하게' : '색과 무늬만 확인하면 내 옷과 비교해요' }),
       h('p', { class: 'note', text: '브랜드는 몰라도 괜찮아요. 사진으로 잡은 색은 제안이며, 확인한 정보로만 코디를 계산해요.' }),
       h('div', { class: 'bar' }, h('button', { class: 'btn primary', type: 'button', 'data-discovery-confirm': first.map((it) => it.id).join(','),
         onclick: () => openAttributeCheck(first, { season: state.prefs.needsSeason, onComplete: () => { ui.tab = 'shop'; render(); } }), text: first.length + '벌 간단 확인' }),
-        plan.pending.length > first.length ? h('button', { class: 'text-link', type: 'button', onclick: () => openAttributeCheck(plan.pending.map((r) => r.item), { season: state.prefs.needsSeason, onComplete: () => { ui.tab = 'shop'; render(); } }), text: '확인 전 옷 ' + plan.pending.length + '벌 모두 보기' }) : null)));
+        plan.pending.length > first.length ? h('button', { class: 'text-link', type: 'button', onclick: () => openAttributeCheck(plan.pending.map((r) => r.item), { season: state.prefs.needsSeason, onComplete: () => { ui.tab = 'shop'; render(); } }), text: '확인 전 옷 ' + plan.pending.length + '벌 모두 보기' }) : null));
   }
   const filters = h('details', { class: 'ev discovery-filters' }, h('summary', { text: '예산·계절 조정' }),
     segmented('discovery-budget', '상품 가격 상한', [['0', '전체'], ['50000', '5만원 이하'], ['100000', '10만원 이하']], String(ui.discoveryBudget || 0), (value) => { ui.discoveryBudget = Number(value); render(); }));
@@ -215,7 +222,7 @@ function renderNeeds(main) {
   SEASONS.forEach((s) => season.append(h('option', { value: s, text: s }))); season.value = state.prefs.needsSeason || '';
   filters.append(h('label', { for: 'needsSeason', text: '계절 ' }), season); box.append(filters);
   if (plan.recommendations.length) {
-    box.append(h('h2', { text: '이 상품을 먼저 살펴보세요' }),
+    box.append(h('h2', { text: '확인한 ' + D.inspectCatalog(DISCOVERY_RAW, { today: today() }).products.length + '개 상품 중 먼저 볼 상품' }),
       h('div', { class: 'needs-grid', id: 'needsResults' }, plan.recommendations.map((row, index) => discoveryProductCard(row, index, false))));
   } else if (plan.assessed) box.append(h('section', { class: 'panel', id: 'needsNoBuy' }, h('h2', { text: '지금은 구매를 서두르지 않아도 돼요' }),
     h('p', { class: 'sub', text: '확인된 상품 목록에서 추가할 근거가 있는 옷을 찾지 못했어요. 같은 종류가 있거나 선택한 조건에 맞는 새 조합이 없어요.' }),
@@ -224,6 +231,7 @@ function renderNeeds(main) {
     h('summary', { text: plan.recommendations.length ? '정보 확인 후 비교할 다른 실제 상품' : '등록 목록에 없는 종류의 실제 상품' }),
     h('p', { class: 'note', text: '종류를 기준으로 찾은 후보예요. 아직 색·무늬 조합이 확인된 추천은 아니에요.' }),
     h('div', { class: 'needs-grid', id: 'needsExplore' }, plan.explore.map((row, index) => discoveryProductCard(row, index, true)))));
+  if (confirmation) box.append(confirmation);
   if (!plan.recommendations.length && !plan.explore.length && !plan.assessed) box.append(h('p', { class: 'note', text: '위의 간단 확인을 마치면 내 옷과 비교할 상품을 찾을 수 있어요.' }));
   if (plan.held.length || plan.covered.length) {
     const reasons = { 'registered-kind-covered': '이미 같은 역할의 옷이 있어요.', 'strong-overlap': '보유 옷과 색·종류가 많이 겹쳐요.', 'confirm-existing-kind': '같은 종류의 보유 옷 정보를 먼저 확인해요.' };

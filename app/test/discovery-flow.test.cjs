@@ -101,3 +101,9 @@ test('empty wardrobe starts compact owned entry without a fake shopping recommen
 test('invalid product proof cannot be saved from a stale card',async()=>{
  const t=harness(),click=t.button().props.onclick;t.ctx.DISCOVERY_RAW.products[0].evidence=[];assert.equal(await click(),false);assert.equal(t.state.items.length,2);assert.equal(t.writes.length,0);
 });
+
+test('named results precede confirmation homework and product proof is folded while check date stays visible',()=>{
+ const t=harness({items:[item('pending','top','tee',{family:null,light:null,pattern:null,formality:null})]}),main=element('main');t.ctx.renderNeeds(main);const all=nodes(main),explore=all.findIndex(n=>n.props.id==='needsExplore'),confirm=all.findIndex(n=>n.props.id==='needsPending');assert.ok(explore>=0&&confirm>explore);
+ const card=all.find(n=>n.props['data-discovery-product']);assert.ok(card);const details=nodes(card).find(n=>n.type==='details'&&n.props.class==='ev discovery-proof');assert.ok(details);assert.ok(!details.props.open);assert.match(words(details),/SKU/);
+ const visibleDate=card.children[0].children.find(n=>n.type==='p'&&String(n.props.class).includes('need-product-source'));assert.ok(visibleDate);assert.match(visibleDate.props.text,/2026-10-14/);assert.match(visibleDate.props.text,/표시가/);
+});

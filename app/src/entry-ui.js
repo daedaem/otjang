@@ -188,7 +188,7 @@ async function commitEasyChanges(changes, actor) {
 function attributeDraft(item, options) {
   const missing = new Set(W.assessment(item, options).missing), draft = W.isDraft(item);
   const fields = ['kind', 'family', 'light', 'pattern', 'formality', 'seasons'].filter((field) => missing.has(field) || (draft && ['kind', 'family', 'light', 'pattern', 'formality'].includes(field)));
-  return { item: JSON.parse(JSON.stringify(item)), fields, values: { kind: item.kind, family: item.family, light: item.light, pattern: item.pattern, formality: item.formality, seasons: item.seasons.slice() }, touched: new Set(), suggestion: null, quality: null, photoRead: false };
+  return { item: JSON.parse(JSON.stringify(item)), fields, values: { kind: item.kind, family: item.family, light: item.light, pattern: item.pattern, formality: item.formality, seasons: item.seasons.slice() }, touched: new Set(), suggestion: null, quality: null, photoRead: false, colorManual: false };
 }
 function attributeNext(draft) {
   const raw = { ...draft.item };
@@ -251,14 +251,32 @@ function openAttributeCheck(items, options) {
       h('div', { class: 'entry-context' }, h('div', { class: 'entry-photo compact' }, item.photo?.ownImg || item.photo?.img ? h('img', { src: item.photo.ownImg || item.photo.img, alt: item.name + ' 확인할 사진' }) : h('span', { text: CATS[item.cat] })), h('p', { class: 'entry-sub', text: '브랜드·상품명·가격·실측은 필요 없어요. 사진과 맞는 것만 골라 주세요.' })));
     if (need.has('kind')) body.append(group('옷 종류', Object.entries(KINDS[item.cat]).map(([kind, label]) => chip(label, values.kind === kind, () => set(draft, ['kind'], { kind }), 'kind:' + kind)).concat(chip('잘 모르겠어요', draft.touched.has('kind') && !values.kind, () => set(draft, ['kind'], { kind: null }), 'kind:unknown'))));
     if (need.has('family') || need.has('light')) {
-      if (draft.suggestion && !draft.touched.has('family') && !draft.touched.has('light')) body.append(h('div', { class: 'attribute-suggestion' }, h('p', { class: 'note', text: need.has('family') ? '사진에서 보인 색 제안: ' + FAM[draft.suggestion.family][0] + ' · 배경색일 수도 있어요.' : '사진에서 보인 밝기 제안이에요. 조명 때문에 실제와 다를 수 있어요.' }), chip(need.has('family') ? '이 색이 맞아요' : '사진의 밝기가 맞아요', false, () => set(draft, draft.fields.filter((field) => field === 'family' || field === 'light'), { family: draft.suggestion.family, light: draft.suggestion.light }), 'color:suggestion')));
-      if (need.has('family')) {
-        const common = ['black', 'white', 'gray', 'navy', 'blue', 'beige', 'brown', 'olive'];
-        const colorChip = (family) => { const data = FAM[family], button = chip(data[0], values.family === family && draft.touched.has('family'), () => set(draft, ['family'], { family }), 'family:' + family); button.prepend(h('span', { class: 'attribute-swatch', style: 'background:' + swatch({ family, light: data[3] }) })); return button; };
-        body.append(group('실제 옷 색', common.map(colorChip).concat(chip('잘 모르겠어요', draft.touched.has('family') && !values.family, () => set(draft, ['family'], { family: null }), 'family:unknown'))));
-        body.append(h('details', { class: 'attribute-other-colors', open: !!colorsOpen }, h('summary', { text: '다른 색 선택' }), group('다른 옷 색', Object.keys(FAM).filter((family) => !common.includes(family)).map(colorChip))));
+      const colorFields = draft.fields.filter((field) => field === 'family' || field === 'light');
+      const colorDone = colorFields.every((field) => draft.touched.has(field));
+      const manual = !draft.suggestion || draft.colorManual || (!colorDone && colorFields.some((field) => draft.touched.has(field)));
+      const brightness = (light) => light == null ? '밝기 모름' : light < 30 ? '어두운 색' : light < 65 ? '중간 밝기' : '밝은 색';
+      const showManual = () => { if (busy) return; draft.colorManual = true; error = ''; draw(false); };
+      if (!manual && !colorDone) {
+        const proposedFamily = need.has('family') ? draft.suggestion.family : values.family;
+        body.append(h('div', { class: 'attribute-suggestion' },
+          h('p', { class: 'note', text: '사진에서 보인 제안 · ' + (FAM[proposedFamily]?.[0] || '색 모름') + ' · ' + brightness(need.has('light') ? draft.suggestion.light : values.light) }),
+          h('p', { class: 'entry-kind-note', text: '조명이나 배경색 때문에 다를 수 있어요. 실제 옷과 맞는지 확인해 주세요.' }),
+          h('div', { class: 'entry-options' }, chip('맞아요', false, () => set(draft, colorFields, { family: draft.suggestion.family, light: draft.suggestion.light }), 'color:suggestion'),
+            chip('다른 색 직접 선택', false, showManual, 'color:manual'))));
+      } else if (!manual && colorDone) {
+        body.append(h('div', { class: 'attribute-suggestion' },
+          h('p', { class: 'entry-selected', text: '확인한 색 · ' + (FAM[values.family]?.[0] || '색 모름') + ' · ' + brightness(values.light) }),
+          chip('색 다시 선택', false, showManual, 'color:edit')));
       }
-      if (need.has('light')) body.append(group('색의 밝기', [[20, '어두워요'], [55, '중간이에요'], [85, '밝아요']].map(([light, label]) => chip(label, draft.touched.has('light') && values.light === light, () => set(draft, ['light'], { light }), 'light:' + light)).concat(chip('잘 모르겠어요', draft.touched.has('light') && values.light == null, () => set(draft, ['light'], { light: null }), 'light:unknown'))));
+      if (manual) {
+        if (need.has('family')) {
+          const common = ['black', 'white', 'gray', 'navy', 'blue', 'beige', 'brown', 'olive'];
+          const colorChip = (family) => { const data = FAM[family], button = chip(data[0], values.family === family && draft.touched.has('family'), () => set(draft, ['family'], { family }), 'family:' + family); button.prepend(h('span', { class: 'attribute-swatch', style: 'background:' + swatch({ family, light: data[3] }) })); return button; };
+          body.append(group('실제 옷 색', common.map(colorChip).concat(chip('잘 모르겠어요', draft.touched.has('family') && !values.family, () => set(draft, ['family'], { family: null }), 'family:unknown'))));
+          body.append(h('details', { class: 'attribute-other-colors', open: !!colorsOpen }, h('summary', { text: '다른 색 선택' }), group('다른 옷 색', Object.keys(FAM).filter((family) => !common.includes(family)).map(colorChip))));
+        }
+        if (need.has('light')) body.append(group('색의 밝기', [[20, '어두워요'], [55, '중간이에요'], [85, '밝아요']].map(([light, label]) => chip(label, draft.touched.has('light') && values.light === light, () => set(draft, ['light'], { light }), 'light:' + light)).concat(chip('잘 모르겠어요', draft.touched.has('light') && values.light == null, () => set(draft, ['light'], { light: null }), 'light:unknown'))));
+      }
     }
     if (need.has('pattern')) body.append(group('무늬', [['solid', '무지'], ['stripe', '줄무늬'], ['check', '체크'], ['graphic', '프린트·큰 무늬']].map(([pattern, label]) => chip(label, draft.touched.has('pattern') && values.pattern === pattern, () => set(draft, ['pattern'], { pattern }), 'pattern:' + pattern)).concat(chip('잘 모르겠어요', draft.touched.has('pattern') && !values.pattern, () => set(draft, ['pattern'], { pattern: null }), 'pattern:unknown'))));
     if (need.has('formality')) body.append(group('입을 때 느낌', [[1, '편하게'], [2, '단정하게'], [3, '격식 있게']].map(([formality, label]) => chip(label, draft.touched.has('formality') && values.formality === formality, () => set(draft, ['formality'], { formality }), 'formality:' + formality)).concat(chip('잘 모르겠어요', draft.touched.has('formality') && values.formality == null, () => set(draft, ['formality'], { formality: null }), 'formality:unknown'))));
@@ -268,7 +286,11 @@ function openAttributeCheck(items, options) {
     body.append(h('p', { class: 'entry-status' + (error ? ' error' : ''), role: error ? 'alert' : 'status', text: error || (busy ? '확인한 정보를 저장하고 있어요…' : '모르는 값은 비워 두고 해당 코디 계산을 보류해요.') }));
     footer.append(h('button', { id: 'attributeConfirm', type: 'button', class: 'btn primary entry-primary', disabled: busy, onclick: confirm, text: busy ? '저장하고 있어요…' : index + 1 < rows.length ? '다음 옷 확인' : '선택한 정보 반영하고 추천 보기' }));
     if (moveFocus && !busy && dlg.open) body.querySelector('.entry-question')?.focus({ preventScroll: true });
-    else if (!busy && focused) dlg.querySelector('[data-attribute-choice="' + focused + '"]')?.focus({ preventScroll: true });
+    else if (!busy && focused) {
+      const next = dlg.querySelector('[data-attribute-choice="' + focused + '"]') || (focused === 'color:suggestion' ? dlg.querySelector('[data-attribute-choice="color:edit"]') :
+        focused === 'color:manual' || focused === 'color:edit' ? dlg.querySelector('[data-attribute-choice="family:black"]') || dlg.querySelector('[data-attribute-choice="light:20"]') : null);
+      next?.focus({ preventScroll: true });
+    }
     if (!draft.photoRead) {
       draft.photoRead = true; const own = item.photo?.ownImg || (item.photo?.kind === 'own' ? item.photo.img : '');
       attributePhotoHint(own).then((hint) => { if (closed || !actor() || !hint) return; draft.suggestion = hint.suggestion; draft.quality = hint.quality; if (rows[index] === draft && !busy) draw(false); });

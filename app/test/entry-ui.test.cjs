@@ -162,3 +162,16 @@ test('retry after a later-edited registration was retained does not create a sec
  const hold=deferred(),f=fixture(async(_payload,n)=>n===1?hold.promise:true);f.open();await f.tap(f.kind());const started=f.tap(f.save());await tick();
  f.state.items[0].brand='edited';const newer=f.ctx.save();hold.resolve(false);await Promise.all([started,newer]);const id=f.state.items[0].id;await f.tap(f.save());assert.equal(f.state.items.length,1);assert.equal(f.state.items[0].id,id);assert.equal(f.state.items[0].brand,'edited');assert.match(f.document.querySelector('#easyEntryStatus').textContent,/이미 이 옷의 기록이 남아/);
 });
+const hintPixels=()=>{const pixels=new Uint8ClampedArray(96*96*4);for(let i=0;i<pixels.length;i+=4){const at=i/4;pixels[i]=40+(at%70);pixels[i+1]=100+(at%90);pixels[i+2]=190;pixels[i+3]=255}return pixels};
+test('approved proposal starts with two explicit actions and hidden manual grids until the user confirms', async () => {
+ const pixels=hintPixels(),expected=G.guess(pixels,96,96),f=fixture(async()=>true,{pixels}),own='data:image/png;base64,AAAA',saved=item('photo',{photo:{kind:'own',img:own,ownImg:own}});f.state.items.push(saved);f.attrs([saved]);await tick();
+ assert.ok(f.choice('color:suggestion'));assert.ok(f.choice('color:manual'));assert.equal(f.choice('family:white'),null);assert.equal(f.choice('light:85'),null);assert.equal(f.state.items[0].family,null);assert.equal(f.state.items[0].light,null);
+ await choose(f,['pattern:solid','formality:2']);await f.tap(f.confirm());assert.equal(f.calls.length,0);assert.equal(f.state.items[0].attrSource,'owner');
+ f.choice('color:suggestion').focus();await f.tap(f.choice('color:suggestion'));assert.ok(f.choice('color:edit'));assert.equal(f.choice('family:white'),null);assert.equal(f.document.activeElement.getAttribute('data-attribute-choice'),'color:edit');await f.tap(f.confirm());
+ assert.equal(f.state.items[0].family,expected.family);assert.equal(f.state.items[0].light,expected.light);assert.equal(f.state.items[0].attrSource,'owner-confirmed');
+});
+test('rejecting a proposal reveals manual grids without applying its values and saves only later manual choices', async () => {
+ const pixels=hintPixels(),f=fixture(async()=>true,{pixels}),own='data:image/png;base64,AAAA',saved=item('photo',{photo:{kind:'own',img:own,ownImg:own}});f.state.items.push(saved);f.attrs([saved]);await tick();
+ const proposal=G.guess(pixels,96,96);f.choice('color:manual').focus();await f.tap(f.choice('color:manual'));assert.ok(f.choice('family:white'));assert.ok(f.choice('light:85'));assert.equal(f.choice('color:suggestion'),null);assert.equal(f.state.items[0].family,null);assert.equal(f.state.items[0].light,null);assert.equal(f.calls.length,0);
+ await choose(f,['family:white','light:85','pattern:solid','formality:2']);await f.tap(f.confirm());assert.equal(f.state.items[0].family,'white');assert.equal(f.state.items[0].light,85);assert.notEqual(f.state.items[0].family,proposal.family);assert.equal(f.state.items[0].attrSource,'owner-confirmed');
+});
