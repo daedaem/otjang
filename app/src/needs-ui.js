@@ -25,6 +25,39 @@ function renderWardrobeOverview(main) {
 function openNeedProduct(r) {
   openQuickItem(null, 'candidate', { initial: { cat: r.cat, kind: r.kind, name: r.name }, hint: '추천한 종류를 넣어 두었습니다. 실제로 보고 있는 상품의 색·무늬와 판매 링크를 확인해 적어 주세요.' });
 }
+function openNeedCatalog() {
+  ui.pickCatalogOpen = true;
+  render();
+  requestAnimationFrame(() => $('#pickCatalog')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+}
+function needOfferCard(need) {
+  const result = PK.recommend(state.items, PICKS, { ...pickQuery(), line: need.line });
+  const r = result.pick;
+  if (!r) return h('section', { class: 'need-product need-product-empty', 'aria-label': '실제 상품 추천 상태' },
+    h('p', { class: 'eyebrow', text: '실제 상품 추천 대기' }),
+    h('p', { class: 'note', text: '현재 고른 조건에 맞는 확인된 상품이 없어요. 상품 비교에서 조건을 바꾸거나 다시 살펴보세요.' }));
+  const p = r.product;
+  const defaultReason = String(r.conclusion || '').includes('다섯 기준을 같은 무게로');
+  const qualityFacts = r.quality.items.slice(0, 2).map((item) => item.text);
+  const closetFact = r.closet.status === 'ready' && r.closet.added != null
+    ? r.closet.added > 0 ? '내 옷장과 새 코디 ' + r.closet.added + '개를 만들어요.' : '내 옷장과 새 코디가 생기는지도 확인했어요.'
+    : '';
+  const reason = [
+    defaultReason ? '등록된 상품 중 가격·공개 품질 정보·브랜드·핏·스타일을 같은 비중으로 비교했어요.' : r.conclusion,
+    qualityFacts.length ? '상품 정보에 ' + qualityFacts.join(' · ') + '가 공개돼 있어요.' : '',
+    closetFact
+  ].filter(Boolean).join(' ');
+  return h('section', { class: 'need-product', 'data-need-product': p.id, 'aria-label': '실제 상품 추천' },
+    h('p', { class: 'eyebrow', text: '현재 조건에 맞는 실제 상품' }),
+    h('p', { class: 'need-product-brand', text: PK.brandName(PICKS, p.brand) }),
+    h('h3', { class: 'need-product-name', text: p.name }),
+    h('p', { class: 'need-product-price' }, h('span', { class: 'note', text: '확인된 판매가 ' }), priceView(r)),
+    h('p', { class: 'need-product-why' }, h('b', { text: '추천 이유 ' }), reason),
+    h('p', { class: 'need-product-source', text: p.store.name + ' · ' + md(p.checkedAt) + ' 확인 · 판매처 한 곳 가격, 최저가 비교는 아님' }),
+    r.stale ? h('p', { class: 'warnnote', text: '가격·재고를 다시 확인해야 해요. 판매처에서 현재 정보를 확인해 주세요.' }) : null,
+    h('div', { class: 'bar need-product-actions' }, storeLink(r, '판매처에서 상품 보기 ↗', 'btn primary small'),
+      h('span', { class: 'note', text: '가격과 재고는 바뀔 수 있어요.' })));
+}
 function needOutfit(outfit, candidate) {
   const pieces = [outfit.outer, outfit.top, outfit.bottom].filter(Boolean);
   return h('div', { class: 'need-outfit' }, pieces.map((it) => h('div', { class: 'need-piece' }, needVisual(it),
@@ -75,9 +108,13 @@ function renderNeeds(main) {
         body.append(h('h3', { text: '이 옷들과 함께' }), needOutfit(r.outfits[0], r.candidate));
         if (r.outfits.length > 1) body.append(h('details', { class: 'ev' }, h('summary', { text: '다른 조합 ' + (r.outfits.length - 1) + '개 보기' }), r.outfits.slice(1).map((o) => needOutfit(o, r.candidate))));
       }
-      body.append(h('p', { class: 'note', text: r.cautions.join(' ') }), h('div', { class: 'bar need-actions' },
+      body.append(h('p', { class: 'note', text: r.cautions.join(' ') }));
+      body.append(r.line ? needOfferCard(r) : h('section', { class: 'need-product need-product-empty', 'aria-label': '상품 준비 상태' },
+        h('p', { class: 'eyebrow', text: '실제 상품 추천은 준비 중' }),
+        h('p', { class: 'note', text: '이 종류는 아직 검증한 상품명·판매가·구매 링크가 없어요.' })));
+      body.append(h('div', { class: 'bar need-actions' },
         h('button', { class: 'btn primary small', type: 'button', 'data-need-candidate': r.id, onclick: () => openNeedProduct(r), text: '보고 있는 상품과 비교하기 ↗' }),
-        r.line ? h('button', { class: 'text-link', type: 'button', onclick: () => { ui.pickCatalogOpen = true; render(); $('#pickCatalog').scrollIntoView({ block: 'start', behavior: 'smooth' }); }, text: '흰 티 상품 목록 보기' }) : null));
+        r.line ? h('button', { class: 'text-link', type: 'button', onclick: openNeedCatalog, text: '흰 티 다른 상품과 비교' }) : null));
       list.append(h('article', { class: 'need-card', 'data-need-id': r.id }, cover, body));
     });
     box.append(list);
