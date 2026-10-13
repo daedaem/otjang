@@ -130,8 +130,8 @@
     out.followup = null;
     if (out.after && d.followup && typeof d.followup === 'object' && ['purchased', 'not-purchased', 'pending', 'returned'].includes(d.followup.outcome)) out.followup = {
       outcome: d.followup.outcome, worn: ['yes', 'no', 'unknown'].includes(d.followup.worn) ? d.followup.worn : 'unknown', regret: ['yes', 'no', 'unknown'].includes(d.followup.regret) ? d.followup.regret : 'unknown',
-      sizeResult: ['right', 'small', 'large', 'unknown'].includes(d.followup.sizeResult) ? d.followup.sizeResult : 'unknown',
-      returnReason: ['size', 'fit', 'color', 'material', 'quality', 'changed', 'price', 'other', 'unknown'].includes(d.followup.returnReason) ? d.followup.returnReason : 'unknown',
+      sizeResult: ['purchased', 'returned'].includes(d.followup.outcome) && ['right', 'small', 'large', 'unknown'].includes(d.followup.sizeResult) ? d.followup.sizeResult : 'unknown',
+      returnReason: d.followup.outcome === 'returned' && ['size', 'fit', 'color', 'material', 'quality', 'changed', 'price', 'other', 'unknown'].includes(d.followup.returnReason) ? d.followup.returnReason : 'unknown',
       note: str(d.followup.note, 300), at: safeDate(d.followup.at) };
     out.follow = out.after ? cleanFollow(d.follow, out.after.decision) : null;
     return out;

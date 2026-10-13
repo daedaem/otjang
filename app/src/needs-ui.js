@@ -9,7 +9,7 @@ function renderWardrobeOverview(main) {
   const plan = wardrobePlan();
   const box = h('section', { class: 'panel wardrobe-overview', id: 'wardrobeOverview', 'aria-labelledby': 'wardrobeOverviewTitle' },
     h('div', { class: 'section-heading' }, h('div', null, h('p', { class: 'eyebrow', text: 'THE PERSONAL COLLECTION' }), h('h2', { id: 'wardrobeOverviewTitle' }, '지금 내 옷장', h('span', { class: 'count', text: String(plan.total).padStart(2, '0') }))),
-      h('button', { type: 'button', class: 'btn primary', id: 'addOwned', onclick: () => openQuickItem(null, 'owned', { returnTab: 'closet' }), text: '+ 옷 등록' })));
+      h('button', { type: 'button', class: 'btn', id: 'addOwned', onclick: () => openQuickItem(null, 'owned', { returnTab: 'closet' }), text: '+ 옷 등록' })));
   box.append(h('div', { class: 'inventory-grid' }, plan.inventory.map((c) => h('button', { type: 'button', class: 'inventory-category', 'aria-pressed': ui.cat === c.cat ? 'true' : 'false', 'data-inventory-cat': c.cat, onclick: () => { ui.cat = c.cat; ui.season = ''; render(); } },
     h('span', { class: 'inventory-label', text: c.name }), h('strong', { text: String(c.count) }),
     h('span', { class: 'note', text: c.kinds.map((k) => k.name + ' ' + k.count).concat(c.unknown ? ['종류 미확인 ' + c.unknown] : []).join(' · ') || '아직 등록하지 않았어요' })))));

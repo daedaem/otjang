@@ -13,6 +13,7 @@ function openQuickItem(item, status, options) {
   if (!item && options.initial) item = W.cleanItem({ ...options.initial, status: st }, 0);
   const dialog = h('dialog', { id: 'quickItem' });
   const name = h('input', { id: 'q-name', type: 'text', required: true, maxlength: '80', value: item ? item.name : '' });
+  const paste = !prev && st === 'candidate' ? h('textarea', { id: 'q-paste', rows: '3', maxlength: '1200', placeholder: '상품 링크나 쇼핑 앱에서 복사한 내용을 붙여넣으세요' }, options.pasteText || '') : null;
   const brand = h('input', { id: 'q-brand', type: 'text', maxlength: '60', value: item?.brand || '', placeholder: '모르면 비워 두세요' });
   const price = h('input', { id: 'q-price', type: 'number', min: '0', max: '1000000000', step: '1', value: item?.price == null ? '' : String(item.price), placeholder: '직접 확인한 원화 가격' });
   const cat = optionSelect('q-cat', CATS, item?.cat, '분류를 골라 주세요'); cat.required = true;
@@ -23,11 +24,35 @@ function openQuickItem(item, status, options) {
   const formal = optionSelect('q-formality', FORMAL, item?.formality), pattern = optionSelect('q-pattern', PATTERNS, item?.pattern);
   const photo = h('input', { id: 'q-photo', type: 'file', accept: 'image/*' });
   const link = h('input', { id: 'q-link', type: 'url', maxlength: '400', value: item?.link || '' });
+  const edited = { name: false, cat: false, kind: false, family: false, light: false, formality: false, pattern: false };
+  name.addEventListener('input', () => { edited.name = true; });
   const confirmed = h('input', { id: 'q-confirmed', type: 'checkbox', checked: item?.attrSource === 'owner-confirmed' });
   const seasons = h('div', { class: 'checks', id: 'q-seasons' });
   for (const s of SEASONS) seasons.append(h('label', null, h('input', { type: 'checkbox', value: s, checked: item?.seasons?.includes(s) }), ' ' + s));
   const err = h('p', { class: 'warnnote', id: 'quickError', hidden: true });
   const field = (label, el) => h('div', { class: 'field' }, h('label', { for: el.id, text: label }), el);
+  if (paste) {
+    cat.addEventListener('change', () => { edited.cat = true; });
+    kind.addEventListener('change', () => { edited.kind = true; });
+    family.addEventListener('change', () => { edited.family = true; });
+    light.addEventListener('input', () => { edited.light = true; });
+    formal.addEventListener('change', () => { edited.formality = true; });
+    pattern.addEventListener('change', () => { edited.pattern = true; });
+    paste.addEventListener('input', () => {
+      const raw = paste.value, parsed = pastedLink(raw), pastedName = nowName({ url: parsed.url, name: parsed.name || (parsed.url ? '' : raw.trim()) });
+      if (parsed.url) link.value = parsed.url;
+      if (pastedName && !edited.name) name.value = pastedName.slice(0, 80);
+      const guess = W.guessFromText((pastedName || '') + ' ' + raw);
+      if (guess.kind && !edited.kind && (!edited.cat || KINDS[cat.value]?.[guess.kind])) {
+        if (!edited.cat) cat.value = guess.cat;
+        const next = optionSelect('q-kind', KINDS[cat.value] || {}, guess.kind); kind.replaceChildren(...next.childNodes); kind.value = guess.kind;
+      }
+      if (guess.family && !edited.family) family.value = guess.family;
+      if (guess.family && !edited.light) light.value = String(guess.light);
+      if (guess.kind && !edited.formality) formal.value = String(KIND_FORMAL[guess.kind] || 2);
+      if (guess.pattern && !edited.pattern) pattern.value = guess.pattern;
+    });
+  }
   const form = h('form', { id: 'quickItemForm', class: 'panel', onsubmit: async (e) => {
     e.preventDefault(); err.hidden = true;
     if (!name.value.trim()) { err.textContent = '이름을 적어 주세요.'; err.hidden = false; return; }
@@ -51,17 +76,17 @@ function openQuickItem(item, status, options) {
   } }, h('h2', { text: prev ? '비교할 정보 확인' : st === 'candidate' ? '살까 고민 중인 한 벌' : '함께 입을 보유 옷' }),
     prev?.photo?.img ? h('div', { class: 'quick-review-photo' }, pic(prev)) : null,
     h('p', { class: 'sub', text: options.hint || (st === 'candidate' ? '커뮤니티·쇼핑 앱에서 본 상품명, 브랜드, 확인한 가격, 링크와 사진을 적어 두고 가진 옷과 비교하세요. 상품 정보를 링크에서 자동으로 읽지는 않습니다.' : '전체 옷장을 먼저 넣을 필요는 없습니다. 관련된 옷 몇 벌로 시작하세요. 모르는 값은 비워 두면 계산하지 않습니다.') }),
-    h('div', { class: 'form' }, field('상품명', name), field('브랜드 (선택)', brand), field('직접 확인한 가격 (원, 선택)', price), field('분류', cat), field('종류', kind), field('색 계열', family), field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('상품 사진 (선택 · 이 브라우저에 저장)', photo), field('판매 링크 (선택)', link),
+    h('div', { class: 'form' }, paste ? field('상품 링크·공유 글 붙여넣기 · 아래 추측값은 확인해 주세요', paste) : null, field('상품명', name), field('브랜드 (선택)', brand), field('직접 확인한 가격 (원, 선택)', price), field('분류', cat), field('종류', kind), field('색 계열', family), field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('상품 사진 (선택 · 이 브라우저에 저장)', photo), field('판매 링크 (선택)', link),
       h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (모르면 비워 두세요)' }), seasons),
       h('div', { class: 'field full' }, h('label', null, confirmed, ' 종류·색·밝기·격식·무늬를 직접 확인했습니다'))), err,
     h('div', { class: 'bar' }, h('button', { id: 'quickSave', class: 'btn primary', type: 'submit', text: options.returnTab === 'shop' ? '저장하고 추천 갱신' : options.returnTab === 'closet' ? '옷장에 저장하기' : '저장하고 비교하기' }), h('button', { id: 'quickCancel', class: 'btn', type: 'button', onclick: () => dialog.close(), text: '취소' })));
-  dialog.append(form); document.body.append(dialog); dialog.showModal();
+  dialog.append(form); document.body.append(dialog); dialog.showModal(); if (options.focusPaste && paste) paste.focus();
 }
 function renderWelcome(main) {
   main.append(h('section', { class: 'panel', id: 'firstComparePanel' }, h('h2', { text: '다음 한 벌, 가진 옷과 함께 볼까요?' }),
     h('p', { class: 'sub', text: '구매 후보와 함께 입을 상의·하의 몇 벌로 첫 비교를 시작합니다. 사진과 확인한 정보를 바탕으로 겹치는 옷과 조합을 살펴봅니다.' }),
-    h('div', { class: 'bar' }, h('button', { class: 'btn primary', id: 'firstCompare', type: 'button', onclick: () => { if (!state.betaTrial?.startedAt) state.betaTrial = { startedAt: new Date().toISOString(), firstCompletedAt: '' }; ui.tab = 'judge'; save(); render(); if (!cands().length) openQuickItem(null, 'candidate'); }, text: '상품 정보 직접 입력' }),
-      h('button', { class: 'btn', id: 'quickCand', type: 'button', onclick: () => openQuickCand(), text: '상품 링크·공유 내용 붙여넣기' }))));
+    h('div', { class: 'bar' }, h('button', { class: 'btn', id: 'firstCompare', type: 'button', onclick: () => { if (!state.betaTrial?.startedAt) state.betaTrial = { startedAt: new Date().toISOString(), firstCompletedAt: '' }; ui.tab = 'judge'; save(); render(); if (!cands().length) openQuickItem(null, 'candidate'); }, text: '상품 정보 직접 입력' }),
+      h('button', { class: 'btn primary', id: 'quickCand', type: 'button', onclick: () => openQuickCand(), text: '상품 링크·공유 내용 붙여넣기' }))));
 }
 function renderPending(root, c, v) {
   const pending = h('section', { class: 'panel', id: 'vPending' }, h('h2', { text: v.status === 'partial' ? '확인한 옷만 비교했습니다' : '정보를 확인하면 비교할 수 있습니다' }));
@@ -78,6 +103,13 @@ const FOLLOWUP_OUTCOMES = { purchased: '구매했다', 'not-purchased': '사지 
 const FOLLOWUP_SIZES = { right: '잘 맞았다', small: '작았다', large: '컸다', unknown: '아직 확인 전' };
 const FOLLOWUP_RETURN_REASONS = { size: '사이즈', fit: '핏', color: '색상', material: '소재', quality: '품질', changed: '마음이 바뀜', price: '가격', other: '기타', unknown: '아직 선택 전' };
 function followupLabel(outcome) { return FOLLOWUP_OUTCOMES[outcome] || '기록 없음'; }
+function followupDetails(f) {
+  if (!f) return '';
+  const parts = [];
+  if (['purchased', 'returned'].includes(f.outcome)) parts.push('사이즈: ' + FOLLOWUP_SIZES[f.sizeResult || 'unknown']);
+  if (f.outcome === 'returned') parts.push('반품 이유: ' + FOLLOWUP_RETURN_REASONS[f.returnReason || 'unknown']);
+  return parts.join(' · ');
+}
 function moveOwnedAfterPurchaseButton(d, dialog) {
   const item = state.items.find((it) => it.id === d.itemId);
   if (d.followup?.outcome !== 'purchased' || item?.status !== 'candidate') return null;
@@ -102,7 +134,7 @@ function renderFollowup(root, d, options) {
     root.append(h('section', { class: 'panel', id: 'purchaseFollowup' },
       h('h2', { text: '구매 뒤 결과도 이어서 기록하세요' }),
       h('p', { class: 'sub', text: '결제 직후에는 샀는지 남기고, 상품을 받아 입어 본 뒤에는 사이즈·핏과 반품 결과를 업데이트하세요. 결제·배송·반품은 판매처에서 진행합니다.' }),
-      old.outcome ? h('p', { class: 'note', id: 'followupStatus', text: '마지막 기록: ' + followupLabel(old.outcome) + (old.at ? ' · ' + old.at : '') }) : null,
+      old.outcome ? h('p', { class: 'note', id: 'followupStatus', text: '마지막 기록: ' + followupLabel(old.outcome) + (followupDetails(old) ? ' · ' + followupDetails(old) : '') + (old.at ? ' · ' + old.at : '') }) : null,
       h('div', { class: 'bar', style: 'margin:0' },
         h('button', { class: 'btn primary', type: 'button', id: 'openPurchaseFollowup', onclick: () => openFollowupDialog(d), text: old.outcome ? '구매·반품 결과 수정' : '구매·반품 결과 기록' }),
         moveOwnedAfterPurchaseButton(d, null))));
@@ -125,7 +157,9 @@ function renderFollowup(root, d, options) {
   root.append(h('form', { id: 'followupForm', class: 'panel', onsubmit: async (e) => {
     e.preventDefault(); error.hidden = true;
     const previous = d.followup, item = state.items.find((it) => it.id === d.itemId), previousItem = item && Object.assign({}, item), previousRack = state.rack.slice();
-    d.followup = { outcome: outcome.value, worn: worn.value || 'unknown', regret: regret.value || 'unknown', sizeResult: sizeResult.value || 'unknown', returnReason: returnReason.value || 'unknown', note: str(note.value, 300), at: today() };
+    d.followup = { outcome: outcome.value, worn: worn.value || 'unknown', regret: regret.value || 'unknown',
+      sizeResult: ['purchased', 'returned'].includes(outcome.value) ? sizeResult.value || 'unknown' : 'unknown',
+      returnReason: outcome.value === 'returned' ? returnReason.value || 'unknown' : 'unknown', note: str(note.value, 300), at: today() };
     if (item && outcome.value === 'returned') {
       replaceItem(W.cleanItem(Object.assign({}, item, { status: 'gone' }), 0)); state.rack = state.rack.filter((row) => row.id !== item.id);
     } else if (item && old.outcome === 'returned' && outcome.value === 'purchased' && item.status === 'gone') {

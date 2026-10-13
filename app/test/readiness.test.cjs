@@ -92,3 +92,12 @@ test('concrete insight, baseline comparison and subsequent actual outcome surviv
   assert.equal(unsafe.after.insight.length, 200); assert.equal(unsafe.after.comparedWith, 'none'); assert.equal(unsafe.followup.worn, 'unknown'); assert.equal(unsafe.followup.sizeResult, 'unknown'); assert.equal(unsafe.followup.returnReason, 'unknown'); assert.equal(unsafe.followup.note.length, 300); assert.equal(unsafe.followup.at, '');
   assert.equal(W.cleanDecision(Object.assign({}, raw, { after: null })).followup, null);
 });
+test('purchase follow-up sanitization clears size and return details that do not match the selected outcome', () => {
+  const raw = { id: 'd', itemId: 'c', before: { lean: 'unsure' }, after: { decision: 'buy' }, followup: { outcome: 'not-purchased', worn: 'unknown', regret: 'unknown', sizeResult: 'small', returnReason: 'fit', note: '', at: '2026-10-13' } };
+  const notPurchased = W.cleanDecision(raw).followup;
+  assert.equal(notPurchased.sizeResult, 'unknown'); assert.equal(notPurchased.returnReason, 'unknown');
+  const purchased = W.cleanDecision({ ...raw, followup: { ...raw.followup, outcome: 'purchased', sizeResult: 'right', returnReason: 'fit' } }).followup;
+  assert.equal(purchased.sizeResult, 'right'); assert.equal(purchased.returnReason, 'unknown');
+  const returned = W.cleanDecision({ ...raw, followup: { ...raw.followup, outcome: 'returned', sizeResult: 'small', returnReason: 'fit' } }).followup;
+  assert.equal(returned.sizeResult, 'small'); assert.equal(returned.returnReason, 'fit');
+});
