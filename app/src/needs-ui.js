@@ -23,7 +23,7 @@ function renderWardrobeOverview(main) {
   main.append(box);
 }
 function openNeedProduct(r) {
-  openQuickItem(null, 'candidate', { initial: { cat: r.cat, kind: r.kind, name: r.name }, hint: '추천한 종류를 넣어 두었습니다. 실제로 보고 있는 상품의 색·무늬와 판매 링크를 확인해 적어 주세요.' });
+  openQuickItem(null, 'candidate', { initial: { cat: r.cat, kind: r.kind, name: r.name }, hint: '커뮤니티나 쇼핑 앱에서 본 상품명·브랜드·가격·링크·사진을 넣고 내 옷과 비교하세요. 링크에서 상품 정보를 자동으로 가져오지는 않습니다.' });
 }
 function openNeedCatalog() {
   ui.pickCatalogOpen = true;

@@ -128,7 +128,7 @@
     if (d.after && known(DECIDE, d.after.decision)) out.after = { decision: d.after.decision, helpful: known(HELP, d.after.helpful) ? d.after.helpful : 'some', note: str(d.after.note, 300), at: str(d.after.at, 10), shift: known(SHIFT, d.after.shift) ? d.after.shift : 'same',
       insight: str(d.after.insight, 200), comparedWith: ['none', 'chatbot', 'photos', 'other'].includes(d.after.comparedWith) ? d.after.comparedWith : 'none', comparisonNote: str(d.after.comparisonNote, 200) };
     out.followup = null;
-    if (out.after && d.followup && typeof d.followup === 'object' && ['purchased', 'not-purchased', 'pending'].includes(d.followup.outcome)) out.followup = {
+    if (out.after && d.followup && typeof d.followup === 'object' && ['purchased', 'not-purchased', 'pending', 'returned'].includes(d.followup.outcome)) out.followup = {
       outcome: d.followup.outcome, worn: ['yes', 'no', 'unknown'].includes(d.followup.worn) ? d.followup.worn : 'unknown', regret: ['yes', 'no', 'unknown'].includes(d.followup.regret) ? d.followup.regret : 'unknown', note: str(d.followup.note, 300), at: safeDate(d.followup.at) };
     out.follow = out.after ? cleanFollow(d.follow, out.after.decision) : null;
     return out;

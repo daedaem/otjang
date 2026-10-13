@@ -162,13 +162,15 @@ for (const m of modes) {
   await page.click('#addCand');
   ok(await page.locator('#quickItemForm').isVisible() && (await page.inputValue('#q-light')) === '', '후보 빠른 등록은 모르는 밝기를 비워 두고 시작한다');
   await page.selectOption('#q-cat', 'top'); await page.selectOption('#q-kind', 'sweat'); await page.fill('#q-name', '그레이 스웻셔츠');
+  await page.fill('#q-brand', '브랜드'); await page.fill('#q-price', '89000'); await page.fill('#q-link', 'https://shop.example/gray-sweat');
   await page.selectOption('#q-family', 'gray'); await page.fill('#q-light', '50'); await page.selectOption('#q-formality', '1'); await page.selectOption('#q-pattern', 'solid'); await page.check('#q-confirmed'); await page.click('#quickSave');
   await page.locator('#beforeForm').getByRole('button', { name: '후보 수정' }).click();
-  await page.fill('#f-brand', '브랜드'); await page.fill('#f-price', '89000'); await page.click('#edSave');
+  ok((await page.inputValue('#f-brand')) === '브랜드' && (await page.inputValue('#f-price')) === '89000', '빠른 상품 입력의 브랜드와 가격이 자세히 수정하는 화면에도 남는다');
+  await page.click('#edSave');
   await page.locator('#beforeForm').getByRole('button', { name: '후보 수정' }).click(); await page.click('#f-match');
   await page.fill('#mt-brand', '브랜드'); await page.fill('#mt-name', '합성 확인 상품'); await page.setInputFiles('#mt-photo', pngFile('prod.png')); await page.click('#mtConfirm'); await page.click('#mtCancel');
-  const cnd = await page.evaluate(() => { const c = window.__app.state.items.find((i) => i.status === 'candidate'); return c && { photo: c.photo.kind, product: c.product && c.product.brand, price: c.price, checkedAt: c.checkedAt, src: c.attrSource }; });
-  ok(cnd && cnd.photo === 'confirmed' && cnd.product === '브랜드' && cnd.price === 89000 && cnd.checkedAt && cnd.src === 'owner-confirmed', '확인한 후보가 확인된 상품 사진과 가격·확인일을 가지고 들어간다', cnd);
+  const cnd = await page.evaluate(() => { const c = window.__app.state.items.find((i) => i.status === 'candidate'); return c && { photo: c.photo.kind, product: c.product && c.product.brand, brand: c.brand, price: c.price, checkedAt: c.checkedAt, link: c.link, src: c.attrSource }; });
+  ok(cnd && cnd.photo === 'confirmed' && cnd.product === '브랜드' && cnd.brand === '브랜드' && cnd.price === 89000 && cnd.checkedAt && cnd.link === 'https://shop.example/gray-sweat' && cnd.src === 'owner-confirmed', '후보에 입력한 상품명·브랜드·가격·링크와 확인된 상품 사진이 남는다', cnd);
   ok(await page.locator('#beforeForm').count() === 1 && await page.locator('#vCombos').count() === 0, '판정 전에는 결과가 보이지 않고 지금 마음을 먼저 묻는다');
   await page.locator('#beforeForm .choice', { hasText: '모르겠다' }).click();
   await page.fill('#beforeReason', '스웻셔츠가 이미 한 벌 있다');
@@ -188,7 +190,8 @@ for (const m of modes) {
   await page.click('#saveDecision');
   ok((await page.locator('#decided').innerText()).includes('결정: 산다') && (await page.locator('#decided').innerText()).includes('정해짐'), '결정이 기록되고 보기 전 마음과의 차이가 나온다');
   await shot('3-decided');
-  await page.click('#moveOwned');
+  await page.selectOption('#followupOutcome', 'purchased'); await page.fill('#followupNote', '판매처에서 결제 완료'); await page.click('#saveFollowup');
+  await page.click('#moveOwnedAfterPurchase');
   const moved = await page.evaluate(() => { const s = window.__app.state; const i = s.items.find((x) => x.name === '그레이 스웻셔츠'); return { n: document.querySelectorAll('#closetGrid .card').length, cand: s.items.filter((x) => x.status === 'candidate').length, status: i.status, photo: i.photo.kind, product: !!i.product }; });
   ok(moved.n === 14 && moved.cand === 0 && moved.status === 'owned' && moved.photo === 'confirmed' && moved.product, '산 옷이 보유로 옮겨져 옷장이 14벌이 되고 확인된 상품 정보는 유지된다', moved);
 
@@ -336,11 +339,20 @@ for (const m of modes) {
     await page.click('#tabbtn-closet');
   }
 
+  // 구매 뒤에 반환한 결과도 기록 화면에서 남기고 옷장에서 내린다
+  await page.click('#tabbtn-log');
+  await page.getByRole('button', { name: '구매·반품 기록 수정' }).first().click();
+  await page.selectOption('#followupOutcome', 'returned'); await page.fill('#followupNote', '입어 보니 어깨가 맞지 않아 반품'); await page.click('#saveFollowup');
+  const returned = await page.evaluate(() => ({ status: window.__app.state.items.find((i) => i.name === '그레이 스웻셔츠').status,
+    outcome: window.__app.state.decisions.find((d) => d.name === '그레이 스웻셔츠').followup.outcome,
+    label: document.querySelector('#gate').innerText.includes('구매 후 반품했다') }));
+  ok(returned.status === 'gone' && returned.outcome === 'returned' && returned.label, '기록에서 반품을 남기면 결과가 보이고 해당 옷은 옷장에서 빠진다', returned);
+
   // 10. 다시 열어도 남아 있다
   await flush();
   await page.reload(); await page.waitForFunction(() => window.__app);
-  const st2 = await page.evaluate(() => ({ owned: window.__app.state.items.filter((i) => i.status === 'owned').length, cand: window.__app.state.items.filter((i) => i.status === 'candidate').length, dec: window.__app.state.decisions.length, others: window.__app.state.others.length, brand: window.__app.state.items[0].brand, products: window.__app.state.catalog.products.length, rack: window.__app.state.rack.length, from: window.__app.state.loadedFrom }));
-  ok(st2.owned === 14 && st2.cand === 2 && st2.dec === 1 && st2.others === 2 && st2.brand === 'Brand A' && st2.products === 2 && st2.rack === 5 && st2.from === 'idb', '다시 열어도 옷장, 후보, 판정 기록, 상품 목록, 걸린 옷이 남아 있다', st2);
+  const st2 = await page.evaluate(() => ({ owned: window.__app.state.items.filter((i) => i.status === 'owned').length, cand: window.__app.state.items.filter((i) => i.status === 'candidate').length, gone: window.__app.state.items.filter((i) => i.status === 'gone').length, outcome: window.__app.state.decisions[0].followup.outcome, dec: window.__app.state.decisions.length, others: window.__app.state.others.length, brand: window.__app.state.items[0].brand, products: window.__app.state.catalog.products.length, rack: window.__app.state.rack.length, from: window.__app.state.loadedFrom }));
+  ok(st2.owned === 13 && st2.cand === 2 && st2.gone === 1 && st2.outcome === 'returned' && st2.dec === 1 && st2.others === 2 && st2.brand === 'Brand A' && st2.products === 2 && st2.rack === 5 && st2.from === 'idb', '다시 열어도 구매·반품 결과, 옷장, 판정 기록, 상품 목록과 걸린 옷이 남아 있다', st2);
   ok(reqs.length === 0, '외부로 나간 요청이 없다', reqs);
   ok(logs.length === 0, '콘솔 오류와 경고가 없다', logs);
   await ctx.close();

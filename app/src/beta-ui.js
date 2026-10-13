@@ -13,6 +13,8 @@ function openQuickItem(item, status, options) {
   if (!item && options.initial) item = W.cleanItem({ ...options.initial, status: st }, 0);
   const dialog = h('dialog', { id: 'quickItem' });
   const name = h('input', { id: 'q-name', type: 'text', required: true, maxlength: '80', value: item ? item.name : '' });
+  const brand = h('input', { id: 'q-brand', type: 'text', maxlength: '60', value: item?.brand || '', placeholder: '모르면 비워 두세요' });
+  const price = h('input', { id: 'q-price', type: 'number', min: '0', max: '1000000000', step: '1', value: item?.price == null ? '' : String(item.price), placeholder: '직접 확인한 원화 가격' });
   const cat = optionSelect('q-cat', CATS, item?.cat, '분류를 골라 주세요'); cat.required = true;
   const kind = optionSelect('q-kind', KINDS[item?.cat] || {}, item?.kind);
   cat.addEventListener('change', () => { const next = optionSelect('q-kind', KINDS[cat.value] || {}, null); kind.replaceChildren(...next.childNodes); kind.value = ''; });
@@ -30,7 +32,9 @@ function openQuickItem(item, status, options) {
     e.preventDefault(); err.hidden = true;
     if (!name.value.trim()) { err.textContent = '이름을 적어 주세요.'; err.hidden = false; return; }
     const u = link.value.trim(); if (u && !safeLink(u)) { err.textContent = '판매 링크를 확인해 주세요.'; err.hidden = false; return; }
-    let next = W.cleanItem(Object.assign({}, prev || {}, { id: prev?.id || newId(st === 'candidate' ? 'c' : 'i'), status: st, name: name.value.trim(), cat: cat.value, kind: kind.value || null, family: family.value || null,
+    const currentPrice = price.value === '' ? null : Number(price.value);
+    let next = W.cleanItem(Object.assign({}, prev || {}, { id: prev?.id || newId(st === 'candidate' ? 'c' : 'i'), status: st, name: name.value.trim(), brand: brand.value.trim(), price: currentPrice,
+      checkedAt: currentPrice == null ? '' : prev?.price === currentPrice ? prev.checkedAt : today(), cat: cat.value, kind: kind.value || null, family: family.value || null,
       light: light.value === '' ? null : Number(light.value), formality: formal.value === '' ? null : Number(formal.value), pattern: pattern.value || null,
       seasons: Array.from(seasons.querySelectorAll('input:checked')).map(x => x.value), link: u,
       attrSource: confirmed.checked ? 'owner-confirmed' : prev?.attrSource === 'owner-confirmed' ? 'owner' : prev?.attrSource || 'owner' }), 0);
@@ -46,8 +50,8 @@ function openQuickItem(item, status, options) {
     dialog.close(); ui.tab = options.returnTab || 'judge'; render();
   } }, h('h2', { text: prev ? '비교할 정보 확인' : st === 'candidate' ? '살까 고민 중인 한 벌' : '함께 입을 보유 옷' }),
     prev?.photo?.img ? h('div', { class: 'quick-review-photo' }, pic(prev)) : null,
-    h('p', { class: 'sub', text: options.hint || '전체 옷장을 먼저 넣을 필요는 없습니다. 관련된 옷 몇 벌로 시작하세요. 모르는 값은 비워 두면 계산하지 않습니다.' }),
-    h('div', { class: 'form' }, field('이름', name), field('분류', cat), field('종류', kind), field('색 계열', family), field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('옷 사진 (선택 · 이 브라우저에 저장)', photo), field('판매 링크 (선택)', link),
+    h('p', { class: 'sub', text: options.hint || (st === 'candidate' ? '커뮤니티·쇼핑 앱에서 본 상품명, 브랜드, 확인한 가격, 링크와 사진을 적어 두고 가진 옷과 비교하세요. 상품 정보를 링크에서 자동으로 읽지는 않습니다.' : '전체 옷장을 먼저 넣을 필요는 없습니다. 관련된 옷 몇 벌로 시작하세요. 모르는 값은 비워 두면 계산하지 않습니다.') }),
+    h('div', { class: 'form' }, field('상품명', name), field('브랜드 (선택)', brand), field('직접 확인한 가격 (원, 선택)', price), field('분류', cat), field('종류', kind), field('색 계열', family), field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('상품 사진 (선택 · 이 브라우저에 저장)', photo), field('판매 링크 (선택)', link),
       h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (모르면 비워 두세요)' }), seasons),
       h('div', { class: 'field full' }, h('label', null, confirmed, ' 종류·색·밝기·격식·무늬를 직접 확인했습니다'))), err,
     h('div', { class: 'bar' }, h('button', { id: 'quickSave', class: 'btn primary', type: 'submit', text: options.returnTab === 'shop' ? '저장하고 추천 갱신' : options.returnTab === 'closet' ? '옷장에 저장하기' : '저장하고 비교하기' }), h('button', { id: 'quickCancel', class: 'btn', type: 'button', onclick: () => dialog.close(), text: '취소' })));
@@ -67,14 +71,47 @@ function renderPending(root, c, v) {
   }
   pending.append(h('button', { class: 'btn', id: v.status === 'partial' ? 'addRelatedOwnedPending' : 'addRelatedOwned', type: 'button', onclick: () => openQuickItem(null, 'owned'), text: '함께 입을 보유 옷 추가' })); root.append(pending);
 }
-function renderFollowup(root, d) {
-  const old = d.followup || {}, outcome = optionSelect('followupOutcome', { purchased: '실제로 샀다', 'not-purchased': '사지 않았다', pending: '아직 결정 중' }, old.outcome, '실제 결과를 골라 주세요'); outcome.required = true;
+const FOLLOWUP_OUTCOMES = { purchased: '구매했다', 'not-purchased': '사지 않았다', pending: '아직 결정 중', returned: '구매 후 반품했다' };
+function followupLabel(outcome) { return FOLLOWUP_OUTCOMES[outcome] || '기록 없음'; }
+function openFollowupDialog(d) {
+  const dialog = h('dialog', { id: 'followupDialog' });
+  dialog.append(h('div', { class: 'dhead' }, h('h2', { text: d.name + ' · 구매 결과' }), h('button', { class: 'btn small', type: 'button', onclick: () => dialog.close(), text: '닫기' })));
+  renderFollowup(dialog, d, { dialog });
+  document.body.append(dialog); dialog.addEventListener('close', () => dialog.remove(), { once: true }); dialog.showModal();
+}
+function renderFollowup(root, d, options) {
+  options = options || {};
+  const old = d.followup || {}, outcome = optionSelect('followupOutcome', FOLLOWUP_OUTCOMES, old.outcome, '실제 결과를 골라 주세요'); outcome.required = true;
   const worn = optionSelect('followupWorn', { yes: '입었다', no: '아직 입지 않았다', unknown: '해당 없음 · 모름' }, old.worn || 'unknown');
   const regret = optionSelect('followupRegret', { yes: '후회한다', no: '후회하지 않는다', unknown: '아직 모르겠다' }, old.regret || 'unknown');
-  const note = h('input', { id: 'followupNote', type: 'text', maxlength: '300', value: old.note || '', placeholder: '실제로 입은 조합, 구매·보류 이후 알게 된 점' });
-  root.append(h('form', { id: 'followupForm', class: 'panel', onsubmit: async (e) => { e.preventDefault(); d.followup = { outcome: outcome.value, worn: worn.value || 'unknown', regret: regret.value || 'unknown', note: str(note.value, 300), at: today() }; await save(); render(); } },
-    h('h2', { text: '구매 고민 이후에는 어땠나요?' }), h('p', { class: 'sub', text: '생각이 바뀐 것과 실제로 도움이 된 것은 다를 수 있습니다. 실제 선택과 착용 결과를 직접 남겨 주세요.' }),
-    h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'followupOutcome', text: '실제 선택' }), outcome), h('div', { class: 'field' }, h('label', { for: 'followupWorn', text: '구매한 옷 착용' }), worn), h('div', { class: 'field' }, h('label', { for: 'followupRegret', text: '선택에 대한 후회' }), regret), h('div', { class: 'field full' }, h('label', { for: 'followupNote', text: '후속 메모' }), note)), h('button', { class: 'btn primary', id: 'saveFollowup', type: 'submit', text: '후속 결과 저장' })));
+  const note = h('input', { id: 'followupNote', type: 'text', maxlength: '300', value: old.note || '', placeholder: '반품 이유, 실제 착용 조합, 구매를 미룬 이유' });
+  const error = h('p', { class: 'warnnote', id: 'followupError', hidden: true, role: 'alert' });
+  root.append(h('form', { id: 'followupForm', class: 'panel', onsubmit: async (e) => {
+    e.preventDefault(); error.hidden = true;
+    const previous = d.followup, item = state.items.find((it) => it.id === d.itemId), previousItem = item && Object.assign({}, item), previousRack = state.rack.slice();
+    d.followup = { outcome: outcome.value, worn: worn.value || 'unknown', regret: regret.value || 'unknown', note: str(note.value, 300), at: today() };
+    if (item && outcome.value === 'returned') {
+      replaceItem(W.cleanItem(Object.assign({}, item, { status: 'gone' }), 0)); state.rack = state.rack.filter((row) => row.id !== item.id);
+    } else if (item && old.outcome === 'returned' && outcome.value === 'purchased' && item.status === 'gone') {
+      replaceItem(W.cleanItem(Object.assign({}, item, { status: 'owned', boughtYear: item.boughtYear || YEAR }), 0));
+    }
+    if (!await save()) {
+      d.followup = previous;
+      if (previousItem) replaceItem(W.cleanItem(previousItem, 0));
+      state.rack = previousRack; error.textContent = '저장하지 못했습니다. 다시 시도해 주세요.'; error.hidden = false; return;
+    }
+    if (options.dialog?.open) options.dialog.close();
+    render();
+  } },
+    h('h2', { text: '구매 이후의 결과' }), h('p', { class: 'sub', text: '판매처에서 결제·배송·반품을 처리합니다. 여기에는 실제로 산 옷, 보류한 이유, 반품 여부를 기록해 다음 판단에 활용합니다. 반품을 선택하면 해당 후보나 보유 옷은 옷장에서 빠지고 기록에는 남습니다.' }),
+    h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'followupOutcome', text: '실제 선택' }), outcome), h('div', { class: 'field' }, h('label', { for: 'followupWorn', text: '구매한 옷 착용' }), worn), h('div', { class: 'field' }, h('label', { for: 'followupRegret', text: '선택에 대한 후회' }), regret), h('div', { class: 'field full' }, h('label', { for: 'followupNote', text: '후속 메모' }), note)), error, h('button', { class: 'btn primary', id: 'saveFollowup', type: 'submit', text: old.outcome ? '결과 수정' : '결과 저장' })));
+  const item = state.items.find((it) => it.id === d.itemId);
+  if (old.outcome === 'purchased' && item?.status === 'candidate') root.append(h('div', { class: 'bar', style: 'margin-top:10px' }, h('button', { class: 'btn primary', type: 'button', id: 'moveOwnedAfterPurchase', onclick: async () => {
+    const before = Object.assign({}, item);
+    replaceItem(W.cleanItem(Object.assign({}, item, { status: 'owned', boughtYear: item.boughtYear || YEAR }), 0));
+    if (!await save()) { replaceItem(W.cleanItem(before, 0)); toast('옷장에 저장하지 못했습니다. 다시 시도해 주세요.'); return; }
+    ui.tab = 'closet'; render();
+  }, text: '구매한 옷을 내 옷장에 등록' })));
 }
 function renderFullBackup(main) {
   const input = h('input', { type: 'file', accept: '.json,application/json', id: 'backupFile', hidden: true, onchange: async () => {

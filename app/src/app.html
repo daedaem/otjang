@@ -943,7 +943,6 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
         h('p', { class: 'big', text: '결정: ' + DECIDE[last.after.decision] }),
         h('p', { class: 'sub', text: '보기 전 마음은 "' + LEAN[last.before.lean] + '"이었습니다 (' + SHIFT[last.after.shift] + '). 판정은 ' + HELP[last.after.helpful] + '고 적었습니다.' + (last.after.note ? ' 메모: ' + last.after.note : '') }),
         h('div', { class: 'bar', style: 'margin:0' },
-          last.after.decision === 'buy' ? h('button', { class: 'btn primary', type: 'button', id: 'moveOwned', onclick: () => { const o = Object.assign({}, c, { status: 'owned', boughtYear: c.boughtYear || YEAR }); replaceItem(W.cleanItem(o, 0)); save(); ui.tab = 'closet'; render(); }, text: '샀어요. 보유로 옮기기' }) : null,
           h('button', { class: 'btn', type: 'button', onclick: () => { ui.rejudge = c.id; render(); }, text: '다시 판정하기' }),
           h('button', { class: 'btn', type: 'button', onclick: () => openEditor(c), text: '후보 수정' }),
           X && c.look3d ? h('button', { class: 'btn', type: 'button', onclick: () => { if (hang(c.id)) { ui.tab = 'closet3d'; render(); } }, text: '3D 옷장에 걸어 보기' }) : null,
@@ -1007,8 +1006,9 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const used = [c].concat(v.overlaps.map((o) => o.item)).concat(v.top3.flatMap((o) => [o.top, o.bottom, o.outer].filter(Boolean)));
     const dn = draftNote(Array.from(new Set(used))); if (dn) { dn.id = 'vDraft'; p3.append(dn); }
     const kv = h('dl', { class: 'kv' });
-    if (c.price != null) kv.append(h('dt', { text: '가격' }), h('dd', { text: fmtWon(c.price) + (c.checkedAt ? ' (' + c.checkedAt + ' 확인)' : ' (확인 날짜 없음)') }));
-    if (c.link) kv.append(h('dt', { text: '링크' }), h('dd', null, sourceOf(c.link) ? sourceOf(c.link) + ' · ' : '', h('a', { href: c.link, target: '_blank', rel: 'noopener noreferrer', text: c.link })));
+    if (c.brand) kv.append(h('dt', { text: '브랜드' }), h('dd', { text: c.brand + ' · 직접 입력' }));
+    if (c.price != null) kv.append(h('dt', { text: '가격' }), h('dd', { text: fmtWon(c.price) + (c.checkedAt ? ' (' + c.checkedAt + ' 직접 확인)' : ' (확인 날짜 없음)') }));
+    if (c.link) kv.append(h('dt', { text: '구매처' }), h('dd', null, sourceOf(c.link) ? sourceOf(c.link) + ' · ' : '', h('a', { href: c.link, target: '_blank', rel: 'noopener noreferrer', text: '판매처에서 상품 보기 ↗' })));
     if (c.size) kv.append(h('dt', { text: '사이즈' }), h('dd', { text: c.size }));
     if (c.product) kv.append(h('dt', { text: '상품' }), h('dd', { text: [c.product.brand, c.product.name, c.product.code].filter(Boolean).join(' ') + ' (확인 ' + c.product.confirmedAt + ')' }));
     const p4 = h('section', { class: 'panel' }, h('h2', { text: '직접 넣은 구매 정보' }), kv.children.length ? kv : h('p', { class: 'sub', text: '가격과 링크를 넣지 않았습니다. 이 화면은 가격과 재고를 찾아오지 않습니다.' }));
@@ -1707,8 +1707,10 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (done.length) {
       const tb = h('tbody');
       for (const d of done.slice().reverse()) tb.append(h('tr', null, h('td', { text: d.after.at }), h('td', { text: d.name }), h('td', { text: LEAN[d.before.lean] }), h('td', { text: DECIDE[d.after.decision] + ' (' + SHIFT[d.after.shift] + ')' }),
-        h('td', { text: HELP[d.after.helpful] }), h('td', { text: followText(d) }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }), h('td', { text: [d.after.insight, d.after.note, d.followup ? '후속: ' + d.followup.outcome + ' · ' + d.followup.note : ''].filter(Boolean).join(' / ') })));
-      gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '후보', '보기 전', '결정', '도움', '2주 뒤', '판정 요약', '메모'].map((t) => h('th', { text: t })))), tb)));
+        h('td', { text: HELP[d.after.helpful] }), h('td', { text: followText(d) }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }),
+        h('td', null, h('span', { text: [d.after.insight, d.after.note, d.followup ? '후속: ' + followupLabel(d.followup.outcome) + (d.followup.note ? ' · ' + d.followup.note : '') : ''].filter(Boolean).join(' / ') }),
+          h('button', { class: 'btn small', type: 'button', onclick: () => openFollowupDialog(d), text: d.followup ? '구매·반품 기록 수정' : '구매·반품 결과 기록' }))));
+      gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['날짜', '후보', '보기 전', '결정', '도움', '2주 뒤', '판정 요약', '메모·구매/반품'].map((t) => h('th', { text: t })))), tb)));
     } else gate.append(h('p', { class: 'note', text: '아직 기록이 없습니다. 살까 말까 탭에서 후보를 넣고 판정을 끝까지 진행하면 여기에 쌓입니다.' }));
     main.append(gate);
     // 사진 상태 요약
@@ -2640,12 +2642,16 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     // 웹 배포판에서만: 한 번 연 뒤에는 인터넷이 끊겨도 열리게(sw.js). 옷장 자료는 다루지 않는다
     try { if (window.__CLOSET_SRC && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) { /* 지원하지 않는 브라우저 */ }
     save(); render();
-    // 설치한 앱(안드로이드)에서 쇼핑 앱의 "공유"로 들어오면: 링크와 글로 고민 중인 옷 넣기를 연다. 주소창의 값은 바로 지운다
+    // 설치한 앱(안드로이드)에서 커뮤니티·쇼핑 앱의 "공유"로 들어오면 상품명·링크를 후보 입력에 채운다. 주소창의 값은 바로 지운다
     try {
-      const q = new URLSearchParams(location.search), shared = [q.get('title'), q.get('text'), q.get('url')].filter(Boolean).join(' ');
+      const q = new URLSearchParams(location.search), title = str(q.get('title'), 80), shared = [title, q.get('text'), q.get('url')].filter(Boolean).join(' ');
       if (shared) {
         history.replaceState(null, '', location.pathname);
-        openQuickCand(); $('#qc-link').value = str(shared, 600); $('#qc-link').dispatchEvent(new Event('input'));
+        const parsed = pastedLink(shared), name = nowName({ url: parsed.url, name: title || parsed.name }) || title || parsed.name || '공유한 상품';
+        const guess = W.guessFromText(name + ' ' + shared);
+        openQuickItem(null, 'candidate', { initial: { name: str(name, 80), cat: guess.cat, kind: guess.kind, family: guess.family, light: guess.light,
+          formality: guess.kind ? (KIND_FORMAL[guess.kind] || 2) : null, pattern: guess.pattern, link: parsed.url },
+          hint: '공유한 상품명과 링크를 채워 두었습니다. 브랜드·가격·사진을 확인해 내 옷과 비교하세요. 링크에서 상품 정보나 가격을 자동으로 가져오지는 않습니다.' });
       }
     } catch (e) { /* 공유로 열린 것이 아니면 무시 */ }
   });

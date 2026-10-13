@@ -58,3 +58,12 @@ test('Claude follow와 로컬 followup을 함께 보존한다', () => {
   assert.equal(d.after.insight, '직접 기록'); assert.equal(d.summary.added, null);
   assert.deepEqual(W.cleanDecision(d), d);
 });
+
+test('구매 후 반품 결과도 옷장 기록을 내보내고 다시 읽을 때 보존한다', () => {
+  const raw = { id: 'return-decision', itemId: 'candidate-1', before: { lean: 'buy', at: day }, summary: {}, after: { decision: 'buy', helpful: 'yes', at: day },
+    followup: { outcome: 'returned', worn: 'yes', regret: 'yes', note: '사이즈가 맞지 않아 반품', at: day } };
+  const clean = W.cleanDecision(raw);
+  assert.deepEqual(clean.followup, raw.followup);
+  assert.deepEqual(W.cleanDecision(JSON.parse(JSON.stringify(clean))), clean);
+  assert.equal(W.cleanDecision(Object.assign({}, raw, { followup: { ...raw.followup, outcome: 'refunded' } })).followup, null);
+});
