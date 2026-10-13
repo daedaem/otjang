@@ -1,0 +1,14 @@
+{
+  "name": "어울 핵심 옷장 등록·실제 상품 추천 미리보기",
+  "sourceCodeCommit": "296eaf2bcbc7929bf2beb3736e0dae473fb9bfdd",
+  "featureBranch": "feat/editorial-mobile-20261013",
+  "builtFromEmptyWardrobe": true,
+  "nodeTests": 353,
+  "independentFocusedTests": 75,
+  "actualBrowserCameraDeviceVerified": false,
+  "verifiedCatalogProducts": 12,
+  "catalogKinds": 9,
+  "priceVerifiedProducts": 11,
+  "clothingOutfitMetadataCompleteProducts": 6,
+  "notes": "등록한 옷·색·무늬·격식 규칙과 확인한 소수 상품 목록. 사진 브랜드 식별·핏 보장·실시간 최저가·판매 재고 검증은 없음. 개인 사진은 빌드에 포함하지 않음."
+}
