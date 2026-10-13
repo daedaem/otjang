@@ -1,17 +1,27 @@
 {
-  "sourceCommit": "2494c09bb001ad41b8d085f1fa7110f0ccb48e08",
-  "claudeBaseCommit": "272ef5a395cc74177df34fad18380e8d11e3b4d8",
+  "sourceCommit": "fd06eb98485b5cbbd0f83ac61eac53ab7431114b",
+  "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-13T21:44:45.064405+00:00",
+  "builtAt": "2026-10-13T23:17:49.544Z",
   "files": {
     "index.html": {
-      "bytes": 167784,
-      "sha256": "dfc67afec892a2e7dc2707cc994a986e43351275f0f4c5821eacc18ad96ae0ca"
+      "bytes": 614169,
+      "sha256": "466731739e36ebd3b644e8dab00d0e6f2b0cfebacb0942b9a0009f98cba54b8e"
     }
   },
+  "catalog": {
+    "products": 916,
+    "brands": 115,
+    "slots": 68,
+    "styles": 8,
+    "looks": 32
+  },
+  "storageSchema": 3,
   "tests": {
-    "passed": 23,
+    "passed": 50,
     "failed": 0,
-    "browserRenderingVerified": false
+    "nodeVersion": "v22.23.2",
+    "browserRenderingVerified": false,
+    "realCameraVerified": false
   }
 }
