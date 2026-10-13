@@ -2,6 +2,12 @@
 
 새 인증·사용자 격리·전체 백업·사진 삭제 계약은 [OPERATIONS-BETA.md](OPERATIONS-BETA.md)를 따른다. 아래 개인판 기록은 이전 구현의 기록이며 새 서버 API는 bearer 로그인이 필요하다.
 
+## 최신 실행 확인 · 2026-10-13
+
+Java 21·Maven 3.9.11과 실제 PostgreSQL 16 Testcontainers에서 전체 `mvn test` **130개 통과, 실패·오류·건너뜀 0개**를 확인했다. Spring 계층도 실제 라이브러리로 컴파일했다. 공유 후속 계약 fixture 88건, 인증·계정 격리·revision 충돌, import/조회/export/백업/restore, V7→V8 이전과 DB 제약 거부 검사가 포함된다. 모든 자료는 합성이며 테스트용 데이터베이스는 운영 데이터와 분리된다.
+
+이 결과는 서버 테스트의 증거다. 브라우저에서의 전체 구매 흐름, 실제 휴대폰, 배포 환경의 복구·성능은 별도로 검증해야 한다. 아래 2026-10-12의 컴파일 미실행 표는 당시 환경의 기록이다. 현재 설계와 후속 작업은 [알파 시스템 설계](../docs/system-design-alpha.md)를 참고한다.
+
 # 서버 v0.1 (M5) — Spring Boot 4.1.1 · Java 21 · PostgreSQL 16
 
 개인판 앱(`../app`)의 옷장 파일(스키마 2)과 상품 목록(스키마 1)을 그대로 저장하고, 같은 규칙(판정·코디·비교·상품 순위)을 서버에서도 낸다.
@@ -26,7 +32,9 @@ java -Dstdout.encoding=UTF-8 -cp $B otjang.domain.DomainChecks               # �
 psql -d otjang_test -f src/main/resources/db/migration/V1__init.sql          # 스키마
 ```
 
-## 실행 (네트워크가 되는 PC)
+## 과거 개인판 실행 예제 · 현행 베타에는 사용하지 않음
+
+아래 블록은 인증 도입 전의 기록이다. 현재 기동·가입·백업·복원은 [운영 절차](../docs/operations-runbook.md)를 따른다. 특히 인증·계약·If-Match 헤더 없는 import와 wildcard CORS 설정은 현재 서버에서 사용할 수 없다.
 
 ```bash
 cd server
@@ -42,10 +50,11 @@ curl -s http://localhost:8080/api/outfits | head -c 600
 
 ## API
 
-모두 JSON. 옷·상품의 `id` 는 앱(파일)의 id 그대로다(`client_id`). 오류는 RFC 9457 ProblemDetail.
+모두 JSON. 옷·상품의 `id` 는 앱(파일)의 id 그대로다(`client_id`). 오류는 RFC 9457 ProblemDetail. 사용자 자료 쓰기는 `X-Eoul-Contract: 2` 헤더를 요구하며 누락·다른 버전은 409 `CLIENT_UPGRADE_REQUIRED`이다. 전체 import·restore에는 현재 `X-Wardrobe-Version`을 인용한 `If-Match`도 필요하다. 반품·사이즈 후속 기록의 정규화·422 경로는 [구매 후속 기록 계약 2](OPERATIONS-BETA.md#구매-후속-기록-계약-2)를 따른다.
 
 | 메서드·경로 | 하는 일 |
 |---|---|
+| `GET /api/meta` | 공개 계약 능력 정보: contract 2, wardrobeSchema 2, 후속 기록 지원 어휘. 사용자 자료 없음 |
 | `GET /api/wardrobe?photos=` | 저장된 상태 전체(보유·후보·처분, 판정 기록, 주인). 앱이 그대로 읽을 수 있는 모양 |
 | `POST /api/wardrobe/import` (+ `Idempotency-Key`) | 옷장 파일(스키마 1·2) 가져오기. 같은 id 는 덮어쓴다. 같은 키+같은 내용 → 저장된 결과 재생(`Idempotent-Replayed: true`), 같은 키+다른 내용 → 409 |
 | `GET /api/wardrobe/export?img&otherImg&cands&price&body&log` | 옷장 파일(스키마 2) 내보내기. 보유 옷만. 기본: 내 사진만 포함, 남의 상품 사진·후보·가격·체형·기록 제외(앱과 같은 기본값) |
@@ -66,7 +75,9 @@ curl -s http://localhost:8080/api/outfits | head -c 600
 | `POST /api/catalog/products/{id}/candidate` | 상품을 살까 말까 후보(옷)로 |
 | `GET/POST/DELETE /api/decisions[/{id}]` | 판정 기록 |
 
-## 설계와 판단 근거
+## 과거 개인판의 설계와 판단 근거
+
+아래 owner 1·인증 없음·단순 받기 설명은 당시 개인판의 선택이다. 현재 인증·계정 격리·후속 기록 병합과 선택 이유는 [설계 결정 기록](../docs/architecture-decisions.md)을 기준으로 확인한다.
 
 - **같은 규칙, 두 언어**: 규칙은 `domain` 패키지에 의존성 없는 순수 Java 로 두고, 앱(JS)의 골든 스냅샷과 교차 검증한다(`GoldenParityTest`). 규칙을 바꾸면 양쪽을 함께 바꾸고 `node app/tools/golden.mjs`, `node server/tools/gen-rank-golden.mjs` 로 스냅샷을 다시 만든다. [제안] 포트폴리오 원칙("핵심 도메인 규칙은 사용자가 직접 쓴다")을 지키려면 이 패키지를 사용자가 다시 쓰고, 골든 회귀로 같음을 보이면 된다 — 테스트가 안전망이다.
 - **불변식을 DB 가 다시 지킨다**: 확인된 동일 제품 ↔ 확인 기록, 상품 사진 상태가 아니면 출처 없음, 후보 최대 5개, 같은 옷은 owner 당 하나(`client_id`). 정리 함수(`WardrobeCleaner`)가 올려 주지 않는 상태를 DB 도 받지 않는다.

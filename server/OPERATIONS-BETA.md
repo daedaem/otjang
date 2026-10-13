@@ -6,7 +6,7 @@
 
 - 가입은 `OTJANG_INVITE_CODE`가 비어 있으면 닫힌다. 가입은 새로운 owner를 만들며 기존 owner 1을 인수하지 않는다.
 - `POST /api/auth/register {username,password,inviteCode}`, `POST /api/auth/login {username,password}` → `{token,expiresAt,user:{username,ownerId}}`.
-- 모든 사용자 API는 `Authorization: Bearer <token>`을 요구한다. 앱은 자동 인증 쿠키·Basic 인증을 사용하지 않는다. 서버는 세션을 만들지 않으므로 이 계약의 CSRF는 자동 쿠키 인증과 분리된다.
+- 모든 사용자 API는 `Authorization: Bearer <token>`을 요구한다. 공개 `GET /api/meta`는 계약 버전·지원 어휘만 반환하며 사용자 자료를 포함하지 않는다. 앱은 자동 인증 쿠키·Basic 인증을 사용하지 않는다. 서버는 세션을 만들지 않으므로 이 계약의 CSRF는 자동 쿠키 인증과 분리된다.
 - 토큰은 32바이트 암호학 난수다. 원문은 발급 응답에만 나오고 DB에는 SHA256 해시만 둔다. 기본 만료 12시간, `OTJANG_SESSION_SECONDS`는 60초~7일 범위다. `POST /api/auth/logout`은 현재 토큰을 폐기하고 `GET /api/auth/me`는 사용자 이름과 ownerId만 돌려준다.
 - 비밀번호는 BCrypt cost 12로 저장한다. 12자 이상, UTF-8 72바이트 이하. 계정/세션 원문을 실행 명령·로그·Git·스크린샷에 기록하지 않는다.
 - 가입/로그인 시도는 서버 인스턴스의 실제 연결 IP마다 분당 20회 제한한다. 여러 인스턴스의 공유 제한은 아직 없다. 임의 X-Forwarded-For는 신뢰하지 않는다.
@@ -34,7 +34,19 @@
 
 보유·후보·처분 상태, 내 사진/상품 사진, 판정의 비교 기록과 후속 구매 기록을 포함한다. 로그인 계정·비밀번호·토큰·멱등 영수증은 포함하지 않는다. 앱의 다른 옷장·3D 위치는 서버에 저장하지 않으므로 브라우저 전체 백업이 별도로 필요하다. 백업 파일도 개인정보이며 공개 저장소에 넣지 않는다.
 
-`POST /api/backup/restore {backup,confirmReplace:true}`는 현재 로그인 사용자 자료만 원자적으로 교체한다. 필드 누락·알 수 없는 필드·500개를 넘는 목록·자동 보정될 손상 데이터는 400으로 거부한다. 파일의 ownerId나 계정을 다른 사용자의 권한으로 쓰지 않는다. 실패하면 기존 DB 자료는 롤백한다. `DELETE /api/account {password}`는 비밀번호를 다시 확인한 뒤 사용자 자료와 토큰을 삭제하고 더 이상 참조되지 않는 사진을 정리한다.
+`POST /api/backup/restore {backup,confirmReplace:true}`는 현재 로그인 사용자 자료만 원자적으로 교체한다. 필드 누락·알 수 없는 필드·500개를 넘는 목록·자동 보정될 손상 데이터는 400으로 거부한다. 후속 기록의 선택 enum 누락·해당하지 않는 값은 아래 계약 2 기본값으로 정규화한다. 파일의 ownerId나 계정을 다른 사용자의 권한으로 쓰지 않는다. 실패하면 기존 DB 자료는 롤백한다. `DELETE /api/account {password}`는 비밀번호를 다시 확인한 뒤 사용자 자료와 토큰을 삭제하고 더 이상 참조되지 않는 사진을 정리한다.
+
+## 구매 후속 기록 계약 2
+
+`GET /api/meta`는 `{contract:2,wardrobeSchema:2,followup:{outcomes,sizeResults,returnReasons}}`를 반환한다. 옷장·옷·판정·상품 목록·백업 복원 쓰기는 **`X-Eoul-Contract: 2`**를 요구한다. 누락되거나 다른 버전이면 409 `CLIENT_UPGRADE_REQUIRED`로 거부하며 데이터, 버전, 가져오기 영수증을 만들거나 재사용하지 않는다. 읽기·회원가입·로그인·로그아웃·계정 삭제에는 이 헤더가 필요하지 않다. HTTPS·인증·owner 격리 규칙은 그대로 적용된다.
+
+판정 `followup`은 `outcome`, `worn`, `regret`, `sizeResult`, `returnReason`, `note`, `at`를 왕복 보존한다. outcome은 `purchased|not-purchased|pending|returned`, sizeResult는 `right|small|large|unknown`, returnReason은 `size|fit|color|material|quality|changed|price|other|unknown`이다. worn·regret은 `yes|no|unknown`이다. 사이즈는 구매·반품에만, 반품 사유는 반품에만 의미가 있다. 그 밖의 경우와 선택 enum 키 누락은 `unknown`으로 정리한다. 구매로 정정해도 사이즈를 보존하며 반품 사유만 `unknown`이 된다.
+
+유효한 결정(after) 없는 후속 기록은 422 `FOLLOWUP_WITHOUT_DECISION`, 유효한 `before.lean`이나 id 없는 후속 기록은 422 `FOLLOWUP_INVALID_DECISION`, 지원하지 않는 outcome이나 해당 outcome에 의미가 있는 enum 값은 422 `FOLLOWUP_VOCAB`를 반환한다. 응답 `path`는 문제 필드를 가리킨다(예: `decisions[1].followup.sizeResult`; 백업 복원은 `wardrobe.decisions[1].followup.sizeResult`). 옷이나 판정 500개를 초과하는 import는 422 `WARDROBE_LIMIT`로 전체 거부하며 뒤쪽 항목을 잘라 저장하지 않는다. 저장 전에 전체 묶음을 검사하므로 다른 옷·판정·주인 정보와 멱등 영수증도 변경되지 않는다. 로컬 파일 정리기는 기존처럼 알 수 없는 값을 보수적으로 정리한다. 이 차이는 손실 없는 서버 쓰기 경계를 위한 의도된 계약이다.
+
+V8은 새 enum 열 2개와 제약만 추가하고 기존 outcome·날짜·메모는 보존한다. 이전 후속 기록의 새 enum 열은 `unknown`, 후속 기록이 없던 행은 NULL이다. 날짜 열은 기존 `date`를 유지한다. 공통 합성 사례는 `../contracts/followup-contract.json`이며 앱과 서버가 같은 입력·기대값으로 검증한다.
+
+후속 기록이 있는 판정의 `before.at`, `after.at`, `followup.at`은 실제 달력 날짜(연도 1~9999의 `YYYY-MM-DD`)이거나 빈 값이어야 한다. 잘못된 날짜는 422 `FOLLOWUP_DATE`와 필드 경로로 거부한다. 클라이언트·도메인 정리기의 `safeDate`도 실제 날짜를 확인해 잘못된 후속 날짜를 빈 값으로 정리한다. 시간으로 바꾸거나 과거 날짜에 시각을 만들어 넣지 않는다.
 
 사용자별 백업 API는 PostgreSQL 운영 백업을 대체하지 않는다. 출시 전 실제 DB 덤프와 사진 폴더를 동시에 보존하고 새로운 빈 DB/폴더에 복구한 증거를 남겨야 한다. 복구 허용 손실 시간과 복구 목표 시간은 아직 정하지 않았다.
 

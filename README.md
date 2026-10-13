@@ -6,6 +6,17 @@
 
 **현재 단계: 개인판과 로컬 계정 베타 구현·자동 검증, 실사용 검증 전.** 미확인 속성의 판정 보류, 간단한 등록, 초대 로그인·계정별 저장, 전체 백업·복원·삭제, 오래된 저장의 덮어쓰기 방지를 반영했습니다. 사용자 모집과 공개 운영은 시작하지 않았습니다. 서버 실행과 보안 제약은 [운영 안내](server/OPERATIONS-BETA.md)를 따릅니다. 아래 2026-10-12 수치는 당시 코드의 결과입니다.
 
+## 개발·운영 인수인계
+
+프로젝트를 이어받을 때는 다음 순서로 읽습니다. 구현 이유, 실제 코드 위치, 실행 방법과 미완료 항목을 함께 기록합니다.
+
+1. [개발 인수인계](docs/developer-handover.md): 구성과 주요 흐름, 기능 수정·테스트 방법.
+2. [설계 결정 기록](docs/architecture-decisions.md): 문제, 선택 이유, 대안과 다시 검토할 조건.
+3. [운영·장애·복구 절차](docs/operations-runbook.md): 설치·실행, 백업·복원, 오류 확인과 중단 조건.
+4. [알파 시스템 설계와 다음 구현](docs/system-design-alpha.md): Claude 검토를 반영한 현재 범위와 후속 작업.
+
+과거 진행 문서는 당시 기록입니다. 현행 API 계약은 [서버 운영 계약](server/OPERATIONS-BETA.md), 최신 서버 실행 증거는 [서버 README](server/README.md)를 기준으로 확인합니다. 브랜치에 코드를 올린 상태와 실제 배포·공개 운영은 구분합니다.
+
 ## 구성
 
 | 폴더 | 내용 |
@@ -45,7 +56,7 @@ node release-tools/local-beta.mjs stop
 ```bash
 cd app
 npm install                                  # three, esbuild, playwright (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                                     # 규칙·등록·추천·저장·캐시 테스트 135개 (Node 22)
+npm test                                     # 규칙·등록·추천·저장·캐시 테스트 (Node 22, 실행 결과로 개수 확인)
 npm run assets && npm run build              # dist/index.html (약 11MB). 브라우저로 열면 된다
 npx playwright install chromium && npm run check   # 헤드리스 브라우저로 핵심 흐름 확인 (환경당 77항목 × 두 환경)
 ```
