@@ -1695,7 +1695,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
         h('td', null, h('button', { class: 'btn small', type: 'button', onclick: () => openFollowupDialog(d), text: d.followup ? '구매·반품 기록 수정' : '구매·반품 결과 기록' })),
         h('td', { text: d.after.at }), h('td', { text: d.name }), h('td', { text: LEAN[d.before.lean] }), h('td', { text: DECIDE[d.after.decision] + ' (' + SHIFT[d.after.shift] + ')' }),
         h('td', { text: HELP[d.after.helpful] }), h('td', { text: followText(d) }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }),
-        h('td', { text: [d.after.insight, d.after.note, d.followup ? '후속: ' + followupLabel(d.followup.outcome) + (followupDetails(d.followup) ? ' · ' + followupDetails(d.followup) : '') + (d.followup.note ? ' · ' + d.followup.note : '') : ''].filter(Boolean).join(' / ') }))));
+        h('td', { text: [d.after.insight, d.after.note, d.followup ? '후속: ' + followupLabel(d.followup.outcome) + (followupDetails(d.followup) ? ' · ' + followupDetails(d.followup) : '') + (d.followup.note ? ' · ' + d.followup.note : '') : ''].filter(Boolean).join(' / ') })));
       gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['기록', '날짜', '후보', '보기 전', '결정', '도움', '2주 뒤', '판정 요약', '메모·구매/반품'].map((t) => h('th', { text: t })))), tb)));
     } else gate.append(h('p', { class: 'note', text: '아직 기록이 없습니다. 살까 말까 탭에서 후보를 넣고 판정을 끝까지 진행하면 여기에 쌓입니다.' }));
     main.append(gate);

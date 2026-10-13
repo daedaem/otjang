@@ -79,6 +79,11 @@ if (split) {
   src = src.replace('/*@@CLOSET@@*/', () => closet.replace(/<\/script/g, '<\\/script'));
   src = src.replace('<!--@@HEAD_EXTRA@@-->', '');
 }
+let inlineScriptIndex = 0;
+for (const [, code] of src.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+  inlineScriptIndex++;
+  try { new Function(code); } catch (error) { throw new Error('인라인 스크립트 ' + inlineScriptIndex + ' 구문 오류: ' + error.message); }
+}
 fs.mkdirSync(path.dirname(path.join(dir, out)), { recursive: true });
 fs.writeFileSync(path.join(dir, out), src);
 console.log(out, (Buffer.byteLength(src) / 1048576).toFixed(2), 'MB' + (split ? (closet ? ' + closet.js ' + (Buffer.byteLength(closet) / 1048576).toFixed(2) + 'MB (3D 탭을 열 때 받음)' : '') : closet ? ' (3D 포함)' : ' (3D 없음)'));
