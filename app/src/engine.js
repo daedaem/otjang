@@ -5,6 +5,7 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS } from './data/slots.js';
 import { LOOKS, ROLE_ORDER } from './data/looks.js';
 import { PRODUCTS } from './data/products.js';
 import { parseQuery } from './query.js';
+import { ownedGarments, ownedSlotIds, garmentMatchesSlot, garmentLabel } from './wardrobe.js';
 
 export const SEASON_LABEL = { spring: '봄', summer: '여름', fall: '가을', winter: '겨울' };
 const OPTIONAL_ROLES = new Set(['acc']);
@@ -53,7 +54,8 @@ function ctx(state) {
     occasion: state.occasion || null,
     season: state.season || seasonOf(state.now ? new Date(state.now) : new Date()),
     maxPrice: state.budget || null,
-    owned: new Set(state.owned || []),
+    owned: new Set(ownedSlotIds(state)),
+    garments: ownedGarments(state).filter((garment) => garment.gender === (state.gender || 'M')),
     hidden: state.hidden || [],
   };
 }
@@ -78,27 +80,31 @@ export function scoreSlot(slot, c, looks = matchingLooks(c)) {
 
   if (c.occasion) score += slot.occ.includes(c.occasion) ? 2.5 : -2;
 
-  const pairs = new Set();
+  const pairs = new Map();
   let lookCount = 0;
   for (const look of looks) {
     const ids = slotsInLook(look);
     if (!ids.includes(slot.id)) continue;
     lookCount += 1;
-    for (const other of ids) if (other !== slot.id && c.owned.has(other) && SLOT_BY_ID[other].cat !== slot.cat) pairs.add(other);
+    for (const other of ids) if (other !== slot.id && c.owned.has(other) && SLOT_BY_ID[other].cat !== slot.cat) {
+      const garments = c.garments || ownedGarments({ owned: [...c.owned] });
+      const garment = garments.find((item) => garmentMatchesSlot(item, SLOT_BY_ID[other]));
+      if (garment) pairs.set(garment.id, garment);
+    }
   }
   score += Math.min(lookCount, 3) * 1;
   score += Math.min(pairs.size, 4) * 1.5;
 
   if (pairs.size) {
-    const names = [...pairs].slice(0, 2).map((id) => shortName(SLOT_BY_ID[id]));
+    const names = [...pairs.values()].slice(0, 2).map((garment) => garment.slotId ? shortName(SLOT_BY_ID[garment.slotId]) : garmentLabel(garment));
     const last = names[names.length - 1];
-    reasons.push(`가진 ${names.join('·')}${josa(last, '과', '와')} 바로 입을 수 있어요`);
+    reasons.push(`가진 ${names.join('·')}${josa(last, '과', '와')} 조합할 수 있는 종류예요`);
   }
   if (slot.style[c.style] === 3) reasons.push(`${STYLES[c.style].label} 옷장의 기본이에요`);
   if (c.occasion && slot.occ.includes(c.occasion)) reasons.push(`${OCCASIONS[c.occasion]}에 잘 맞아요`);
   if (inSeason && slot.seasons.length < 4) reasons.push(`${SEASON_LABEL[c.season]}에 많이 입어요`);
 
-  return { score, reasons, pairs: [...pairs], inSeason };
+  return { score, reasons, pairs: [...pairs.keys()], inSeason };
 }
 
 const SHORT = {
@@ -145,6 +151,7 @@ export function recommendItems(state, { limit = 8 } = {}) {
 
 function fillLook(look, c, { anchorSlots = new Set(), product = null } = {}) {
   const items = [];
+  const usedGarments = new Set();
   for (const role of ROLE_ORDER) {
     const candidates = look.roles[role];
     if (!candidates) continue;
@@ -155,9 +162,12 @@ function fillLook(look, c, { anchorSlots = new Set(), product = null } = {}) {
       continue;
     }
     const anchorId = candidates.find((id) => anchorSlots.has(id));
-    const ownedId = anchorId && c.owned.has(anchorId) ? anchorId : !anchorId ? candidates.find((id) => c.owned.has(id)) : null;
+    const available = (id) => c.garments.find((garment) => !usedGarments.has(garment.id) && garmentMatchesSlot(garment, SLOT_BY_ID[id]));
+    const ownedId = anchorId && available(anchorId) ? anchorId : !anchorId ? candidates.find((id) => available(id)) : null;
     if (ownedId) {
-      items.push({ role, slot: SLOT_BY_ID[ownedId], owned: true });
+      const garment = available(ownedId);
+      usedGarments.add(garment.id);
+      items.push({ role, slot: SLOT_BY_ID[ownedId], owned: true, garment });
       continue;
     }
     const inSeason = anchorId ? [anchorId] : candidates.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));

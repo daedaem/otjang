@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recommendItems, recommendLooks, search, seasonOf, josa, productsFor } from '../src/engine.js';
+import { recommendItems, recommendLooks, search, seasonOf, josa, productsFor, scoreSlot } from '../src/engine.js';
+import { makeGarment, ownedSlotIds } from '../src/wardrobe.js';
 import { parseQuery } from '../src/query.js';
 import { SLOTS, SLOT_BY_ID } from '../src/data/slots.js';
 import { LOOKS } from '../src/data/looks.js';
@@ -144,5 +145,22 @@ test('모든 자리 정의가 올바르다', () => {
     assert.ok(['M', 'F'].includes(s.g));
     assert.ok(s.why && s.tip && s.name);
     assert.ok(s.seasons.length > 0);
+  }
+});
+
+test('unknown-color shirts use actual garment IDs without inflating the number of owned pieces', () => {
+  const shirt = makeGarment({ kind: 'shirt', gender: 'M', label: '내 셔츠' });
+  const state = { ...base, garments: [shirt] };
+  const owned = new Set(ownedSlotIds(state));
+  assert.ok(owned.size > 1, 'a generic kind can fill several template slots');
+  const scored = scoreSlot(SLOT_BY_ID['m-chino'], { gender: 'M', style: 'classic', season: 'fall', occasion: null, owned, garments: [shirt] });
+  assert.deepEqual(scored.pairs, [shirt.id], 'one actual shirt is still one item');
+  assert.match(scored.reasons[0], /내 셔츠/);
+  assert.doesNotMatch(scored.reasons[0], /흰 셔츠|블루 셔츠/);
+  for (const result of recommendLooks(state, { limit: 20 })) {
+    const pieces = result.items.filter((item) => item.owned);
+    assert.equal(new Set(pieces.map((item) => item.garment.id)).size, pieces.length);
+    assert.ok(pieces.every((item) => item.garment.id === shirt.id && item.garment.attrs === null));
+    assert.ok(result.ownedCount <= 1);
   }
 });

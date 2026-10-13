@@ -12,12 +12,12 @@ const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
 
-const order = ['src/data/slots.js', 'src/data/looks.js', 'src/data/products.js', 'src/query.js', 'src/engine.js', 'src/icons.js', 'src/main.js'];
+const order = ['src/data/slots.js', 'src/data/looks.js', 'src/data/products.js', 'src/wardrobe.js', 'src/wardrobe-store.js', 'src/garment-photo.js', 'src/query.js', 'src/engine.js', 'src/icons.js', 'src/main.js'];
 let js = order
   .map((file) => {
     const src = fs.readFileSync(path.join(root, file), 'utf8')
       .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
-      .replace(/^export\s+(const|function|let|class)\s/gm, '$1 ');
+      .replace(/^export\s+(const|function|async function|let|class)\s/gm, '$1 ');
     return `// ── ${file}\n${src}`;
   })
   .join('\n');
