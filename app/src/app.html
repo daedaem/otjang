@@ -733,11 +733,11 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   const ui = { advOpen: false, syncBase: location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : 'http:' + '//localhost:8080', syncPhotos: null, syncMsg: '', syncBusy: false, pullArm: null, tab: 'closet', cat: 'all', season: '', judgeId: '', rejudge: '', mixCand: false, exclude: [], src: 'template', cmpSeason: '', delArm: false, resetArm: false, importArm: null, exp: { img: true, otherImg: false, cands: false, price: false, body: false, log: false },
     syncToken: '', syncUserInfo: null, syncOrigin: '', syncScope: '', syncVersion: null, syncObservedVersion: null, syncExpired: false, syncProtectionBlocked: false, localBeforeLogin: null, backupArm: null, backupMessage: '', importMessage: '', shopSeason: '', shopGap: 'template', shopImportArm: null, catImport: null, rackPick: '', stageSel: null, followLater: false, quickPick: [], opsOpen: false, opsText: '', pickForm: false, tasteOpen: false, shopOwnOpen: false, awaitReturn: null, leftFor: null, buyStep: '', buySize: '', buyOwn: true, nowForm: {}, nowProduct: null, nowOpen: false, askTop: false };
   function save() {
-    const dbKey = accountScope(), recovery = store.recoveryByScope?.get(dbKey), replacement = recovery && recovery.replacement === state;
+    const target = state, dbKey = accountScope(), recovery = store.recoveryByScope?.get(dbKey), replacement = recovery && recovery.replacement === target;
     if (recovery && !replacement) { storageOk = false; return Promise.resolve(false); }
     if (replacement) delete recovery.replacement;
     // 순서는 브라우저 저장 복사본에만 붙인다. 앱 상태·내보내기·서버 전송 자료에는 넣지 않는다.
-    const revision = ++store.revision, data = JSON.stringify(Object.assign({}, state, { _storageRevision: revision })), lsKey = localStorageKey();
+    const revision = ++store.revision, data = JSON.stringify(Object.assign({}, state, { _storageRevision: revision })), lsKey = localStorageKey(), pull = ui.pullSaving?.target === target && ui.pullSaving.dbKey === dbKey ? ui.pullSaving : null, commands = saveCommandProvenance(target, pull);
     const persist = async () => {
       if (store.recoveryByScope?.get(dbKey) && (!replacement || store.recoveryByScope.get(dbKey) !== recovery)) return false;
       // Expected copies belong to this key and to its last successful save at
@@ -748,9 +748,10 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       const result = await SC.commitSnapshot({ db: store.db, mode: store.mode, idbKey: dbKey, lsKey, expectedIdb: expected.idbValue, expectedLs: expected.lsValue, data, locks: navigator.locks, localStorage: local });
       if (result.ok) {
         store.persistedSnapshots.set(dbKey, { idbValue: result.idbValue === undefined ? expected.idbValue : result.idbValue, lsValue: result.lsValue === undefined ? expected.lsValue : result.lsValue });
+        (store.writtenSnapshots ||= new Map()).set(dbKey, { target, data, pull, commands });
         store.conflicts.delete(dbKey); store.mode = result.mode;
       } else if (result.conflict) store.conflicts.add(dbKey);
-      if (accountScope() === dbKey) {
+      if (accountScope() === dbKey && state === target) {
         store.conflict = store.conflicts.has(dbKey); storageOk = result.ok;
         const n = $('#saveNote');
         n.textContent = storageOk ? '이 브라우저 안에만 저장됩니다' : result.conflict ? '다른 탭에서 자료가 바뀌어 저장을 멈췄습니다. 현재 전체 백업을 받은 뒤 새로고침해 최신 자료를 확인하세요.' : '저장할 수 없는 상태입니다. 기록 탭에서 파일로 내보내 보관하세요';
@@ -770,12 +771,210 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     if (store.conflicts.has(scope) || idb !== expected.idbValue || ls !== expected.lsValue) { store.conflicts.add(scope); store.conflict = true; ui.syncProtectionBlocked = true; throw new Error('다른 탭에서 자료가 바뀌었습니다. 현재 전체 백업을 받은 뒤 새로고침해 최신 자료를 확인해 주세요. 자료를 덮어쓰지 않았습니다.'); }
     if (!storageOk && !await save()) throw new Error('브라우저에 기록을 보관할 수 없습니다. 현재 전체 백업을 받고 저장 상태를 확인한 뒤 다시 시도해 주세요.');
   }
+  // Undo only the values installed by this pull. Unrelated edits and newly
+  // added records remain, including edits made in place while storage waited.
+  function samePullValue(a, b) {
+    const stable = (value) => JSON.stringify(value, (key, entry) => entry && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.keys(entry).sort().map((name) => [name, entry[name]])) : entry);
+    return stable(a) === stable(b);
+  }
+  function undoPullValue(current, before, after) {
+    if (samePullValue(current, after)) return before === undefined ? undefined : JSON.parse(JSON.stringify(before));
+    if (!current || !before || !after || typeof current !== 'object' || typeof before !== 'object' || typeof after !== 'object' || Array.isArray(current) || Array.isArray(before) || Array.isArray(after)) return current;
+    const result = { ...current };
+    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      if (samePullValue(before[key], after[key])) continue;
+      const value = undoPullValue(current[key], before[key], after[key]);
+      if (value === undefined) delete result[key]; else result[key] = value;
+    }
+    // Category controls which kind and measurements are valid. Keep edits to
+    // this small bundle together instead of creating a cleaner-invalid hybrid.
+    if (Object.prototype.hasOwnProperty.call(before, 'cat') && Object.prototype.hasOwnProperty.call(after, 'kind')) {
+      const keys = ['cat', 'kind', ...(Object.prototype.hasOwnProperty.call(before, 'measures') ? ['measures'] : [])];
+      const group = (row) => Object.fromEntries(keys.map((key) => [key, row[key]]));
+      const chosen = samePullValue(group(current), group(after)) ? before : current;
+      for (const key of keys) result[key] = chosen[key] && typeof chosen[key] === 'object' ? JSON.parse(JSON.stringify(chosen[key])) : chosen[key];
+    }
+    return result;
+  }
+  function undoPullItem(current, before, after) {
+    const result = undoPullValue(current, before, after);
+    // A displayed image and its verification/provenance are one claim. Mixing
+    // an edited personal image with old confirmed-product metadata is invalid.
+    const display = (item) => ({ kind: item.photo.kind, img: item.photo.img, sourceName: item.photo.sourceName, sourceUrl: item.photo.sourceUrl, checkedAt: item.photo.checkedAt, product: item.product });
+    const chosen = samePullValue(display(current), display(after)) ? before : current;
+    result.photo = { ...chosen.photo, ownImg: undoPullValue(current.photo.ownImg, before.photo.ownImg, after.photo.ownImg) };
+    result.product = chosen.product ? JSON.parse(JSON.stringify(chosen.product)) : null;
+    if (result.photo.kind === 'own' || result.photo.kind === 'none') {
+      const own = result.photo.ownImg || ''; result.photo = { kind: own ? 'own' : 'none', img: own, ownImg: own, sourceName: '', sourceUrl: '', checkedAt: '' }; result.product = null;
+    }
+    return result;
+  }
+  function pullCommand(operation, row, field) {
+    const key = row.id + '\u0000' + row.itemId;
+    if (operation?.commands) { const saved = operation.commands.get(key); return saved && Object.prototype.hasOwnProperty.call(saved, field) && samePullValue(row[field], saved[field]) && (field !== 'follow' || row.after?.decision === saved.decision); }
+    const installed = operation?.decisionRefs?.get(key);
+    return !!row[field] && !!installed && (row[field] !== installed[field] || !samePullValue(row[field], installed.values[field]));
+  }
+  function retainedPullResults(decisions, operation) {
+    const installed = new Map(operation.after.decisions.map((row) => [row.id + '\u0000' + row.itemId, row]));
+    return new Set(decisions.filter((row) => row.followup && (!samePullValue(row.followup, installed.get(row.id + '\u0000' + row.itemId)?.followup) || pullCommand(operation, row, 'followup'))).map((row) => row.itemId));
+  }
+  function saveCommandProvenance(target, operation) {
+    const commands = new Map(), live = operation ? { ...operation, commands: null } : null;
+    for (const row of target.decisions || []) {
+      const saved = { decision: row.after?.decision, refs: {} };
+      for (const field of ['followup', 'follow']) if (row[field] && (pullCommand(live, row, field) || (field === 'followup' && store.followupAttempts?.has(row[field])))) { saved[field] = JSON.parse(JSON.stringify(row[field])); saved.refs[field] = row[field]; }
+      if (Object.keys(saved.refs).length) commands.set(row.id + '\u0000' + row.itemId, saved);
+    }
+    return commands;
+  }
+  function capturePullCommands(operation) { operation.commands = saveCommandProvenance(operation.target, operation); }
+  function beginFollowupAttempt(target, row, value) {
+    const item = target.items.find((entry) => entry.id === row.itemId);
+    const command = { target, dbKey: accountScope(), lsKey: localStorageKey(), id: row.id, itemId: row.itemId, value, previous: row.followup, receipt: 'pending', pull: ui.pullSaving?.target === target ? ui.pullSaving : null,
+      itemBefore: item ? { status: item.status, boughtYear: item.boughtYear } : null, rackBefore: target.rack.filter((entry) => entry.id === row.itemId).map((entry) => ({ ...entry })) };
+    command.settled = new Promise((resolve) => { command.finish = (ok) => { command.receipt = ok ? 'saved' : 'failed'; resolve(); }; });
+    (store.followupAttempts ||= new WeakMap()).set(value, command); return command;
+  }
+  async function previousFollowupAttempt(command) {
+    let value = command.previous, previous = value && store.followupAttempts?.get(value);
+    while (previous) {
+      if (previous.receipt === 'pending') await previous.settled;
+      if (previous.receipt === 'saved') return { value, command: previous };
+      value = previous.previous; previous = value && store.followupAttempts?.get(value);
+    }
+    return { value, command: null };
+  }
+  async function undoFollowupAttempt(target, command, byValue) {
+    const row = target.decisions.find((entry) => entry.id === command.id && entry.itemId === command.itemId);
+    if (!row || (byValue ? !samePullValue(row.followup, command.value) : row.followup !== command.value)) return null;
+    const previous = await previousFollowupAttempt(command), pull = command.pull?.failed && !command.pull.superseded ? command.pull : null;
+    const before = pull?.before.decisions.find((entry) => entry.id === command.id && entry.itemId === command.itemId), after = pull?.after.decisions.find((entry) => entry.id === command.id && entry.itemId === command.itemId);
+    let restored = { ...row, followup: previous.value };
+    if (before && after) {
+      const known = previous.command ? new Map([[command.id + '\u0000' + command.itemId, { followup: previous.value, decision: row.after?.decision }]]) : new Map();
+      restored = undoPullDecision(restored, before, after, { ...pull, commands: known });
+    }
+    // Keep the row identity held by other pending submit handlers.
+    for (const key of Object.keys(row)) if (!Object.prototype.hasOwnProperty.call(restored, key)) delete row[key]; Object.assign(row, restored);
+    let itemBefore = previous.command?.itemAfter || command.itemBefore, rackBefore = previous.command?.rackAfter || command.rackBefore;
+    if (pull && !previous.command && previous.value === pull.decisionRefs?.get(command.id + '\u0000' + command.itemId)?.followup) {
+      const original = pull.before.items.find((entry) => entry.id === command.itemId); itemBefore = original ? { status: original.status, boughtYear: original.boughtYear } : itemBefore;
+      rackBefore = pull.before.rack.filter((entry) => entry.id === command.itemId);
+    }
+    const item = target.items.find((entry) => entry.id === command.itemId);
+    if (item && itemBefore && command.itemAfter) for (const field of ['status', 'boughtYear']) if (item[field] === command.itemAfter[field]) item[field] = itemBefore[field];
+    const currentRack = target.rack.filter((entry) => entry.id === command.itemId);
+    if (samePullValue(currentRack, command.rackAfter)) {
+      target.rack = target.rack.filter((entry) => entry.id !== command.itemId); const slots = new Set(target.rack.map((entry) => entry.slot));
+      for (const entry of rackBefore) if (item && !slots.has(entry.slot)) { target.rack.push({ ...entry }); slots.add(entry.slot); }
+    }
+    return previous;
+  }
+  async function normalizeFailedFollowups(target, commands) {
+    const corrected = new Map(Array.from(commands || [], ([key, saved]) => [key, { ...saved, refs: { ...saved.refs } }]));
+    for (const [key, saved] of corrected) {
+      const command = saved.refs.followup && store.followupAttempts?.get(saved.refs.followup);
+      if (!command || command.receipt !== 'failed') continue;
+      const previous = await undoFollowupAttempt(target, command, true);
+      if (!previous) continue;
+      const row = target.decisions.find((entry) => entry.id === command.id && entry.itemId === command.itemId);
+      if (previous.command && row.followup) { saved.followup = JSON.parse(JSON.stringify(row.followup)); saved.refs.followup = previous.value; }
+      else { delete saved.followup; delete saved.refs.followup; if (!Object.keys(saved.refs).length) corrected.delete(key); }
+    }
+    return corrected;
+  }
+  function undoPullDecision(current, before, after, operation) {
+    const result = undoPullValue(current, before, after);
+    const selected = !pullCommand(operation, current, 'followup') && samePullValue(current.followup, after.followup) ? before.followup : current.followup;
+    result.followup = selected ? selected === current.followup ? selected : JSON.parse(JSON.stringify(selected)) : null;
+    if (result.followup && !result.after && current.after) result.after = JSON.parse(JSON.stringify(current.after));
+    // Legacy worn/feel values are interpreted by the associated buy/skip choice.
+    const legacy = (row) => ({ decision: row.after?.decision, follow: row.follow });
+    const chosen = !pullCommand(operation, current, 'follow') && samePullValue(legacy(current), legacy(after)) ? before : current;
+    result.follow = chosen.follow ? JSON.parse(JSON.stringify(chosen.follow)) : null;
+    if (chosen.after && result.after) result.after.decision = chosen.after.decision;
+    else if (result.follow && chosen.after) result.after = JSON.parse(JSON.stringify(chosen.after));
+    return result;
+  }
+  function undoPullList(current, before, after, decision, garment, operation, retainedItems) {
+    const key = (row) => decision ? row.id + '\u0000' + row.itemId : row.id;
+    const previous = new Map(before.map((row) => [key(row), row])), installed = new Map(after.map((row) => [key(row), row])), result = [];
+    for (const row of current) {
+      const id = key(row);
+      if (!installed.has(id)) result.push(row);
+      else if (previous.has(id)) {
+        const restored = garment ? undoPullItem(row, previous.get(id), installed.get(id)) : decision ? undoPullDecision(row, previous.get(id), installed.get(id), operation) : undoPullValue(row, previous.get(id), installed.get(id));
+        if (decision && operation?.preserveDecisionRefs) { for (const field of Object.keys(row)) if (!Object.prototype.hasOwnProperty.call(restored, field)) delete row[field]; Object.assign(row, restored); result.push(row); } else result.push(restored);
+      }
+      else if (!samePullValue(row, installed.get(id)) || retainedItems?.has(id) || (decision && (pullCommand(operation, row, 'followup') || pullCommand(operation, row, 'follow')))) result.push(row);
+    }
+    const retained = new Set(result.map(key));
+    for (const row of before) if (!installed.has(key(row)) && !retained.has(key(row))) result.push(JSON.parse(JSON.stringify(row)));
+    return result;
+  }
+  function pullFields(target) { return { items: target.items, owner: target.owner, decisions: target.decisions, products: target.catalog.products, rack: target.rack, syncStamp: target.syncStamp, syncFollowupAck: target.syncFollowupAck }; }
+  function undoPullSnapshot(target, operation) {
+    // A later import/restore that replaced the source baseline is a new action.
+    if (!samePullValue(target.syncFollowupAck, operation.after.syncFollowupAck)) return;
+    const { before, after } = operation;
+    const retainedResults = retainedPullResults(target.decisions, operation);
+    const lifecycle = new Map(target.items.filter((row) => retainedResults.has(row.id)).map((row) => [row.id, { status: row.status, boughtYear: row.boughtYear }]));
+    const retainedRack = target.rack.filter((row) => retainedResults.has(row.id));
+    target.items = undoPullList(target.items, before.items, after.items, false, true, operation, retainedResults);
+    target.items = target.items.map((row) => lifecycle.has(row.id) ? { ...row, ...lifecycle.get(row.id) } : row);
+    target.owner = undoPullValue(target.owner, before.owner, after.owner);
+    target.decisions = undoPullList(target.decisions, before.decisions, after.decisions, true, false, operation);
+    target.catalog.products = undoPullList(target.catalog.products, before.products, after.products);
+    const itemIds = new Set(target.items.map((item) => item.id)), occupied = new Set(), hung = new Set();
+    target.rack = [...retainedRack, ...undoPullList(target.rack, before.rack, after.rack).filter((row) => !retainedResults.has(row.id))].filter((row) => itemIds.has(row.id) && Number.isInteger(row.slot) && row.slot >= 0 && row.slot < 6 && !occupied.has(row.slot) && !hung.has(row.id) && occupied.add(row.slot) && hung.add(row.id));
+    target.syncStamp = undoPullValue(target.syncStamp, before.syncStamp, after.syncStamp);
+    target.syncFollowupAck = undoPullValue(target.syncFollowupAck, before.syncFollowupAck, after.syncFollowupAck);
+  }
+  function repairPullSnapshot(operation) {
+    // A queued save can contain the tentative pull. Repair the latest successful
+    // snapshot for that exact scope, not global state or a newer replacement.
+    const repair = async () => {
+      let ok = false;
+      try {
+        const written = store.writtenSnapshots?.get(operation.dbKey), expected = store.persistedSnapshots.get(operation.dbKey);
+        if (!written || written.target !== operation.target) return true;
+        if (!expected || (written.data !== expected.idbValue && written.data !== expected.lsValue) || store.recoveryByScope?.has(operation.dbKey)) throw new Error('unverified pull snapshot');
+        const corrected = JSON.parse(written.data), commands = await normalizeFailedFollowups(corrected, written.commands);
+        if (operation.failed && operation.after) undoPullSnapshot(corrected, { ...operation, commands });
+        if (samePullValue(corrected, JSON.parse(written.data))) return true;
+        const data = JSON.stringify({ ...corrected, _storageRevision: ++store.revision });
+        let local; try { local = window.localStorage; } catch (e) { /* inaccessible */ }
+        const result = await SC.commitSnapshot({ db: store.db, mode: store.mode, idbKey: operation.dbKey, lsKey: operation.lsKey, expectedIdb: expected.idbValue, expectedLs: expected.lsValue, data, locks: navigator.locks, localStorage: local });
+        ok = result.ok === true;
+        if (ok) {
+          store.persistedSnapshots.set(operation.dbKey, { idbValue: result.idbValue === undefined ? expected.idbValue : result.idbValue, lsValue: result.lsValue === undefined ? expected.lsValue : result.lsValue });
+          store.writtenSnapshots.set(operation.dbKey, { target: operation.target, data, pull: written.pull, commands }); store.conflicts.delete(operation.dbKey);
+        } else if (result.conflict) store.conflicts.add(operation.dbKey);
+      } catch (e) { /* A failed correction cannot claim that rollback is durable. */ }
+      const failures = store.pullRepairFailures ||= new Map();
+      if (ok) failures.delete(operation.dbKey); else failures.set(operation.dbKey, '받기 저장과 복구 저장에 실패했습니다. 임시로 받은 기록이 남아 있을 수 있습니다. 전체 백업을 보관하고 저장 상태를 확인해 주세요.');
+      return ok;
+    };
+    savePromise = savePromise.then(repair, repair); return savePromise;
+  }
+
   const owned = () => state.items.filter((i) => i.status === 'owned');
   const cands = () => state.items.filter((i) => i.status === 'candidate');
   function capacityCounts(target) { return { items: target.items.length, decisions: target.decisions?.length || 0, products: target.catalog?.products?.length || 0, pickLog: target.pickLog?.length || 0, others: target.others?.length || 0 }; }
   function canAdd(kind, amount, target, quiet) {
     target ||= state; amount = amount == null ? 1 : amount;
     const requests = typeof kind === 'object' ? kind : { [kind]: amount }, counts = capacityCounts(target), limits = W.RECORD_LIMITS;
+    // The pending pull temporarily lowers counts. Reserve the records that a
+    // failed apply would restore, so ordinary creation cannot overflow recovery.
+    const pending = ui.pullSaving;
+    if (pending?.before && pending.after && pending.target === state && pending.dbKey === accountScope() && samePullValue(state.syncFollowupAck, pending.after.syncFollowupAck)) {
+      for (const key of ['items', 'decisions', 'products']) {
+        const current = key === 'products' ? target.catalog?.products || [] : target[key] || [];
+        const restored = undoPullList(current, pending.before[key], pending.after[key], key === 'decisions', key === 'items', { ...pending, preserveDecisionRefs: false }, key === 'items' ? retainedPullResults(state.decisions, pending) : null);
+        counts[key] = Math.max(counts[key], restored.length);
+      }
+    }
     const ceiling = { items: limits.createLimit, decisions: limits.createLimit, products: limits.createLimit, pickLog: limits.pickLogCreateLimit, others: limits.otherWardrobeCreateLimit };
     const blocked = Object.keys(requests).find((key) => requests[key] > 0 && counts[key] + requests[key] > ceiling[key]);
     if (store.recoveryByScope?.has(accountScope()) || blocked) {
@@ -2042,6 +2241,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     return result;
   }
   async function syncPush() {
+    if (ui.pullSaving || ui.syncBusy) return false;
     let wardrobeSent = false, ackSaved = true;
     ui.syncBusy = true; ui.pullArm = null; ui.syncProtectionBlocked = false; ui.syncMsg = '서버 지원 정보를 확인하는 중…'; render();
     try {
@@ -2085,6 +2285,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     ui.syncBusy = false; render();
   }
   async function syncPull() {
+    if (ui.pullSaving || ui.syncBusy) return false;
     ui.syncBusy = true; ui.pullArm = null; ui.syncProtectionBlocked = false; ui.syncMsg = '받는 중…'; render();
     try {
       const source = { origin: SY.normalizeBase(ui.syncBase), ownerId: ui.syncUserInfo?.ownerId }, discovery = await discoverSyncCapabilities();
@@ -2106,6 +2307,52 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     } catch (e) { ui.syncMsg = e.message; }
     ui.syncBusy = false; render();
   }
+  async function applySyncPull() {
+    if (!ui.pullArm || ui.pullSaving || ui.syncBusy) return false;
+    const arm = ui.pullArm, { w, c, version, context, rawDecisions } = arm;
+    const operation = { target: state, dbKey: accountScope(), lsKey: localStorageKey(), arm, source: context.source, token: ui.syncToken, stageSel: ui.stageSel };
+    const active = () => !operation.superseded && state === operation.target && accountScope() === operation.dbKey && ui.syncToken === operation.token && ui.syncOrigin === operation.source.origin && ui.syncUserInfo?.ownerId === operation.source.ownerId && SY.normalizeBase(ui.syncBase) === operation.source.origin;
+    ui.pullSaving = operation; render(); let clearArm = true;
+    try {
+      await requireFreshStorage(); requirePullProtection(rawDecisions, context);
+      if (!active()) throw new Error('받는 동안 계정이나 옷장이 바뀌었습니다. 현재 자료는 바꾸지 않았습니다.');
+      const plan = requirePullProtection(w.decisions, context);
+      if (!plan.ok) { clearArm = false; ui.pullArm.plan = plan; ui.syncMsg = '확인하는 동안 구매 결과가 달라졌습니다. 양쪽 결과를 다시 선택해 주세요. 현재 자료는 바뀌지 않았습니다.'; return false; }
+      const incomingItems = SY.mergePullPlanItems(state.items, w.items, plan);
+      if (incomingItems.length > W.RECORD_LIMITS.readCeiling || plan.decisions.length > W.RECORD_LIMITS.readCeiling) throw new Error('받은 자료를 합치면 읽기 상한을 넘습니다. 현재 자료는 바뀌지 않았습니다.');
+      operation.before = JSON.parse(JSON.stringify(pullFields(state)));
+      // Both versions may be needed for selective rollback. Reserve their IDs
+      // before exposing remote rows for editing; never install an unreadable union.
+      const lists = [[state.items, incomingItems], [state.decisions, plan.decisions], [state.catalog.products, c ? c.products : state.catalog.products]];
+      if (lists.some(([local, remote]) => new Set([...local, ...remote].map((row) => row.id)).size > W.RECORD_LIMITS.readCeiling)) throw new Error('기존 자료와 받은 자료를 모두 보존하면 읽기 상한을 넘습니다. 현재 자료는 바꾸지 않았습니다. 전체 백업을 받은 뒤 기록 탭에서 직접 고른 기록을 정리하고 다시 시도해 주세요.');
+      state.items = incomingItems; state.owner = w.owner; state.decisions = plan.decisions; if (c) state.catalog.products = c.products;
+      const ids = new Set(state.items.filter((i) => i.look3d).map((i) => i.id)); state.rack = state.rack.filter((r) => ids.has(r.id)); if (!state.rack.length) state.rack = defaultRack(state.items);
+      state.syncStamp = { origin: ui.syncOrigin, ownerId: ui.syncUserInfo.ownerId, version }; ui.syncVersion = version;
+      state.syncFollowupAck = SY.makeFollowupAck({ ...context.source, serverVersion: version, capture: 'pull', completeSnapshot: context.completeIncoming }, w.decisions);
+      operation.after = JSON.parse(JSON.stringify(pullFields(state)));
+      operation.decisionRefs = new Map(state.decisions.map((row) => [row.id + '\u0000' + row.itemId, { followup: row.followup, follow: row.follow, values: { followup: row.followup ? JSON.parse(JSON.stringify(row.followup)) : null, follow: row.follow ? JSON.parse(JSON.stringify(row.follow)) : null } }]));
+      let saved = false;
+      try { operation.save = save(); saved = await operation.save === true; } catch (e) { /* rejected storage is also a failed pull */ }
+      operation.superseded = !samePullValue(operation.target.syncFollowupAck, operation.after.syncFollowupAck);
+      if (!saved) {
+        operation.failed = true; operation.preserveDecisionRefs = true; capturePullCommands(operation); undoPullSnapshot(operation.target, operation);
+        let repaired = true;
+        if (operation.save && savePromise !== operation.save) repaired = await repairPullSnapshot(operation);
+        if (active()) {
+          ui.syncVersion = operation.target.syncStamp?.version ?? null;
+          ui.syncMsg = repaired ? '저장하지 못해 이번 받기 변경을 되돌렸습니다. 그동안 편집한 기록은 유지했습니다. 저장 상태를 확인한 뒤 다시 시도해 주세요.' : '받기 저장과 복구 저장에 실패했습니다. 임시로 받은 기록이 남아 있을 수 있습니다. 전체 백업을 보관하고 저장 상태를 확인해 주세요.';
+        }
+        return false;
+      }
+      if (active()) ui.syncMsg = '서버에서 받았습니다: 옷 ' + operation.target.items.length + '벌.';
+      return true;
+    } catch (e) { if (active()) ui.syncMsg = e.message; return false; }
+    finally {
+      if (ui.pullSaving === operation) ui.pullSaving = null;
+      if (active()) { if (clearArm && ui.pullArm === arm) ui.pullArm = null; if (ui.stageSel === operation.stageSel) ui.stageSel = null; if (clearArm) ui.syncProtectionBlocked = false; }
+      render();
+    }
+  }
   function renderSync() {
     if (BRAND.mobilePreview) return h('section', { class: 'panel', id: 'mobileStorageNote' }, h('h2', { text: '이 기기에 보관하는 옷장' }), h('p', { text: '옷과 사진은 지금 사용하는 브라우저에 저장됩니다. PC와 자동으로 맞춰지지 않아요. 기기를 옮길 때는 전체 백업 내보내기·복원을 이용해 주세요. 브라우저 데이터를 지우기 전에 백업해 주세요.' }));
     const photos = ui.syncPhotos == null ? SY.isLocalAddress(ui.syncBase) : ui.syncPhotos;
@@ -2115,8 +2362,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
         h('div', { class: 'field full' }, h('label', { for: 'syncBase', text: '서버 주소' }), h('input', { id: 'syncBase', type: 'text', maxlength: '80', value: ui.syncBase, onchange: (e) => { const next = e.target.value.trim(); leaveAccount(false).then(() => { ui.syncBase = next; ui.syncPhotos = null; render(); }); } })),
         h('div', { class: 'field full' }, h('div', { class: 'checks' }, h('label', null, h('input', { id: 'syncPhotos', type: 'checkbox', checked: photos, onchange: (e) => { ui.syncPhotos = e.target.checked; render(); } }), ' 사진도 보내기' + (SY.isLocalAddress(ui.syncBase) ? '' : ' (이 컴퓨터가 아닌 주소입니다. 사진이 그 컴퓨터에 저장됩니다)'))))),
       h('div', { class: 'bar', style: 'margin:0' },
-        h('button', { class: 'btn primary', type: 'button', id: 'syncPush', disabled: ui.syncBusy || !ui.syncToken || !SY.normalizeBase(ui.syncBase), onclick: syncPush, text: '서버로 보내기' }),
-        h('button', { class: 'btn', type: 'button', id: 'syncPull', disabled: ui.syncBusy || !ui.syncToken || !SY.normalizeBase(ui.syncBase), onclick: syncPull, text: '서버에서 받기' })));
+        h('button', { class: 'btn primary', type: 'button', id: 'syncPush', disabled: ui.syncBusy || !!ui.pullSaving || !ui.syncToken || !SY.normalizeBase(ui.syncBase), onclick: syncPush, text: '서버로 보내기' }),
+        h('button', { class: 'btn', type: 'button', id: 'syncPull', disabled: ui.syncBusy || !!ui.pullSaving || !ui.syncToken || !SY.normalizeBase(ui.syncBase), onclick: syncPull, text: '서버에서 받기' })));
     renderAccount(sec);
     if (ui.pullArm) {
       try { requirePullProtection(ui.pullArm.rawDecisions, ui.pullArm.context); ui.pullArm.plan = requirePullProtection(ui.pullArm.w.decisions, ui.pullArm.context); }
@@ -2124,6 +2371,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     }
     if (!SY.normalizeBase(ui.syncBase)) sec.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '주소는 ' + 'http:' + '//호스트:포트 모양이어야 합니다. 예: ' + 'http:' + '//localhost:8080' }));
     if (ui.syncMsg) sec.append(h('p', { class: 'note', id: 'syncMsg', style: 'margin-top:10px', text: ui.syncMsg }));
+    const repairFailure = store.pullRepairFailures?.get(accountScope()); if (repairFailure) sec.append(h('p', { class: 'warnnote', id: 'pullRepairFailure', text: repairFailure }));
     if (ui.syncProtectionBlocked) sec.append(h('button', { class: 'btn small', id: 'syncSafetyBackup', type: 'button', onclick: () => download('otjang-private-backup-' + today() + '.json', B.makeBackup(state)), text: '현재 전체 백업 받기' }));
     if (ui.pullArm?.plan.conflictRows.length) {
       const box = h('div', { id: 'pullConflicts', class: 'notice warnbox' }, h('h3', { text: '양쪽에서 수정한 구매 결과를 골라 주세요' }), h('p', { text: '각 결과를 직접 선택해야 받을 수 있습니다. 이 기기 결과를 유지하면 다음 보내기 때 그 결과가 서버에 저장됩니다.' }));
@@ -2135,16 +2383,8 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       }); sec.append(box);
     }
     if (ui.pullArm) sec.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', id: 'pullWarn', text: '지금 옷장을 서버의 옷 ' + ui.pullArm.w.items.length + '벌, 판정 기록 ' + ui.pullArm.w.decisions.length + '건, 상품 ' + (ui.pullArm.c ? ui.pullArm.c.products.length : 0) + '개로 바꿉니다. 서버에 사진이 없는 옷은 이 브라우저의 내 사진을 남깁니다.' + (ui.pullArm.plan.acknowledgedChanges.length ? ' 다른 기기에서 수정한 최신 구매 후속 결과 ' + ui.pullArm.plan.acknowledgedChanges.length + '건으로 이전에 함께 저장한 결과도 바뀝니다.' : '') + (ui.pullArm.plan.keptLocal.length ? ' 이 기기에서 수정한 구매 결과 ' + ui.pullArm.plan.keptLocal.length + '건과 해당 옷의 보유·반품 상태는 유지합니다.' : '') }),
-      h('button', { class: 'btn small danger', type: 'button', id: 'pullGo', onclick: async () => { if (!ui.pullArm) return; const { w, c, version, context, rawDecisions } = ui.pullArm;
-        let plan; try { await requireFreshStorage(); requirePullProtection(rawDecisions, context); plan = requirePullProtection(w.decisions, context); } catch (e) { ui.syncMsg = e.message; ui.pullArm = null; render(); return; }
-        if (!plan.ok) { ui.pullArm.plan = plan; ui.syncMsg = '확인하는 동안 구매 결과가 달라졌습니다. 양쪽 결과를 다시 선택해 주세요. 현재 자료는 바뀌지 않았습니다.'; render(); return; }
-        const incomingItems = SY.mergePullPlanItems(state.items, w.items, plan); if (incomingItems.length > W.RECORD_LIMITS.readCeiling || plan.decisions.length > W.RECORD_LIMITS.readCeiling) { ui.syncMsg = '받은 자료를 합치면 읽기 상한을 넘습니다. 현재 자료는 바뀌지 않았습니다.'; render(); return; } const old = JSON.parse(JSON.stringify(state)); state.items = SY.mergePullPlanItems(state.items, w.items, plan); state.owner = w.owner; state.decisions = plan.decisions; if (c) state.catalog.products = c.products;
-        const ids = new Set(state.items.filter((i) => i.look3d).map((i) => i.id)); state.rack = state.rack.filter((r) => ids.has(r.id)); if (!state.rack.length) state.rack = defaultRack(state.items);
-        state.syncStamp = { origin: ui.syncOrigin, ownerId: ui.syncUserInfo.ownerId, version }; ui.syncVersion = version;
-        state.syncFollowupAck = SY.makeFollowupAck({ ...context.source, serverVersion: version, capture: 'pull', completeSnapshot: context.completeIncoming }, w.decisions);
-        const ok = await save(); if (!ok) { state = old; ui.syncVersion = old.syncStamp?.version ?? null; ui.syncMsg = '저장하지 못해 받기를 취소했습니다. 기존 브라우저 자료를 유지합니다.'; } else ui.syncMsg = '서버에서 받았습니다: 옷 ' + state.items.length + '벌.';
-        ui.pullArm = null; ui.stageSel = null; ui.syncProtectionBlocked = false; render(); }, text: '바꾸기', disabled: ui.pullArm.plan.conflicts.length > 0 }),
-      h('button', { class: 'btn small', type: 'button', onclick: () => { ui.pullArm = null; render(); }, text: '취소' })));
+      h('button', { class: 'btn small danger', type: 'button', id: 'pullGo', onclick: applySyncPull, text: ui.pullSaving ? '저장 중…' : '바꾸기', disabled: !!ui.pullSaving || ui.syncBusy || ui.pullArm.plan.conflicts.length > 0 }),
+      h('button', { class: 'btn small', type: 'button', disabled: !!ui.pullSaving, onclick: () => { if (ui.pullSaving) return false; ui.pullArm = null; render(); }, text: '취소' })));
     return sec;
   }
 

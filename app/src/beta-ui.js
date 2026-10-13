@@ -187,20 +187,32 @@ function renderFollowup(root, d, options) {
   const error = h('p', { class: 'warnnote', id: 'followupError', hidden: true, role: 'alert' });
   root.append(h('form', { id: 'followupForm', class: 'panel', onsubmit: async (e) => {
     e.preventDefault(); error.hidden = true;
-    const previous = d.followup, item = state.items.find((it) => it.id === d.itemId), previousItem = item && Object.assign({}, item), previousRack = state.rack.slice();
-    d.followup = { outcome: outcome.value, worn: worn.value || 'unknown', regret: regret.value || 'unknown',
+    const target = state, scope = accountScope();
+    if (!target.decisions.includes(d)) return;
+    const active = () => state === target && accountScope() === scope;
+    const value = { outcome: outcome.value, worn: worn.value || 'unknown', regret: regret.value || 'unknown',
       sizeResult: ['purchased', 'returned'].includes(outcome.value) ? sizeResult.value || 'unknown' : 'unknown',
       returnReason: outcome.value === 'returned' ? returnReason.value || 'unknown' : 'unknown', note: str(note.value, 300), at: today() };
-    if (item && outcome.value === 'returned') {
-      replaceItem(W.cleanItem(Object.assign({}, item, { status: 'gone' }), 0)); state.rack = state.rack.filter((row) => row.id !== item.id);
-    } else if (item && old.outcome === 'returned' && outcome.value === 'purchased' && item.status === 'gone') {
+    const command = beginFollowupAttempt(target, d, value), item = target.items.find((it) => it.id === d.itemId); d.followup = value;
+    if (item && value.outcome === 'returned') {
+      replaceItem(W.cleanItem(Object.assign({}, item, { status: 'gone' }), 0)); target.rack = target.rack.filter((row) => row.id !== item.id);
+    } else if (item && old.outcome === 'returned' && value.outcome === 'purchased' && item.status === 'gone') {
       replaceItem(W.cleanItem(Object.assign({}, item, { status: 'owned', boughtYear: item.boughtYear || YEAR }), 0));
     }
-    if (!await save()) {
-      d.followup = previous;
-      if (previousItem) replaceItem(W.cleanItem(previousItem, 0));
-      state.rack = previousRack; error.textContent = '저장하지 못했습니다. 다시 시도해 주세요.'; error.hidden = false; return;
+    const changedItem = target.items.find((it) => it.id === d.itemId);
+    command.itemAfter = changedItem ? { status: changedItem.status, boughtYear: changedItem.boughtYear } : null;
+    command.rackAfter = target.rack.filter((row) => row.id === d.itemId).map((row) => ({ ...row }));
+    let saved = false; try { command.save = save(); saved = await command.save === true; } catch (e) { /* rejected storage is a failed submission */ }
+    command.finish(saved);
+    if (!saved) {
+      await undoFollowupAttempt(target, command, false);
+      let repaired = true;
+      if (command.save && savePromise !== command.save) repaired = await repairPullSnapshot({ target, dbKey: command.dbKey, lsKey: command.lsKey, failed: false });
+      if (active()) { error.textContent = repaired ? '저장하지 못했습니다. 더 최근의 선택과 다른 편집은 유지했습니다. 다시 시도해 주세요.' : '결과와 복구 사본을 저장하지 못했습니다. 임시 결과가 남아 있을 수 있습니다. 전체 백업을 보관하고 저장 상태를 확인해 주세요.'; error.hidden = false; render(); }
+      return;
     }
+    const current = target.decisions.find((row) => row.id === d.id && row.itemId === d.itemId);
+    if (!active() || current?.followup !== value) return;
     const returnedToLog = outcome.value === 'returned';
     if (options.dialog?.open) options.dialog.close();
     if (returnedToLog) ui.tab = 'log';
