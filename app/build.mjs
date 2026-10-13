@@ -6,6 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const dir = path.dirname(fileURLToPath(import.meta.url));   // 한글·공백이 든 경로에서도 동작
 const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
+const split = process.env.SPLIT_DIR || '';                                                           // SPLIT_DIR=dist/web: 웹 배포용. 3D(closet.js)를 따로 둔다
+const out = split ? path.join(split, 'index.html') : process.env.OUT || 'dist/index.html';
+const staleOutputs = [out, ...(split ? [path.join(split, 'closet.js'), path.join(split, 'manifest.webmanifest'), path.join(split, 'sw.js')] : []), ...(process.env.ARTIFACT ? [process.env.ARTIFACT] : [])];
+for (const f of staleOutputs) fs.rmSync(path.join(dir, f), { force: true });                     // 빌드 검사가 실패해도 이전 파일을 새 결과처럼 실행하지 못하게 한다
 const wardrobe = process.env.WARDROBE || (fs.existsSync(path.join(dir, 'data/wardrobe.json')) ? 'data/wardrobe.json' : 'data/sample-wardrobe.json');   // 내 옷장(data/wardrobe.json, 저장소에 넣지 않음)이 있으면 그것, 없으면 예시 옷장
 JSON.parse(read(wardrobe)); JSON.parse(read('data/template-ivy.json'));
 const brand = JSON.parse(read('brand.json'));
@@ -14,7 +18,7 @@ if (process.env.MOBILE_PREVIEW === '1') {
   if (wardrobe !== 'data/empty.json' || seed.items?.length || seed.decisions?.length || !process.env.SPLIT_DIR) throw new Error('Mobile preview requires empty wardrobe and split build');
   brand.mobilePreview = true;
 }
-const split = process.env.SPLIT_DIR || '';                                                           // SPLIT_DIR=dist/web: 웹 배포용. 3D(closet.js)를 따로 두고 3D 탭을 열 때 받는다                            // JSON이 깨졌으면 여기서 멈춘다
+                                                                                                      // JSON이 깨졌으면 여기서 멈춘다
 
 let closet = '';
 if (!process.env.NO3D) {
@@ -53,7 +57,6 @@ if (/https?:\/\/(?!")/.test(src.replace(/document\.createElementNS\('http:\/\/ww
 }
 if (!src.includes('/*@@CLOSET@@*/')) throw new Error('marker missing /*@@CLOSET@@*/');
 src = src.split('@@APP_NAME@@').join(esc(brand.name + (brand.status ? ' (' + brand.status + ')' : '')));
-const out = split ? path.join(split, 'index.html') : process.env.OUT || 'dist/index.html';
 if (split) {
   fs.mkdirSync(path.join(dir, split), { recursive: true });
   const crypto = await import('node:crypto');

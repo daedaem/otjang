@@ -177,6 +177,11 @@ for (const m of modes) {
   const testPhotoCard = page.locator('#closetGrid .card', { hasText: '저화질 사진 시험용 니트' });
   await testPhotoCard.locator('details.item-tools > summary').click(); await testPhotoCard.getByRole('button', { name: '삭제' }).click();
   await page.waitForFunction(() => !window.__app.state.items.some((x) => x.name === '저화질 사진 시험용 니트'));
+  if (mobileBuild) {
+    await page.locator('#startMore > summary').click(); await page.click('#startSample');
+    await page.waitForFunction(() => window.__app.state.items.length === 13 && window.__app.state.meta.sample);
+    await flush(); await page.reload(); await page.waitForFunction(() => window.__app);
+  }
   // 이번 핵심 검사는 버튼을 통해 확인하고 저장한 뒤 새로고침해도 유지되는지 본다.
   const draftsBeforeBulkReview = await page.evaluate(() => window.__app.state.items.filter(window.__app.W.isDraft).length);
   await page.click('#reviewPhotoDrafts');
@@ -195,16 +200,35 @@ for (const m of modes) {
   await page.click('#tabbtn-closet');
   const readyFirstViewPrimary = await page.locator('#main .btn.primary').evaluateAll((els) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }).length);
   ok(readyFirstViewPrimary === 1, '확인된 옷장 첫 화면에도 강조 행동이 하나다', readyFirstViewPrimary);
+  ok(await page.locator('#heroImport').isVisible() && await page.locator('#heroImport').innerText() === '지금 보는 옷 가져오기', '첫 화면의 중심 행동은 보고 있는 상품 가져오기다');
+  await page.click('#heroImport');
+  ok(await page.locator('#quickItem #q-paste').isVisible(), '첫 화면에서 상품 공유·링크 입력을 바로 연다');
+  await page.click('#quickCancel');
+  await noOpenDialogs('첫 화면에서 연 상품 가져오기를 닫으면 대화상자가 남지 않는다');
 
   // 3. 살까 말까: 빠른 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로
   await page.click('#tabbtn-judge');
   ok(await page.locator('#firstCompare').count() === 1 && await page.locator('#quickCand').count() === 1 && await page.locator('#quickCandidate').count() === 0 && await page.locator('#addCand').count() === 0, '후보가 없을 때 입력 경로를 직접 입력과 링크 붙여넣기로 나눈다');
-  await page.click('#quickCand'); await page.fill('#q-paste', '무신사 흰색 반팔 티셔츠 https://www.musinsa.com/products/5755268');
+  await page.click('#quickCand');
+  ok(await page.locator('#quickItem .quick-extra').count() === 1 && !(await page.locator('#quickItem .quick-extra').getAttribute('open')) && await page.locator('#q-link').isVisible(), '붙여넣기 화면은 비교에 필요한 정보만 먼저 보이고 세부 속성은 접혀 있다');
+  await page.locator('#quickItem .quick-extra > summary').click();
+  ok(await page.locator('#q-light').isVisible(), '필요하면 접힌 세부 속성을 펼쳐 확인할 수 있다');
+  await page.locator('#quickItem .quick-extra > summary').click();
+  await page.fill('#q-paste', '무신사 흰색 반팔 티셔츠 https://www.musinsa.com/products/5755268');
   const pastedCandidate = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, link: document.querySelector('#q-link').value, kind: document.querySelector('#q-kind').value, family: document.querySelector('#q-family').value }));
   ok(pastedCandidate.name.includes('흰색') && pastedCandidate.link === 'https://www.musinsa.com/products/5755268' && pastedCandidate.kind === 'tee' && pastedCandidate.family === 'white', '상품 링크·공유 글을 같은 등록 화면에서 읽어 이름과 확인 전 추측값을 채운다', pastedCandidate);
+  ok(await page.locator('#quickTeeCatalogLink').isVisible(), '흰 티 후보에서 확인된 상품 비교로 가는 경로가 다시 보인다');
+  await page.click('#quickTeeCatalogLink');
+  ok(await page.locator('#pickCatalog').getAttribute('open') !== null && await page.locator('#pickCatalog .pick').count() > 0, '흰 티 상품 비교 버튼이 확인된 카탈로그를 연다');
+  await page.click('#tabbtn-judge'); await page.click('#quickCand');
+  await page.fill('#q-paste', '무신사 흰색 반팔 티셔츠 https://www.musinsa.com/products/5755268');
   await page.fill('#q-name', '직접 확인한 상품명'); await page.selectOption('#q-family', 'black'); await page.fill('#q-paste', '무신사 흰색 반팔 티셔츠 https://www.musinsa.com/products/5755268');
-  const keptCandidateEdits = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, family: document.querySelector('#q-family').value }));
-  ok(keptCandidateEdits.name === '직접 확인한 상품명' && keptCandidateEdits.family === 'black', '사용자가 상품명이나 추측값을 고친 뒤에는 붙여넣기 내용이 이를 덮어쓰지 않는다', keptCandidateEdits);
+  const keptCandidateEdits = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, family: document.querySelector('#q-family').value, light: document.querySelector('#q-light').value, formality: document.querySelector('#q-formality').value }));
+  ok(keptCandidateEdits.name === '직접 확인한 상품명' && keptCandidateEdits.family === 'black' && keptCandidateEdits.light === '12' && keptCandidateEdits.formality === '1', '사용자가 고친 이름·색·밝기는 새 붙여넣기에 덮이지 않고 색과 밝기는 일관된다', keptCandidateEdits);
+  await page.click('#quickCancel'); await noOpenDialogs('붙여넣기 후보 입력을 취소하면 열린 대화상자가 남지 않는다');
+  await page.click('#quickCand'); await page.selectOption('#q-cat', 'dress'); await page.fill('#q-paste', '검정 슬랙스 https://www.musinsa.com/products/5755268');
+  const incompatibleGuess = await page.evaluate(() => ({ cat: document.querySelector('#q-cat').value, kind: document.querySelector('#q-kind').value, formality: document.querySelector('#q-formality').value }));
+  ok(incompatibleGuess.cat === 'dress' && incompatibleGuess.kind === '' && incompatibleGuess.formality === '', '선택한 분류에 맞지 않는 종류 추측은 격식에 적용하지 않는다', incompatibleGuess);
   await page.click('#quickCancel'); await noOpenDialogs('붙여넣기 후보 입력을 취소하면 열린 대화상자가 남지 않는다');
   await page.click('#quickCand'); await page.fill('#q-paste', 'https://www.musinsa.com/products/5755268');
   const linkOnlyCandidate = await page.evaluate(() => ({ name: document.querySelector('#q-name').value, link: document.querySelector('#q-link').value, cat: document.querySelector('#q-cat').value }));
@@ -308,8 +332,8 @@ for (const m of modes) {
   await page.click('#catMerge');
   ok((await page.evaluate(() => window.__app.state.catalog.products.length)) === 2, '같은 상품 목록 파일을 다시 열어 더해도 겹치지 않는다');
   await page.locator('#shopList .prod').first().getByRole('button', { name: '후보로 넣어 판정' }).click();
-  const fromShop = await page.evaluate(() => { const c = window.__app.state.items.find((i) => i.status === 'candidate'); return c && { name: c.name, photo: c.photo.kind, product: c.product && c.product.name, price: c.price, link: c.link, checkedAt: c.checkedAt }; });
-  ok(fromShop && fromShop.name === '네이비 크루넥 니트' && fromShop.photo === 'confirmed' && fromShop.product === '네이비 크루넥 니트' && fromShop.price === 129000 && fromShop.link === 'https://shop.example/knit' && fromShop.checkedAt === '2026-01-05', '상품을 후보로 넣으면 살까 말까로 이어지고 가격·링크·확인일이 함께 간다', fromShop);
+  const fromShop = await page.evaluate(() => { const s = window.__app.state, c = s.items.find((i) => i.status === 'candidate'), log = c && s.pickLog.find((e) => e.candidateId === c.id); return c && { name: c.name, photo: c.photo.kind, product: c.product && c.product.name, price: c.price, link: c.link, checkedAt: c.checkedAt, journeyLinked: !!log }; });
+  ok(fromShop && fromShop.name === '네이비 크루넥 니트' && fromShop.photo === 'confirmed' && fromShop.product === '네이비 크루넥 니트' && fromShop.price === 129000 && fromShop.link === 'https://shop.example/knit' && fromShop.checkedAt === '2026-01-05' && fromShop.journeyLinked, '상품을 후보로 넣으면 살까 말까로 이어지고 원래 추천 기록과 연결된다', fromShop);
   ok(await page.locator('#beforeForm h2').innerText() === '네이비 크루넥 니트', '후보 화면이 열린다');
 
   // 6. 옷장 구경: 기본 옷장
@@ -439,6 +463,41 @@ for (const m of modes) {
   await page.reload(); await page.waitForFunction(() => window.__app);
   const st2 = await page.evaluate(() => ({ owned: window.__app.state.items.filter((i) => i.status === 'owned').length, cand: window.__app.state.items.filter((i) => i.status === 'candidate').length, gone: window.__app.state.items.filter((i) => i.status === 'gone').length, outcome: window.__app.state.decisions[0].followup.outcome, dec: window.__app.state.decisions.length, others: window.__app.state.others.length, brand: window.__app.state.items[0].brand, products: window.__app.state.catalog.products.length, rack: window.__app.state.rack.length, from: window.__app.state.loadedFrom }));
   ok(st2.owned === 13 && st2.cand === 2 && st2.gone === 1 && st2.outcome === 'returned' && st2.dec === 1 && st2.others === 2 && st2.brand === 'Brand A' && st2.products === 2 && st2.rack === 5 && st2.from === 'idb', '다시 열어도 구매·반품 결과, 옷장, 판정 기록, 상품 목록과 걸린 옷이 남아 있다', st2);
+
+  // 공유 대상은 title/text가 같은 경우에도 상품명을 한 번만 채우고 공유 직후 주소창 값을 지운다.
+  const sharePage = await ctx.newPage(), shareTitle = '폴로 화이트 티셔츠', shareUrl = new URL(file);
+  shareUrl.searchParams.set('title', shareTitle); shareUrl.searchParams.set('text', shareTitle); shareUrl.searchParams.set('url', 'https://www.musinsa.com/products/5755268');
+  await sharePage.goto(shareUrl.href); await sharePage.waitForFunction(() => window.__app && document.querySelector('#quickItem')?.open);
+  const sharedCandidate = await sharePage.evaluate(() => ({ name: document.querySelector('#q-name').value, link: document.querySelector('#q-link').value, search: location.search }));
+  ok(sharedCandidate.name === shareTitle && sharedCandidate.link === 'https://www.musinsa.com/products/5755268' && !sharedCandidate.search, '공유 title과 text가 같아도 이름이 한 번만 들어가고 주소창의 공유값은 지워진다', sharedCandidate);
+  await sharePage.close();
+
+  // 결정 화면에서 바로 반품을 저장하면 기록 탭으로 이동해 완료 상태를 보여 준다.
+  await page.click('#tabbtn-judge');
+  const directReturnName = await page.locator('#beforeForm h2').innerText();
+  await page.locator('#beforeForm .choice', { hasText: '모르겠다' }).click(); await page.click('#showVerdict');
+  await page.locator('#afterForm .choice', { hasText: /^산다$/ }).click(); await page.locator('#afterForm .choice', { hasText: '도움이 됐다' }).click(); await page.click('#saveDecision');
+  await page.waitForSelector('#purchaseFollowup'); await page.click('#openPurchaseFollowup');
+  await page.selectOption('#followupOutcome', 'returned'); await page.selectOption('#followupSizeResult', 'small'); await page.selectOption('#followupReturnReason', 'fit'); await page.click('#saveFollowup');
+  await page.waitForFunction(() => window.__app.ui.tab === 'log' && !document.querySelector('#followupDialog')?.open);
+  const directReturn = await page.evaluate((name) => ({ tab: window.__app.ui.tab, status: window.__app.state.items.find((i) => i.name === name)?.status,
+    log: document.querySelector('#gate').innerText }), directReturnName);
+  ok(directReturn.tab === 'log' && directReturn.status === 'gone' && directReturn.log.includes(directReturnName) && directReturn.log.includes('구매 후 반품했다') && directReturn.log.includes('사이즈: 작았다') && directReturn.log.includes('반품 이유: 핏') && (await page.locator('#toast').innerText()).includes('기록 탭'), '판정 화면의 즉시 반품도 완료 안내와 함께 기록 탭에서 확인된다', { tab: directReturn.tab, status: directReturn.status, visible: directReturn.log.includes(directReturnName) });
+  const mergedJourney = await page.evaluate((name) => {
+    const row = [...document.querySelectorAll('#gate tbody tr')].find((tr) => tr.children[2]?.textContent === name);
+    return { oneDecisionRow: !!row, trail: row?.lastElementChild?.textContent || '', duplicatePickRow: [...document.querySelectorAll('#pickLogList li')].some((li) => li.textContent.includes(name)) };
+  }, directReturnName);
+  ok(mergedJourney.oneDecisionRow && mergedJourney.trail.includes('추천에서 가져옴') && !mergedJourney.duplicatePickRow, '추천에서 가져온 상품은 결정·구매·반품까지 기록에 한 줄로 합쳐진다', mergedJourney);
+  const reminderId = 'qa-return-reminder';
+  await page.evaluate(async (id) => {
+    const app = window.__app, p = app.PICKS.products[0], at = app.W.today();
+    app.state.pickLog.push({ id, at, productId: p.id, label: 'QA 상품', price: 0, store: '판매처', verdict: '', altId: '', reason: '', out: 1, outAt: at, outT: 1, returned: true, snooze: '', bought: '', boughtAt: '', boughtSize: '', ownedId: '', follow: null, learned: '', pri: [], use: 'any', recSize: '', rank: 1, catV: '' });
+    await app.flush();
+  }, reminderId);
+  await page.click('#tabbtn-outfits');
+  ok(await page.locator('#askBought').isVisible() && (await page.locator('#askBought').innerText()).includes('샀나요?'), '다른 탭에서 돌아와도 구매 여부 질문이 화면 맨 위에 나온다');
+  await page.evaluate(async (id) => { window.__app.state.pickLog = window.__app.state.pickLog.filter((e) => e.id !== id); await window.__app.flush(); });
+  await page.click('#tabbtn-log');
   ok(reqs.length === 0, '외부로 나간 요청이 없다', reqs);
   ok(logs.length === 0, '콘솔 오류와 경고가 없다', logs);
   await ctx.close();

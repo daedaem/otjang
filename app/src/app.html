@@ -628,7 +628,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k), date = (v) => PK.realDate(v);
     const seen = new Set();
     return (Array.isArray(raw) ? raw : []).slice(-100).map((e) => (e && typeof e === 'object' && typeof e.productId === 'string' && date(e.at) ? {
-      id: str(e.id, 40) || 'k' + Math.random().toString(36).slice(2, 10), at: e.at, productId: str(e.productId, 60), label: str(e.label, 120), price: num(e.price, 0, 1e9) || 0, store: str(e.store, 60),
+      id: str(e.id, 40) || 'k' + Math.random().toString(36).slice(2, 10), at: e.at, productId: str(e.productId, 60), candidateId: str(e.candidateId, 40), label: str(e.label, 120), price: num(e.price, 0, 1e9) || 0, store: str(e.store, 60),
       verdict: ['accept', 'alt', 'reject'].indexOf(e.verdict) >= 0 ? e.verdict : '', altId: str(e.altId, 60), reason: ['price', 'brand', 'fit', 'have', 'other'].indexOf(e.reason) >= 0 ? e.reason : '',
       out: num(e.out, 0, 999) || 0, outAt: date(e.outAt), outT: num(e.outT, 0, 1e14) || 0, returned: e.returned === true, snooze: date(e.snooze),
       bought: ['yes', 'no'].indexOf(e.bought) >= 0 ? e.bought : '', boughtAt: date(e.boughtAt), boughtSize: str(e.boughtSize, 12), ownedId: str(e.ownedId, 40),
@@ -790,6 +790,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const main = $('#main'); main.textContent = ''; main.dataset.view = ui.tab;
     const heads = { judge: ['BEFORE YOU BUY', '살까, 말까.', '가진 옷과 겹치지 않는지, 함께 입을 수 있는지.'], outfits: ['STYLE WITH WHAT YOU OWN', '내 옷으로 만드는 조합.', '익숙한 옷의 새로운 가능성을 찾아보세요.'], closet3d: ['A DIFFERENT PERSPECTIVE', '입체로 보는 옷장.', '옷의 종류와 색을 다른 각도에서 살펴보세요.'], compare: ['WARDROBE INSPIRATION', '다른 옷장에서 얻는 힌트.', '취향의 차이를 보고 내 옷장을 돌아보세요.'], log: ['YOUR STYLE, OVER TIME', '선택의 기록.', '사기 전의 생각부터 입어 본 후의 느낌까지.'] };
     if (heads[ui.tab]) { const [e,t,d] = heads[ui.tab]; main.append(h('header', { class: 'section-heading page-heading' }, h('div', null, h('p', { class: 'eyebrow', text: e }), h('h1', { text: t }), h('p', { text: d })))); }
+    renderPurchaseReminders(main);
     ({ closet: renderCloset, closet3d: renderCloset3d, judge: renderJudge, outfits: renderOutfits, shop: renderShop, compare: renderCompare, log: renderLog })[ui.tab](main);
     if (ui.tab !== 'closet3d' && closet.api) closet.api.setActive(false);
   }
@@ -1119,6 +1120,11 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   const askable = (e) => e.out > 0 && !e.bought && daysAgo(e.outAt || e.at) <= 7 && !(e.snooze && e.snooze > today()) && (e.returned || (e.outT && e.outT < SESSION_T)) && latestFor(e) && !answeredRecently(e.productId);
   const askEntry = () => state.pickLog.filter(askable).slice(-1)[0] || null;
   const followDuePick = () => state.pickLog.filter((e) => e.bought === 'yes' && !e.follow && daysAgo(e.boughtAt) >= W.FOLLOW_DAYS)[0] || null;
+  function renderPurchaseReminders(main) {
+    const ask = askEntry(); if (ask) main.append(askBox(ask));
+    const due = followDuePick(); if (due) main.append(followBox(due));
+    const nudge = fbNudgeBox(); if (nudge) main.append(nudge);
+  }
   function storeLink(r, label, cls) {
     const p = r.product;
     if (!p.store.url) return null;
@@ -1130,7 +1136,9 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const dup = cands().find((c) => c.name === name && (c.link || '') === (r.product.store.url || ''));
     if (dup) { toast('이미 살까 말까에 있어요.', { label: '보기', fn: () => { ui.judgeId = dup.id; ui.tab = 'judge'; render(); } }); return; }
     const c = PK.toCandidate(r.product, PICKS, today()); c.id = newId('c');
-    state.items.push(c); state.meta.pickCand++; logEntry(r); state.prefs.seen = true; save(); render();
+    state.items.push(c); state.meta.pickCand++;
+    const entry = logEntry(r); if (!entry.candidateId) entry.candidateId = c.id;
+    state.prefs.seen = true; save(); render();
     toast('살까 말까에 담았어요.', { label: '보기', fn: () => { ui.judgeId = c.id; ui.tab = 'judge'; render(); } });
   }
   /** 내 옷장과: 새 조합·비슷한 옷. 판정할 수 없을 때(하의가 없음 등)와 알릴 것이 없을 때는 보이지 않는다. */
@@ -1270,7 +1278,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const p = r.product;
     const warn = r.cautions.filter((t) => !/^확인 못 한 것/.test(t));
     const conds = r.checks.filter((c) => c.group === 'cond'), pris = r.checks.filter((c) => c.group === 'pri');
-    const ask = askEntry(), bought = state.pickLog.slice().reverse().find((x) => x.productId === p.id && x.bought === 'yes' && daysAgo(x.boughtAt) <= 60);
+    const bought = state.pickLog.slice().reverse().find((x) => x.productId === p.id && x.bought === 'yes' && daysAgo(x.boughtAt) <= 60);
     const eyebrow = res.rank.text + (res.userRank ? ' · 보던 상품은 ' + res.userRank.n + '개 중 ' + (res.userRank.idx + 1) + '위' : '');
     const storeLabel = p.currency !== 'KRW' ? '해외 공식몰에서 보기 ↗' : (p.store.type === 'official' ? '공식몰' : p.store.name.split(' ')[0]) + '에서 보기 ↗';
     const bsz = bought && bought.boughtSize ? PK.sizeName(p, bought.boughtSize) : '';
@@ -1286,7 +1294,6 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       h('div', { class: 'cta' }, storeLink(r, storeLabel, 'btn primary'),
         h('button', { class: 'btn', type: 'button', id: 'pickCand', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: keepFocus('pickCand', () => pickToCand(r)), text: '살까 말까에 담기' })),
       bought ? h('p', { class: 'bought', id: 'pickBought' }, h('b', { text: '샀어요' }), ' · ' + [bsz, md(bought.boughtAt)].filter(Boolean).join(' · ') + (bought.follow ? ' · 2주 뒤: ' + FL[bought.follow.size] : ' — ' + md(addDays(bought.boughtAt, W.FOLLOW_DAYS)) + '쯤 사이즈가 맞았는지 물어볼게요.')) : null,
-      ask && ask.productId === p.id && !ui.askTop ? askBox(ask) : null,
       verdictRow(r),
       res.gapWhy ? h('p', { class: 'gapwhy', id: 'pickGap', text: res.gapWhy }) : null,
       res.favNote ? h('p', { class: 'favnote', id: 'pickFav', text: res.favNote }) : null,
@@ -1298,7 +1305,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       evidence(r));
   }
   function altCard(a, i, pickRow) {
-    const r = a.r, p = r.product, ask = askEntry();
+    const r = a.r, p = r.product;
     const e = logFor(pickRow.product.id), chosen = e && e.verdict === 'alt' && e.altId === p.id;
     return h('article', { class: 'alt', 'data-id': p.id }, h('p', { class: 'eyebrow', text: a.label + ' · ' + a.delta }),
       h('h3', { text: pname(p) }), h('p', { class: 'pp' }, priceView(r)),
@@ -1306,8 +1313,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       closetLine(r),
       h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(r),
         h('button', { class: 'chip', type: 'button', id: 'alt-better-' + i, 'aria-pressed': chosen ? 'true' : 'false', onclick: keepFocus('alt-better-' + i, () => altBetter(pickRow, r)), text: '이게 더 나아요' }),
-        h('button', { class: 'btn small', type: 'button', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: () => pickToCand(r), text: '살까 말까에 담기' })),
-      ask && ask.productId === p.id && !ui.askTop ? askBox(ask) : null);
+        h('button', { class: 'btn small', type: 'button', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: () => pickToCand(r), text: '살까 말까에 담기' })));
   }
   function rankList(res) {
     const li = (r, i) => h('li', { class: r.out ? 'out' : '' }, h('span', { class: 'n', text: r.out ? '—' : String(i + 1) }),
@@ -1536,11 +1542,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const formOpen = ui.pickForm || !state.prefs.seen;
     if (!formOpen && res.pick) countPickRun();                                                        // 결과를 먼저 보여 주는 화면이면 본 것으로 센다(날·조건마다 한 번)
     window.__pick = { pick: res.pick && res.pick.product.id, total: res.pick && res.pick.total, rank: res.rank, gate: res.gate, gapWhy: res.gapWhy, favNote: res.favNote, alts: res.alts.map((a) => [a.label, a.r.product.id]), ranked: res.ranked.map((r) => [r.product.id, r.total, r.out]), notes: res.notes.map((n) => n.text), conclusion: res.pick ? res.pick.conclusion : '', checks: res.pick ? res.pick.checks : [], size: res.pick ? res.pick.fit.text : '', user: res.user ? { out: res.user.out, idx: res.userRank ? res.userRank.idx : -1, n: res.userRank ? res.userRank.n : 0 } : null };
-    const ask = askEntry(), shown = res.pick ? [res.pick.product.id].concat(res.alts.map((a) => a.r.product.id)) : [];
-    ui.askTop = !!(ask && (formOpen || shown.indexOf(ask.productId) < 0));
-    if (ui.askTop) main.append(askBox(ask));
-    const due = followDuePick(); if (due) main.append(followBox(due));
-    const nudge = fbNudgeBox(); if (nudge) main.append(nudge);
+    ui.askTop = false;
     main.append(pickHead(res));
     main.append(h('p', { class: 'note', id: 'wardrobeRankNote', text: '예산·필수 조건과 1순위 기준을 먼저 지킵니다. 확인한 옷장에 같은 상품이 있으면 새 상품보다 뒤에 두고, 기준 점수가 같으면 겹침이 적고 조합이 늘어나는 옷을 먼저 봅니다.' }));
     main.append(nowBox(res));
@@ -1673,29 +1675,35 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   // ---------- 기록 ----------
   function renderLog(main) {
     const done = state.decisions.filter((d) => d.after), insights = done.filter(d => d.after.insight).length, followed = done.filter(d => d.followup || d.follow).length;
+    const linkedDone = new Set(done.filter((d) => state.pickLog.some((e) => e.candidateId === d.itemId)).map((d) => d.itemId));
+    const standalonePickLogs = state.pickLog.filter((e) => !e.candidateId || !linkedDone.has(e.candidateId));
     const fs_ = done.filter((d) => d.follow), due = W.followDue(state.decisions, today());
     main.append(h('p', { class: 'lead', text: '받은 추천과 살까 말까 판정에 실제로 어떻게 정했는지 남는 곳입니다. 이 브라우저에만 저장됩니다.' }));
     // 추천 기록: 받은 추천에 무엇을 했는지(이걸로·아니에요·샀어요·2주 뒤). 휴대폰에서도 읽히게 줄 목록으로
-    if (state.pickLog.length) {
+    if (standalonePickLogs.length) {
       const VD = { accept: '이걸로 할래요', alt: '대안이 나아요', reject: '아니에요' }, VDU = { accept: '이대로 살래요', alt: '1위로 바꿀래요', reject: '안 살래요' }, RS = { price: '비쌈', brand: '브랜드', fit: '핏·사이즈', have: '이미 있음', other: '기타' }, SZ = { fit: '잘 맞음', small: '작음', big: '큼' }, FL = { good: '잘 샀어요', ok: '그저 그래요', regret: '후회돼요' };
-      const items = state.pickLog.slice().reverse().map((e) => {
+      const items = standalonePickLogs.slice().reverse().map((e) => {
         const user = /^user-/.test(e.productId), p = PICKS.products.find((x) => x.id === e.productId), sz = e.boughtSize ? (p ? PK.sizeName(p, e.boughtSize) : e.boughtSize) : '';
         const what = [user ? '보던 상품' : '', e.verdict ? (user ? VDU : VD)[e.verdict] + (e.reason ? '(' + RS[e.reason] + ')' : '') : '', e.out ? '판매처 열어 봄 ' + e.out + '번' : '',
           e.bought === 'yes' ? '샀음' + (sz ? ' · ' + sz : '') : e.bought === 'no' ? '안 삼' : '', e.follow ? '2주 뒤: ' + SZ[e.follow.size] + ', ' + FL[e.follow.feel] : e.bought === 'yes' ? md(addDays(e.boughtAt, W.FOLLOW_DAYS)) + '쯤 사이즈를 물어봄' : ''].filter(Boolean).join(' · ');
         return h('li', null, h('b', { text: md(e.at) + ' · ' + e.label }), h('div', { class: 'd', text: what || '본 것만 기록됨' }));
       });
-      main.append(h('section', { class: 'panel', id: 'pickLogBox' }, h('h2', { text: '추천 기록 ' + state.pickLog.length + '건' }), h('p', { class: 'sub', text: '받은 추천에 무엇을 했는지 남습니다. 산 사이즈와 2주 뒤 답은 다음 추천의 사이즈를 고르는 데 씁니다.' }),
+      main.append(h('section', { class: 'panel', id: 'pickLogBox' }, h('h2', { text: '아직 판정과 연결되지 않은 추천 ' + standalonePickLogs.length + '건' }), h('p', { class: 'sub', text: '추천 상품을 살까 말까 판정으로 가져오면 두 기록은 아래 한 줄의 구매 판단 흐름으로 합쳐집니다.' }),
         h('ul', { class: 'loglist', id: 'pickLogList' }, items)));
     }
     const gate = h('section', { class: 'panel', id: 'gate' }, h('h2', { text: '판정 기록 ' + done.length + '건' }),
-      h('p', { class: 'sub', text: '구체적인 새 정보 기록 ' + insights + '건 · 후속 결과 기록 ' + followed + '건입니다. 실제 선택과 착용 결과를 남겨 주세요.' }));
+      h('p', { class: 'sub', text: '구체적인 새 정보 기록 ' + insights + '건 · 후속 결과 기록 ' + followed + '건입니다. 추천에서 가져온 상품은 판매처 확인·구매·반품 결과까지 같은 기록에 합쳐집니다.' }));
     if (done.length) {
       const tb = h('tbody');
-      for (const d of done.slice().reverse()) tb.append(h('tr', null,
+      for (const d of done.slice().reverse()) {
+        const pick = state.pickLog.slice().reverse().find((e) => e.candidateId === d.itemId);
+        const pickTrail = pick ? ['추천에서 가져옴', pick.verdict ? ({ accept: '추천 선택', alt: '대안 선택', reject: '추천 거절' }[pick.verdict]) : '', pick.out ? '판매처 ' + pick.out + '회 확인' : '', pick.bought === 'yes' ? '구매' + (pick.boughtSize ? ' · ' + pick.boughtSize : '') : pick.bought === 'no' ? '미구매' : '', pick.follow ? '2주 뒤 ' + ({ fit: '잘 맞음', small: '작음', big: '큼' }[pick.follow.size]) : ''].filter(Boolean).join(' → ') : '';
+        tb.append(h('tr', null,
         h('td', null, h('button', { class: 'btn small', type: 'button', onclick: () => openFollowupDialog(d), text: d.followup ? '구매·반품 기록 수정' : '구매·반품 결과 기록' })),
         h('td', { text: d.after.at }), h('td', { text: d.name }), h('td', { text: LEAN[d.before.lean] }), h('td', { text: DECIDE[d.after.decision] + ' (' + SHIFT[d.after.shift] + ')' }),
         h('td', { text: HELP[d.after.helpful] }), h('td', { text: followText(d) }), h('td', { text: '겹침 ' + d.summary.overlaps + ' · 새 조합 ' + d.summary.added + ' · 걸림 ' + d.summary.blockers }),
-        h('td', { text: [d.after.insight, d.after.note, d.followup ? '후속: ' + followupLabel(d.followup.outcome) + (followupDetails(d.followup) ? ' · ' + followupDetails(d.followup) : '') + (d.followup.note ? ' · ' + d.followup.note : '') : ''].filter(Boolean).join(' / ') })));
+        h('td', { text: [pickTrail, d.after.insight, d.after.note, d.followup ? '후속: ' + followupLabel(d.followup.outcome) + (followupDetails(d.followup) ? ' · ' + followupDetails(d.followup) : '') + (d.followup.note ? ' · ' + d.followup.note : '') : ''].filter(Boolean).join(' / ') })));
+      }
       gate.append(h('div', { class: 'scroll' }, h('table', { class: 'log' }, h('thead', null, h('tr', null, ['기록', '날짜', '후보', '보기 전', '결정', '도움', '2주 뒤', '판정 요약', '메모·구매/반품'].map((t) => h('th', { text: t })))), tb)));
     } else gate.append(h('p', { class: 'note', text: '아직 기록이 없습니다. 살까 말까 탭에서 후보를 넣고 판정을 끝까지 진행하면 여기에 쌓입니다.' }));
     main.append(gate);
@@ -2525,9 +2533,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   /** 예시 옷장을 지우고 내 옷장으로 시작한다. 직접 넣은 상품 목록은 예시가 아니므로 남긴다. */
   function leaveSample() { state.items = []; state.decisions = []; state.rack = []; state.meta.sample = false; state.meta.welcomed = true; ui.judgeId = ''; ui.stageSel = null; ui.rackPick = ''; }
-  function startNotices(main) {                                                                   // 옷장 탭 위: 추천 물음(샀나요·2주 뒤) / 첫 방문 안내 / 예시 옷장 표시 / 백업 알림
-    const ask = askEntry(); if (ask) main.append(askBox(ask));
-    const pdue = followDuePick(); if (pdue) main.append(followBox(pdue));
+  function startNotices(main) {                                                                   // 예시 옷장 표시 / 첫 방문 안내 / 백업 알림
     if (state.meta.sample) {
       main.append(h('div', { class: 'notice', id: 'sampleNote' }, h('p', { text: '예시 옷장을 보고 있습니다. 둘러본 뒤 내 옷장으로 시작하면 예시 옷은 지워집니다.' }),
         h('button', { class: 'btn small', type: 'button', id: 'leaveSample', onclick: () => { leaveSample(); save(); render(); window.scrollTo(0, 0); }, text: '내 옷장으로 시작 (예시 지우기)' })));
@@ -2565,14 +2571,13 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     document.head.append(sc);
   }
 
-  // 판매처 링크를 눌러 이 화면을 떠났다가 돌아오면 "샀나요?"를 그 카드 안(또는 맨 위)에 띄우고 보이게 옮긴다. 링크만 누르고 떠나지 않았으면 묻지 않는다
+  // 판매처 링크를 눌러 화면을 떠났다가 돌아오면 현재 탭 맨 위에 "샀나요?"를 띄운다. 링크만 누르고 떠나지 않았으면 묻지 않는다
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') { if (ui.awaitReturn) ui.leftFor = ui.awaitReturn; return; }
     if (!ui.leftFor) return;
     const e = state.pickLog.find((x) => x.id === ui.leftFor); ui.leftFor = null; ui.awaitReturn = null;
     if (!e || e.bought) return;
     e.returned = true; save();
-    if (ui.tab !== 'shop' && ui.tab !== 'closet') return;
     render(); const a = $('#askBought'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'center' });
     const b = $('#boughtYes'); if (b) b.focus({ preventScroll: true });                               // 키보드·화면 읽기 사용자도 물음에 바로 닿게
     const live = $('#pickLive'); if (live) live.textContent = josa(e.label, '을', '를') + ' 샀나요? 샀어요, 안 사요, 아직이요 중에서 골라 주세요.';
@@ -2596,7 +2601,15 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     save(); render();
     // 설치한 앱(안드로이드)에서 커뮤니티·쇼핑 앱의 "공유"로 들어오면 상품명·링크를 후보 입력에 채운다. 주소창의 값은 바로 지운다
     try {
-      const q = new URLSearchParams(location.search), title = str(q.get('title'), 80), shared = [title, q.get('text'), q.get('url')].filter(Boolean).join(' ');
+      const q = new URLSearchParams(location.search), title = str(q.get('title'), 80).trim();
+      let text = str(q.get('text'), 1200).trim();
+      if (title && text) {
+        const titlePattern = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+        text = text.replace(new RegExp('^\\s*' + titlePattern + '(?:\\s|$)', 'i'), '').trim();
+      }
+      const url = str(q.get('url'), 400).trim(), parts = [title, text].filter(Boolean), combined = parts.join(' ');
+      if (url && !combined.includes(url)) parts.push(url);
+      const shared = parts.join(' ');
       if (shared) {
         history.replaceState(null, '', location.pathname);
         openQuickCand(shared);

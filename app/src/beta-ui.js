@@ -31,10 +31,27 @@ function openQuickItem(item, status, options) {
   for (const s of SEASONS) seasons.append(h('label', null, h('input', { type: 'checkbox', value: s, checked: item?.seasons?.includes(s) }), ' ' + s));
   const err = h('p', { class: 'warnnote', id: 'quickError', hidden: true });
   const field = (label, el) => h('div', { class: 'field' }, h('label', { for: el.id, text: label }), el);
+  const teeCatalogHint = paste ? h('div', { class: 'field full quick-tee-hint', id: 'quickTeeCatalog', hidden: true },
+    h('p', { class: 'note', text: '흰 티셔츠는 확인된 상품 목록과 먼저 비교할 수 있습니다.' }),
+    h('button', { class: 'btn small', type: 'button', id: 'quickTeeCatalogLink', onclick: () => {
+      dialog.close(); ui.tab = 'shop'; ui.pickCatalogOpen = true; render(); $('#pickCatalog')?.scrollIntoView({ block: 'start' });
+    }, text: '확인된 흰 티 상품과 비교하기' })) : null;
+  const showTeeCatalogHint = () => {
+    if (teeCatalogHint) teeCatalogHint.hidden = !(cat.value === 'top' && kind.value === 'tee' && family.value === 'white');
+  };
+  const extraFields = paste ? h('details', { class: 'field full quick-extra' }, h('summary', { text: '밝기·격식·무늬·사진·계절 (선택)' }),
+    h('div', { class: 'form' }, field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('상품 사진 (선택 · 이 브라우저에 저장)', photo),
+      h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (모르면 비워 두세요)' }), seasons),
+      h('div', { class: 'field full' }, h('label', null, confirmed, ' 종류·색·밝기·격식·무늬를 직접 확인했습니다')))) : null;
   if (paste) {
     cat.addEventListener('change', () => { edited.cat = true; });
     kind.addEventListener('change', () => { edited.kind = true; });
     family.addEventListener('change', () => { edited.family = true; });
+    family.addEventListener('change', () => {
+      if (edited.light) return;
+      light.value = family.value && FAM[family.value] ? String(FAM[family.value][3]) : '';
+      edited.light = true;
+    });
     light.addEventListener('input', () => { edited.light = true; });
     formal.addEventListener('change', () => { edited.formality = true; });
     pattern.addEventListener('change', () => { edited.pattern = true; });
@@ -44,15 +61,24 @@ function openQuickItem(item, status, options) {
       if (pastedName && !edited.name) name.value = pastedName.slice(0, 80);
       else if (parsed.url && !edited.name && !name.value.trim()) name.value = '공유한 상품';
       const guess = W.guessFromText((pastedName || '') + ' ' + raw);
-      if (guess.kind && !edited.kind && (!edited.cat || KINDS[cat.value]?.[guess.kind])) {
+      const kindApplied = !!guess.kind && !edited.kind && (!edited.cat || !!KINDS[cat.value]?.[guess.kind]);
+      if (kindApplied) {
         if (!edited.cat) cat.value = guess.cat;
         const next = optionSelect('q-kind', KINDS[cat.value] || {}, guess.kind); kind.replaceChildren(...next.childNodes); kind.value = guess.kind;
       }
-      if (guess.family && !edited.family) family.value = guess.family;
-      if (guess.family && !edited.light) light.value = String(guess.light);
-      if (guess.kind && !edited.formality) formal.value = String(KIND_FORMAL[guess.kind] || 2);
+      if (guess.family && !edited.family) {
+        family.value = guess.family;
+        if (!edited.light) light.value = String(guess.light);
+      }
+      if (kindApplied && !edited.formality) formal.value = String(KIND_FORMAL[guess.kind] || 2);
       if (guess.pattern && !edited.pattern) pattern.value = guess.pattern;
+      showTeeCatalogHint();
     });
+  }
+  if (paste) {
+    cat.addEventListener('change', showTeeCatalogHint);
+    kind.addEventListener('change', showTeeCatalogHint);
+    family.addEventListener('change', showTeeCatalogHint);
   }
   const form = h('form', { id: 'quickItemForm', class: 'panel', onsubmit: async (e) => {
     e.preventDefault(); err.hidden = true;
@@ -77,12 +103,13 @@ function openQuickItem(item, status, options) {
   } }, h('h2', { text: prev ? '비교할 정보 확인' : st === 'candidate' ? '살까 고민 중인 한 벌' : '함께 입을 보유 옷' }),
     prev?.photo?.img ? h('div', { class: 'quick-review-photo' }, pic(prev)) : null,
     h('p', { class: 'sub', text: options.hint || (st === 'candidate' ? '커뮤니티·쇼핑 앱에서 본 상품명, 브랜드, 확인한 가격, 링크와 사진을 적어 두고 가진 옷과 비교하세요. 상품 정보를 링크에서 자동으로 읽지는 않습니다.' : '전체 옷장을 먼저 넣을 필요는 없습니다. 관련된 옷 몇 벌로 시작하세요. 모르는 값은 비워 두면 계산하지 않습니다.') }),
-    h('div', { class: 'form' }, paste ? field('상품 링크·공유 글 붙여넣기 · 아래 추측값은 확인해 주세요', paste) : null, field('상품명', name), field('브랜드 (선택)', brand), field('직접 확인한 가격 (원, 선택)', price), field('분류', cat), field('종류', kind), field('색 계열', family), field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('상품 사진 (선택 · 이 브라우저에 저장)', photo), field('판매 링크 (선택)', link),
+    h('div', { class: 'form' }, paste ? [field('상품 링크·공유 글 붙여넣기 · 아래 추측값은 확인해 주세요', paste), teeCatalogHint, field('상품명', name), field('브랜드 (선택)', brand), field('직접 확인한 가격 (원, 선택)', price), field('분류', cat), field('종류', kind), field('색 계열', family), field('판매 링크 (선택)', link), extraFields] : [field('상품명', name), field('브랜드 (선택)', brand), field('직접 확인한 가격 (원, 선택)', price), field('분류', cat), field('종류', kind), field('색 계열', family), field('밝기 (0 어두움 · 100 밝음)', light), field('격식', formal), field('무늬', pattern), field('상품 사진 (선택 · 이 브라우저에 저장)', photo), field('판매 링크 (선택)', link),
       h('div', { class: 'field full' }, h('span', { class: 'l', text: '계절 (모르면 비워 두세요)' }), seasons),
-      h('div', { class: 'field full' }, h('label', null, confirmed, ' 종류·색·밝기·격식·무늬를 직접 확인했습니다'))), err,
+      h('div', { class: 'field full' }, h('label', null, confirmed, ' 종류·색·밝기·격식·무늬를 직접 확인했습니다'))]), err,
     h('div', { class: 'bar' }, h('button', { id: 'quickSave', class: 'btn primary', type: 'submit', text: options.returnTab === 'shop' ? '저장하고 추천 갱신' : options.returnTab === 'closet' ? '옷장에 저장하기' : '저장하고 비교하기' }), h('button', { id: 'quickCancel', class: 'btn', type: 'button', onclick: () => dialog.close(), text: '취소' })));
   dialog.append(form); document.body.append(dialog); dialog.showModal();
   if (paste && options.pasteText) paste.dispatchEvent(new Event('input', { bubbles: true }));
+  showTeeCatalogHint();
   if (options.focusPaste && paste) paste.focus();
 }
 function renderWelcome(main) {
@@ -173,8 +200,11 @@ function renderFollowup(root, d, options) {
       if (previousItem) replaceItem(W.cleanItem(previousItem, 0));
       state.rack = previousRack; error.textContent = '저장하지 못했습니다. 다시 시도해 주세요.'; error.hidden = false; return;
     }
+    const returnedToLog = outcome.value === 'returned';
     if (options.dialog?.open) options.dialog.close();
+    if (returnedToLog) ui.tab = 'log';
     render();
+    if (returnedToLog) toast('반품 결과를 저장했습니다. 기록 탭에서 확인할 수 있어요.');
   } },
     h('h2', { text: '구매 이후의 결과' }), h('p', { class: 'sub', text: '결제 직후에는 산 옷과 결정을 미룬 이유를 남기고, 상품을 받아 입어 본 뒤에는 사이즈·핏과 반품 이유를 업데이트하세요. 반품을 선택하면 해당 옷은 옷장에서 빠지고 결정 기록에는 남습니다.' }),
     h('div', { class: 'form' }, h('div', { class: 'field' }, h('label', { for: 'followupOutcome', text: '실제 선택' }), outcome), h('div', { class: 'field' }, h('label', { for: 'followupWorn', text: '구매한 옷 착용' }), worn), h('div', { class: 'field' }, h('label', { for: 'followupRegret', text: '선택에 대한 후회' }), regret), sizeField, returnField, h('div', { class: 'field full' }, h('label', { for: 'followupNote', text: '후속 메모' }), note)), error, h('button', { class: 'btn primary', id: 'saveFollowup', type: 'submit', text: old.outcome ? '결과 수정' : '결과 저장' })));
