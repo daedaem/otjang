@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ProblemDetail api(ApiException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(e.status()), e.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(e.status()), e.getMessage());
+        if (e.code() != null) problem.setProperty("code", e.code());
+        if (e.path() != null) problem.setProperty("path", e.path());
+        return problem;
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

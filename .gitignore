@@ -28,7 +28,7 @@ shots/
 /prototypes/
 
 # 개인판 앱(app/): 생성 파일과 개인 옷장 자료. 사진이 든 자료는 어떤 이름이든 넣지 않는다
-/app/node_modules/
+/app/node_modules
 /app/dist/
 /app/shots/
 /app/out/

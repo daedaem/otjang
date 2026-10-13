@@ -82,13 +82,13 @@ class ApiFlowTest {
     @Order(1)
     void 가져오기는_멱등이다() throws Exception {
         String body = sample();
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", "k1").content(body))
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", "k1").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items", is(13))).andExpect(jsonPath("$.created", is(13))).andExpect(jsonPath("$.replayed", is(false)));
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", "k1").content(body))
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", "k1").content(body))
                 .andExpect(status().isOk()).andExpect(header().string("Idempotent-Replayed", "true")).andExpect(jsonPath("$.created", is(13)));
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", "k1").content(body.replace("네이비 블레이저", "다른 이름")))
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", "k1").content(body.replace("네이비 블레이저", "다른 이름")))
                 .andExpect(status().isConflict());
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match",version(token)).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.created", is(0))).andExpect(jsonPath("$.updated", is(13)));
         mvc.perform(get("/api/items").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(13)));
     }
@@ -102,7 +102,7 @@ class ApiFlowTest {
         // Synthetic explicit owner confirmation restores the historical known-input regression.
         for (Object row : (java.util.List<?>) Bodies.map(sample()).get("items")) {
             String id = (String) ((java.util.Map<?,?>) row).get("id");
-            mvc.perform(put("/api/items/" + id + "/attr-source").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"attrSource\":\"owner-confirmed\"}"))
+            mvc.perform(put("/api/items/" + id + "/attr-source").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"attrSource\":\"owner-confirmed\"}"))
                     .andExpect(status().isOk());
         }
         mvc.perform(post("/api/judge").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"candidate\":{\"cat\":\"top\",\"kind\":\"knit\",\"family\":\"burgundy\",\"light\":30,\"formality\":2,\"pattern\":\"solid\",\"name\":\"버건디 니트\"}}"))
@@ -117,11 +117,11 @@ class ApiFlowTest {
     @Order(3)
     void 상품_목록과_순위와_후보() throws Exception {
         mvc.perform(get("/api/catalog/rank").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
-        mvc.perform(post("/api/catalog/products").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/catalog/products").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"id\":\"p1\",\"name\":\"네이비 크루넥 니트\",\"cat\":\"top\",\"kind\":\"knit\",\"family\":\"navy\",\"light\":18,\"formality\":2,\"pattern\":\"solid\",\"price\":129000,\"checkedAt\":\"2026-01-05\",\"link\":\"https://shop.example/knit\"}"))
                 .andExpect(status().isCreated());
         mvc.perform(get("/api/catalog/rank").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$[0].product.id", is("p1"))).andExpect(jsonPath("$[0].gap.id", is("t-knit-navy"))).andExpect(jsonPath("$[0].stale", is(true)));
-        mvc.perform(post("/api/catalog/products/p1/candidate").header("Authorization", "Bearer " + token)).andExpect(status().isCreated()).andExpect(jsonPath("$.status", is("candidate"))).andExpect(jsonPath("$.photo.kind", is("confirmed")))
+        mvc.perform(post("/api/catalog/products/p1/candidate").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token)).andExpect(status().isCreated()).andExpect(jsonPath("$.status", is("candidate"))).andExpect(jsonPath("$.photo.kind", is("confirmed")))
                 .andExpect(jsonPath("$.product.name", is("네이비 크루넥 니트"))).andExpect(jsonPath("$.price", is(129000)));
     }
 
@@ -129,17 +129,17 @@ class ApiFlowTest {
     @Order(4)
     void 사진_상태는_사용자_동작으로만_바뀐다() throws Exception {
         String img = "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA";
-        mvc.perform(put("/api/items/s-blazer-navy/photo/own").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"img\":\"" + img + "\"}"))
+        mvc.perform(put("/api/items/s-blazer-navy/photo/own").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"img\":\"" + img + "\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("own")));
-        mvc.perform(put("/api/items/s-blazer-navy/photo/product").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"kind\":\"confirmed\",\"brand\":\"B\",\"name\":\"N\"}"))
+        mvc.perform(put("/api/items/s-blazer-navy/photo/product").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"kind\":\"confirmed\",\"brand\":\"B\",\"name\":\"N\"}"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(put("/api/items/s-blazer-navy/photo/product").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"kind\":\"candidate\",\"brand\":\"브랜드 A\",\"name\":\"모델 1\",\"sourceName\":\"쇼핑몰\"}"))
+        mvc.perform(put("/api/items/s-blazer-navy/photo/product").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"kind\":\"candidate\",\"brand\":\"브랜드 A\",\"name\":\"모델 1\",\"sourceName\":\"쇼핑몰\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("candidate"))).andExpect(jsonPath("$.matchCandidates", hasSize(1))).andExpect(jsonPath("$.brand", is("")));
-        mvc.perform(post("/api/items/s-blazer-navy/confirm").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"brand\":\"브랜드 A\",\"name\":\"모델 1\"}"))
+        mvc.perform(post("/api/items/s-blazer-navy/confirm").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"brand\":\"브랜드 A\",\"name\":\"모델 1\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("confirmed"))).andExpect(jsonPath("$.product.brand", is("브랜드 A"))).andExpect(jsonPath("$.brand", is("브랜드 A"))).andExpect(jsonPath("$.matchCandidates", hasSize(0)));
-        mvc.perform(delete("/api/items/s-blazer-navy/confirm").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("candidate"))).andExpect(jsonPath("$.product").doesNotExist());
-        mvc.perform(delete("/api/items/s-blazer-navy/photo/product").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("own"))).andExpect(jsonPath("$.photo.img", is(img)));
-        mvc.perform(post("/api/items/s-blazer-navy/confirm").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
+        mvc.perform(delete("/api/items/s-blazer-navy/confirm").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("candidate"))).andExpect(jsonPath("$.product").doesNotExist());
+        mvc.perform(delete("/api/items/s-blazer-navy/photo/product").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$.photo.kind", is("own"))).andExpect(jsonPath("$.photo.img", is(img)));
+        mvc.perform(post("/api/items/s-blazer-navy/confirm").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -160,7 +160,7 @@ class ApiFlowTest {
              "follow":{"at":"2026-10-13","worn":"few","feel":"good"},
              "followup":{"at":"2026-10-13","outcome":"purchased","worn":"yes","regret":"no","note":"합성 후속"}}]}
           """;
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match", version(token)).contentType(MediaType.APPLICATION_JSON).content(body))
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match", version(token)).contentType(MediaType.APPLICATION_JSON).content(body))
           .andExpect(status().isOk());
         mvc.perform(get("/api/wardrobe").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
           .andExpect(jsonPath("$.decisions[?(@.id == 'integration-decision')].follow.worn", org.hamcrest.Matchers.contains("few")))

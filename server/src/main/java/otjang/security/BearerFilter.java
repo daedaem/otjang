@@ -21,6 +21,14 @@ public final class BearerFilter extends OncePerRequestFilter {
         response.setStatus(status); response.setContentType("application/problem+json"); response.setCharacterEncoding("UTF-8");
         response.getWriter().write("{\"status\":" + status + ",\"detail\":\"" + detail + "\"}");
     }
+    public static void problem(HttpServletResponse response, otjang.api.ApiException error) throws IOException {
+        response.setStatus(error.status()); response.setContentType("application/problem+json"); response.setCharacterEncoding("UTF-8");
+        var problem = new java.util.LinkedHashMap<String, Object>();
+        problem.put("status", error.status()); problem.put("detail", error.getMessage());
+        if (error.code() != null) problem.put("code", error.code());
+        if (error.path() != null) problem.put("path", error.path());
+        response.getWriter().write(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(problem));
+    }
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
         if (requireHttps && !request.isSecure() && request.getRequestURI().startsWith("/api/")) { problem(response, 403, "HTTPS 연결이 필요합니다"); return; }
         if (request.getContentLengthLong() > (request.getRequestURI().startsWith("/api/auth/") ? 8192 : 64L * 1024 * 1024)) { problem(response, 413, "요청이 너무 큽니다"); return; }

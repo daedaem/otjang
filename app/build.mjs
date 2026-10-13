@@ -33,6 +33,7 @@ if (!process.env.NO3D) {
 
 let src = read('src/app.html').replace('/*@@EDITORIAL_CSS@@*/', () => read('src/editorial.css'));
 const parts = { '/*@@RECOMMEND@@*/': read('src/recommend.js'), '/*@@JUDGE@@*/': read('src/judge.js'), '/*@@WARDROBE_LIB@@*/': read('src/wardrobe.js'), '/*@@CATALOG_LIB@@*/': read('src/catalog.js'), '/*@@PICK@@*/': read('src/pick.js'), '/*@@EDITORIAL_UI@@*/': read('src/editorial-ui.js'), '/*@@EDITORIAL_IMAGE@@*/': JSON.stringify('data:image/jpeg;base64,' + fs.readFileSync(path.join(dir, 'src/assets/editorial/wardrobe-studio.jpg')).toString('base64')), '/*@@NEEDS@@*/': read('src/needs.js'), '/*@@NEEDS_UI@@*/': read('src/needs-ui.js'), '/*@@COLORGUESS@@*/': read('src/colorguess.js'), '/*@@PHOTO_INTAKE@@*/': read('src/photo-intake.js'), '/*@@BETA@@*/': read('src/beta.js'), '/*@@BETA_UI@@*/': read('src/beta-ui.js'), '/*@@SYNC@@*/': read('src/sync.js'), '/*@@FEEDBACK@@*/': read('src/feedback.js'),
+  '/*@@STORAGE_CAS@@*/': read('src/storage-cas.js'),
   '/*@@WARDROBE@@*/': read(wardrobe), '/*@@TEMPLATE@@*/': read('data/template-ivy.json'), '/*@@SAMPLE@@*/': read('data/sample-wardrobe.json'), '/*@@SAMPLE_B@@*/': read('data/sample-wardrobe-b.json'), '/*@@BRAND@@*/': JSON.stringify(brand) };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 for (const [m, text] of Object.entries(parts)) {
@@ -74,7 +75,9 @@ if (split) {
   fs.writeFileSync(path.join(dir, split, 'manifest.webmanifest'), JSON.stringify({ name: brand.name + ' (' + brand.status + ')', short_name: brand.name, start_url: './', scope: './', display: 'standalone', background_color: '#fafbfa', theme_color: '#fafbfa', lang: 'ko',
     share_target: { action: './', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
     icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 1));
-  for (const n of ['icon-192.png', 'icon-512.png']) if (fs.existsSync(path.join(dir, 'web', n))) fs.copyFileSync(path.join(dir, 'web', n), path.join(dir, split, n));
+  // Generated assets need the original bytes; keep builds independent of
+  // platform copyfile behavior (which timed out on a readable source icon).
+  for (const n of ['icon-192.png', 'icon-512.png']) fs.writeFileSync(path.join(dir, split, n), fs.readFileSync(path.join(dir, 'web', n)));
   // 서비스 워커: 캐시 이름에 이번 빌드의 해시를 넣어, 새로 배포하면 새 캐시로 바뀌고 옛 캐시는 지워진다
   const swVer = crypto.createHash('sha256').update(src).update(ver).digest('hex').slice(0, 10);
   fs.writeFileSync(path.join(dir, split, 'sw.js'), read('web/sw.js').replace('@@VER@@', swVer));

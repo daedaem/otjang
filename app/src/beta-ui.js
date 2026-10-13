@@ -215,8 +215,8 @@ function renderFullBackup(main) {
   const input = h('input', { type: 'file', accept: '.json,application/json', id: 'backupFile', hidden: true, onchange: async () => {
     const f = input.files[0]; if (!f) return;
     if (f.size > 50 * 1024 * 1024) { ui.backupMessage = '백업 파일이 너무 큽니다 (최대 50MB).'; ui.backupArm = null; render(); return; }
-    const raw = await readFileJson(input), clean = B.readBackup(raw, cleanState);
-    ui.backupArm = clean; ui.backupMessage = clean ? '' : '완전한 백업 파일이 아닙니다. 현재 옷장은 바뀌지 않았습니다.'; render();
+    const raw = await readFileJson(input), newer = B.newerSchemaPath(raw), clean = !newer && B.readBackup(raw, cleanState);
+    ui.backupArm = clean || null; ui.backupMessage = newer ? '새 버전에서 만든 백업입니다. 앱을 업데이트한 뒤 복원해 주세요. 현재 옷장은 바뀌지 않았습니다.' : clean ? '' : '완전한 백업 파일이 아닙니다. 현재 옷장은 바뀌지 않았습니다.'; render();
   } });
   const p = h('section', { class: 'panel', id: 'fullBackupPanel' }, h('h2', { text: '이 브라우저의 전체 백업' }),
     h('p', { class: 'sub', text: '보유·구매 후보·처분한 옷, 사진, 판정·후속 기록, 상품 목록, 비교 옷장과 3D 자리를 함께 보관합니다. 개인 정보가 들어 있는 파일이므로 본인 보관용으로 사용하세요.' }),
@@ -224,6 +224,7 @@ function renderFullBackup(main) {
   if (ui.backupArm) p.append(h('p', { class: 'warnnote', text: '현재 브라우저 자료 전체를 백업의 옷 ' + ui.backupArm.items.length + '벌로 바꿉니다. 먼저 현재 자료를 백업해 주세요.' }), h('div', { class: 'bar' },
     h('button', { class: 'btn danger', id: 'backupRestoreConfirm', type: 'button', onclick: async () => {
       const old = state, oldVersion = ui.syncVersion; state = ui.backupArm;
+      state.syncFollowupAck = null; ui.pullArm = null;
       if (ui.syncScope) {
         const stamp = state.syncStamp;
         if (stamp && stamp.origin === ui.syncOrigin && stamp.ownerId === ui.syncUserInfo.ownerId) ui.syncVersion = stamp.version;
@@ -247,11 +248,13 @@ async function enterAccount(reply, origin) {
   ui.syncToken = reply.token; ui.syncUserInfo = reply.user; ui.syncOrigin = origin;
   ui.syncScope = 'account:' + origin + ':' + reply.user.ownerId;
   let idb = null, ls = null;
-  const read = (s) => { try { const raw = JSON.parse(s); return { state: cleanState(raw), revision: raw._storageRevision || 0 }; } catch (e) { return null; } };
-  if (store.db) idb = read(await kvGet(accountScope())); ls = read(lsGet(localStorageKey()));
+  const read = (s) => { try { const raw = JSON.parse(s); return { state: cleanState(raw), revision: Number.isSafeInteger(raw._storageRevision) && raw._storageRevision > 0 ? raw._storageRevision : 0 }; } catch (e) { return null; } };
+  const idbRaw = store.db ? await kvGet(accountScope()) : store.idbUnverified ? undefined : null, lsRaw = lsSnapshot(localStorageKey());
+  idb = read(idbRaw); ls = read(lsRaw);
   const chosen = idb?.state && (!ls?.state || idb.revision >= ls.revision) ? idb : ls;
+  store.persistedSnapshots.set(accountScope(), { idbValue: idbRaw, lsValue: lsRaw }); store.conflicts.delete(accountScope()); store.conflict = false;
   state = chosen?.state || cleanState({ schema: 2, owner: { nickname: reply.user.username }, items: [], decisions: [] });
-  ui.syncExpired = false;
+  ui.syncExpired = false; ui.syncProtectionBlocked = false;
   const stamp = state.syncStamp; ui.syncVersion = stamp && stamp.origin === origin && stamp.ownerId === reply.user.ownerId ? stamp.version : null;
   await syncFetch('/api/auth/me');
   if (ui.syncVersion == null && !state.items.length && !state.decisions.length && !state.catalog.products.length) { ui.syncVersion = ui.syncObservedVersion; if (ui.syncVersion != null) state.syncStamp = { origin, ownerId: reply.user.ownerId, version: ui.syncVersion }; }
@@ -263,7 +266,7 @@ async function leaveAccount(revoke) {
   await savePromise;
   if (revoke && ui.syncToken) { try { await syncFetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* expiry already invalidates the token */ } }
   const old = ui.localBeforeLogin;
-  ui.syncToken = ''; ui.syncUserInfo = null; ui.syncOrigin = ''; ui.syncScope = ''; ui.syncVersion = null; ui.syncObservedVersion = null; ui.syncExpired = false; ui.serverBackupArm = null; ui.localBeforeLogin = null; ui.pullArm = null;
+  ui.syncToken = ''; ui.syncUserInfo = null; ui.syncOrigin = ''; ui.syncScope = ''; ui.syncVersion = null; ui.syncObservedVersion = null; ui.syncExpired = false; ui.syncProtectionBlocked = false; ui.serverBackupArm = null; ui.localBeforeLogin = null; ui.pullArm = null;
   if (old) state = old;
   ui.judgeId = ''; ui.stageSel = null; ui.syncMsg = '로그아웃했습니다. 원래 개인 옷장을 표시합니다.'; render();
 }
@@ -296,6 +299,7 @@ function renderServerData(sec) {
     ui.serverBackupArm = null; const f = read.files[0]; if (!f) return;
     if (f.size > 50 * 1024 * 1024) { ui.syncMsg = '복원 파일은 50MB 이하여야 합니다.'; render(); return; }
     const b = await readFileJson(read);
+    if (B.newerSchemaPath(b)) { ui.syncMsg = '새 버전에서 만든 계정 백업입니다. 앱을 업데이트한 뒤 복원해 주세요. 서버와 브라우저 자료는 바뀌지 않았습니다.'; render(); return; }
     if (!b || b.schema !== 1 || b.kind !== 'otjang-server-backup' || !Array.isArray(b.wardrobe?.items) || !Array.isArray(b.catalog?.products)) { ui.syncMsg = '서버 전체 백업 파일이 아닙니다.'; render(); return; }
     ui.serverBackupArm = b; render();
   } });
@@ -304,9 +308,17 @@ function renderServerData(sec) {
   }, text: '계정 전체 백업 받기' }), h('button', { class: 'btn', id: 'serverBackupOpen', type: 'button', onclick: () => read.click(), text: '계정 백업 복원' }), read));
   if (ui.serverBackupArm) sec.append(h('p', { class: 'warnnote', text: '서버의 현재 계정 자료 전체를 바꿉니다. 브라우저의 개인 옷장은 자동으로 바뀌지 않습니다. 사진 포함 여부는 위의 선택을 따릅니다.' }),
     h('div', { class: 'bar' }, h('button', { class: 'btn danger', id: 'serverRestoreConfirm', type: 'button', onclick: async () => {
-      const b = JSON.parse(JSON.stringify(ui.serverBackupArm)), photos = ui.syncPhotos == null ? SY.isLocalAddress(ui.syncBase) : ui.syncPhotos;
-      if (!photos) { b.wardrobe = SY.wardrobePayload(b.wardrobe, { photos: false }); b.catalog = SY.catalogPayload({ catalog: b.catalog }, { photos: false }); }
-      try { await syncFetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backup: b, confirmReplace: true }) }); ui.syncMsg = '서버 계정 백업을 복원했습니다. 브라우저로 가져오려면 서버에서 받기를 눌러 주세요.'; ui.serverBackupArm = null; } catch (e) { ui.syncMsg = e.message; } render();
+      let b = JSON.parse(JSON.stringify(ui.serverBackupArm)); const photos = ui.syncPhotos == null ? SY.isLocalAddress(ui.syncBase) : ui.syncPhotos;
+      const source = { origin: SY.normalizeBase(ui.syncBase), ownerId: ui.syncUserInfo?.ownerId };
+      ui.syncProtectionBlocked = false;
+      try {
+        if (B.newerSchemaPath(b)) throw new Error('새 버전에서 만든 계정 백업입니다. 앱을 업데이트한 뒤 복원해 주세요.');
+        const discovery = await discoverSyncCapabilities(); requireSyncSource(source);
+        requirePushSupport(b.wardrobe.decisions, discovery);
+        await requireFreshStorage(); requireSyncSource(source);
+        if (!photos) b = SY.withoutBackupPhotos(b);
+        await syncFetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backup: b, confirmReplace: true }) }); ui.syncMsg = '서버 계정 백업을 복원했습니다. 브라우저로 가져오려면 서버에서 받기를 눌러 주세요.'; ui.serverBackupArm = null;
+      } catch (e) { ui.syncMsg = e.message; } render();
     }, text: '이 계정 전체 복원' }), h('button', { class: 'btn', id: 'serverRestoreCancel', type: 'button', onclick: () => { ui.serverBackupArm = null; render(); }, text: '취소' })));
   const pass = h('input', { id: 'deleteAccountPassword', type: 'password', autocomplete: 'current-password', required: true }), confirm = h('input', { id: 'deleteAccountConfirm', type: 'checkbox', required: true });
   const details = h('details', { id: 'deleteAccountDetails' }, h('summary', { text: '이 계정과 사진 삭제' }), h('form', { id: 'deleteAccountForm', onsubmit: async (e) => {

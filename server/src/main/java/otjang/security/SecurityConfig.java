@@ -18,6 +18,7 @@ public class SecurityConfig {
         return http.csrf(c -> c.disable()).cors(c -> {}).httpBasic(c -> c.disable()).formLogin(c -> c.disable()).logout(c -> c.disable())
                 .sessionManagement(c -> c.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(c -> c.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/meta").permitAll()
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/actuator/health", "/", "/index.html", "/favicon.ico").permitAll()
                         .requestMatchers("/api/**").authenticated().anyRequest().denyAll())
                 .exceptionHandling(c -> c.authenticationEntryPoint((r, s, e) -> BearerFilter.problem(s, 401, "로그인이 필요합니다"))

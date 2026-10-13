@@ -65,6 +65,10 @@ public class DecisionEntity {
     private String followupWorn;
     @Column(name = "followup_regret")
     private String followupRegret;
+    @Column(name = "followup_size_result")
+    private String followupSizeResult;
+    @Column(name = "followup_return_reason")
+    private String followupReturnReason;
     @Column(name = "followup_note")
     private String followupNote = "";
     @Column(name = "followup_at")
@@ -119,6 +123,10 @@ public class DecisionEntity {
     public void setFollowupWorn(String v) { followupWorn = v; }
     public String getFollowupRegret() { return followupRegret; }
     public void setFollowupRegret(String v) { followupRegret = v; }
+    public String getFollowupSizeResult() { return followupSizeResult; }
+    public void setFollowupSizeResult(String v) { followupSizeResult = v; }
+    public String getFollowupReturnReason() { return followupReturnReason; }
+    public void setFollowupReturnReason(String v) { followupReturnReason = v; }
     public String getFollowupNote() { return followupNote; }
     public void setFollowupNote(String v) { followupNote = v; }
     public LocalDate getFollowupAt() { return followupAt; }

@@ -67,9 +67,11 @@ public class TenantDataService {
         Map<String,Object>w=map(backup.get("wardrobe")),c=map(backup.get("catalog"));
         keys(w,Set.of("schema","kind","owner","items","decisions"));
         keys(c,Set.of("schema","kind","name","note","products"));
-        array(w.get("items"));array(w.get("decisions"));array(c.get("products"));validDates(w);validDates(c);
+        array(w.get("items"));array(w.get("decisions"));array(c.get("products"));
+        otjang.api.FollowupWriteValidator.wardrobe(w,"wardrobe.");
+        validDates(w);validDates(c);
         var cleanW=WardrobeCleaner.cleanWardrobe(w);var cleanC=WardrobeCleaner.cleanCatalog(c);
-        if(cleanW==null||cleanC==null||!same(w.get("items"),tree(cleanW.items()))||!same(w.get("decisions"),tree(cleanW.decisions()))||!same(w.get("owner"),tree(cleanW.owner()))||!same(c.get("products"),tree(cleanC.products())))
+        if(cleanW==null||cleanC==null||!same(w.get("items"),tree(cleanW.items()))||!same(otjang.api.FollowupWriteValidator.normalizedBackupDecisions(w.get("decisions")),tree(cleanW.decisions()))||!same(w.get("owner"),tree(cleanW.owner()))||!same(c.get("products"),tree(cleanC.products())))
             throw new ApiException(400,"백업 데이터가 잘못됐습니다. 자동 보정하거나 일부만 복원하지 않습니다");
         if(!"wardrobe".equals(w.get("kind"))||((Number)w.get("schema")).intValue()!=2)throw new ApiException(400,"옷장 스키마가 맞지 않습니다");
         long owner=OwnerScope.ownerId();photos.lock();photos.afterCommit(photos.ownerRefs(owner));

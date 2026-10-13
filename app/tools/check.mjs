@@ -35,24 +35,33 @@ for (const m of modes) {
   const ctx = await browser.newContext({ viewport: { width: m.w, height: m.h }, colorScheme: m.scheme, acceptDownloads: true });
   const page = await ctx.newPage();
   const logs = [], reqs = [], dialogs = [];
-  page.on('console', (msg) => { if (msg.type() === 'error' || msg.type() === 'warning') logs.push(msg.text().slice(0, 200)); });
+  page.on('console', (msg) => {
+    // The synthetic compatibility cases deliberately return missing/failed meta.
+    if ([404, 500].includes(srv.metaStatus) && msg.location().url === MOCK + '/api/meta' && /^Failed to load resource:/.test(msg.text())) return;
+    if (msg.type() === 'error' || msg.type() === 'warning') logs.push(msg.text().slice(0, 200));
+  });
   page.on('pageerror', (e) => logs.push('pageerror: ' + e.message));
   const MOCK = 'http://127.0.0.1:8099';                                                              // 내 서버 흉내(page.route). 실제 서버(server/)와의 연결은 여기서 확인하지 않는다
   const syncReqs = [];
   page.on('request', (r) => { if (r.url().startsWith(MOCK)) { syncReqs.push(r.method() + ' ' + r.url().slice(MOCK.length)); return; } if (!r.url().startsWith('file:') && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) reqs.push(r.url()); });
   const mockToken = 'synthetic-regression-token-000000000000000000';
-  const srv = { wardrobe: null, catalog: null, keys: new Set(), version: 0 };
+  const meta2 = { contract: 2, wardrobeSchema: 2, followup: { outcomes: ['purchased', 'not-purchased', 'pending', 'returned'], sizeResults: ['right', 'small', 'large', 'unknown'], returnReasons: ['size', 'fit', 'color', 'material', 'quality', 'changed', 'price', 'other', 'unknown'] } };
+  const srv = { wardrobe: null, catalog: null, keys: new Set(), version: 0, meta: meta2, metaStatus: 200, malformedMeta: false, dropFollowup: false };
+  const dataHeaders = [];
   const cors = { 'Access-Control-Allow-Origin': 'null', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Expose-Headers': 'Idempotent-Replayed,X-Wardrobe-Version' };
   await page.route(MOCK + '/**', async (route) => {
     const q = route.request(), u = new URL(q.url());
     if (q.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     const json = (o, status = 200) => route.fulfill({ status, headers: Object.assign({ 'Content-Type': 'application/json', 'X-Wardrobe-Version': String(srv.version) }, cors), body: JSON.stringify(o) });
+    if (q.method() === 'GET' && u.pathname === '/api/meta') return srv.malformedMeta ? route.fulfill({ status: 200, headers: cors, body: '{invalid' }) : json(srv.meta, srv.metaStatus);
     if (q.method() === 'POST' && u.pathname === '/api/auth/login') return json({ token: mockToken, expiresAt: '2099-01-01T00:00:00Z', user: { username: 'synthetic-qa', ownerId: 77 } });
     if (q.headers().authorization !== 'Bearer ' + mockToken) return json({ detail: '로그인이 필요합니다' }, 401);
     if (q.method() === 'GET' && u.pathname === '/api/auth/me') return json({ username: 'synthetic-qa', ownerId: 77 });
     if (q.method() === 'POST' && u.pathname === '/api/auth/logout') return route.fulfill({ status: 204, headers: cors });
     if (q.method() === 'POST' && (u.pathname === '/api/wardrobe/import' || u.pathname === '/api/catalog/import')) {
       const key = q.headers()['idempotency-key'] || '', body = JSON.parse(q.postData()), wardrobe = u.pathname.includes('wardrobe');
+      dataHeaders.push(q.headers());
+      if (q.headers()['x-eoul-contract'] !== '2') return json({ detail: '클라이언트 업데이트가 필요합니다' }, 409);
       if (!q.headers()['if-match']) return json({ detail: '서버 버전을 확인해 주세요' }, 428);
       if (q.headers()['if-match'] !== '"' + srv.version + '"') return json({ detail: '더 새로운 서버 기록이 있습니다' }, 409);
       const replayed = srv.keys.has(key); srv.keys.add(key);
@@ -60,7 +69,7 @@ for (const m of modes) {
       if (!replayed) srv.version++;
       return json({ items: (wardrobe ? body.items : body.products).length, created: replayed ? 0 : 1, updated: 0, decisions: wardrobe ? body.decisions.length : 0, replayed });
     }
-    if (q.method() === 'GET' && u.pathname === '/api/wardrobe') { const w = JSON.parse(JSON.stringify(srv.wardrobe)); w.items[1].name = w.items[1].name + ' (서버)'; return json(w); }
+    if (q.method() === 'GET' && u.pathname === '/api/wardrobe') { const w = JSON.parse(JSON.stringify(srv.wardrobe)); w.items[1].name = w.items[1].name + ' (서버)'; if (srv.dropFollowup) w.decisions.forEach((d) => { d.followup = null; }); return json(w); }
     if (q.method() === 'GET' && u.pathname === '/api/catalog') return json(srv.catalog);
     return route.fulfill({ status: 404, headers: cors, body: '{}' });
   });
@@ -357,6 +366,10 @@ for (const m of modes) {
   ok(data.schema === 2 && data.items.length === 14 && data.items.every((i) => i.status === 'owned') && data.items.every((i) => i.price == null && !i.link) && data.owner.height == null && data.decisions.length === 0, '내보낸 파일(스키마 2)에는 보유 옷만 있고 가격, 체형, 판정 기록은 기본으로 빠진다');
   ok(bought.photo.kind === 'confirmed' && bought.photo.img === '' && bought.product.brand === '브랜드' && data.items[0].photo.img.startsWith('data:image') && data.items.every((i) => i.matchCandidates.length === 0), '남의 상품 사진과 브랜드 후보는 기본으로 빠지고, 내 사진과 확인된 상품 정보는 남는다');
   await shot('7-log');
+  const beforeFutureFile = JSON.stringify(await st());
+  await page.setInputFiles('#importFile', { name: 'synthetic-future-wardrobe.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...data, schema: 3 })) });
+  await page.waitForSelector('#importMessage');
+  ok(await page.locator('#importGo').count() === 0 && (await page.locator('#importMessage').innerText()).includes('새 버전') && JSON.stringify(await st()) === beforeFutureFile, '미래 스키마 옷장 파일은 정리·교체 전에 거부하고 기존 전체 상태를 유지');
   // 7b. 데스크톱 동기화 패널. 모바일 미리보기는 로컬 저장 안내만 제공한다.
   if (mobileBuild) {
     ok(await page.locator('#mobileStorageNote').count() === 1, '모바일 미리보기는 이 브라우저에 저장된다는 안내를 표시한다');
@@ -387,7 +400,80 @@ for (const m of modes) {
   await page.click('#pullGo');
   const pulled = await page.evaluate(() => ({ n: window.__app.state.items.length, name1: window.__app.state.items[1].name, own0: window.__app.state.items[0].photo.ownImg.slice(0, 10) }));
   ok(pulled.name1.endsWith('(서버)') && pulled.own0 === 'data:image' && pulled.n === sw.items.length, '서버에서 받기: 확인을 누르면 서버 내용으로 바뀌고 내 사진은 남는다', pulled);
-  ok(syncReqs.filter((r) => !r.startsWith('OPTIONS') && !r.includes('/api/auth/')).join() === 'POST /api/wardrobe/import,POST /api/catalog/import,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/wardrobe?photos=true,GET /api/catalog', '인증 외에는 누른 만큼만 자료 요청한다', syncReqs);
+  ok(syncReqs.filter((r) => !r.startsWith('OPTIONS') && !r.includes('/api/auth/')).join() === 'GET /api/meta,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/meta,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/meta,GET /api/wardrobe?photos=true,GET /api/catalog', '보내기·받기마다 먼저 지원 정보를 확인하고 누른 만큼만 자료 요청한다', syncReqs);
+  ok(dataHeaders.every((v) => v['x-eoul-contract'] === '2' && v.authorization === 'Bearer ' + mockToken && /^"\d+"$/.test(v['if-match'])), '모든 자료 쓰기는 계약 2·인증·따옴표 붙인 서버 버전을 함께 보낸다');
+
+  // P0 compatibility: no writes (wardrobe OR catalog) and no local changes when
+  // the server cannot preserve returned outcomes or a purchased size result.
+  const accountBackup = await page.evaluate(() => window.Beta.makeBackup(window.__app.state));
+  const protectedBackup = await page.evaluate(() => {
+    const b = window.Beta.makeBackup(window.__app.state), d = b.state.decisions.find((x) => x.after);
+    if (!d) throw new Error('합성 검증 판정이 없습니다');
+    d.followup = { outcome: 'returned', sizeResult: 'small', returnReason: 'size', worn: 'no', regret: 'unknown', note: '합성 호환 검증', at: '2026-10-13' };
+    const item = b.state.items.find((x) => x.id === d.itemId); if (item) item.status = 'gone';
+    b.state.rack = b.state.rack.filter((r) => r.id !== d.itemId);
+    return b;
+  });
+  const offerAccountBackup = async (b) => { await page.setInputFiles('#backupFile', { name: 'synthetic-protected.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(b)) }); await page.waitForSelector('#backupRestoreConfirm'); await page.click('#backupRestoreConfirm'); await flush(); };
+  await offerAccountBackup(protectedBackup);
+  const protectedState = JSON.stringify(await st()), remoteBeforeBlocked = JSON.stringify({ wardrobe: srv.wardrobe, catalog: srv.catalog, version: srv.version });
+  for (const attempt of [{ status: 404, meta: null, label: '메타가 없는 구 서버' }, { status: 200, meta: { contract: 1 }, label: '계약 1 서버' }, { status: 200, meta: null, label: '메타 응답 누락' }, { status: 500, meta: { detail: '합성 서버 오류' }, label: '메타 서버 오류' }, { status: 200, meta: meta2, malformed: true, label: '잘못된 메타 JSON' }]) {
+    srv.metaStatus = attempt.status; srv.meta = attempt.meta; srv.malformedMeta = !!attempt.malformed;
+    const beforeRequests = syncReqs.length;
+    await page.click('#syncPush'); await page.waitForFunction(() => !document.querySelector('#syncPush').disabled);
+    ok(syncReqs.slice(beforeRequests).every((r) => !r.startsWith('POST ')) && JSON.stringify(await st()) === protectedState && JSON.stringify({ wardrobe: srv.wardrobe, catalog: srv.catalog, version: srv.version }) === remoteBeforeBlocked, attempt.label + ': 전체 보내기를 쓰기 전에 차단하고 양쪽 자료를 그대로 둔다');
+  }
+  const sizeBackup = JSON.parse(JSON.stringify(protectedBackup)), sizeDecision = sizeBackup.state.decisions.find((d) => d.after);
+  sizeDecision.followup.outcome = 'purchased'; sizeDecision.followup.returnReason = 'unknown';
+  await offerAccountBackup(sizeBackup); srv.metaStatus = 404; srv.meta = null; srv.malformedMeta = false;
+  const sizedState = JSON.stringify(await st()), beforeSizeRequests = syncReqs.length;
+  await page.click('#syncPush'); await page.waitForFunction(() => !document.querySelector('#syncPush').disabled);
+  ok(syncReqs.slice(beforeSizeRequests).every((r) => !r.startsWith('POST ')) && JSON.stringify(await st()) === sizedState && (await page.locator('#syncMsg').innerText()).includes('사이즈'), '구매 상태의 사이즈 결과도 구 서버로 보내지 않고 보존');
+
+  srv.metaStatus = 200; srv.meta = meta2; srv.dropFollowup = true;
+  await page.click('#syncPull'); await page.waitForFunction(() => !document.querySelector('#syncPull').disabled);
+  ok(await page.isDisabled('#pullGo') && JSON.stringify(await st()) === sizedState && await page.locator('#syncSafetyBackup').count() === 1 && await page.locator('#pullConflicts').count() === 1, '기준 없는 사이즈 결과는 자동교체를 막고 전체 백업과 이 기기 값 유지 선택을 안내');
+  // Recheck at confirmation: a result recorded after the read must not be lost.
+  await offerAccountBackup(accountBackup); srv.dropFollowup = false;
+  await page.click('#syncPull'); await page.waitForSelector('#pullGo');
+  await page.evaluate(() => { const d = window.__app.state.decisions.find((x) => x.after); d.followup = { outcome: 'returned', sizeResult: 'small', returnReason: 'size', worn: 'no', regret: 'unknown', note: '받기 확인 중 새 결과', at: '2026-10-13' }; });
+  const confirmState = JSON.stringify(await st());
+  await page.click('#pullGo'); await flush();
+  ok(await page.isDisabled('#pullGo') && JSON.stringify(await st()) === confirmState && (await page.locator('#syncMsg').innerText()).includes('다시 선택'), '받기 확인 뒤 새 반품 결과를 적어도 바꾸기 직전에 다시 검사해 명시선택 전에 전체 교체를 중단');
+
+  // T1: keep the exact shared baseline through reload, then receive an intentional
+  // correction from another device. Unsent local edits still block at confirmation.
+  await offerAccountBackup(protectedBackup);
+  await page.click('#syncPush'); await page.waitForFunction(() => document.querySelector('#syncMsg')?.textContent.includes('보냈습니다')); await flush();
+  const acknowledgedBackup = await page.evaluate(() => window.Beta.makeBackup(window.__app.state));
+  const acknowledged = acknowledgedBackup.state.syncFollowupAck;
+  ok(acknowledged?.origin === MOCK && acknowledged.ownerId === 77 && acknowledged.serverVersion === srv.version && acknowledged.decisions.length === 1, '성공한 옷장 보내기의 정확한 결과·출처·버전을 확인 기준으로 저장');
+  await page.reload(); await page.waitForFunction(() => window.__app); await page.click('#tabbtn-log');
+  await page.fill('#syncBase', MOCK); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
+  await page.fill('#syncUser', 'synthetic-qa'); await page.fill('#syncPassword', 'synthetic-regression-password'); await page.click('#syncLogin'); await page.waitForSelector('#syncLogout'); await flush();
+  ok(JSON.stringify((await st()).syncFollowupAck) === JSON.stringify(acknowledged), '재실행·같은 계정 재로그인 후 공유 완료된 후속 결과의 확인 기준을 보존');
+  const remoteCorrection = srv.wardrobe.decisions.find((d) => d.after);
+  remoteCorrection.followup.outcome = 'purchased'; remoteCorrection.followup.returnReason = 'unknown';
+  const remoteItem = srv.wardrobe.items.find((item) => item.id === remoteCorrection.itemId); if (remoteItem) remoteItem.status = 'owned';
+  srv.version++;
+  const beforeCorrection = JSON.stringify(await st());
+  await page.click('#syncPull'); await page.waitForSelector('#pullGo');
+  ok((await page.locator('#pullWarn').innerText()).includes('최신 구매 후속 결과') && JSON.stringify(await st()) === beforeCorrection, '더 최신 서버 정정은 이전에 공유한 결과를 바꿀 것임을 먼저 알리고 확인 전 상태 유지');
+  await page.evaluate(() => { const d = window.__app.state.decisions.find((x) => x.after); d.followup.sizeResult = 'large'; });
+  const unsentSize = JSON.stringify(await st());
+  await page.click('#pullGo'); await flush();
+  ok(await page.isDisabled('#pullGo') && JSON.stringify(await st()) === unsentSize && await page.locator('#pullConflicts').count() === 1, '더 최신 계약 2 서버라도 확인 중 미전송 사이즈 수정이 생기면 충돌 선택까지 바꾸기를 다시 차단');
+  await page.check('input[data-pull-conflict][value="local"]'); await page.click('#pullGo'); await flush();
+  ok((await st()).decisions.find((d) => d.id === remoteCorrection.id).followup.sizeResult === 'large', '충돌에서 이 기기 값을 직접 선택하면 미전송 결과를 보존하고 새 서버 기준을 기록');
+  await page.click('#syncPush'); await page.waitForFunction(() => document.querySelector('#syncMsg')?.textContent.includes('보냈습니다'));
+  const pushedLocal = srv.wardrobe.decisions.find((d) => d.id === remoteCorrection.id);
+  ok(pushedLocal.followup.outcome === 'returned' && pushedLocal.followup.sizeResult === 'large', '내 값 유지 뒤 명시 보내기로 서버도 이 기기의 정정을 저장');
+  pushedLocal.followup.outcome = 'purchased'; pushedLocal.followup.returnReason = 'unknown';
+  srv.wardrobe.items.find((item) => item.id === pushedLocal.itemId).status = 'owned'; srv.version++;
+  await page.click('#syncPull'); await page.waitForSelector('#pullGo'); await page.click('#pullGo'); await flush();
+  const corrected = await st(), correction = corrected.decisions.find((d) => d.id === remoteCorrection.id);
+  ok(correction.followup.outcome === 'purchased' && correction.followup.sizeResult === 'large' && correction.followup.returnReason === 'unknown' && corrected.items.find((item) => item.id === correction.itemId)?.status === 'owned' && corrected.syncFollowupAck.serverVersion === srv.version, '공유 완료된 반품에서 구매로 다른 기기 정정 후 확인 받기: 사이즈 유지·반품 사유 정규화·옷 상태와 새 확인 기준 저장');
+  await offerAccountBackup(accountBackup);
   await page.click('#syncLogout');
   ok((await st()).items.length === localBeforeAuth.items.length && (await st()).owner.nickname === localBeforeAuth.owner.nickname, '로그아웃하면 전송 전 개인 옷장으로 돌아온다');
   }

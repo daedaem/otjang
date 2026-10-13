@@ -126,6 +126,12 @@ try {
     check(equal(reopened.decisions, followed.decisions), '재실행 후 결정·얻은 정보·후속 기록 보존');
     const backup = await downloadBackup(page);
     check(equal(backup.state.decisions, followed.decisions) && backup.state.betaTrial != null, '전체백업에 판단·후속 기록과 체험 기록 포함');
+    const oldFollowupBackup = clone(backup);
+    for (const d of oldFollowupBackup.state.decisions) if (d.followup) { delete d.followup.sizeResult; delete d.followup.returnReason; }
+    await offerBackup(page, oldFollowupBackup);
+    check(await page.locator('#backupRestoreConfirm').count() === 1 && equal((await snapshot(page)).decisions, followed.decisions), '이전 전체백업의 새 후속 선택 키 누락을 호환하고 현재 기록은 파일 선택만으로 바꾸지 않음');
+    await page.click('#backupRestoreConfirm'); await flush(page);
+    check(equal((await snapshot(page)).decisions, followed.decisions), '이전 후속 백업 복원 시 sizeResult·returnReason의 missing 기본값만 채워 메모와 판정을 보존');
     await page.screenshot({ path: path.join(output, 'synthetic-purchase-flow.png'), fullPage: true }); await context.close();
   }
   {
@@ -146,6 +152,15 @@ try {
     check(await page.locator('#backupRestoreConfirm').count() === 1, '이전 버전 전체백업의 선택 항목이 없어도 복원 확인 가능');
     await page.click('#backupRestoreCancel');
     check(equal(cleanSnapshot(await snapshot(page)), initial), '이전 버전 백업 확인·취소가 현재 추천 설정과 자료를 바꾸지 않음');
+    for (const future of [
+      { ...clone(backup), version: 2 },
+      { ...clone(backup), state: { ...clone(backup.state), schema: 3 } },
+      { ...clone(backup), state: { ...clone(backup.state), catalog: { ...clone(backup.state.catalog), schema: 2 } } },
+      { ...clone(backup), state: { ...clone(backup.state), others: [{ schema: 3, items: [], decisions: [] }] } }
+    ]) {
+      await offerBackup(page, future);
+      check(await page.locator('#backupRestoreConfirm').count() === 0 && equal(cleanSnapshot(await snapshot(page)), initial) && (await page.locator('#backupRestoreMessage').innerText()).includes('새 버전'), '미래 전체·중첩 스키마를 복원 정리 전에 거부하고 현재 자료 보존');
+    }
     const revised = clone(backup); revised.state.owner.nickname = '복원 검증 이름'; revised.state.items[0].review = '복원 검증 기록';
     await offerBackup(page, revised); await page.click('#backupRestoreConfirm'); await flush(page);
     const restored = cleanSnapshot(await snapshot(page));
@@ -189,6 +204,7 @@ try {
     const request = async (method, suffix, data, token, options = {}) => {
       const headers = token ? { Authorization: 'Bearer ' + token } : {};
       if (method === 'POST' && /^\/api\/(wardrobe\/import|catalog\/import|backup\/restore)$/.test(suffix)) {
+        if (options.contract !== null) headers['X-Eoul-Contract'] = String(options.contract ?? 2);
         const version = Object.hasOwn(options, 'ifMatch') ? options.ifMatch : versions.get(token);
         if (version != null) headers['If-Match'] = '"' + version + '"';
       }
@@ -197,6 +213,8 @@ try {
       return response;
     };
     check((await request('GET', '/api/wardrobe')).status() === 401, '인증 없는 옷장 읽기는 401');
+    const capabilities = await request('GET', '/api/meta'), meta = await capabilities.json();
+    check(capabilities.ok() && meta.contract === 2 && meta.wardrobeSchema === 2 && meta.followup?.outcomes.includes('returned') && meta.followup?.sizeResults.includes('right'), '공개 서버 지원 정보가 계약 2·반품·사이즈를 명시');
     check((await request('POST', '/api/wardrobe/import', full)).status() === 401, '인증 없는 옷장 쓰기는 401');
     check((await request('GET', '/api/wardrobe', null, 'invalid-qa-token')).status() === 401, '잘못된 토큰으로 접근 거절');
     check((await request('POST', '/api/auth/register', { username, password, inviteCode: 'invalid-qa-invite' })).status() === 403, '틀린 초대 코드로 가입 거절');
@@ -207,6 +225,7 @@ try {
     if (!secondResponse.ok()) throw new Error('두 번째 합성 QA 계정을 만들지 못했습니다.');
     const second = await secondResponse.json(); secrets.push(second.token);
     check(first.user.ownerId !== second.user.ownerId && (await (await request('GET', '/api/wardrobe', null, first.token)).json()).items.length === 0, '합성 계정마다 다른 소유자와 빈 서버 옷장');
+    check((await request('POST', '/api/wardrobe/import', full, first.token, { contract: null })).status() === 409 && (await (await request('GET', '/api/wardrobe', null, first.token)).json()).items.length === 0, '구 클라이언트 계약 헤더가 없으면 전체 쓰기를 거부하고 빈 서버 자료 유지');
     check((await request('POST', '/api/wardrobe/import', full, first.token, { ifMatch: null })).status() === 428, '전체 서버 자료 변경은 확인한 버전 헤더 없으면 428로 거절');
     const validWebp = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = 2; canvas.height = 2; const ctx = canvas.getContext('2d'); ctx.fillStyle = '#80a0c0'; ctx.fillRect(0, 0, 2, 2); return canvas.toDataURL('image/webp'); });
     const serverFull = clone(full); serverFull.items[0] = W.setOwnPhoto(serverFull.items[0], validWebp); serverFull.catalog.products[0].img = validWebp;
@@ -244,12 +263,16 @@ try {
     check(equal(await (await request('GET', '/api/wardrobe', null, first.token)).json(), beforeServerRestore), '서버 백업 복원 취소가 계정 자료를 보존');
     const amendedServerBackup = clone(serverBackup); amendedServerBackup.wardrobe.items[0].review = '합성 QA 서버 복원 검증';
     const browserItemsBeforeRestore = clone((await snapshot(page)).items);
+    await page.uncheck('#syncPhotos');
     await offerServerBackup(amendedServerBackup); await page.click('#serverRestoreConfirm');
     await page.waitForFunction(() => document.querySelector('#syncMsg')?.textContent.includes('서버 계정 백업을 복원했습니다'));
     const serverRestored = await (await request('GET', '/api/wardrobe', null, first.token)).json();
-    check(serverRestored.items[0].review === '합성 QA 서버 복원 검증' && equal((await snapshot(page)).items, browserItemsBeforeRestore), '명시적 서버 복원은 계정 자료를 바꾸고 브라우저 옷장을 자동 교체하지 않음');
+    check(serverRestored.items[0].review === '합성 QA 서버 복원 검증' && equal(serverRestored.decisions, serverBackup.wardrobe.decisions) && equal((await snapshot(page)).items, browserItemsBeforeRestore), '사진 제외 서버 복원은 허용 키만 보내며 계정 결과·브라우저 옷장 보존');
     await offerServerBackup({ schema: 2, kind: 'wardrobe', items: [] });
     check(await page.locator('#serverRestoreConfirm').count() === 0, '공유용 옷장 파일을 서버 전체백업으로 오인하지 않음');
+    const beforeFutureServer = await (await request('GET', '/api/wardrobe', null, first.token)).json();
+    await offerServerBackup({ ...clone(serverBackup), wardrobe: { ...clone(serverBackup.wardrobe), schema: 3 } });
+    check(await page.locator('#serverRestoreConfirm').count() === 0 && equal(await (await request('GET', '/api/wardrobe', null, first.token)).json(), beforeFutureServer) && (await page.locator('#syncMsg').innerText()).includes('새 버전'), '미래 중첩 옷장 스키마의 계정 백업은 서버 복원 전에 거부하고 서버 기록 보존');
     const beforeFailure = cleanSnapshot(await snapshot(page));
     await page.route(baseUrl + '/api/wardrobe/import', (route) => route.fulfill({ status: 401, contentType: 'application/problem+json', body: JSON.stringify({ status: 401, detail: '합성 QA 세션 거절' }) }));
     await page.click('#syncPush'); await page.waitForFunction(() => document.querySelector('#syncMsg')?.textContent.includes('401'));

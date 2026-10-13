@@ -130,6 +130,7 @@ public class WardrobeService {
      */
     @Transactional
     public ImportResult importWardrobe(Map<String, Object> raw, String idempotencyKey, String rawBodyForHash) {
+        otjang.api.FollowupWriteValidator.wardrobe(raw, "");
         String hash = LocalDirPhotoStore.sha256(rawBodyForHash == null ? String.valueOf(raw) : rawBodyForHash);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var prev = receipts.findByOwnerIdAndIdempotencyKey(ownerId(), idempotencyKey);
@@ -180,6 +181,7 @@ public class WardrobeService {
 
     @Transactional
     public Wardrobe.Decision saveDecision(Map<String, Object> raw) {
+        otjang.api.FollowupWriteValidator.decision(raw, "");
         Wardrobe.Decision d = WardrobeCleaner.cleanDecision(raw);
         if (d == null || d.id().isEmpty()) throw new ApiException(400, "판정 기록으로 읽을 수 없다(id 와 before.lean 이 있어야 한다)");
         return mapper.toDomain(decisions.save(mapper.apply(d, decisions.findByOwnerIdAndClientId(ownerId(), d.id()).orElseGet(DecisionEntity::new), ownerId())));

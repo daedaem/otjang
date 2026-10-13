@@ -2,7 +2,8 @@
 <!--
   옷장들이(가칭) 서버 v0.1 — Spring Boot 4.1.1, Java 21, PostgreSQL 16, Flyway.
   2026-10-12: 작업 환경에서 Maven Central 접근이 막혀 Maven 빌드는 실행하지 못했다. domain 패키지와 테스트 하네스(GoldenParity, DomainChecks)는
-  javac 로 컴파일·실행해 확인했고, V1 스키마는 PostgreSQL 16 에 적용해 확인했다. Spring 계층(api, persistence, service)은 컴파일 미실행이다 — README 참고.
+  javac 로 컴파일·실행해 확인했고, V1 스키마는 PostgreSQL 16 에 적용해 확인했다. 당시 Spring 계층은 컴파일 미실행이었다.
+  2026-10-13: Java 21/Maven 전체 컴파일 및 실제 PostgreSQL Testcontainers 테스트 130개 통과 — 최신 범위는 README 참고.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">

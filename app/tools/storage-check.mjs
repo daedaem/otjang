@@ -121,8 +121,8 @@ try {
     await page.click('#resetBtn'); await page.click('#resetBtn');
     await page.waitForFunction((nickname) => window.__app.state.owner.nickname === nickname, before.state.owner.nickname);
     await page.evaluate(() => window.__app.flush()); const reset = await snapshot(page);
-    check(reset.idb === null && JSON.parse(reset.ls).owner.nickname === before.state.owner.nickname,
-      '대체 저장 모드에서 초기화해도 오래된 IndexedDB를 지움');
+    check(reset.idb === before.idb && JSON.parse(reset.ls).owner.nickname === before.state.owner.nickname && JSON.parse(reset.ls)._storageRevision > JSON.parse(reset.idb)._storageRevision,
+      '대체 저장 초기화는 기존 저장소를 먼저 지우지 않고 더 최신 초기 snapshot을 원자적으로 남김');
     await reload(page); const again = await snapshot(page);
     check(again.state.owner.nickname === before.state.owner.nickname, '초기화 후 재실행할 때 이전 편집이 돌아오지 않음');
     await context.close();

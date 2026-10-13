@@ -66,7 +66,14 @@
   const IMG_RE = /^data:image\/(webp|png|jpeg);base64,[A-Za-z0-9+/=]+$/;
   const safeImg = (v) => (typeof v === 'string' && v.length < 600000 && IMG_RE.test(v) ? v : '');
   const safeLink = (v) => (typeof v === 'string' && /^https?:\/\/[^\s<>"']+$/i.test(v) ? v.slice(0, 400) : '');
-  const safeDate = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');
+  const safeDate = (v) => {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return '';
+    const [year, month, day] = v.split('-').map(Number);
+    if (year < 1 || month < 1 || month > 12 || day < 1) return '';
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return day <= days[month - 1] ? v : '';
+  };
   const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -123,9 +130,9 @@
   function cleanDecision(d) {
     if (!d || typeof d !== 'object' || !d.before || !known(LEAN, d.before.lean)) return null;
     const s = d.summary && typeof d.summary === 'object' ? d.summary : {};
-    const out = { id: str(d.id, 40), itemId: str(d.itemId, 40), name: str(d.name, 80), before: { lean: d.before.lean, reason: str(d.before.reason, 200), at: str(d.before.at, 10) },
+    const out = { id: str(d.id, 40), itemId: str(d.itemId, 40), name: str(d.name, 80), before: { lean: d.before.lean, reason: str(d.before.reason, 200), at: safeDate(d.before.at) },
       summary: { overlaps: num(s.overlaps, 0, 999), added: num(s.added, 0, 9999), blockers: num(s.blockers, 0, 999) }, after: null };
-    if (d.after && known(DECIDE, d.after.decision)) out.after = { decision: d.after.decision, helpful: known(HELP, d.after.helpful) ? d.after.helpful : 'some', note: str(d.after.note, 300), at: str(d.after.at, 10), shift: known(SHIFT, d.after.shift) ? d.after.shift : 'same',
+    if (d.after && known(DECIDE, d.after.decision)) out.after = { decision: d.after.decision, helpful: known(HELP, d.after.helpful) ? d.after.helpful : 'some', note: str(d.after.note, 300), at: safeDate(d.after.at), shift: known(SHIFT, d.after.shift) ? d.after.shift : 'same',
       insight: str(d.after.insight, 200), comparedWith: ['none', 'chatbot', 'photos', 'other'].includes(d.after.comparedWith) ? d.after.comparedWith : 'none', comparisonNote: str(d.after.comparisonNote, 200) };
     out.followup = null;
     if (out.after && d.followup && typeof d.followup === 'object' && ['purchased', 'not-purchased', 'pending', 'returned'].includes(d.followup.outcome)) out.followup = {

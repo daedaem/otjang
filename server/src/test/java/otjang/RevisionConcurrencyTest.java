@@ -59,13 +59,13 @@ class RevisionConcurrencyTest {
         return json.writeValueAsString(Map.of("schema", 2, "kind", "wardrobe", "items", List.of(Map.of("id", id, "cat", "top", "name", "Synthetic " + id))));
     }
     MockHttpServletResponse importAt(String version, String id) throws Exception {
-        return mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match", "\"" + version + "\"").contentType(MediaType.APPLICATION_JSON).content(snapshot(id))).andReturn().getResponse();
+        return mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match", "\"" + version + "\"").contentType(MediaType.APPLICATION_JSON).content(snapshot(id))).andReturn().getResponse();
     }
 
     @Test void missingOrMalformedOrStaleVersionDoesNotChangeData() throws Exception {
         assertEquals("0", version(token));
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(snapshot("missing"))).andExpect(status().is(428));
-        mvc.perform(post("/api/wardrobe/import").header("Authorization", "Bearer " + token).header("If-Match", "0").contentType(MediaType.APPLICATION_JSON).content(snapshot("invalid"))).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(snapshot("missing"))).andExpect(status().is(428));
+        mvc.perform(post("/api/wardrobe/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match", "0").contentType(MediaType.APPLICATION_JSON).content(snapshot("invalid"))).andExpect(status().isBadRequest());
         assertEquals(409, importAt("99", "stale").getStatus());
         assertEquals("0", version(token));
         mvc.perform(get("/api/items").header("Authorization", "Bearer " + token)).andExpect(jsonPath("$.length()").value(0));
@@ -90,23 +90,23 @@ class RevisionConcurrencyTest {
     @Test void otherMutationsAdvanceRevisionButFailedMutationDoesNotAndOtherOwnersStayIndependent() throws Exception {
         String another = register();
         assertEquals(200, importAt("0", "first").getStatus());
-        mvc.perform(post("/api/items").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"second\",\"cat\":\"top\"}"))
+        mvc.perform(post("/api/items").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"second\",\"cat\":\"top\"}"))
                 .andExpect(status().isCreated()).andExpect(header().string("X-Wardrobe-Version", "2"));
         assertEquals(409, importAt("1", "stale-import").getStatus());
-        mvc.perform(delete("/api/items/not-present").header("Authorization", "Bearer " + token)).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/items/not-present").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token)).andExpect(status().isNotFound());
         assertEquals("2", version(token)); assertEquals("0", version(another));
         mvc.perform(get("/api/wardrobe").header("Authorization", "Bearer " + token)).andExpect(header().string("X-Wardrobe-Version", "2"));
     }
 
     @Test void catalogAndFullRestoreRequireVersionAndIdempotentStaleRetryIsAConflict() throws Exception {
         String catalog = "{\"schema\":1,\"kind\":\"catalog\",\"products\":[]}";
-        mvc.perform(post("/api/catalog/import").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(catalog)).andExpect(status().is(428));
-        mvc.perform(post("/api/catalog/import").header("Authorization", "Bearer " + token).header("If-Match", "\"0\"").header("Idempotency-Key", "revision-replay").contentType(MediaType.APPLICATION_JSON).content(catalog)).andExpect(status().isOk()).andExpect(header().string("X-Wardrobe-Version", "1"));
-        mvc.perform(post("/api/catalog/import").header("Authorization", "Bearer " + token).header("If-Match", "\"0\"").header("Idempotency-Key", "revision-replay").contentType(MediaType.APPLICATION_JSON).content(catalog)).andExpect(status().isConflict());
+        mvc.perform(post("/api/catalog/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(catalog)).andExpect(status().is(428));
+        mvc.perform(post("/api/catalog/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match", "\"0\"").header("Idempotency-Key", "revision-replay").contentType(MediaType.APPLICATION_JSON).content(catalog)).andExpect(status().isOk()).andExpect(header().string("X-Wardrobe-Version", "1"));
+        mvc.perform(post("/api/catalog/import").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match", "\"0\"").header("Idempotency-Key", "revision-replay").contentType(MediaType.APPLICATION_JSON).content(catalog)).andExpect(status().isConflict());
         String backup = mvc.perform(get("/api/backup").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String restore = json.writeValueAsString(Map.of("backup", Bodies.map(backup), "confirmReplace", true));
-        mvc.perform(post("/api/backup/restore").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(restore)).andExpect(status().is(428));
-        mvc.perform(post("/api/backup/restore").header("Authorization", "Bearer " + token).header("If-Match", "\"1\"").contentType(MediaType.APPLICATION_JSON).content(restore)).andExpect(status().isOk()).andExpect(header().string("X-Wardrobe-Version", "2"));
+        mvc.perform(post("/api/backup/restore").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(restore)).andExpect(status().is(428));
+        mvc.perform(post("/api/backup/restore").header("X-Eoul-Contract", "2").header("Authorization", "Bearer " + token).header("If-Match", "\"1\"").contentType(MediaType.APPLICATION_JSON).content(restore)).andExpect(status().isOk()).andExpect(header().string("X-Wardrobe-Version", "2"));
         mvc.perform(delete("/api/account").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("{\"password\":\"synthetic-password-only\"}"))
                 .andExpect(status().isNoContent()).andExpect(header().doesNotExist("X-Wardrobe-Version"));
         mvc.perform(get("/api/wardrobe").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());

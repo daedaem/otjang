@@ -18,9 +18,15 @@ import java.util.Set;
  */
 public final class AuthenticatedRevisionFilter extends OncePerRequestFilter {
     public static final String VERSION_HEADER = "X-Wardrobe-Version";
+    public static final String CONTRACT_HEADER = "X-Eoul-Contract";
     private static final Set<String> GUARDED = Set.of("/api/wardrobe/import", "/api/catalog/import", "/api/backup/restore");
     private final RevisionService revisions;
     public AuthenticatedRevisionFilter(RevisionService revisions) { this.revisions = revisions; }
+    static boolean contractWrite(String path, String method) {
+        if (Set.of("GET", "HEAD", "OPTIONS").contains(method)) return false;
+        return Set.of("/api/wardrobe", "/api/items", "/api/decisions", "/api/catalog").stream()
+                .anyMatch(base -> path.equals(base) || path.startsWith(base + "/")) || path.equals("/api/backup/restore");
+    }
     private static Long expected(HttpServletRequest request, boolean required) {
         String match = request.getHeader("If-Match");
         if (match == null) {
@@ -42,11 +48,15 @@ public final class AuthenticatedRevisionFilter extends OncePerRequestFilter {
         boolean deletingAccount = mutation && "DELETE".equals(request.getMethod()) && "/api/account".equals(path);
         ContentCachingResponseWrapper buffered = new ContentCachingResponseWrapper(response);
         try {
+            // An old client could overwrite new fields even if its payload contains no returned record.
+            // Check before version locks, service mutation, or idempotency receipt creation/replay.
+            if (contractWrite(path, request.getMethod()) && !"2".equals(request.getHeader(CONTRACT_HEADER)))
+                throw new ApiException(409, "앱을 새로고침하거나 업데이트한 뒤 다시 저장해 주세요", "CLIENT_UPGRADE_REQUIRED", null);
             Long expected = mutation ? expected(request, GUARDED.contains(path)) : null;
             Long committed = revisions.exchange(user.ownerId(), expected, mutation, deletingAccount, () -> chain.doFilter(request, buffered), buffered::getStatus);
             if (committed != null) buffered.setHeader(VERSION_HEADER, Long.toString(committed));
         } catch (ApiException rejected) {
-            buffered.resetBuffer(); BearerFilter.problem(buffered, rejected.status(), rejected.getMessage());
+            buffered.resetBuffer(); BearerFilter.problem(buffered, rejected);
         } catch (RevisionService.ChainFailure failure) {
             if (failure.getCause() instanceof IOException io) throw io;
             if (failure.getCause() instanceof ServletException servlet) throw servlet;

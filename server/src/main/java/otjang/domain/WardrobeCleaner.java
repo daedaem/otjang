@@ -132,18 +132,21 @@ public final class WardrobeCleaner {
         Wardrobe.Decision.After after = null;
         Map<String, Object> a = obj(d.get("after"));
         if (a != null && a.get("decision") instanceof String dec && Vocab.DECIDE.containsKey(dec)) {
-            after = new Wardrobe.Decision.After(dec, a.get("helpful") instanceof String h && Vocab.HELP.containsKey(h) ? h : "some", str(a.get("note"), 300), str(a.get("at"), 10),
+            after = new Wardrobe.Decision.After(dec, a.get("helpful") instanceof String h && Vocab.HELP.containsKey(h) ? h : "some", str(a.get("note"), 300), safeDate(a.get("at")),
                     a.get("shift") instanceof String sh && Vocab.SHIFT.containsKey(sh) ? sh : "same", str(a.get("insight"), 200),
                     a.get("comparedWith") instanceof String cmp && List.of("none", "chatbot", "photos", "other").contains(cmp) ? cmp : "none", str(a.get("comparisonNote"), 200));
         }
         Wardrobe.Decision.Followup followup = null;
         Map<String, Object> f = obj(d.get("followup"));
-        if (after != null && f != null && f.get("outcome") instanceof String outcome && List.of("purchased", "not-purchased", "pending").contains(outcome)) {
-            followup = new Wardrobe.Decision.Followup(outcome, f.get("worn") instanceof String worn && List.of("yes", "no", "unknown").contains(worn) ? worn : "unknown",
-                    f.get("regret") instanceof String regret && List.of("yes", "no", "unknown").contains(regret) ? regret : "unknown", str(f.get("note"), 300), safeDate(f.get("at")));
+        if (after != null && f != null && f.get("outcome") instanceof String outcome && FollowupContract.OUTCOMES.contains(outcome)) {
+            followup = new Wardrobe.Decision.Followup(outcome, FollowupContract.value(f.get("worn"), FollowupContract.YES_NO),
+                    FollowupContract.value(f.get("regret"), FollowupContract.YES_NO),
+                    FollowupContract.sizeRelevant(outcome) ? FollowupContract.value(f.get("sizeResult"), FollowupContract.SIZE_RESULTS) : "unknown",
+                    outcome.equals("returned") ? FollowupContract.value(f.get("returnReason"), FollowupContract.RETURN_REASONS) : "unknown",
+                    str(f.get("note"), 300), safeDate(f.get("at")));
         }
         return new Wardrobe.Decision(str(d.get("id"), 40), str(d.get("itemId"), 40), str(d.get("name"), 80),
-                new Wardrobe.Decision.Before(lean, str(before.get("reason"), 200), str(before.get("at"), 10)),
+                new Wardrobe.Decision.Before(lean, str(before.get("reason"), 200), safeDate(before.get("at"))),
                 new Wardrobe.Decision.Summary(count(s.get("overlaps"), 999), count(s.get("added"), 9999), count(s.get("blockers"), 999)), after, followup,
                 after == null ? null : cleanFollow(d.get("follow"), after.decision()));
     }

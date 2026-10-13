@@ -19,6 +19,10 @@ public record Wardrobe(int schema, String kind, String name, boolean draft, Stri
         public record After(String decision, String helpful, String note, String at, String shift, String insight, String comparedWith, String comparisonNote) {
             public After(String decision, String helpful, String note, String at, String shift) { this(decision, helpful, note, at, shift, "", "none", ""); }
         }
-        public record Followup(String outcome, String worn, String regret, String note, String at) {}
+        public record Followup(String outcome, String worn, String regret, String sizeResult, String returnReason, String note, String at) {
+            public Followup(String outcome, String worn, String regret, String note, String at) {
+                this(outcome, worn, regret, "unknown", "unknown", note, at);
+            }
+        }
     }
 }

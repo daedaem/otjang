@@ -53,7 +53,11 @@ public final class Sanitize {
     }
 
     public static String safeDate(Object v) {
-        return v instanceof String s && DATE_RE.matcher(s).matches() ? s : "";
+        if (!(v instanceof String s) || !DATE_RE.matcher(s).matches()) return "";
+        try {
+            LocalDate date = LocalDate.parse(s);
+            return date.getYear() >= 1 && date.getYear() <= 9999 ? s : "";
+        } catch (java.time.format.DateTimeParseException invalid) { return ""; }
     }
 
     /** 오늘 날짜 YYYY-MM-DD (서울 시간). */

@@ -96,6 +96,7 @@ public class ItemMapper {
         else { e.setFollowAt(null); e.setFollowWorn(null); e.setFollowFeel(null); }
         var f = d.followup();
         e.setFollowupOutcome(f==null?null:f.outcome()); e.setFollowupWorn(f==null?null:f.worn()); e.setFollowupRegret(f==null?null:f.regret());
+        e.setFollowupSizeResult(f==null?null:f.sizeResult()); e.setFollowupReturnReason(f==null?null:f.returnReason());
         e.setFollowupNote(f==null?"":f.note()); e.setFollowupAt(f==null?null:date(f.at()));
         return e;
     }
@@ -105,7 +106,7 @@ public class ItemMapper {
                 : new Wardrobe.Decision.After(e.getAfterDecision(), e.getAfterHelpful(), e.getAfterNote(), str(e.getAfterAt()), e.getAfterShift(), e.getAfterInsight(), e.getAfterComparedWith(), e.getAfterComparisonNote());
         return new Wardrobe.Decision(e.getClientId(), e.getItemClientId(), e.getItemName(), new Wardrobe.Decision.Before(e.getBeforeLean(), e.getBeforeReason(), str(e.getBeforeAt())),
                 new Wardrobe.Decision.Summary(e.getSummaryOverlaps()==null?null:e.getSummaryOverlaps().intValue(), e.getSummaryAdded()==null?null:e.getSummaryAdded().intValue(), e.getSummaryBlockers()==null?null:e.getSummaryBlockers().intValue()), after,
-                e.getFollowupOutcome()==null?null:new Wardrobe.Decision.Followup(e.getFollowupOutcome(),e.getFollowupWorn(),e.getFollowupRegret(),e.getFollowupNote(),str(e.getFollowupAt())),
+                e.getFollowupOutcome()==null?null:new Wardrobe.Decision.Followup(e.getFollowupOutcome(),e.getFollowupWorn(),e.getFollowupRegret(),e.getFollowupSizeResult(),e.getFollowupReturnReason(),e.getFollowupNote(),str(e.getFollowupAt())),
                 e.getFollowAt() == null || after == null ? null : new Wardrobe.Decision.Follow(str(e.getFollowAt()), nz(e.getFollowWorn()), nz(e.getFollowFeel())));
     }
 

@@ -1,0 +1,4162 @@
+{
+  "version": 2,
+  "description": "Synthetic shared followup contract. valid retains fields; normalize clears inapplicable values; reject is strict on server but records local sanitizer expectation.",
+  "cases": [
+    {
+      "id": "purchased-right",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-purchased-right",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "purchased-small",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-purchased-small",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "purchased-large",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-purchased-large",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "purchased-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-purchased-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-size",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-fit",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-fit",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "fit",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "fit",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-color",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-color",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "color",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "color",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-material",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-material",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "material",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "material",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-quality",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-quality",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "quality",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "quality",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-changed",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-changed",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "changed",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "changed",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-price",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-price",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "price",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "price",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-other",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-other",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "other",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "other",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-right-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-right-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-size",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-fit",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-fit",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "fit",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "fit",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-color",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-color",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "color",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "color",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-material",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-material",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "material",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "material",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-quality",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-quality",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "quality",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "quality",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-changed",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-changed",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "changed",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "changed",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-price",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-price",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "price",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "price",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-other",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-other",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "other",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "other",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-small-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-small-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-size",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-fit",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-fit",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "fit",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "fit",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-color",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-color",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "color",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "color",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-material",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-material",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "material",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "material",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-quality",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-quality",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "quality",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "quality",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-changed",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-changed",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "changed",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "changed",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-price",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-price",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "price",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "price",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-other",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-other",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "other",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "other",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-large-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-large-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "large",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-size",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-fit",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-fit",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "fit",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "fit",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-color",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-color",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "color",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "color",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-material",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-material",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "material",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "material",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-quality",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-quality",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "quality",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "quality",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-changed",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-changed",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "changed",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "changed",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-price",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-price",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "price",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "price",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-other",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-other",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "other",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "other",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "returned-unknown-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-returned-unknown-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "not-purchased",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-not-purchased",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "not-purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "not-purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "pending",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-pending",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "pending",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "pending",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-yes-regret-yes",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-yes-regret-yes",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "yes",
+          "regret": "yes",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "yes",
+        "regret": "yes",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-yes-regret-no",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-yes-regret-no",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "yes",
+          "regret": "no",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "yes",
+        "regret": "no",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-yes-regret-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-yes-regret-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "yes",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "yes",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-no-regret-yes",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-no-regret-yes",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "no",
+          "regret": "yes",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "no",
+        "regret": "yes",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-no-regret-no",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-no-regret-no",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "no",
+          "regret": "no",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "no",
+        "regret": "no",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-no-regret-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-no-regret-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "no",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "no",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-unknown-regret-yes",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-unknown-regret-yes",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "yes",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "yes",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-unknown-regret-no",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-unknown-regret-no",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "no",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "no",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "worn-unknown-regret-unknown",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-worn-unknown-regret-unknown",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "irrelevant-size",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-irrelevant-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "not-purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "not-purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "irrelevant-reason",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-irrelevant-reason",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "irrelevant-pending-details",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-irrelevant-pending-details",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "pending",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "large",
+          "returnReason": "quality",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "pending",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "legacy-missing-details",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-legacy-missing-details",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "missing-optional-enums",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-missing-optional-enums",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "irrelevant-typed-details",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-irrelevant-typed-details",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "not-purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": {
+            "future": "size"
+          },
+          "returnReason": [
+            "future"
+          ],
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "not-purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "unknown-outcome",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-unknown-outcome",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "kept",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.outcome"
+    },
+    {
+      "id": "without-decision",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-without-decision",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": null,
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_WITHOUT_DECISION",
+      "errorPath": "followup"
+    },
+    {
+      "id": "unknown-size",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-unknown-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "medium",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.sizeResult"
+    },
+    {
+      "id": "unknown-reason",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-unknown-reason",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "damaged",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.returnReason"
+    },
+    {
+      "id": "unknown-worn",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-unknown-worn",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "maybe",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.worn"
+    },
+    {
+      "id": "unknown-regret",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-unknown-regret",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "maybe",
+          "sizeResult": "right",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.regret"
+    },
+    {
+      "id": "typed-size",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-typed-size",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": 42,
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.sizeResult"
+    },
+    {
+      "id": "typed-reason",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-typed-reason",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": [
+            "size"
+          ],
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.returnReason"
+    },
+    {
+      "id": "missing-outcome",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-missing-outcome",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "unknown",
+          "returnReason": "unknown",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.outcome"
+    },
+    {
+      "id": "null-outcome",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-null-outcome",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": null,
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.outcome"
+    },
+    {
+      "id": "null-sizeResult",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-null-sizeResult",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": null,
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.sizeResult"
+    },
+    {
+      "id": "null-returnReason",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-null-returnReason",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": null,
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.returnReason"
+    },
+    {
+      "id": "null-worn",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-null-worn",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": null,
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.worn"
+    },
+    {
+      "id": "typed-outcome",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-typed-outcome",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": 42,
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup.outcome"
+    },
+    {
+      "id": "typed-followup",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-typed-followup",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": "returned",
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_VOCAB",
+      "errorPath": "followup"
+    },
+    {
+      "id": "invalid-after",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-after",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "future"
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_WITHOUT_DECISION",
+      "errorPath": "followup"
+    },
+    {
+      "id": "missing-before",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-missing-before",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_INVALID_DECISION",
+      "errorPath": "before.lean"
+    },
+    {
+      "id": "invalid-before",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-before",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "future"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": null,
+      "errorCode": "FOLLOWUP_INVALID_DECISION",
+      "errorPath": "before.lean"
+    },
+    {
+      "id": "empty-decision-id",
+      "classification": "reject",
+      "decision": {
+        "id": "",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "small",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "small",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_INVALID_DECISION",
+      "errorPath": "id"
+    },
+    {
+      "id": "no-followup",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-no-followup",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": null,
+        "follow": null
+      },
+      "expectedFollowup": null
+    },
+    {
+      "id": "irrelevant-null-details",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-irrelevant-null-details",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "not-purchased",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": null,
+          "returnReason": null,
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "not-purchased",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "unknown",
+        "returnReason": "unknown",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      }
+    },
+    {
+      "id": "leap-day",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-leap-day",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2000-02-29"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2000-02-29"
+      }
+    },
+    {
+      "id": "undated-followup",
+      "classification": "valid",
+      "decision": {
+        "id": "fixture-undated-followup",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": ""
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      }
+    },
+    {
+      "id": "null-followup-date",
+      "classification": "normalize",
+      "decision": {
+        "id": "fixture-null-followup-date",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": null
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      }
+    },
+    {
+      "id": "invalid-month",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-month",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-99-99"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "followup.at"
+    },
+    {
+      "id": "invalid-day",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-day",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-02-31"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "followup.at"
+    },
+    {
+      "id": "invalid-leap",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-leap",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "1900-02-29"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "followup.at"
+    },
+    {
+      "id": "zero-year",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-zero-year",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "0000-01-01"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "followup.at"
+    },
+    {
+      "id": "timestamp-in-date",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-timestamp-in-date",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13T12:00:00+09:00"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": ""
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "followup.at"
+    },
+    {
+      "id": "invalid-before-date",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-before-date",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-02-31"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-10-13",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "before.at"
+    },
+    {
+      "id": "invalid-after-date",
+      "classification": "reject",
+      "decision": {
+        "id": "fixture-invalid-after-date",
+        "itemId": "fixture-garment",
+        "name": "합성 후보",
+        "before": {
+          "lean": "unsure",
+          "reason": "",
+          "at": "2026-10-13"
+        },
+        "summary": {
+          "overlaps": null,
+          "added": null,
+          "blockers": null
+        },
+        "after": {
+          "decision": "buy",
+          "helpful": "some",
+          "note": "",
+          "at": "2026-04-31",
+          "shift": "same",
+          "insight": "",
+          "comparedWith": "none",
+          "comparisonNote": ""
+        },
+        "followup": {
+          "outcome": "returned",
+          "worn": "unknown",
+          "regret": "unknown",
+          "sizeResult": "right",
+          "returnReason": "size",
+          "note": "합성 계약 검증",
+          "at": "2026-10-13"
+        },
+        "follow": null
+      },
+      "expectedFollowup": {
+        "outcome": "returned",
+        "worn": "unknown",
+        "regret": "unknown",
+        "sizeResult": "right",
+        "returnReason": "size",
+        "note": "합성 계약 검증",
+        "at": "2026-10-13"
+      },
+      "errorCode": "FOLLOWUP_DATE",
+      "errorPath": "after.at"
+    }
+  ]
+}
