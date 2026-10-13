@@ -1,10 +1,10 @@
 {
   "name": "어울 핵심 옷장 등록·실제 상품 추천 미리보기",
-  "sourceCodeCommit": "296eaf2bcbc7929bf2beb3736e0dae473fb9bfdd",
+  "sourceCodeCommit": "b359d6002a8cac2521b9abfbcf2986d9aec008b9",
   "featureBranch": "feat/editorial-mobile-20261013",
   "builtFromEmptyWardrobe": true,
-  "nodeTests": 353,
-  "independentFocusedTests": 75,
+  "nodeTests": 359,
+  "independentFocusedTests": 81,
   "actualBrowserCameraDeviceVerified": false,
   "verifiedCatalogProducts": 12,
   "catalogKinds": 9,
