@@ -1,6 +1,7 @@
 # 개발자 인수인계
 
 기준일: 2026-10-13. 대상: `feat/editorial-mobile-20261013`의 작업 소스. 반품·사이즈 계약과 후속 기록 동기화 보호를 구현했고 서버·Node 자동 검증을 실행했다. 실제 브라우저와 운영 배포 검증은 남아 있다. 이 문서는 개발자가 코드를 찾아 수정하는 길잡이이며 출시 완료 보고서가 아니다.
+기록 용량 보호와 실제 상품 비교 연결의 검증 대상 코드는 `d7dfa70cc80c6f3d71ba0870476a03571755d9f3`다. 기존 `e508ecb` 이후 변경 23개 파일의 동결 원문과 커밋 blob SHA-256 일치를 확인했고, GitHub 기능 브랜치와 초안 PR #10의 동일 SHA 게시를 확인했다. 실제 앱 운영 배포는 하지 않았다.
 
 ## 처음 읽는 순서
 
@@ -32,6 +33,7 @@
 | [server/src/main/java/otjang/](../server/src/main/java/otjang/) | `OtjangApplication` → security 필터 → api → service → domain/persistence/store |
 | [server/src/main/resources/](../server/src/main/resources/) | 설정, Flyway 마이그레이션, 기본 옷장 초안; Hibernate는 스키마를 validate |
 | [contracts/](../contracts/) · [app/test/](../app/test/) · [server/src/test/](../server/src/test/) | 양쪽 공통 사례, 순수 JS 테스트, Java 도메인/API/PostgreSQL 검증 |
+| [record-limits.json](../contracts/record-limits.json) · [RecordLimits](../server/src/main/java/otjang/domain/RecordLimits.java) · [AccountCapacity](../server/src/main/java/otjang/service/AccountCapacity.java) | 신규 생성 한도와 기존 자료 읽기 상한의 공통 값, 서버 계정별 용량 검사 |
 | [release-tools/local-beta.mjs](../release-tools/local-beta.mjs) | 빈 앱·로컬 Java·별도 DB의 실행 준비와 start/status/stop; 운영 절차는 운영 안내 참조 |
 
 `dist/`, `assets.gen.js`, `server/target/`은 산출물이다. 화면을 고칠 때 빌드 결과를 직접 편집하지 않는다. 공개 모바일 미리보기는 `data/empty.json`을 사용하며 개인 옷장·사진을 빌드에 넣지 않는다.
@@ -75,6 +77,7 @@ flowchart LR
 ### 빈틈 발견과 살까 말까
 
 `needs-ui.js::wardrobePlan` → `Needs.analyze`는 보유 종류와 목적·계절별 역할을 계산한다. 종류 제안에서 `openNeedProduct`로 실제 상품을 입력하거나 `Pick.recommend`로 편집 카탈로그 후보를 연결한다. 추천된 종류 자체를 실재 상품으로 저장하지 않는다.
+작업 소스의 `needOfferCard` → `compareNeedOffer`는 표시한 실제 상품을 `pickToCand`로 저장한 뒤 그 후보의 판정 화면을 연다. 브랜드·상품명·가격·확인일·판매처 링크와 추천 기록의 `candidateId` 연결을 유지한다. 같은 상품은 중복 생성하지 않으며 저장 실패·계정 전환이면 성공 이동하지 않는다. 현재 편집 카탈로그의 자동 추천 종류는 `white-tee`뿐이다. 다른 빈틈은 수동 상품 입력으로 이어지며 확인된 상품이 없을 때 가상 상품이나 구매 링크를 만들지 않는다.
 판정 화면은 추천 전 마음을 `decisions[].before`에 저장하고 `Judge.judgeCandidate`를 호출한다. 결과에는 겹치는 옷, 추가 조합, blockers와 `ready/partial/needs-confirmation`이 있다. 확인 전 속성을 계산에서 제외하고, 이유를 보여 준다. 결정은 `after`, 실제 후속 결과는 `followup`이다.
 서버 경로는 [RulesController](../server/src/main/java/otjang/api/RulesController.java) → `WardrobeService` 조회 → `Judge`/`Recommend`이며 앱은 로컬에서 직접 계산할 수 있다. 편집 추천의 `pick.js` 전체가 Java로 이식된 것은 아니다.
 
@@ -84,7 +87,19 @@ flowchart LR
 
 `beta-ui.js::openFollowupDialog`는 outcome/worn/regret/sizeResult/returnReason/note/at를 저장한다. 반품은 연결된 item을 `gone`으로 바꾸고 3D rack에서 빼며, 구매로 정정하면 연결 item을 다시 `owned`로 만든다. 저장 실패 시 후속 기록·item·rack을 되돌린다.
 서버는 [FollowupWriteValidator](../server/src/main/java/otjang/api/FollowupWriteValidator.java) → cleaner → mapper → `DecisionEntity`와 V8 제약으로 처리한다. `pickLog` 구매 기록과 `decisions.followup`이 아직 별개다. `pickLog.returned`는 판매처에서 앱으로 돌아왔다는 뜻이며 상품 반품이 아니다.
-현재 로컬 pickLog는 최근 100건만 남기고 판정 cleaner는 앞 500건만 남긴다. 서버 import의 500개 초과 거부가 이 로컬 상한 손실을 해결하지는 않는다. 상한 제거·보존 방식은 별도 후속 작업이다.
+
+### 기록 용량과 원문 복구
+
+작업 소스는 [공통 용량 정책](../contracts/record-limits.json)을 브라우저 빌드와 Node 모듈, 서버 Maven 자원에서 읽는다. 옷·판정·상품의 신규 생성은 목록별 500개, 로컬 추천 기록은 1,000개, 비교 옷장 추가는 6묶음이다. 기존 업무 목록은 각각 2,000개까지 온전히 읽고 수정·백업한다. 3D rack의 6자리는 표시 제약이다. 이 값들은 알파 운영 가정이며 성능·저장 공간의 검증된 최대치가 아니다.
+
+`app.html::canAdd`는 실제 생성 호출 전에 검사하며 신규 ID가 없으면 기존 501번째 기록의 수정이나 후속 결과를 막지 않는다. 일반 옷장 가져오기의 **추가**는 기존 ID를 그대로 두고 새 옷만 더한다. **바꾸기**는 기존 ID의 내용을 교체할 수 있지만 새 ID를 포함한 결과가 생성 한도를 넘으면 전체 거부한다. 명시적인 엄격한 전체 백업 복원은 목록별 읽기 상한까지 기존 초과 자료를 복원할 수 있는 별도 경로다. 백업 파일이 과거 어느 계정에서 왔는지를 인증하는 기능은 없다.
+
+서버 `AccountCapacity`는 실제 owner 행을 잠근 트랜잭션 안에서 기존 ID와 새 ID를 비교한다. 단건·bulk·직접 service 호출 모두 사진 저장·행 수정·import 영수증 생성 전에 검사하며, 초과 생성은 422 `ACCOUNT_LIMIT`로 요청 전체를 거부한다. `WardrobeCleaner`와 조회/export/backup은 기존 자료를 500개로 자르지 않는다. 2,000개를 넘는 입력·조회는 일부 결과 대신 전체 실패한다.
+
+브라우저 `cleanState`·`chooseStoredCopy`·`recoveryFor`는 최신 원문이 상한 초과·손상·무효 revision이거나 같은 revision의 두 원문이 다르면 계정 범위별 복구 화면을 연다. 빈 옷장을 자동 저장하지 않는다. `renderRecovery`에서 확인할 수 있는 각 저장 원문을 그대로 다운로드하고, 사용자가 정상 전체 백업 교체를 명시적으로 확인한 뒤 `restoreRecovery`의 CAS 저장에 성공해야 잠금을 해제한다. 일반 JSON과 복원 파일은 파싱 전에 50 MiB(UI 표기 50MB) 크기를 제한한다.
+복원에는 목록 수 외에도 전체 백업 형식·각 사진 data URL 600,000자 제한·파일 크기 조건이 모두 필요하다. 사진이 많은 자체 백업도 50 MiB를 넘으면 앱 복원 화면에서 거부될 수 있다. 신규 500개나 읽기 2,000개는 브라우저 저장 용량이나 모든 백업의 복원 가능성을 보장하지 않는다. 실패 시 원문과 백업을 보존하고 일부만 잘라 복원하지 않는다.
+
+`renderCapacity`·`cleanupSelected`는 초기 선택 없이 백업·사용자 선택·자료 지문·CAS 확인 후 선택 기록만 정리한다. 구매·후속 답이 있는 기록을 자동 삭제하지 않는다. 정리는 해당 브라우저에만 적용되므로 동기화한 옷·판정·상품은 서버에서 다시 받을 때 나타날 수 있다. `pickToCand`·구매·선택 정리는 실패한 변경을 선별 복구하고 뒤 큐의 잠정 사본에 보상 저장을 시도한다. **보상까지 실패하면 마지막 성공 저장소에 잠정 후보·구매 또는 삭제가 남을 수 있다.** 이 경로는 일반 outbox나 원자적 동기화가 아니다.
 
 ### 보내기·받기와 충돌
 
@@ -93,6 +108,7 @@ app.html의 `syncFetch`가 인증/계약/If-Match 헤더와 응답 버전을 처
 재로그인에서 `syncStamp`가 없거나 무효여도 같은 origin·인증 owner의 유효한 ack는 이전에 확인한 revision을 증명한다. 보내기는 이 값을 `If-Match`로 유지해 최신 서버 정정에 409로 멈춘다. ack를 두고 최신 revision을 probe해 조건만 올리면 오래된 로컬 자료가 덮어쓰기를 할 수 있으므로 그렇게 복구하지 않는다. 다른 계정·출처·손상 ack는 사용하지 않는다.
 
 받기는 meta/옷장/catalog 읽기 → raw 자료와 정리 결과의 손실 확인 → followup 3방향 비교 → 사용자 선택 → 적용 직전 재검사 → 상태와 baseline 저장 순서다. baseline은 성공한 정확한 자료·서버·계정·revision에 묶는다. 성공한 upsert push는 원격 목록의 부재를 증명하지 못하며, 정리 손실 없는 완전한 pull만 이를 증명한다. 기준점이 없을 때는 검증한 서버 자료에서 이 기기 결과를 유지하는 선택만 제공한다. 명시적인 원격 null 정정도 키 누락과 구분해 직접 선택한다. 일반 필드 병합·삭제 전파·outbox를 제공한다고 해석하지 않는다.
+현재 followup 이외의 일반 미전송 로컬 옷·판정·상품은 전체 받기로 교체되며 손실될 수 있다. 용량 보호가 이 병합 결함을 해결하지 않는다. 받기 전에 양쪽 전체 백업을 보관하고 미전송 변경을 직접 대조한다. 이 결함과 명시적 삭제 전파가 용량 작업 뒤의 우선 수정 대상이다.
 서버는 `BearerFilter` → `AuthenticatedRevisionFilter` → `RevisionService` → controller/service 순서다. owner 행 잠금 안에서 버전 확인·업무 트랜잭션·revision 갱신을 하고 실패 응답은 롤백한다. import는 upsert여서 로컬 목록에서 빠졌다는 이유만으로 서버 항목을 지우지 않는다.
 
 ### 사진 전송·교체·삭제
@@ -126,7 +142,7 @@ npm run build:mobile
 
 서버 전체 테스트는 `server/`에서 `mvn test`로 실행한다. API 테스트가 disposable PostgreSQL Testcontainers를 띄우므로 운영 DB를 연결할 필요가 없다. 결과는 `server/target/surefire-reports/`에 있으며 실패·오류·건너뜀까지 확인한다. 실제 서버 실행은 [운영 기준](../server/OPERATIONS-BETA.md)과 로컬 실행 도구를 따른다.
 
-핵심 회귀 위치는 `followup-contract.test.cjs`, `sync.test.cjs`, `sync-flow.test.cjs`, `storage-cas.test.cjs`, `app-persistence.test.cjs`, `backup-schema.test.cjs`, `calendar-integrity.test.cjs`, `readiness.test.cjs`와 서버 `FollowupContractTest`, `FollowupApiContractTest`, `ContractGuardTest`, `AuthIsolationTest`, `RevisionConcurrencyTest`, `GoldenParityTest`다. sync-flow와 app-persistence는 실제 앱 함수 본문을 추출해 합성 HTTP/저장 어댑터로 실행하며 실제 브라우저 검사는 아니다.
+핵심 회귀 위치는 `followup-contract.test.cjs`, `sync.test.cjs`, `sync-flow.test.cjs`, `storage-cas.test.cjs`, `app-persistence.test.cjs`, `purchase-persistence.test.cjs`, `capacity-flow.test.cjs`, `needs-offer-flow.test.cjs`, `backup-schema.test.cjs`, `calendar-integrity.test.cjs`, `readiness.test.cjs`와 서버 `FollowupContractTest`, `FollowupApiContractTest`, `AccountCapacityTest`, `ContractGuardTest`, `AuthIsolationTest`, `RevisionConcurrencyTest`, `GoldenParityTest`다. 앱 흐름 회귀는 실제 함수 본문을 추출해 합성 HTTP/저장 어댑터로 실행하며 실제 브라우저 검사는 아니다.
 골든 기대값 생성은 의도한 규칙 변경 때만 `npm run golden`과 `node server/tools/gen-rank-golden.mjs`를 사용한다. 실패를 없애려고 기대값을 먼저 갱신하지 않는다.
 브라우저 환경이 준비되면 `npx playwright install chromium` 뒤 `npm run check`, `check:storage`, `check:import`, `check:beta`, `check:web`, `check:a11y`, `check:perf`를 해당 산출물·환경에 맞게 실행한다. Node 테스트·빌드 성공은 이 검사의 실행이나 실제 휴대폰 확인을 대신하지 않는다.
 
@@ -139,6 +155,7 @@ npm run build:mobile
 | 409 `CLIENT_UPGRADE_REQUIRED` | meta 응답, `X-Eoul-Contract`, `AuthenticatedRevisionFilter`의 계약 검사 |
 | 428 또는 서버 버전 변경 409 | If-Match와 X-Wardrobe-Version, syncStamp/ack 출처, `RevisionService` |
 | 422와 필드 path | `FollowupWriteValidator`, 해당 공유 fixture, DB 제약; 정규화로 실패를 숨기지 않기 |
+| 422 `ACCOUNT_LIMIT` / `READ_CEILING`, 복구 화면 | `AccountCapacity`·`RecordLimits`, 앱 `canAdd`·`chooseStoredCopy`·`renderRecovery`; 신규 한도와 읽기 실패를 구분하고 원문 보존 |
 | 복원 거부 | `Beta.newerSchemaPath`/`readBackup`, `TenantDataService.restore`; 형식·범위·손상 여부 |
 | 삭제한 옷이 다시 나타남 | 현재 import upsert와 미구현 tombstone; 목록 누락으로 삭제를 추정하지 않기 |
 | 사진 누락 또는 삭제 파일 잔존 | `ItemMapper`, `PhotoStore`, `PhotoLifecycle`의 참조·커밋/롤백·수거 흐름 |
@@ -148,11 +165,11 @@ npm run build:mobile
 
 | 항목 | 2026-10-13 작성 시점 상태 |
 | --- | --- |
-| 서버 | 실제 PostgreSQL 16 Testcontainers 전체 130개, 실패/오류/건너뜀 0; 보고서와 server/README에서 확인 |
+| 서버 | 이전 계약 변경은 실제 PostgreSQL 16 Testcontainers 130개 통과. `d7dfa70` 용량 변경은 Java 21·PostgreSQL 16.15에서 전체 141개 통과, 실패/오류/건너뜀 0. 독립 서버 소스 검토에서 이 변경의 추가 확정 P0/P1 없음; 검토자가 전체 테스트를 재실행한 것은 아님 |
 | 공유 사례 | 88건의 계약 입력/정규화/거부 사례; DB/API 테스트 수와 같은 숫자는 아님 |
-| 클라이언트 | 최초 전체 Node 184개, 재로그인 수정 후 188개, 구매 저장 회귀 15개를 더한 최신 203개 통과. 최신 기본 3D 포함·모바일 빌드 성공. 앞선 분리 웹 빌드와 카탈로그 구조 검사도 성공했으며 카탈로그 주의 16건은 모르는 속성·치수 재확인 항목 |
+| 클라이언트 | 게시 이력은 최초 184개 → 재로그인 수정 188개 → 구매 저장 수정 203개 통과. 용량·상품 연결 `d7dfa70`의 Node 22.23.2 전체 231개 통과, 실패/건너뜀 0; 용량 VM 22개·구매 15개·상품 연결 6개 포함. 기본 12.24 MB·분리 웹/모바일 각 1.10 MB + 3D 11.14 MB 빌드 성공. 독립 검토자는 해당 43개를 재실행하고 소스를 검토해 이번 범위의 추가 확정 P0/P1을 찾지 못함; 전체 231개는 로그 확인이며 독립 전체 재실행은 아님. 코드 23개 파일의 동결 원문/커밋 일치와 원격 브랜치·PR SHA를 확인함 |
 | 브라우저/실제 기기/운영 복구 | 현재 변경의 전체 E2E, 실제 휴대폰·Safari, 배포 복구/성능은 별도 검증 필요 |
 
 AI가 설계 제안·구현·테스트·이 문서를 작성했다. 사용자는 핵심 규칙과 대안을 이해하고 실제 옷장·구매 후보로 결과의 타당성을 확인해야 한다. 자동 테스트는 패션 취향, 상품 정보의 사실성, 사진 체감 품질이나 사업성을 입증하지 않는다.
-남은 개발은 tombstone, 기록 상한 손실 방지, 원자적 v2 sync/outbox, PurchaseCase 이전, 전체 복원/CI gate, 상품·가격 출처 검증이다. 실제 상품 자동 수집·전체 시장 최저가·실사 착장·정확한 핏·3D 품질 완성은 완료 기능으로 소개하지 않는다.
+용량·상품 연결 코드 게시를 확인했으므로 다음에는 일반 미전송 자료의 pull 손실과 명시적 삭제/tombstone을 먼저 해결한다. 이후 원자적 v2 sync/outbox, PurchaseCase 이전, 복원 epoch·CI gate, 실제 기기, 상품·가격 출처 검증을 이어간다. 현재 FASHN v1.5 착용 품질은 불합격으로 채택 보류했다(ADR-14). 다른 방식도 같은 인물·상품의 자연스러움과 상품 형태 보존을 검증해야 한다. 실제 상품 자동 수집·전체 시장 최저가·실사 착장·정확한 핏·3D 품질 완성은 완료 기능으로 소개하지 않는다.
 다음 담당자는 [알파 완료 기준](system-design-alpha.md#완료-확인)을 재현한 뒤 후속 작업을 이어간다. 사업 평가는 문제 해결·차별화·검증 계획을 별도로 보고, 서비스 시작 전 사용자·거래·매출 수치를 점수로 채우지 않는다.
