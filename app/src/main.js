@@ -2,12 +2,12 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, CATS, COLORS, stylesFor } from '.
 import { ROLE_LABEL } from './data/looks.js';
 import { PRODUCTS, CATALOG } from './data/products.js';
 import {
-  recommendItems, recommendLooks, closetLooks, essentials, search, productsFor, scoreSlot, seasonOf, SEASON_LABEL,
+  recommendItems, recommendLooks, closetLooks, essentials, search, exampleCloset, productsFor, scoreSlot, seasonOf, SEASON_LABEL,
   formatPrice, josa, shortName, brandsFor, brandStyleAffinity, PRODUCT_BY_ID, styleScore,
 } from './engine.js';
 import { garmentSvg, ICON } from './icons.js';
+import { DEFAULT_STATE, canStore, loadState, saveState, makeBackup, parseBackup } from './store.js';
 
-const KEY = 'eoul:v1';
 const BUDGETS = [
   [null, '예산 전체'],
   [50000, '5만원 이하'],
@@ -19,61 +19,57 @@ const EXAMPLES = {
   M: ['출근용 셔츠 10만원 이하', '청바지에 어울리는 신발', '아메카지 재킷', '폴로 니트', '겨울 데이트 코트'],
   F: ['출근용 셔츠 10만원 이하', '원피스에 어울리는 신발', '겨울 코트 20만원 이하', '가성비 니트', '데이트 스커트'],
 };
-// 이전 버전(색이 붙은 종류)에서 옮겨 오기
-const LEGACY = {
-  'm-oxford-white': ['m-oxford', 'white'], 'm-oxford-blue': ['m-oxford', 'blue'], 'm-tee-white': ['m-tee', 'white'], 'm-knit-crew': ['m-knit', 'navy'],
-  'm-knit-cable': ['m-cable', 'ivory'], 'm-denim': ['m-denim-raw', 'indigo'], 'm-slacks-grey': ['m-slacks', 'grey'], 'm-slacks-wide': ['m-slacks', 'black'],
-  'm-fatigue': ['m-work-pants', 'olive'], 'm-sneaker-leather': ['m-white-sneaker', 'white'], 'm-chuck': ['m-canvas', 'ivory'], 'm-nb': ['m-runner', 'grey'],
-  'm-boots': ['m-chelsea', 'brown'], 'm-barbour': ['m-wax', 'olive'], 'f-shirt-white': ['f-shirt', 'white'], 'f-shirt-stripe': ['f-stripe', 'blue'],
-  'f-maryjane': ['f-flat', 'black'],
-};
 
-const defaults = { v: 2, onboarded: false, gender: null, styles: [], brands: [], brandOnly: false, occasion: null, budget: null, closet: [], saved: [], hidden: [], tab: 'home' };
-let state = load();
+// ── 저장: 실패하면 성공한 것처럼 보이지 않게 한다
+let ls = null;
+try {
+  ls = window.localStorage;
+} catch {
+  ls = null;
+}
+const storageOK = canStore(ls);
+const loaded = loadState(ls);
+let state = loaded.state;
 let query = '';
 let obStep = state.gender ? 2 : 1;
 let lastLooks = [];
 let closetFilter = 'all';
 let draft = null; // 옷장에 넣는 중인 옷
+let pendingRestore = null; // 확인을 기다리는 백업
+let saveWarned = false;
 const photos = new Map(); // 내 옷 사진 (이 기기의 IndexedDB)
 
-function migrate(s) {
-  if (!s.styles?.length && s.style) s.styles = [{ casual: s.gender === 'F' ? 'casual' : 'cityboy' }[s.style] || s.style];
-  if (s.owned?.length && !s.closet?.length) {
-    s.closet = s.owned.map((id, n) => {
-      const [slot, color] = LEGACY[id] || [id, SLOT_BY_ID[id]?.colors?.[0]];
-      return SLOT_BY_ID[slot] ? { id: `c${Date.now()}${n}`, slot, color } : null;
-    }).filter(Boolean);
-  }
-  delete s.owned;
-  delete s.style;
-  s.closet = (s.closet || []).filter((i) => SLOT_BY_ID[i.slot]);
-  s.saved = (s.saved || []).filter((id) => PRODUCT_BY_ID[id]);
-  return s;
-}
-function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? { ...defaults, ...migrate(JSON.parse(raw)), tab: 'home' } : { ...defaults };
-  } catch {
-    return { ...defaults };
-  }
-}
 function persist() {
-  try {
-    const { tab, ...rest } = state;
-    localStorage.setItem(KEY, JSON.stringify(rest));
-  } catch {
-    /* 저장이 막힌 브라우저에서도 화면은 그대로 동작한다 */
-  }
+  return storageOK && saveState(ls, state);
 }
-function set(patch, { rerender = true } = {}) {
+// critical: 옷장처럼 잃으면 안 되는 변경. 저장에 실패하면 화면을 되돌리고 false를 돌려준다
+function set(patch, { rerender = true, critical = false } = {}) {
+  const prev = state;
   state = { ...state, ...patch };
-  persist();
+  if (!persist() && storageOK) {
+    if (critical) {
+      state = prev;
+      if (rerender) render();
+      toast('저장 공간이 부족해 저장하지 못했어요. 백업을 받은 뒤 사진이 있는 옷을 정리해 주세요.');
+      return false;
+    }
+    if (!saveWarned) {
+      saveWarned = true;
+      toast('이 기기에 저장하지 못했어요. 저장 공간을 확인해 주세요.');
+    }
+  }
   if (rerender) render();
+  return true;
+}
+// 브라우저가 공간이 부족할 때 이 사이트의 저장 정보를 먼저 지우지 않도록 요청한다 (지원하는 브라우저만)
+let persistAsked = false;
+function askPersistentStorage() {
+  if (persistAsked) return;
+  persistAsked = true;
+  navigator.storage?.persist?.().catch(() => {});
 }
 
-// ── 사진 저장 (IndexedDB, 실패해도 앱은 동작)
+// ── 사진 저장 (IndexedDB). 저장이 끝난 뒤에만 성공으로 본다
 let dbp = null;
 function db() {
   if (!dbp) {
@@ -87,38 +83,48 @@ function db() {
         reject(e);
       }
     });
+    dbp.catch(() => { dbp = null; });
   }
   return dbp;
 }
+async function photoTx(fn) {
+  const d = await db();
+  await new Promise((resolve, reject) => {
+    const tx = d.transaction('photos', 'readwrite');
+    fn(tx.objectStore('photos'));
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
 async function photoPut(id, data) {
-  photos.set(id, data);
   try {
-    const d = await db();
-    d.transaction('photos', 'readwrite').objectStore('photos').put(data, id);
+    await photoTx((store) => store.put(data, id));
+    photos.set(id, data);
+    return true;
   } catch {
-    /* 이번 세션 동안만 보인다 */
+    return false;
   }
 }
 async function photoDelete(id) {
   photos.delete(id);
   try {
-    const d = await db();
-    d.transaction('photos', 'readwrite').objectStore('photos').delete(id);
+    await photoTx((store) => store.delete(id));
   } catch {
-    /* 무시 */
+    /* 남은 사진은 옷장 어디에도 쓰이지 않는다 */
   }
 }
-async function photoLoadAll() {
+async function photoLoadAll({ rerender = true } = {}) {
   try {
     const d = await db();
     const store = d.transaction('photos').objectStore('photos');
-    const ids = state.closet.filter((i) => i.photo).map((i) => i.id);
+    const ids = state.closet.filter((i) => i.photo && !photos.has(i.id)).map((i) => i.id);
     await Promise.all(ids.map((id) => new Promise((res) => {
       const r = store.get(id);
       r.onsuccess = () => { if (r.result) photos.set(id, r.result); res(); };
       r.onerror = () => res();
     })));
-    if (ids.length) render();
+    if (ids.length && rerender) render();
   } catch {
     /* 사진 없이 그림으로 보여 준다 */
   }
@@ -186,10 +192,11 @@ function gridCard({ slot, product, reasons }) {
     ${heartBtn(product)}
   </article>`;
 }
+const ownLabel = (item) => (item?.example ? '예시' : '내 옷');
 function tile(i) {
   if (i.owned) {
     const inner = i.item ? itemPicture(i.item, 'tile-in') : `<div class="tile-in">${art(i.slot, i.color)}</div>`;
-    return `<div class="tile"><span class="badge">내 옷</span>${inner}</div>`;
+    return `<div class="tile"><span class="badge">${ownLabel(i.item)}</span>${inner}</div>`;
   }
   return `<div class="tile">${i.product.img ? `<img src="${esc(i.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-slot="${i.slot.id}" data-color="${i.product.color || ''}">` : art(i.slot, i.product.color)}</div>`;
 }
@@ -202,8 +209,8 @@ function lookCard(r, { wide = false } = {}) {
       <div class="look-title">${esc(r.look.title)}</div>
       <div class="look-note">${esc(r.look.note)}</div>
       <div class="look-meta">
-        <span>${r.ownedCount ? `내 옷 ${r.ownedCount}개${r.buyCount ? ` + 새로 ${r.buyCount}개` : ''}` : `새로 ${r.buyCount}개`}</span>
-        <b>${r.buyCount ? formatPrice(r.buyTotal) : '가진 옷으로 완성'}</b>
+        <span>${r.ownedCount ? `${state.example ? '예시 옷' : '내 옷'} ${r.ownedCount}개${r.buyCount ? ` + 새로 ${r.buyCount}개` : ''}` : `새로 ${r.buyCount}개`}</span>
+        <b>${r.buyCount ? formatPrice(r.buyTotal) : state.example ? '예시 옷으로 완성' : '가진 옷으로 완성'}</b>
       </div>
     </div>
   </button>`;
@@ -259,7 +266,8 @@ function renderOnboarding() {
       <div class="step"><div class="opts">${brandChips()}</div></div>
       <div class="ob-cta"><button class="btn secondary small" data-action="ob-back">이전</button><button class="btn" data-action="ob-done">${state.brands.length ? `${state.brands.length}개 브랜드로 시작` : '건너뛰고 시작'}</button></div>`;
   }
-  return `<div class="onboard"><div class="onboard-inner"><div class="logo">어울</div>${steps}${body}<p class="privacy">고른 내용은 이 기기에만 저장돼요.</p></div></div>`;
+  const restore = obStep === 1 || !g ? ' <button class="link" data-action="restore">백업 파일 불러오기</button>' : '';
+  return `<div class="onboard"><div class="onboard-inner"><div class="logo">어울</div>${steps}${body}<p class="privacy">고른 내용은 이 기기에만 저장돼요.${restore}</p></div></div>`;
 }
 
 // ── 홈
@@ -312,9 +320,9 @@ function renderHome() {
   const ownedCount = myCloset().length;
   return `
     <section class="section">
-      <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${esc(ctxLine)}${ownedCount ? ` · 내 옷 ${ownedCount}벌 반영` : ''}</div></div></div>
+      <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${esc(ctxLine)}${ownedCount ? ` · ${state.example ? '예시 옷' : '내 옷'} ${ownedCount}벌 반영` : ''}</div></div></div>
       ${looks.length ? `<div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : `<div class="notice">이 조건에 맞는 코디가 아직 없어요. 예산·상황·브랜드 조건을 넓혀 보세요.</div>`}
-      ${ownedCount ? '' : `<div class="notice" style="margin-top:8px">가진 옷을 알려 주면 그 옷을 살린 코디로 바꿔 드려요. <button class="link" data-action="tab" data-tab="closet" style="text-decoration:underline">옷장 채우기</button></div>`}
+      ${ownedCount ? '' : `<div class="notice" style="margin-top:8px">가진 옷을 알려 주면 그 옷을 살린 코디로 바꿔 드려요. <button class="link" data-action="tab" data-tab="closet" style="text-decoration:underline">옷장 채우기</button> · <button class="link" data-action="example-on" style="text-decoration:underline">예시 옷장으로 먼저 보기</button></div>`}
     </section>
     ${myBrandRow()}
     <section class="section">
@@ -346,7 +354,7 @@ function renderCloset() {
   const ess = essentials(state);
   const missing = ess.filter((e) => !e.owned);
   const head = `<section class="section">
-    <div class="section-head"><div><h2>내 옷장</h2><div class="sub">${items.length ? `${items.length}벌 · ${esc(myStyles().map((s) => STYLES[s].short).join('·'))} 기본템 ${ess.length - missing.length}/${ess.length}` : '가진 옷을 넣으면 그 옷으로 코디를 짜 드려요'}</div></div>
+    <div class="section-head"><div><h2>내 옷장</h2><div class="sub">${items.length ? `${state.example ? '예시 ' : ''}${items.length}벌 · ${esc(myStyles().map((s) => STYLES[s].short).join('·'))} 기본템 ${ess.length - missing.length}/${ess.length}` : '가진 옷을 넣으면 그 옷으로 코디를 짜 드려요'}</div></div>
       <button class="btn small" data-action="add-start">${ICON.plus}옷 넣기</button></div>
   </section>`;
 
@@ -356,13 +364,15 @@ function renderCloset() {
         <button class="way" data-action="add-start">${ICON.hanger}<b>종류 골라 넣기</b><span>셔츠·바지 그림을 누르고 색만 고르면 돼요</span></button>
         <button class="way" data-action="add-photo">${ICON.camera}<b>사진으로 넣기</b><span>사진은 이 기기에만 저장돼요</span></button>
         <button class="way" data-action="tab" data-tab="home">${ICON.sparkle}<b>상품에서 넣기</b><span>추천 상품을 열고 "이 상품 있어요"를 누르세요</span></button>
+        <button class="way" data-action="example-on">${ICON.eye}<b>예시 옷장으로 먼저 보기</b><span>예시 옷 몇 벌로 "오늘 뭐 입지?"를 미리 써 봐요. 내 옷을 넣으면 예시는 사라져요</span></button>
       </div>
     </section>${essentialSection(ess)}`;
   }
 
   const { ready, almost } = closetLooks(state, { limit: 3 });
-  const today = `<section class="section">
-    <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? '가진 옷만으로 만든 코디예요' : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div></div></div>
+  const exampleBanner = state.example ? `<div class="banner"><span>예시 옷장으로 보는 중이에요. 내 옷을 하나 넣으면 예시는 사라져요.</span><button class="link" data-action="example-off">예시 비우기</button></div>` : '';
+  const today = `${exampleBanner}<section class="section">
+    <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.example ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div></div></div>
     ${ready.length ? `<div class="looks">${ready.map((r) => lookCard(r)).join('')}</div>` : ''}
     ${almost.length ? `<h3 class="block">하나만 사면 완성</h3><div class="looks">${almost.map((r) => lookCard(r)).join('')}</div>` : ''}
   </section>`;
@@ -375,10 +385,11 @@ function renderCloset() {
     <div class="closet-items">${shown.map((i) => {
       const slot = SLOT_BY_ID[i.slot];
       const p = i.productId ? PRODUCT_BY_ID[i.productId] : null;
-      return `<button class="citem" data-action="open-own" data-id="${i.id}">${itemPicture(i)}<span class="cname"><i class="dot" style="background:${hex(i.color)}"></i>${esc(shortName(slot))}</span><span class="cbrand">${esc(p?.brand || i.brand || COLORS[i.color]?.label || '')}</span></button>`;
+      return `<button class="citem" data-action="open-own" data-id="${i.id}">${itemPicture(i)}<span class="cname"><i class="dot" style="background:${hex(i.color)}"></i>${esc(shortName(slot))}</span><span class="cbrand">${i.example ? '예시 옷' : esc(p?.brand || i.brand || COLORS[i.color]?.label || '')}</span></button>`;
     }).join('')}</div>
   </section>`;
-  return head + today + grid + essentialSection(ess);
+  const keep = state.example ? '' : `<p class="footer">이 옷장은 이 기기에만 있어요. 기기를 바꾸거나 브라우저 정보를 지우기 전에 <button class="link" data-action="backup">백업 파일 받기</button></p>`;
+  return head + today + grid + essentialSection(ess) + keep;
 }
 
 function essentialSection(ess) {
@@ -420,7 +431,8 @@ function render() {
     return;
   }
   const body = state.tab === 'closet' ? renderCloset() : state.tab === 'saved' ? renderSaved() : renderHome();
-  $app.innerHTML = (state.tab === 'home' ? topBar() : '') + `<main>${body}</main>` + nav();
+  const blocked = storageOK ? '' : '<div class="banner warn"><span>이 브라우저는 저장을 막고 있어요(사생활 보호 모드 등). 창을 닫으면 옷장과 찜이 사라져요.</span></div>';
+  $app.innerHTML = (state.tab === 'home' ? topBar() : '') + `<main>${blocked}${body}</main>` + nav();
 }
 
 // ── 시트
@@ -441,7 +453,7 @@ function lookRows(r) {
     if (i.owned) {
       const pic = i.item ? itemPicture(i.item) : `<div class="thumb">${art(i.slot, i.color)}</div>`;
       const brand = i.item?.productId ? PRODUCT_BY_ID[i.item.productId]?.brand : i.item?.brand;
-      return `<div class="look-row">${pic}<div><div class="role">${ROLE_LABEL[i.role]} · 내 옷</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">보유</span></div>`;
+      return `<div class="look-row">${pic}<div><div class="role">${ROLE_LABEL[i.role]} · ${ownLabel(i.item)}</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">${i.item?.example ? '예시' : '보유'}</span></div>`;
     }
     return `<button class="look-row" data-action="open-item" data-id="${i.product.id}">${picture(i.product, i.slot)}<div><div class="role">${ROLE_LABEL[i.role]} · ${esc(i.product.brand)}</div><div class="nm">${esc(i.product.name)}</div></div><span class="pr">${formatPrice(i.product.price)}</span></button>`;
   }).join('');
@@ -455,9 +467,9 @@ function itemSheet(id) {
   const { reasons } = scoreSlot(slot, c);
   const alts = productsFor(slot.id).filter((x) => x.id !== p.id).slice(0, 8);
   const sameBrand = PRODUCTS.filter((x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === state.gender && x.slot !== p.slot).slice(0, 8);
-  const anchor = { id: 'preview', slot: p.slot, color: p.color, productId: p.id };
-  const look = recommendLooks({ ...state, budget: null }, { limit: 1, occasion: null, anchorItem: anchor })[0];
   const owned = state.closet.some((i) => i.productId === p.id);
+  const ownedItem = state.closet.find((i) => i.productId === p.id);
+  const look = recommendLooks({ ...state, budget: null }, { limit: 1, occasion: null, ...(ownedItem ? { anchorItem: ownedItem } : { anchorProduct: p }) })[0];
   lastLooks = look ? [look] : [];
   openSheet(`
     ${picture(p, slot, 'hero')}
@@ -491,7 +503,7 @@ function lookSheet(index) {
     <h2 class="detail-title" style="padding-right:48px">${esc(r.look.title)}</h2>
     <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
     ${lookRows(r)}
-    <div class="total"><span>${r.buyCount ? `새로 살 것 ${r.buyCount}개` : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
+    <div class="total"><span>${r.buyCount ? `새로 살 것 ${r.buyCount}개` : state.example ? '예시 옷으로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
     ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">필요한 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
   `);
 }
@@ -506,7 +518,7 @@ function ownSheet(id) {
   lastLooks = [];
   openSheet(`
     ${itemPicture(item, 'hero')}
-    <div class="brand-name" style="margin-top:14px">${esc(p?.brand || item.brand || '브랜드 미입력')}</div>
+    <div class="brand-name" style="margin-top:14px">${item.example ? '예시 옷' : esc(p?.brand || item.brand || '브랜드 미입력')}</div>
     <h2 class="detail-title">${esc(p?.name || `${COLORS[item.color]?.label || ''} ${slot.name}`)}</h2>
     <div class="fine">${esc(slot.name)} · ${esc(COLORS[item.color]?.label || '색 미입력')}</div>
     <div class="why"><h3>이렇게 입어요</h3><ul><li>${esc(slot.tip)}</li></ul></div>
@@ -574,8 +586,12 @@ function optionSheet(kind) {
     </div>
     ${state.brands.length ? `<label class="toggle"><input type="checkbox" id="brand-only" data-action="toggle-brand-only-box" ${state.brandOnly ? 'checked' : ''}> 내 브랜드 상품만 추천</label>` : ''}</div>
     <div class="opt-group"><h3>한 벌 예산</h3><div class="opts">${budgetOpts}</div></div>
-    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 이 기기의 브라우저에만 있어요.</p>
-      <button class="chip" data-action="reset" style="margin-top:10px">모두 지우고 처음부터</button></div>
+    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 이 기기의 브라우저에만 있어요. 백업 파일로 받아 두면 다른 기기나 브라우저로 옮길 수 있어요.</p>
+      <div class="opts" style="margin-top:10px">
+        <button class="chip" data-action="backup">백업 파일 받기</button>
+        <button class="chip" data-action="restore">백업에서 불러오기</button>
+        <button class="chip" data-action="reset">모두 지우고 처음부터</button>
+      </div></div>
   `);
 }
 
@@ -601,16 +617,33 @@ function refreshHearts(id) {
 }
 
 const newId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+// 옷장에 한 벌 넣는다. 예시 옷장이었다면 예시 옷을 비운다. 저장에 실패하면 null
 function addToCloset(item, message) {
-  const before = state.closet;
+  const before = { closet: state.closet, example: state.example };
   const entry = { id: newId(), addedAt: Date.now(), ...item };
-  set({ closet: [...state.closet, entry] });
-  toast(message || `${SLOT_BY_ID[item.slot].name}${josa(SLOT_BY_ID[item.slot].name, '을', '를')} 옷장에 넣었어요`, () => {
-    set({ closet: before });
+  const base = state.example ? state.closet.filter((i) => !i.example) : state.closet;
+  if (!set({ closet: [...base, entry], example: false }, { critical: true })) return null;
+  askPersistentStorage();
+  const name = SLOT_BY_ID[item.slot].name;
+  toast(`${message || `${name}${josa(name, '을', '를')} 옷장에 넣었어요`}${before.example ? ' 예시 옷은 비웠어요.' : ''}`, () => {
+    set(before, { critical: true });
     if (entry.photo) photoDelete(entry.id);
   });
   return entry;
 }
+async function saveDraft(d) {
+  const id = newId();
+  const hasPhoto = d.photo ? await photoPut(id, d.photo) : false;
+  const name = SLOT_BY_ID[d.slot].name;
+  const message = d.photo && !hasPhoto ? `${name}${josa(name, '을', '를')} 넣었어요. 사진은 저장하지 못해 그림으로 보여요` : null;
+  const entry = addToCloset({ id, slot: d.slot, color: d.color, brand: d.brand || null, photo: hasPhoto }, message);
+  if (!entry) {
+    if (hasPhoto) photoDelete(id);
+    return;
+  }
+  if (state.tab !== 'closet') set({ tab: 'closet' });
+}
+
 
 // 사진의 가운데 색으로 옷 색을 짐작한다 (사용자가 바꿀 수 있는 제안)
 function guessColor(img) {
@@ -657,6 +690,59 @@ function readPhoto(file) {
   reader.readAsDataURL(file);
 }
 
+// ── 백업 파일
+const today = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+async function downloadBackup() {
+  const real = state.closet.filter((i) => !i.example);
+  await photoLoadAll({ rerender: false });
+  const data = makeBackup({ ...state, closet: real, example: false }, photos);
+  const missing = real.filter((i) => i.photo && !data.photos[i.id]).length;
+  try {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `eoul-backup-${today()}.json`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(`옷 ${real.length}벌·찜 ${state.saved.length}개를 백업 파일로 받았어요${missing ? ` (사진 ${missing}장은 읽지 못했어요)` : ''}`);
+  } catch {
+    toast('이 화면에서는 파일을 받을 수 없어요. 브라우저에서 앱 주소를 직접 열어 주세요.');
+  }
+}
+async function readBackup(file) {
+  if (file.size > 60 * 1024 * 1024) { toast('백업 파일이 너무 커요(60MB 넘음).'); return; }
+  const r = parseBackup(await file.text());
+  if (!r.ok) { toast(r.error); return; }
+  pendingRestore = r;
+  const now = state.closet.filter((i) => !i.example).length;
+  openSheet(`
+    <h2 class="detail-title">백업 불러오기</h2>
+    <p class="sub" style="margin-top:6px">${r.exportedAt && !Number.isNaN(Date.parse(r.exportedAt)) ? `${new Date(r.exportedAt).toLocaleDateString('ko-KR')}에 만든 백업이에요. ` : ''}옷 ${r.state.closet.length}벌, 사진 ${r.photos.size}장, 찜 ${r.state.saved.length}개가 들어 있어요.${r.missingPhotos ? ` 사진 ${r.missingPhotos}장은 읽을 수 없어 그림으로 보여요.` : ''}</p>
+    <div class="notice" style="margin-top:14px">불러오면 지금 이 기기의 옷장(${now}벌)·찜·취향이 백업 내용으로 바뀌어요. 지금 내용을 남기려면 먼저 백업 파일을 받아 두세요.</div>
+    <div class="cta"><button class="btn secondary" data-action="close-sheet">취소</button><button class="btn" data-action="restore-confirm">불러오기</button></div>
+  `);
+}
+async function applyRestore() {
+  const r = pendingRestore;
+  pendingRestore = null;
+  closeSheet();
+  if (!r) return;
+  const failed = [];
+  for (const [id, data] of r.photos) if (!(await photoPut(id, data))) failed.push(id);
+  const closet = r.state.closet.map((i) => (failed.includes(i.id) ? { ...i, photo: false } : i));
+  const oldPhotos = state.closet.filter((i) => i.photo && !r.photos.has(i.id)).map((i) => i.id);
+  if (!set({ ...DEFAULT_STATE, ...r.state, closet, onboarded: !!(r.state.gender && r.state.styles.length), tab: 'closet' }, { critical: true })) {
+    r.photos.forEach((_, id) => { if (!state.closet.some((i) => i.id === id)) photoDelete(id); });
+    return;
+  }
+  oldPhotos.forEach(photoDelete);
+  obStep = state.gender ? 2 : 1;
+  window.scrollTo(0, 0);
+  toast(`백업을 불러왔어요. 옷 ${closet.length}벌${failed.length ? `, 사진 ${failed.length}장은 저장하지 못했어요` : ''}`);
+}
+
 // ── 이벤트
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
@@ -697,7 +783,7 @@ document.addEventListener('click', (e) => {
     case 'open-profile': optionSheet('profile'); break;
     case 'open-brands': optionSheet('brands'); break;
     case 'set-budget': set({ budget: el.dataset.v ? Number(el.dataset.v) : null }); closeSheet(); break;
-    case 'set-gender': set({ gender: el.dataset.g, styles: stylesFor(el.dataset.g).slice(0, 1), brands: [] }); optionSheet('profile'); break;
+    case 'set-gender': set({ gender: el.dataset.g, styles: stylesFor(el.dataset.g).slice(0, 1), brands: [], closet: state.closet.filter((i) => !i.example), example: false }); optionSheet('profile'); break;
     case 'profile-style': {
       const k = el.dataset.style;
       const has = state.styles.includes(k);
@@ -714,7 +800,7 @@ document.addEventListener('click', (e) => {
         break;
       }
       state.closet.forEach((i) => i.photo && photoDelete(i.id));
-      state = { ...defaults };
+      state = { ...DEFAULT_STATE };
       obStep = 1;
       persist();
       closeSheet();
@@ -759,8 +845,8 @@ document.addEventListener('click', (e) => {
       const item = state.closet.find((i) => i.id === el.dataset.id);
       const before = state.closet;
       closeSheet();
-      set({ closet: state.closet.filter((i) => i.id !== el.dataset.id) });
-      toast('옷장에서 뺐어요', () => set({ closet: before }));
+      if (!set({ closet: state.closet.filter((i) => i.id !== el.dataset.id) }, { critical: true })) break;
+      toast('옷장에서 뺐어요', () => set({ closet: before }, { critical: true }));
       if (item?.photo) setTimeout(() => { if (!state.closet.some((i) => i.id === item.id)) photoDelete(item.id); }, 3500);
       break;
     }
@@ -793,11 +879,24 @@ document.addEventListener('click', (e) => {
     case 'draft-save': {
       const d = draft;
       closeSheet();
-      const entry = addToCloset({ slot: d.slot, color: d.color, brand: d.brand || null, photo: !!d.photo });
-      if (d.photo) photoPut(entry.id, d.photo).then(render);
-      if (state.tab !== 'closet') set({ tab: 'closet' });
+      saveDraft(d);
       break;
     }
+    case 'example-on': {
+      const items = exampleCloset(state);
+      if (!items.length) { toast('지금 스타일로 만들 예시가 없어요'); break; }
+      if (set({ closet: [...state.closet.filter((i) => !i.example), ...items], example: true, tab: 'closet' }, { critical: true })) {
+        window.scrollTo(0, 0);
+        toast(`예시 옷 ${items.length}벌을 넣었어요. 내 옷을 넣으면 예시는 사라져요`);
+      }
+      break;
+    }
+    case 'example-off':
+      if (set({ closet: state.closet.filter((i) => !i.example), example: false }, { critical: true })) toast('예시 옷을 비웠어요');
+      break;
+    case 'backup': downloadBackup(); break;
+    case 'restore': document.getElementById('backup-input')?.click(); break;
+    case 'restore-confirm': applyRestore(); break;
     case 'undo': toast.undo?.(); $toast.classList.remove('show'); break;
     default: break;
   }
@@ -807,6 +906,10 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'brand-only') set({ brandOnly: e.target.checked });
   if (e.target.id === 'photo-input' && e.target.files?.[0]) {
     readPhoto(e.target.files[0]);
+    e.target.value = '';
+  }
+  if (e.target.id === 'backup-input' && e.target.files?.[0]) {
+    readBackup(e.target.files[0]);
     e.target.value = '';
   }
 });
@@ -851,3 +954,4 @@ document.addEventListener('error', (e) => {
 
 render();
 photoLoadAll();
+if (loaded.unreadable) toast('저장된 정보를 읽지 못해 새로 시작해요. 원래 내용은 이 기기에 따로 남겨 두었어요.');

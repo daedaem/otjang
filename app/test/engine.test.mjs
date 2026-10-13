@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  recommendItems, recommendLooks, closetLooks, essentials, search, seasonOf, josa, productsFor, harmony, brandsFor, styleScore,
+  recommendItems, recommendLooks, closetLooks, essentials, search, seasonOf, josa, productsFor, harmony, brandsFor, styleScore, exampleCloset,
 } from '../src/engine.js';
 import { parseQuery } from '../src/query.js';
 import { SLOTS, SLOT_BY_ID, STYLES, COLORS } from '../src/data/slots.js';
@@ -23,6 +23,21 @@ test('카탈로그: 모든 상품이 실제 종류·색·가격·링크를 가�
     assert.match(p.img, /^https:\/\/image\.msscdn\.net\//);
   }
   assert.equal(new Set(PRODUCTS.map((p) => p.id)).size, PRODUCTS.length, '중복 없음');
+});
+
+test('카탈로그: 이름이 다른 종류를 가리키는 상품이 없다', () => {
+  // 예: 구두주걱이 '구두'로, 퍼티그 팬츠가 '필드 재킷'으로, 수영복이 '스트라이프 셔츠'로 들어가던 오류
+  const conflict = {
+    shoes: /팬츠|pants|셔츠|shirt|재킷|자켓|jacket|코트|주걱|슈\s*혼|깔창|인솔|양말/i,
+    bottom: /재킷|자켓|jacket|코트|coat|스웨터|sweater|swim|수영|쇼트|shorts\b/i,
+    top: /팬츠|pants|슬랙스|스커트|skirt|쇼트(?!\s*슬리브)|shorts\b|재킷|자켓|jacket|코트|swim|수영|장갑|gloves?\b/i,
+    outer: /팬츠|pants|슬랙스|스커트|구두|스니커즈|swim|수영|티셔츠/i,
+    dress: /팬츠|pants|재킷|자켓|swim|수영/i,
+    acc: /팬츠|재킷|자켓|셔츠|swim/i,
+  };
+  const bad = PRODUCTS.filter((p) => conflict[SLOT_BY_ID[p.slot].cat]?.test(p.name));
+  assert.deepEqual(bad.map((p) => `${p.id} ${p.slot} ${p.name}`), []);
+  assert.ok(search(base, '레드윙 구두').items.every((i) => !/주걱|슈혼/.test(i.product.name)));
 });
 
 test('카탈로그: 코디 공식에 쓰인 종류마다 상품이 있다', () => {
@@ -158,13 +173,58 @@ test('모든 종류 정의가 올바르다', () => {
 });
 
 test('한 파일 빌드에서 모듈의 최상위 이름이 겹치지 않는다', () => {
-  const files = ['data/slots.js', 'data/looks.js', 'data/products.js', 'query.js', 'engine.js', 'icons.js', 'main.js'];
+  const files = ['data/slots.js', 'data/looks.js', 'data/products.js', 'query.js', 'engine.js', 'store.js', 'icons.js', 'main.js'];
   const seen = new Map();
   for (const f of files) {
     const src = fs.readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
     for (const m of src.matchAll(/^(?:export\s+)?(?:const|let|function|class)\s+([A-Za-z_$][\w$]*)/gm)) {
       assert.ok(!seen.has(m[1]), `${m[1]}: ${seen.get(m[1])} / ${f}`);
       seen.set(m[1], f);
+    }
+  }
+});
+
+test('검색의 기준 아이템은 가진 옷일 때만 내 옷으로, 아니면 살 상품으로 넣는다', () => {
+  const empty = search(base, '청바지에 어울리는 신발').outfit;
+  const jeans = empty.items.find((i) => i.slot.id === 'm-denim' || i.slot.id === 'm-denim-raw');
+  assert.ok(jeans, '청바지가 코디에 들어간다');
+  assert.equal(jeans.owned, false);
+  assert.ok(jeans.product.price > 0);
+  assert.equal(empty.buyTotal, empty.items.filter((i) => !i.owned).reduce((s, i) => s + i.product.price, 0));
+  assert.equal(empty.ownedCount, 0);
+
+  const mine = item('m-denim', 'indigo');
+  const owned = search({ ...base, closet: [mine] }, '청바지에 어울리는 신발').outfit;
+  assert.ok(owned.items.some((i) => i.owned && i.item?.id === mine.id));
+});
+
+test('상품 상세의 코디는 보고 있는 상품을 그대로 넣고 살 것으로 계산한다', () => {
+  const p = productsFor('m-oxford')[3];
+  const [look] = recommendLooks(base, { limit: 1, occasion: null, anchorProduct: p });
+  const row = look.items.find((i) => i.slot.id === 'm-oxford');
+  assert.equal(row.product.id, p.id);
+  assert.equal(row.owned, false);
+  assert.ok(look.buyTotal >= p.price);
+});
+
+test('예시 옷장이면 추천 이유에 "가진"이 아니라 "예시 옷장의"라고 쓴다', () => {
+  const closet = [item('m-chino', 'beige', { example: true }), item('m-loafer', 'brown', { example: true })];
+  const real = recommendItems({ ...base, closet });
+  const ex = recommendItems({ ...base, closet, example: true });
+  assert.ok(real.some((i) => i.reasons[0].startsWith('가진 ')));
+  assert.ok(ex.some((i) => i.reasons[0].startsWith('예시 옷장의 ')));
+  assert.ok(ex.every((i) => !i.reasons[0].startsWith('가진 ')));
+});
+
+test('예시 옷장: 어떤 스타일이든 6벌로 "오늘 뭐 입지?" 코디가 바로 나온다', () => {
+  for (const [key, s] of Object.entries(STYLES)) {
+    for (const g of s.g) {
+      const st = { ...base, gender: g, styles: [key] };
+      const closet = exampleCloset(st);
+      assert.ok(closet.length >= 4 && closet.length <= 6, `${g} ${key} ${closet.length}`);
+      assert.ok(closet.every((i) => i.example && SLOT_BY_ID[i.slot].g === g));
+      const { ready } = closetLooks({ ...st, closet, example: true });
+      assert.ok(ready.length >= 1, `${g} ${key}`);
     }
   }
 });

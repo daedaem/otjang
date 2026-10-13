@@ -87,6 +87,7 @@ function ctx(state) {
     brands: new Set(state.brands || []),
     brandOnly: !!state.brandOnly && (state.brands || []).length > 0,
     hidden: new Set(state.hidden || []),
+    example: !!state.example, // 예시 옷장으로 둘러보는 중
   };
 }
 
@@ -163,15 +164,17 @@ export function scoreSlot(slot, c, looks = matchingLooks(c)) {
   score += Math.min(lookCount, 3);
   score += Math.min(pairs.size, 4) * 1.5;
 
+  let pairReason = null;
   if (pairs.size) {
     const names = [...pairs].slice(0, 2).map((id) => shortName(SLOT_BY_ID[id]));
     const last = names[names.length - 1];
-    reasons.push(`가진 ${names.join('·')}${josa(last, '과', '와')} 바로 입을 수 있어요`);
+    pairReason = `${c.example ? '예시 옷장의' : '가진'} ${names.join('·')}${josa(last, '과', '와')} 바로 입을 수 있어요`;
+    reasons.push(pairReason);
   }
   const top = c.styles.find((s) => slot.style[s] === 3);
   if (top) reasons.push(`${STYLES[top].label} 옷장의 기본이에요`);
   if (c.occasion && slot.occ.includes(c.occasion)) reasons.push(`${OCCASIONS[c.occasion]}에 잘 맞아요`);
-  return { score, reasons, pairs: [...pairs], inSeason };
+  return { score, reasons, pairReason, pairs: [...pairs], inSeason };
 }
 
 const CAT_LIMIT = { acc: 1 };
@@ -196,8 +199,7 @@ export function recommendItems(state, { limit = 8 } = {}) {
     // 선호 브랜드가 없으면 한 브랜드가 목록을 채우지 않도록 두 번까지만 먼저 고른다
     const product = c.brands.size ? products[0] : products.find((p) => (perBrand[p.brand] || 0) < 2) || products[0];
     perBrand[product.brand] = (perBrand[product.brand] || 0) + 1;
-    const pair = r.reasons.find((x) => x.startsWith('가진 '));
-    const reasons = pair ? [pair, r.slot.why] : [r.slot.why, ...r.reasons];
+    const reasons = r.pairReason ? [r.pairReason, r.slot.why] : [r.slot.why, ...r.reasons];
     out.push({ slot: r.slot, product, alternatives: products.filter((p) => p !== product).slice(0, 6), score: r.score, reasons: reasons.slice(0, 2) });
     if (out.length >= limit) break;
   }
@@ -205,8 +207,10 @@ export function recommendItems(state, { limit = 8 } = {}) {
 }
 
 // 코디 공식의 역할을 가진 옷과 상품으로 채운다
-// ownedOnly: 가진 옷만으로, maxBuy: 새로 살 아이템 수 한도, forceOwned: 검색의 기준 아이템(가진 것으로 취급)
-export function fillLook(look, c, { forceOwned = new Set(), ownedOnly = false, maxBuy = Infinity, anchorItem = null } = {}) {
+// ownedOnly: 가진 옷만으로, maxBuy: 새로 살 아이템 수 한도
+// include: 반드시 넣을 종류(검색의 기준 아이템). 가졌으면 내 옷, 없으면 상품으로 채운다
+// anchorItem: 코디의 중심이 되는 내 옷 한 벌, anchorProduct: 보고 있는 상품(새로 살 것으로 계산)
+export function fillLook(look, c, { include = new Set(), ownedOnly = false, maxBuy = Infinity, anchorItem = null, anchorProduct = null } = {}) {
   const items = [];
   const tonal = c.styles[0] === 'minimal' || look.styles[0] === 'minimal';
   let buys = 0;
@@ -214,28 +218,32 @@ export function fillLook(look, c, { forceOwned = new Set(), ownedOnly = false, m
     const r = roleOf(look, role);
     if (!r) continue;
     const optional = role === 'acc' || (role === 'inner' && ownedOnly);
-    const inSeason = r.s.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
     const current = items.map((i) => ({ color: i.color, cat: i.slot.cat }));
 
-    // 1) 기준 아이템 · 가진 옷
+    // 1) 기준: 내 옷 한 벌, 또는 보고 있는 상품
     if (anchorItem && r.s.includes(anchorItem.slot)) {
       items.push({ role, slot: SLOT_BY_ID[anchorItem.slot], owned: true, item: anchorItem, color: anchorItem.color });
       continue;
     }
-    const forced = r.s.find((id) => forceOwned.has(id));
-    if (forced) {
-      items.push({ role, slot: SLOT_BY_ID[forced], owned: true, item: null, color: SLOT_BY_ID[forced].colors[0] });
+    if (anchorProduct && r.s.includes(anchorProduct.slot)) {
+      items.push({ role, slot: SLOT_BY_ID[anchorProduct.slot], owned: false, product: anchorProduct, color: anchorProduct.color });
+      buys += 1;
       continue;
     }
-    const ownedItems = c.closet.filter((i) => r.s.includes(i.slot));
+    const must = r.s.filter((id) => include.has(id));
+    const ids = must.length ? must : r.s;
+    const inSeason = must.length ? must : r.s.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
+
+    // 2) 가진 옷
+    const ownedItems = c.closet.filter((i) => ids.includes(i.slot));
     if (ownedItems.length) {
       const best = ownedItems
-        .map((i) => ({ i, s: harmony([...current, { color: i.color, cat: SLOT_BY_ID[i.slot].cat }], { tonal }) + (r.c.includes(i.color) ? 1 : 0) - r.s.indexOf(i.slot) * 0.3 }))
+        .map((i) => ({ i, s: harmony([...current, { color: i.color, cat: SLOT_BY_ID[i.slot].cat }], { tonal }) + (r.c.includes(i.color) ? 1 : 0) - ids.indexOf(i.slot) * 0.3 }))
         .sort((a, b) => b.s - a.s)[0].i;
       items.push({ role, slot: SLOT_BY_ID[best.slot], owned: true, item: best, color: best.color });
       continue;
     }
-    const legacy = r.s.find((id) => c.ownedSlots.has(id));
+    const legacy = ids.find((id) => c.ownedSlots.has(id));
     if (legacy) {
       items.push({ role, slot: SLOT_BY_ID[legacy], owned: true, item: null, color: SLOT_BY_ID[legacy].colors[0] });
       continue;
@@ -246,7 +254,7 @@ export function fillLook(look, c, { forceOwned = new Set(), ownedOnly = false, m
       return null;
     }
 
-    // 2) 상품: 품질·권장 색·색 조화·선호 브랜드를 함께 본다
+    // 3) 상품: 품질·권장 색·색 조화·선호 브랜드를 함께 본다
     let best = null;
     inSeason.forEach((id, order) => {
       for (const p of productsFor(id, productOpts(c)).slice(0, 10)) {
@@ -285,14 +293,15 @@ function rankLooks(results, c) {
 }
 
 // 오늘의 코디 (사야 할 상품 포함)
-export function recommendLooks(state, { limit = 3, forceOwned = [], occasion, anchorItem = null } = {}) {
+export function recommendLooks(state, { limit = 3, include = [], occasion, anchorItem = null, anchorProduct = null } = {}) {
   const c = ctx(state);
-  const force = new Set(forceOwned);
+  const must = new Set(include);
   let looks = matchingLooks(c, { occasion: occasion ?? c.occasion });
   if (!looks.length) looks = matchingLooks(c, { occasion: null });
-  if (force.size) looks = looks.filter((l) => slotsInLook(l).some((id) => force.has(id)));
-  if (anchorItem) looks = looks.filter((l) => slotsInLook(l).includes(anchorItem.slot));
-  return rankLooks(looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem })), c).slice(0, limit);
+  if (must.size) looks = looks.filter((l) => slotsInLook(l).some((id) => must.has(id)));
+  const anchorSlot = anchorItem?.slot || anchorProduct?.slot;
+  if (anchorSlot) looks = looks.filter((l) => slotsInLook(l).includes(anchorSlot));
+  return rankLooks(looks.map((look) => fillLook(look, c, { include: must, anchorItem, anchorProduct })), c).slice(0, limit);
 }
 
 // 내 옷장: 가진 옷만으로 되는 코디와, 하나만 사면 되는 코디
@@ -305,6 +314,19 @@ export function closetLooks(state, { limit = 3 } = {}) {
     .filter((r) => r.buyCount === 1 && r.ownedCount >= 2)
     .slice(0, limit);
   return { ready, almost };
+}
+
+// 예시 옷장: 고른 스타일의 대표 코디에서 옷을 골라 6벌을 만든다 (화면에는 그림과 '예시' 표시로만 보인다)
+export function exampleCloset(state, { size = 6 } = {}) {
+  const looks = recommendLooks({ ...state, closet: [], example: false, occasion: null, budget: null, brandOnly: false }, { limit: 3, occasion: null });
+  const out = [];
+  for (const r of looks) {
+    for (const i of r.items) {
+      if (i.role === 'acc' || out.length >= size || out.some((x) => x.slot === i.slot.id)) continue;
+      out.push({ id: `ex-${i.slot.id}`, slot: i.slot.id, color: i.color, brand: null, photo: false, example: true, addedAt: 0 });
+    }
+  }
+  return out;
 }
 
 // 고른 스타일의 기본 아이템을 가졌는지
@@ -345,7 +367,7 @@ export function search(state, text) {
     let reasons = [slot.why, ...base.reasons].slice(0, 2);
     if (anchors.length) {
       const a = shortName(anchors[0]);
-      reasons = [`${a}${josa(a, '과', '와')} 잘 어울려요`, ...base.reasons.filter((r) => !r.startsWith('가진 '))].slice(0, 2);
+      reasons = [`${a}${josa(a, '과', '와')} 잘 어울려요`, ...base.reasons.filter((r) => r !== base.pairReason)].slice(0, 2);
       const together = looks.filter((l) => slotsInLook(l).includes(slot.id) && slotsInLook(l).some((id) => anchorIds.has(id))).length;
       score += together * 3;
       if (!together) score -= 4;
@@ -362,7 +384,7 @@ export function search(state, text) {
 
   const items = results.slice(0, 16);
   const outfit = anchors.length || c.occasion
-    ? recommendLooks({ ...state, gender: c.gender, styles: c.styles, season: c.season, budget: c.maxPrice, occasion: c.occasion }, { limit: 1, forceOwned: [...anchorIds] })[0] || null
+    ? recommendLooks({ ...state, gender: c.gender, styles: c.styles, season: c.season, budget: c.maxPrice, occasion: c.occasion }, { limit: 1, include: [...anchorIds] })[0] || null
     : null;
   return { query: q, understood, items, outfit, season: c.season, gender: c.gender };
 }
