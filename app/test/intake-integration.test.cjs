@@ -53,7 +53,7 @@ test('브랜드·품명이 없는 비슷한 옷을 동일 상품으로 확정하
 
 test('Claude follow와 로컬 followup을 함께 보존한다', () => {
   const d = W.cleanDecision({ id: 'decision', itemId: 'one', before: { lean: 'buy', at: day }, summary: {}, after: { decision: 'buy', helpful: 'yes', at: day, insight: '직접 기록' },
-    follow: { at: day, worn: 'few', feel: 'good' }, followup: { at: day, outcome: 'purchased', worn: 'yes', regret: 'no', note: '입어 봄' } });
+    follow: { at: day, worn: 'few', feel: 'good' }, followup: { at: day, outcome: 'purchased', worn: 'yes', regret: 'no', sizeResult: 'right', returnReason: 'unknown', note: '입어 봄' } });
   assert.equal(d.follow.worn, 'few'); assert.equal(d.followup.outcome, 'purchased');
   assert.equal(d.after.insight, '직접 기록'); assert.equal(d.summary.added, null);
   assert.deepEqual(W.cleanDecision(d), d);
@@ -61,7 +61,7 @@ test('Claude follow와 로컬 followup을 함께 보존한다', () => {
 
 test('구매 후 반품 결과도 옷장 기록을 내보내고 다시 읽을 때 보존한다', () => {
   const raw = { id: 'return-decision', itemId: 'candidate-1', before: { lean: 'buy', at: day }, summary: {}, after: { decision: 'buy', helpful: 'yes', at: day },
-    followup: { outcome: 'returned', worn: 'yes', regret: 'yes', note: '사이즈가 맞지 않아 반품', at: day } };
+    followup: { outcome: 'returned', worn: 'yes', regret: 'yes', sizeResult: 'small', returnReason: 'size', note: '사이즈가 맞지 않아 반품', at: day } };
   const clean = W.cleanDecision(raw);
   assert.deepEqual(clean.followup, raw.followup);
   assert.deepEqual(W.cleanDecision(JSON.parse(JSON.stringify(clean))), clean);

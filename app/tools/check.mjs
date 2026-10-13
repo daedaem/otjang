@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, 'shots'); fs.mkdirSync(shots, { recursive: true });
 const file = pathToFileURL(path.join(root, process.env.PAGE || 'dist/index.html')).href;
+const mobileBuild = (process.env.PAGE || '').includes('mobile/');
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: process.env.NATIVE_GPU === '1' ? [] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let failed = 0;
 const results = [];
@@ -68,6 +69,7 @@ for (const m of modes) {
   const shot = (n, opts) => page.screenshot(Object.assign({ path: path.join(shots, m.name + '-' + n + '.png'), fullPage: true, timeout: 120000 }, opts || {}));
   const st = () => page.evaluate(() => window.__app.state);
   const flush = () => page.evaluate(() => window.__app.flush());
+  const noOpenDialogs = async (label) => ok(await page.locator('dialog[open]').count() === 0, label);
 
   // 0. v0.3 저장소(스키마 1)에서 옮겨 온다: v1 키를 미리 넣어 두고 연다
   const v1state = Object.assign({}, v1fixture, { others: [] });
@@ -94,9 +96,12 @@ for (const m of modes) {
   ok(draftVerdict.status === 'needs-confirmation' && draftVerdict.before === null && draftVerdict.after === null, '합성 예시 초안은 확인 전 조합 수를 만들지 않는다');
   const reviewEntry = await page.locator('#reviewPhotoDrafts').evaluate((el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, viewport: innerHeight }; });
   ok(reviewEntry.top >= 0 && reviewEntry.bottom <= reviewEntry.viewport, '사진 초안 일괄 확인 버튼이 옷장 첫 화면 안에 보인다', reviewEntry);
+  const firstViewPrimary = await page.locator('#main .btn.primary').evaluateAll((els) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }).length);
+  ok(firstViewPrimary === 1, '사진 초안이 남아 있을 때 첫 화면의 강조 행동은 하나다', firstViewPrimary);
   await page.click('#reviewPhotoDrafts');
   ok(await page.locator('#draftReview').isVisible() && await page.locator('#draftReview [data-confirm-draft]').count() > 0, '옷장 첫 화면에서 사진 초안 검토를 열 수 있다');
   await page.getByRole('button', { name: '나중에', exact: true }).click();
+  await noOpenDialogs('사진 초안 검토를 닫으면 열린 대화상자가 남지 않는다');
   await page.click('#tabbtn-outfits');
   const outfitDraftReview = page.getByRole('button', { name: /사진 초안 한 번에 확인/ });
   ok(await outfitDraftReview.count() === 1, '코디 화면에서도 초안 일괄 검토로 이동할 수 있다');
@@ -108,26 +113,31 @@ for (const m of modes) {
   ok(await page.locator('#closetGrid .badge.draft', { hasText: '사진에서 뽑은 초안' }).count() === 13 && await page.locator('#closetGrid .badge', { hasText: '브랜드 후보 1' }).count() === 2, '초안 배지 13개와 브랜드 후보 배지 2개가 보인다');
   ok(!(await overflow()), '옷장 화면에 가로 넘침이 없다');
   await shot('1-closet');
-  await page.locator('#closetGrid .card').first().getByRole('button', { name: '기록' }).click();
+  let blazerCard = page.locator('#closetGrid .card', { hasText: '네이비 블레이저' });
+  await blazerCard.locator('details.item-tools > summary').click();
+  await blazerCard.getByRole('button', { name: '기록 수정' }).click();
   await page.fill('#f-brand', 'Brand A'); await page.fill('#f-size', '38'); await page.fill('#f-year', '2022');
   await page.fill('#f-review', '세 해째 입는다. 소매 시보리가 조금 늘었다.'); await page.selectOption('#f-rebuy', 'yes'); await page.check('#f-confirmed');
   await page.setInputFiles('#f-photo', pngFile('my.png'));
   if (m.name === 'desk-light') await page.screenshot({ path: path.join(shots, m.name + '-1b-editor.png') });
   await page.click('#edSave'); await page.waitForFunction(() => !document.querySelector('#editor').open);
-  const first = await page.locator('#closetGrid .card').first().innerText();
-  const it0 = await page.evaluate(() => { const i = window.__app.state.items[0]; return { src: i.attrSource, photo: i.photo.kind, own: i.photo.ownImg.slice(0, 15) }; });
-  ok(first.includes('Brand A') && first.includes('사이즈 38') && first.includes('년째') && first.includes('다시 산다') && !first.includes('초안') && it0.src === 'owner-confirmed' && it0.photo === 'own' && it0.own.startsWith('data:image'), '기록을 저장하면 카드에 보이고, 확인 체크로 초안 표시가 사라지며, 내 사진이 들어간다', it0);
-  // 확인하기: 초안 옷에 모르는 것만 묻는다 (속성 + 브랜드)
-  await page.locator('#closetGrid .card', { hasText: '올리브 필드 재킷' }).getByRole('button', { name: '확인하기' }).click();
-  ok(await page.locator('#wzSteps .step').count() === 2 && (await page.locator('#wzSteps').innerText()).includes('색과 느낌'), '초안 옷의 확인하기는 이름을 다시 묻지 않고 색과 상품만 묻는다');
-  await page.check('#z-confirmed'); await page.click('#wzNext');
-  await page.fill('#z-brand', '브랜드 C'); await page.locator('#wizard .inl button', { hasText: '모름' }).nth(1).click();
-  await page.click('#wzNext'); await page.waitForFunction(() => !document.querySelector('#wizard').open);
+  const blazerText = await page.locator('#closetGrid .card', { hasText: '네이비 블레이저' }).innerText();
+  const it0 = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.id === 's-blazer-navy'); return { src: i.attrSource, photo: i.photo.kind, own: i.photo.ownImg.slice(0, 15) }; });
+  ok(blazerText.includes('Brand A') && blazerText.includes('사이즈 38') && blazerText.includes('년째') && blazerText.includes('다시 산다') && !blazerText.includes('초안') && it0.src === 'owner-confirmed' && it0.photo === 'own' && it0.own.startsWith('data:image'), '기록을 저장하면 카드에 보이고, 확인 체크로 초안 표시가 사라지며, 내 사진이 들어간다', it0);
+  // 확인하기: 현재 카드 동선은 빠른 정보 확인이며 모르는 속성은 비워 둔다.
+  const oliveCard = page.locator('#closetGrid .card', { hasText: '올리브 필드 재킷' });
+  await oliveCard.getByRole('button', { name: /정보 확인/ }).click();
+  ok(await page.locator('#quickItemForm').isVisible() && (await page.inputValue('#q-name')) === '올리브 필드 재킷', '사진 초안의 기존 이름과 값이 빠른 확인 화면에 채워진다');
+  await page.fill('#q-brand', '브랜드 C'); await page.check('#q-confirmed'); await page.click('#quickSave');
+  await page.waitForFunction(() => !document.querySelector('#quickItem')?.open);
+  await noOpenDialogs('빠른 정보 확인 뒤 대화상자가 닫힌다');
   const fj = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.id === 's-field-olive'); return { src: i.attrSource, brand: i.brand, model: i.model, photo: i.photo.kind, product: i.product, look: i.look3d }; });
-  ok(fj.src === 'owner-confirmed' && fj.brand === '브랜드 C' && fj.model === '' && fj.photo === 'none' && fj.product === null && fj.look && fj.look.kind === 'field', '확인하기로 속성 확인과 브랜드가 저장되고, 모름은 비워 두며, 3D 형태는 그대로다', fj);
+  ok(fj.src === 'owner-confirmed' && fj.brand === '브랜드 C' && fj.model === '' && fj.photo === 'none' && fj.product === null && fj.look && fj.look.kind === 'field', '빠른 확인은 직접 확인한 속성만 확정하고 상품 사진·3D 형태는 유지한다', fj);
 
   // 2. 상품 사진과 확인: 대체 이미지 → 후보 → 확인 → 취소 → 떼기. 브랜드·가격은 내 옷 정보에 섞이지 않는다
-  await page.locator('#closetGrid .card', { hasText: '네이비 블레이저' }).getByRole('button', { name: '상품 사진' }).click();
+  blazerCard = page.locator('#closetGrid .card', { hasText: '네이비 블레이저' });
+  await blazerCard.locator('details.item-tools > summary').click();
+  await blazerCard.getByRole('button', { name: '상품 사진' }).click();
   await page.fill('#mt-brand', '어느 브랜드'); await page.fill('#mt-source', '쇼핑몰'); await page.fill('#mt-url', 'https://shop.example/x'); await page.setInputFiles('#mt-photo', pngFile('sub.png'));
   await page.click('#mtSub'); await page.waitForFunction(() => window.__app.state.items.find((x) => x.id === 's-blazer-navy').photo.kind === 'substitute');
   let bl = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.id === 's-blazer-navy'); return { photo: i.photo.kind, img: i.photo.img.slice(0, 10), own: i.photo.ownImg.slice(0, 10), brand: i.brand, src: i.photo.sourceName, url: i.photo.sourceUrl, product: i.product, cands: i.matchCandidates.length }; });
@@ -147,29 +157,44 @@ for (const m of modes) {
   await page.click('#mtCancel');
   ok(await page.locator('#closetGrid .card', { hasText: '네이비 블레이저' }).locator('.badge', { hasText: '브랜드 후보' }).count() === 1, '카드에 브랜드 후보 배지가 보인다');
 
-  // 2b. 사진에서 색·밝기 초안 뽑기: 네이비 사진으로 옷을 더하면 색 계열·밝기가 미리 채워지고, 그대로 저장하면 '사진에서 뽑은 초안'이 된다
-  await page.click('#addOwned');
-  await page.selectOption('#z-cat', 'top'); await page.selectOption('#z-kind', 'knit'); await page.fill('#z-name', '네이비 니트 (사진)'); await page.setInputFiles('#z-photo', solidPng(32, 32, [28, 38, 72]));
-  await page.click('#wzNext'); await page.waitForSelector('#z-guess');
-  const gz = await page.evaluate(() => ({ fam: document.querySelector('#z-family').value, light: Number(document.querySelector('#z-light').value), note: document.querySelector('#z-guess').textContent }));
-  ok(gz.fam === 'navy' && gz.light >= 15 && gz.light <= 25 && gz.note.includes('사진에서 뽑은 초안') && gz.note.includes('네이비'), '사진을 넣으면 색 계열·밝기 초안이 채워지고 안내가 보인다', gz);
-  await page.click('#wzNext'); await page.locator('#wizard .inl button', { hasText: '모름' }).first().click(); await page.locator('#wizard .inl button', { hasText: '모름' }).nth(1).click();
-  await page.setInputFiles('#z-prodPhoto', pngFile('synthetic-product.png')); await page.click('#wzNext');
-  await page.waitForSelector('#wzErr:not([hidden])');
-  ok(await page.locator('#wzErr').isVisible() && (await page.locator('#wzErr').innerText()).includes('상태를 골라'), '상품 사진을 넣고 상태를 고르지 않으면 마법사가 저장하지 않는다');
-  await page.check('#z-photoKind input[value="substitute"]');
-  await page.click('#wzNext'); await page.waitForFunction(() => !document.querySelector('#wizard').open);
-  const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '네이비 니트 (사진)'); return i && { src: i.attrSource, family: i.family, light: i.light, note: i.draftNote, photo: i.photo.kind, own: i.photo.ownImg.startsWith('data:image') }; });
-  ok(gi && gi.src === 'photo-draft' && gi.family === 'navy' && gi.photo === 'substitute' && gi.own && gi.note.includes('대표색 #'), '사진 초안을 유지해 대표색을 기록하고 대체 상품 사진을 걸어도 내 사진은 남는다', gi);
-  await page.locator('#closetGrid .card', { hasText: '네이비 니트 (사진)' }).getByRole('button', { name: '기록' }).click();
-  await page.click('#edDelete'); await page.waitForFunction(() => !document.querySelector('#editor').open);
-  ok(await page.evaluate(() => !window.__app.state.items.some((x) => x.name === '네이비 니트 (사진)')), '시험용 옷을 지웠다');
-  // 숫자 골든 회귀에 앞서 합성 브라우저 사본만 사용자가 확인한 상태로 만든다. 원래 예시 JSON은 수정하지 않는다.
+  // 2b. 품질이 낮은 사진은 색을 추정하지 않고, 필요한 분류를 확인한 뒤에만 임시 옷장에 넣는다.
+  await page.locator('.owned-registration-tools > summary').click(); await page.click('#addPhotos');
+  await page.setInputFiles('#bulkFile', solidPng(32, 32, [128, 128, 128]));
+  await page.waitForSelector('#bulkDlg .brow');
+  const intakeText = await page.locator('#bulkDlg .brow').innerText();
+  ok(intakeText.includes('사진이 작아 세부를 확인하기 어렵습니다') && intakeText.includes('사진에서 옷의 구분이 어렵습니다') && await page.getByRole('button', { name: '실제 옷 색과 같아요' }).count() === 0, '작고 구분이 어려운 사진은 색을 추정하지 않고 촬영 안내를 표시한다', intakeText);
+  await page.selectOption('#bk-cat-0', 'top'); await page.selectOption('#bk-kind-0', 'knit');
+  await page.fill('#bk-name-0', '저화질 사진 시험용 니트'); await page.locator('#bkList .brow input[type="checkbox"]').check();
+  ok(await page.isEnabled('#bkAdd'), '한 벌 여부와 분류를 확인해야 사진 등록을 진행할 수 있다');
+  await page.click('#bkAdd'); await page.waitForFunction(() => !document.querySelector('#bulkDlg').open);
+  const gi = await page.evaluate(() => { const i = window.__app.state.items.find((x) => x.name === '저화질 사진 시험용 니트'); return i && { source: i.attrSource, family: i.family, light: i.light, photo: i.photo.kind, own: i.photo.ownImg.startsWith('data:image'), missing: window.__app.W.assessment(i).missing }; });
+  ok(gi && gi.source === 'owner' && gi.family === null && gi.light === null && gi.photo === 'own' && gi.own && gi.missing.includes('family') && gi.missing.includes('light'), '저화질 사진의 색은 미확정으로 남아 추천 계산에 들어가지 않는다', gi);
+  const testPhotoCard = page.locator('#closetGrid .card', { hasText: '저화질 사진 시험용 니트' });
+  await testPhotoCard.locator('details.item-tools > summary').click(); await testPhotoCard.getByRole('button', { name: '삭제' }).click();
+  await page.waitForFunction(() => !window.__app.state.items.some((x) => x.name === '저화질 사진 시험용 니트'));
+  // 이번 핵심 검사는 버튼을 통해 확인하고 저장한 뒤 새로고침해도 유지되는지 본다.
+  const draftsBeforeBulkReview = await page.evaluate(() => window.__app.state.items.filter(window.__app.W.isDraft).length);
+  await page.click('#reviewPhotoDrafts');
+  const draftChecks = await page.locator('#draftReview [data-confirm-draft]').all();
+  for (const checkbox of draftChecks) await checkbox.check();
+  await page.click('#applyDraftConfirmation');
+  await page.waitForFunction(() => !document.querySelector('#draftReview')?.open);
+  await noOpenDialogs('일괄 확인을 저장하면 초안 검토 대화상자가 닫힌다');
+  const draftsAfterBulkReview = await page.evaluate(() => window.__app.state.items.filter(window.__app.W.isDraft).length);
+  ok(draftChecks.length > 0 && draftsBeforeBulkReview - draftsAfterBulkReview === draftChecks.length, '확인 가능한 사진 초안만 골라 옷장에 일괄 반영한다', { selected: draftChecks.length, before: draftsBeforeBulkReview, after: draftsAfterBulkReview });
+  await page.reload(); await page.waitForFunction(() => window.__app);
+  const draftsAfterReload = await page.evaluate(() => window.__app.state.items.filter(window.__app.W.isDraft).length);
+  ok(draftsAfterReload === draftsAfterBulkReview, '사진 초안 확인 결과가 새로고침 뒤에도 저장되어 있다', draftsAfterReload);
+  // 이후 숫자 골든은 완성된 합성 입력을 기준으로 한다. 원본 예시 JSON과 사용자의 실제 저장 자료는 바꾸지 않는다.
   await page.evaluate(() => { window.__app.state.items = window.__app.state.items.map((item) => window.__app.W.cleanItem({ ...item, attrSource: 'owner-confirmed' }, 0)); });
+  await page.click('#tabbtn-closet');
+  const readyFirstViewPrimary = await page.locator('#main .btn.primary').evaluateAll((els) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }).length);
+  ok(readyFirstViewPrimary === 1, '확인된 옷장 첫 화면에도 강조 행동이 하나다', readyFirstViewPrimary);
 
-  // 3. 살까 말까: 마법사로 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로
+  // 3. 살까 말까: 빠른 후보 추가 → 판정(확인 전 속성 표시) → 결정 → 보유로
   await page.click('#tabbtn-judge');
-  await page.click('#addCand');
+  ok(await page.locator('#firstCompare').count() === 1 && await page.locator('#quickCand').count() === 1 && await page.locator('#quickCandidate').count() === 0 && await page.locator('#addCand').count() === 0, '후보가 없을 때 입력 경로를 직접 입력과 링크 붙여넣기로 나눈다');
+  await page.click('#firstCompare');
   ok(await page.locator('#quickItemForm').isVisible() && (await page.inputValue('#q-light')) === '', '후보 빠른 등록은 모르는 밝기를 비워 두고 시작한다');
   await page.selectOption('#q-cat', 'top'); await page.selectOption('#q-kind', 'sweat'); await page.fill('#q-name', '그레이 스웻셔츠');
   await page.fill('#q-brand', '브랜드'); await page.fill('#q-price', '89000'); await page.fill('#q-link', 'https://shop.example/gray-sweat');
@@ -202,13 +227,18 @@ for (const m of modes) {
     const summary = document.querySelector('#decided'), followup = document.querySelector('#purchaseFollowup');
     if (!summary || !followup) return false;
     const s = summary.getBoundingClientRect(), f = followup.getBoundingClientRect();
-    return s.top >= 0 && s.top < 120 && f.top >= 0 && f.bottom <= innerHeight;
+    return s.top >= 112 && s.top < 210 && f.top >= 0 && f.bottom <= innerHeight;
   }, null, { timeout: 10000 });
   const surfacedFollowup = await page.evaluate(() => ({ scrollY: scrollY, summaryTop: document.querySelector('#decided').getBoundingClientRect().top, followupTop: document.querySelector('#purchaseFollowup').getBoundingClientRect().top, followupBottom: document.querySelector('#purchaseFollowup').getBoundingClientRect().bottom, viewport: innerHeight }));
   ok(surfacedFollowup.followupTop >= 0 && surfacedFollowup.followupBottom <= surfacedFollowup.viewport, '결정 저장 후 구매 결과 기록 패널이 한 화면 안으로 이동한다', surfacedFollowup);
   ok((await page.locator('#decided').innerText()).includes('결정: 산다') && (await page.locator('#decided').innerText()).includes('정해짐'), '결정이 기록되고 보기 전 마음과의 차이가 나온다');
   await shot('3-decided');
-  await page.selectOption('#followupOutcome', 'purchased'); await page.fill('#followupNote', '판매처에서 결제 완료'); await page.click('#saveFollowup');
+  await page.click('#openPurchaseFollowup');
+  ok(await page.locator('#followupDialog').isVisible(), '구매 결과 입력은 후속 기록 대화상자에서 열린다');
+  await page.selectOption('#followupOutcome', 'purchased');
+  ok(await page.locator('#followupSizeResult').isVisible() && !(await page.locator('#followupReturnReason').isVisible()), '구매 결과를 고르면 착용 결과를 기록하고 반품 사유는 숨긴다');
+  await page.selectOption('#followupSizeResult', 'right'); await page.fill('#followupNote', '판매처에서 결제 완료'); await page.click('#saveFollowup');
+  await noOpenDialogs('구매 결과 저장 뒤 대화상자가 닫힌다');
   await page.click('#moveOwnedAfterPurchase');
   const moved = await page.evaluate(() => { const s = window.__app.state; const i = s.items.find((x) => x.name === '그레이 스웻셔츠'); return { n: document.querySelectorAll('#closetGrid .card').length, cand: s.items.filter((x) => x.status === 'candidate').length, status: i.status, photo: i.photo.kind, product: !!i.product }; });
   ok(moved.n === 14 && moved.cand === 0 && moved.status === 'owned' && moved.photo === 'confirmed' && moved.product, '산 옷이 보유로 옮겨져 옷장이 14벌이 되고 확인된 상품 정보는 유지된다', moved);
@@ -279,8 +309,13 @@ for (const m of modes) {
   ok(data.schema === 2 && data.items.length === 14 && data.items.every((i) => i.status === 'owned') && data.items.every((i) => i.price == null && !i.link) && data.owner.height == null && data.decisions.length === 0, '내보낸 파일(스키마 2)에는 보유 옷만 있고 가격, 체형, 판정 기록은 기본으로 빠진다');
   ok(bought.photo.kind === 'confirmed' && bought.photo.img === '' && bought.product.brand === '브랜드' && data.items[0].photo.img.startsWith('data:image') && data.items.every((i) => i.matchCandidates.length === 0), '남의 상품 사진과 브랜드 후보는 기본으로 빠지고, 내 사진과 확인된 상품 정보는 남는다');
   await shot('7-log');
-  // 7b. 내 서버와 맞추기 (흉내 서버): 보내기 → 같은 내용 다시 보내기(멱등 키 같음) → 받기 → 바꾸기
-  await page.locator('#advanced > summary').click();
+  // 7b. 데스크톱 동기화 패널. 모바일 미리보기는 로컬 저장 안내만 제공한다.
+  if (mobileBuild) {
+    ok(await page.locator('#mobileStorageNote').count() === 1, '모바일 미리보기는 이 브라우저에 저장된다는 안내를 표시한다');
+  } else {
+  // 내 서버와 맞추기 (흉내 서버): 보내기 → 같은 내용 다시 보내기(멱등 키 같음) → 받기 → 바꾸기
+  ok(await page.locator('#syncPanel').count() === 1, '동기화 설정은 기록 탭에서 바로 찾을 수 있다');
+  await page.locator('#syncPanel').evaluate((el) => el.scrollIntoView({ block: 'start' }));
   ok((await page.isChecked('#syncPhotos')) === false || (await page.inputValue('#syncBase')).includes('localhost'), '기본 주소는 이 컴퓨터(localhost)다');
   await page.fill('#syncBase', 'http://192.168.0.10:8099'); await page.locator('#syncBase').blur(); await page.waitForTimeout(100);
   ok((await page.isChecked('#syncPhotos')) === false, '이 컴퓨터가 아닌 주소면 사진은 기본으로 보내지 않는다');
@@ -307,6 +342,7 @@ for (const m of modes) {
   ok(syncReqs.filter((r) => !r.startsWith('OPTIONS') && !r.includes('/api/auth/')).join() === 'POST /api/wardrobe/import,POST /api/catalog/import,POST /api/wardrobe/import,POST /api/catalog/import,GET /api/wardrobe?photos=true,GET /api/catalog', '인증 외에는 누른 만큼만 자료 요청한다', syncReqs);
   await page.click('#syncLogout');
   ok((await st()).items.length === localBeforeAuth.items.length && (await st()).owner.nickname === localBeforeAuth.owner.nickname, '로그아웃하면 전송 전 개인 옷장으로 돌아온다');
+  }
   await page.click('#tabbtn-compare');
   await page.setInputFiles('#otherFile', asFile(exp));
   await page.waitForFunction(() => window.__app.state.others.length === 1);
@@ -360,11 +396,14 @@ for (const m of modes) {
   // 구매 뒤에 반환한 결과도 기록 화면에서 남기고 옷장에서 내린다
   await page.click('#tabbtn-log');
   await page.getByRole('button', { name: '구매·반품 기록 수정' }).first().click();
-  await page.selectOption('#followupOutcome', 'returned'); await page.fill('#followupNote', '입어 보니 어깨가 맞지 않아 반품'); await page.click('#saveFollowup');
+  await page.selectOption('#followupOutcome', 'returned'); await page.selectOption('#followupSizeResult', 'small'); await page.selectOption('#followupReturnReason', 'fit');
+  await page.fill('#followupNote', '입어 보니 어깨가 맞지 않아 반품'); await page.click('#saveFollowup');
   const returned = await page.evaluate(() => ({ status: window.__app.state.items.find((i) => i.name === '그레이 스웻셔츠').status,
     outcome: window.__app.state.decisions.find((d) => d.name === '그레이 스웻셔츠').followup.outcome,
+    sizeResult: window.__app.state.decisions.find((d) => d.name === '그레이 스웻셔츠').followup.sizeResult,
+    returnReason: window.__app.state.decisions.find((d) => d.name === '그레이 스웻셔츠').followup.returnReason,
     label: document.querySelector('#gate').innerText.includes('구매 후 반품했다') }));
-  ok(returned.status === 'gone' && returned.outcome === 'returned' && returned.label, '기록에서 반품을 남기면 결과가 보이고 해당 옷은 옷장에서 빠진다', returned);
+  ok(returned.status === 'gone' && returned.outcome === 'returned' && returned.sizeResult === 'small' && returned.returnReason === 'fit' && returned.label, '반품 결과와 사이즈·반품 이유를 함께 남기고 옷장에서는 내린다', returned);
 
   // 10. 다시 열어도 남아 있다
   await flush();

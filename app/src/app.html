@@ -439,7 +439,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
 <dialog id="quickDlg" aria-labelledby="qTitle">
   <div class="dhead"><h2 id="qTitle">자주 입는 옷 골라 넣기</h2><button class="btn small" type="button" id="qClose">닫기</button></div>
   <div class="dbody">
-    <p class="note" style="margin-bottom:12px">가진 옷과 비슷한 것을 누르세요. 색과 격식은 대표값으로 들어가고, 나중에 사진·색·이름을 고칠 수 있습니다. 옷 사진이 있으면 <button class="btn small" type="button" id="qPhotos">사진으로 여러 벌 넣기</button>가 색이 더 정확합니다.</p>
+    <p class="note" style="margin-bottom:12px">가진 옷과 비슷한 것을 누르세요. 색과 격식은 대표값으로 들어가고, 나중에 사진·색·이름을 고칠 수 있습니다. 사진에서 시작하려면 <button class="btn small" type="button" id="qPhotos">사진 1장 이상으로 등록</button>을 선택하세요.</p>
     <div id="qBody"></div>
   </div>
   <div class="dfoot"><span class="note" id="qCount"></span><span class="grow"></span><button class="btn" type="button" id="qCancel">취소</button><button class="btn primary" type="button" id="qAdd" disabled>넣기</button></div>
@@ -466,7 +466,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
   </form>
 </dialog>
 <dialog id="bulkDlg" aria-labelledby="bkTitle">
-  <div class="dhead"><h2 id="bkTitle">사진으로 여러 벌 넣기</h2><button class="btn small" type="button" id="bkClose">닫기</button></div>
+  <div class="dhead"><h2 id="bkTitle">사진에서 옷 등록</h2><button class="btn small" type="button" id="bkClose">닫기</button></div>
   <div class="dbody">
     <p class="note" style="margin-bottom:8px">사진에서 한 벌을 고른 뒤 분류만 선택하세요. 종류·색·브랜드·품명은 몰라도 저장할 수 있습니다. 사진은 이 브라우저 안에서 처리합니다.</p>
     <div id="bkList"></div>
@@ -920,17 +920,16 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   // ---------- 살까 말까 ----------
   function openDecision(id) { return state.decisions.find((d) => d.itemId === id && !d.after); }
   function renderJudge(main) {
-    renderWelcome(main);
-    main.append(h('p', { class: 'lead', text: '살까 고민 중인 옷을 후보로 넣으면, 가진 옷과 겹치는지와 새로 생기는 조합을 보여 줍니다. 사라거나 사지 말라고 하지 않습니다. 규칙이 본 사실과 근거만 보여 줍니다.' }));
     const list = cands();
+    if (!list.length) { renderWelcome(main); return; }
+    main.append(h('p', { class: 'lead', text: '살까 고민 중인 옷을 후보로 넣으면, 가진 옷과 겹치는지와 새로 생기는 조합을 보여 줍니다. 사라거나 사지 말라고 하지 않습니다. 규칙이 본 사실과 근거만 보여 줍니다.' }));
     if (ui.judgeId && !list.some((c) => c.id === ui.judgeId)) ui.judgeId = '';
     if (!ui.judgeId && list.length) ui.judgeId = list[0].id;
     const left = h('div', { class: 'list' }, list.map((c) => h('button', { class: 'row', type: 'button', 'aria-pressed': c.id === ui.judgeId ? 'true' : 'false', onclick: () => { ui.judgeId = c.id; render(); } },
       pic(c, 'mini'), h('span', { class: 'rowt' }, h('b', { text: c.name }), h('span', { text: [famLabel(c), kindLabel(c)].join(' · ') })))),
-      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'quickCand', onclick: () => openQuickCand(), text: '빠르게 넣고 판정' }),
-        h('button', { class: 'btn', type: 'button', id: 'addCand', onclick: () => openWizard(null, 'candidate'), text: '자세히 넣기' })));
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'quickCand', onclick: () => openQuickCand(), text: '상품 링크·공유 내용 붙여넣기' }),
+        h('button', { class: 'btn', type: 'button', id: 'quickCandidate', onclick: () => openQuickItem(null, 'candidate'), text: '상품 정보 직접 입력' })));
     const right = h('div');
-    left.append(h('button', { class: 'btn', id: 'quickCandidate', type: 'button', onclick: () => openQuickItem(null, 'candidate'), text: '구매 후보 빠르게 넣기' }));
     main.append(h('div', { class: 'split' }, left, right));
     const c = byId(ui.judgeId);
     if (!c) { right.append(h('div', { class: 'empty', text: '아직 후보가 없습니다. 지금 살까 고민 중인 옷 한 벌을 넣어 보세요. 종류·색·밝기·격식·무늬를 확인하면 비교할 수 있습니다. 살 만한 옷 탭의 상품을 후보로 넣을 수도 있습니다.' })); return; }
@@ -939,7 +938,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const stage = open ? 2 : last && ui.rejudge !== c.id ? 3 : 1;
     right.append(h('div', { class: 'steps' }, h('span', { class: 'step ' + (stage === 1 ? 'on' : 'done'), text: '1. 보기 전 내 마음' }), h('span', { class: 'step ' + (stage === 2 ? 'on' : stage === 3 ? 'done' : ''), text: '2. 판정' }), h('span', { class: 'step ' + (stage === 3 ? 'on' : ''), text: '3. 결정' })));
     if (stage === 3) {
-      right.append(h('section', { class: 'panel', id: 'decided', tabindex: '-1', style: 'scroll-margin-top:72px' }, h('h2', { text: c.name }),
+      right.append(h('section', { class: 'panel', id: 'decided', tabindex: '-1', style: 'scroll-margin-top:112px' }, h('h2', { text: c.name }),
         h('p', { class: 'big', text: '결정: ' + DECIDE[last.after.decision] }),
         h('p', { class: 'sub', text: '보기 전 마음은 "' + LEAN[last.before.lean] + '"이었습니다 (' + SHIFT[last.after.shift] + '). 판정은 ' + HELP[last.after.helpful] + '고 적었습니다.' + (last.after.note ? ' 메모: ' + last.after.note : '') }),
         h('div', { class: 'bar', style: 'margin:0' },

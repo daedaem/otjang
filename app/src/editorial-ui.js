@@ -6,10 +6,11 @@ function editorialImage() {
 }
 function renderEditorialHero(main, plan) {
   const has = plan.total > 0;
+  const needsButtonClass = has && owned().some(W.isDraft) ? 'btn' : 'btn primary';
   const copy = h('div', { class: 'hero-copy' }, h('p', { class: 'eyebrow', text: has ? 'YOUR WARDROBE, RECONSIDERED' : 'A NEW LOOK AT WHAT YOU OWN' }),
     h('h1', null, h('span', { text: has ? '나의 옷,' : '내 옷을,' }), h('span', { text: has ? '다음의 가능성.' : '다시 발견하다.' })),
     h('p', { text: has ? '가진 옷에서 시작하는 다음 한 벌.' : '이미 가진 옷을 더 잘 입고, 정말 필요한 한 벌을 찾아보세요.' }),
-    h('div', { class: 'bar' }, h('button', { type: 'button', class: 'btn primary', id: has ? 'heroNeeds' : 'startNeedsOwned', onclick: has ? openNeeds : () => openQuickItem(null, 'owned', { returnTab: 'closet' }), text: has ? '필요한 한 벌 보기 ↗' : '내 옷 등록하기 ↗' }),
+    h('div', { class: 'bar' }, h('button', { type: 'button', class: needsButtonClass, id: has ? 'heroNeeds' : 'startNeedsOwned', onclick: has ? openNeeds : () => openQuickItem(null, 'owned', { returnTab: 'closet' }), text: has ? '필요한 한 벌 보기 ↗' : '내 옷 등록하기 ↗' }),
       !has ? h('button', { type: 'button', class: 'btn', id: 'heroPhotos', onclick: () => $('#bulkFile').click(), text: '사진으로 시작' }) : null));
   if (!has) copy.append(h('button', { type: 'button', class: 'text-link', onclick: () => { $('#startMore').open = true; $('#startMore').scrollIntoView({ block: 'center', behavior: 'smooth' }); }, text: '등록 전에 예시 옷장 둘러보기' }));
   if (BRAND.mobilePreview) copy.append(h('p', { class: 'note', text: '모바일 미리보기 · 옷과 사진은 이 브라우저에 저장돼요. PC와 자동으로 맞춰지지 않습니다.' }));

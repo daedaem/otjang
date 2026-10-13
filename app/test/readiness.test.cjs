@@ -85,10 +85,10 @@ test('prototype-named enum values cannot bypass unknown sanitization', () => {
   assert.deepEqual(W.assessment(fake).missing, ['kind', 'family', 'pattern']);
 });
 test('concrete insight, baseline comparison and subsequent actual outcome survive JSON export/import with bounds', () => {
-  const raw = { id: 'd', itemId: 'c', before: { lean: 'unsure' }, summary: { overlaps: 0, added: 1, blockers: 0 }, after: { decision: 'hold', helpful: 'some', insight: 'I can wear it with existing denim.', comparedWith: 'photos', comparisonNote: 'Photos made the silhouette clearer.' }, followup: { outcome: 'not-purchased', worn: 'no', regret: 'no', note: 'Budget mattered.', at: '2026-10-13' } };
+  const raw = { id: 'd', itemId: 'c', before: { lean: 'unsure' }, summary: { overlaps: 0, added: 1, blockers: 0 }, after: { decision: 'hold', helpful: 'some', insight: 'I can wear it with existing denim.', comparedWith: 'photos', comparisonNote: 'Photos made the silhouette clearer.' }, followup: { outcome: 'not-purchased', worn: 'no', regret: 'no', sizeResult: 'unknown', returnReason: 'unknown', note: 'Budget mattered.', at: '2026-10-13' } };
   const clean = W.cleanDecision(raw); assert.equal(clean.after.insight, raw.after.insight); assert.equal(clean.after.comparedWith, 'photos');
   assert.deepEqual(clean.followup, raw.followup); assert.deepEqual(W.cleanDecision(JSON.parse(JSON.stringify(clean))), clean);
-  const unsafe = W.cleanDecision(Object.assign({}, raw, { after: Object.assign({}, raw.after, { insight: 'x'.repeat(900), comparedWith: 'hack' }), followup: { outcome: 'purchased', worn: 'hack', regret: 'hack', note: 'x'.repeat(900), at: 'invalid' } }));
-  assert.equal(unsafe.after.insight.length, 200); assert.equal(unsafe.after.comparedWith, 'none'); assert.equal(unsafe.followup.worn, 'unknown'); assert.equal(unsafe.followup.note.length, 300); assert.equal(unsafe.followup.at, '');
+  const unsafe = W.cleanDecision(Object.assign({}, raw, { after: Object.assign({}, raw.after, { insight: 'x'.repeat(900), comparedWith: 'hack' }), followup: { outcome: 'purchased', worn: 'hack', regret: 'hack', sizeResult: 'hack', returnReason: 'hack', note: 'x'.repeat(900), at: 'invalid' } }));
+  assert.equal(unsafe.after.insight.length, 200); assert.equal(unsafe.after.comparedWith, 'none'); assert.equal(unsafe.followup.worn, 'unknown'); assert.equal(unsafe.followup.sizeResult, 'unknown'); assert.equal(unsafe.followup.returnReason, 'unknown'); assert.equal(unsafe.followup.note.length, 300); assert.equal(unsafe.followup.at, '');
   assert.equal(W.cleanDecision(Object.assign({}, raw, { after: null })).followup, null);
 });

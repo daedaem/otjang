@@ -18,8 +18,8 @@ function renderWardrobeOverview(main) {
   box.append(h('div', { class: 'needs-entry' }, h('div', null,
     h('b', { text: first ? '다음으로 살펴볼 옷: ' + first.name : plan.total ? '가진 옷부터 확인하고, 필요한 종류를 찾아보세요' : '옷 몇 벌로 시작해 보세요' }),
     h('p', { class: 'note', text: first ? first.reasons[0] : '등록된 옷의 구성과 함께 입을 조합을 보고 다음 한 벌을 제안해요.' })),
-    h('button', { type: 'button', class: 'btn primary', id: 'openWardrobeNeeds', onclick: openNeeds, text: '필요한 한 벌 살펴보기 ↗' })));
-  box.append(h('details', { class: 'owned-registration-tools' }, h('summary', { text: '사진 여러 장 · 기본 옷으로 등록' }), h('div', { class: 'bar' }, h('button', { class: 'btn small', type: 'button', id: 'addPhotos', onclick: () => $('#bulkFile').click(), text: '사진으로 여러 벌' }), h('button', { class: 'btn small', type: 'button', id: 'addQuick', onclick: () => openQuick(), text: '기본 옷 골라 넣기' }))));
+    h('button', { type: 'button', class: 'btn', id: 'openWardrobeNeeds', onclick: openNeeds, text: '필요한 한 벌 살펴보기 ↗' })));
+  box.append(h('details', { class: 'owned-registration-tools' }, h('summary', { text: '사진으로 등록 (1장 이상) · 기본 옷 고르기' }), h('div', { class: 'bar' }, h('button', { class: 'btn small', type: 'button', id: 'addPhotos', onclick: () => $('#bulkFile').click(), text: '사진 고르기' }), h('button', { class: 'btn small', type: 'button', id: 'addQuick', onclick: () => openQuick(), text: '기본 옷 골라 넣기' }))));
   main.append(box);
 }
 function openNeedProduct(r) {
