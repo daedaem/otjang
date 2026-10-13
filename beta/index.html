@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>어울 (가칭)</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-lG5xdAJzYaFhDTtkXilp/RviBLlj1db5Wr40qjnggL4=' 'sha256-LPsnBtPWomGQFXVGY304O8n+pmQYRJ9sZdBxcjISOaM=' 'sha256-9cgO4EJJfT/Tb/krvDU+CU4ALnR/txoz+ljJuNq0l44=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-LheCghBBaAPcZyobBS29sif8RMn1RbIbscAn5I53/4M=' 'sha256-/Pz9j52/T/bhzHY8M5Az/PAl47Qbml4wKvZBaknlSk0=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-ycFD35TRkb0Vzgmng5TUaK/uV5YoLlDE5nPuGScCZQ8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1X7GSjoKK0ZtrQ/2KqVpK57gykZrMfnMeVzDM5gYoKg=' 'sha256-4kYqUalkLzPbp2KWdVZP/Wg6+1q+2gLpWWi6N3D7Na4=' 'sha256-lG5xdAJzYaFhDTtkXilp/RviBLlj1db5Wr40qjnggL4=' 'sha256-LPsnBtPWomGQFXVGY304O8n+pmQYRJ9sZdBxcjISOaM=' 'sha256-md9k88XoFJd9Fjlkyp24qolceZenKeHroaRahdg+DFc=' 'sha256-net2Vla0d87FtFORy24gWDguIUBhwB58xYuXKYk9hg4=' 'sha256-bD993v3cj6rlIkOED9H+Iqef/cSApD8Ct6MdXnl6Q1Y=' 'sha256-nbCj+jaUnqQhKHtMh5KrQjizHuEEQUp0CbKi4S1eqMY=' 'sha256-zP+eUqsJ28IaNuI6cIlfWAhiQxstDoqAh2cLMwXpB6g=' 'sha256-WTnbZTiTtmuS5vndJePxb1dvE7vmNr5ft58qdqJ2ko8=' 'sha256-yYTSe8RUlQ0Ljc4OEV/mbTzNmbxFd1yO7AR98llrkLg=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
@@ -39,6 +39,8 @@ h1,h2,h3,p{margin:0}
 .local.warn{color:var(--warm);border-color:var(--warm)}
 .tabs{position:sticky;top:0;background:var(--paper);z-index:5;padding-top:4px}
 .tablist{display:flex;gap:4px;border-bottom:1px solid var(--line2);overflow-x:auto;scrollbar-width:none}
+.tabs{position:relative}.tabs::after{content:"";position:absolute;right:0;top:4px;bottom:1px;width:36px;pointer-events:none;background:linear-gradient(90deg,transparent,var(--paper) 80%)}   /* 탭이 가로로 넘치면 오른쪽이 흐려져 더 있음을 알린다 */
+.tabs.end::after{display:none}
 .tablist::-webkit-scrollbar{display:none}
 .tab{appearance:none;border:0;background:none;padding:10px 14px;white-space:nowrap;cursor:pointer;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
@@ -271,9 +273,13 @@ svg.tee{width:88px;height:88px;display:block;background:var(--thumb);border-radi
 fieldset.q{border:0;padding:0;margin:8px 0 0}
 fieldset.q legend{font-size:13px;color:var(--ink2);font-weight:650;padding:0;margin-bottom:4px}
 ul.checks{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:14.5px}
-ul.checks .mk{display:inline-block;width:20px;font-weight:700}
-ul.checks .ml{font-size:12.5px;color:var(--ink2);margin-right:4px}
-.ck.ok .mk,.ck.good .mk{color:var(--ok)}.ck.fail .mk,.ck.low .mk,.ck.warn .mk{color:var(--warm)}.ck.unknown .mk,.ck.mid .mk,.ck.none .mk,.ck.weak .mk,.ck.partial .mk{color:var(--ink2)}
+ul.checks li{display:grid;grid-template-columns:20px 96px 1fr;column-gap:4px;align-items:baseline}   /* 기호·상태 글자·내용이 같은 자리에서 시작한다 */
+ul.checks .mk{display:inline-block;width:20px;font-weight:700;grid-column:1}
+ul.checks .ml{font-size:12.5px;color:var(--ink2);grid-column:2}
+ul.checks li>b{grid-column:3}ul.checks li>b+span{grid-column:3}ul.checks li>.sr+b{grid-column:2/4}
+@media (max-width:400px){ul.checks li{grid-template-columns:20px 1fr}ul.checks .ml{grid-column:2}ul.checks li>b{grid-column:2}ul.checks li>b+span{grid-column:2}ul.checks li>.sr+b{grid-column:2}}
+.ck.ok .mk,.ck.good .mk{color:var(--ok)}.ck.fail .mk,.ck.warn .mk{color:var(--warm)}.ck.unknown .mk,.ck.mid .mk,.ck.none .mk,.ck.weak .mk,.ck.partial .mk,.ck.low .mk{color:var(--ink2)}   /* 약점(▽)은 경고가 아니라 회색 */
+table.cmp td.ck .mk{font-weight:700}table.cmp td.ok .mk{color:var(--ok)}table.cmp td.fail .mk,table.cmp td.warn .mk{color:var(--warm)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .disc{color:var(--warm);font-weight:700;font-size:13px}
 del{color:var(--ink2);font-size:13px}
@@ -317,7 +323,7 @@ table.cmp{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0 0;ta
 table.cmp th,table.cmp td{text-align:left;vertical-align:top;padding:7px 6px;border-top:1px solid var(--line)}
 table.cmp thead th{font-size:12.5px;color:var(--ink2);border-top:0}
 table.cmp th[scope=row]{font-weight:650;font-size:12.5px;color:var(--ink2);width:22%}
-table.cmp td.win{background:var(--sel);font-weight:650}
+table.cmp td.win{background:var(--sel);font-weight:650;box-shadow:inset 3px 0 0 var(--ok)}
 .nowsum{font-size:14.5px;font-weight:650;margin:10px 0 0}
 .nowmore{margin-top:10px}
 .nowmore>summary{cursor:pointer;font-size:13.5px;color:var(--ink);padding:6px 0}
@@ -1485,6 +1491,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
    */
   function condOf(p, key, ctx) {
     const f = p.fabric, src = (k) => (k ? ' (' + SRC[k] + ')' : ''), strong = (k) => has(STRONG, k);
+    const sure = (k) => strong(k) || k === 'user';                                                    // 사용자가 상품 페이지를 보고 적은 값은 '본 사실'로 — 어기면 빼고(fail), 맞으면 약한 확인
     const res = (status, text, short, s, kind, say) => ({ status, text, short: short || '', src: s || '', kind: kind || (status === 'weak' ? 'evidence' : ''), say: say || '' });   // kind: weak 가 근거 약함(evidence)인지 반쯤 맞음(partial)인지
     if (key === 'noLogo') {
       const ls = p.logoSrc && p.logoSrc !== 'photo' ? src(p.logoSrc) : /사진/.test(p.logoNote) ? ' (상품 사진으로 확인)' : '';
@@ -1501,18 +1508,18 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       const s = f.thickSrc;
       if (f.thick === 'thin') return strong(s) ? res('ok', '얇음' + src(s), '', s) : res('weak', '얇음' + src(s), '', s);
       if (f.thick === 'mid') return res('weak', '보통 두께 — 얇은 편은 아님' + src(s), '보통 두께', s, 'partial', '두께는 보통이에요');
-      if (f.thick === 'thick') return strong(s) ? res('fail', '두꺼움' + (f.weight ? '(' + f.weight + ')' : '') + src(s), '두꺼움' + (f.weight ? '(' + f.weight + ')' : ''), s) : res('warn', '두꺼울 수 있음' + src(s), '두꺼울 수 있음', s);
+      if (f.thick === 'thick') return sure(s) ? res('fail', '두꺼움' + (f.weight ? '(' + f.weight + ')' : '') + src(s), '두꺼움' + (f.weight ? '(' + f.weight + ')' : ''), s) : res('warn', '두꺼울 수 있음' + src(s), '두꺼울 수 있음', s);
       return res('unknown', '두께 확인 못 함', '두께 모름');
     }
     if (key === 'narrowNeck') {
       const s = p.neckSrc;
       if (p.neck === 'narrow') return strong(s) ? res('ok', NECKS.narrow + src(s), '', s) : res('weak', NECKS.narrow + src(s), '', s);
-      if (p.neck === 'wide') return strong(s) ? res('fail', NECKS.wide + src(s), '목 립 넓음', s) : res('warn', '목 립이 넓어 보임' + src(s), '목 립 넓어 보임', s);
+      if (p.neck === 'wide') return sure(s) ? res('fail', NECKS.wide + src(s), '목 립 넓음', s) : res('warn', '목 립이 넓어 보임' + src(s), '목 립 넓어 보임', s);
       return res('unknown', p.neck ? NECKS[p.neck] + ' — 폭은 확인 못 함' : '목 립 폭 확인 못 함', '목 립 폭 모름');
     }
     if (key === 'notLoose') {                                                                         // 카디건 안에서 뭉치지 않게: 루즈·박스핏이 아닌지
       const s = p.fitSrc;
-      if (p.fit === 'relaxed') return strong(s) ? res('fail', FIT.relaxed + src(s), '루즈·박스핏', s) : res('warn', FIT.relaxed + '일 수 있음' + src(s), '루즈·박스핏일 수 있음', s);
+      if (p.fit === 'relaxed') return sure(s) ? res('fail', FIT.relaxed + src(s), '루즈·박스핏', s) : res('warn', FIT.relaxed + '일 수 있음' + src(s), '루즈·박스핏일 수 있음', s);
       if (p.fit === 'slim' || p.fit === 'regular') return strong(s) ? res('ok', FIT[p.fit] + src(s), '', s) : res('weak', FIT[p.fit] + src(s), '', s);
       return res('unknown', '핏 정보 없음', '핏 모름');
     }
@@ -1526,17 +1533,18 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       const sure = strong(sz) && !adj;                                                                 // 뒤 중심 보정(추정)이 들어가면 확인이 아니라 약한 확인
       const st = (has(SIZE_SRC, sz) ? SIZE_SRC[sz] : '치수') + (adj ? '에 2cm 더한 추정' : '');           // 결론의 근거 이름(치수표 + 보정)
       const head = sizeName(p, s.label) + ' 총장 ' + s.length + 'cm' + (adj ? '(뒤 중심 치수라 약 ' + len + 'cm로 봄)' : '');
-      const out = d <= -2 ? Object.assign(res(sure ? 'ok' : 'weak', head + ' — 카디건(' + L + 'cm)보다 ' + Math.abs(d) + 'cm 짧아요' + tag, '', sz), { brief: '카디건보다 ' + Math.abs(d) + 'cm 짧아요' })
-        : d <= 0 ? res('weak', head + ' — 카디건(' + L + 'cm)과 ' + (d === 0 ? '같아요' : '거의 같아요(' + Math.abs(d) + 'cm 짧음)') + '. 팔을 들면 밑단이 보일 수 있어요' + tag, '카디건과 거의 같은 길이', sz, 'partial', '총장이 카디건과 거의 같아 팔을 들면 밑단이 보일 수 있어요')
-        : d <= 1.5 ? res('warn', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 살짝 보일 수 있어요' + tag, '카디건보다 ' + d + 'cm 길어요', sz)
-        : res(sure ? 'fail' : 'warn', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 보여요' + tag, '카디건보다 ' + d + 'cm 길어요', sz);
-      out.srcText = st; return out;
+      // [제안값, MD 경험칙] 치수표 측정 오차 약 2cm·면 티 세탁 수축 1~2cm: 1.5cm 넘게 짧으면 확인, 같거나 1cm까지 길면 애매, 1~3cm 길면 어긋날 수 있음, 3cm 넘게 길면 출처와 상관없이 어김
+      const out = d <= -1.5 ? Object.assign(res(sure ? 'ok' : 'weak', head + ' — 카디건(' + L + 'cm)보다 ' + Math.abs(d) + 'cm 짧아요' + tag, '', sz), { brief: '카디건보다 ' + Math.abs(d) + 'cm 짧아요' })
+        : d <= 1 ? res('weak', head + ' — 카디건(' + L + 'cm)' + (d < 0 ? '보다 ' + Math.abs(d) + 'cm 짧아요' : d === 0 ? '과 같아요' : '보다 ' + d + 'cm 길어요') + '. 팔을 들면 밑단이 보일 수 있어요' + tag, '카디건과 거의 같은 길이', sz, 'partial', '총장이 카디건과 거의 같아 팔을 들면 밑단이 보일 수 있어요')
+        : d <= 3 ? res('warn', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 보일 수 있어요' + tag, '카디건보다 ' + d + 'cm 길어요', sz)
+        : res('fail', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 보여요' + tag, '카디건보다 ' + d + 'cm 길어요', sz);
+      out.srcText = st; out.d = d; out.adj = !!adj; return out;
     }
     if (key === 'notSheer') {
       const s = f.thickSrc;
       if (f.thick === 'thick') return strong(s) ? res('ok', '두꺼움' + src(s), '', s) : res('weak', '두꺼운 편' + src(s), '', s);
       if (f.thick === 'mid') return res('weak', '보통 두께 — 흰색은 조금 비칠 수 있음' + src(s), '보통 두께', s, 'partial', '보통 두께라 흰색은 조금 비칠 수 있어요');
-      if (f.thick === 'thin') return strong(s) ? res('fail', '얇아서 흰색이면 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s) : res('warn', '얇아서 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s);
+      if (f.thick === 'thin') return sure(s) ? res('fail', '얇아서 흰색이면 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s) : res('warn', '얇아서 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s);
       return res('unknown', '두께·비침 확인 못 함', '비침 모름');
     }
     return res('unknown', '', '');
@@ -1590,6 +1598,10 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     const hasRef = ref && ['chest', 'length', 'shoulder'].some((k) => num(ref[k], 1, 250) != null);
     const want = normSize(q.size), today = q.today;
     if (p.stock && p.stock.inStock === false) return { score: 0, size: '', text: '상품 전체 품절(' + kd(p.stock.checkedAt) + ' 확인)', avail: false, caution: true, short: '전체 품절' };
+    if (p.user && !hasRef && p.sizes.length) {                                                       // 직접 넣은 상품은 적은 사이즈를 그대로 쓴다(평소 사이즈와 달라도 표에서 섞이지 않게)
+      const s0 = p.sizes[0];
+      return { score: 0.5, size: s0.label, text: '적은 사이즈 ' + s0.label + (want && normSize(s0.label) !== want ? '(평소 사이즈 ' + want + '와 달라요)' : ''), avail: null, meas: measLine(s0, 'user', p.lengthFrom), userSize: true, neutral: !want };
+    }
     if (hasRef) {
       let best = null;
       const adj = p.lengthFrom === 'cb' ? LEN_CB : 0;
@@ -1666,17 +1678,38 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     if (!L) return null;
     const name = str(x.name, 100).trim(), g = guessFromName(cat, name + ' ' + str(x.brand, 40));
     const bk = brandKey(cat, x.brand) || (str(x.brand, 40).trim() ? '' : g.brand);
-    const size = str(x.size, 8).trim().toUpperCase() || 'M';
+    const size = str(x.size, 12).normalize('NFKC').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 8) || 'M';
     const meas = {}; for (const k of ['chest', 'length', 'shoulder']) { const v = num(Number(x[k]), 20, 150); if (v != null) meas[k] = v; }
     const fit = has(FIT, x.fit) ? x.fit : g.fit, pack = num(Number(x.packCount), 1, 12) || (x.packCount == null || x.packCount === '' ? g.packCount : null) || 1;
-    const price = num(Number(x.price), 100, 1e8);
+    const price = num(Math.round(Number(x.price)), 100, 1e8);
     const raw = { id: 'user-' + hash36([name, bk || str(x.brand, 40).trim(), price, size].join('|')), line, brand: bk || str(x.brand, 40).trim(), brandLabel: bk ? '' : str(x.brand, 40).trim(), name: name || '지금 보는 상품', cat: L.cat, kind: L.kind || 'tee',
       family: L.family || 'white', light: 95, formality: 1, pattern: 'solid', sleeve: x.sleeve === 'long' || x.sleeve === 'short' ? x.sleeve : g.sleeve || 'short', fit, fitSrc: has(FIT, x.fit) ? 'user' : fit ? 'name' : undefined,
       fabric: { cotton100: x.cotton100 === true ? true : x.cotton100 === false ? false : undefined, comp: x.cotton100 === true ? '면 100%' : '', thick: x.thick,
         fiber: has(FIBERS, x.fiber) ? x.fiber : undefined, fiberSrc: has(FIBERS, x.fiber) ? 'user' : undefined, knit: has(KNITS, x.fiber) ? x.fiber : undefined, knitSrc: has(KNITS, x.fiber) ? 'user' : undefined },   // fiber 칸 하나로 원사(수피마 등)나 편직(루프휠 등)을 받는다
       neck: x.neck, logo: x.logo, sizes: Object.keys(meas).length ? [Object.assign({ label: size }, meas)] : [], price, currency: 'KRW', packCount: pack,
       store: { name: str(x.storeName, 60) || '직접 넣은 상품', url: safeLink(x.link) }, checkedAt: realDate(today) || W.today(), styles: [] };
-    return cleanPickProduct(raw, 0, { user: true });
+    const u = cleanPickProduct(raw, 0, { user: true });
+    if (u) { u.userSize = size; const m = matchCatalog(cat, line, name, bk, u.sleeve); if (m) u.sameAs = m.id; }   // userSize: 치수 없이 적은 사이즈도 남긴다
+    return u;
+  }
+  const KO_EN = { 에어리즘: 'airism', 수피마: 'supima', 피마: 'pima', 링스펀: 'ringspun', 클래식: 'classic', 컴포트: 'comfort', 커스텀: 'custom', 슬림: 'slim', 라일: 'lisle', 골든플리스: 'goldenfleece', 숏슬리브: 'shortsleeve', 롱슬리브: 'longsleeve', 헤비웨이트: 'heavyweight', 크루넥: 'crewneck', 크루: 'crew', 넥: 'neck' };
+  const GENERIC = /^(티셔츠|티|반팔|긴팔|화이트|흰색|흰|white|tee|tshirt|t|shirt|shirts|셔츠|남성|남자|여성|공용|맨|men|mens|무지|코튼|cotton|면|100|반소매|긴소매)$/;
+  /**
+   * 사용자가 적은 보던 상품이 어울 카탈로그의 상품과 같은 것인지: 브랜드 열쇠가 같고, 이름의 일반어가 아닌 낱말(2자 이상) 두 개 이상이 카탈로그 이름에 들어 있을 때(가장 많이 겹치는 것, 둘이 같으면 못 정함).
+   * 값은 묻지 않는다(쿠폰·세일로 다를 수 있어 화면에서 따로 알린다).
+   */
+  function matchCatalog(cat, line, name, bk, sleeve) {
+    if (!bk || !name) return null;
+    const b = cat.brands[bk], bn = [bk, b.name, b.ko].concat(b.aliases).map(bnorm);
+    const toks = String(name).toLowerCase().normalize('NFKC').split(/[^0-9a-z가-힣]+/).filter((t) => t.length >= 2 && !GENERIC.test(t) && bn.indexOf(bnorm(t)) < 0);
+    if (!toks.length) return null;
+    const scored = cat.products.filter((p) => p.line === line && p.brand === bk && (!sleeve || p.sleeve === sleeve)).map((p) => {
+      const n = bnorm(p.name) + bnorm(p.code || '');
+      return { p, n: toks.filter((t) => n.indexOf(t) >= 0 || (has(KO_EN, t) && n.indexOf(KO_EN[t]) >= 0)).length };
+    }).sort((a, b) => b.n - a.n);
+    if (!scored.length || scored[0].n < 2) return null;
+    if (scored[1] && scored[1].n === scored[0].n) return null;
+    return scored[0].p;
   }
 
   // ---------- 고르기 ----------
@@ -1704,7 +1737,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     const { w, pri } = weightsOf(q, line);
     const vref = line ? line.value : DEFAULT_VALUE;
     const budget = BUDGETS.indexOf(q.budget) > 0 ? q.budget : 0;
-    const extra = arr(q.extra).filter((p) => p && p.user && p.line === q.line);
+    const extra = arr(q.extra).filter((p) => p && p.user && p.line === q.line), exclude = arr(q.exclude).filter((x) => typeof x === 'string');   // exclude: 이미 샀다고 기록한 상품(1등·대안에서 뺀다)
     const inLine = cat.products.filter((p) => !q.line || p.line === q.line).concat(extra);
     const pool = [], excluded = [];
     for (const p of inLine) {
@@ -1730,7 +1763,9 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       r.avail = r.fit.avail;
       const fail = cs.filter((c) => c.status === 'fail');
       const overBudget = budget && up.pay > budget;
-      [r.out, r.outShort] = age == null ? ['확인일을 알 수 없어 자료를 다시 봐야 해요', '확인일 없음']
+      r.boughtOut = exclude.indexOf(p.id) >= 0;
+      [r.out, r.outShort] = r.boughtOut ? ['이미 샀다고 기록한 상품이라 뺐어요', '이미 삼']
+        : age == null ? ['확인일을 알 수 없어 자료를 다시 봐야 해요', '확인일 없음']
         : future ? ['확인일이 미래 날짜라 자료를 다시 봐야 해요', '확인일 오류']
         : age > DROP_DAYS ? ['확인한 지 ' + age + '일이 지나 1등 후보에서 뺐어요', '확인 ' + age + '일 지남']
         : fail.length ? ['고른 조건에 안 맞아요: ' + fail.map((c) => c.label + ' ✕ ' + c.text).join(', '), fail.map((c) => c.short).join('·')]
@@ -1741,8 +1776,14 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     // 1순위 기준 문턱: 고른 값이 있는(중립이 아닌) 1순위 기준이 '보통' 이상인 상품을 먼저 본다. 스타일이 동점 깨기 품목이면 문턱을 쓰지 않는다
     const g = pri[0] && !(pri[0] === 'style' && line && line.styleRole === 'tiebreak') && rows.some((r) => !isNeutral(r, pri[0])) ? pri[0] : null;
     for (const r of rows) r.gate = !g || isNeutral(r, g) || r.crit[g] >= GATE;
-    const grp = (r) => (r.out ? 2 : r.gate ? 0 : 1);
+    const hasWarn = (r) => r.conds.some((c) => c.status === 'warn' && !softLen(c));                 // 뒤 중심 추정 2cm 이하의 길이 경고는 '어긋날 수 있음'으로 안 센다
+    const anyClean = rows.some((r) => !r.out && !r.product.user && r.gate && !hasWarn(r));          // 꼭 지킬 것이 어긋날 수 있는 상품은, 어긋날 염려 없이 문턱을 넘은 상품이 하나라도 있으면 뒤로 보낸다
+    const grp = (r) => (r.out ? 3 : anyClean && hasWarn(r) ? 2 : r.gate ? 0 : 1);
+    const warnBack = anyClean ? rows.filter((r) => !r.out && !r.product.user && hasWarn(r)).length : 0;
     rows.sort((a, b) => grp(a) - grp(b) || b.raw - a.raw || a.unit.krw - b.unit.krw || (a.product.id < b.product.id ? -1 : 1));
+    // 보던 상품이 카탈로그 상품과 같은 것이면(sameAs) 직접 적은 행은 순위에서 빼고 카탈로그 행을 '보던 상품'으로 쓴다
+    const sameRow = (() => { const u = rows.find((r) => r.product.user && r.product.sameAs); if (!u) return null; const c = rows.find((r) => r.product.id === u.product.sameAs); return c ? { u, c } : null; })();
+    if (sameRow) rows.splice(rows.indexOf(sameRow.u), 1);
     const eligibleAll = rows.filter((r) => !r.out);
     const eligible = eligibleAll.filter((r) => !r.product.user);                                       // 1등·대안은 어울이 확인한 상품 안에서만. 직접 넣은 상품은 몇 위인지만 알려 준다
     const pickRow = eligible[0] || null;
@@ -1761,12 +1802,12 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     for (const r of rows) explain(r, { pri, w, use, conds, cat, gate, isPick: r === pickRow, priLead: r === pickRow ? priLead : null });
     const notes = [];
     for (const r of rows) {
-      if (!r.out || r.product.user) continue;
+      if (!r.out || r.product.user || r.boughtOut) continue;                                     // 산 상품은 화면이 따로 알린다
       if (pickRow && r.raw > pickRow.raw) notes.push({ kind: 'out', id: r.product.id, text: pname(cat, r.product) + ' — 기준 점수는 더 높지만 ' + r.out });
       else if (!pickRow) notes.push({ kind: 'out', id: r.product.id, text: pname(cat, r.product) + ' — ' + r.out });
     }
     // 대안 둘
-    const alts = pickRow ? chooseAlts(pickRow, eligible, { pri, use, fav: arr(q.brands), cat, priBest: priLead && priLead.best }) : [];
+    const alts = pickRow ? chooseAlts(pickRow, eligible, { pri, use, fav: arr(q.brands), cat, priBest: priLead && priLead.best, skip: sameRow ? sameRow.c : null, outerLen: q.outerLen }) : [];
     // 옷장과의 조합: 1등과 대안만 계산한다
     for (const r of [pickRow].concat(alts.map((a) => a.r)).filter(Boolean)) {
       const v = J.judgeCandidate(items, toCandidate(r.product, cat, today));
@@ -1787,21 +1828,49 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     const second = eligible[1] && (!g || eligible[1].gate === pickRow.gate) ? eligible[1] : null;
     const allOk = conds.length ? eligible.filter((r) => r.conds.every((c) => c.status === 'ok')).length : null;
     const head = conds.length ? '조건을 어기지 않은 ' + eligible.length + '개' : eligible.length + '개';
-    const pickWarn = pickRow ? pickRow.conds.filter((c) => c.status === 'warn').length : 0;
+    const pickWarn = pickRow ? pickRow.conds.filter((c) => c.status === 'warn' && !softLen(c)).length : 0, pickSoft = pickRow ? pickRow.conds.find(softLen) : null;
     const rank = pickRow ? { n: eligible.length, allOk, warn: pickWarn, gap: second ? Math.round((pickRow.raw - second.raw) * 1000) / 10 : null,
       text: (eligible.length === 1 ? (conds.length ? '조건을 어기지 않은 것은 이것 하나' : '고를 수 있는 것은 이것 하나')
         : head + ' 중 1위' + (gate && gate.changed && pickRow.gate ? '(' + josa(gate.label, '이', '가') + ' 보통 이상인 ' + gate.pass + '개 안에서)' : '') + (pickWarn ? '' : second ? ' · 2위와 ' + (pickRow.raw - second.raw < 0.03 ? '근소한 차이' : pickRow.raw - second.raw < 0.1 ? '차이 조금' : '차이 큼') : ''))
-        + (pickWarn ? ' · 꼭 지킬 것 ' + pickWarn + '개가 어긋날 수 있어요' : '') } : null;
+        + (pickWarn ? ' · 꼭 지킬 것 ' + pickWarn + '개가 어긋날 수 있어요' : '') + (pickSoft ? ' · 카디건보다 약 ' + pickSoft.d + 'cm 길 수 있어요(뒤 중심 치수 추정)' : '') + (warnBack ? ' · 어긋날 수 있는 ' + warnBack + '개는 뒤로 보냈어요' : ''), warnBack } : null;
     let gapWhy = pickRow && second ? whyAhead(pickRow, second, w, cat) : '';
     if (gapWhy && second && second.altSkip && !alts.some((a) => a.r === second)) gapWhy = gapWhy.replace(' 둘 다 봐 주세요.', '') + ' 2위는 ' + second.altSkip.replace(/뺐어요$/, '뺐어요.');
     if (gapWhy && rows.some((r) => r.product.user && !r.out)) gapWhy = '확인한 상품 중 ' + gapWhy;                 // 직접 넣은 상품까지 센 전체 순위와 헷갈리지 않게
-    const altNote = pickRow && alts.length < 2 && eligible.length > 1 ? (alts.length ? '대안으로 낼 만한 상품이 하나뿐이에요.' : '대안으로 낼 만한 상품이 없어요.') + ' 조건·값·핏으로 걸렀고, 전체 순위에서 모두 볼 수 있어요.' : '';
+    const altNote = pickRow && alts.length < 2 && eligible.length > 1 ? altNoteFor(pickRow, eligible, alts, cat, q.outerLen) : '';
     const brandsIn = Array.from(new Set(rows.filter((r) => !r.product.user).map((r) => r.product.brand)));
-    const userRow = rows.find((r) => r.product.user) || null;
+    const userRow = sameRow ? sameRow.c : rows.find((r) => r.product.user) || null;
+    const userSame = sameRow ? { id: sameRow.c.product.id, name: pname(cat, sameRow.c.product), userPrice: sameRow.u.product.price, catPrice: sameRow.c.krw, isPick: sameRow.c === pickRow } : null;
     return { pick: pickRow, alts, altNote, ranked: rows, eligible, eligibleAll, excluded, notes, rank, gate, gapWhy, favNote, weights: w, priorities: pri, use, conds, budget,
-      user: userRow, userRank: userRow && !userRow.out ? { idx: eligibleAll.indexOf(userRow), n: eligibleAll.length } : null,
+      user: userRow, userSame, noCatalog: !eligible.length,
+      userRank: userRow && !userRow.out && eligible.length ? { idx: eligibleAll.indexOf(userRow), n: eligibleAll.length } : null,
       about: { count: rows.filter((r) => !r.product.user).length, inLine: inLine.filter((p) => !p.user).length, brands: brandsIn.length, checkedAt: rows.length ? rows.filter((r) => !r.product.user).map((r) => r.product.checkedAt).sort()[0] || '' : '', line: line ? line.label : '', styleNote: line && line.styleRole === 'tiebreak' ? line.styleNote : '' } };
   }
+
+  /** 대안이 둘이 안 될 때 이유 한 줄: 가장 흔한 '뺀 이유'와, 카디건 총장 때문이면 한 치수 아래로 길이가 맞는 상품을 알려 준다. */
+  function altNoteFor(pickRow, eligible, alts, cat, outerLen) {
+    const head = alts.length ? '대안으로 낼 만한 상품이 하나뿐이에요.' : '대안으로 낼 만한 상품이 없어요.';
+    const rest = eligible.filter((r) => r !== pickRow && !alts.some((a) => a.r === r));
+    const longer = rest.filter((r) => r.conds.some((c) => c.key === 'notLonger' && (c.status === 'warn' || c.status === 'fail')));
+    const L = num(outerLen, 40, 100);
+    if (L != null && longer.length && longer.length >= rest.length / 2) {
+      const down = [];
+      for (const r of longer) {
+        const p = r.product, i = p.sizes.findIndex((x) => x.label === r.fit.size); if (i <= 0) continue;
+        const s2 = p.sizes[i - 1], s1 = p.sizes[i], adj = p.lengthFrom === 'cb' ? LEN_CB : 0;
+        if (s2.length == null) continue;
+        const d2 = Math.round((s2.length + adj - L) * 10) / 10; if (d2 > 1) continue;
+        const ch = s1.chest != null && s2.chest != null ? Math.round((s1.chest - s2.chest) * 10) / 10 : null;
+        down.push(pname(cat, p) + josa(pname(cat, p), '은', '는').slice(pname(cat, p).length) + ' ' + sizeName(p, s2.label) + '(총장 ' + (adj ? '약 ' : '') + (s2.length + adj) + 'cm)이면 길이가 맞아요' + (ch != null ? '(가슴은 ' + sizeName(p, s1.label) + '보다 ' + ch + 'cm 좁음)' : ''));
+        if (down.length >= 2) break;
+      }
+      return head + ' 카디건 총장(' + L + 'cm) 때문이에요: 나머지 ' + longer.length + '개는 고른 사이즈가 카디건보다 길어요.' + (down.length ? ' 한 치수 내리면 — ' + down.join(' · ') + '.' : '') + ' 전체 순위에서 모두 볼 수 있어요.';
+    }
+    const why = {}; for (const r of rest) if (r.altSkip) why[r.altSkip] = (why[r.altSkip] || 0) + 1;
+    const top = Object.keys(why).sort((a, b) => why[b] - why[a])[0];
+    return head + (top ? ' ' + why[top] + '개는 ' + top.replace(/뺐어요$/, '뺐고') + ', 나머지는 1위보다 나은 점이 없어요.' : ' 1위보다 나은 점이 있는 상품이 없어요.') + ' 전체 순위에서 모두 볼 수 있어요.';
+  }
+  /** 카디건 길이 경고 가운데 '뒤 중심 추정 2cm 이하'만 있는 것은 대안에서 빼지 않고 이름에 적는다. */
+  const softLen = (c) => c.key === 'notLonger' && c.status === 'warn' && c.adj && c.d != null && c.d <= 2;
 
   /**
    * 대안 둘. 대안마다 1등보다 나은 점이 하나 이상 있어야 하고, 그 나은 점이 대안 이름이 된다(나은 점이 없으면 내지 않는다).
@@ -1817,40 +1886,42 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     const priceOk = (r) => pri[0] !== 'value' || r.unit.krw <= pickRow.unit.krw * 2 || r.unit.krw - pickRow.unit.krw <= 15000;   // 가성비가 1순위면 두 배 넘고 한 장 15,000원 넘게 비싼 것은 내지 않는다 [제안값]
     const why = (r) => (use === 'layer' && r.product.fit === 'relaxed' && pickRow.product.fit !== 'relaxed' ? '루즈·박스핏이라 받쳐 입기 대안에서는 뺐어요'
       : pri[0] === 'fit' && !r.fit.neutral && (r.fit.score < 0.5 || r.fit.onlyOne || (r.fit.maxDiff != null && r.fit.maxDiff > 4)) ? '사이즈가 잘 맞는 옷과 많이 달라 핏 1순위 대안에서는 뺐어요'
-      : r.conds.some((c) => c.status === 'warn') ? '고른 조건과 어긋날 수 있어 대안에서는 뺐어요' : !priceOk(r) ? '한 장 값이 두 배 넘게(15,000원 넘게) 비싸 가성비 1순위 대안에서는 뺐어요' : '');
-    for (const r of eligible) if (r !== pickRow) r.altSkip = why(r);
+      : r.conds.some((c) => c.status === 'warn' && !softLen(c)) ? '고른 조건과 어긋날 수 있어 대안에서는 뺐어요' : !priceOk(r) ? '한 장 값이 두 배 넘게(15,000원 넘게) 비싸 가성비 1순위 대안에서는 뺐어요' : '');
+    for (const r of eligible) if (r !== pickRow) r.altSkip = o.skip === r ? '보던 상품이라 대안에서는 뺐어요' : why(r);
     const ok = eligible.filter((r) => r !== pickRow && !r.altSkip);
     const rest = ok.filter((r) => r.gate === pickRow.gate).concat(ok.filter((r) => r.gate !== pickRow.gate));   // 1순위 문턱을 넘은 것부터
     const fresh = (r) => !r.stale && !pickRow.stale;                                                 // 가격을 나은 점으로 써도 되나(둘 다 14일 안)
     const isFav = (r) => fav.indexOf(r.product.brand) >= 0 && r.product.brand !== pickRow.product.brand;
-    const condGain = (r) => r.conds.filter((c, i) => c.status === 'ok' && pickRow.conds[i] && pickRow.conds[i].status !== 'ok').map((c) => c.label);
+    const condGain = (r) => r.conds.filter((c, i) => c.status === 'ok' && pickRow.conds[i] && (pickRow.conds[i].status === 'unknown' || pickRow.conds[i].status === 'warn')).map((c) => c.label);   // 둘 다 맞고 근거 등급만 다르면 '더 확인된 것'이 아니다
     const LB = { cheap: '더 싸게', pack: '묶음으로 한 장 값을 줄이려면', quality: '공개된 품질 근거가 더 많은 것', fit: '사이즈가 더 잘 맞는 것', tie: '점수가 거의 같은 것', value: '가성비가 더 좋은 것' };
     const PRI_LB = { fit: LB.fit, quality: LB.quality, value: LB.value };                         // 1순위가 1등보다 높은 상품의 이름
     /** 1등보다 나은 점의 이름들(강한 것부터). 비어 있으면 대안으로 내지 않는다. */
     const advantages = (r) => {
       const L = [];
-      if (o.priBest === r && has(PRI_LB, pri[0]) && !(pri[0] === 'value' && !fresh(r))) L.push(PRI_LB[pri[0]]);
+      if (o.priBest === r && has(PRI_LB, pri[0]) && near(r) && !(pri[0] === 'value' && !fresh(r))) L.push(PRI_LB[pri[0]]);
       if (fresh(r) && r.unit.krw <= pickRow.unit.krw * 0.85 && r.unit.pay <= pickRow.unit.pay) L.push(LB.cheap);
       if (fresh(r) && r.unit.krw <= pickRow.unit.krw * 0.85 && r.unit.pay > pickRow.unit.pay && r.product.packCount > 1) L.push(LB.pack);
       const gain = condGain(r); if (gain.length) L.push('조건이 더 확인된 것(' + gain.join('·') + ')');
       if (isFav(r)) L.push(joinJosa([brandName(cat, r.product.brand)], '을', '를') + ' 더 좋아한다면');
       if (r.quality.score >= pickRow.quality.score + 0.75) L.push(LB.quality);
-      if (!r.fit.neutral && !pickRow.fit.neutral && r.fit.score >= pickRow.fit.score + 0.15) L.push(LB.fit);
+      if (r.fit.byRef && pickRow.fit.byRef && r.fit.score >= pickRow.fit.score + 0.15) L.push(LB.fit);          // 치수를 견준 경우만 '더 잘 맞는 것'
+      else if (!r.fit.neutral && !pickRow.fit.neutral && r.fit.avail === true && !r.fit.availStale && pickRow.fit.avail == null) L.push('고른 사이즈 재고가 확인된 것');
       if (r.product.sleeve !== pickRow.product.sleeve) L.push(SLEEVES[r.product.sleeve] + '을 원하면');
       if (r.product.fit && pickRow.product.fit && r.product.fit !== pickRow.product.fit) L.push(josa(FIT[r.product.fit], '을', '를') + ' 원하면');
       if (pickRow.raw - r.raw < 0.03) L.push(LB.tie);
       return L;
     };
     const cands = [];
-    if (o.priBest && o.priBest !== pickRow && !o.priBest.altSkip && has(PRI_LB, pri[0])) cands.push({ r: o.priBest, label: PRI_LB[pri[0]] });   // 1순위에서 1등보다 높은 상품을 먼저 보여 준다
+    if (o.priBest && o.priBest !== pickRow && !o.priBest.altSkip && has(PRI_LB, pri[0]) && near(o.priBest) && !(pri[0] === 'value' && !fresh(o.priBest))) cands.push({ r: o.priBest, label: PRI_LB[pri[0]] });   // 1순위에서 1등보다 높은 상품을 먼저(25점·14일 규칙은 그대로)
     if (rest[0] && rest[0].gate === pickRow.gate && pickRow.raw - rest[0].raw < 0.12) cands.push({ r: rest[0] });
+    const cheaper = rest.filter((r) => near(r) && advantages(r).indexOf(LB.cheap) >= 0).sort((a, b) => b.raw - a.raw)[0];
+    if (cheaper && cheaper.unit.krw <= pickRow.unit.krw * 0.5) cands.push({ r: cheaper, label: LB.cheap });   // 반값 아래면 '더 싸게'가 조건보다 먼저
     const condBetter = rest.find((r) => near(r) && strongOk(r) > strongOk(pickRow) && condGain(r).length);
     if (condBetter) cands.push({ r: condBetter, label: '조건이 더 확인된 것(' + condGain(condBetter).join('·') + ')' });
     if (pri[0] && pri[0] !== 'value' && !isNeutral(pickRow, pri[0])) {
       const deal = ok.filter((r) => fresh(r) && r.unit.krw <= pickRow.unit.krw / 3 && r.unit.pay < pickRow.unit.pay && r.crit.value >= 0.66 && near(r, 0.4)).sort((a, b) => b.raw - a.raw)[0];
       if (deal) cands.push({ r: deal, label: (pri[0] === 'brand' ? '브랜드' : pri[0] === 'quality' ? '품질 근거' : pri[0] === 'fit' ? '핏' : '스타일') + ' 대신 값을 보면', deal: true });
     }
-    const cheaper = rest.filter((r) => near(r) && advantages(r).indexOf(LB.cheap) >= 0).sort((a, b) => b.raw - a.raw)[0];
     if (cheaper) cands.push({ r: cheaper, label: LB.cheap });
     const favOther = rest.find((r) => near(r) && isFav(r));
     if (favOther) cands.push({ r: favOther });
@@ -1863,9 +1934,11 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       if (alts.some((a) => a.r === c.r)) continue;
       const adv = advantages(c.r);
       if (!c.deal && !adv.length) continue;                                                           // 1등보다 나은 점이 없으면 대안이 아니다
-      const used = alts.map((a) => a.label);
-      const label = [c.label].concat(adv).filter(Boolean).find((l) => used.indexOf(l) < 0);
-      if (!label) continue;
+      const used = alts.map((a) => a.label.replace(/\(카디건보다.*$/, ''));
+      const label0 = [c.label].concat(adv).filter(Boolean).find((l) => used.indexOf(l) < 0 && (l !== c.label || c.deal || adv.indexOf(l) >= 0));   // 이름은 실제 나은 점이어야 한다
+      if (!label0) continue;
+      const soft = c.r.conds.find(softLen);
+      const label = label0 + (soft ? '(카디건보다 약 ' + soft.d + 'cm 길 수 있음)' : '');
       const d = c.r.unit.krw - pickRow.unit.krw;
       alts.push({ label, delta: signedWon(d) + (Math.round(d) !== 0 && (c.r.product.packCount > 1 || pickRow.product.packCount > 1) ? '(한 장 기준)' : ''), why: altWhy(c.r), r: c.r, adv });
     }
@@ -1888,7 +1961,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       if (Math.abs(diff) < 1) return head + '가성비에서 갈렸어요. 값은 같고 공개된 품질 근거가 더 많아요.';
       return head + '가성비에서 갈렸어요. ' + (diff > 0 ? '한 장 ' + won(diff) + ' 싸요.' : '한 장 ' + won(-diff) + ' 비싸지만 공개된 품질 근거가 더 많아요.');
     }
-    if (top.c === 'brand') return head + '브랜드에서 갈렸어요(' + (a.brand.text || brandName(cat, a.product.brand)) + ').';
+    if (top.c === 'brand') return head + '브랜드에서 갈렸어요(' + (a.brand.text ? a.brand.text.replace(/^좋아하는 브랜드\((.*)\)$/, '좋아하는 브랜드: $1') : brandName(cat, a.product.brand)) + ').';
     if (top.c === 'fit') return head + '사이즈에서 갈렸어요(' + (a.fit.byRef ? '잘 맞는 옷에 더 가까움' : a.fit.avail === true && !a.fit.availStale ? '고른 사이즈 재고 확인' : '사이즈 정보가 더 많음') + ').';
     if (top.c === 'style') return head + '고른 스타일에서 갈렸어요.';
     const gain = a.conds.filter((c, i) => COND_W[c.status] > (COND_W[b.conds[i].status] || 0)).map((c) => c.label);
@@ -1995,9 +2068,10 @@ table.cmp td.win{background:var(--sel);font-weight:650}
    * 잘 맞는 옷 치수가 없을 때, 보던 상품(a)과 1등(b)의 같은 사이즈끼리 가슴·총장 차이(총장은 옆목점 기준으로 맞춤, 뒤 중심은 +2cm 추정).
    * 예: "같은 L끼리면 보던 상품이 가슴 2.5cm 넓고 총장은 약 1cm 짧아요". 견줄 치수가 없거나 차이가 1cm 아래(치수표 오차 안)면 ''.
    */
-  function sameSizeDiff(a, b) {
+  function sameSizeDiff(a, b, label) {
     if (a.fit.byRef || b.fit.byRef || !a.product.sizes.length) return '';
-    const sa = a.product.sizes[0], lab = normSize(sa.label), sb = lab ? sizeOf(b.product, lab) : null;
+    const sa = label ? sizeOf(a.product, normSize(label)) : a.product.sizes[0]; if (!sa) return '';
+    const lab = normSize(sa.label), sb = lab ? sizeOf(b.product, lab) : null;
     if (!sb) return '';
     const END = { 넓: ['넓고', '넓어요'], 좁: ['좁고', '좁아요'], 길: ['길고', '길어요'], 짧: ['짧고', '짧아요'] };
     const hps = (p, s) => (s.length == null ? null : s.length + (p.lengthFrom === 'cb' ? LEN_CB : 0));
@@ -2014,47 +2088,82 @@ table.cmp td.win{background:var(--sel);font-weight:650}
    * 반환: { rows: [{ key, label, a: { text, status }, b: { text, status }, win: 'a'|'b'|'' }], sum: 문장 }
    * 지금 낼 돈은 배송비를 아는 값끼리만 이기고 지는 것을 정한다(보던 상품 배송비를 모르면, 배송비를 빼도 비쌀 때만 1등이 싸다고 한다).
    */
-  function contrast(a, b, cat) {
+  function contrast(a, b, cat, o) {
     if (!a || !b || a === b) return null;
-    const rows = [], cw = (s) => (has(COND_W, s) ? COND_W[s] : 0);
+    o = o || {};
+    const rows = [];
     const SRC_TAIL = new RegExp('\\s*\\((' + Object.keys(SRC).map((k) => SRC[k]).concat(Object.keys(SIZE_SRC).map((k) => SIZE_SRC[k]), ['상품 사진으로 확인']).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\)\\s*$');
     /** 표 칸에 넣을 짧은 말: 출처 꼬리와 긴 설명을 떼고, 약한 확인·애매는 글자로 붙인다. */
     const brief = (c) => { if (c.status === 'unknown') return '모름'; const t = c.brief || c.short || c.text.replace(SRC_TAIL, '').replace(/ — .*$/, ''); return t + (c.status === 'weak' ? (c.kind === 'partial' ? ' · 애매' : ' · 약한 확인') : ''); };
-    const payTxt = (r) => won(r.unit.pay) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') + (r.unit.shipKnown ? (r.unit.ship ? ', 배송비 포함' : ', 무료 배송') : r.unit.shipEst ? ', 배송비 바뀔 수 있음' : ', 배송비 모름');
+    const aUser = !!a.product.user, who = aUser ? '보던 상품' : '보던 상품';
+    const staleB = !!b.stale, staleA = !!a.stale, anyStale = staleA || staleB;
+    const payTxt = (r) => won(r.unit.pay) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') + (r.unit.shipKnown ? (r.unit.ship ? ', 배송비 포함' : ', 무료 배송') : r.unit.shipEst ? ', 배송비 바뀔 수 있음' : ', 배송비 모름') + (r.stale ? '(' + r.age + '일 전 가격)' : '');
     const dPay = a.unit.pay - b.unit.pay, SHIP_GUESS = 5000;                                         // [가정] 국내 배송비는 보통 5,000원 아래: 차이가 그보다 크면 배송비를 몰라도 어느 쪽이 싼지 말한다
-    const payWin = a.unit.shipKnown && b.unit.shipKnown ? (dPay < 0 ? 'a' : dPay > 0 ? 'b' : '') : dPay > 0 && b.unit.shipKnown ? 'b' : dPay <= -SHIP_GUESS ? 'a' : '';
+    const payWin = anyStale ? '' : a.unit.shipKnown && b.unit.shipKnown ? (dPay < 0 ? 'a' : dPay > 0 ? 'b' : '') : dPay > 0 && b.unit.shipKnown ? 'b' : dPay <= -SHIP_GUESS ? 'a' : '';
     rows.push({ key: 'pay', label: '지금 낼 돈', a: { text: payTxt(a) }, b: { text: payTxt(b) }, win: payWin });
-    if (a.product.packCount > 1 || b.product.packCount > 1) rows.push({ key: 'unit', label: '한 장 값', a: { text: '약 ' + won(a.unit.krw) }, b: { text: '약 ' + won(b.unit.krw) }, win: '' });
+    const packDiff = a.product.packCount !== b.product.packCount, dUnit = a.unit.krw - b.unit.krw;
+    if (a.product.packCount > 1 || b.product.packCount > 1) rows.push({ key: 'unit', label: '한 장 값', a: { text: '약 ' + won(a.unit.krw) }, b: { text: '약 ' + won(b.unit.krw) }, win: packDiff && !anyStale ? (dUnit < -1 ? 'a' : dUnit > 1 ? 'b' : '') : '' });
+    // 조건: 맞음(확인·약한 확인) / 애매 / 어긋날 수 있음 / 모름 — 근거 등급만 다른 것은 이기고 지는 것으로 치지 않는다
+    const grade = (x) => (x.status === 'ok' || (x.status === 'weak' && x.kind !== 'partial') ? 2 : x.status === 'weak' ? 1 : x.status === 'warn' ? 0.5 : x.status === 'fail' ? 0 : null);
+    const unk = [];
     a.conds.forEach((c, i) => {
       const d = b.conds[i]; if (!d) return;
       const st = (x) => (x.status === 'weak' && x.kind === 'partial' ? 'partial' : x.status);
-      rows.push({ key: 'cond:' + c.key, label: c.label, noun: c.noun, a: { text: brief(c), status: st(c), full: c.text }, b: { text: brief(d), status: st(d), full: d.text }, win: cw(c.status) > cw(d.status) ? 'a' : cw(c.status) < cw(d.status) ? 'b' : '' });
+      const ga = grade(c), gb = grade(d);
+      if (ga == null && gb != null) unk.push(c.noun || c.label);
+      rows.push({ key: 'cond:' + c.key, label: c.label, noun: c.noun, a: { text: brief(c), status: st(c), full: c.text }, b: { text: brief(d), status: st(d), full: d.text }, win: ga != null && gb != null && ga !== gb ? (ga > gb ? 'a' : 'b') : '' });
     });
     const mtxt = (p, s) => { if (!s) return ''; const m = [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? (p.lengthFrom === 'cb' ? '총장 약 ' + (s.length + LEN_CB) + '(뒤 중심 ' + s.length + ')' : '총장 ' + s.length) : ''].filter(Boolean); return m.length ? m.join('·') + 'cm' : ''; };
     const sizeTxt = (r, want) => {
       const p = r.product;
       if (r.fit.byRef) return sizeName(p, r.fit.size) + ' — 잘 맞는 옷과 ' + r.fit.diffs.join(', ');
       if (r.fit.byRefFailed && r.fit.diffs) return sizeName(p, r.fit.refSize) + ' — 잘 맞는 옷과 ' + r.fit.diffs.join(', ');
-      const lab = r.fit.size || want, s = lab ? p.sizes.find((x) => x.label === lab) || sizeOf(p, normSize(lab)) : null;
+      const lab = (p.user && p.sizes.length ? p.sizes[0].label : '') || (r === a && o.size ? o.size : '') || r.fit.size || want, s = lab ? p.sizes.find((x) => x.label === lab) || sizeOf(p, normSize(lab)) : null;
       return s ? sizeName(p, s.label) + (mtxt(p, s) ? ' — ' + mtxt(p, s) : '') : lab ? lab + ' — 치수 모름' : '모름';
     };
+    let sizeNote = '';
     if (!a.fit.neutral || !b.fit.neutral || a.product.sizes.length) {
-      const want = a.product.sizes.length ? normSize(a.product.sizes[0].label) : '';
+      const want = aUser ? (a.product.sizes.length ? normSize(a.product.sizes[0].label) : '') : normSize(o.size || '');
       const fw = a.fit.byRef && b.fit.byRef ? (a.fit.diffAvg + 1 <= b.fit.diffAvg ? 'a' : b.fit.diffAvg + 1 <= a.fit.diffAvg ? 'b' : '') : (a.fit.byRefFailed && a.fit.diffs && b.fit.byRef && !b.fit.onlyOne) ? 'b' : '';
       rows.push({ key: 'size', label: '사이즈', noun: '사이즈', a: { text: sizeTxt(a, want) }, b: { text: sizeTxt(b, want) }, win: fw });
+      const bl = b.fit.size ? normSize(b.fit.size) : '';
+      if (aUser && want && bl && want !== bl && !a.fit.byRef) sizeNote = '보던 상품은 ' + a.product.sizes[0].label + '로 적으셨고 1위는 ' + (b.fit.byRef ? '잘 맞는 옷 치수로 ' : '평소 사이즈로 ') + sizeName(b.product, b.fit.size) + '을 골랐어요';
     }
-    rows.push({ key: 'quality', label: '품질 근거', noun: '품질 근거', a: { text: qualityList(a, 3) || '적은 근거 없음' }, b: { text: qualityList(b, 3) || '밝힌 근거 없음' }, win: a.quality.score >= b.quality.score + 0.75 ? 'a' : b.quality.score >= a.quality.score + 0.75 ? 'b' : '' });
+    // 핏이 다르면(조건으로 보지 않을 때) 한 줄
+    let fitNote = '';
+    const fa = a.product.fit, fb = b.product.fit;
+    if (fa && fb && fa !== fb && !a.conds.some((c) => c.key === 'notLoose')) {
+      rows.push({ key: 'fit', label: '핏', noun: '핏', a: { text: FIT[fa] + (a.product.fitSrc === 'name' ? '(상품명에서 읽음)' : a.product.fitSrc === 'user' ? '(직접 적음)' : '') }, b: { text: FIT[fb] + (b.product.fitSrc && has(SRC, b.product.fitSrc) ? '(' + SRC[b.product.fitSrc] + ')' : '') }, win: '' });
+      fitNote = '핏이 달라요: 보던 상품은 ' + FIT[fa] + ', 1위는 ' + FIT[fb] + '이에요' + (fa === 'relaxed' ? '. 루즈핏을 원하면 전체 순위에서 핏을 보고 고르세요' : '');
+    }
+    rows.push({ key: 'quality', label: '품질 근거', noun: '품질 근거', a: { text: qualityList(a, 3) || (aUser ? '적은 근거 없음' : '밝힌 근거 없음') }, b: { text: qualityList(b, 3) || '밝힌 근거 없음' }, win: a.quality.score >= b.quality.score + 0.75 ? 'a' : b.quality.score >= a.quality.score + 0.75 ? 'b' : '' });
     if (!a.brand.neutral) rows.push({ key: 'brand', label: '브랜드', noun: '브랜드', a: { text: a.brand.text || '좋아하는 브랜드 아님' }, b: { text: b.brand.text || '좋아하는 브랜드 아님' }, win: a.brand.score > b.brand.score ? 'a' : a.brand.score < b.brand.score ? 'b' : '' });
     const nb = pname(cat, b.product);
-    const price = payWin === 'b' ? '1위 ' + josa(nb, '이', '가') + ' ' + won(dPay) + (a.unit.shipKnown ? '' : ' 넘게') + ' 싸요' + (a.unit.shipKnown ? '' : '(보던 상품 배송비는 빼고 셈)')
-      : payWin === 'a' ? '보던 상품이 ' + won(-dPay) + ' 싸요' + (a.unit.shipKnown ? '' : '(보던 상품 배송비는 빼고 셈)')
+    const packTail = packDiff && a.product.packCount > 1 ? '(보던 상품 ' + a.product.packCount + '장 값과 견줌)' : '';
+    const price = anyStale ? '1위 가격은 ' + (staleB ? b.age : a.age) + '일 전에 확인한 값이라 어느 쪽이 싼지는 판매처에서 봐 주세요'
+      : payWin === 'b' ? '1위 ' + josa(nb, '이', '가') + ' ' + won(dPay) + (a.unit.shipKnown ? '' : ' 넘게') + ' 싸요' + (a.unit.shipKnown ? packTail : '(보던 상품 배송비는 빼고 셈' + (packTail ? ', ' + a.product.packCount + '장 값과 견줌' : '') + ')')
+      : payWin === 'a' ? '보던 상품이 ' + won(-dPay) + ' 싸요' + (a.unit.shipKnown ? packTail : '(보던 상품 배송비는 빼고 셈' + (packTail ? ', ' + a.product.packCount + '장 값과 견줌' : '') + ')')
       : dPay < 0 ? '보던 상품이 ' + won(-dPay) + ' 싸지만 배송비를 몰라 확실하지 않아요'
       : dPay === 0 ? '지금 낼 돈은 같아요' : '';
+    const unitLine = packDiff && !anyStale && Math.abs(dUnit) > 1 ? (a.product.packCount > 1 ? '다만 보던 상품은 ' + a.product.packCount + '장 묶음이라 한 장 값은 ' + (dUnit < 0 ? '보던 상품이 ' + won(-dUnit) + ' 싸요' : '1위가 ' + won(dUnit) + ' 싸요') : '한 장 값은 ' + (dUnit < 0 ? '보던 상품이 ' + won(-dUnit) + ' 싸요' : '1위가 ' + won(dUnit) + ' 싸요') + '(1위는 ' + b.product.packCount + '장 묶음)') : '';
     const nouns = (w) => rows.filter((x) => x.win === w && x.key !== 'pay' && x.key !== 'unit').map((x) => x.noun || x.label);
     const bw = nouns('b'), aw = nouns('a');
-    const same = sameSizeDiff(a, b);
-    const sum = [price, same, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : ''].filter(Boolean).map((t) => t + '.').join(' ');
-    return { rows, sum, payWin };
+    const same = sameSizeDiff(a, b, aUser ? '' : o.size);
+    const sleeveNote = a.product.sleeve !== b.product.sleeve ? '보던 상품은 ' + SLEEVES[a.product.sleeve] + '이라 ' + SLEEVES[b.product.sleeve] + ' 후보와 견줬어요' : '';
+    const sum = [price, unitLine, same, sizeNote, fitNote, sleeveNote, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : '', unk.length ? (aUser ? '보던 상품은 안 적어서 못 견준 것: ' : '보던 상품은 확인 못 한 것: ') + unk.join('·') + (aUser ? " — '더 정확히'에 적으면 다시 셈해요" : '') : ''].filter(Boolean).map((t) => t + '.').join(' ');
+    return { rows, sum, payWin, why: whyBehind(a, b, o.weights, cat, aUser) };
+  }
+  /** 보던 상품이 1위보다 뒤인 이유 한 줄: 고른 기준(안 골랐으면 다섯 기준) 가운데 1위보다 0.15 넘게 낮은 것 둘까지. */
+  function whyBehind(a, b, w, cat, aUser) {
+    if (a.raw >= b.raw) return '';
+    const ws = w || {}, chosen = Object.keys(CRITERIA).filter((c) => ws[c] != null && ws[c] > OFF_W);
+    const list = (chosen.length ? chosen : Object.keys(CRITERIA)).map((c) => ({ c, d: (b.crit[c] - a.crit[c]) * (ws[c] || 1) })).filter((x) => x.d > 0.15 * (ws[x.c] || 1)).sort((x, y) => y.d - x.d).slice(0, 2);
+    const reason = (c) => (c === 'value' ? (!a.unit.shipKnown ? '배송비를 몰라 값을 낮게 봤어요' : a.quality.items.length ? '같은 값에 품질 근거가 적어요' : '값에 견줄 품질 근거가 없어요')
+      : c === 'quality' ? (!aUser ? '공개된 품질 근거가 1위보다 적어요' : a.quality.items.length ? '적은 품질 근거가 1위보다 적어요' : '품질 근거를 적지 않았어요')
+      : c === 'brand' ? '좋아하는 브랜드가 아니에요' : c === 'fit' ? (a.fit.byRef ? '잘 맞는 옷과 더 달라요' : '사이즈 치수를 적지 않았어요') : '스타일 분류가 없어요');
+    const conds = a.conds.filter((c, i) => b.conds[i] && (has(COND_W, c.status) ? COND_W[c.status] : 0) < (has(COND_W, b.conds[i].status) ? COND_W[b.conds[i].status] : 0)).map((c) => (c.noun || c.label) + (c.status === 'unknown' ? ' 모름' : c.status === 'warn' ? ' 어긋날 수 있음' : ' 애매'));
+    const parts = list.map((x) => reason(x.c)).concat(conds.length ? ['조건: ' + conds.slice(0, 3).join('·')] : []);
+    return parts.length ? parts.join(', ') : '';
   }
   /** 대안 한 줄: 한 장 값과 공개된 품질 근거 둘, 조건 상태. */
   function altWhy(r) {
@@ -2262,7 +2371,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
     const o = {};
     for (const part of s.split('|').slice(1)) { const at = part.indexOf('='); if (at > 0) o[part.slice(0, at)] = part.slice(at + 1); }
     const out = { id: String(o.id || '').slice(0, 16), v: String(o.v || '').slice(0, 20), at: date(o.at), first: date(o.first), pmf: Object.prototype.hasOwnProperty.call(PMF, o.pmf) ? o.pmf : '', scr: String(o.scr || '').slice(0, 12) };
-    out.nx = String(o.nx || '').split(',').filter((x) => /^[a-z][a-z-]{1,15}$/.test(x)).slice(0, 10);   // 다음에 추천받고 싶은 옷(품목 열쇠)
+    out.nx = String(o.nx || '').split(',').filter((x, i, a) => /^[a-z][a-z-]{1,15}$/.test(x) && !Object.prototype.hasOwnProperty.call(Object.prototype, x) && a.indexOf(x) === i).slice(0, 10);   // constructor 같은 기본 속성 이름은 받지 않는다   // 다음에 추천받고 싶은 옷(품목 열쇠)
     out.pkx = String(o.pkx || '').split(',').map((x) => /^([a-z0-9-]{1,60})~([A-Za-z0-9]{0,8})~(fit|small|big)~(good|ok|regret)(?:~([A-Za-z0-9]{0,8}))?$/.exec(x)).filter(Boolean).slice(0, 10).map((m) => ({ product: m[1], size: m[2], fit: m[3], feel: m[4], rec: m[5] || '' }));   // 추천에서 산 상품의 2주 뒤 사이즈 결과(고른 사람만). rec: 그때 추천한 사이즈
     const cnt3 = (v, n) => { const a = String(v || '').split('~').map(Number); return Array.from({ length: n }, (_, i) => (Number.isInteger(a[i]) && a[i] >= 0 && a[i] < 1000 ? a[i] : 0)); };
     const w = cnt3(o.pkw, WHY.length); out.pkw = {}; WHY.forEach((k, i) => { out.pkw[k] = w[i]; });   // '아니에요' 이유별 수
@@ -2301,7 +2410,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
       fitOutcomes: entries.reduce((a, e) => a.concat(e.pkx), []), shared: sum('pksh'),
       rejectWhy: WHY.reduce((m, k) => { m[k] = entries.reduce((a, e) => a + (e.pkw ? e.pkw[k] : 0), 0); return m; }, {}),
       nowDecide: ['keep', 'switch', 'skip'].reduce((m, k) => { m[k] = entries.reduce((a, e) => a + (e.nwd ? e.nwd[k] : 0), 0); return m; }, {}),
-      wishes: entries.reduce((m, e) => { for (const k of e.nx) m[k] = (m[k] || 0) + 1; return m; }, {}),   // 다음 품목 수요: 품목 → 사람 수
+      wishes: entries.reduce((m, e) => { for (const k of e.nx) m[k] = (m[k] || 0) + 1; return m; }, Object.create(null)),   // 다음 품목 수요: 품목 → 사람 수
       pmf: Object.assign(rate(pmfAns.filter((e) => e.pmf === 'very').length, pmfAns.length), { answered: pmfAns.length, very: cnt((e) => e.pmf === 'very'), some: cnt((e) => e.pmf === 'some'), not: cnt((e) => e.pmf === 'not'), quit: cnt((e) => e.pmf === 'quit') }),
       nps: { answered: npsAns.length, promoters: prom, detractors: det, passives: npsAns.length - prom - det, score: npsAns.length ? Math.round(((prom - det) / npsAns.length) * 100) : null },
       errors: cnt((e) => e.err > 0),
@@ -2320,7 +2429,7 @@ table.cmp td.win{background:var(--sel);font-weight:650}
   return { PREFIX, PMF, THRESH, WHY, line, parse, parseOne, summarize, verdicts };
 });
 </script>
-<script>const BRAND = {"name":"어울","latin":"EOUL","status":"가칭","tagline":"나에게 어울리고 내 옷장을 채워 줄 다음 한 벌을, 사기 전에","version":"0.8.0-beta","beta":true,"feedbackHint":"복사한 내용을 카카오톡이나 문자로 운영자에게 보내 주세요.","note":"이름은 사용자 결정 전 임시(2026-10-12 '어울(EOUL)로 임시 사용'). 바꿀 때는 이 파일만 고치고 다시 빌드한다."};
+<script>const BRAND = {"name":"어울","latin":"EOUL","status":"가칭","tagline":"나에게 어울리고 내 옷장을 채워 줄 다음 한 벌을, 사기 전에","version":"0.9.0-beta","beta":true,"feedbackHint":"복사한 내용을 카카오톡이나 문자로 운영자에게 보내 주세요.","note":"이름은 사용자 결정 전 임시(2026-10-12 '어울(EOUL)로 임시 사용'). 바꿀 때는 이 파일만 고치고 다시 빌드한다."};
 const SAMPLE = {
  "schema": 2,
  "note": "예시 옷장(합성 자료). 사진에서 뽑은 초안 상태로 두어 확인 흐름을 볼 수 있게 했다. 특정인의 옷장이 아니다.",
@@ -3916,8 +4025,8 @@ const PICKS_RAW = {
    ],
    "neck": null,
    "neckSrc": null,
-   "logo": "chest",
-   "logoNote": "왼쪽 가슴 포니 자수(공식)",
+   "logo": "small-chest",
+   "logoNote": "왼쪽 가슴 포니 자수(공식). 크기는 작은 포니(상품 사진으로 판단)",
    "origin": "",
    "sizes": [
     {
@@ -4014,8 +4123,8 @@ const PICKS_RAW = {
    "build": [],
    "neck": null,
    "neckSrc": null,
-   "logo": "chest",
-   "logoNote": "왼쪽 가슴 멀티 컬러 포니 자수(공식)",
+   "logo": "small-chest",
+   "logoNote": "왼쪽 가슴 멀티 컬러 포니 자수(공식). 크기는 작은 포니(상품 사진으로 판단)",
    "origin": "",
    "sizes": [
     {
@@ -5891,7 +6000,7 @@ const PICKS_RAW = {
   }
   /** '보던 흰 티' 입력 칸의 값(글자만, 길이 제한). */
   const NOW_KEYS = ['link', 'name', 'brand', 'price', 'packCount', 'sleeve', 'fit', 'logo', 'thick', 'neck', 'cotton', 'fiber', 'size', 'chest', 'length', 'shoulder'];
-  function cleanNow(raw) { const o = {}; if (raw && typeof raw === 'object') for (const k of NOW_KEYS) if (typeof raw[k] === 'string' && raw[k].trim()) o[k] = str(raw[k], k === 'link' ? 600 : 100); return o; }
+  function cleanNow(raw) { const o = {}; if (raw && typeof raw === 'object') { for (const k of NOW_KEYS) if (typeof raw[k] === 'string' && raw[k].trim()) o[k] = str(raw[k], k === 'link' ? 600 : 100); const a = Array.isArray(raw._auto) ? raw._auto.filter((k) => NOW_KEYS.indexOf(k) >= 0 && o[k]) : []; if (a.length) o._auto = a; } return o; }   // _auto: 글에서 자동으로 채운 칸(다음 붙여 넣기에서 다시 읽고, 핏은 '상품명' 출처로)
   /** 추천 기록: 결정(이걸로·대안·아니요와 이유), 판매처를 연 때, 돌아왔는지, 미룸, 샀나요·산 사이즈, 2주 뒤 사이즈·만족, 그 답으로 바꾼 것. 이 브라우저에만 남는다(백업에는 들어간다). */
   function cleanPickLog(raw) {
     const own = (d, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(d, k), date = (v) => PK.realDate(v);
@@ -5904,7 +6013,8 @@ const PICKS_RAW = {
       follow: e.follow && date(e.follow.at) && ['fit', 'small', 'big'].indexOf(e.follow.size) >= 0 && ['good', 'ok', 'regret'].indexOf(e.follow.feel) >= 0 ? { at: e.follow.at, size: e.follow.size, feel: e.follow.feel } : null,
       learned: ['ref', 'up', 'down'].indexOf(e.learned) >= 0 ? e.learned : '',
       pri: Array.isArray(e.pri) ? e.pri.filter((k, i, a) => own(PK.CRITERIA, k) && a.indexOf(k) === i).slice(0, 5) : [], use: own(PK.USES, e.use) ? e.use : 'any',
-      recSize: str(e.recSize, 12), rank: num(e.rank, 0, 999) || 0, catV: date(e.catV) } : null)).filter((e) => e && !seen.has(e.id) && seen.add(e.id));
+      recSize: str(e.recSize, 12), rank: num(e.rank, 0, 999) || 0, catV: date(e.catV),
+      userSize: str(e.userSize, 12), meas: e.meas && typeof e.meas === 'object' ? ['chest', 'length', 'shoulder'].reduce((m, k) => { const v = num(e.meas[k], 20, 150); if (v != null) m[k] = v; return m; }, {}) : {} } : null)).filter((e) => e && !seen.has(e.id) && seen.add(e.id));   // userSize·meas: 보던 상품(직접 넣은 상품)의 적은 사이즈·치수(산 뒤 2주 답을 학습하는 데 쓴다)
   }
   /** 저장된 상태를 정리한다. 옷장 파일(스키마 1·2) + others + catalog + rack(3D 옷장에 건 옷). */
   function cleanState(raw) {
@@ -6029,6 +6139,9 @@ const PICKS_RAW = {
       const n = id === 'closet' ? owned().length : id === 'judge' ? cands().length : id === 'log' ? state.decisions.filter((d) => d.after).length : id === 'closet3d' ? state.rack.length : null;
       nav.append(h('button', { class: 'tab', type: 'button', role: 'tab', id: 'tabbtn-' + id, 'aria-selected': ui.tab === id ? 'true' : 'false', onclick: () => { const moved = ui.tab !== id; ui.tab = id; if (TAB_IDS[id] && state.prefs.lastTab !== id) { state.prefs.lastTab = id; save(); } render(); if (moved) window.scrollTo(0, 0); } }, label, n ? h('span', { class: 'n', text: String(n) }) : null));
     }
+    const cur = nav.querySelector('[aria-selected="true"]'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });   // 고른 탭이 가로로 숨어 있으면 보이게
+    const wrap = nav.parentElement, mark = () => { if (wrap) wrap.classList.toggle('end', nav.scrollWidth - nav.scrollLeft - nav.clientWidth < 8); };
+    mark(); if (!nav.__scrollMark) { nav.__scrollMark = true; nav.addEventListener('scroll', mark, { passive: true }); }
   }
   const stageEl = $('#stage'), stageHolder = $('#stageHolder'), sq = (sel) => stageEl.querySelector(sel);   // 3D 화면은 한 번 만들어 탭 사이를 오간다 (WebGL을 다시 만들지 않게)
   function render() {
@@ -6299,7 +6412,8 @@ const PICKS_RAW = {
   function josa(word, a, b) { return PK.josa(word, a, b); }
   function pickQuery() {
     const pf = state.prefs;
-    return { line: pf.line, sleeve: pf.sleeve, use: pf.use, conds: pf.conds || undefined, priorities: pf.pri, brands: pf.brands, styles: pf.styles, size: pf.size, ref: pf.ref, budget: pf.budget, outerLen: pf.outerLen, closed: pf.closed === true, extra: ui.nowProduct ? [ui.nowProduct] : [], today: today() };
+    const bought = ui.inclBought ? [] : state.pickLog.filter((e) => e.bought === 'yes' && daysAgo(e.boughtAt) <= 60 && !/^user-/.test(e.productId)).map((e) => e.productId);   // 60일 안에 샀다고 한 상품은 1등·대안에서 뺀다(같은 티를 또 권하지 않게)
+    return { line: pf.line, sleeve: pf.sleeve, use: pf.use, conds: pf.conds || undefined, priorities: pf.pri, brands: pf.brands, styles: pf.styles, size: pf.size, ref: pf.ref, budget: pf.budget, outerLen: pf.outerLen, closed: pf.closed === true, extra: ui.nowProduct ? [ui.nowProduct] : [], exclude: bought, today: today() };
   }
   const pname = (p) => PK.pname(PICKS, p);
   /** 하나만 고르는 질문: 라디오 묶음(화살표로 옮김). */
@@ -6348,7 +6462,8 @@ const PICKS_RAW = {
     if (!e) {
       e = { id: newId('k'), at: today(), productId: r.product.id, label: pname(r.product), price: Math.round(r.krw), store: r.product.store.name, verdict: '', altId: '', reason: '', out: 0, outAt: '', outT: 0, returned: false, snooze: '',
         bought: '', boughtAt: '', boughtSize: '', ownedId: '', follow: null, learned: '', pri: state.prefs.pri.slice(0, 5), use: state.prefs.use,
-        recSize: r.fit && r.fit.size ? r.fit.size : '', rank: 1, catV: PICKS.updatedAt || '' };   // 그때 추천한 사이즈·순위·카탈로그 판(사이즈 학습을 나중에 견주려고)
+        recSize: r.fit && r.fit.size && !r.product.user ? r.fit.size : '', rank: 1, catV: PICKS.updatedAt || '',
+        userSize: r.product.user ? r.product.userSize || '' : '', meas: r.product.user && r.product.sizes[0] ? ['chest', 'length', 'shoulder'].reduce((m, k) => { if (r.product.sizes[0][k] != null) m[k] = r.product.sizes[0][k]; return m; }, {}) : {} };   // 그때 추천한 사이즈·순위·카탈로그 판(사이즈 학습을 나중에 견주려고). 직접 넣은 상품은 적은 사이즈·치수
       state.pickLog.push(e); if (state.pickLog.length > 100) state.pickLog.shift();
     }
     return e;
@@ -6365,12 +6480,14 @@ const PICKS_RAW = {
     const p = r.product;
     if (!p.store.url) return null;
     return h('a', { class: cls || 'btn small', href: p.store.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': pname(p) + ' — ' + (p.store.name || '판매처') + '에서 보기(새 창)',
-      onclick: () => { const e = logEntry(r); e.out++; e.outAt = today(); e.outT = Date.now(); e.returned = false; state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = e.id; save(); }, text: label || '판매처에서 보기 ↗' });
+      onclick: () => { const e = logEntry(r); e.out++; e.outAt = today(); e.outT = Date.now(); e.returned = false; if (!r.product.user && !r.isNow) state.meta.pickOut++; state.prefs.seen = true; ui.awaitReturn = e.id; save(); }, text: label || '판매처에서 보기 ↗' });   // pko(추천에서 판매처 엶)는 어울이 고른 상품만 센다
   }
   function pickToCand(r) {
     const name = pname(r.product);
     const dup = cands().find((c) => c.name === name && (c.link || '') === (r.product.store.url || ''));
     if (dup) { toast('이미 살까 말까에 있어요.', { label: '보기', fn: () => { ui.judgeId = dup.id; ui.tab = 'judge'; render(); } }); return; }
+    const had = owned().find((c) => c.name === name && (c.link || '') === (r.product.store.url || '') && state.pickLog.some((x) => x.ownedId === c.id && daysAgo(x.boughtAt || x.at) <= 60));
+    if (had) { toast('이미 샀다고 기록한 상품이에요(옷장에 있어요).'); return; }
     const c = PK.toCandidate(r.product, PICKS, today()); c.id = newId('c');
     state.items.push(c); state.meta.pickCand++; logEntry(r); state.prefs.seen = true; save(); render();
     toast('살까 말까에 담았어요.', { label: '보기', fn: () => { ui.judgeId = c.id; ui.tab = 'judge'; render(); } });
@@ -6406,17 +6523,19 @@ const PICKS_RAW = {
     const box = h('div', { class: 'ask', id: 'askBought', role: 'group', 'aria-label': '샀는지 알려 주기' });
     const p = PICKS.products.find((x) => x.id === e.productId) || (ui.nowProduct && ui.nowProduct.id === e.productId ? ui.nowProduct : null);
     if (ui.buyStep === e.id) {
-      const sizes = p ? (p.offered || p.sizes.map((s) => s.label)).slice(0, 10) : [];
-      const rec = e.recSize || (p ? PK.fitOf(p, pickQuery()).size : '');
+      const isUser = /^user-/.test(e.productId), mine = e.userSize || (p && p.user ? p.userSize : '');
+      const sizes = isUser ? (mine ? [mine] : []) : p ? (p.offered || p.sizes.map((s) => s.label)).slice(0, 10) : [];
+      const rec = isUser ? '' : e.recSize || (p ? PK.fitOf(p, pickQuery()).size : '');
       const opts = sizes.length ? sizes.concat(['?']) : [];                                            // '?' = 기억 안 나요
-      const label = (s) => (s === '?' ? '기억 안 나요' : PK.sizeName(p, s) + (s === rec ? ' (추천)' : ''));
+      const label = (s) => (s === '?' ? '기억 안 나요' : (p && !p.user ? PK.sizeName(p, s) : s) + (isUser && s === mine ? ' (적은 사이즈)' : s === rec ? ' (추천)' : ''));
       const pickSize = (j) => keepFocus('bsz-' + j, () => { ui.buySize = opts[j]; render(); });
       box.append(h('p', { id: 'askSizeQ', text: '어떤 사이즈를 샀어요?' }),
         opts.length ? h('div', { class: 'chips', role: 'radiogroup', 'aria-labelledby': 'askSizeQ' }, opts.map((s, i) => { const on = ui.buySize === s; return h('button', { type: 'button', class: 'chip nock', role: 'radio', id: 'bsz-' + i, 'aria-checked': on ? 'true' : 'false', tabindex: on || (!ui.buySize && i === 0) ? '0' : '-1', onclick: pickSize(i),
           onkeydown: (ev) => { const j = ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? (i + 1) % opts.length : ev.key === 'ArrowLeft' || ev.key === 'ArrowUp' ? (i - 1 + opts.length) % opts.length : -1; if (j < 0) return; ev.preventDefault(); pickSize(j)(); }, text: label(s) }); }))
-          : h('p', { class: 'note', text: '사이즈 목록이 없어 사이즈 없이 기록해요.' }),
+          : h('p', { class: 'note', text: isUser ? '사이즈를 적지 않아 사이즈 없이 기록해요.' : '사이즈 목록이 없어 사이즈 없이 기록해요.' }),
+        isUser && mine ? h('p', { class: 'note', text: '적어 둔 사이즈 ' + mine + '로 기록할게요. 다르면 "기억 안 나요"를 고르고 나중에 바꿔 주세요.' }) : null,
         h('p', { class: 'warnnote', id: 'askErr', role: 'alert', hidden: true, text: '산 사이즈를 골라 주세요(모르면 "기억 안 나요").' }),
-        p && !p.user ? h('label', { class: 'note', style: 'display:flex;gap:6px;align-items:center;margin:8px 0' }, h('input', { type: 'checkbox', id: 'bOwn', checked: ui.buyOwn !== false, onchange: (ev) => { ui.buyOwn = ev.target.checked; } }), '내 옷장에도 넣기(산 사이즈의 치수를 함께)') : null,
+        h('label', { class: 'note', style: 'display:flex;gap:6px;align-items:center;margin:8px 0' }, h('input', { type: 'checkbox', id: 'bOwn', checked: ui.buyOwn !== false, onchange: (ev) => { ui.buyOwn = ev.target.checked; } }), '내 옷장에도 넣기' + (isUser ? (Object.keys(e.meas || {}).length ? '(적은 치수를 함께)' : '(치수 없이)') : '(산 사이즈의 치수를 함께)')),
         h('div', { class: 'bar', style: 'margin-top:8px' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtSave', onclick: () => { if (opts.length && !ui.buySize) { $('#askErr').hidden = false; const c = $('#bsz-0'); if (c) c.focus(); return; } saveBought(e, p); }, text: '저장' }),
           h('button', { class: 'btn small', type: 'button', onclick: () => { ui.buyStep = ''; render(); }, text: '취소' })));
       return box;
@@ -6431,51 +6550,61 @@ const PICKS_RAW = {
   function saveBought(e, p) {
     const size = ui.buySize === '?' ? '' : ui.buySize || '';
     e.bought = 'yes'; e.boughtAt = today(); e.boughtSize = size;
-    if (p && !p.user && ui.buyOwn !== false) {
-      const name = pname(p), link = p.store.url || '';
+    if (ui.buyOwn !== false) {
+      const name = p ? pname(p) : e.label, link = p ? p.store.url || '' : '';
       const dup = state.items.find((i) => i.status === 'owned' && i.name === name && (i.link || '') === link && state.pickLog.some((x) => x !== e && x.ownedId === i.id && daysAgo(x.boughtAt || x.at) <= 30));
       if (dup) e.ownedId = dup.id;
       else {
-        const it = PK.toOwned(p, PICKS, size, today()), cand = state.items.find((i) => i.status === 'candidate' && i.name === name && (i.link || '') === link);
+        const it = p ? PK.toOwned(p, PICKS, size, today())
+          : W.cleanItem({ status: 'owned', cat: 'top', kind: 'tee', name, family: 'white', light: 95, formality: 1, pattern: 'solid', attrSource: 'owner', price: e.price, size, boughtYear: Number(today().slice(0, 4)), measures: Object.assign({}, e.meas || {}) }, 0);   // 직접 넣은 상품을 지운 뒤에도 기록의 치수로 넣는다
+        if (p && p.user && it && Object.keys(e.meas || {}).length) it.measures = Object.assign({}, e.meas);
+        if (!it) { ui.buyStep = ''; ui.buySize = ''; save(); render(); return; }
+        const cand = state.items.find((i) => i.status === 'candidate' && i.name === name && (i.link || '') === link);
         if (cand) { it.id = cand.id; replaceItem(it); } else { it.id = newId('o'); state.items.push(it); }
         e.ownedId = it.id;
       }
     }
     ui.buyStep = ''; ui.buySize = ''; save(); render();
     toast('기록했어요. ' + md(addDays(today(), W.FOLLOW_DAYS)) + '쯤 사이즈가 잘 맞았는지 한 번 물어볼게요.' + (e.ownedId ? ' 내 옷장에도 넣었어요.' : ''));
-    const b = $('#pickBought') || $('#pickVerdict'); if (b) { b.setAttribute('tabindex', '-1'); b.focus(); }
+    const b = $('#pickBought') || $('#nowBought') || $('#pickVerdict'); if (b) { b.setAttribute('tabindex', '-1'); b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ block: 'center' }); }
   }
   /** 산 지 2주: 사이즈·만족. 답을 바로 다음 추천의 사이즈 기준으로 쓴다('잘 맞아요' → 그 사이즈 치수, '작아요·커요' → 가슴을 2cm 옮김). 알림에서 되돌릴 수 있다. */
   function followBox(due) {
     const p = PICKS.products.find((x) => x.id === due.productId) || null, sz = due.boughtSize ? (p ? PK.sizeName(p, due.boughtSize) : due.boughtSize) : '';
+    const known = p && due.boughtSize ? p.sizes.find((x) => x.label === due.boughtSize) || null : Object.keys(due.meas || {}).length ? Object.assign({ label: due.boughtSize || due.userSize || '' }, due.meas) : null;   // 치수: 카탈로그 치수표 또는 직접 적은 값
     const box = h('form', { class: 'notice', id: 'pickFollow', onsubmit: (ev) => {
       ev.preventDefault();
       const fd = new FormData(box), size = fd.get('pfSize'), feel = fd.get('pfFeel');
       if (!size || !feel) { const w = box.querySelector('.warnnote'); w.hidden = false; return; }
       due.follow = { at: today(), size, feel };
-      const s = p && due.boughtSize ? p.sizes.find((x) => x.label === due.boughtSize) || null : null, prev = Object.assign({}, state.prefs.ref);
+      const s = known, prev = Object.assign({}, state.prefs.ref);
       const meas = (o) => ['chest', 'length', 'shoulder'].filter((k) => o[k] != null).map((k) => ({ chest: '가슴 ', length: '총장 ', shoulder: '어깨 ' })[k] + o[k]).join(' · ') + 'cm';
       let ref = null;
-      if (size === 'fit' && s && s.chest != null) { ref = {}; for (const k of ['chest', 'length', 'shoulder']) if (s[k] != null) ref[k] = s[k] + (k === 'length' && p.lengthFrom === 'cb' ? PK.LEN_CB : 0); due.learned = 'ref'; }
-      else if ((size === 'small' || size === 'big') && s && s.chest != null) { ref = { chest: Math.round((s.chest + (size === 'small' ? 2 : -2)) * 2) / 2 }; due.learned = size === 'small' ? 'up' : 'down'; }   // [제안값] 2cm, 가슴만
+      if (size === 'fit' && s && s.chest != null) { ref = {}; for (const k of ['chest', 'length', 'shoulder']) if (s[k] != null) ref[k] = s[k] + (k === 'length' && p && p.lengthFrom === 'cb' ? PK.LEN_CB : 0); due.learned = 'ref'; }
+      else if ((size === 'small' || size === 'big') && s && s.chest != null) { ref = Object.assign({}, state.prefs.ref, { chest: Math.round((s.chest + (size === 'small' ? 2 : -2)) * 2) / 2 }); due.learned = size === 'small' ? 'up' : 'down'; }   // [제안값] 가슴만 2cm 옮기고 총장·어깨 실측은 그대로 둔다
       if (ref) state.prefs.ref = ref;
-      ui.fbNudge = true; save(); render();
-      if (ref) toast(size === 'fit' ? '고마워요. 다음 추천부터 이 치수(' + meas(ref) + ')를 잘 맞는 티로 써요.' : '고마워요. 다음 추천부터 ' + sz + '보다 가슴 2cm ' + (size === 'small' ? '큰' : '작은') + ' 쪽(' + meas(ref) + ')으로 골라요.',
-        { label: '되돌리기', fn: () => { state.prefs.ref = prev; due.learned = ''; save(); render(); } });
-      else toast('고마워요. 기록했어요.');
+      ui.fbDone = { id: due.id, text: ref ? (size === 'fit' ? '고마워요. 다음 추천부터 이 치수(' + meas(ref) + ')를 잘 맞는 티로 써요.' : '고마워요. 다음 추천부터 ' + sz + '보다 가슴 2cm ' + (size === 'small' ? '큰' : '작은') + ' 쪽(가슴 ' + ref.chest + 'cm' + (Object.keys(ref).length > 1 ? ', 총장·어깨는 그대로' : '') + ')으로 골라요.')
+        : '고마워요. 기록했어요.' + (s ? '' : " 산 사이즈의 치수를 몰라 다음 추천에는 못 쓰지만, 운영자가 사이즈 추천을 고치는 데 써요. 치수를 알면 '보던 흰 티' 칸에 적어 두세요."),
+        undo: ref ? () => { state.prefs.ref = prev; due.learned = ''; ui.fbDone = null; save(); render(); } : null };
+      save(); render();
+      const d = $('#fbDone'); if (d) { d.setAttribute('tabindex', '-1'); d.focus({ preventScroll: true }); }
     } },
-      h('h2', { text: josa(due.label, '을', '를') + (sz ? ' ' + PK.euro(sz) : '') + ' ' + daysAgo(due.boughtAt) + '일 전에 샀어요' }), h('p', { class: 'note', text: '사이즈와 만족을 한 번만 알려 주세요. 답은 바로 다음 추천의 사이즈를 고르는 데 써요.' }),
+      h('h2', { text: josa(due.label, '을', '를') + (sz ? ' ' + PK.euro(sz) : '') + ' ' + daysAgo(due.boughtAt) + '일 전에 샀어요' }),
+      h('p', { class: 'note', text: known ? '사이즈와 만족을 한 번만 알려 주세요. 답은 바로 다음 추천의 사이즈를 고르는 데 써요.' : '사이즈와 만족을 한 번만 알려 주세요. 산 사이즈의 치수를 몰라 다음 추천에는 못 쓰지만, 운영자가 사이즈 추천을 고치는 데 써요.' }),
       h('fieldset', { class: 'q' }, h('legend', { text: '사이즈' }), h('div', { class: 'choices' }, [['fit', '잘 맞아요'], ['small', '작아요'], ['big', '커요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfSize', value: v }), h('span', { text: t }))))),
       h('fieldset', { class: 'q' }, h('legend', { text: '만족' }), h('div', { class: 'choices' }, [['good', '잘 샀어요'], ['ok', '그저 그래요'], ['regret', '후회돼요']].map(([v, t]) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'pfFeel', value: v }), h('span', { text: t }))))),
       h('p', { class: 'warnnote', role: 'alert', hidden: true, text: '사이즈와 만족을 하나씩 골라 주세요.' }), h('button', { class: 'btn small primary', type: 'submit', id: 'pickFollowSave', text: '저장' }));
     return box;
   }
-  /** 2주 뒤 답을 한 뒤: 운영자에게 보내 달라는 부탁(사이즈 추천을 고치는 데만 쓴다). 이 방문에서만 보인다. */
+  /** 2주 뒤 답을 한 뒤 한 상자: 무엇이 바뀌었는지, 되돌리기, 바뀐 사이즈 보기, 운영자에게 보내기(사이즈 추천을 고치는 데만 쓴다). 이 방문에서만 보인다. */
   function fbNudgeBox() {
-    if (!ui.fbNudge) return null;
-    return h('div', { class: 'notice', id: 'fbNudge' }, h('p', { text: '방금 답한 사이즈 결과를 운영자에게 보내 주시면 사이즈 추천을 고치는 데만 써요. 내 옷장 정보는 들어가지 않아요.' }),
-      h('div', { class: 'bar', style: 'margin:8px 0 0' }, h('button', { class: 'btn small primary', type: 'button', id: 'fbNudgeGo', onclick: () => { ui.fbNudge = false; render(); $('#fbMsg').textContent = ''; $('#fbFit').checked = true; syncFb(); $('#fbDlg').showModal(); }, text: '의견 보내기 열기' }),
-        h('button', { class: 'btn small', type: 'button', onclick: () => { ui.fbNudge = false; render(); }, text: '괜찮아요' })));
+    const f = ui.fbDone; if (!f) return null;
+    return h('div', { class: 'notice', id: 'fbDone', role: 'status' }, h('p', { text: f.text }),
+      h('p', { class: 'note', text: '답한 사이즈 결과를 운영자에게 보내 주시면 사이즈 추천을 고치는 데만 써요. 내 옷장 정보는 들어가지 않아요.' }),
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, f.undo ? h('button', { class: 'btn small', type: 'button', id: 'fbDoneUndo', onclick: f.undo, text: '되돌리기' }) : null,
+        f.undo ? h('button', { class: 'btn small', type: 'button', id: 'fbDoneSee', onclick: () => { const el = $('#pickSize'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); if (el) { el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); } }, text: '바뀐 사이즈 보기' }) : null,
+        h('button', { class: 'btn small primary', type: 'button', id: 'fbNudgeGo', onclick: () => { ui.fbDone = null; render(); $('#fbMsg').textContent = ''; $('#fbFit').checked = true; syncFb(); $('#fbDlg').showModal(); }, text: '의견 보내기 열기' }),
+        h('button', { class: 'btn small', type: 'button', onclick: () => { ui.fbDone = null; render(); }, text: '닫기' })));
   }
   function verdictRow(r) {
     const e = logFor(r.product.id), cur = e ? e.verdict : '';
@@ -6485,7 +6614,12 @@ const PICKS_RAW = {
     };
     const row = h('div', { class: 'vrow', id: 'pickVerdict', role: 'group', 'aria-label': '이 추천 어때요' }, h('span', { class: 'note', text: '이 추천 어때요?' }),
       [['accept', '이걸로 할래요'], ['reject', '아니에요']].map(([v, t]) => h('button', { class: 'chip', type: 'button', id: 'pv-' + v, 'aria-pressed': cur === v ? 'true' : 'false', onclick: keepFocus('pv-' + v, set(v)), text: t })));
-    if (cur === 'reject') row.append(h('div', { class: 'rsn', role: 'group', 'aria-label': '아닌 이유' }, h('span', { class: 'note', text: '왜요?' }), REASONS.map(([k, t]) => { const b = chip(t, e.reason === k, keepFocus('pr-' + k, () => { e.reason = e.reason === k ? '' : k; save(); render(); })); b.id = 'pr-' + k; return b; })));
+    const NEXT = { price: ['알겠어요. 예산을 정하면 그 안에서 다시 골라요.', '예산 3만 원으로 보기', () => { state.prefs.budget = 30000; save(); render(); const el = $('#pickTop'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }],
+      brand: ['알겠어요. 좋아하는 브랜드를 고르면 그 안에서 먼저 봐요.', '브랜드 고르기', () => { ui.pickForm = true; ui.tasteOpen = true; render(); const el = $('#pk-brand-' + Object.keys(PICKS.brands)[0]); if (el) el.focus(); }],
+      fit: ['알겠어요. 잘 맞는 티의 실측을 넣으면 사이즈를 그에 맞춰요.', '실측 넣기', () => { ui.pickForm = true; ui.tasteOpen = true; render(); const el = $('#pk-ref-chest'); if (el) el.focus(); }],
+      have: ['알겠어요. 가진 옷을 옷장에 넣어 두면 다음부터 겹치는지 먼저 봐요.', '옷장에 넣기', () => { ui.tab = 'closet'; render(); openQuick(); }],
+      other: ['알겠어요. 기록해 둘게요. 의견 보내기에 한 줄 적어 주시면 큰 도움이 돼요.', '의견 보내기', () => { $('#fbMsg').textContent = ''; syncFb(); $('#fbDlg').showModal(); }] };
+    if (cur === 'reject') row.append(h('div', { class: 'rsn', role: 'group', 'aria-label': '아닌 이유' }, h('span', { class: 'note', text: '왜요?' }), REASONS.map(([k, t]) => { const b = chip(t, e.reason === k, keepFocus('pr-' + k, () => { e.reason = e.reason === k ? '' : k; save(); render(); if (e.reason && NEXT[k]) toast(NEXT[k][0], { label: NEXT[k][1], fn: NEXT[k][2] }); })); b.id = 'pr-' + k; return b; })));
 
     if (cur === 'alt' && e.altId) { const a = PICKS.products.find((x) => x.id === e.altId); row.append(h('span', { class: 'note', text: '대안(' + (a ? pname(a) : e.altId) + ')이 더 낫다고 기록했어요.' })); }
     return row;
@@ -6524,11 +6658,12 @@ const PICKS_RAW = {
           h('p', { class: 'src' }, srcText(p), r.stale ? h('span', { class: 'badge warn', style: 'margin-left:6px', text: '다시 확인 필요' }) : null))),
       h('p', { class: 'concl', id: 'pickWhy', text: r.conclusion }),
       sizeBox(r),
-      h('div', { class: 'cta' }, storeLink(r, storeLabel, 'btn primary'),
-        h('button', { class: 'btn', type: 'button', id: 'pickCand', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: keepFocus('pickCand', () => pickToCand(r)), text: '살까 말까에 담기' })),
       bought ? h('p', { class: 'bought', id: 'pickBought' }, h('b', { text: '샀어요' }), ' · ' + [bsz, md(bought.boughtAt)].filter(Boolean).join(' · ') + (bought.follow ? ' · 2주 뒤: ' + FL[bought.follow.size] : ' — ' + md(addDays(bought.boughtAt, W.FOLLOW_DAYS)) + '쯤 사이즈가 맞았는지 물어볼게요.')) : null,
+      bought ? h('div', { class: 'cta' }, storeLink(r, '주문·교환 보기 ↗', 'btn'), h('button', { class: 'btn', type: 'button', id: 'pickOther', onclick: () => { ui.inclBought = false; render(); const el = $('#pickTop'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }, text: '산 상품 빼고 다시 보기' }))
+        : h('div', { class: 'cta' }, storeLink(r, storeLabel, 'btn primary'),
+          h('button', { class: 'btn', type: 'button', id: 'pickCand', 'aria-label': pname(p) + ' 살까 말까에 담기', onclick: keepFocus('pickCand', () => pickToCand(r)), text: '살까 말까에 담기' })),
       ask && ask.productId === p.id && !ui.askTop ? askBox(ask) : null,
-      verdictRow(r),
+      bought ? null : verdictRow(r),
       res.gapWhy ? h('p', { class: 'gapwhy', id: 'pickGap', text: res.gapWhy }) : null,
       res.favNote ? h('p', { class: 'favnote', id: 'pickFav', text: res.favNote }) : null,
       conds.length ? [h('p', { class: 'ckh', text: '꼭 지킬 것' + (res.rank.allOk == null ? '' : res.rank.allOk ? ' (모두 확인된 상품 ' + res.rank.allOk + '개)' : ' (모두 확인된 상품은 아직 없어요)') }), checkList(conds, 'pickConds')] : null,
@@ -6644,7 +6779,7 @@ const PICKS_RAW = {
     const add = (k) => () => {
       pf.pri.push(k); const need = tasteNeed(k); if (need) ui.tasteOpen = true; save(); render();
       const nx = need ? (k === 'brand' ? $('#pk-brand-' + Object.keys(PICKS.brands)[0]) : k === 'style' ? $('#pk-style-' + Object.keys(PK.STYLES)[0]) : $('#pk-size')) : $('#pk-pri-' + (left[left.indexOf(k) + 1] || left[left.indexOf(k) - 1])) || $('#pk-slots');
-      if (nx) nx.focus();
+      if (nx) nx.focus({ preventScroll: true });                                                      // 취향 칸으로 초점은 옮기되 화면이 아래로 뛰지 않게(2순위를 이어 고를 수 있게)
     };
     const chips = h('div', { class: 'chips' }, left.map((k) => { const b = chip('', false, add(k)); b.id = 'pk-pri-' + k; b.classList.add('nock'); b.append('+ ', PK.CRITERIA[k]); b.setAttribute('aria-label', PK.CRITERIA[k] + ', ' + (pf.pri.length + 1) + '순위로 넣기'); return b; }));
     const p = pf.pri.map((k) => SHORT[k]);
@@ -6671,8 +6806,14 @@ const PICKS_RAW = {
   /** '보던 흰 티' 입력 값으로 상품을 만든다(가격이 없거나 이상하면 null). 비운 핏·묶음 수·소매는 상품 이름에서 읽는다. */
   function nowFromForm(f) {
     const pl = pastedLink(f.link || '');
-    return PK.userProduct({ name: f.name, brand: f.brand, price: Number(f.price), packCount: f.packCount ? Number(f.packCount) : undefined, link: pl.url, storeName: pl.url ? sourceOf(pl.url) || '' : '', sleeve: f.sleeve || undefined, fit: f.fit || undefined,
+    const auto = (k) => Array.isArray(f._auto) && f._auto.indexOf(k) >= 0;                               // 글에서 자동으로 채운 핏은 사용자가 고른 값이 아니라 '상품명'에서 읽은 값으로 둔다
+    return PK.userProduct({ name: f.name, brand: f.brand, price: Number(f.price), packCount: f.packCount ? Number(f.packCount) : undefined, link: pl.url, storeName: pl.url ? sourceOf(pl.url) || '' : '', sleeve: f.sleeve || undefined, fit: f.fit && !auto('fit') ? f.fit : undefined,
       logo: f.logo || undefined, thick: f.thick || undefined, neck: f.neck || undefined, cotton100: f.cotton === 'yes' ? true : f.cotton === 'no' ? false : undefined, fiber: f.fiber || undefined, size: f.size, chest: Number(f.chest), length: Number(f.length), shoulder: Number(f.shoulder) }, PICKS, state.prefs.line, today());
+  }
+  /** 저장해 둔 '보던 흰 티' 초안을 입력칸에 되살리고, 견줘 본 것이면 결과까지 다시 보여 준다(새로 고침·가져오기 뒤). */
+  function restoreNow() {
+    ui.nowForm = Object.keys(state.prefs.now).length ? Object.assign({}, state.prefs.now) : {};
+    ui.nowProduct = state.prefs.nowOn && state.prefs.now.price ? nowFromForm(ui.nowForm) : null; ui.nowOpen = !!ui.nowProduct; ui.lastNowId = ui.nowProduct ? ui.nowProduct.id : '';
   }
   /** 붙여 넣은 글의 상품 이름: 상점 이름·[무신사] 같은 꼬리표를 뗀다. */
   function nowName(pl) { const shop = pl.url ? sourceOf(pl.url) : ''; return (shop && pl.name.indexOf(shop) === 0 ? pl.name.slice(shop.length) : pl.name).replace(/^\s*\[[^\]]{0,20}\]\s*/, '').replace(/\s*\|\s*[^|]{0,20}$/, '').trim(); }
@@ -6681,15 +6822,18 @@ const PICKS_RAW = {
   /** '보던 흰 티': 무신사 등에서 보던 흰 티를 같은 기준으로 견준다. 먼저 다섯 칸(링크·가격·사이즈·가슴·총장), 나머지는 '더 정확히'. 앱은 링크를 열지 않는다. */
   function nowBox(res) {
     const f = ui.nowForm || {};
-    const set = (k) => (e) => { f[k] = e.target.value; ui.nowForm = f; saveNowDraft(); };
+    const set = (k) => (e) => { f[k] = e.target.value; if (f._auto) f._auto = f._auto.filter((x) => x !== k); ui.nowForm = f; saveNowDraft(); };   // 손으로 고친 칸은 다음 붙여 넣기에서 지키지 않는다
     const sel = (k, label, opts) => h('label', null, label, h('select', { id: 'now-' + k, onchange: set(k) }, opts.map(([v, t]) => { const o = h('option', { value: v, text: t }); if ((f[k] || '') === v) o.selected = true; return o; })));
     const inp = (k, label, type, extra) => h('label', { class: extra && extra.full ? 'full' : '' }, label, h('input', Object.assign({ id: 'now-' + k, type: type || 'text', value: f[k] || '', oninput: set(k) }, extra && extra.attrs || {})));
     const fillNote = h('p', { class: 'note', id: 'nowFill', 'aria-live': 'polite' });
     const onLink = (e) => {
       f.link = e.target.value; const pl = pastedLink(f.link), nm = pl.url ? nowName(pl) : nowName({ url: '', name: str(f.link.replace(/[【】]/g, ' ').replace(/\s+/g, ' ').trim(), 80) }), g = PK.guessFromName(PICKS, nm || f.link), got = [];   // 주소 없이 이름만 붙여 넣어도 이름으로 쓴다
-      const setIf = (k, v, say) => { if (v == null || v === '' || f[k]) return; f[k] = String(v); const el = $('#now-' + k); if (el) el.value = String(v); got.push(say); };
+      const auto = Array.isArray(f._auto) ? f._auto : (f._auto = []);
+      for (const k of auto) { f[k] = ''; const el = $('#now-' + k); if (el) el.value = ''; }               // 지난 글에서 자동으로 채운 칸은 비우고 새 글에서 다시 읽는다(둘째 상품을 붙여 넣어도 첫 상품 이름·핏이 남지 않게)
+      auto.length = 0;
+      const setIf = (k, v, say) => { if (v == null || v === '' || f[k]) return; f[k] = String(v); auto.push(k); const el = $('#now-' + k); if (el) el.value = String(v); got.push(say); };
       setIf('name', nm, '이름'); if (g.brand) setIf('brand', PICKS.brands[g.brand].ko || PICKS.brands[g.brand].name, '브랜드'); setIf('fit', g.fit, '핏(' + (PK.FIT[g.fit] || '') + ')'); setIf('packCount', g.packCount, g.packCount + '장 묶음'); setIf('sleeve', g.sleeve, PK.SLEEVES[g.sleeve] || '');
-      fillNote.textContent = got.length ? '글에서 ' + got.join('·') + '을 채웠어요. 다르면 "더 정확히"에서 바꿔 주세요.' : '';
+      fillNote.textContent = got.length ? '글에서 ' + got.join('·') + '을 채웠어요. 다르면 "더 정확히"에서 바꿔 주세요.' : f.link.trim() ? '글에서 읽은 것이 없어요. 이름·핏은 "더 정확히"에서 적어 주세요.' : '';
       ui.nowForm = f; saveNowDraft();
     };
     const more = h('details', { class: 'nowmore', id: 'nowMore' }, h('summary', { text: '더 정확히(선택): 이름·브랜드·로고·두께·목 립·핏' }),
@@ -6715,43 +6859,54 @@ const PICKS_RAW = {
         const u = nowFromForm(f), pr = $('#now-price');
         if (!u) { $('#nowErr').hidden = false; if (pr) { pr.setAttribute('aria-invalid', 'true'); pr.focus(); } return; }
         if (ui.lastNowId !== u.id) { state.meta.nowRuns++; ui.lastNowId = u.id; }                       // 같은 상품을 다시 눌러도 한 번만 센다
-        ui.nowProduct = u; ui.nowOpen = true; state.prefs.now = cleanNow(f); state.prefs.nowOn = true; state.prefs.seen = true; save(); render();
+        ui.nowProduct = u; ui.nowOpen = true; state.prefs.now = cleanNow(f); state.prefs.nowOn = true; state.prefs.seen = true; if (state.prefs.use === 'any' && !state.prefs.pri.length) ui.nowHint = true; save(); render();
         const el = $('#nowRes'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
       }, text: '견줘 보기' }), ui.nowProduct ? h('button', { class: 'btn', type: 'button', id: 'nowClear', onclick: () => { ui.nowProduct = null; ui.nowForm = {}; state.prefs.now = {}; state.prefs.nowOn = false; save(); render(); }, text: '지우기' }) : null));
-    if (ui.nowOpen) d.open = true;
+    if (ui.nowOpen || Object.keys(cleanNow(f)).length) d.open = true;                                 // 적다 만 초안이 있으면 열어 둔다
     d.addEventListener('toggle', () => { ui.nowOpen = d.open; });
     if (ui.nowProduct) d.append(nowResult(res));
     return d;
   }
-  /** 보던 상품 결과: 한 줄 판정 → 1위와 두 칸 비교 → 요약 → 결정(이대로·1위로·안 삼). */
+  /** 보던 상품 결과: 한 줄 판정 → 왜 그 순위인지 → 요약 → 결정(이대로·1위로·안 삼) → 1위와 두 칸 비교. 카탈로그 상품과 같으면 확인한 값으로 견준다. */
   function nowResult(res) {
     const r = res.user;
     if (!r) return null;
-    const p = r.product, pk = res.pick, ur = res.userRank, named = p.name !== '지금 보는 상품', nm = named ? pname(p) : '', subj = named ? '보던 ' + nm : '보던 상품';   // 이름을 안 적었으면 '보던 상품'
+    const pf = state.prefs, same = res.userSame, p = r.product, pk = res.pick, ur = res.userRank, named = same || p.name !== '지금 보는 상품', nm = named ? pname(p) : '', subj = named ? '보던 ' + nm : '보던 상품';   // 이름을 안 적었으면 '보던 상품'
+    const u = ui.nowProduct;
+    if (res.noCatalog) return h('div', { class: 'nowres', id: 'nowRes', tabindex: '-1' }, h('p', { class: 'fl2', text: '보던 상품' + (named ? ': ' + nm : '') + ' · ' + priceShort(r) }),
+      h('p', { class: 'nowh', id: 'nowHead', text: '어울이 확인한 상품이 모두 30일이 지나 지금은 견줄 수 없어요. 적은 값은 남겨 둘게요.' }));
     const head = r.out ? josa(subj, '은', '는') + ' 고른 조건에 안 맞아요. ' + r.out.replace(/^고른 조건에 안 맞아요: /, '')
       : !ur ? '' : ur.idx === 0 ? josa(subj, '이', '가') + ' 같은 기준으로 ' + ur.n + '개 중 1위예요.' : josa(subj, '은', '는') + ' 같은 기준으로 ' + ur.n + '개 중 ' + (ur.idx + 1) + '위예요.';
-    const c = pk ? PK.contrast(r, pk, PICKS) : null;
-    const cell = (x, w) => { const td = h('td', { class: w ? 'win' : '' }); if (x.status) td.append(h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[x.status] ? MARK[x.status][0] + ' ' : '' }), h('span', { class: 'sr', text: (MARK[x.status] ? MARK[x.status][1] : '') + ': ' })); td.append(x.text); if (w) td.append(h('span', { class: 'sr', text: ' (더 나음)' })); return td; };
+    const c = pk && pk !== r ? PK.contrast(r, pk, PICKS, { weights: res.weights, size: u ? u.userSize : pf.now.size || '' }) : null;
+    const cell = (x, w) => { const td = h('td', { class: (w ? 'win ' : '') + (x.status ? 'ck ' + x.status : '') }); if (x.status) td.append(h('span', { class: 'mk', 'aria-hidden': 'true', text: MARK[x.status] ? MARK[x.status][0] + ' ' : '' }), x.text === (MARK[x.status] ? MARK[x.status][1] : '') ? null : h('span', { class: 'sr', text: (MARK[x.status] ? MARK[x.status][1] : '') + ': ' })); td.append(x.text); if (w) td.append(h('span', { class: 'sr', text: ' (더 나음)' })); return td; };
     const table = c ? h('div', { class: 'scroll' }, h('table', { class: 'cmp', id: 'nowCmp' }, h('caption', { class: 'sr', text: '보던 상품과 1위 견주기' }),
       h('thead', null, h('tr', null, h('th', { scope: 'col', text: '' }), h('th', { scope: 'col', text: '보던 상품' }), h('th', { scope: 'col', text: '1위 ' + (PK.brandName(PICKS, pk.product.brand) || pname(pk.product)) }))),
       h('tbody', null, c.rows.map((x) => h('tr', null, h('th', { scope: 'row', text: x.label }), cell(x.a, x.win === 'a'), cell(x.b, x.win === 'b')))))) : null;
     const e = logFor(p.id), cur = e ? e.verdict : '';
     const decide = (v) => () => {
-      const x = logEntry(r); x.verdict = x.verdict === v ? '' : v; x.altId = v === 'alt' && pk ? pk.product.id : ''; x.reason = ''; state.prefs.seen = true; save(); render();
+      const x = logEntry(Object.assign({}, r, { isNow: true })); x.verdict = x.verdict === v ? '' : v; x.altId = v === 'alt' && pk ? pk.product.id : ''; x.reason = ''; state.prefs.seen = true; save(); render();
       if (x.verdict === 'alt') { const t = $('#pickTop'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'start' }); toast('1위 카드의 판매처 버튼으로 가서 사이즈·재고를 확인해 보세요.'); }
       else if (x.verdict === 'accept') toast(p.store.url ? '좋아요. 보던 상품을 사면 돌아와서 "샀어요"를 눌러 주세요.' : '좋아요. 기록해 둘게요.');
       else if (x.verdict === 'reject') toast('알겠어요. 기록해 둘게요.');
     };
+    const ask = askEntry(), boughtE = state.pickLog.slice().reverse().find((x) => x.productId === p.id && x.bought === 'yes' && daysAgo(x.boughtAt) <= 60);
+    const noCrit = pf.use === 'any' && !pf.pri.length;
     return h('div', { class: 'nowres', id: 'nowRes', tabindex: '-1' },
       h('p', { class: 'fl2', text: '보던 상품' + (named ? ': ' + nm : '') + ' · ' + priceShort(r) }),
-      h('p', { class: 'nowh', id: 'nowHead', text: head }),
-      ur && ur.idx === 0 && !r.out ? h('p', { class: 'note', text: '적은 값대로라면 어울이 확인한 상품보다 앞서요. 적은 값은 약한 확인이라, 사기 전에 목 립·두께를 상세 사진으로 한 번 더 봐 주세요.' }) : null,
-      table, c ? h('p', { class: 'nowsum', id: 'nowSum', text: c.sum }) : null,
-      h('div', { class: 'vrow', id: 'nowDecide', role: 'group', 'aria-label': '보던 상품을 어떻게 할까요' }, h('span', { class: 'note', text: '어떻게 할래요?' }),
-        [['accept', '이대로 살래요'], ['alt', '1위로 바꿀래요'], ['reject', '안 살래요']].filter(([v]) => v !== 'alt' || !!pk).map(([v, t]) => h('button', { class: 'chip', type: 'button', id: 'nd-' + v, 'aria-pressed': cur === v ? 'true' : 'false', onclick: keepFocus('nd-' + v, decide(v)), text: t }))),
-      h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(r, '보던 상품 다시 열기 ↗', 'btn small'),
+      same ? h('p', { class: 'note', id: 'nowSame', text: '어울이 ' + md(p.checkedAt) + ' 공식 판매처에서 확인한 ' + josa(same.name, '과', '와') + ' 같은 상품으로 보여요. 확인한 값(' + priceShort(r) + ')으로 견줄게요.' + (same.userPrice && Math.abs(same.userPrice - same.catPrice) > 500 ? ' 적으신 ' + won(same.userPrice) + '과 어울이 확인한 ' + won(same.catPrice) + '이 달라요 — 판매처에서 다시 봐 주세요.' : '') }) : null,
+      h('p', { class: 'nowh', id: 'nowHead', text: same && same.isPick ? '보던 상품이 지금 조건의 1위예요.' : head }),
+      noCrit && !r.out ? h('p', { class: 'note', id: 'nowNoCrit', text: '아직 용도·기준을 고르지 않아 다섯 기준을 같은 무게로, 조건 없이 견준 순위예요. 아래에서 "받쳐 입기"와 중요한 순서를 고르면 조건까지 견줘요.' }) : null,
+      c && c.why && ur && ur.idx > 0 ? h('p', { class: 'note', id: 'nowWhy', text: (ur.idx + 1) + '위인 이유: ' + c.why + '.' }) : null,
+      ur && ur.idx === 0 && !r.out && !same ? h('p', { class: 'note', text: '적은 값대로라면 어울이 확인한 상품보다 앞서요. 적은 값은 약한 확인이라, 사기 전에 목 립·두께를 상세 사진으로 한 번 더 봐 주세요.' }) : null,
+      c ? h('p', { class: 'nowsum', id: 'nowSum', text: c.sum }) : null,
+      boughtE ? h('p', { class: 'bought', id: 'nowBought' }, h('b', { text: '샀어요' }), ' · ' + [boughtE.boughtSize, md(boughtE.boughtAt)].filter(Boolean).join(' · ') + (boughtE.follow ? '' : ' — ' + md(addDays(boughtE.boughtAt, W.FOLLOW_DAYS)) + '쯤 사이즈가 맞았는지 물어볼게요.')) : null,
+      ask && ask.productId === p.id && !ui.askTop ? askBox(ask) : null,
+      boughtE ? null : h('div', { class: 'vrow', id: 'nowDecide', role: 'group', 'aria-label': '보던 상품을 어떻게 할까요' }, h('span', { class: 'note', text: '어떻게 할래요?' }),
+        [['accept', '이대로 살래요'], ['alt', '1위로 바꿀래요'], ['reject', '안 살래요']].filter(([v]) => v !== 'alt' || (!!pk && !(same && same.isPick))).map(([v, t]) => h('button', { class: 'chip', type: 'button', id: 'nd-' + v, 'aria-pressed': cur === v ? 'true' : 'false', onclick: keepFocus('nd-' + v, decide(v)), text: t }))),
+      table,
+      h('div', { class: 'bar', style: 'margin:8px 0 0' }, storeLink(Object.assign({}, r, { isNow: true }), '보던 상품 다시 열기 ↗', 'btn small'),
         h('button', { class: 'linkbtn', type: 'button', id: 'nowCand', onclick: () => pickToCand(r), text: '살까 말까에 담기(내 옷장과 겹치는지 보기)' })),
-      h('p', { class: 'note', text: '적은 값은 어울이 확인한 값이 아니라 약한 확인으로 봤어요. 비운 칸은 "모름"으로 셌어요.' }));
+      h('p', { class: 'note', text: same ? '어울이 확인한 값으로 견줬어요. 적은 값은 쓰지 않았어요.' : '적은 값은 어울이 확인한 값이 아니라 약한 확인으로 봤어요. 비운 칸은 "모름"으로 셌어요.' }));
   }
   /** 추천 하나를 친구에게: 상품·가격·판매처·이유 한 줄과 판매처 링크만(내 옷장 정보는 넣지 않는다). 공유 창이 없으면 글을 복사한다. */
   async function sharePick(r) {
@@ -6794,9 +6949,17 @@ const PICKS_RAW = {
       if (res.notes.length) box.append(h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text }))));
       main.append(box); return;
     }
+    // 최근에 샀다고 기록한 상품(1위·대안에서 뺀 것)은 결과 위에 따로 보인다
+    const recent = state.pickLog.slice().reverse().find((x) => x.bought === 'yes' && daysAgo(x.boughtAt) <= 60 && !/^user-/.test(x.productId) && x.productId !== res.pick.product.id && !res.alts.some((a) => a.r.product.id === x.productId));
+    const rp = recent && res.ranked.find((r) => r.product.id === recent.productId);
+    if (rp) box.append(h('div', { class: 'notice', id: 'pickBought' }, h('p', null, h('b', { text: '샀어요' }), ' · ' + [pname(rp.product), recent.boughtSize ? PK.sizeName(rp.product, recent.boughtSize) : '', md(recent.boughtAt)].filter(Boolean).join(' · ') + (recent.follow ? ' · 2주 뒤: ' + ({ fit: '잘 맞음', small: '작음', big: '큼' })[recent.follow.size] : ' — ' + md(addDays(recent.boughtAt, W.FOLLOW_DAYS)) + '쯤 사이즈가 맞았는지 물어볼게요.')),
+      h('div', { class: 'bar', style: 'margin:6px 0 0' }, storeLink(Object.assign({}, rp, { isNow: true }), '주문·교환 보기 ↗', 'btn small'), h('span', { class: 'note', text: '아래 1위는 산 상품을 뺀 결과예요.' }))));
     box.append(pickCard(res.pick, res));
     if (res.alts.length) box.append(h('div', { class: 'alts', id: 'pickAlts' }, res.alts.map((a, i) => altCard(a, i, res.pick))));
     if (res.altNote) box.append(h('p', { class: 'note', id: 'pickAltNote', style: 'margin:0 0 12px', text: res.altNote }));
+    const boughtOut = res.ranked.filter((r) => r.boughtOut);
+    if (boughtOut.length || ui.inclBought) box.append(h('p', { class: 'note', id: 'pickBoughtNote', style: 'margin:0 0 12px' }, ui.inclBought ? '이미 산 상품도 넣어 보고 있어요. ' : '이미 샀다고 기록한 ' + boughtOut.map((r) => pname(r.product)).join('·') + josa(boughtOut.length ? pname(boughtOut[boughtOut.length - 1].product) : '', '은', '는').slice(boughtOut.length ? pname(boughtOut[boughtOut.length - 1].product).length : 0) + ' 1위·대안에서 뺐어요. ',
+      h('button', { class: 'linkbtn', type: 'button', id: 'pickInclBought', onclick: () => { ui.inclBought = !ui.inclBought; render(); }, text: ui.inclBought ? '산 상품 빼고 보기' : '산 상품도 넣어 보기' })));
     if (res.notes.length) {
       const miss = res.notes.filter((n) => n.kind === 'missing'), onlyMiss = miss.length === res.notes.length;
       box.append(h('details', { class: 'ev', id: 'pickNotes' }, h('summary', { text: onlyMiss ? '목록에 없는 브랜드 ' + miss.length + '곳(' + miss.map((n) => PK.brandName(PICKS, n.brand)).join('·') + ')' : '뺀 상품과 빠진 브랜드 보기 (' + res.notes.length + ')' }), h('ul', { class: 'pnotes' }, res.notes.map((n) => h('li', { text: n.text })))));
@@ -6949,18 +7112,19 @@ const PICKS_RAW = {
     const imp = h('input', { type: 'file', accept: 'application/json,.json', id: 'importFile', hidden: true, onchange: async () => {
       const raw = await readFileJson(imp); const w = raw && W.cleanWardrobe(raw);
       if (w) { w.prefs = raw.prefs && typeof raw.prefs === 'object' ? cleanPrefs(raw.prefs) : null; w.pickLog = cleanPickLog(raw.pickLog); w.meta = raw.meta && typeof raw.meta === 'object' ? raw.meta : null; }
-      ui.importArm = w && (w.items.length || w.pickLog.length) && w.kind !== 'template' ? w : false; render();
+      ui.importArm = w && (w.items.length || w.pickLog.length || w.prefs) && w.kind !== 'template' ? w : false; render();   // 추천 설정만 있는 백업도 받는다
     } });
     const io = h('section', { class: 'panel' }, h('h2', { text: '옷장 파일' }), h('p', { class: 'sub', text: '보유한 옷과 기록을 파일(스키마 2)로 내보냅니다. 구매 후보는 넣지 않습니다. 이 파일을 받은 사람은 옷장 구경 탭에서 열어 볼 수 있습니다. v0.3 파일(스키마 1)도 가져올 수 있습니다.' }),
       h('div', { class: 'checks', style: 'margin-bottom:12px' }, ck('img', '내 사진 포함'), ck('otherImg', '남의 상품 사진 포함'), ck('cands', '미확인 브랜드 후보 포함'), ck('price', '가격과 링크 포함'), ck('body', '키와 평소 사이즈 포함'), ck('log', '판정 기록 포함')),
-      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'exportBtn', onclick: () => { download('otjang-' + (state.owner.nickname || 'wardrobe').replace(/[^\w가-힣-]+/g, '') + '-' + today() + '.json', W.exportWardrobe(state, ui.exp)); if (ui.exp.img) { state.meta.lastBackupAt = today(); save(); } }, text: '내보내기' }),
+      h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn primary', type: 'button', id: 'backupBtn', onclick: backupNow, text: '백업 파일 받기(옷·후보·추천 설정·기록 전부)' }),
+        h('button', { class: 'btn', type: 'button', id: 'exportBtn', onclick: () => { download('otjang-' + (state.owner.nickname || 'wardrobe').replace(/[^\w가-힣-]+/g, '') + '-' + today() + '.json', W.exportWardrobe(state, ui.exp)); }, text: '옷장만 내보내기' }),
         h('button', { class: 'btn', type: 'button', onclick: () => imp.click(), text: '내 옷장으로 가져오기' }), imp,
         h('span', { class: 'grow' }), h('button', { class: 'btn small danger', type: 'button', id: 'resetBtn', onclick: async () => { if (!ui.resetArm) { ui.resetArm = true; render(); return; } const keepId = state.meta.installId; await wipe(); state = cleanState(BASE); state.meta.installId = keepId; state.rack = defaultRack(state.items); ui.resetArm = false; ui.judgeId = ''; ui.stageSel = null; save(); render(); }, text: ui.resetArm ? '한 번 더 누르면 처음 상태로 돌아갑니다' : '처음 상태로' })));
     if (ui.importArm === false) io.append(h('p', { class: 'warnnote', style: 'margin-top:10px', text: '옷장 파일을 읽지 못했습니다.' }));
     else if (ui.importArm) io.append(h('div', { class: 'bar', style: 'margin:12px 0 0' }, h('span', { class: 'warnnote', text: '지금 옷장을 지우고 파일의 옷 ' + ui.importArm.items.length + '벌' + (ui.importArm.items.some((i) => i.status === 'candidate') ? '(살까 말까 후보 ' + ui.importArm.items.filter((i) => i.status === 'candidate').length + '벌 포함)' : '') + '로 바꿉니다.' + (ui.importArm.pickLog.length ? ' 추천 기록 ' + ui.importArm.pickLog.length + '건과 추천 설정도 가져옵니다.' : '') }),
       h('button', { class: 'btn small danger', type: 'button', id: 'importGo', onclick: () => { const w = ui.importArm; state.items = w.items; state.owner = w.owner; state.decisions = w.decisions; state.meta.sample = false; state.rack = defaultRack(state.items);
         if (w.prefs) state.prefs = w.prefs; if (w.pickLog.length) { const have = new Set(state.pickLog.map((e) => e.id)); state.pickLog = state.pickLog.concat(w.pickLog.filter((e) => !have.has(e.id))).slice(-100); }
-        mergeMeta(w.meta);
+        mergeMeta(w.meta); restoreNow();
         ui.importArm = null; ui.stageSel = null; save(); render(); }, text: '바꾸기' }),
       h('button', { class: 'btn small', type: 'button', onclick: () => { ui.importArm = null; render(); }, text: '취소' })));
     main.append(io);
@@ -7704,7 +7868,7 @@ const PICKS_RAW = {
   function leaveSample() { state.items = []; state.decisions = []; state.rack = []; state.meta.sample = false; state.meta.welcomed = true; ui.judgeId = ''; ui.stageSel = null; ui.rackPick = ''; }
   function startNotices(main) {                                                                   // 옷장 탭 위: 추천 물음(샀나요·2주 뒤) / 첫 방문 안내 / 예시 옷장 표시 / 백업 알림
     const ask = askEntry(); if (ask) main.append(askBox(ask));
-    const pdue = followDuePick(); if (pdue) main.append(followBox(pdue));
+    const pdue = followDuePick(); if (pdue) main.append(followBox(pdue)); const pnudge = fbNudgeBox(); if (pnudge) main.append(pnudge);
     if (state.meta.sample) {
       main.append(h('div', { class: 'notice', id: 'sampleNote' }, h('p', { text: '예시 옷장을 보고 있습니다. 둘러본 뒤 내 옷장으로 시작하면 예시 옷은 지워집니다.' }),
         h('button', { class: 'btn small primary', type: 'button', id: 'leaveSample', onclick: () => { leaveSample(); save(); render(); }, text: '내 옷장으로 시작 (예시 지우기)' })));
@@ -7735,7 +7899,7 @@ const PICKS_RAW = {
       h('div', { class: 'bar', style: 'margin:0' }, h('button', { class: 'btn small primary', type: 'button', id: 'nextJudge', onclick: () => openQuickCand(), text: '고민 중인 옷 판정해 보기' }),
         h('button', { class: 'btn small', type: 'button', id: 'moreQuick', onclick: () => openQuick(), text: '기본 옷 더 넣기' }))));
     const d = daysAgo(state.meta.lastBackupAt);
-    if (owned().length >= 3 && (d == null || d > 14)) main.append(h('div', { class: 'notice warnbox', id: 'backupNote' },
+    if ((owned().length >= 3 || state.pickLog.length >= 1) && (d == null || d > 14)) main.append(h('div', { class: 'notice warnbox', id: 'backupNote' },
       h('p', { text: (d == null ? '아직 백업한 적이 없습니다.' : '마지막 백업이 ' + d + '일 전입니다.') + ' 옷장은 이 브라우저에만 저장되어, 브라우저 데이터가 지워지면 되돌릴 수 없습니다.' }),
       h('button', { class: 'btn small primary', type: 'button', id: 'backupNow', onclick: backupNow, text: '백업 파일 받기' })));
   }
@@ -7768,7 +7932,7 @@ const PICKS_RAW = {
     if (state.meta.days[state.meta.days.length - 1] !== today()) state.meta.days.push(today());
     if (state.prefs.lastTab && TAB_IDS[state.prefs.lastTab]) ui.tab = state.prefs.lastTab;          // 다시 열면 마지막에 본 탭으로
     else if (!owned().length && !state.meta.sample && state.prefs.seen) ui.tab = 'shop';             // 추천만 쓰는 사람은 다시 열면 추천부터
-    if (state.prefs.nowOn && state.prefs.now.price) { ui.nowForm = Object.assign({}, state.prefs.now); ui.nowProduct = nowFromForm(ui.nowForm); ui.nowOpen = !!ui.nowProduct; }   // 견줘 본 '보던 흰 티'를 다시 보여 준다
+    restoreNow();
     $('#appTag').textContent = BRAND.tagline + (BRAND.beta ? ' · 시험판 ' + BRAND.version : '');
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* 무시: 오래 남게 해 달라는 요청이며 거절돼도 동작은 같다 */ }
     // 웹 배포판에서만: 한 번 연 뒤에는 인터넷이 끊겨도 열리게(sw.js). 옷장 자료는 다루지 않는다
