@@ -27,7 +27,8 @@ export function garmentMatchesSlot(garment, slot) {
 
 export function newWardrobeState() {
   return { schema: 2, onboarded: true, gender: 'M', style: 'classic', occasion: null, budget: null,
-    demo: true, demoSelected: [...DEMO_SLOTS.M], garments: [], saved: [], hidden: [], legacyFingerprint: null };
+    demo: true, demoSelected: [...DEMO_SLOTS.M], garments: [], saved: [], hidden: [], legacyFingerprint: null,
+    legacyBaseline: null, legacyDismissed: { owned: [], saved: [] } };
 }
 
 function virtualGarment(slotId, source) {
@@ -48,12 +49,12 @@ export function ownedSlotIds(state) {
 }
 
 export function wardrobeView(record, tab = 'home') {
-  return { ...record, owned: ownedSlotIds(record), tab };
+  return { ...record, legacyBaseline: record.legacyBaseline ?? null, legacyDismissed: record.legacyDismissed ?? { owned: [], saved: [] }, owned: ownedSlotIds(record), tab };
 }
 
 export function storedWardrobe(state) {
-  const { schema, onboarded, gender, style, occasion, budget, demo, demoSelected, garments, saved, hidden, legacyFingerprint } = state;
-  const record = { schema, onboarded, gender, style, occasion, budget, demo, demoSelected, garments, saved, hidden, legacyFingerprint };
+  const { schema, onboarded, gender, style, occasion, budget, demo, demoSelected, garments, saved, hidden, legacyFingerprint, legacyBaseline = null, legacyDismissed = { owned: [], saved: [] } } = state;
+  const record = { schema, onboarded, gender, style, occasion, budget, demo, demoSelected, garments, saved, hidden, legacyFingerprint, legacyBaseline, legacyDismissed };
   validateWardrobe(record);
   return structuredClone(record);
 }
@@ -63,8 +64,12 @@ function assertRecordKeys(value, allowed) {
 }
 
 export function validateWardrobe(record) {
-  assertRecordKeys(record, ['schema', 'onboarded', 'gender', 'style', 'occasion', 'budget', 'demo', 'demoSelected', 'garments', 'saved', 'hidden', 'legacyFingerprint']);
+  assertRecordKeys(record, ['schema', 'onboarded', 'gender', 'style', 'occasion', 'budget', 'demo', 'demoSelected', 'garments', 'saved', 'hidden', 'legacyFingerprint', 'legacyBaseline', 'legacyDismissed']);
   if (!(record.legacyFingerprint === null || typeof record.legacyFingerprint === 'string' && /^[a-f0-9]{64}$/.test(record.legacyFingerprint))) throw new Error('이전 옷장 확인 기록이 올바르지 않습니다.');
+  for (const value of [record.legacyBaseline, record.legacyDismissed]) if (value != null) {
+    assertRecordKeys(value, ['owned', 'saved']);
+    if (!Array.isArray(value.owned) || value.owned.some((id) => !SLOT_BY_ID[id]) || !Array.isArray(value.saved) || value.saved.some((id) => typeof id !== 'string' || !/^ms-\d+$/.test(id))) throw new Error('이전 기록의 비교 기준이 올바르지 않습니다.');
+  }
   if (record.schema !== 2 || typeof record.onboarded !== 'boolean' || typeof record.demo !== 'boolean') throw new Error('지원하지 않는 옷장 형식입니다. 원본을 보존했습니다.');
   if (![null, 'M', 'F'].includes(record.gender) || !(record.style === null || Object.hasOwn(STYLES, record.style)) || !(record.occasion === null || Object.hasOwn(OCCASIONS, record.occasion))) throw new Error('저장된 취향을 읽지 못했습니다.');
   if (record.onboarded && (!record.gender || !record.style)) throw new Error('저장된 시작 정보가 올바르지 않습니다.');
@@ -97,7 +102,8 @@ export function migrateLegacyWardrobe(raw) {
     style: legacy.style ?? null, occasion: legacy.occasion ?? null, budget: legacy.budget ?? null,
     demo: legacy.demo === true, demoSelected: legacy.demo ? ids : [],
     garments: legacy.demo ? [] : ids.map((id) => virtualGarment(id, 'legacy')),
-    saved: legacy.saved ?? [], hidden: legacy.hidden ?? [] };
+    saved: legacy.saved ?? [], hidden: legacy.hidden ?? [],
+    legacyBaseline: { owned: legacy.demo ? [] : ids, saved: legacy.saved ?? [] } };
   return validateWardrobe(record);
 }
 

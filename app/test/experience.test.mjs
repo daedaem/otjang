@@ -281,3 +281,26 @@ test('changes in the old app are noticed and imported without overwriting actual
   assert.doesNotMatch(again.nodes.get('app').innerHTML, /이전 버전에서 옷장이 바뀌었어요/);
   assert.equal((await again.app.store.read()).photos.size, 1);
 });
+
+test('a new legacy change does not resurrect garments or favorites deleted in this app; skipping persists', async () => {
+  const original = { onboarded: true, gender: 'M', style: 'classic', owned: ['m-tee-white'], saved: ['ms-1115031'] };
+  const page = await boot(new Map([['eoul:v1', JSON.stringify(original)]]));
+  await page.click({ action: 'edit-garment', id: 'legacy_m-tee-white' });
+  const deletion = { action: 'delete-garment' };
+  await page.click(deletion); await page.click(deletion);
+  await page.click({ action: 'save', id: 'ms-1115031' });
+  page.storage.set('eoul:v1', JSON.stringify({ ...original, owned: ['m-tee-white', 'm-blazer'], saved: ['ms-1115031', 'ms-404474'] }));
+  let next = await boot(page.storage, page.indexedDB);
+  await next.click({ action: 'review-legacy' });
+  assert.match(next.nodes.get('sheet-root').innerHTML, /옷 종류 1개 · 찜 1개/);
+  await next.click({ action: 'import-legacy' });
+  assert.deepEqual(next.state().garments.map((garment) => garment.slotId), ['m-blazer']);
+  assert.deepEqual(next.state().saved, ['ms-404474']);
+  next.storage.set('eoul:v1', JSON.stringify({ ...original, owned: ['m-tee-white', 'm-blazer', 'm-chino'] }));
+  const skipped = await boot(next.storage, next.indexedDB);
+  await skipped.click({ action: 'review-legacy' });
+  await skipped.click({ action: 'ignore-legacy' });
+  next = await boot(skipped.storage, skipped.indexedDB);
+  assert.doesNotMatch(next.nodes.get('app').innerHTML, /이전 버전에서 옷장이 바뀌었어요/);
+  assert.deepEqual(next.state().garments.map((garment) => garment.slotId), ['m-blazer']);
+});

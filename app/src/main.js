@@ -478,12 +478,14 @@ async function reviewLegacyChanges(errorText = '') {
   try {
     const old = migrateLegacyWardrobe(legacyPendingRaw);
     const existing = state.demo ? [] : state.garments;
-    const added = old.demo ? [] : old.garments.filter((garment) => !existing.some((row) => row.id === garment.id || row.slotId === garment.slotId));
-    const saved = [...new Set([...state.saved, ...old.saved])];
+    const baseline = state.legacyBaseline || { owned: [], saved: [] };
+    const dismissed = state.legacyDismissed;
+    const added = old.demo ? [] : old.garments.filter((garment) => !baseline.owned.includes(garment.slotId) && !dismissed.owned.includes(garment.slotId) && !existing.some((row) => row.id === garment.id || row.slotId === garment.slotId));
+    const saved = [...new Set([...state.saved, ...old.saved.filter((id) => !baseline.saved.includes(id) && !dismissed.saved.includes(id))])];
     const raw = legacyPendingRaw, fingerprint = await legacyWardrobeFingerprint(raw);
     if (sheetRevision !== revision) return;
-    openSheet(`<h2 class="detail-title">이전 기록 확인</h2><p>옷 종류 ${added.length}개 · 찜 ${saved.length - state.saved.length}개를 추가할 수 있어요.</p><p class="sub">${added.map((garment) => esc(garmentLabel(garment))).join(' · ') || '추가할 옷 종류가 없습니다.'}</p><p class="notice">현재 옷·사진·취향은 유지합니다. 이전 버전에서 삭제하거나 수정한 기록은 현재 옷장에 덮어쓰지 않습니다. 종류만 가져오므로 사진은 없어요.</p>${errorText ? `<p class="editor-error" role="alert">${esc(errorText)}</p>` : ''}${storageConflict ? '<button class="chip" data-action="reload-wardrobe">최신 옷장 불러오기</button>' : ''}<button class="chip" data-action="recovery-backup">이전 기록 원문 받기</button><div class="cta"><button class="btn" data-action="import-legacy">${added.length || saved.length > state.saved.length ? '추가 기록 가져오기' : '확인했어요'}</button></div>`);
-    legacyImportDraft = { raw, fingerprint, added, saved };
+    openSheet(`<h2 class="detail-title">이전 기록 확인</h2><p>옷 종류 ${added.length}개 · 찜 ${saved.length - state.saved.length}개를 추가할 수 있어요.</p><p class="sub">${added.map((garment) => esc(garmentLabel(garment))).join(' · ') || '추가할 옷 종류가 없습니다.'}</p><p class="notice">이전 버전에서 새로 추가된 기록만 가져옵니다. 현재 사진·취향은 유지하고, 여기서 지운 기록은 되살리지 않아요. 종류만 가져오므로 사진은 없어요.</p>${errorText ? `<p class="editor-error" role="alert">${esc(errorText)}</p>` : ''}${storageConflict ? '<button class="chip" data-action="reload-wardrobe">최신 옷장 불러오기</button>' : ''}<div class="opts"><button class="chip" data-action="recovery-backup">이전 기록 원문 받기</button><button class="chip" data-action="ignore-legacy">이번 변경 건너뛰기</button></div><div class="cta"><button class="btn" data-action="import-legacy">${added.length || saved.length > state.saved.length ? '추가 기록 가져오기' : '확인했어요'}</button></div>`);
+    legacyImportDraft = { raw, fingerprint, added, saved, baseline: old.legacyBaseline };
   } catch (error) { openSheet(`<h2 class="detail-title">이전 기록 확인 필요</h2><p class="editor-error">${esc(error.message)}</p><button class="chip" data-action="recovery-backup">원문 받기</button>`); }
 }
 
@@ -636,7 +638,7 @@ document.addEventListener('click', async (e) => {
         el.textContent = '한 번 더 누르면 모두 지워져요';
         break;
       }
-      if (await set({ ...newWardrobeState(), legacyFingerprint: state.legacyFingerprint, demo: false, demoSelected: [], onboarded: false, gender: null, style: null, tab: 'home' })) closeSheet();
+      if (await set({ ...newWardrobeState(), legacyFingerprint: state.legacyFingerprint, legacyBaseline: state.legacyBaseline, legacyDismissed: { owned: [...new Set([...state.legacyDismissed.owned, ...state.garments.map((garment) => garment.id.replace(/^legacy_/, '')).filter((id) => SLOT_BY_ID[id])])], saved: [...new Set([...state.legacyDismissed.saved, ...state.saved])] }, demo: false, demoSelected: [], onboarded: false, gender: null, style: null, tab: 'home' })) closeSheet();
       break;
     case 'clear-q': query = ''; render(); document.getElementById('ask-input')?.focus(); break;
     case 'example': query = el.dataset.q; render(); window.scrollTo(0, 0); break;
@@ -653,7 +655,7 @@ document.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = el.dataset.id;
       const on = state.saved.includes(id);
-      if (!await set({ saved: on ? state.saved.filter((x) => x !== id) : [...state.saved, id] }, { rerender: state.tab === 'saved' })) break;
+      if (!await set({ saved: on ? state.saved.filter((x) => x !== id) : [...state.saved, id], ...(on ? { legacyDismissed: { ...state.legacyDismissed, saved: [...new Set([...state.legacyDismissed.saved, id])] } } : {}) }, { rerender: state.tab === 'saved' })) break;
       refreshHearts(id);
       if (!on) toast('찜했어요');
       break;
@@ -676,7 +678,8 @@ document.addEventListener('click', async (e) => {
     case 'delete-garment':
       if (el.dataset.armed !== '1') { el.dataset.armed = '1'; el.textContent = '한 번 더 누르면 이 옷을 지워요'; break; }
       if (garmentDraft) {
-        if (await set({ garments: state.garments.filter((garment) => garment.id !== garmentDraft.id) })) closeSheet();
+        const legacyId = garmentDraft.id.replace(/^legacy_/, '');
+        if (await set({ garments: state.garments.filter((garment) => garment.id !== garmentDraft.id), ...(SLOT_BY_ID[legacyId] ? { legacyDismissed: { ...state.legacyDismissed, owned: [...new Set([...state.legacyDismissed.owned, legacyId])] } } : {}) })) closeSheet();
         else { garmentDraft.error = storageError; renderGarmentEditor(); }
       }
       break;
@@ -692,13 +695,15 @@ document.addEventListener('click', async (e) => {
       }
       break;
     case 'review-legacy': await reviewLegacyChanges(); break;
-    case 'import-legacy': {
+    case 'import-legacy':
+    case 'ignore-legacy': {
       const draft = legacyImportDraft;
       if (!draft) break;
       if (localStorage.getItem(KEY) !== draft.raw) { await reviewLegacyChanges(); toast('이전 기록이 다시 바뀌었어요. 내용을 확인해 주세요.'); break; }
       const existing = state.demo ? [] : state.garments;
       const added = draft.added.filter((garment) => !existing.some((row) => row.id === garment.id || row.slotId === garment.slotId));
-      if (await set({ ...(added.length ? { demo: false, demoSelected: [] } : {}), garments: [...existing, ...added], saved: [...new Set([...state.saved, ...draft.saved])], legacyFingerprint: draft.fingerprint })) { legacyPendingRaw = null; closeSheet(); render(); toast('확인한 기록을 반영했어요'); }
+      const patch = a === 'ignore-legacy' ? {} : { ...(added.length ? { demo: false, demoSelected: [] } : {}), garments: [...existing, ...added], saved: [...new Set([...state.saved, ...draft.saved])] };
+      if (await set({ ...patch, legacyFingerprint: draft.fingerprint, legacyBaseline: draft.baseline })) { legacyPendingRaw = null; closeSheet(); render(); toast(a === 'ignore-legacy' ? '이번 변경은 건너뛰었어요' : '확인한 기록을 반영했어요'); }
       else await reviewLegacyChanges(storageError);
       break;
     }
