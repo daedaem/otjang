@@ -1,0 +1,40 @@
+{
+  "sourceRepository": "daedaem/otjang",
+  "sourceBranch": "feat/editorial-mobile-20261013",
+  "sourceCommit": "86c5baee5e19cab4770be59d8ebd5ec22734c14b",
+  "builtAt": "2026-10-13T14:43:49.710234Z",
+  "build": "MOBILE_PREVIEW=1 WARDROBE=data/empty.json SPLIT_DIR=dist/mobile node build.mjs",
+  "emptySeed": true,
+  "validation": {
+    "build": "passed",
+    "inlineScripts": 14,
+    "manualBrowserCheck": "pending"
+  },
+  "scope": "Published feature branch preview. Pending pull failure patch and VTON experiments are excluded.",
+  "files": {
+    "index.html": {
+      "bytes": 1149419,
+      "sha256": "fdb9caa3cf4bce844789009a65f5d525660f388f3012c968d866923760181354"
+    },
+    "closet.js": {
+      "bytes": 11678806,
+      "sha256": "cf930fd2eb2d01007ddb2201ba991b26c9928e902bd84f3b48fcb58afc91bde9"
+    },
+    "manifest.webmanifest": {
+      "bytes": 502,
+      "sha256": "b311f3a50bcb5cd0e71841659922a2622c26bfda4e658b5b622922f9628df5a3"
+    },
+    "sw.js": {
+      "bytes": 1958,
+      "sha256": "f7924ca6070fdc3dbe693a0c05f14dc17d51d7a83b21cc5dc5fecd0a87c21c6a"
+    },
+    "icon-192.png": {
+      "bytes": 6135,
+      "sha256": "b0d15250802a5c298a299b59acc28b27cd010cf3040b6db3e9cfa6f2939ea3f7"
+    },
+    "icon-512.png": {
+      "bytes": 16070,
+      "sha256": "d5e693debfe52d3b4ed7ad22ab3d089227ec3f1b3d3e83d7fca8ab37270a488c"
+    }
+  }
+}
