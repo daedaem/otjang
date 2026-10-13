@@ -314,8 +314,8 @@ def main():
         rec.data["runs"][name].update(seconds=sec, output_size=out_img.size)
         rec.data["peak"] = mon.snapshot()
         rec.event(f"생성 완료 [{name}] {sec}초, 출력 {out_img.size}")
-        label = "전신" if name == "full" else "상반신"
-        rows.append(labeled_row([img, garment, out_img], [f"original ({label})", "garment", "result"]))
+        # 기본 글꼴에 한글이 없어 라벨은 영어로 쓴다
+        rows.append(labeled_row([img, garment, out_img], [f"original ({name})", "garment", "result"]))
         stack_rows(rows).save(out_dir / "compare.png")
 
     mon.set_phase("done")
