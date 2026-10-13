@@ -85,11 +85,11 @@ function draftReviewCallout(drafts) {
 }
 function renderEditorialCloset(main) {
   const plan = wardrobePlan();
+  const drafts = owned().filter(W.isDraft);
+  if (drafts.length) main.append(draftReviewCallout(drafts));
   renderEditorialHero(main, plan);
   if (!state.items.length) { startNotices(main); return; }
   if (state.meta.sample) startNotices(main);
-  const drafts = owned().filter(W.isDraft);
-  if (drafts.length) main.append(draftReviewCallout(drafts));
   renderWardrobeOverview(main);
   const search = h('input', { type: 'search', id: 'closetSearch', placeholder: '이름 · 종류 · 브랜드로 찾기', value: ui.closetSearch || '', 'aria-label': '내 옷 검색' });
   const toolbar = h('div', { class: 'closet-toolbar' }, h('div', { class: 'bar', 'aria-label': '옷 분류' }, chip('전체', ui.cat === 'all', () => { ui.cat = 'all'; render(); }),

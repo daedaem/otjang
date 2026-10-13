@@ -92,6 +92,16 @@ for (const m of modes) {
   ok(base.n === 13 && base.rack === 5 && base.drafts === 13 && base.cands === 2, '처음 상태: 13벌 모두 초안, 3D 형태 5벌이 걸려 있고, 미확인 브랜드 후보 2벌', base);
   const draftVerdict = await page.evaluate(() => window.__app.J.judgeCandidate(window.__app.state.items, { ...window.__app.state.items[0], status: 'candidate' }));
   ok(draftVerdict.status === 'needs-confirmation' && draftVerdict.before === null && draftVerdict.after === null, '합성 예시 초안은 확인 전 조합 수를 만들지 않는다');
+  const reviewEntry = await page.locator('#reviewPhotoDrafts').evaluate((el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, viewport: innerHeight }; });
+  ok(reviewEntry.top >= 0 && reviewEntry.bottom <= reviewEntry.viewport, '사진 초안 일괄 확인 버튼이 옷장 첫 화면 안에 보인다', reviewEntry);
+  await page.click('#reviewPhotoDrafts');
+  ok(await page.locator('#draftReview').isVisible() && await page.locator('#draftReview [data-confirm-draft]').count() > 0, '옷장 첫 화면에서 사진 초안 검토를 열 수 있다');
+  await page.getByRole('button', { name: '나중에', exact: true }).click();
+  await page.click('#tabbtn-outfits');
+  const outfitDraftReview = page.getByRole('button', { name: /사진 초안 한 번에 확인/ });
+  ok(await outfitDraftReview.count() === 1, '코디 화면에서도 초안 일괄 검토로 이동할 수 있다');
+  await outfitDraftReview.click(); await page.getByRole('button', { name: '나중에', exact: true }).click();
+  await page.click('#tabbtn-closet');
 
   // 1. 옷장: 배지, 기록 편집, 확인하기(모르는 것만 묻기)
   ok(await page.locator('#closetGrid .card').count() === 13, '옷장에 13벌이 보인다');
@@ -188,6 +198,14 @@ for (const m of modes) {
   await page.locator('#afterForm .choice', { hasText: '도움이 됐다' }).click();
   await page.fill('#afterNote', '생지 데님과만 조합이 되는 줄 몰랐다');
   await page.click('#saveDecision');
+  await page.waitForFunction(() => {
+    const summary = document.querySelector('#decided'), followup = document.querySelector('#purchaseFollowup');
+    if (!summary || !followup) return false;
+    const s = summary.getBoundingClientRect(), f = followup.getBoundingClientRect();
+    return s.top >= 0 && s.top < 120 && f.top >= 0 && f.bottom <= innerHeight;
+  }, null, { timeout: 10000 });
+  const surfacedFollowup = await page.evaluate(() => ({ scrollY: scrollY, summaryTop: document.querySelector('#decided').getBoundingClientRect().top, followupTop: document.querySelector('#purchaseFollowup').getBoundingClientRect().top, followupBottom: document.querySelector('#purchaseFollowup').getBoundingClientRect().bottom, viewport: innerHeight }));
+  ok(surfacedFollowup.followupTop >= 0 && surfacedFollowup.followupBottom <= surfacedFollowup.viewport, '결정 저장 후 구매 결과 기록 패널이 한 화면 안으로 이동한다', surfacedFollowup);
   ok((await page.locator('#decided').innerText()).includes('결정: 산다') && (await page.locator('#decided').innerText()).includes('정해짐'), '결정이 기록되고 보기 전 마음과의 차이가 나온다');
   await shot('3-decided');
   await page.selectOption('#followupOutcome', 'purchased'); await page.fill('#followupNote', '판매처에서 결제 완료'); await page.click('#saveFollowup');

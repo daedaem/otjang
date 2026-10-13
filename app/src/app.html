@@ -939,7 +939,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
     const stage = open ? 2 : last && ui.rejudge !== c.id ? 3 : 1;
     right.append(h('div', { class: 'steps' }, h('span', { class: 'step ' + (stage === 1 ? 'on' : 'done'), text: '1. 보기 전 내 마음' }), h('span', { class: 'step ' + (stage === 2 ? 'on' : stage === 3 ? 'done' : ''), text: '2. 판정' }), h('span', { class: 'step ' + (stage === 3 ? 'on' : ''), text: '3. 결정' })));
     if (stage === 3) {
-      right.append(h('section', { class: 'panel', id: 'decided' }, h('h2', { text: c.name }),
+      right.append(h('section', { class: 'panel', id: 'decided', tabindex: '-1', style: 'scroll-margin-top:72px' }, h('h2', { text: c.name }),
         h('p', { class: 'big', text: '결정: ' + DECIDE[last.after.decision] }),
         h('p', { class: 'sub', text: '보기 전 마음은 "' + LEAN[last.before.lean] + '"이었습니다 (' + SHIFT[last.after.shift] + '). 판정은 ' + HELP[last.after.helpful] + '고 적었습니다.' + (last.after.note ? ' 메모: ' + last.after.note : '') }),
         h('div', { class: 'bar', style: 'margin:0' },
@@ -1025,6 +1025,12 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
       if (!state.betaTrial) state.betaTrial = { startedAt: '', firstCompletedAt: '' };
       if (!state.betaTrial.firstCompletedAt) state.betaTrial.firstCompletedAt = new Date().toISOString();
       save(); render();
+      requestAnimationFrame(() => {
+        const target = $('#decided');
+        if (!target) return;
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
     } }, h('h2', { text: '결정' }), h('p', { class: 'sub', text: '보기 전 마음: ' + LEAN[dec.before.lean] + (dec.before.reason ? ' (' + dec.before.reason + ')' : '') }),
       h('div', { class: 'choices' }, Object.keys(DECIDE).map((k) => h('label', { class: 'choice' }, h('input', { type: 'radio', name: 'decision', value: k, required: true }), h('span', { text: DECIDE[k] })))),
       h('span', { class: 'note', text: '이 판정이 결정에 도움이 됐나요' }),
