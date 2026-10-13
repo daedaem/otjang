@@ -1205,7 +1205,7 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
           : h('p', { class: 'note', text: '사이즈 목록이 없어 사이즈 없이 기록해요.' }),
         h('p', { class: 'warnnote', id: 'askErr', role: 'alert', hidden: true, text: '산 사이즈를 골라 주세요(모르면 "기억 안 나요").' }),
         p && !p.user ? h('label', { class: 'note', style: 'display:flex;gap:6px;align-items:center;margin:8px 0' }, h('input', { type: 'checkbox', id: 'bOwn', checked: ui.buyOwn !== false, onchange: (ev) => { ui.buyOwn = ev.target.checked; } }), '내 옷장에도 넣기(산 사이즈의 치수를 함께)') : null,
-        h('div', { class: 'bar', style: 'margin-top:8px' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtSave', onclick: () => { if (opts.length && !ui.buySize) { $('#askErr').hidden = false; const c = $('#bsz-0'); if (c) c.focus(); return; } saveBought(e, p); }, text: '저장' }),
+        h('div', { class: 'bar', style: 'margin-top:8px' }, h('button', { class: 'btn small primary', type: 'button', id: 'boughtSave', disabled: ui.buySaving?.state === state && ui.buySaving.scope === accountScope(), onclick: async () => { if (opts.length && !ui.buySize) { $('#askErr').hidden = false; const c = $('#bsz-0'); if (c) c.focus(); return; } await saveBought(e, p); }, text: ui.buySaving?.state === state ? '저장 중…' : '저장' }),
           h('button', { class: 'btn small', type: 'button', onclick: () => { ui.buyStep = ''; render(); }, text: '취소' })));
       return box;
     }
@@ -1217,21 +1217,58 @@ const PICKS_RAW = /*@@PICKS@@*/;</script>
   }
   /** 샀어요 저장: 살까 말까에 담아 둔 같은 상품은 보유로 옮기고, 30일 안에 같은 상품을 이미 넣었으면 또 넣지 않는다. */
   function saveBought(e, p) {
-    const size = ui.buySize === '?' ? '' : ui.buySize || '';
-    e.bought = 'yes'; e.boughtAt = today(); e.boughtSize = size;
-    if (p && !p.user && ui.buyOwn !== false) {
-      const name = pname(p), link = p.store.url || '';
-      const dup = state.items.find((i) => i.status === 'owned' && i.name === name && (i.link || '') === link && state.pickLog.some((x) => x !== e && x.ownedId === i.id && daysAgo(x.boughtAt || x.at) <= 30));
-      if (dup) e.ownedId = dup.id;
-      else {
-        const it = PK.toOwned(p, PICKS, size, today()), cand = state.items.find((i) => i.status === 'candidate' && i.name === name && (i.link || '') === link);
-        if (cand) { it.id = cand.id; replaceItem(it); } else { it.id = newId('o'); state.items.push(it); }
-        e.ownedId = it.id;
+    const target = state, scope = accountScope(), targetItems = target.items, targetLog = target.pickLog;
+    if (!target.pickLog.includes(e) || e.bought === 'yes' || (ui.buySaving?.state === target && ui.buySaving.scope === scope)) return Promise.resolve(false);
+    const lock = { state: target, scope }; ui.buySaving = lock;
+    const purchaseUi = { step: ui.buyStep, size: ui.buySize, own: ui.buyOwn }, size = purchaseUi.size === '?' ? '' : purchaseUi.size || '';
+    const keys = ['bought', 'boughtAt', 'boughtSize', 'ownedId'], before = keys.map((key) => ({ key, present: Object.prototype.hasOwnProperty.call(e, key), value: e[key] }));
+    const attempted = { bought: 'yes', boughtAt: today(), boughtSize: size }; let itemChange = null, purchaseSave = null;
+    const actor = () => state === target && accountScope() === scope && target.pickLog.includes(e);
+    const active = () => actor() && target.items === targetItems && target.pickLog === targetLog;
+    return (async () => {
+      let saved = false;
+      try {
+        render();
+        if (!active()) { if (ui.buySaving === lock) ui.buySaving = null; return false; }
+        Object.assign(e, attempted);
+        if (p && !p.user && purchaseUi.own !== false) {
+          const name = pname(p), link = p.store.url || '';
+          const dup = target.items.find((i) => i.status === 'owned' && i.name === name && (i.link || '') === link && target.pickLog.some((x) => x !== e && x.ownedId === i.id && daysAgo(x.boughtAt || x.at) <= 30));
+          if (dup) attempted.ownedId = dup.id;
+          else {
+            const it = PK.toOwned(p, PICKS, size, today()), cand = target.items.find((i) => i.status === 'candidate' && i.name === name && (i.link || '') === link);
+            if (cand) { it.id = cand.id; target.items[target.items.indexOf(cand)] = it; } else { it.id = newId('o'); target.items.push(it); }
+            itemChange = { before: cand || null, after: it }; attempted.ownedId = it.id;
+          }
+          e.ownedId = attempted.ownedId;
+        }
+        purchaseSave = save(); saved = await purchaseSave === true;
+      } catch (error) { /* A rejected save is the same failed purchase operation. */ }
+      if (!saved) {
+        // Roll back only this attempt's fields/objects, even when its captured
+        // account is now detached. Never assign an old snapshot over new state.
+        if (targetLog.includes(e)) for (const old of before) if (Object.prototype.hasOwnProperty.call(attempted, old.key) && e[old.key] === attempted[old.key]) { if (old.present) e[old.key] = old.value; else delete e[old.key]; }
+        const index = itemChange ? targetItems.indexOf(itemChange.after) : -1;
+        if (index >= 0) { if (itemChange.before) targetItems[index] = itemChange.before; else targetItems.splice(index, 1); }
+        // Import-add may replace an array while retaining our exact object.
+        // Repair that object too; a new remote/edited object is never replaced.
+        if (itemChange && actor() && target.items !== targetItems) { const current = target.items.indexOf(itemChange.after); if (current >= 0) { if (itemChange.before) target.items[current] = itemChange.before; else target.items.splice(current, 1); } }
+        // A later queued full snapshot may have captured the tentative purchase.
+        // Append the repaired current copy after it, within the same account.
+        let repaired = true;
+        if (purchaseSave && actor() && savePromise !== purchaseSave) { try { repaired = await save() === true; } catch (error) { repaired = false; } }
+        if (ui.buySaving === lock) ui.buySaving = null;
+        if (actor()) { render(); toast(repaired ? '구매 기록을 저장하지 못했습니다. 사이즈 선택은 그대로입니다. 저장 상태를 확인한 뒤 다시 시도해 주세요.' : '구매 기록과 복구 사본을 저장하지 못했습니다. 다른 작업과 함께 저장된 구매 기록이 남아 있을 수 있습니다. 현재 전체 백업을 보관하고 저장 상태를 확인해 주세요.'); }
+        return false;
       }
-    }
-    ui.buyStep = ''; ui.buySize = ''; save(); render();
-    toast('기록했어요. ' + md(addDays(today(), W.FOLLOW_DAYS)) + '쯤 사이즈가 잘 맞았는지 한 번 물어볼게요.' + (e.ownedId ? ' 내 옷장에도 넣었어요.' : ''));
-    const b = $('#pickBought') || $('#pickVerdict'); if (b) { b.setAttribute('tabindex', '-1'); b.focus(); }
+      if (ui.buySaving === lock) ui.buySaving = null;
+      if (!active() || Object.keys(attempted).some((key) => e[key] !== attempted[key]) || (e.ownedId && !targetItems.some((item) => item.id === e.ownedId && item.status === 'owned'))) return true;
+      const samePurchaseUi = ui.buyStep === purchaseUi.step && ui.buySize === purchaseUi.size && ui.buyOwn === purchaseUi.own;
+      if (samePurchaseUi) { ui.buyStep = ''; ui.buySize = ''; }
+      render(); toast('기록했어요. ' + md(addDays(today(), W.FOLLOW_DAYS)) + '쯤 사이즈가 잘 맞았는지 한 번 물어볼게요.' + (e.ownedId ? ' 내 옷장에도 넣었어요.' : ''));
+      const b = samePurchaseUi && ($('#pickBought') || $('#pickVerdict')); if (b) { b.setAttribute('tabindex', '-1'); b.focus(); }
+      return true;
+    })();
   }
   /** 산 지 2주: 사이즈·만족. 답을 바로 다음 추천의 사이즈 기준으로 쓴다('잘 맞아요' → 그 사이즈 치수, '작아요·커요' → 가슴을 2cm 옮김). 알림에서 되돌릴 수 있다. */
   function followBox(due) {

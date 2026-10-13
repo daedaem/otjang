@@ -80,6 +80,8 @@ flowchart LR
 
 ### 구매·착용·반품 결과
 
+`app.html::saveBought`는 구매 버튼과 함께 비동기 저장 성공을 기다린다. 실패하면 이번 구매 필드·보유 전환만 되돌리고 사이즈 선택을 보존한다. 계정/state 교체와 다른 편집은 덮지 않는다. 뒤 큐나 import-add가 잠정 구매를 포함했으면 현재 사본을 보상 저장한다. 보상까지 실패하면 저장소에 잠정 구매가 남을 수 있으므로 완전 복구로 표시하지 않는다. 회귀와 선택 이유는 [검증 기록](verification-2026-10-13.md), ADR-13을 따른다.
+
 `beta-ui.js::openFollowupDialog`는 outcome/worn/regret/sizeResult/returnReason/note/at를 저장한다. 반품은 연결된 item을 `gone`으로 바꾸고 3D rack에서 빼며, 구매로 정정하면 연결 item을 다시 `owned`로 만든다. 저장 실패 시 후속 기록·item·rack을 되돌린다.
 서버는 [FollowupWriteValidator](../server/src/main/java/otjang/api/FollowupWriteValidator.java) → cleaner → mapper → `DecisionEntity`와 V8 제약으로 처리한다. `pickLog` 구매 기록과 `decisions.followup`이 아직 별개다. `pickLog.returned`는 판매처에서 앱으로 돌아왔다는 뜻이며 상품 반품이 아니다.
 현재 로컬 pickLog는 최근 100건만 남기고 판정 cleaner는 앞 500건만 남긴다. 서버 import의 500개 초과 거부가 이 로컬 상한 손실을 해결하지는 않는다. 상한 제거·보존 방식은 별도 후속 작업이다.
@@ -148,7 +150,7 @@ npm run build:mobile
 | --- | --- |
 | 서버 | 실제 PostgreSQL 16 Testcontainers 전체 130개, 실패/오류/건너뜀 0; 보고서와 server/README에서 확인 |
 | 공유 사례 | 88건의 계약 입력/정규화/거부 사례; DB/API 테스트 수와 같은 숫자는 아님 |
-| 클라이언트 | 최초 전체 Node 184개 통과 후 재로그인 회귀 4개를 더한 최신 188개 통과, 실패/건너뜀 0. 최신 분리 웹·모바일 빌드 성공. 최초 기본 3D 포함 빌드와 카탈로그 구조 검사도 성공했으며 카탈로그 주의 16건은 모르는 속성·치수 재확인 항목 |
+| 클라이언트 | 최초 전체 Node 184개, 재로그인 수정 후 188개, 구매 저장 회귀 15개를 더한 최신 203개 통과. 최신 기본 3D 포함·모바일 빌드 성공. 앞선 분리 웹 빌드와 카탈로그 구조 검사도 성공했으며 카탈로그 주의 16건은 모르는 속성·치수 재확인 항목 |
 | 브라우저/실제 기기/운영 복구 | 현재 변경의 전체 E2E, 실제 휴대폰·Safari, 배포 복구/성능은 별도 검증 필요 |
 
 AI가 설계 제안·구현·테스트·이 문서를 작성했다. 사용자는 핵심 규칙과 대안을 이해하고 실제 옷장·구매 후보로 결과의 타당성을 확인해야 한다. 자동 테스트는 패션 취향, 상품 정보의 사실성, 사진 체감 품질이나 사업성을 입증하지 않는다.
