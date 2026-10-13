@@ -1,4 +1,4 @@
-# 시험판 0.8.0-beta (화면 이름 "어울(EOUL)"은 가칭)
+# 시험판 0.9.0-beta (화면 이름 "어울(EOUL)"은 가칭)
 
 사기 전에 고른 기준으로 상품 하나를 골라 주고, 보던 상품을 같은 기준으로 견주고, 산 뒤 사이즈 답으로 다음 추천을 고치는 도구다. 옷장 기록, 살까 말까 판정, 코디, 3D 옷장도 들어 있다.
 서버 없이 돈다. 웹판(`dist/web/`)은 https://daedaem.github.io/otjang/beta/ 에 올라가 있고, `dist/index.html` 파일 하나로도 열린다. 앱은 인터넷으로 아무것도 보내지 않는다(보안 정책으로 막음). 가격·재고를 실시간으로 찾아오지 않는다: 추천은 운영자가 공식 판매처에서 확인해 넣은 `data/picks.json` 안에서만 하고 확인일을 함께 보인다. AI를 쓰지 않는다(같은 입력이면 같은 결과).
@@ -32,7 +32,7 @@ v0.3~0.5에서 더해진 것: 사진 상태·출처·확인일(옷장 파일 스
 
 ```bash
 npm install                  # three 0.160.1, esbuild, playwright, axe-core (+ glb 압축용 gltf-transform, meshoptimizer)
-npm test                     # 규칙·스키마·추천·카탈로그 검사·재확인 도구·의견 줄·골든 등 테스트 96개 (Node 22)
+npm test                     # 규칙·스키마·추천·카탈로그 검사·재확인 도구·의견 줄·골든 등 테스트 100개 (Node 22)
 npm run check:catalog        # data/picks.json 검사 (오류 0이어야 빌드가 된다. 14일 지난 확인은 주의, 30일은 오류)
 npm run recheck -- plan      # 다시 확인할 상품 목록 (fetch·apply 는 ../docs/catalog-policy.md)
 npm run assets               # assets/closet → src/closet/assets.gen.js
@@ -40,7 +40,7 @@ npm run build                # dist/index.html (약 11.6MB, 3D 포함). NO3D=1 �
 npm run build:web            # dist/web/ 베타 웹판: index.html 516KB(gzip 약 141KB) + 3D 탭용 closet.js 11.7MB(gzip 약 6.3MB) + sw.js·manifest
 npm run build:empty          # dist/otjang-empty.html (빈 옷장)
 npx playwright install chromium && npm run check   # 한 파일 빌드의 핵심 흐름: 환경당 72항목 × 두 환경(1280 밝은 화면, 390 어두운 화면)
-npm run check:web            # 웹판을 로컬 HTTP로: 환경당 88항목 × 2 (추천·결정 고리·보던 상품·서비스 워커·CSP·외부 요청 0)
+npm run check:web            # 웹판을 로컬 HTTP로: 환경당 90항목 × 2 (추천·결정 고리·보던 상품·서비스 워커·CSP·외부 요청 0)
 npm run check:a11y           # axe-core WCAG 2.1 A·AA 자동 규칙: 22개 화면 × 2
 npm run check:perf           # 흉내 회선(느린 4G·LTE)에서 첫 화면·3D 탭 시간 (서비스 워커는 막고 첫 방문 기준)
 npm run golden               # 규칙 결과 스냅샷 다시 만들기 (규칙을 일부러 바꿀 때만)

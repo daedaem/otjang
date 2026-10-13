@@ -139,8 +139,12 @@ for (const m of modes) {
   await page.locator('#askBought [role="radio"]', { hasText: '(추천)' }).click();
   await page.click('#boughtSave');
   const bought = await page.evaluate(() => { const s = window.__app.state, e = s.pickLog[s.pickLog.length - 1], it = s.items.find((i) => i.id === e.ownedId); return { b: e.bought, size: e.boughtSize, it: it && { status: it.status, size: it.size, chest: it.measures.chest, link: it.link } }; });
-  ok(defSize === '2(M) (추천)' && bought.b === 'yes' && bought.size === '2' && bought.it && bought.it.status === 'owned' && bought.it.size === '2(M)' && bought.it.chest === 54.5 && !(await page.locator('#askBought').count()) && (await page.locator('#pickBought').innerText()).includes('샀어요 · 2(M)'),
-    '"샀어요"는 추천 사이즈에 (추천)을 붙여 산 사이즈를 받고, 그 치수와 함께 내 옷장에 넣으며, 카드에 "샀어요 · 2(M)"이 남는다', { defSize, bought });
+  const afterBuy = await page.evaluate(() => ({ txt: (document.querySelector('#pickBought') || {}).innerText || '', pick: window.__pick.pick, note: (document.querySelector('#pickBoughtNote') || {}).textContent || '' }));
+  ok(defSize === '2(M) (추천)' && bought.b === 'yes' && bought.size === '2' && bought.it && bought.it.status === 'owned' && bought.it.size === '2(M)' && bought.it.chest === 54.5 && !(await page.locator('#askBought').count()) && /샽어요|샀어요/.test(afterBuy.txt) && afterBuy.txt.includes('2(M)') && afterBuy.pick !== 'pottery-ss-classic-white' && /1위·대안에서 뺐어요/.test(afterBuy.note),
+    '"샀어요"는 추천 사이즈에 (추천)을 붙여 산 사이즈를 받고, 그 치수와 함께 내 옷장에 넣으며, 산 상품은 "샀어요 · 2(M)"로 따로 보이고 1위·대안에서 빠진다', { defSize, bought, afterBuy });
+  await page.click('#pickInclBought');
+  ok((await page.evaluate(() => window.__pick.pick)) === 'pottery-ss-classic-white' && (await page.locator('#pickTop #pickBought').count()) === 1 && !(await page.locator('#pickTop #pickVerdict').count()) && (await page.locator('#pickTop .cta a').innerText()).includes('주문·교환'), '"산 상품도 넣어 보기"를 누르면 산 상품이 1위로 돌아오고, 카드는 산 뒤 상태(주문·교환 보기, 평가 줄 없음)로 보인다');
+  await page.click('#pickOther');
   await page.evaluate(() => window.__app.flush()); await page.reload(); await page.waitForFunction(() => window.__app);
   const again = await page.evaluate(() => ({ tab: window.__app.ui.tab, ask: !!document.querySelector('#askBought'), b: window.__app.state.pickLog.filter((e) => e.bought === 'yes').length }));
   ok(!again.ask && again.b === 1, '다시 열어도 이미 답한 상품은 다시 묻지 않는다', again);
@@ -149,10 +153,17 @@ for (const m of modes) {
   ok(await page.locator('#pickFollow').isVisible() && (await page.locator('#pickFollow legend').allInnerTexts()).join() === '사이즈,만족', '산 지 2주가 지나면 첫 화면(옷장 탭)에서 사이즈·만족을 묻는다(이름 있는 묶음)');
   await page.locator('#pickFollow input[name="pfSize"][value="fit"]').check(); await page.locator('#pickFollow input[name="pfFeel"][value="good"]').check();
   await page.click('#pickFollowSave');
-  const learned = await page.evaluate(() => ({ ref: window.__app.state.prefs.ref, l: window.__app.state.pickLog[window.__app.state.pickLog.length - 1].learned, t: document.querySelector('#toast').textContent }));
-  ok(learned.ref.chest === 54.5 && learned.ref.length === 67.5 && learned.l === 'ref' && learned.t.includes('잘 맞는 티'), '"잘 맞아요"면 산 사이즈 치수를 다음 추천의 "잘 맞는 티"로 쓴다(되돌리기 있음)', learned);
-  await page.click('#toastAct');
-  ok(!Object.keys(await page.evaluate(() => window.__app.state.prefs.ref)).length, '되돌리기를 누르면 원래 치수(없음)로 돌아간다');
+  const learned = await page.evaluate(() => ({ ref: window.__app.state.prefs.ref, l: window.__app.state.pickLog[window.__app.state.pickLog.length - 1].learned, t: (document.querySelector('#fbDone') || {}).textContent || '', follow: !!document.querySelector('#pickFollow'), focus: document.activeElement && document.activeElement.id }));
+  ok(learned.ref.chest === 54.5 && learned.ref.length === 67.5 && learned.l === 'ref' && learned.t.includes('잘 맞는 티') && !learned.follow && learned.focus === 'fbDone', '"잘 맞아요"면 산 사이즈 치수를 다음 추천의 "잘 맞는 티"로 쓰고, 물음 자리에 결과 상자 하나(되돌리기·바뀐 사이즈 보기·의견 보내기)가 초점과 함께 온다', learned);
+  await page.click('#fbDoneUndo');
+  ok(!Object.keys(await page.evaluate(() => window.__app.state.prefs.ref)).length && !(await page.locator('#fbDone').count()), '되돌리기를 누르면 원래 치수(없음)로 돌아간다');
+  // 실측을 넣은 채 '커요'라고 답하면 가슴만 2cm 옮기고 총장·어깨는 남긴다
+  await page.evaluate(() => { const s = window.__app.state; s.prefs.ref = { chest: 53, length: 69, shoulder: 46 }; s.pickLog[s.pickLog.length - 1].follow = null; return window.__app.flush(); });
+  await page.click('#tabbtn-shop'); await page.click('#tabbtn-closet');
+  await page.locator('#pickFollow input[name="pfSize"][value="big"]').check(); await page.locator('#pickFollow input[name="pfFeel"][value="ok"]').check(); await page.click('#pickFollowSave');
+  const big = await page.evaluate(() => ({ ref: window.__app.state.prefs.ref, t: (document.querySelector('#fbDone') || {}).textContent || '' }));
+  ok(big.ref.chest === 52.5 && big.ref.length === 69 && big.ref.shoulder === 46 && /총장·어깨는 그대로/.test(big.t), '"커요"면 가슴만 2cm 작게 잡고 총장·어깨 실측은 지우지 않는다', big);
+  await page.evaluate(() => { window.__app.state.prefs.ref = {}; window.__app.ui.fbDone = null; return window.__app.flush(); });
   await page.evaluate(() => { const s = window.__app.state; s.items = []; s.rack = []; return window.__app.flush(); });   // 다음 시험을 빈 옷장에서 시작
   await page.click('#tabbtn-shop');
 
@@ -345,7 +356,7 @@ for (const m of modes) {
     const ctx2 = await browser.newContext({ viewport: { width: m.w, height: m.h }, colorScheme: m.scheme });
     const p2 = await ctx2.newPage(); await p2.goto(origin + '/'); await p2.waitForFunction(() => window.__app);
     await p2.click('#tabbtn-log'); await p2.setInputFiles('#importFile', bf); await p2.click('#importGo');
-    const got = await p2.evaluate(() => ({ n: window.__app.state.items.length, c: window.__app.state.items.filter((i) => i.status === 'candidate').length, pri: window.__app.state.prefs.pri.join(), log: window.__app.state.pickLog.length, f: window.__app.state.pickLog.some((e) => e.follow && e.follow.size === 'fit'), runs: window.__app.state.meta.pickRuns }));
+    const got = await p2.evaluate(() => ({ n: window.__app.state.items.length, c: window.__app.state.items.filter((i) => i.status === 'candidate').length, pri: window.__app.state.prefs.pri.join(), log: window.__app.state.pickLog.length, f: window.__app.state.pickLog.some((e) => e.follow && e.follow.size === 'big'), runs: window.__app.state.meta.pickRuns }));
     ok(got.n === 8 && got.c === 2 && got.pri === 'brand,quality' && got.log === 2 && got.f && got.runs >= 1, '백업을 새 브라우저에서 가져오면 옷·후보·추천 설정·추천 기록(2주 뒤 답)·사용 횟수가 돌아온다', got);
     await ctx2.close();
   }
@@ -359,7 +370,7 @@ for (const m of modes) {
   await page.locator('#fbPmf input[value="very"]').check(); await page.selectOption('#fbNps', '9');
   const pv = await page.locator('#fbPreview').innerText();
   const mline = (pv.match(/EOUL1\|\S+/) || [''])[0];
-  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=2\|pko=1\|pkc=1\|pka=1\|pkb=1\|pkf=1\|pkfit=1\|pkr=0\|pkal=0\|pknow=3\|pksh=1\|pkx=pottery-ss-classic-white~2~fit~good~2\|pkw=0~0~0~0~0\|nwd=0~1~0\|nx=oxford\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
+  ok(pv.includes('더는 못 쓰게 되면: 매우 아쉽다 · 추천할 마음: 9/10') && /\|own=6\|/.test(mline) && /\|done=1\|/.test(mline) && /\|quick=5\|/.test(mline) && /\|fol=1\|good=1\|/.test(mline) && /\|pmf=very\|nps=9\|/.test(mline) && /\|pk=3\|pko=1\|pkc=1\|pka=1\|pkb=1\|pkf=1\|pkfit=0\|pkr=0\|pkal=0\|pknow=3\|pksh=1\|pkx=pottery-ss-classic-white~2~big~ok~2\|pkw=0~0~0~0~0\|nwd=0~1~0\|nx=oxford\|/.test(mline) && /id=[a-z0-9]{6,16}\|/.test(mline),
     '만족도 질문(더는 못 쓰면·추천할 마음)과 운영자가 읽을 요약 한 줄이 붙는다', mline);
   ok(pv.includes('시험 의견') && pv.includes(VER) && pv.includes('옷 6벌') && pv.includes('후보 2') && pv.includes('연 날 1일') && pv.includes('빠른 시작 5벌') && pv.includes('2주 뒤 답 1건(잘함 1') && !pv.includes('흰 셔츠') && !pv.includes('트렌치') && !pv.includes('스커트') && !pv.includes('musinsa'),
     '의견 미리보기에 사용 요약(빠른 시작·2주 뒤 답 포함)은 있고 옷 이름은 없다', pv.split('\n').slice(2));
@@ -373,7 +384,7 @@ for (const m of modes) {
   const older = other.replace('at=2026-10-20', 'at=2026-10-19').replace('own=2', 'own=1');
   await page.click('#tabbtn-log');
   const plb = await page.locator('#pickLogBox').innerText().catch(() => '');
-  ok(plb.includes('샀음 · 2(M)') && plb.includes('잘 맞음') && plb.includes('1위로 바꿀래요') && !(await page.locator('#advanced').count()), '기록 탭에 추천 기록(샀음·산 사이즈·2주 뒤 답, 보던 상품 결정)이 줄 목록으로 남고, 개발용 서버 맞추기는 웹판에 없다', plb.slice(0, 160));
+  ok(plb.includes('샀음 · 2(M)') && plb.includes('큼') && plb.includes('1위로 바꿀래요') && !(await page.locator('#advanced').count()), '기록 탭에 추천 기록(샀음·산 사이즈·2주 뒤 답, 보던 상품 결정)이 줄 목록으로 남고, 개발용 서버 맞추기는 웹판에 없다', plb.slice(0, 160));
   await page.click('#opsBox > summary');
   await page.fill('#opsText', '[민지] 오후 9:01\n' + mine + '\n[준호] 오후 9:30 써 봤어요\n' + older + '\n[준호] 오후 10:00\n' + other);
   await page.click('#opsGo');

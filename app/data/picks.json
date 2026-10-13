@@ -173,8 +173,8 @@
    ],
    "neck": null,
    "neckSrc": null,
-   "logo": "chest",
-   "logoNote": "왼쪽 가슴 포니 자수(공식)",
+   "logo": "small-chest",
+   "logoNote": "왼쪽 가슴 포니 자수(공식). 크기는 작은 포니(상품 사진으로 판단)",
    "origin": "",
    "sizes": [
     {
@@ -271,8 +271,8 @@
    "build": [],
    "neck": null,
    "neckSrc": null,
-   "logo": "chest",
-   "logoNote": "왼쪽 가슴 멀티 컬러 포니 자수(공식)",
+   "logo": "small-chest",
+   "logoNote": "왼쪽 가슴 멀티 컬러 포니 자수(공식). 크기는 작은 포니(상품 사진으로 판단)",
    "origin": "",
    "sizes": [
     {

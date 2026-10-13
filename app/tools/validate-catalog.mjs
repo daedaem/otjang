@@ -65,6 +65,9 @@ export function validate(raw, today) {
     if (!/^https:\/\//.test((p.store && p.store.url) || '')) e(id, '판매처 주소(https)');
     if (!Array.isArray(p.evidence) || !p.evidence.length || p.evidence.some((x) => !x || !/^https:\/\//.test(x.url || '') || !date(x.seen))) e(id, '근거(evidence) 주소·확인일(실제 날짜)');
     else for (const x of p.evidence) if (days(x.seen) < -1) e(id, '근거 확인일이 미래 ' + x.seen);
+    if (Array.isArray(p.evidence) && date(p.checkedAt) && !p.evidence.some((x) => x && x.seen === p.checkedAt)) e(id, '확인일(' + p.checkedAt + ')을 뒷받침하는 근거 줄이 없음 — 그날 본 페이지를 evidence 에 남겨야 한다');
+    for (const k of ['fiberSrc', 'knitSrc', 'thickSrc', 'compSrc']) if (p.fabric && p.fabric[k] === 'measured' && !(p.measures && date(p.measures.at) && p.measures.by)) e(id, k + ' 가 measured 인데 잰 기록(measures.at·by)이 없음');
+    for (const k of ['neckSrc', 'sizeSrc', 'logoSrc', 'fitSrc']) if (p[k] === 'measured' && !(p.measures && date(p.measures.at) && p.measures.by)) e(id, k + ' 가 measured 인데 잰 기록(measures.at·by)이 없음');
     if (!date(p.checkedAt)) e(id, 'checkedAt 이 실제 날짜가 아님 ' + JSON.stringify(p.checkedAt));
     else {
       const a = days(p.checkedAt);
@@ -124,6 +127,7 @@ export function validate(raw, today) {
       else if (days(p.stock.checkedAt) > P.STALE_DAYS) wn(id, '재고를 확인한 지 ' + days(p.stock.checkedAt) + '일 — 화면에서 재고를 이유로 쓰지 않는다');
       if (p.stock.inStock != null && typeof p.stock.inStock !== 'boolean') e(id, 'stock.inStock 은 true|false 여야 한다: ' + JSON.stringify(p.stock.inStock));
       if (p.stock.sizes != null && !(Array.isArray(p.stock.sizes) && p.stock.sizes.every((s) => typeof s === 'string'))) e(id, 'stock.sizes 는 글자 배열이어야 한다');
+      if (p.stock.inStock === true && Array.isArray(p.stock.sizes) && !p.stock.sizes.length) e(id, '재고 있음(inStock true)인데 재고 사이즈가 빈 배열 — 앱에서 모든 사이즈가 품절로 보인다');
     }
     if (p.packCount != null && !(Number.isInteger(p.packCount) && p.packCount >= 1 && p.packCount <= 12)) e(id, 'packCount');
     if (p.shipping) {

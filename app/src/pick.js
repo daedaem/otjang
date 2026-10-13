@@ -244,6 +244,7 @@
    */
   function condOf(p, key, ctx) {
     const f = p.fabric, src = (k) => (k ? ' (' + SRC[k] + ')' : ''), strong = (k) => has(STRONG, k);
+    const sure = (k) => strong(k) || k === 'user';                                                    // 사용자가 상품 페이지를 보고 적은 값은 '본 사실'로 — 어기면 빼고(fail), 맞으면 약한 확인
     const res = (status, text, short, s, kind, say) => ({ status, text, short: short || '', src: s || '', kind: kind || (status === 'weak' ? 'evidence' : ''), say: say || '' });   // kind: weak 가 근거 약함(evidence)인지 반쯤 맞음(partial)인지
     if (key === 'noLogo') {
       const ls = p.logoSrc && p.logoSrc !== 'photo' ? src(p.logoSrc) : /사진/.test(p.logoNote) ? ' (상품 사진으로 확인)' : '';
@@ -260,18 +261,18 @@
       const s = f.thickSrc;
       if (f.thick === 'thin') return strong(s) ? res('ok', '얇음' + src(s), '', s) : res('weak', '얇음' + src(s), '', s);
       if (f.thick === 'mid') return res('weak', '보통 두께 — 얇은 편은 아님' + src(s), '보통 두께', s, 'partial', '두께는 보통이에요');
-      if (f.thick === 'thick') return strong(s) ? res('fail', '두꺼움' + (f.weight ? '(' + f.weight + ')' : '') + src(s), '두꺼움' + (f.weight ? '(' + f.weight + ')' : ''), s) : res('warn', '두꺼울 수 있음' + src(s), '두꺼울 수 있음', s);
+      if (f.thick === 'thick') return sure(s) ? res('fail', '두꺼움' + (f.weight ? '(' + f.weight + ')' : '') + src(s), '두꺼움' + (f.weight ? '(' + f.weight + ')' : ''), s) : res('warn', '두꺼울 수 있음' + src(s), '두꺼울 수 있음', s);
       return res('unknown', '두께 확인 못 함', '두께 모름');
     }
     if (key === 'narrowNeck') {
       const s = p.neckSrc;
       if (p.neck === 'narrow') return strong(s) ? res('ok', NECKS.narrow + src(s), '', s) : res('weak', NECKS.narrow + src(s), '', s);
-      if (p.neck === 'wide') return strong(s) ? res('fail', NECKS.wide + src(s), '목 립 넓음', s) : res('warn', '목 립이 넓어 보임' + src(s), '목 립 넓어 보임', s);
+      if (p.neck === 'wide') return sure(s) ? res('fail', NECKS.wide + src(s), '목 립 넓음', s) : res('warn', '목 립이 넓어 보임' + src(s), '목 립 넓어 보임', s);
       return res('unknown', p.neck ? NECKS[p.neck] + ' — 폭은 확인 못 함' : '목 립 폭 확인 못 함', '목 립 폭 모름');
     }
     if (key === 'notLoose') {                                                                         // 카디건 안에서 뭉치지 않게: 루즈·박스핏이 아닌지
       const s = p.fitSrc;
-      if (p.fit === 'relaxed') return strong(s) ? res('fail', FIT.relaxed + src(s), '루즈·박스핏', s) : res('warn', FIT.relaxed + '일 수 있음' + src(s), '루즈·박스핏일 수 있음', s);
+      if (p.fit === 'relaxed') return sure(s) ? res('fail', FIT.relaxed + src(s), '루즈·박스핏', s) : res('warn', FIT.relaxed + '일 수 있음' + src(s), '루즈·박스핏일 수 있음', s);
       if (p.fit === 'slim' || p.fit === 'regular') return strong(s) ? res('ok', FIT[p.fit] + src(s), '', s) : res('weak', FIT[p.fit] + src(s), '', s);
       return res('unknown', '핏 정보 없음', '핏 모름');
     }
@@ -285,17 +286,18 @@
       const sure = strong(sz) && !adj;                                                                 // 뒤 중심 보정(추정)이 들어가면 확인이 아니라 약한 확인
       const st = (has(SIZE_SRC, sz) ? SIZE_SRC[sz] : '치수') + (adj ? '에 2cm 더한 추정' : '');           // 결론의 근거 이름(치수표 + 보정)
       const head = sizeName(p, s.label) + ' 총장 ' + s.length + 'cm' + (adj ? '(뒤 중심 치수라 약 ' + len + 'cm로 봄)' : '');
-      const out = d <= -2 ? Object.assign(res(sure ? 'ok' : 'weak', head + ' — 카디건(' + L + 'cm)보다 ' + Math.abs(d) + 'cm 짧아요' + tag, '', sz), { brief: '카디건보다 ' + Math.abs(d) + 'cm 짧아요' })
-        : d <= 0 ? res('weak', head + ' — 카디건(' + L + 'cm)과 ' + (d === 0 ? '같아요' : '거의 같아요(' + Math.abs(d) + 'cm 짧음)') + '. 팔을 들면 밑단이 보일 수 있어요' + tag, '카디건과 거의 같은 길이', sz, 'partial', '총장이 카디건과 거의 같아 팔을 들면 밑단이 보일 수 있어요')
-        : d <= 1.5 ? res('warn', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 살짝 보일 수 있어요' + tag, '카디건보다 ' + d + 'cm 길어요', sz)
-        : res(sure ? 'fail' : 'warn', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 보여요' + tag, '카디건보다 ' + d + 'cm 길어요', sz);
-      out.srcText = st; return out;
+      // [제안값, MD 경험칙] 치수표 측정 오차 약 2cm·면 티 세탁 수축 1~2cm: 1.5cm 넘게 짧으면 확인, 같거나 1cm까지 길면 애매, 1~3cm 길면 어긋날 수 있음, 3cm 넘게 길면 출처와 상관없이 어김
+      const out = d <= -1.5 ? Object.assign(res(sure ? 'ok' : 'weak', head + ' — 카디건(' + L + 'cm)보다 ' + Math.abs(d) + 'cm 짧아요' + tag, '', sz), { brief: '카디건보다 ' + Math.abs(d) + 'cm 짧아요' })
+        : d <= 1 ? res('weak', head + ' — 카디건(' + L + 'cm)' + (d < 0 ? '보다 ' + Math.abs(d) + 'cm 짧아요' : d === 0 ? '과 같아요' : '보다 ' + d + 'cm 길어요') + '. 팔을 들면 밑단이 보일 수 있어요' + tag, '카디건과 거의 같은 길이', sz, 'partial', '총장이 카디건과 거의 같아 팔을 들면 밑단이 보일 수 있어요')
+        : d <= 3 ? res('warn', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 보일 수 있어요' + tag, '카디건보다 ' + d + 'cm 길어요', sz)
+        : res('fail', head + ' — 카디건(' + L + 'cm)보다 ' + d + 'cm 길어 밑단이 보여요' + tag, '카디건보다 ' + d + 'cm 길어요', sz);
+      out.srcText = st; out.d = d; out.adj = !!adj; return out;
     }
     if (key === 'notSheer') {
       const s = f.thickSrc;
       if (f.thick === 'thick') return strong(s) ? res('ok', '두꺼움' + src(s), '', s) : res('weak', '두꺼운 편' + src(s), '', s);
       if (f.thick === 'mid') return res('weak', '보통 두께 — 흰색은 조금 비칠 수 있음' + src(s), '보통 두께', s, 'partial', '보통 두께라 흰색은 조금 비칠 수 있어요');
-      if (f.thick === 'thin') return strong(s) ? res('fail', '얇아서 흰색이면 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s) : res('warn', '얇아서 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s);
+      if (f.thick === 'thin') return sure(s) ? res('fail', '얇아서 흰색이면 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s) : res('warn', '얇아서 비칠 수 있음' + src(s), '얇아 비칠 수 있음', s);
       return res('unknown', '두께·비침 확인 못 함', '비침 모름');
     }
     return res('unknown', '', '');
@@ -349,6 +351,10 @@
     const hasRef = ref && ['chest', 'length', 'shoulder'].some((k) => num(ref[k], 1, 250) != null);
     const want = normSize(q.size), today = q.today;
     if (p.stock && p.stock.inStock === false) return { score: 0, size: '', text: '상품 전체 품절(' + kd(p.stock.checkedAt) + ' 확인)', avail: false, caution: true, short: '전체 품절' };
+    if (p.user && !hasRef && p.sizes.length) {                                                       // 직접 넣은 상품은 적은 사이즈를 그대로 쓴다(평소 사이즈와 달라도 표에서 섞이지 않게)
+      const s0 = p.sizes[0];
+      return { score: 0.5, size: s0.label, text: '적은 사이즈 ' + s0.label + (want && normSize(s0.label) !== want ? '(평소 사이즈 ' + want + '와 달라요)' : ''), avail: null, meas: measLine(s0, 'user', p.lengthFrom), userSize: true, neutral: !want };
+    }
     if (hasRef) {
       let best = null;
       const adj = p.lengthFrom === 'cb' ? LEN_CB : 0;
@@ -425,17 +431,38 @@
     if (!L) return null;
     const name = str(x.name, 100).trim(), g = guessFromName(cat, name + ' ' + str(x.brand, 40));
     const bk = brandKey(cat, x.brand) || (str(x.brand, 40).trim() ? '' : g.brand);
-    const size = str(x.size, 8).trim().toUpperCase() || 'M';
+    const size = str(x.size, 12).normalize('NFKC').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 8) || 'M';
     const meas = {}; for (const k of ['chest', 'length', 'shoulder']) { const v = num(Number(x[k]), 20, 150); if (v != null) meas[k] = v; }
     const fit = has(FIT, x.fit) ? x.fit : g.fit, pack = num(Number(x.packCount), 1, 12) || (x.packCount == null || x.packCount === '' ? g.packCount : null) || 1;
-    const price = num(Number(x.price), 100, 1e8);
+    const price = num(Math.round(Number(x.price)), 100, 1e8);
     const raw = { id: 'user-' + hash36([name, bk || str(x.brand, 40).trim(), price, size].join('|')), line, brand: bk || str(x.brand, 40).trim(), brandLabel: bk ? '' : str(x.brand, 40).trim(), name: name || '지금 보는 상품', cat: L.cat, kind: L.kind || 'tee',
       family: L.family || 'white', light: 95, formality: 1, pattern: 'solid', sleeve: x.sleeve === 'long' || x.sleeve === 'short' ? x.sleeve : g.sleeve || 'short', fit, fitSrc: has(FIT, x.fit) ? 'user' : fit ? 'name' : undefined,
       fabric: { cotton100: x.cotton100 === true ? true : x.cotton100 === false ? false : undefined, comp: x.cotton100 === true ? '면 100%' : '', thick: x.thick,
         fiber: has(FIBERS, x.fiber) ? x.fiber : undefined, fiberSrc: has(FIBERS, x.fiber) ? 'user' : undefined, knit: has(KNITS, x.fiber) ? x.fiber : undefined, knitSrc: has(KNITS, x.fiber) ? 'user' : undefined },   // fiber 칸 하나로 원사(수피마 등)나 편직(루프휠 등)을 받는다
       neck: x.neck, logo: x.logo, sizes: Object.keys(meas).length ? [Object.assign({ label: size }, meas)] : [], price, currency: 'KRW', packCount: pack,
       store: { name: str(x.storeName, 60) || '직접 넣은 상품', url: safeLink(x.link) }, checkedAt: realDate(today) || W.today(), styles: [] };
-    return cleanPickProduct(raw, 0, { user: true });
+    const u = cleanPickProduct(raw, 0, { user: true });
+    if (u) { u.userSize = size; const m = matchCatalog(cat, line, name, bk, u.sleeve); if (m) u.sameAs = m.id; }   // userSize: 치수 없이 적은 사이즈도 남긴다
+    return u;
+  }
+  const KO_EN = { 에어리즘: 'airism', 수피마: 'supima', 피마: 'pima', 링스펀: 'ringspun', 클래식: 'classic', 컴포트: 'comfort', 커스텀: 'custom', 슬림: 'slim', 라일: 'lisle', 골든플리스: 'goldenfleece', 숏슬리브: 'shortsleeve', 롱슬리브: 'longsleeve', 헤비웨이트: 'heavyweight', 크루넥: 'crewneck', 크루: 'crew', 넥: 'neck' };
+  const GENERIC = /^(티셔츠|티|반팔|긴팔|화이트|흰색|흰|white|tee|tshirt|t|shirt|shirts|셔츠|남성|남자|여성|공용|맨|men|mens|무지|코튼|cotton|면|100|반소매|긴소매)$/;
+  /**
+   * 사용자가 적은 보던 상품이 어울 카탈로그의 상품과 같은 것인지: 브랜드 열쇠가 같고, 이름의 일반어가 아닌 낱말(2자 이상) 두 개 이상이 카탈로그 이름에 들어 있을 때(가장 많이 겹치는 것, 둘이 같으면 못 정함).
+   * 값은 묻지 않는다(쿠폰·세일로 다를 수 있어 화면에서 따로 알린다).
+   */
+  function matchCatalog(cat, line, name, bk, sleeve) {
+    if (!bk || !name) return null;
+    const b = cat.brands[bk], bn = [bk, b.name, b.ko].concat(b.aliases).map(bnorm);
+    const toks = String(name).toLowerCase().normalize('NFKC').split(/[^0-9a-z가-힣]+/).filter((t) => t.length >= 2 && !GENERIC.test(t) && bn.indexOf(bnorm(t)) < 0);
+    if (!toks.length) return null;
+    const scored = cat.products.filter((p) => p.line === line && p.brand === bk && (!sleeve || p.sleeve === sleeve)).map((p) => {
+      const n = bnorm(p.name) + bnorm(p.code || '');
+      return { p, n: toks.filter((t) => n.indexOf(t) >= 0 || (has(KO_EN, t) && n.indexOf(KO_EN[t]) >= 0)).length };
+    }).sort((a, b) => b.n - a.n);
+    if (!scored.length || scored[0].n < 2) return null;
+    if (scored[1] && scored[1].n === scored[0].n) return null;
+    return scored[0].p;
   }
 
   // ---------- 고르기 ----------
@@ -463,7 +490,7 @@
     const { w, pri } = weightsOf(q, line);
     const vref = line ? line.value : DEFAULT_VALUE;
     const budget = BUDGETS.indexOf(q.budget) > 0 ? q.budget : 0;
-    const extra = arr(q.extra).filter((p) => p && p.user && p.line === q.line);
+    const extra = arr(q.extra).filter((p) => p && p.user && p.line === q.line), exclude = arr(q.exclude).filter((x) => typeof x === 'string');   // exclude: 이미 샀다고 기록한 상품(1등·대안에서 뺀다)
     const inLine = cat.products.filter((p) => !q.line || p.line === q.line).concat(extra);
     const pool = [], excluded = [];
     for (const p of inLine) {
@@ -489,7 +516,9 @@
       r.avail = r.fit.avail;
       const fail = cs.filter((c) => c.status === 'fail');
       const overBudget = budget && up.pay > budget;
-      [r.out, r.outShort] = age == null ? ['확인일을 알 수 없어 자료를 다시 봐야 해요', '확인일 없음']
+      r.boughtOut = exclude.indexOf(p.id) >= 0;
+      [r.out, r.outShort] = r.boughtOut ? ['이미 샀다고 기록한 상품이라 뺐어요', '이미 삼']
+        : age == null ? ['확인일을 알 수 없어 자료를 다시 봐야 해요', '확인일 없음']
         : future ? ['확인일이 미래 날짜라 자료를 다시 봐야 해요', '확인일 오류']
         : age > DROP_DAYS ? ['확인한 지 ' + age + '일이 지나 1등 후보에서 뺐어요', '확인 ' + age + '일 지남']
         : fail.length ? ['고른 조건에 안 맞아요: ' + fail.map((c) => c.label + ' ✕ ' + c.text).join(', '), fail.map((c) => c.short).join('·')]
@@ -500,8 +529,14 @@
     // 1순위 기준 문턱: 고른 값이 있는(중립이 아닌) 1순위 기준이 '보통' 이상인 상품을 먼저 본다. 스타일이 동점 깨기 품목이면 문턱을 쓰지 않는다
     const g = pri[0] && !(pri[0] === 'style' && line && line.styleRole === 'tiebreak') && rows.some((r) => !isNeutral(r, pri[0])) ? pri[0] : null;
     for (const r of rows) r.gate = !g || isNeutral(r, g) || r.crit[g] >= GATE;
-    const grp = (r) => (r.out ? 2 : r.gate ? 0 : 1);
+    const hasWarn = (r) => r.conds.some((c) => c.status === 'warn' && !softLen(c));                 // 뒤 중심 추정 2cm 이하의 길이 경고는 '어긋날 수 있음'으로 안 센다
+    const anyClean = rows.some((r) => !r.out && !r.product.user && r.gate && !hasWarn(r));          // 꼭 지킬 것이 어긋날 수 있는 상품은, 어긋날 염려 없이 문턱을 넘은 상품이 하나라도 있으면 뒤로 보낸다
+    const grp = (r) => (r.out ? 3 : anyClean && hasWarn(r) ? 2 : r.gate ? 0 : 1);
+    const warnBack = anyClean ? rows.filter((r) => !r.out && !r.product.user && hasWarn(r)).length : 0;
     rows.sort((a, b) => grp(a) - grp(b) || b.raw - a.raw || a.unit.krw - b.unit.krw || (a.product.id < b.product.id ? -1 : 1));
+    // 보던 상품이 카탈로그 상품과 같은 것이면(sameAs) 직접 적은 행은 순위에서 빼고 카탈로그 행을 '보던 상품'으로 쓴다
+    const sameRow = (() => { const u = rows.find((r) => r.product.user && r.product.sameAs); if (!u) return null; const c = rows.find((r) => r.product.id === u.product.sameAs); return c ? { u, c } : null; })();
+    if (sameRow) rows.splice(rows.indexOf(sameRow.u), 1);
     const eligibleAll = rows.filter((r) => !r.out);
     const eligible = eligibleAll.filter((r) => !r.product.user);                                       // 1등·대안은 어울이 확인한 상품 안에서만. 직접 넣은 상품은 몇 위인지만 알려 준다
     const pickRow = eligible[0] || null;
@@ -520,12 +555,12 @@
     for (const r of rows) explain(r, { pri, w, use, conds, cat, gate, isPick: r === pickRow, priLead: r === pickRow ? priLead : null });
     const notes = [];
     for (const r of rows) {
-      if (!r.out || r.product.user) continue;
+      if (!r.out || r.product.user || r.boughtOut) continue;                                     // 산 상품은 화면이 따로 알린다
       if (pickRow && r.raw > pickRow.raw) notes.push({ kind: 'out', id: r.product.id, text: pname(cat, r.product) + ' — 기준 점수는 더 높지만 ' + r.out });
       else if (!pickRow) notes.push({ kind: 'out', id: r.product.id, text: pname(cat, r.product) + ' — ' + r.out });
     }
     // 대안 둘
-    const alts = pickRow ? chooseAlts(pickRow, eligible, { pri, use, fav: arr(q.brands), cat, priBest: priLead && priLead.best }) : [];
+    const alts = pickRow ? chooseAlts(pickRow, eligible, { pri, use, fav: arr(q.brands), cat, priBest: priLead && priLead.best, skip: sameRow ? sameRow.c : null, outerLen: q.outerLen }) : [];
     // 옷장과의 조합: 1등과 대안만 계산한다
     for (const r of [pickRow].concat(alts.map((a) => a.r)).filter(Boolean)) {
       const v = J.judgeCandidate(items, toCandidate(r.product, cat, today));
@@ -546,21 +581,49 @@
     const second = eligible[1] && (!g || eligible[1].gate === pickRow.gate) ? eligible[1] : null;
     const allOk = conds.length ? eligible.filter((r) => r.conds.every((c) => c.status === 'ok')).length : null;
     const head = conds.length ? '조건을 어기지 않은 ' + eligible.length + '개' : eligible.length + '개';
-    const pickWarn = pickRow ? pickRow.conds.filter((c) => c.status === 'warn').length : 0;
+    const pickWarn = pickRow ? pickRow.conds.filter((c) => c.status === 'warn' && !softLen(c)).length : 0, pickSoft = pickRow ? pickRow.conds.find(softLen) : null;
     const rank = pickRow ? { n: eligible.length, allOk, warn: pickWarn, gap: second ? Math.round((pickRow.raw - second.raw) * 1000) / 10 : null,
       text: (eligible.length === 1 ? (conds.length ? '조건을 어기지 않은 것은 이것 하나' : '고를 수 있는 것은 이것 하나')
         : head + ' 중 1위' + (gate && gate.changed && pickRow.gate ? '(' + josa(gate.label, '이', '가') + ' 보통 이상인 ' + gate.pass + '개 안에서)' : '') + (pickWarn ? '' : second ? ' · 2위와 ' + (pickRow.raw - second.raw < 0.03 ? '근소한 차이' : pickRow.raw - second.raw < 0.1 ? '차이 조금' : '차이 큼') : ''))
-        + (pickWarn ? ' · 꼭 지킬 것 ' + pickWarn + '개가 어긋날 수 있어요' : '') } : null;
+        + (pickWarn ? ' · 꼭 지킬 것 ' + pickWarn + '개가 어긋날 수 있어요' : '') + (pickSoft ? ' · 카디건보다 약 ' + pickSoft.d + 'cm 길 수 있어요(뒤 중심 치수 추정)' : '') + (warnBack ? ' · 어긋날 수 있는 ' + warnBack + '개는 뒤로 보냈어요' : ''), warnBack } : null;
     let gapWhy = pickRow && second ? whyAhead(pickRow, second, w, cat) : '';
     if (gapWhy && second && second.altSkip && !alts.some((a) => a.r === second)) gapWhy = gapWhy.replace(' 둘 다 봐 주세요.', '') + ' 2위는 ' + second.altSkip.replace(/뺐어요$/, '뺐어요.');
     if (gapWhy && rows.some((r) => r.product.user && !r.out)) gapWhy = '확인한 상품 중 ' + gapWhy;                 // 직접 넣은 상품까지 센 전체 순위와 헷갈리지 않게
-    const altNote = pickRow && alts.length < 2 && eligible.length > 1 ? (alts.length ? '대안으로 낼 만한 상품이 하나뿐이에요.' : '대안으로 낼 만한 상품이 없어요.') + ' 조건·값·핏으로 걸렀고, 전체 순위에서 모두 볼 수 있어요.' : '';
+    const altNote = pickRow && alts.length < 2 && eligible.length > 1 ? altNoteFor(pickRow, eligible, alts, cat, q.outerLen) : '';
     const brandsIn = Array.from(new Set(rows.filter((r) => !r.product.user).map((r) => r.product.brand)));
-    const userRow = rows.find((r) => r.product.user) || null;
+    const userRow = sameRow ? sameRow.c : rows.find((r) => r.product.user) || null;
+    const userSame = sameRow ? { id: sameRow.c.product.id, name: pname(cat, sameRow.c.product), userPrice: sameRow.u.product.price, catPrice: sameRow.c.krw, isPick: sameRow.c === pickRow } : null;
     return { pick: pickRow, alts, altNote, ranked: rows, eligible, eligibleAll, excluded, notes, rank, gate, gapWhy, favNote, weights: w, priorities: pri, use, conds, budget,
-      user: userRow, userRank: userRow && !userRow.out ? { idx: eligibleAll.indexOf(userRow), n: eligibleAll.length } : null,
+      user: userRow, userSame, noCatalog: !eligible.length,
+      userRank: userRow && !userRow.out && eligible.length ? { idx: eligibleAll.indexOf(userRow), n: eligibleAll.length } : null,
       about: { count: rows.filter((r) => !r.product.user).length, inLine: inLine.filter((p) => !p.user).length, brands: brandsIn.length, checkedAt: rows.length ? rows.filter((r) => !r.product.user).map((r) => r.product.checkedAt).sort()[0] || '' : '', line: line ? line.label : '', styleNote: line && line.styleRole === 'tiebreak' ? line.styleNote : '' } };
   }
+
+  /** 대안이 둘이 안 될 때 이유 한 줄: 가장 흔한 '뺀 이유'와, 카디건 총장 때문이면 한 치수 아래로 길이가 맞는 상품을 알려 준다. */
+  function altNoteFor(pickRow, eligible, alts, cat, outerLen) {
+    const head = alts.length ? '대안으로 낼 만한 상품이 하나뿐이에요.' : '대안으로 낼 만한 상품이 없어요.';
+    const rest = eligible.filter((r) => r !== pickRow && !alts.some((a) => a.r === r));
+    const longer = rest.filter((r) => r.conds.some((c) => c.key === 'notLonger' && (c.status === 'warn' || c.status === 'fail')));
+    const L = num(outerLen, 40, 100);
+    if (L != null && longer.length && longer.length >= rest.length / 2) {
+      const down = [];
+      for (const r of longer) {
+        const p = r.product, i = p.sizes.findIndex((x) => x.label === r.fit.size); if (i <= 0) continue;
+        const s2 = p.sizes[i - 1], s1 = p.sizes[i], adj = p.lengthFrom === 'cb' ? LEN_CB : 0;
+        if (s2.length == null) continue;
+        const d2 = Math.round((s2.length + adj - L) * 10) / 10; if (d2 > 1) continue;
+        const ch = s1.chest != null && s2.chest != null ? Math.round((s1.chest - s2.chest) * 10) / 10 : null;
+        down.push(pname(cat, p) + josa(pname(cat, p), '은', '는').slice(pname(cat, p).length) + ' ' + sizeName(p, s2.label) + '(총장 ' + (adj ? '약 ' : '') + (s2.length + adj) + 'cm)이면 길이가 맞아요' + (ch != null ? '(가슴은 ' + sizeName(p, s1.label) + '보다 ' + ch + 'cm 좁음)' : ''));
+        if (down.length >= 2) break;
+      }
+      return head + ' 카디건 총장(' + L + 'cm) 때문이에요: 나머지 ' + longer.length + '개는 고른 사이즈가 카디건보다 길어요.' + (down.length ? ' 한 치수 내리면 — ' + down.join(' · ') + '.' : '') + ' 전체 순위에서 모두 볼 수 있어요.';
+    }
+    const why = {}; for (const r of rest) if (r.altSkip) why[r.altSkip] = (why[r.altSkip] || 0) + 1;
+    const top = Object.keys(why).sort((a, b) => why[b] - why[a])[0];
+    return head + (top ? ' ' + why[top] + '개는 ' + top.replace(/뺐어요$/, '뺐고') + ', 나머지는 1위보다 나은 점이 없어요.' : ' 1위보다 나은 점이 있는 상품이 없어요.') + ' 전체 순위에서 모두 볼 수 있어요.';
+  }
+  /** 카디건 길이 경고 가운데 '뒤 중심 추정 2cm 이하'만 있는 것은 대안에서 빼지 않고 이름에 적는다. */
+  const softLen = (c) => c.key === 'notLonger' && c.status === 'warn' && c.adj && c.d != null && c.d <= 2;
 
   /**
    * 대안 둘. 대안마다 1등보다 나은 점이 하나 이상 있어야 하고, 그 나은 점이 대안 이름이 된다(나은 점이 없으면 내지 않는다).
@@ -576,40 +639,42 @@
     const priceOk = (r) => pri[0] !== 'value' || r.unit.krw <= pickRow.unit.krw * 2 || r.unit.krw - pickRow.unit.krw <= 15000;   // 가성비가 1순위면 두 배 넘고 한 장 15,000원 넘게 비싼 것은 내지 않는다 [제안값]
     const why = (r) => (use === 'layer' && r.product.fit === 'relaxed' && pickRow.product.fit !== 'relaxed' ? '루즈·박스핏이라 받쳐 입기 대안에서는 뺐어요'
       : pri[0] === 'fit' && !r.fit.neutral && (r.fit.score < 0.5 || r.fit.onlyOne || (r.fit.maxDiff != null && r.fit.maxDiff > 4)) ? '사이즈가 잘 맞는 옷과 많이 달라 핏 1순위 대안에서는 뺐어요'
-      : r.conds.some((c) => c.status === 'warn') ? '고른 조건과 어긋날 수 있어 대안에서는 뺐어요' : !priceOk(r) ? '한 장 값이 두 배 넘게(15,000원 넘게) 비싸 가성비 1순위 대안에서는 뺐어요' : '');
-    for (const r of eligible) if (r !== pickRow) r.altSkip = why(r);
+      : r.conds.some((c) => c.status === 'warn' && !softLen(c)) ? '고른 조건과 어긋날 수 있어 대안에서는 뺐어요' : !priceOk(r) ? '한 장 값이 두 배 넘게(15,000원 넘게) 비싸 가성비 1순위 대안에서는 뺐어요' : '');
+    for (const r of eligible) if (r !== pickRow) r.altSkip = o.skip === r ? '보던 상품이라 대안에서는 뺐어요' : why(r);
     const ok = eligible.filter((r) => r !== pickRow && !r.altSkip);
     const rest = ok.filter((r) => r.gate === pickRow.gate).concat(ok.filter((r) => r.gate !== pickRow.gate));   // 1순위 문턱을 넘은 것부터
     const fresh = (r) => !r.stale && !pickRow.stale;                                                 // 가격을 나은 점으로 써도 되나(둘 다 14일 안)
     const isFav = (r) => fav.indexOf(r.product.brand) >= 0 && r.product.brand !== pickRow.product.brand;
-    const condGain = (r) => r.conds.filter((c, i) => c.status === 'ok' && pickRow.conds[i] && pickRow.conds[i].status !== 'ok').map((c) => c.label);
+    const condGain = (r) => r.conds.filter((c, i) => c.status === 'ok' && pickRow.conds[i] && (pickRow.conds[i].status === 'unknown' || pickRow.conds[i].status === 'warn')).map((c) => c.label);   // 둘 다 맞고 근거 등급만 다르면 '더 확인된 것'이 아니다
     const LB = { cheap: '더 싸게', pack: '묶음으로 한 장 값을 줄이려면', quality: '공개된 품질 근거가 더 많은 것', fit: '사이즈가 더 잘 맞는 것', tie: '점수가 거의 같은 것', value: '가성비가 더 좋은 것' };
     const PRI_LB = { fit: LB.fit, quality: LB.quality, value: LB.value };                         // 1순위가 1등보다 높은 상품의 이름
     /** 1등보다 나은 점의 이름들(강한 것부터). 비어 있으면 대안으로 내지 않는다. */
     const advantages = (r) => {
       const L = [];
-      if (o.priBest === r && has(PRI_LB, pri[0]) && !(pri[0] === 'value' && !fresh(r))) L.push(PRI_LB[pri[0]]);
+      if (o.priBest === r && has(PRI_LB, pri[0]) && near(r) && !(pri[0] === 'value' && !fresh(r))) L.push(PRI_LB[pri[0]]);
       if (fresh(r) && r.unit.krw <= pickRow.unit.krw * 0.85 && r.unit.pay <= pickRow.unit.pay) L.push(LB.cheap);
       if (fresh(r) && r.unit.krw <= pickRow.unit.krw * 0.85 && r.unit.pay > pickRow.unit.pay && r.product.packCount > 1) L.push(LB.pack);
       const gain = condGain(r); if (gain.length) L.push('조건이 더 확인된 것(' + gain.join('·') + ')');
       if (isFav(r)) L.push(joinJosa([brandName(cat, r.product.brand)], '을', '를') + ' 더 좋아한다면');
       if (r.quality.score >= pickRow.quality.score + 0.75) L.push(LB.quality);
-      if (!r.fit.neutral && !pickRow.fit.neutral && r.fit.score >= pickRow.fit.score + 0.15) L.push(LB.fit);
+      if (r.fit.byRef && pickRow.fit.byRef && r.fit.score >= pickRow.fit.score + 0.15) L.push(LB.fit);          // 치수를 견준 경우만 '더 잘 맞는 것'
+      else if (!r.fit.neutral && !pickRow.fit.neutral && r.fit.avail === true && !r.fit.availStale && pickRow.fit.avail == null) L.push('고른 사이즈 재고가 확인된 것');
       if (r.product.sleeve !== pickRow.product.sleeve) L.push(SLEEVES[r.product.sleeve] + '을 원하면');
       if (r.product.fit && pickRow.product.fit && r.product.fit !== pickRow.product.fit) L.push(josa(FIT[r.product.fit], '을', '를') + ' 원하면');
       if (pickRow.raw - r.raw < 0.03) L.push(LB.tie);
       return L;
     };
     const cands = [];
-    if (o.priBest && o.priBest !== pickRow && !o.priBest.altSkip && has(PRI_LB, pri[0])) cands.push({ r: o.priBest, label: PRI_LB[pri[0]] });   // 1순위에서 1등보다 높은 상품을 먼저 보여 준다
+    if (o.priBest && o.priBest !== pickRow && !o.priBest.altSkip && has(PRI_LB, pri[0]) && near(o.priBest) && !(pri[0] === 'value' && !fresh(o.priBest))) cands.push({ r: o.priBest, label: PRI_LB[pri[0]] });   // 1순위에서 1등보다 높은 상품을 먼저(25점·14일 규칙은 그대로)
     if (rest[0] && rest[0].gate === pickRow.gate && pickRow.raw - rest[0].raw < 0.12) cands.push({ r: rest[0] });
+    const cheaper = rest.filter((r) => near(r) && advantages(r).indexOf(LB.cheap) >= 0).sort((a, b) => b.raw - a.raw)[0];
+    if (cheaper && cheaper.unit.krw <= pickRow.unit.krw * 0.5) cands.push({ r: cheaper, label: LB.cheap });   // 반값 아래면 '더 싸게'가 조건보다 먼저
     const condBetter = rest.find((r) => near(r) && strongOk(r) > strongOk(pickRow) && condGain(r).length);
     if (condBetter) cands.push({ r: condBetter, label: '조건이 더 확인된 것(' + condGain(condBetter).join('·') + ')' });
     if (pri[0] && pri[0] !== 'value' && !isNeutral(pickRow, pri[0])) {
       const deal = ok.filter((r) => fresh(r) && r.unit.krw <= pickRow.unit.krw / 3 && r.unit.pay < pickRow.unit.pay && r.crit.value >= 0.66 && near(r, 0.4)).sort((a, b) => b.raw - a.raw)[0];
       if (deal) cands.push({ r: deal, label: (pri[0] === 'brand' ? '브랜드' : pri[0] === 'quality' ? '품질 근거' : pri[0] === 'fit' ? '핏' : '스타일') + ' 대신 값을 보면', deal: true });
     }
-    const cheaper = rest.filter((r) => near(r) && advantages(r).indexOf(LB.cheap) >= 0).sort((a, b) => b.raw - a.raw)[0];
     if (cheaper) cands.push({ r: cheaper, label: LB.cheap });
     const favOther = rest.find((r) => near(r) && isFav(r));
     if (favOther) cands.push({ r: favOther });
@@ -622,9 +687,11 @@
       if (alts.some((a) => a.r === c.r)) continue;
       const adv = advantages(c.r);
       if (!c.deal && !adv.length) continue;                                                           // 1등보다 나은 점이 없으면 대안이 아니다
-      const used = alts.map((a) => a.label);
-      const label = [c.label].concat(adv).filter(Boolean).find((l) => used.indexOf(l) < 0);
-      if (!label) continue;
+      const used = alts.map((a) => a.label.replace(/\(카디건보다.*$/, ''));
+      const label0 = [c.label].concat(adv).filter(Boolean).find((l) => used.indexOf(l) < 0 && (l !== c.label || c.deal || adv.indexOf(l) >= 0));   // 이름은 실제 나은 점이어야 한다
+      if (!label0) continue;
+      const soft = c.r.conds.find(softLen);
+      const label = label0 + (soft ? '(카디건보다 약 ' + soft.d + 'cm 길 수 있음)' : '');
       const d = c.r.unit.krw - pickRow.unit.krw;
       alts.push({ label, delta: signedWon(d) + (Math.round(d) !== 0 && (c.r.product.packCount > 1 || pickRow.product.packCount > 1) ? '(한 장 기준)' : ''), why: altWhy(c.r), r: c.r, adv });
     }
@@ -647,7 +714,7 @@
       if (Math.abs(diff) < 1) return head + '가성비에서 갈렸어요. 값은 같고 공개된 품질 근거가 더 많아요.';
       return head + '가성비에서 갈렸어요. ' + (diff > 0 ? '한 장 ' + won(diff) + ' 싸요.' : '한 장 ' + won(-diff) + ' 비싸지만 공개된 품질 근거가 더 많아요.');
     }
-    if (top.c === 'brand') return head + '브랜드에서 갈렸어요(' + (a.brand.text || brandName(cat, a.product.brand)) + ').';
+    if (top.c === 'brand') return head + '브랜드에서 갈렸어요(' + (a.brand.text ? a.brand.text.replace(/^좋아하는 브랜드\((.*)\)$/, '좋아하는 브랜드: $1') : brandName(cat, a.product.brand)) + ').';
     if (top.c === 'fit') return head + '사이즈에서 갈렸어요(' + (a.fit.byRef ? '잘 맞는 옷에 더 가까움' : a.fit.avail === true && !a.fit.availStale ? '고른 사이즈 재고 확인' : '사이즈 정보가 더 많음') + ').';
     if (top.c === 'style') return head + '고른 스타일에서 갈렸어요.';
     const gain = a.conds.filter((c, i) => COND_W[c.status] > (COND_W[b.conds[i].status] || 0)).map((c) => c.label);
@@ -754,9 +821,10 @@
    * 잘 맞는 옷 치수가 없을 때, 보던 상품(a)과 1등(b)의 같은 사이즈끼리 가슴·총장 차이(총장은 옆목점 기준으로 맞춤, 뒤 중심은 +2cm 추정).
    * 예: "같은 L끼리면 보던 상품이 가슴 2.5cm 넓고 총장은 약 1cm 짧아요". 견줄 치수가 없거나 차이가 1cm 아래(치수표 오차 안)면 ''.
    */
-  function sameSizeDiff(a, b) {
+  function sameSizeDiff(a, b, label) {
     if (a.fit.byRef || b.fit.byRef || !a.product.sizes.length) return '';
-    const sa = a.product.sizes[0], lab = normSize(sa.label), sb = lab ? sizeOf(b.product, lab) : null;
+    const sa = label ? sizeOf(a.product, normSize(label)) : a.product.sizes[0]; if (!sa) return '';
+    const lab = normSize(sa.label), sb = lab ? sizeOf(b.product, lab) : null;
     if (!sb) return '';
     const END = { 넓: ['넓고', '넓어요'], 좁: ['좁고', '좁아요'], 길: ['길고', '길어요'], 짧: ['짧고', '짧아요'] };
     const hps = (p, s) => (s.length == null ? null : s.length + (p.lengthFrom === 'cb' ? LEN_CB : 0));
@@ -773,47 +841,82 @@
    * 반환: { rows: [{ key, label, a: { text, status }, b: { text, status }, win: 'a'|'b'|'' }], sum: 문장 }
    * 지금 낼 돈은 배송비를 아는 값끼리만 이기고 지는 것을 정한다(보던 상품 배송비를 모르면, 배송비를 빼도 비쌀 때만 1등이 싸다고 한다).
    */
-  function contrast(a, b, cat) {
+  function contrast(a, b, cat, o) {
     if (!a || !b || a === b) return null;
-    const rows = [], cw = (s) => (has(COND_W, s) ? COND_W[s] : 0);
+    o = o || {};
+    const rows = [];
     const SRC_TAIL = new RegExp('\\s*\\((' + Object.keys(SRC).map((k) => SRC[k]).concat(Object.keys(SIZE_SRC).map((k) => SIZE_SRC[k]), ['상품 사진으로 확인']).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\)\\s*$');
     /** 표 칸에 넣을 짧은 말: 출처 꼬리와 긴 설명을 떼고, 약한 확인·애매는 글자로 붙인다. */
     const brief = (c) => { if (c.status === 'unknown') return '모름'; const t = c.brief || c.short || c.text.replace(SRC_TAIL, '').replace(/ — .*$/, ''); return t + (c.status === 'weak' ? (c.kind === 'partial' ? ' · 애매' : ' · 약한 확인') : ''); };
-    const payTxt = (r) => won(r.unit.pay) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') + (r.unit.shipKnown ? (r.unit.ship ? ', 배송비 포함' : ', 무료 배송') : r.unit.shipEst ? ', 배송비 바뀔 수 있음' : ', 배송비 모름');
+    const aUser = !!a.product.user, who = aUser ? '보던 상품' : '보던 상품';
+    const staleB = !!b.stale, staleA = !!a.stale, anyStale = staleA || staleB;
+    const payTxt = (r) => won(r.unit.pay) + (r.product.packCount > 1 ? '(' + r.product.packCount + '장)' : '') + (r.unit.shipKnown ? (r.unit.ship ? ', 배송비 포함' : ', 무료 배송') : r.unit.shipEst ? ', 배송비 바뀔 수 있음' : ', 배송비 모름') + (r.stale ? '(' + r.age + '일 전 가격)' : '');
     const dPay = a.unit.pay - b.unit.pay, SHIP_GUESS = 5000;                                         // [가정] 국내 배송비는 보통 5,000원 아래: 차이가 그보다 크면 배송비를 몰라도 어느 쪽이 싼지 말한다
-    const payWin = a.unit.shipKnown && b.unit.shipKnown ? (dPay < 0 ? 'a' : dPay > 0 ? 'b' : '') : dPay > 0 && b.unit.shipKnown ? 'b' : dPay <= -SHIP_GUESS ? 'a' : '';
+    const payWin = anyStale ? '' : a.unit.shipKnown && b.unit.shipKnown ? (dPay < 0 ? 'a' : dPay > 0 ? 'b' : '') : dPay > 0 && b.unit.shipKnown ? 'b' : dPay <= -SHIP_GUESS ? 'a' : '';
     rows.push({ key: 'pay', label: '지금 낼 돈', a: { text: payTxt(a) }, b: { text: payTxt(b) }, win: payWin });
-    if (a.product.packCount > 1 || b.product.packCount > 1) rows.push({ key: 'unit', label: '한 장 값', a: { text: '약 ' + won(a.unit.krw) }, b: { text: '약 ' + won(b.unit.krw) }, win: '' });
+    const packDiff = a.product.packCount !== b.product.packCount, dUnit = a.unit.krw - b.unit.krw;
+    if (a.product.packCount > 1 || b.product.packCount > 1) rows.push({ key: 'unit', label: '한 장 값', a: { text: '약 ' + won(a.unit.krw) }, b: { text: '약 ' + won(b.unit.krw) }, win: packDiff && !anyStale ? (dUnit < -1 ? 'a' : dUnit > 1 ? 'b' : '') : '' });
+    // 조건: 맞음(확인·약한 확인) / 애매 / 어긋날 수 있음 / 모름 — 근거 등급만 다른 것은 이기고 지는 것으로 치지 않는다
+    const grade = (x) => (x.status === 'ok' || (x.status === 'weak' && x.kind !== 'partial') ? 2 : x.status === 'weak' ? 1 : x.status === 'warn' ? 0.5 : x.status === 'fail' ? 0 : null);
+    const unk = [];
     a.conds.forEach((c, i) => {
       const d = b.conds[i]; if (!d) return;
       const st = (x) => (x.status === 'weak' && x.kind === 'partial' ? 'partial' : x.status);
-      rows.push({ key: 'cond:' + c.key, label: c.label, noun: c.noun, a: { text: brief(c), status: st(c), full: c.text }, b: { text: brief(d), status: st(d), full: d.text }, win: cw(c.status) > cw(d.status) ? 'a' : cw(c.status) < cw(d.status) ? 'b' : '' });
+      const ga = grade(c), gb = grade(d);
+      if (ga == null && gb != null) unk.push(c.noun || c.label);
+      rows.push({ key: 'cond:' + c.key, label: c.label, noun: c.noun, a: { text: brief(c), status: st(c), full: c.text }, b: { text: brief(d), status: st(d), full: d.text }, win: ga != null && gb != null && ga !== gb ? (ga > gb ? 'a' : 'b') : '' });
     });
     const mtxt = (p, s) => { if (!s) return ''; const m = [s.chest != null ? '가슴 ' + s.chest : '', s.length != null ? (p.lengthFrom === 'cb' ? '총장 약 ' + (s.length + LEN_CB) + '(뒤 중심 ' + s.length + ')' : '총장 ' + s.length) : ''].filter(Boolean); return m.length ? m.join('·') + 'cm' : ''; };
     const sizeTxt = (r, want) => {
       const p = r.product;
       if (r.fit.byRef) return sizeName(p, r.fit.size) + ' — 잘 맞는 옷과 ' + r.fit.diffs.join(', ');
       if (r.fit.byRefFailed && r.fit.diffs) return sizeName(p, r.fit.refSize) + ' — 잘 맞는 옷과 ' + r.fit.diffs.join(', ');
-      const lab = r.fit.size || want, s = lab ? p.sizes.find((x) => x.label === lab) || sizeOf(p, normSize(lab)) : null;
+      const lab = (p.user && p.sizes.length ? p.sizes[0].label : '') || (r === a && o.size ? o.size : '') || r.fit.size || want, s = lab ? p.sizes.find((x) => x.label === lab) || sizeOf(p, normSize(lab)) : null;
       return s ? sizeName(p, s.label) + (mtxt(p, s) ? ' — ' + mtxt(p, s) : '') : lab ? lab + ' — 치수 모름' : '모름';
     };
+    let sizeNote = '';
     if (!a.fit.neutral || !b.fit.neutral || a.product.sizes.length) {
-      const want = a.product.sizes.length ? normSize(a.product.sizes[0].label) : '';
+      const want = aUser ? (a.product.sizes.length ? normSize(a.product.sizes[0].label) : '') : normSize(o.size || '');
       const fw = a.fit.byRef && b.fit.byRef ? (a.fit.diffAvg + 1 <= b.fit.diffAvg ? 'a' : b.fit.diffAvg + 1 <= a.fit.diffAvg ? 'b' : '') : (a.fit.byRefFailed && a.fit.diffs && b.fit.byRef && !b.fit.onlyOne) ? 'b' : '';
       rows.push({ key: 'size', label: '사이즈', noun: '사이즈', a: { text: sizeTxt(a, want) }, b: { text: sizeTxt(b, want) }, win: fw });
+      const bl = b.fit.size ? normSize(b.fit.size) : '';
+      if (aUser && want && bl && want !== bl && !a.fit.byRef) sizeNote = '보던 상품은 ' + a.product.sizes[0].label + '로 적으셨고 1위는 ' + (b.fit.byRef ? '잘 맞는 옷 치수로 ' : '평소 사이즈로 ') + sizeName(b.product, b.fit.size) + '을 골랐어요';
     }
-    rows.push({ key: 'quality', label: '품질 근거', noun: '품질 근거', a: { text: qualityList(a, 3) || '적은 근거 없음' }, b: { text: qualityList(b, 3) || '밝힌 근거 없음' }, win: a.quality.score >= b.quality.score + 0.75 ? 'a' : b.quality.score >= a.quality.score + 0.75 ? 'b' : '' });
+    // 핏이 다르면(조건으로 보지 않을 때) 한 줄
+    let fitNote = '';
+    const fa = a.product.fit, fb = b.product.fit;
+    if (fa && fb && fa !== fb && !a.conds.some((c) => c.key === 'notLoose')) {
+      rows.push({ key: 'fit', label: '핏', noun: '핏', a: { text: FIT[fa] + (a.product.fitSrc === 'name' ? '(상품명에서 읽음)' : a.product.fitSrc === 'user' ? '(직접 적음)' : '') }, b: { text: FIT[fb] + (b.product.fitSrc && has(SRC, b.product.fitSrc) ? '(' + SRC[b.product.fitSrc] + ')' : '') }, win: '' });
+      fitNote = '핏이 달라요: 보던 상품은 ' + FIT[fa] + ', 1위는 ' + FIT[fb] + '이에요' + (fa === 'relaxed' ? '. 루즈핏을 원하면 전체 순위에서 핏을 보고 고르세요' : '');
+    }
+    rows.push({ key: 'quality', label: '품질 근거', noun: '품질 근거', a: { text: qualityList(a, 3) || (aUser ? '적은 근거 없음' : '밝힌 근거 없음') }, b: { text: qualityList(b, 3) || '밝힌 근거 없음' }, win: a.quality.score >= b.quality.score + 0.75 ? 'a' : b.quality.score >= a.quality.score + 0.75 ? 'b' : '' });
     if (!a.brand.neutral) rows.push({ key: 'brand', label: '브랜드', noun: '브랜드', a: { text: a.brand.text || '좋아하는 브랜드 아님' }, b: { text: b.brand.text || '좋아하는 브랜드 아님' }, win: a.brand.score > b.brand.score ? 'a' : a.brand.score < b.brand.score ? 'b' : '' });
     const nb = pname(cat, b.product);
-    const price = payWin === 'b' ? '1위 ' + josa(nb, '이', '가') + ' ' + won(dPay) + (a.unit.shipKnown ? '' : ' 넘게') + ' 싸요' + (a.unit.shipKnown ? '' : '(보던 상품 배송비는 빼고 셈)')
-      : payWin === 'a' ? '보던 상품이 ' + won(-dPay) + ' 싸요' + (a.unit.shipKnown ? '' : '(보던 상품 배송비는 빼고 셈)')
+    const packTail = packDiff && a.product.packCount > 1 ? '(보던 상품 ' + a.product.packCount + '장 값과 견줌)' : '';
+    const price = anyStale ? '1위 가격은 ' + (staleB ? b.age : a.age) + '일 전에 확인한 값이라 어느 쪽이 싼지는 판매처에서 봐 주세요'
+      : payWin === 'b' ? '1위 ' + josa(nb, '이', '가') + ' ' + won(dPay) + (a.unit.shipKnown ? '' : ' 넘게') + ' 싸요' + (a.unit.shipKnown ? packTail : '(보던 상품 배송비는 빼고 셈' + (packTail ? ', ' + a.product.packCount + '장 값과 견줌' : '') + ')')
+      : payWin === 'a' ? '보던 상품이 ' + won(-dPay) + ' 싸요' + (a.unit.shipKnown ? packTail : '(보던 상품 배송비는 빼고 셈' + (packTail ? ', ' + a.product.packCount + '장 값과 견줌' : '') + ')')
       : dPay < 0 ? '보던 상품이 ' + won(-dPay) + ' 싸지만 배송비를 몰라 확실하지 않아요'
       : dPay === 0 ? '지금 낼 돈은 같아요' : '';
+    const unitLine = packDiff && !anyStale && Math.abs(dUnit) > 1 ? (a.product.packCount > 1 ? '다만 보던 상품은 ' + a.product.packCount + '장 묶음이라 한 장 값은 ' + (dUnit < 0 ? '보던 상품이 ' + won(-dUnit) + ' 싸요' : '1위가 ' + won(dUnit) + ' 싸요') : '한 장 값은 ' + (dUnit < 0 ? '보던 상품이 ' + won(-dUnit) + ' 싸요' : '1위가 ' + won(dUnit) + ' 싸요') + '(1위는 ' + b.product.packCount + '장 묶음)') : '';
     const nouns = (w) => rows.filter((x) => x.win === w && x.key !== 'pay' && x.key !== 'unit').map((x) => x.noun || x.label);
     const bw = nouns('b'), aw = nouns('a');
-    const same = sameSizeDiff(a, b);
-    const sum = [price, same, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : ''].filter(Boolean).map((t) => t + '.').join(' ');
-    return { rows, sum, payWin };
+    const same = sameSizeDiff(a, b, aUser ? '' : o.size);
+    const sleeveNote = a.product.sleeve !== b.product.sleeve ? '보던 상품은 ' + SLEEVES[a.product.sleeve] + '이라 ' + SLEEVES[b.product.sleeve] + ' 후보와 견줬어요' : '';
+    const sum = [price, unitLine, same, sizeNote, fitNote, sleeveNote, bw.length ? '1위가 더 나은 것: ' + bw.join('·') : '', aw.length ? '보던 상품이 더 나은 것: ' + aw.join('·') : '', unk.length ? (aUser ? '보던 상품은 안 적어서 못 견준 것: ' : '보던 상품은 확인 못 한 것: ') + unk.join('·') + (aUser ? " — '더 정확히'에 적으면 다시 셈해요" : '') : ''].filter(Boolean).map((t) => t + '.').join(' ');
+    return { rows, sum, payWin, why: whyBehind(a, b, o.weights, cat, aUser) };
+  }
+  /** 보던 상품이 1위보다 뒤인 이유 한 줄: 고른 기준(안 골랐으면 다섯 기준) 가운데 1위보다 0.15 넘게 낮은 것 둘까지. */
+  function whyBehind(a, b, w, cat, aUser) {
+    if (a.raw >= b.raw) return '';
+    const ws = w || {}, chosen = Object.keys(CRITERIA).filter((c) => ws[c] != null && ws[c] > OFF_W);
+    const list = (chosen.length ? chosen : Object.keys(CRITERIA)).map((c) => ({ c, d: (b.crit[c] - a.crit[c]) * (ws[c] || 1) })).filter((x) => x.d > 0.15 * (ws[x.c] || 1)).sort((x, y) => y.d - x.d).slice(0, 2);
+    const reason = (c) => (c === 'value' ? (!a.unit.shipKnown ? '배송비를 몰라 값을 낮게 봤어요' : a.quality.items.length ? '같은 값에 품질 근거가 적어요' : '값에 견줄 품질 근거가 없어요')
+      : c === 'quality' ? (!aUser ? '공개된 품질 근거가 1위보다 적어요' : a.quality.items.length ? '적은 품질 근거가 1위보다 적어요' : '품질 근거를 적지 않았어요')
+      : c === 'brand' ? '좋아하는 브랜드가 아니에요' : c === 'fit' ? (a.fit.byRef ? '잘 맞는 옷과 더 달라요' : '사이즈 치수를 적지 않았어요') : '스타일 분류가 없어요');
+    const conds = a.conds.filter((c, i) => b.conds[i] && (has(COND_W, c.status) ? COND_W[c.status] : 0) < (has(COND_W, b.conds[i].status) ? COND_W[b.conds[i].status] : 0)).map((c) => (c.noun || c.label) + (c.status === 'unknown' ? ' 모름' : c.status === 'warn' ? ' 어긋날 수 있음' : ' 애매'));
+    const parts = list.map((x) => reason(x.c)).concat(conds.length ? ['조건: ' + conds.slice(0, 3).join('·')] : []);
+    return parts.length ? parts.join(', ') : '';
   }
   /** 대안 한 줄: 한 장 값과 공개된 품질 근거 둘, 조건 상태. */
   function altWhy(r) {

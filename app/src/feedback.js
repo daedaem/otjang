@@ -33,7 +33,7 @@
     const o = {};
     for (const part of s.split('|').slice(1)) { const at = part.indexOf('='); if (at > 0) o[part.slice(0, at)] = part.slice(at + 1); }
     const out = { id: String(o.id || '').slice(0, 16), v: String(o.v || '').slice(0, 20), at: date(o.at), first: date(o.first), pmf: Object.prototype.hasOwnProperty.call(PMF, o.pmf) ? o.pmf : '', scr: String(o.scr || '').slice(0, 12) };
-    out.nx = String(o.nx || '').split(',').filter((x) => /^[a-z][a-z-]{1,15}$/.test(x)).slice(0, 10);   // 다음에 추천받고 싶은 옷(품목 열쇠)
+    out.nx = String(o.nx || '').split(',').filter((x, i, a) => /^[a-z][a-z-]{1,15}$/.test(x) && !Object.prototype.hasOwnProperty.call(Object.prototype, x) && a.indexOf(x) === i).slice(0, 10);   // constructor 같은 기본 속성 이름은 받지 않는다   // 다음에 추천받고 싶은 옷(품목 열쇠)
     out.pkx = String(o.pkx || '').split(',').map((x) => /^([a-z0-9-]{1,60})~([A-Za-z0-9]{0,8})~(fit|small|big)~(good|ok|regret)(?:~([A-Za-z0-9]{0,8}))?$/.exec(x)).filter(Boolean).slice(0, 10).map((m) => ({ product: m[1], size: m[2], fit: m[3], feel: m[4], rec: m[5] || '' }));   // 추천에서 산 상품의 2주 뒤 사이즈 결과(고른 사람만). rec: 그때 추천한 사이즈
     const cnt3 = (v, n) => { const a = String(v || '').split('~').map(Number); return Array.from({ length: n }, (_, i) => (Number.isInteger(a[i]) && a[i] >= 0 && a[i] < 1000 ? a[i] : 0)); };
     const w = cnt3(o.pkw, WHY.length); out.pkw = {}; WHY.forEach((k, i) => { out.pkw[k] = w[i]; });   // '아니에요' 이유별 수
@@ -72,7 +72,7 @@
       fitOutcomes: entries.reduce((a, e) => a.concat(e.pkx), []), shared: sum('pksh'),
       rejectWhy: WHY.reduce((m, k) => { m[k] = entries.reduce((a, e) => a + (e.pkw ? e.pkw[k] : 0), 0); return m; }, {}),
       nowDecide: ['keep', 'switch', 'skip'].reduce((m, k) => { m[k] = entries.reduce((a, e) => a + (e.nwd ? e.nwd[k] : 0), 0); return m; }, {}),
-      wishes: entries.reduce((m, e) => { for (const k of e.nx) m[k] = (m[k] || 0) + 1; return m; }, {}),   // 다음 품목 수요: 품목 → 사람 수
+      wishes: entries.reduce((m, e) => { for (const k of e.nx) m[k] = (m[k] || 0) + 1; return m; }, Object.create(null)),   // 다음 품목 수요: 품목 → 사람 수
       pmf: Object.assign(rate(pmfAns.filter((e) => e.pmf === 'very').length, pmfAns.length), { answered: pmfAns.length, very: cnt((e) => e.pmf === 'very'), some: cnt((e) => e.pmf === 'some'), not: cnt((e) => e.pmf === 'not'), quit: cnt((e) => e.pmf === 'quit') }),
       nps: { answered: npsAns.length, promoters: prom, detractors: det, passives: npsAns.length - prom - det, score: npsAns.length ? Math.round(((prom - det) / npsAns.length) * 100) : null },
       errors: cnt((e) => e.err > 0),

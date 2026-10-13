@@ -117,19 +117,27 @@ export function diffOf(p, o) {
  * - 처음 근거(evidence[0])는 그대로 두고 '다시 확인' 근거 한 줄을 고쳐 쓴다.
  */
 export function applyObservations(cat, obs, opts) {
-  const c = JSON.parse(JSON.stringify(cat)), changes = [], force = !!(opts && opts.force);
-  for (const o of obs) {
-    const p = c.products.find((x) => x.id === o.id); if (!p || !/^\d{4}-\d{2}-\d{2}$/.test(o.seen || '')) continue;
+  const c = JSON.parse(JSON.stringify(cat)), changes = [], force = !!(opts && opts.force), today = (opts && opts.today) || new Date().toISOString().slice(0, 10);
+  const realDay = (d) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return false; const t = Date.parse(d + 'T00:00:00Z'); return isFinite(t) && new Date(t).toISOString().slice(0, 10) === d; };
+  const list = obs.filter((o) => o && typeof o === 'object').slice().sort((a, b) => String(a.seen || '').localeCompare(String(b.seen || '')));   // 같은 상품을 두 번 봤으면 늦게 본 것이 남게(날짜 순으로 반영)
+  for (const o of list) {
+    const p = c.products.find((x) => x.id === o.id);
+    if (!p) { changes.push({ id: String(o.id || '(id 없음)'), diff: ['카탈로그에 없는 id — 반영하지 않음'], skipped: true }); continue; }   // 오타를 조용히 넘기지 않는다
     const skip = (why) => changes.push({ id: p.id, diff: [why], skipped: true });
+    if (!realDay(o.seen)) { skip('본 날짜가 없거나 없는 날짜(' + o.seen + ')'); continue; }
+    if (o.seen > today) { skip('본 날짜가 미래(' + o.seen + ')'); continue; }
+    if (p.checkedAt && o.seen < p.checkedAt) { skip('본 날짜(' + o.seen + ')가 지금 확인일(' + p.checkedAt + ')보다 앞섬 — 확인일을 되돌리지 않음'); continue; }
     if (!o.currency) { skip('통화를 몰라 반영하지 않음'); continue; }
     if (o.currency !== p.currency) { skip('통화가 달라 반영하지 않음(' + o.currency + ')'); continue; }
+    if (o.price != null && typeof o.price !== 'number') { skip('가격이 숫자가 아님(' + JSON.stringify(o.price) + ')'); continue; }
     const priceOk = o.price != null && isFinite(o.price) && o.price > 0;
-    if (priceOk && Math.abs(o.price - p.price) / p.price > 0.2 && !force && !o.force) { skip('가격이 20% 넘게 바뀜(' + p.price + ' → ' + o.price + ') — 확인 뒤 --force'); continue; }
+    if (priceOk && Math.abs(o.price - p.price) / p.price > 0.2 && !force) { skip('가격이 20% 넘게 바뀜(' + p.price + ' → ' + o.price + ') — 확인 뒤 --force'); continue; }   // 관측 줄 안의 force 는 받지 않는다(실행할 때 --force 만)
     let sizes = Array.isArray(o.sizes) ? o.sizes.map((x) => sizeName(x)) : null;
+    if (sizes && o.inStock === true && !sizes.length) { skip('재고 있음인데 재고 사이즈가 비어 있음 — 다시 확인'); continue; }
     if (sizes && p.offered) {
-      const norm = (x) => sizeName(x), off = p.offered.map(norm), kept = sizes.map((x) => p.offered[off.indexOf(norm(x))]).filter(Boolean);
-      if (sizes.length && !kept.length) { skip('읽은 사이즈 이름(' + sizes.join('·') + ')이 판매 사이즈(' + p.offered.join('·') + ')와 맞지 않아 반영하지 않음'); continue; }
-      sizes = kept;
+      const norm = (x) => sizeName(x), off = p.offered.map(norm), miss = sizes.filter((x) => off.indexOf(norm(x)) < 0);
+      if (miss.length) { skip('읽은 사이즈 이름(' + miss.join('·') + ')이 판매 사이즈(' + p.offered.join('·') + ')와 맞지 않아 반영하지 않음 — 일부만 맞아도 나머지를 품절로 만들지 않게'); continue; }
+      sizes = sizes.map((x) => p.offered[off.indexOf(norm(x))]);
     }
     const stockRead = o.inStock === true || o.inStock === false || !!sizes;
     if (!priceOk && !stockRead) { skip('읽은 값이 없어 날짜도 바꾸지 않음'); continue; }

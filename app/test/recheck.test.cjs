@@ -53,12 +53,12 @@ test('판매처별 읽는 곳: 유니클로는 가격·재고 자료, Shopify �
 test('반영: 읽은 값과 그 확인일만 바꾸고(처음 근거는 그대로), 통화·큰 가격 변동·안 맞는 사이즈 이름은 반영하지 않으며, 결과는 검사기를 통과한다', async () => {
   const { applyObservations } = await load();
   const { validate } = await import(pathToFileURL(path.join(__dirname, '../tools/validate-catalog.mjs')).href);
-  const obs = [{ id: 'uniqlo-e455365-white', seen: '2026-10-20', price: 17900, currency: 'KRW', inStock: true, sizes: ['S', 'M', 'ZZ'], via: 'browser' },
+  const obs = [{ id: 'uniqlo-e455365-white', seen: '2026-10-20', price: 17900, currency: 'KRW', inStock: true, sizes: ['S', 'M'], via: 'browser' },
     { id: 'bronson-loopwheel-white', seen: '2026-10-20', price: 30, currency: 'KRW' }, { id: 'nope', seen: '2026-10-20', price: 1, currency: 'KRW' },
     { id: 'pottery-ss-classic-white', seen: '2026-10-20', price: null, inStock: null, currency: 'KRW' }, { id: 'hanes-red-3p-white', seen: '2026-10-20', price: 19000, currency: 'KRW' },
     { id: 'levis-005gy0000', seen: '2026-10-20', price: 47200, currency: 'KRW', inStock: true, sizes: ['Medium', 'Large'] }, { id: 'uniqlo-e422992-white', seen: '2026-10-20', price: 19900, currency: 'KRW', sizes: ['Q1'] },
     { id: 'brooks-bbnpmm5192a', seen: '2026-10-20', inStock: false, currency: 'KRW' }, { id: 'polo-480590-white', seen: '2026-10-20', price: 139000 }];
-  const { catalog, changes } = applyObservations(RAW, obs);
+  const { catalog, changes } = applyObservations(RAW, obs, { today: '2026-10-20' });
   const get = (id) => catalog.products.find((p) => p.id === id), ch = (id) => changes.find((c) => c.id === id);
   const u = get('uniqlo-e455365-white');
   assert.equal(u.price, 17900); assert.deepEqual(u.stock.sizes, ['S', 'M']); assert.equal(u.checkedAt, '2026-10-20'); assert.equal(u.stock.checkedAt, '2026-10-20');
@@ -68,11 +68,28 @@ test('반영: 읽은 값과 그 확인일만 바꾸고(처음 근거는 그대�
   assert.equal(get('bronson-loopwheel-white').price, 28.99, '통화가 다르면 반영하지 않는다');
   assert.equal(get('pottery-ss-classic-white').checkedAt, '2026-10-13', '아무것도 못 읽으면 날짜도 그대로'); assert.ok(ch('pottery-ss-classic-white').skipped);
   assert.equal(get('hanes-red-3p-white').price, 29000, '20% 넘는 변동은 --force 없이 반영하지 않는다'); assert.match(ch('hanes-red-3p-white').diff[0], /20% 넘게/);
-  assert.equal(applyObservations(RAW, [obs[4]], { force: true }).catalog.products.find((p) => p.id === 'hanes-red-3p-white').price, 19000);
+  assert.equal(applyObservations(RAW, [obs[4]], { force: true, today: '2026-10-20' }).catalog.products.find((p) => p.id === 'hanes-red-3p-white').price, 19000);
   assert.deepEqual(get('levis-005gy0000').stock.sizes, ['M', 'L'], 'Medium·Large 를 판매 사이즈 이름으로');
   assert.deepEqual(get('uniqlo-e422992-white').stock.sizes, RAW.products.find((p) => p.id === 'uniqlo-e422992-white').stock.sizes, '안 맞는 사이즈 이름이면 반영하지 않는다'); assert.ok(ch('uniqlo-e422992-white').skipped);
   const b = get('brooks-bbnpmm5192a'); assert.equal(b.stock.inStock, false); assert.equal(b.stock.checkedAt, '2026-10-20'); assert.equal(b.checkedAt, '2026-10-13', '재고만 읽으면 가격 확인일은 그대로');
   assert.ok(ch('polo-480590-white').skipped, '통화를 모르면 반영하지 않는다');
   assert.equal(RAW.products.find((p) => p.id === 'uniqlo-e455365-white').price, 19900, '원본은 그대로');
   assert.deepEqual(validate(catalog, '2026-10-20').errors, []);
+  assert.ok(ch('nope') && ch('nope').skipped, '카탈로그에 없는 id 는 조용히 넘기지 않고 알린다');
+});
+
+test('반영 안전장치(5회차): 사이즈가 일부만 맞으면·재고 있음인데 사이즈가 비면·본 날짜가 확인일보다 앞서거나 미래면·관측 줄의 force·숫자 아닌 가격은 반영하지 않고, 같은 상품은 늦게 본 것이 남는다', async () => {
+  const { applyObservations } = await load();
+  const T = { today: '2026-10-20' }, id = 'uniqlo-e455365-white', base = RAW.products.find((p) => p.id === id);
+  const one = (o, opt) => applyObservations(RAW, [Object.assign({ id, currency: 'KRW' }, o)], opt || T);
+  let r = one({ seen: '2026-10-20', inStock: true, sizes: ['Small', 'Med', 'Lrg'] });
+  assert.ok(r.changes[0].skipped && /일부만 맞아도/.test(r.changes[0].diff[0])); assert.deepEqual(r.catalog.products.find((p) => p.id === id).stock, base.stock);
+  r = one({ seen: '2026-10-20', inStock: true, sizes: [] }); assert.ok(r.changes[0].skipped && /재고 사이즈가 비어/.test(r.changes[0].diff[0]));
+  r = one({ seen: '2026-09-01', price: 19900 }); assert.ok(r.changes[0].skipped && /되돌리지 않음/.test(r.changes[0].diff[0])); assert.equal(r.catalog.products.find((p) => p.id === id).checkedAt, base.checkedAt);
+  r = one({ seen: '2026-10-25', price: 19900 }); assert.ok(r.changes[0].skipped && /미래/.test(r.changes[0].diff[0]));
+  r = one({ seen: '2026-10-32', price: 19900 }); assert.ok(r.changes[0].skipped);
+  r = one({ seen: '2026-10-20', price: 9900, force: true }); assert.ok(r.changes[0].skipped && /20% 넘게/.test(r.changes[0].diff[0]), '관측 줄 안의 force 는 받지 않는다');
+  r = one({ seen: '2026-10-20', price: '19900' }); assert.ok(r.changes[0].skipped && /숫자가 아님/.test(r.changes[0].diff[0]));
+  r = applyObservations(RAW, [{ id, currency: 'KRW', seen: '2026-10-19', price: 18900 }, { id, currency: 'KRW', seen: '2026-10-15', price: 17900 }], T);
+  const got = r.catalog.products.find((p) => p.id === id); assert.equal(got.price, 18900); assert.equal(got.checkedAt, '2026-10-19', '파일 순서와 상관없이 늦게 본 값이 남는다');
 });
