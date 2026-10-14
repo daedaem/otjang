@@ -36,7 +36,7 @@ import {
   slotForItem,
   wardrobeSlotStatus,
 } from './wardrobe.js';
-import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint } from './wardrobe-store.js';
+import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage } from './wardrobe-store.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
 import { prepareGarmentPhoto } from './garment-photo.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
@@ -80,6 +80,7 @@ let claudeLatestPresent = false;
 let returnFocus = null;
 let candidateDraft = null;
 const journeyForms = new Map();
+let pendingOptionChange = null, candidateGarmentReview = null;
 let eraseReviewStep = 0,
   erasingAll = false,
   bootBusy = false;
@@ -128,7 +129,7 @@ async function bootWardrobe() {
       }
       await wardrobeStore.commit(prepared.state, 0, prepared.assets);
       current = await wardrobeStore.read();
-    } else if (current.state.schema < 4) {
+    } else if (current.state.schema < 5) {
       const upgraded = upgradeWardrobe(current.state);
       await wardrobeStore.commit(upgraded, current.revision, [], current.epoch || null);
       current = { ...current, state: upgraded, revision: current.revision + 1, epoch: wardrobeStore.currentEpoch() };
@@ -176,7 +177,9 @@ async function set(patch, { rerender = true, assets = [] } = {}) {
   }
 }
 function storageNotice() {
+  const usage = journeyStorageUsage(state), wholeUsage = wardrobeStateStorageUsage(state);
   return (
+    (usage.warning || wholeUsage.warning ? '<div class="notice"><b>기록이 많이 쌓였어요</b><p>저장 한도에 가까워졌어요. 사진 포함 백업을 받아 두세요. 기존 자료는 자동으로 지우지 않아요.</p><button class="link" data-action="backup">사진·전체 기록 백업 받기</button></div>' : '') +
     (storageError
       ? `<section class="storage-error" role="alert"><b>저장 확인이 필요해요</b><p>${esc(storageError)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button><button class="chip" data-action="choose-backup">정상 백업으로 복구</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button>${pendingLegacy?.initial ? '<button class="chip" data-action="review-legacy">누락 사진 확인하기</button>' : ''}</section>`
       : '') +
@@ -624,9 +627,12 @@ function candidateSheet() {
     <button class="btn candidate-compare" data-action="candidate-save" ${d.saving ? 'disabled' : ''}>${d.saving ? '저장 중…' : '내 옷과 비교하기'}</button>`}
     ${d.error ? `<p class="editor-error" role="alert">${esc(d.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button>` : ''}`, { key: `candidate:${d.id}` });
 }
-async function saveCandidateDraft() {
+async function saveCandidateDraft({ allowOptionCorrection = false } = {}) {
   const d = candidateDraft;
   if (!d?.candidate || d.saving) return;
+  const currentJourney = d.journeyId && state.journeys.find((j) => j.id === d.journeyId);
+  if (currentJourney) pendingJourneyForm(currentJourney.id, currentJourney);
+  if (currentJourney && !allowOptionCorrection && showJourneyOptionChange(currentJourney, 'candidate-save')) return false;
   d.saving = true;
   d.error = '';
   candidateSheet();
@@ -634,46 +640,164 @@ async function saveCandidateDraft() {
     validatePurchaseCandidate(d.candidate);
     const existing = d.journeyId && state.journeys.find((j) => j.id === d.journeyId);
     if (d.before && JSON.stringify(existing) !== d.before) throw new Error('이 구매 후보가 다른 화면에서 바뀌었어요. 최신 기록을 다시 확인해 주세요.');
-    const next = existing ? { ...existing, ...pendingJourneyForm(existing.id, existing), candidate: structuredClone(d.candidate) } : createPurchaseJourney(d.candidate, { id: d.id });
+    const changes = existing ? { ...pendingJourneyForm(existing.id, existing), candidate: structuredClone(d.candidate) } : null;
+    const corrected = existing && allowOptionCorrection ? transitionPurchaseJourney(existing, 'correction', { changes }) : existing;
+    const next = existing ? transitionPurchaseJourney(corrected, 'candidate-edit', { changes }) : createPurchaseJourney(d.candidate, { id: d.id });
     await set({ journeys: [...state.journeys.filter((j) => j.id !== next.id), next], tab: 'saved' });
     d.saving = false;
     journeyForms.delete(next.id);
     closeSheet();
     journeySheet(next.id);
     toast('이 상품을 그대로 보관했어요');
+    return true;
   } catch (error) {
     d.saving = false;
     d.error = storageMessage(error);
     render();
     candidateSheet();
+    return false;
   }
 }
 function candidateLookRows(result, candidate) {
   return `<div class="look-rows">${result.items.map((row) => row.owned ? `<div class="look-row">${itemPicture(row.item)}<div><b>${esc(garmentLabel(row.item))}</b><span>${esc(COLORS[row.item.color]?.label || '색 미확인')} · 내 옷</span></div></div>` : `<div class="look-row">${candidatePicture(candidate)}<div><b>${esc(candidate.name || garmentKindName(candidate.kind))}</b><span>${esc(COLORS[candidate.color]?.label || '색 미확인')} · 비교 중인 후보</span></div></div>`).join('')}</div>`;
 }
+function journeyHistory(journey) {
+  const labels = { created: '후보 가져옴', buy: '사기로 함', hold: '보류', skip: '안 사기로 함', ordered: '주문 기록', received: '수령 기록', kept: '계속 입기로 함', returned: '반품 기록', worn: '착용 기록', note: '옵션·이유 저장', 'candidate-edit': '상품 정보 정정', 'details-change': '비교·착용 정보 확인', 'garment-confirmed': '받은 옷 정보에 적용', correction: '주문 옵션 정보 정정', imported: '구버전 현재 기록 이전' };
+  const fit = { small: '작음', right: '맞음', large: '큼' };
+  const reasons = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '변심', other: '기타' };
+  return `<details class="garment-name"><summary>내가 남긴 기록 ${journey.history.length}개</summary><ol class="journey-history">${[...journey.history].reverse().slice(0,12).map((event) => {
+    const d = event.details;
+    return `<li><b>${labels[event.action] || '기록'}</b><time datetime="${esc(event.at)}">${esc(new Date(event.at).toLocaleString('ko-KR'))}</time>${d ? `<p>${[d.option ? `당시 옵션: ${esc(d.option)}` : '', d.reason ? `당시 이유: ${esc(d.reason)}` : '', d.feedback.fit ? `핏 기록: ${fit[d.feedback.fit]}` : '', d.feedback.returnReason ? `반품 사유: ${reasons[d.feedback.returnReason]}` : ''].filter(Boolean).join(' · ') || '추가 메모 없음'}</p>${event.action === 'candidate-edit' ? `<p class="fine">${esc(d.candidate.name || '상품명 미확인')} · ${esc(COLORS[d.candidate.color]?.label || '색 미확인')} · ${d.candidate.price === null ? '가격 미확인' : formatPrice(d.candidate.price)}</p>` : ''}` : '<p class="fine">구버전 기록 · 당시 옵션과 이유는 기록되지 않았어요.</p>'}</li>`;
+  }).join('')}</ol>${journey.history.length > 12 ? '<p class="fine">화면에는 최근 12개를 보여줘요. 전체 기록은 사진 포함 백업에 보관돼요.</p>' : ''}</details>`;
+}
+function priorReturnEvidence(journey) {
+  const candidate = journey.candidate;
+  const entries = state.journeys.filter((j) => j.id !== journey.id && (candidate.productId ? j.candidate.productId === candidate.productId : j.candidate.url === candidate.url))
+    .map((j) => ({ j, event: [...j.history].reverse().find((e) => e.action === 'returned') })).filter((row) => row.event).slice(-3);
+  if (!entries.length) return '';
+  const feedbackText = (feedback) => [feedback.fit ? `핏 직접 기록: ${{small:'작음',right:'맞음',large:'큼'}[feedback.fit]}` : '', feedback.returnReason ? `반품 사유: ${{size:'사이즈',color:'색',quality:'품질','change-of-mind':'변심',other:'기타'}[feedback.returnReason]}` : ''].filter(Boolean).join(' · ');
+  return `<div class="notice"><b>같은 상품 페이지의 반품 기록이 있어요</b>${entries.map(({j,event}) => {
+    const d = event.details;
+    const later = d && j.history.slice(j.history.indexOf(event) + 1).filter((e) => e.details && ['note','details-change'].includes(e.action) && e.details.option === d.option && e.details.candidate.url === d.candidate.url && e.details.candidate.kind === d.candidate.kind && e.details.candidate.slot === d.candidate.slot && e.details.candidate.color === d.candidate.color && JSON.stringify(e.details.feedback) !== JSON.stringify(d.feedback)).at(-1);
+    return `<p>${d ? `${esc(d.option || '옵션 미기록')} · ${esc(d.reason || '상세 이유 미기록')}${feedbackText(d.feedback) ? ` · ${feedbackText(d.feedback)}` : ''}` : '구버전 반품 기록 · 당시 옵션·이유 미확인'} <button class="link" data-action="open-journey" data-id="${esc(j.id)}">기록 보기</button></p>${later ? `<p class="fine">같은 옵션으로 반품 후 저장한 정보: ${feedbackText(later.details.feedback) || '핏·사유 선택 해제'}. 반품 당시 기록은 위에 보관했어요.</p>` : ''}`;
+  }).join('')}<p class="fine">직접 남긴 과거 기록이에요. 이번 옵션의 사이즈·핏을 예측하지 않아요.</p></div>`;
+}
+
+function showJourneyOptionChange(journey, action) {
+  const form = journeyForms.get(journey.id);
+  if (journey.stage === 'candidate' || !form || form.option === journey.option) return false;
+  pendingOptionChange = { id: journey.id, before: JSON.stringify(journey), action, option: form.option, reason: form.reason };
+  openSheet(`<h2>고른 옵션이 바뀌었어요</h2><p><b>${esc(journey.option || '옵션 미기록')}</b> → <b>${esc(form.option || '옵션 미기록')}</b></p><p>주문한 정보를 잘못 적었나요, 다른 옵션을 하나 더 기록하나요? 기존 주문·수령·반품 때의 기록은 보관해요.</p><button class="btn" data-action="option-correction-confirm">잘못 적은 정보 정정</button><button class="btn secondary candidate-compare" data-action="option-fork-confirm">다른 옵션으로 새 여정 만들기</button><button class="link candidate-compare" data-action="open-journey" data-id="${esc(journey.id)}">입력 유지하고 돌아가기</button>`, { key: `option-change:${journey.id}` });
+  return true;
+}
+async function confirmJourneyOptionChange(fork = false) {
+  const review = pendingOptionChange;
+  if (!review) return;
+  const original = state.journeys.find((j) => j.id === review.id);
+  if (JSON.stringify(original) !== review.before) throw new Error('구매 기록이 바뀌었어요. 입력은 유지했으니 최신 기록을 확인해 주세요.');
+  if (fork) {
+    const candidate = review.action === 'candidate-save' && candidateDraft ? candidateDraft.candidate : original.candidate;
+    let sibling = createPurchaseJourney(candidate);
+    sibling.forkedFrom = original.id;
+    sibling = transitionPurchaseJourney(sibling, 'note', { changes: { option: review.option, reason: review.reason, absence: original.absence, intent: original.intent, relatedGarmentIds: original.relatedGarmentIds } });
+    await set({ journeys: [...state.journeys, sibling], tab: 'saved' });
+    journeyForms.delete(original.id);
+    pendingOptionChange = null;
+    candidateDraft = null;
+    journeySheet(sibling.id);
+    toast('원래 주문 기록을 유지하고 다른 옵션의 여정을 만들었어요. 새 주문 여부는 따로 기록해 주세요');
+    return;
+  }
+  if (review.action === 'candidate-save') {
+    if (!await saveCandidateDraft({ allowOptionCorrection: true })) return;
+  } else await recordJourneyAction(review.id, review.action, { allowOptionCorrection: true });
+  pendingOptionChange = null;
+}
+function beginCandidateGarmentReview(id) {
+  const journey = state.journeys.find((j) => j.id === id);
+  const item = journey && state.garments.find((g) => g.id === journey.garmentId);
+  if (!journey || !item) throw new Error('연결된 옷 기록을 먼저 확인해 주세요.');
+  pendingJourneyForm(id, journey);
+  if (showJourneyOptionChange(journey, 'note')) return;
+  const c = journey.candidate, proposed = { ...item };
+  if (c.kind) {
+    proposed.kind = c.kind;
+    if (c.classificationConfirmed && c.slot) proposed.slot = c.slot;
+    else if (c.kind !== item.kind) proposed.slot = null;
+  }
+  if (c.color && c.colorSource !== 'image') proposed.color = c.color;
+  if (c.brand) proposed.brand = c.brand;
+  if (c.name) proposed.label = c.name.slice(0,80);
+  const titles = { kind: '종류', slot: '세부 종류', color: '색', brand: '브랜드', label: '내 옷 이름' };
+  const fields = Object.keys(titles).filter((field) => proposed[field] !== item[field]);
+  const display = (field, value) => field === 'kind' ? garmentKindName(value) : field === 'slot' ? SLOT_BY_ID[value]?.name || '미확인' : field === 'color' ? COLORS[value]?.label || '미확인' : value || '미입력';
+  candidateGarmentReview = { id, itemId: item.id, beforeJourney: JSON.stringify(journey), beforeGarment: JSON.stringify(item), proposed, fields, selected: new Set(fields.filter((field) => ['kind','slot','color'].includes(field))) };
+  openSheet(`<h2>받은 옷에도 확인 내용을 적용할까요?</h2><p>후보 정보만 바꾸면 실제 옷 기록은 그대로예요. 적용할 정보만 고르세요. 원래 사진은 유지해요.</p>${fields.length ? `<div class="garment-differences">${fields.map((field) => `<label><input type="checkbox" data-action="candidate-garment-toggle" data-field="${field}"${candidateGarmentReview.selected.has(field) ? ' checked' : ''}>${titles[field]}<span>${esc(display(field,item[field]))} → ${esc(display(field,proposed[field]))}</span></label>`).join('')}</div><button class="btn" data-action="candidate-garment-apply">선택한 정보만 옷에 적용</button>` : '<p class="notice">연결된 옷과 확인 정보가 같아요.</p>'}<button class="link candidate-compare" data-action="open-journey" data-id="${esc(id)}">여정으로 돌아가기</button>`, { key: `garment-review:${id}` });
+}
+async function applyCandidateGarmentReview() {
+  const review = candidateGarmentReview;
+  if (!review) return;
+  const journey = state.journeys.find((j) => j.id === review.id);
+  const item = state.garments.find((g) => g.id === review.itemId);
+  if (JSON.stringify(journey) !== review.beforeJourney || JSON.stringify(item) !== review.beforeGarment)
+    throw new Error('옷이나 구매 기록이 바뀌었어요. 차이를 다시 확인해 주세요. 원래 기록은 유지했어요.');
+  pendingJourneyForm(journey.id, journey);
+  if (showJourneyOptionChange(journey, 'note')) return;
+  const selected = [...review.selected];
+  if (!selected.length) throw new Error('적용할 정보만 골라 주세요.');
+  const confirmed = { ...item, ...Object.fromEntries(selected.map((field) => [field,review.proposed[field]])) };
+  if (confirmed.slot && (SLOT_BY_ID[confirmed.slot]?.shape !== confirmed.kind || SLOT_BY_ID[confirmed.slot]?.g !== confirmed.gender))
+    throw new Error('종류와 세부 종류가 맞지 않아요. 바뀌는 두 항목을 함께 골라 주세요. 원래 옷과 사진은 유지했어요.');
+  const updatedItem = makeGarment(confirmed);
+  const updatedJourney = transitionPurchaseJourney(journey, 'garment-confirmed', { changes: pendingJourneyForm(journey.id, journey) });
+  await set({ garments: state.garments.map((g) => g.id === item.id ? updatedItem : g), journeys: state.journeys.map((j) => j.id === journey.id ? updatedJourney : j) });
+  candidateGarmentReview = null;
+  journeyForms.delete(journey.id);
+  journeySheet(journey.id);
+  toast('확인한 정보만 받은 옷에 적용했어요. 원래 사진은 유지했어요');
+}
+async function saveJourneyGarmentCheck(id, itemId, color) {
+  const journey = state.journeys.find((j) => j.id === id);
+  const item = state.garments.find((g) => g.id === itemId);
+  if (!journey || !item || !state.closet.some((g) => g.id === itemId)) throw new Error('확인할 내 옷을 다시 골라 주세요.');
+  pendingJourneyForm(id, journey);
+  if (showJourneyOptionChange(journey, 'note')) return;
+  const updatedItem = makeGarment({ ...item, color: color || null });
+  const updatedJourney = transitionPurchaseJourney(journey, 'details-change', { changes: { ...pendingJourneyForm(id, journey), relatedGarmentIds: [...new Set([...journey.relatedGarmentIds,itemId])] } });
+  await set({ garments: state.garments.map((g) => g.id === itemId ? updatedItem : g), journeys: state.journeys.map((j) => j.id === id ? updatedJourney : j) });
+  journeyForms.delete(id);
+  journeySheet(id);
+  toast('이 옷의 색을 반영해 비교를 다시 계산했어요');
+}
+
 function journeySheet(id) {
   const j = state.journeys.find((row) => row.id === id);
   if (!j) { toast('구매 기록을 다시 확인해 주세요'); return; }
   if (!journeyForms.has(id)) journeyForms.set(id, { before: JSON.stringify(j), option: j.option, reason: j.reason });
   const form = journeyForms.get(id), c = j.candidate;
-  const comparison = compareCandidate(state, c, { absence: j.absence, intent: j.intent });
+  const comparison = compareCandidate(state, c, { absence: j.absence, intent: j.intent, replacementGarmentId: j.replacementGarmentId });
   const labels = { candidate: '비교 중', ordered: '직접 기록한 주문', received: '받음 · 보유 미확정', kept: '계속 입는 내 옷', returned: '직접 기록한 반품' };
   const decisionLabels = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const picks = (field, entries) => entries.map(([value, label]) => `<button class="chip" data-action="journey-field" data-id="${esc(id)}" data-field="${field}" data-value="${value}" aria-pressed="${j[field] === value}">${label}</button>`).join('');
   const duplicateItems = [...new Map([...comparison.sameProduct, ...comparison.similarOwned, ...comparison.uncertainOwned.slice(0,1)].map((item) => [item.id, item])).values()];
+  const replacementChoices = state.closet.filter((item) => item.source !== 'demo' && c.kind && item.kind === c.kind);
   const returned = j.stage === 'returned';
   const linked = j.garmentId && state.garments.find((item) => item.id === j.garmentId);
   openSheet(`${candidatePicture(c, 'hero candidate-hero')}<h2 class="detail-title">${esc(c.name || '가져온 상품')}</h2><p class="sub">${esc(c.brand || '')} · ${labels[j.stage]}${j.decision ? ` · ${decisionLabels[j.decision]}` : ''}</p>
     <div class="fine">${c.price === null ? '가격 미확인' : `${formatPrice(c.price)} · ${esc(c.checkedAt || '확인 날짜 없음')} ${c.priceSource === 'catalog' ? '수집일' : '직접 입력'} 기준 참고 가격`}</div>
     <p class="fine">고른 옵션의 현재 가격·배송비·품절 여부는 판매처에서 확인해 주세요.</p>
-    ${j.stage === 'candidate' ? `<h3 class="block">비슷한 옷이 있나요?</h3><div class="opts">${picks('absence', [['unknown','아직 모름'],['present','있어요'],['absent','없어요']])}</div>${j.absence === 'present' ? `<p class="sub">등록한 옷을 연결하거나 종류만 추가하면 다음 추천에도 반영돼요.</p><button class="chip" data-action="journey-add-own" data-id="${esc(id)}">가진 옷 간단히 추가</button>` : ''}<h3 class="block">이번 구매 목적</h3><div class="opts">${picks('intent', [['add','새로 더하기'],['replace','기존 옷 교체']])}</div>` : ''}
     <h3 class="block">내 옷을 기준으로 비교</h3>
     <div class="why"><ul>${comparison.decision.reasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul></div>
+    ${comparison.sameTypeOwned.length ? `<p class="sub">등록한 같은 세부 종류 ${comparison.sameTypeOwned.length}벌을 이미 반영했어요.</p>` : ''}
+    ${!comparison.sameTypeOwned.length || j.absence !== 'unknown' ? `<h3 class="block">비슷한 옷이 있나요? (확인이 필요할 때만)</h3><div class="opts">${picks('absence', [['unknown','아직 모름'],['present','있어요'],['absent','없어요']])}</div>${j.absence === 'present' ? `<p class="sub">이 답은 이 상품 비교에만 반영해요. 내 옷을 연결하거나 간단히 등록하면 다른 추천에도 반영돼요.</p><button class="chip" data-action="journey-add-own" data-id="${esc(id)}">가진 옷 간단히 추가</button>` : ''}` : ''}
     ${state.demo ? '<p class="notice">아직 실제 옷이 없어요. 예시 옷을 실제 보유 근거로 쓰지 않아요. 내 옷을 추가하면 이 상품과 비교할 수 있어요.</p>' : ''}
-    ${duplicateItems.length ? `<div class="purchase-owned">${duplicateItems.map((item) => `<div class="purchase-own">${itemPicture(item)}<b>${esc(garmentLabel(item))}</b><span class="fine">${comparison.exactOwned.some((i) => i.id === item.id) ? '같은 상품·확인한 색' : comparison.sameProduct.some((i) => i.id === item.id) ? '같은 상품 주소 · 옵션 확인 필요' : comparison.similarOwned.some((i) => i.id === item.id) ? '같은 세부 종류·색 · 소재·핏 차이 확인' : '세부 종류·색 확인 필요'}</span><button class="link" data-action="journey-check-own" data-id="${esc(id)}" data-item="${esc(item.id)}">이 옷의 색·종류 확인</button><button class="link" data-action="journey-related" data-id="${esc(id)}" data-item="${esc(item.id)}">${j.relatedGarmentIds.includes(item.id) ? '연결 해제' : '이 옷과 비교'}</button>${j.intent === 'replace' && item.kind === c.kind ? `<button class="chip" data-action="journey-replacement" data-id="${esc(id)}" data-item="${esc(item.id)}" aria-pressed="${j.replacementGarmentId === item.id}">교체할 옷</button>` : ''}</div>`).join('')}</div>` : ''}
+    <h3 class="block">이번 구매 목적</h3><div class="opts">${picks('intent', [['add','새로 더하기'],['replace','기존 옷 교체']])}</div>
+    ${j.intent === 'replace' ? `<h3 class="block">교체할 내 옷</h3>${replacementChoices.length ? `<div class="purchase-owned">${replacementChoices.map((item) => `<div class="purchase-own">${itemPicture(item)}<b>${esc(garmentLabel(item))}</b><span class="fine">${esc(COLORS[item.color]?.label || '색 미확인')}</span><button class="chip" data-action="journey-replacement" data-id="${esc(id)}" data-item="${esc(item.id)}" aria-pressed="${j.replacementGarmentId === item.id}">이 옷 교체</button></div>`).join('')}</div>` : '<p class="notice">교체할 옷을 먼저 등록하면 그 옷을 기준으로 비교할 수 있어요.</p>'}${comparison.replacement.target ? `<p class="sub">이 옷을 교체한 뒤 등록한 옷으로 가능한 기존 코디 공식 ${comparison.replacement.retainedFormulaCount}개 유지 · ${comparison.replacement.lostFormulaCount}개 미완성. 실제 활용도·핏의 보장은 아니에요.</p>` : ''}` : ''}
+    ${duplicateItems.length ? `<div class="purchase-owned">${duplicateItems.map((item) => `<div class="purchase-own">${itemPicture(item)}<b>${esc(garmentLabel(item))}</b><span class="fine">${comparison.exactOwned.some((i) => i.id === item.id) ? '같은 상품·확인한 색' : comparison.sameProduct.some((i) => i.id === item.id) ? '같은 상품 주소 · 옵션 확인 필요' : comparison.similarOwned.some((i) => i.id === item.id) ? '같은 세부 종류·색 · 소재·핏 차이 확인' : '세부 종류·색 확인 필요'}</span>${!item.color ? `<label>이 옷 색만 확인<select data-action="journey-own-color" data-id="${esc(id)}" data-item="${esc(item.id)}"><option value="">아직 모름</option>${Object.entries(COLORS).map(([key,value]) => `<option value="${key}">${value.label}</option>`).join('')}</select></label>` : ''}<button class="link" data-action="journey-check-own" data-id="${esc(id)}" data-item="${esc(item.id)}">이 옷의 색·종류 확인</button><button class="link" data-action="journey-related" data-id="${esc(id)}" data-item="${esc(item.id)}">${j.relatedGarmentIds.includes(item.id) ? '연결 해제' : '이 옷과 비교'}</button></div>`).join('')}</div>` : ''}
     ${comparison.missingChecks.length ? `<div class="notice">${comparison.missingChecks.map((check) => `<p>${esc(check.message)}</p>`).join('')}<button class="chip" data-action="candidate-edit" data-id="${esc(id)}">후보 정보 확인</button><button class="chip" data-action="journey-add-own" data-id="${esc(id)}">내 옷 추가</button></div>` : ''}
     ${comparison.looks.length ? `<h3 class="block">이 후보와 등록한 내 옷</h3><p class="sub">새로 가능한 코디 공식 ${comparison.newFormulaCount}개 · 이미 가능한 공식 ${comparison.existingFormulaCount}개. 실제 활용도나 가상 착용 결과는 아니에요.</p>${comparison.looks.slice(0,3).map((look) => `<h4>${esc(look.look.title)}${look.new ? ' · 새로 연결되는 공식' : ' · 기존 종류로 가능한 공식'}</h4>${candidateLookRows(look, c)}`).join('')}` : ''}
     <p class="fine">종류·색과 코디 공식의 비교예요. 사진 속 소재·핏·사이즈를 분석하거나 몸에 합성하지 않았어요.</p>
+    ${priorReturnEvidence(j)}
     <details class="garment-name"><summary>옵션·판단 이유 기록 (선택)</summary><label for="journey-option">고른 색·사이즈 등 옵션 (선택)</label><input id="journey-option" data-journey="${esc(id)}" maxlength="160" value="${esc(form.option)}" placeholder="예: 베이지 / M / 수량 1">
     <label for="journey-reason">판단·착용·반품 이유 (선택)</label><input id="journey-reason" data-journey="${esc(id)}" maxlength="500" value="${esc(form.reason)}" placeholder="예: 같은 용도의 재킷이 있어 보류">
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
@@ -687,7 +811,11 @@ function journeySheet(id) {
     ${['received','kept'].includes(j.stage) ? `<button class="link candidate-compare" data-action="journey-return-review" data-id="${esc(id)}">반품했다고 기록</button>` : ''}
     ${returned ? `<p class="notice">반품한 옷은 보유 추천에서 제외했어요. 옷 기록과 사진은 보관 중이에요.</p><button class="chip" data-action="journey-action" data-id="${esc(id)}" data-step="received">반품 기록 취소 · 다시 수령 상태</button>` : ''}
     ${j.replacementConfirmed ? `<p class="fine">교체한 이전 옷은 보유 추천에서 제외 중이에요.</p><button class="chip" data-action="journey-field" data-id="${esc(id)}" data-field="replacementConfirmed" data-value="false">이전 옷 다시 보유로 표시</button>` : ''}
+    ${['received','kept'].includes(j.stage) && linked ? `<button class="chip candidate-compare" data-action="candidate-garment-review" data-id="${esc(id)}">확인한 상품 정보를 받은 옷에도 적용</button>` : ''}
     ${linked ? `<button class="link candidate-compare" data-action="open-own" data-id="${esc(linked.id)}">연결된 옷 기록·사진 확인</button>` : j.garmentId ? `<p class="notice">연결했던 옷 기록이 없어요. 구매 기록은 유지했어요.</p><button class="chip" data-action="journey-receipt-repair" data-id="${esc(id)}">받은 옷 다시 등록해 연결</button>` : ''}
+    ${['received','kept','returned'].includes(j.stage) ? `<details class="garment-name"><summary>직접 입어본 결과 (선택)</summary><h4>핏은 어땠나요?</h4><div class="opts">${[['small','작음'],['right','맞음'],['large','큼']].map(([value,label]) => `<button class="chip" data-action="journey-fit" data-id="${esc(id)}" data-value="${value}" aria-pressed="${j.feedback.fit === value}">${label}</button>`).join('')}</div><h4>반품 사유 (해당할 때만)</h4><div class="opts">${[['size','사이즈'],['color','색'],['quality','품질'],['change-of-mind','변심'],['other','기타']].map(([value,label]) => `<button class="chip" data-action="journey-return-reason" data-id="${esc(id)}" data-value="${value}" aria-pressed="${j.feedback.returnReason === value}">${label}</button>`).join('')}</div><p class="fine">선택한 시점의 직접 기록이에요. 실제 반품 완료와 핏 예측은 별도예요.</p></details>` : ''}
+    ${journeyHistory(j)}
+    ${c.productId ? `<button class="link candidate-compare" data-action="journey-hide-product" data-id="${esc(id)}">${state.hidden.includes(c.productId) ? '이 상품 다시 추천받기' : '이 상품 다시 추천하지 않기'}</button>` : ''}
     <button class="chip candidate-compare" data-action="journey-fork" data-id="${esc(id)}">다른 사이즈·옵션 하나 더 기록</button>${j.forkedFrom ? `<button class="link candidate-compare" data-action="open-journey" data-id="${esc(j.forkedFrom)}">처음 비교한 상품 기록으로 돌아가기</button>` : ''}
     <p class="fine">이 여정은 상품·옵션 한 개의 기록이에요. 여러 사이즈를 샀다면 각각 가져와 기록해 주세요. 구매와 반품은 판매처가 확인한 주문 데이터가 아닌 사용자 기록이에요.</p>`, { key: `journey:${id}` });
 }
@@ -700,28 +828,37 @@ async function setJourneyField(id, field, value) {
   if (field === 'replacementConfirmed') value = value === true || value === 'true';
   const j = state.journeys.find((row) => row.id === id);
   if (!j) throw new Error('구매 기록을 찾지 못했어요.');
-  if (!['absence','intent','relatedGarmentIds','replacementGarmentId','replacementConfirmed'].includes(field)) throw new Error('변경할 기록을 확인해 주세요.');
-  const updated = { ...j, ...pendingJourneyForm(id, j), [field]: value };
+  if (!['absence','intent','relatedGarmentIds','replacementGarmentId','replacementConfirmed','feedback'].includes(field)) throw new Error('변경할 기록을 확인해 주세요.');
+  pendingJourneyForm(id, j);
+  if (showJourneyOptionChange(j, 'note')) return;
+  const updated = transitionPurchaseJourney(j, 'details-change', { changes: { ...pendingJourneyForm(id, j), [field]: value } });
   await set({ journeys: state.journeys.map((row) => row.id === id ? updated : row) });
   journeyForms.delete(id);
   journeySheet(id);
 }
-async function recordJourneyAction(id, action) {
+async function recordJourneyAction(id, action, { allowOptionCorrection = false } = {}) {
   const j = state.journeys.find((row) => row.id === id);
   if (!j) throw new Error('구매 기록을 찾지 못했어요.');
   if (['kept','worn'].includes(action) && !state.garments.some((item) => item.id === j.garmentId))
     throw new Error('연결된 옷 기록이 없어요. 받은 옷을 다시 등록해 연결한 뒤 기록해 주세요.');
-  if (action === 'received' && j.stage === 'received' || action === 'kept' && j.stage === 'kept') { journeyForms.delete(id); journeySheet(id); return; }
-  let updated = { ...j, ...pendingJourneyForm(id, j) };
-  if (action !== 'note') updated = transitionPurchaseJourney(updated, action);
+  const changes = pendingJourneyForm(id, j);
+  if (!allowOptionCorrection && showJourneyOptionChange(j, action)) return;
+  if (action === 'received' && j.stage === 'received' || action === 'kept' && j.stage === 'kept') {
+    if (Object.keys(changes).some((key) => changes[key] !== j[key])) action = 'note';
+    else { journeyForms.delete(id); journeySheet(id); return; }
+  }
   let garments = state.garments;
   if (action === 'received') {
     if (!j.candidate.kind) throw new Error('받은 옷의 종류를 먼저 확인해 주세요. 상품 정보 확인에서 고를 수 있어요.');
     const c = j.candidate, garmentId = j.garmentId || `g_purchase_${j.id}`;
     const existing = garments.find((item) => item.id === garmentId);
     if (!existing) garments = [...garments, makeGarment({ id: garmentId, kind: c.kind, slot: c.classificationConfirmed ? c.slot : null, color: c.colorSource === 'image' ? null : c.color, brand: c.brand || null, label: c.name, productId: c.productId, gender: c.gender.toUpperCase() })];
-    updated.garmentId = garmentId;
+    changes.garmentId = garmentId;
   }
+  // Corrections and the requested transition share the same durable commit.
+  // The first ordered/received snapshot keeps its originally recorded values.
+  const corrected = allowOptionCorrection ? transitionPurchaseJourney(j, 'correction', { changes: pendingJourneyForm(id, j) }) : j;
+  const updated = transitionPurchaseJourney(corrected, action, { changes });
   await set({ journeys: state.journeys.map((row) => row.id === id ? updated : row), garments, ...(['received','kept'].includes(action) ? { demo: false, demoSelected: [] } : {}) });
   journeyForms.delete(id);
   journeySheet(id);
@@ -793,6 +930,8 @@ function closeSheet() {
   document.body.style.overflow = '';
   draft = null;
   candidateDraft = null;
+  pendingOptionChange = null;
+  candidateGarmentReview = null;
   sheetKey = null;
 }
 
@@ -999,8 +1138,19 @@ async function saveGarmentDraft() {
       throw new Error('이 옷이 다른 화면에서 바뀌었어요. 최신 옷 정보를 다시 열어 확인해 주세요.');
     const item = makeGarment(current);
     item.photoMissing = !!current.photoMissing;
+    let journeys = state.journeys;
+    if (current.returnJourneyId) {
+      const journey = state.journeys.find((j) => j.id === current.returnJourneyId);
+      if (!journey) throw new Error('돌아갈 구매 기록이 없어졌어요. 입력은 유지했어요.');
+      const form = journeyForms.get(journey.id);
+      if (journey.stage !== 'candidate' && form && form.option !== journey.option)
+        throw new Error('주문 후 바뀐 옵션은 여정에서 정보 정정 또는 새 옵션으로 먼저 확인해 주세요. 옷과 입력은 유지했어요.');
+      const changes = { ...pendingJourneyForm(journey.id, journey), relatedGarmentIds: [...new Set([...journey.relatedGarmentIds,item.id])] };
+      const updated = transitionPurchaseJourney(journey, 'note', { changes });
+      journeys = journeys.map((j) => j.id === journey.id ? updated : j);
+    }
     await set(
-      { demo: false, demoSelected: [], garments: [...actual.filter((i) => i.id !== item.id), item], tab: 'closet' },
+      { demo: false, demoSelected: [], garments: [...actual.filter((i) => i.id !== item.id), item], journeys, tab: 'closet' },
       { assets: current.asset ? [current.asset] : [] },
     );
     current.saving = false;
@@ -1124,6 +1274,8 @@ async function eraseAllWardrobe() {
     photos = new Map();
     candidateDraft = null;
     journeyForms.clear();
+    pendingOptionChange = null;
+    candidateGarmentReview = null;
     draft = null;
     restoreDraft = null;
     pendingLegacy = null;
@@ -1147,6 +1299,8 @@ async function eraseAllWardrobe() {
     photos = new Map();
     candidateDraft = null;
     journeyForms.clear();
+    pendingOptionChange = null;
+    candidateGarmentReview = null;
     draft = null;
     pendingLegacy = null;
     legacyChanged = false;
@@ -1234,7 +1388,7 @@ async function chooseWardrobeBackup(file) {
       if (sheetRevision !== revision) return;
     }
     openSheet(
-      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > 4 ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 사본은 이 브라우저에 남습니다. 저장 원문 받기는 자료 형식·파일 크기에 따라 실패할 수 있어요. 중요한 원문은 교체 전에 먼저 내려받아 주세요.</p>` : `<p class="notice">현재 개인 옷 ${state.garments.length}벌 · 사진 ${photoBlobs.size}장 · 찜 ${state.saved.length}개 · 구매 여정 ${state.journeys.length}개와 취향을 교체합니다. 복구 사본을 만들지 않으니 필요한 기록은 먼저 백업해 주세요.</p>`}<button class="chip" data-action="${parsed.recovery ? 'recovery-backup' : 'backup'}">현재 자료 먼저 받기</button><button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
+      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > 5 ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 사본은 이 브라우저에 남습니다. 저장 원문 받기는 자료 형식·파일 크기에 따라 실패할 수 있어요. 중요한 원문은 교체 전에 먼저 내려받아 주세요.</p>` : `<p class="notice">현재 개인 옷 ${state.garments.length}벌 · 사진 ${photoBlobs.size}장 · 찜 ${state.saved.length}개 · 구매 여정 ${state.journeys.length}개와 취향을 교체합니다. 복구 사본을 만들지 않으니 필요한 기록은 먼저 백업해 주세요.</p>`}<button class="chip" data-action="${parsed.recovery ? 'recovery-backup' : 'backup'}">현재 자료 먼저 받기</button><button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
     );
     restoreDraft = parsed;
   } catch (error) {
@@ -1322,9 +1476,45 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'open-journey':
-        journeyForms.delete(el.dataset.id);
+        pendingOptionChange = null;
+        candidateGarmentReview = null;
         journeySheet(el.dataset.id);
         break;
+      case 'option-correction-confirm':
+        await confirmJourneyOptionChange();
+        break;
+      case 'option-fork-confirm':
+        await confirmJourneyOptionChange(true);
+        break;
+      case 'candidate-garment-review':
+        beginCandidateGarmentReview(el.dataset.id);
+        break;
+      case 'candidate-garment-apply':
+        await applyCandidateGarmentReview();
+        break;
+      case 'candidate-garment-toggle':
+        if (candidateGarmentReview?.fields.includes(el.dataset.field)) {
+          if (el.checked) candidateGarmentReview.selected.add(el.dataset.field);
+          else candidateGarmentReview.selected.delete(el.dataset.field);
+        }
+        break;
+      case 'journey-fit':
+      case 'journey-return-reason': {
+        const j = state.journeys.find((row) => row.id === el.dataset.id);
+        if (!j || !['received','kept','returned'].includes(j.stage)) break;
+        const field = a === 'journey-fit' ? 'fit' : 'returnReason';
+        await setJourneyField(j.id, 'feedback', { ...j.feedback, [field]: j.feedback[field] === el.dataset.value ? null : el.dataset.value });
+        break;
+      }
+      case 'journey-hide-product': {
+        const j = state.journeys.find((row) => row.id === el.dataset.id), productId = j?.candidate.productId;
+        if (!productId) break;
+        const hidden = state.hidden.includes(productId);
+        await set({ hidden: hidden ? state.hidden.filter((id) => id !== productId) : [...state.hidden, productId] });
+        journeySheet(j.id);
+        toast(hidden ? '이 상품을 다시 추천에 포함해요' : '이 상품만 추천에서 제외했어요. 구매·반품 이유는 자동 제외에 쓰지 않아요');
+        break;
+      }
       case 'journey-fork': {
         const parent = state.journeys.find((j) => j.id === el.dataset.id);
         if (!parent) break;
@@ -1342,6 +1532,8 @@ document.addEventListener('click', async (e) => {
         await setJourneyField(el.dataset.id, el.dataset.field, el.dataset.value);
         break;
       case 'journey-receipt-repair': {
+        const pending = state.journeys.find((row) => row.id === el.dataset.id);
+        if (pending) { pendingJourneyForm(pending.id, pending); if (showJourneyOptionChange(pending, 'note')) break; }
         const j = state.journeys.find((row) => row.id === el.dataset.id);
         if (!j?.garmentId || state.garments.some((item) => item.id === j.garmentId)) break;
         const c = j.candidate;
@@ -1352,6 +1544,8 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'journey-check-own': {
+        const pending = state.journeys.find((row) => row.id === el.dataset.id);
+        if (pending) { pendingJourneyForm(pending.id, pending); if (showJourneyOptionChange(pending, 'note')) break; }
         const item = state.garments.find((i) => i.id === el.dataset.item);
         if (!item) break;
         beginDraft(item, null, { confirmDetails: true });
@@ -1375,6 +1569,8 @@ document.addEventListener('click', async (e) => {
         await recordJourneyAction(el.dataset.id, el.dataset.step);
         break;
       case 'journey-add-own': {
+        const pending = state.journeys.find((row) => row.id === el.dataset.id);
+        if (pending) { pendingJourneyForm(pending.id, pending); if (showJourneyOptionChange(pending, 'note')) break; }
         const j = state.journeys.find((row) => row.id === el.dataset.id);
         if (!j) break;
         beginDraft();
@@ -1856,6 +2052,11 @@ document.addEventListener('change', async (e) => {
       if (e.target.id === 'candidate-slot') { c.slot = e.target.value || null; c.classificationConfirmed = !!c.slot; candidateSheet(); }
       if (e.target.id === 'candidate-color') { c.color = e.target.value || null; c.colorSource = c.color ? 'user' : null; }
     }
+    if (e.target.dataset?.action === 'candidate-garment-toggle' && candidateGarmentReview?.fields.includes(e.target.dataset.field)) {
+      if (e.target.checked) candidateGarmentReview.selected.add(e.target.dataset.field);
+      else candidateGarmentReview.selected.delete(e.target.dataset.field);
+    }
+    if (e.target.dataset?.action === 'journey-own-color') await saveJourneyGarmentCheck(e.target.dataset.id, e.target.dataset.item, e.target.value);
     if (e.target.id === 'brand-only') await set({ brandOnly: e.target.checked });
     if (e.target.id === 'photo-input' && e.target.files?.[0]) {
       const file = e.target.files[0];

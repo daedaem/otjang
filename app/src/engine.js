@@ -87,6 +87,9 @@ function ctx(state) {
   const closet = (state.closet || [])
     .map((i) => ({ ...i, gender: i.gender || SLOT_BY_ID[i.slot]?.g }))
     .filter((i) => i.gender === gender && !inactivePurchaseItems.has(i.id));
+  const activeGarmentIds = new Set(closet
+    .filter((item) => ['user', 'legacy'].includes(item.source) && !String(item.id).startsWith('demo_'))
+    .map((item) => item.id));
   // An order/receipt is a reason to pause another purchase of the same type,
   // not proof of an owned garment. It never enters closet or fills a look.
   const pendingSlots = new Set((state.journeys || [])
@@ -94,18 +97,26 @@ function ctx(state) {
       journey.candidate?.gender?.toUpperCase() === gender)
     .flatMap((journey) => {
       const candidate = journey.candidate;
-      const confirmedSlot = candidate.classificationConfirmed && SLOT_BY_ID[candidate.slot];
       const knownColor = evidenceColor(candidate);
       return SLOTS.filter((slot) => slot.g === gender &&
-        (confirmedSlot ? slot.id === confirmedSlot.id : slot.shape === candidate.kind) &&
+        slot.shape === candidate.kind &&
         (!slot.requiredColors || slot.requiredColors.includes(knownColor)))
         .map((slot) => slot.id);
     }));
-  // "I have something similar" is useful purchase knowledge even before a
-  // garment is registered. Pause that kind, but never manufacture a subtype,
-  // photo, owned role or ready outfit from the answer.
+  // An unlinked "I have something similar" answer belongs to that candidate's
+  // comparison. Only an active actual garment link can affect other home or
+  // automatic outfit purchases; the answer itself never creates an owned role.
   const ownershipCheckSlots = new Set((state.journeys || [])
-    .filter((journey) => journey.absence === 'present' && journey.candidate?.gender?.toUpperCase() === gender)
+    .filter((journey) => {
+      if (journey.absence !== 'present' || journey.candidate?.gender?.toUpperCase() !== gender) return false;
+      const linkedIds = new Set([
+        ...(journey.relatedGarmentIds || []),
+        ...(journey.replacementGarmentId ? [journey.replacementGarmentId] : []),
+      ]);
+      // Missing, demo, retired and returned records cannot establish current
+      // ownership for another candidate. Keep the journey answer unchanged.
+      return [...linkedIds].some((id) => activeGarmentIds.has(id));
+    })
     .flatMap((journey) => {
       const candidate = journey.candidate;
       const knownColor = evidenceColor(candidate);
@@ -335,6 +346,8 @@ export function fillLook(
     anchorItem = null,
     pinnedProduct = null,
     anchorColor = null,
+    allowPendingPurchases = false,
+    requestedPurchaseSlots = null,
   } = {},
 ) {
   const items = [],
@@ -429,6 +442,8 @@ export function fillLook(
     // 2) 상품: 품질·권장 색·색 조화·선호 브랜드를 함께 본다
     let best = null;
     inSeason.forEach((id, order) => {
+      const explicitlyRequested = allowPendingPurchases && (!requestedPurchaseSlots || requestedPurchaseSlots.has(id));
+      if (!explicitlyRequested && (c.pendingSlots?.has(id) || c.ownershipCheckSlots?.has(id))) return;
       for (const p of productsFor(id, productOpts(c)).slice(0, 10)) {
         const s =
           quality(p) / 5 +
@@ -480,7 +495,8 @@ function rankLooks(results, c) {
 // 오늘의 코디 (사야 할 상품 포함)
 export function recommendLooks(
   state,
-  { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null, anchorColor = null } = {},
+  { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null, anchorColor = null,
+    allowPendingPurchases = false, requestedPurchaseSlots = null } = {},
 ) {
   if (pinnedProduct && !productEligible(pinnedProduct)) return [];
   const c = ctx(state);
@@ -497,7 +513,9 @@ export function recommendLooks(
     looks = looks.filter((l) => slotsInLook(l).some((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id])));
   if (pinnedProduct) looks = looks.filter((l) => slotsInLook(l).includes(pinnedProduct.slot));
   return rankLooks(
-    looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem, pinnedProduct, anchorColor })),
+    looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem, pinnedProduct, anchorColor,
+      allowPendingPurchases: allowPendingPurchases || !!pinnedProduct,
+      requestedPurchaseSlots: requestedPurchaseSlots || (pinnedProduct ? new Set([pinnedProduct.slot]) : null) })),
     c,
   ).slice(0, limit);
 }
@@ -650,10 +668,15 @@ export function search(state, text, { anchorItemId = null } = {}) {
           },
           {
             limit: 1,
-            forceOwned: [...anchorIds],
+            forceOwned: [...anchorIds, ...(q.slotNamed ? targets.map((slot) => slot.id) : [])],
             anchorItem,
             pinnedProduct: anchorProduct,
             anchorColor: q.anchorColor,
+            allowPendingPurchases: q.slotNamed || !!anchorProduct,
+            requestedPurchaseSlots: new Set([
+              ...(q.slotNamed ? targets.map((slot) => slot.id) : []),
+              ...(anchorProduct ? [anchorProduct.slot] : []),
+            ]),
           },
         )[0] || null
       : null;

@@ -1,9 +1,101 @@
 import { validateWardrobe, migrateLegacyWardrobe } from './wardrobe.js';
+import { purchaseJourneyDetails, MAX_WARDROBE_STATE_BYTES } from './purchase-journey.js';
 
 export const MAX_GARMENT_PHOTO_BYTES = 800000;
+export const MAX_JOURNEY_STATE_BYTES = 600 * 1024;
+export const MAX_OWNERSHIP_JOURNEY_STATE_BYTES = 680 * 1024;
+export const JOURNEY_STATE_WARNING_BYTES = 500 * 1024;
+export const WARDROBE_STATE_WARNING_BYTES = MAX_WARDROBE_STATE_BYTES - 64 * 1024;
 const BACKUP_MAGIC = 'EOULBK02';
 const MAX_BACKUP_MANIFEST_BYTES = 1000000;
 const MAX_BACKUP_FILE_BYTES = 200 * MAX_GARMENT_PHOTO_BYTES + MAX_BACKUP_MANIFEST_BYTES + 12;
+
+export function journeyStorageUsage(state) {
+  const bytes = new TextEncoder().encode(JSON.stringify(state?.journeys ?? [])).length;
+  return {
+    bytes, limitBytes: MAX_JOURNEY_STATE_BYTES, warningBytes: JOURNEY_STATE_WARNING_BYTES,
+    warning: bytes >= JOURNEY_STATE_WARNING_BYTES, overBudget: bytes > MAX_JOURNEY_STATE_BYTES,
+  };
+}
+
+export function wardrobeStateStorageUsage(state) {
+  // closet and tab belong to the screen view. Photo Blobs live in a separate
+  // object store; only their metadata references contribute to this JSON limit.
+  const { closet, tab, ...record } = state ?? {};
+  const bytes = new TextEncoder().encode(JSON.stringify(record)).length;
+  return {
+    bytes, limitBytes: MAX_WARDROBE_STATE_BYTES, warningBytes: WARDROBE_STATE_WARNING_BYTES,
+    warning: bytes >= WARDROBE_STATE_WARNING_BYTES, overBudget: bytes > MAX_WARDROBE_STATE_BYTES,
+  };
+}
+
+// This is a small metadata reserve, not separate storage partitions. Old records
+// and confirmed backup replacements keep the full wardrobe validation contract.
+// Only exact lossless journey conversion may grow past the new reserve at boot.
+function losslessJourneyV5Upgrade(previous, next) {
+  if (previous?.schema !== 4 || next.schema !== 5 || previous.journeys.length !== next.journeys.length)
+    return false;
+  const expected = previous.journeys.map((journey, index) => {
+    const converted = {
+      ...structuredClone(journey), feedback: { fit: null, returnReason: null },
+      history: journey.history.map((entry) => ({ ...entry, details: null })),
+    };
+    const candidate = next.journeys[index];
+    if (candidate.history.length === converted.history.length + 1 &&
+        candidate.history.at(-1).action === 'imported')
+      converted.history.push({ action: 'imported', at: candidate.history.at(-1).at,
+        details: purchaseJourneyDetails(converted) });
+    return converted;
+  });
+  return rawRecordToken(expected, true) === rawRecordToken(next.journeys, true);
+}
+
+function essentialOwnershipJourneyChange(previous, next) {
+  if (previous?.schema !== 5 || next.schema !== 5 || previous.journeys.length !== next.journeys.length)
+    return false;
+  let changed = false;
+  for (let index = 0; index < previous.journeys.length; index++) {
+    const old = previous.journeys[index], current = next.journeys[index];
+    if (rawRecordToken(old, true) === rawRecordToken(current, true)) continue;
+    if (changed || current.history.length !== old.history.length + 1 ||
+        rawRecordToken(old.history, true) !== rawRecordToken(current.history.slice(0, -1), true))
+      return false;
+    const event = current.history.at(-1);
+    const lifecycle = ['received', 'kept', 'returned'].includes(event.action);
+    const retirement = event.action === 'details-change' && old.replacementConfirmed !== current.replacementConfirmed;
+    if (!lifecycle && !retirement) return false;
+    const expected = {
+      ...old, history: current.history,
+      stage: lifecycle ? event.action : old.stage,
+      garmentId: event.action === 'received' ? current.garmentId : old.garmentId,
+      replacementConfirmed: retirement ? current.replacementConfirmed : old.replacementConfirmed,
+    };
+    if (rawRecordToken(expected, true) !== rawRecordToken(current, true) ||
+        rawRecordToken(event.details, true) !== rawRecordToken(purchaseJourneyDetails(current), true))
+      return false;
+    changed = true;
+  }
+  return changed;
+}
+
+function validateJourneyGrowth(previous, next) {
+  // Schema 2/3/4 are supported legacy read/write formats. The reserve applies to
+  // new schema 5 changes, not a retroactive rejection of those original bytes.
+  if (next.schema !== 5) return;
+  const currentBytes = journeyStorageUsage(previous).bytes;
+  const nextBytes = journeyStorageUsage(next).bytes;
+  if (nextBytes <= MAX_JOURNEY_STATE_BYTES || nextBytes <= currentBytes || losslessJourneyV5Upgrade(previous, next))
+    return;
+  const essential = essentialOwnershipJourneyChange(previous, next);
+  if (essential && nextBytes <= MAX_OWNERSHIP_JOURNEY_STATE_BYTES) return;
+  const error = new Error(essential ?
+    '구매 기록이 보유·반품 상태를 정리할 추가 공간까지 사용했어요. 기존 기록은 유지했습니다. 먼저 백업해 주세요.' :
+    '옷 기록을 위한 공간을 남기기 위해 구매 기록의 추가 저장을 멈췄어요. 기존 기록은 유지했습니다. 먼저 백업해 주세요.');
+  error.code = 'journey-budget';
+  error.bytes = nextBytes;
+  error.limitBytes = essential ? MAX_OWNERSHIP_JOURNEY_STATE_BYTES : MAX_JOURNEY_STATE_BYTES;
+  throw error;
+}
 
 function packBackup(metadata, rows) {
   let offset = 0;
@@ -214,6 +306,9 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
             tx.abort();
             return;
           }
+          // Compare with the CAS-checked persisted state inside the same
+          // transaction, before any metadata or photo write can take place.
+          validateJourneyGrowth(old?.state, next);
           revision = (old?.revision || 0) + 1;
           epoch = old?.epoch || crypto.randomUUID();
           const needed = new Set(next.garments.map((garment) => garment.photoId).filter(Boolean));

@@ -356,3 +356,12 @@ img { display: block; max-width: 100%; }
 .purchase-decisions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 18px; }
 .purchase-decisions .btn { padding: 10px 6px; font-size: 14px; min-height: 44px; }
 @media (max-width: 360px) { .purchase-decisions { grid-template-columns: 1fr; } }
+/* Optional details stay compact; confirmed changes remain readable on narrow sheets. */
+.sheet > input { width: 100%; min-height: 44px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; font-size: 16px; }
+.journey-history { padding-left: 20px; margin: 14px 0 0; }
+.journey-history li { padding: 10px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.journey-history time { display: block; font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+.journey-history p { margin: 6px 0; font-size: 13px; }
+.garment-differences label { display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 6px 10px; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.garment-differences input { width: 20px; height: 20px; accent-color: var(--accent); }
+.garment-differences span { grid-column: 2; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }

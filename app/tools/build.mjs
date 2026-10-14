@@ -18,6 +18,7 @@ const order = [
   'src/data/products.js',
   'src/catalog-policy.js',
   'src/legacy-wardrobe.js',
+  'src/legacy-purchase-v4.js',
   'src/purchase-journey.js',
   'src/wardrobe.js',
   'src/wardrobe-store.js',

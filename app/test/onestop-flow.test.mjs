@@ -20,7 +20,7 @@ execFileSync(process.execPath, [path.join(appRoot, 'tools/build.mjs'), '--out', 
 const html = fs.readFileSync(output, 'utf8');
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(
   /\n\}\)\(\);\s*$/,
-  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore, candidateDraft: () => candidateDraft, draft: () => draft, beginCandidate, candidateSheet, saveCandidateDraft, journeySheet, setJourneyField, recordJourneyAction, renderSaved, chooseWardrobeBackup, chooseGarmentPhoto, saveGarmentDraft, recommendLooks, search, itemSheet };\n})();',
+  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore, candidateDraft: () => candidateDraft, draft: () => draft, pendingOptionChange: () => pendingOptionChange, candidateGarmentReview: () => candidateGarmentReview, beginCandidateGarmentReview, applyCandidateGarmentReview, beginCandidate, candidateSheet, saveCandidateDraft, journeySheet, setJourneyField, recordJourneyAction, renderSaved, chooseWardrobeBackup, chooseGarmentPhoto, saveGarmentDraft, recommendLooks, search, itemSheet };\n})();',
 );
 
 // Run the actual bundled callbacks against IDB. These DOM, photo-decoding and
@@ -94,8 +94,8 @@ async function boot(indexedDB = new IDBFactory(), storage = new Map()) {
     input(id, value, journey = null) {
       for (const fn of listeners.get('input') || []) fn({ target: { id, value, dataset: { journey } } });
     },
-    async change(id, value) {
-      for (const fn of listeners.get('change') || []) await fn({ target: { id, value } });
+    async change(id, value, targetProperties = {}) {
+      for (const fn of listeners.get('change') || []) await fn({ target: { id, value, ...targetProperties } });
     },
     submitQuery(value) {
       const form = { q: { value, blur() {} } };
@@ -108,19 +108,24 @@ async function boot(indexedDB = new IDBFactory(), storage = new Map()) {
 const product = PRODUCTS.find((p) => SLOT_BY_ID[p.slot]?.g === 'M' && p.color && p.colorSource !== 'image' && SLOT_BY_ID[p.slot].cat === 'top');
 assert.ok(product, 'the integration fixture must be a real catalog garment');
 const jpeg = (value = 7) => new Blob([new Uint8Array([255, 216, 255, value])], { type: 'image/jpeg' });
-async function personalPage() {
+async function personalPage(extraGarments = []) {
   const indexedDB = new IDBFactory();
   const store = createWardrobeStore({ indexedDB });
   const first = await store.load();
   const asset = await photoAsset(jpeg());
   const owned = makeGarment({ id: 'g_existing', kind: 'shirt', slot: 'm-oxford', color: 'blue', gender: 'M',
     brand: '내 브랜드', label: '실제 기존 셔츠', photoId: asset.id, createdAt: '2026-10-14T00:00:00.000Z' });
-  await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments: [owned] }, first.revision, [asset], first.epoch);
+  await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments: [owned, ...extraGarments] }, first.revision, [asset], first.epoch);
   store.close();
   return { page: await boot(indexedDB), owned, asset };
 }
 
 function plain(value) { return JSON.parse(JSON.stringify(value)); }
+function hasSheetAction(page, action, attributes = {}) {
+  const tags = page.nodes.get('sheet-root').innerHTML.match(/<(?:button|a)\b[^>]*>/g) || [];
+  return tags.some((tag) => tag.includes(`data-action="${action}"`) &&
+    Object.entries(attributes).every(([name, value]) => tag.includes(`data-${name}="${value}"`)));
+}
 async function withMetadataQuota(callback) {
   const put = IDBObjectStore.prototype.put;
   IDBObjectStore.prototype.put = function (...args) {
@@ -141,9 +146,9 @@ async function assertOriginalPhoto(page, asset) {
   assert.deepEqual(new Uint8Array(await snapshot.photos.get(asset.id).arrayBuffer()), new Uint8Array(await asset.blob.arrayBuffer()));
 }
 
-async function saveCatalogCandidate(page) {
-  page.app.beginCandidate(product.id);
-  assert.equal(page.app.candidateDraft().candidate.productId, product.id);
+async function saveCatalogCandidate(page, selectedProduct = product) {
+  page.app.beginCandidate(selectedProduct.id);
+  assert.equal(page.app.candidateDraft().candidate.productId, selectedProduct.id);
   await page.app.saveCandidateDraft();
   const journey = page.state().journeys.at(-1);
   assert.ok(journey, 'saving the actual candidate must create a durable journey');
@@ -576,7 +581,7 @@ test('regression: candidate metadata edit preserves unsaved option and reason, r
   assert.equal(edited.candidate.name, '내가 직접 확인한 후보 상품 이름');
   assert.equal(edited.option, '블랙 / M / 수량 1');
   assert.equal(edited.reason, '실제 옷과 먼저 비교하고 가격을 다시 확인');
-  assert.deepEqual(edited.history.map((entry) => entry.action), ['created']);
+  assert.deepEqual(edited.history.map((entry) => entry.action), ['created', 'candidate-edit']);
   await page.app.recordJourneyAction(journey.id, 'hold');
   const held = page.state().journeys.find((j) => j.id === journey.id);
   assert.equal(held.decision, 'hold');
@@ -584,7 +589,7 @@ test('regression: candidate metadata edit preserves unsaved option and reason, r
   assert.equal(held.option, edited.option);
   assert.equal(held.reason, edited.reason);
   assert.equal(held.candidate.name, edited.candidate.name);
-  assert.deepEqual(held.history.map((entry) => entry.action), ['created', 'hold']);
+  assert.deepEqual(held.history.map((entry) => entry.action), ['created', 'candidate-edit', 'hold']);
   assert.deepEqual(page.state().garments, [owned]);
 });
 
@@ -645,4 +650,579 @@ test('regression: a different-option fork retains source and outgoing original U
   assert.equal(page.app.candidateDraft().candidate, null);
   assert.match(page.app.candidateDraft().error, /공개 판매처|https/);
   page.close();
+});
+
+test('purchase improvements: checking an existing garment preserves pending option and reason in the same commit', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const matching = PRODUCTS.find((p) => p.slot === owned.slot && p.color === owned.color && p.colorSource !== 'image');
+  assert.ok(matching);
+  const journey = await saveCatalogCandidate(page, matching);
+  page.input('journey-option', '블루 / M', journey.id);
+  page.input('journey-reason', '현재 셔츠 상태를 확인하고 결정', journey.id);
+  assert.ok(hasSheetAction(page, 'journey-check-own', { id: journey.id, item: owned.id }));
+  await page.click({ action: 'journey-check-own', id: journey.id, item: owned.id });
+  page.input('garment-label', '직접 확인한 기존 셔츠');
+  const before = await stored(page);
+  await page.app.saveGarmentDraft();
+  const after = await stored(page);
+  const updated = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, before.revision + 1, 'garment confirmation and outgoing journey inputs are one acknowledged write');
+  assert.equal(updated.option, '블루 / M');
+  assert.equal(updated.reason, '현재 셔츠 상태를 확인하고 결정');
+  assert.ok(updated.relatedGarmentIds.includes(owned.id));
+  assert.equal(updated.history.at(-1).details.option, updated.option);
+  assert.equal(updated.history.at(-1).details.reason, updated.reason);
+  assert.equal(after.state.garments.find((g) => g.id === owned.id).label, '직접 확인한 기존 셔츠');
+  assert.equal(after.state.garments.find((g) => g.id === owned.id).photoId, owned.photoId);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /현재 셔츠 상태를 확인하고 결정/);
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: adding a photo-backed owned garment rolls back journey inputs and photo on quota failure, then retries atomically', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-option', '판매처 옵션 / M', journey.id);
+  page.input('journey-reason', '이미 가진 옷을 추가한 뒤 다시 비교', journey.id);
+  await page.click({ action: 'journey-add-own', id: journey.id });
+  page.input('garment-label', '원래부터 가진 실제 옷');
+  await page.app.chooseGarmentPhoto(jpeg(79));
+  const draftBefore = plain(page.app.draft());
+  assert.ok(draftBefore.asset.id);
+  const before = await stored(page);
+  const beforeView = page.state();
+  await withMetadataQuota(() => page.app.saveGarmentDraft());
+  const failed = await stored(page);
+  assert.equal(failed.revision, before.revision);
+  assert.deepEqual(failed.state, before.state);
+  assert.deepEqual(page.state(), beforeView, 'failed confirmation leaves the visible wardrobe state unchanged');
+  assert.deepEqual([...failed.photos.keys()].sort(), [...before.photos.keys()].sort());
+  assert.equal(failed.photos.has(draftBefore.asset.id), false, 'a rejected metadata transaction cannot leave its new personal photo behind');
+  assert.equal(page.app.draft().label, draftBefore.label);
+  assert.equal(page.app.draft().asset.id, draftBefore.asset.id);
+  assert.deepEqual(new Uint8Array(await page.app.draft().asset.blob.arrayBuffer()), new Uint8Array(await jpeg(79).arrayBuffer()));
+  assert.match(page.app.draft().error, /부족|저장|quota/i);
+  await assertOriginalPhoto(page, asset);
+  await page.app.saveGarmentDraft();
+  const after = await stored(page);
+  const added = after.state.garments.find((g) => g.id === draftBefore.id);
+  const updated = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, before.revision + 1);
+  assert.equal(added.label, draftBefore.label);
+  assert.equal(added.photoId, draftBefore.asset.id);
+  assert.equal(updated.option, '판매처 옵션 / M');
+  assert.equal(updated.reason, '이미 가진 옷을 추가한 뒤 다시 비교');
+  assert.ok(updated.relatedGarmentIds.includes(added.id));
+  assert.deepEqual(after.state.garments.find((g) => g.id === owned.id), owned);
+  assert.deepEqual(new Uint8Array(await after.photos.get(added.photoId).arrayBuffer()), new Uint8Array(await jpeg(79).arrayBuffer()));
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: a stale journey during owned-garment confirmation preserves the draft and commits neither record', async (t) => {
+  const { page: first, owned, asset } = await personalPage();
+  t.after(() => first.close());
+  const matching = PRODUCTS.find((p) => p.slot === owned.slot && p.color === owned.color && p.colorSource !== 'image');
+  const journey = await saveCatalogCandidate(first, matching);
+  const second = await boot(first.indexedDB, first.storage);
+  t.after(() => second.close());
+  first.input('journey-option', '내 초안 / M', journey.id);
+  first.input('journey-reason', '기존 셔츠 확인 중인 이유', journey.id);
+  await first.click({ action: 'journey-check-own', id: journey.id, item: owned.id });
+  first.input('garment-label', '저장되지 않아야 하는 셔츠 수정');
+  await second.app.setJourneyField(journey.id, 'absence', 'present');
+  const live = await stored(second);
+  await first.app.saveGarmentDraft();
+  const failed = await stored(second);
+  assert.equal(failed.revision, live.revision);
+  assert.deepEqual(failed.state, live.state);
+  assert.deepEqual(failed.state.garments.find((g) => g.id === owned.id), owned);
+  assert.equal(first.app.draft().label, '저장되지 않아야 하는 셔츠 수정');
+  assert.match(first.app.draft().error, /다른|바뀌|최신|충돌/);
+  first.app.journeySheet(journey.id);
+  assert.match(first.nodes.get('sheet-root').innerHTML, /내 초안 \/ M/);
+  assert.match(first.nodes.get('sheet-root').innerHTML, /기존 셔츠 확인 중인 이유/);
+  await assertOriginalPhoto(second, asset);
+});
+
+test('purchase improvements: replacement selection includes a differently colored active garment and survives candidate color editing', async (t) => {
+  const otherShirt = makeGarment({ id: 'g_other_shirt', kind: 'shirt', slot: 'm-flannel', color: 'green', gender: 'M', label: '기존 체크 셔츠' });
+  const { page, owned, asset } = await personalPage([otherShirt]);
+  t.after(() => page.close());
+  const differentColor = PRODUCTS.find((p) => p.slot === owned.slot && p.color !== owned.color && p.color && p.colorSource !== 'image');
+  assert.ok(differentColor);
+  const journey = await saveCatalogCandidate(page, differentColor);
+  await page.app.setJourneyField(journey.id, 'intent', 'replace');
+  assert.ok(hasSheetAction(page, 'journey-replacement', { id: journey.id, item: owned.id }), 'same-kind owned garments remain selectable even when the candidate has another color');
+  assert.ok(hasSheetAction(page, 'journey-replacement', { id: journey.id, item: otherShirt.id }), 'a different confirmed subtype of the same garment kind is also selectable for replacement');
+  await page.click({ action: 'journey-replacement', id: journey.id, item: owned.id });
+  await page.click({ action: 'candidate-edit', id: journey.id });
+  await page.change('candidate-color', 'black');
+  await page.app.saveCandidateDraft();
+  const edited = page.state().journeys.find((j) => j.id === journey.id);
+  assert.equal(edited.replacementGarmentId, owned.id);
+  assert.equal(edited.replacementConfirmed, false);
+  assert.equal(page.state().closet.some((g) => g.id === owned.id), true);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  await page.app.recordJourneyAction(journey.id, 'kept');
+  assert.equal(page.state().closet.some((g) => g.id === owned.id), true);
+  await page.click({ action: 'journey-retire-review', id: journey.id });
+  await page.click({ action: 'journey-field', id: journey.id, field: 'replacementConfirmed', value: 'true' });
+  assert.equal(page.state().closet.some((g) => g.id === owned.id), false);
+  assert.deepEqual(page.state().garments.find((g) => g.id === owned.id), owned);
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: repairing a received garment preserves pending notes without treating repair as a keep decision', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-option', '처음 받은 옵션 확인', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  const garmentId = page.state().journeys.find((j) => j.id === journey.id).garmentId;
+  await page.click({ action: 'open-own', id: garmentId });
+  const deletion = { action: 'remove-own', id: garmentId };
+  await page.click(deletion);
+  await page.click(deletion);
+  assert.equal(page.state().garments.some((g) => g.id === garmentId), false);
+  page.app.journeySheet(journey.id);
+  page.input('journey-option', '처음 받은 옵션 확인', journey.id);
+  page.input('journey-reason', '실제 받은 옷을 다시 확인해 연결', journey.id);
+  await page.click({ action: 'journey-receipt-repair', id: journey.id });
+  await page.app.chooseGarmentPhoto(jpeg(83));
+  const repairedPhotoId = page.app.draft().asset.id;
+  const before = await stored(page);
+  await page.app.saveGarmentDraft();
+  const after = await stored(page);
+  const updated = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, before.revision + 1);
+  assert.equal(updated.stage, 'received');
+  assert.equal(updated.garmentId, garmentId);
+  assert.equal(updated.option, '처음 받은 옵션 확인');
+  assert.equal(updated.reason, '실제 받은 옷을 다시 확인해 연결');
+  assert.equal(after.state.garments.find((g) => g.id === garmentId).photoId, repairedPhotoId);
+  assert.equal(page.state().closet.some((g) => g.id === garmentId), false);
+  assert.deepEqual(after.state.garments.find((g) => g.id === owned.id), owned);
+  assert.deepEqual(new Uint8Array(await after.photos.get(repairedPhotoId).arrayBuffer()), new Uint8Array(await jpeg(83).arrayBuffer()));
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: hold, buy, wear and return preserve their own reasons and feedback through later notes, reload and backup', async (t) => {
+  const { page, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-reason', '비슷한 옷이 있어서 먼저 보류', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'hold');
+  const held = plain(page.state().journeys.find((j) => j.id === journey.id).history.at(-1));
+  page.input('journey-option', '직접 확인한 M', journey.id);
+  page.input('journey-reason', '기존 옷이 낡아 새 옷으로 교체', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'buy');
+  const bought = plain(page.state().journeys.find((j) => j.id === journey.id).history.at(-1));
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  await page.app.recordJourneyAction(journey.id, 'kept');
+  await page.app.setJourneyField(journey.id, 'feedback', { fit: 'small', returnReason: null });
+  page.input('journey-reason', '입어 보니 어깨가 좁음', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'worn');
+  const worn = plain(page.state().journeys.find((j) => j.id === journey.id).history.at(-1));
+  await page.app.setJourneyField(journey.id, 'feedback', { fit: 'small', returnReason: 'size' });
+  page.input('journey-reason', '사이즈가 맞지 않아 판매처에 반품', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'returned');
+  const returned = plain(page.state().journeys.find((j) => j.id === journey.id).history.at(-1));
+  page.input('journey-reason', '다음에는 한 사이즈 크게 확인', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'note');
+  const updated = page.state().journeys.find((j) => j.id === journey.id);
+  assert.equal(held.details.reason, '비슷한 옷이 있어서 먼저 보류');
+  assert.equal(bought.details.reason, '기존 옷이 낡아 새 옷으로 교체');
+  assert.equal(bought.details.option, '직접 확인한 M');
+  assert.equal(worn.details.reason, '입어 보니 어깨가 좁음');
+  assert.deepEqual(worn.details.feedback, { fit: 'small', returnReason: null });
+  assert.equal(returned.details.reason, '사이즈가 맞지 않아 판매처에 반품');
+  assert.deepEqual(returned.details.feedback, { fit: 'small', returnReason: 'size' });
+  for (const event of [held, bought, worn, returned]) {
+    assert.deepEqual(updated.history.find((entry) => entry.action === event.action), event);
+  }
+  assert.equal(updated.reason, '다음에는 한 사이즈 크게 확인');
+  const persisted = await stored(page);
+  assert.equal(persisted.state.schema, 5);
+  const reloaded = await boot(page.indexedDB, page.storage);
+  t.after(() => reloaded.close());
+  assert.deepEqual(reloaded.state().journeys.find((j) => j.id === journey.id), updated);
+  const backup = await page.app.store.backup();
+  assert.deepEqual((await parseWardrobeBackup(backup)).state.journeys.find((j) => j.id === journey.id), updated);
+  await assertOriginalPhoto(reloaded, asset);
+});
+
+test('purchase improvements: changing an ordered option requires a visible correction choice and preserves the original order event', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-option', 'M', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  const before = await stored(page);
+  const orderEvent = plain(before.state.journeys.find((j) => j.id === journey.id).history.find((entry) => entry.action === 'ordered'));
+  assert.equal(orderEvent.details.option, 'M');
+  page.input('journey-option', 'L', journey.id);
+  page.input('journey-reason', '판매처에서 실제 주문한 옵션을 잘못 적어 정정', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'received');
+  assert.ok(page.app.pendingOptionChange());
+  assert.ok(page.nodes.get('sheet-root').innerHTML.includes('data-action="option-correction-confirm"'));
+  assert.ok(page.nodes.get('sheet-root').innerHTML.includes('data-action="option-fork-confirm"'));
+  const waiting = await stored(page);
+  assert.equal(waiting.revision, before.revision, 'showing the choice cannot silently alter the ordered unit');
+  assert.deepEqual(waiting.state, before.state);
+  await page.click({ action: 'option-correction-confirm' });
+  const after = await stored(page);
+  const updated = page.state().journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, before.revision + 1, 'option correction, receipt and garment creation require one acknowledged commit');
+  assert.equal(updated.stage, 'received');
+  assert.equal(updated.option, 'L');
+  assert.deepEqual(updated.history.find((entry) => entry.action === 'ordered'), orderEvent);
+  assert.deepEqual(updated.history.slice(-2).map((entry) => entry.action), ['correction', 'received']);
+  assert.equal(updated.history.at(-2).details.option, 'L');
+  assert.equal(updated.history.at(-2).details.reason, '판매처에서 실제 주문한 옵션을 잘못 적어 정정');
+  assert.equal(updated.history.at(-1).details.option, 'L');
+  assert.equal(updated.history.at(-1).details.garmentId, updated.garmentId);
+  assert.equal(page.state().garments.filter((g) => g.id === updated.garmentId).length, 1);
+  assert.equal(page.state().closet.some((g) => g.id === updated.garmentId), false);
+  assert.deepEqual(page.state().garments.find((g) => g.id === owned.id), owned);
+  assert.equal(page.app.pendingOptionChange(), null);
+  const reloaded = await boot(page.indexedDB, page.storage);
+  t.after(() => reloaded.close());
+  assert.deepEqual(reloaded.state().journeys.find((j) => j.id === journey.id), updated);
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: a different-option choice forks independently instead of rewriting the original ordered unit', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-option', 'M', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  const original = plain(page.state().journeys.find((j) => j.id === journey.id));
+  const before = await stored(page);
+  page.input('journey-option', 'L', journey.id);
+  page.input('journey-reason', 'L 옵션도 별도로 비교', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'note');
+  assert.ok(page.app.pendingOptionChange());
+  assert.equal((await stored(page)).revision, before.revision);
+  await page.click({ action: 'option-fork-confirm' });
+  assert.equal((await stored(page)).revision, before.revision + 1);
+  const state = page.state();
+  assert.deepEqual(state.journeys.find((j) => j.id === journey.id), original);
+  const fork = state.journeys.find((j) => j.id !== journey.id);
+  assert.ok(fork);
+  assert.equal(fork.forkedFrom, journey.id);
+  assert.equal(fork.option, 'L');
+  assert.equal(fork.reason, 'L 옵션도 별도로 비교');
+  assert.equal(fork.stage, 'candidate');
+  assert.equal(fork.decision, null);
+  assert.equal(fork.garmentId, null);
+  assert.equal(fork.wearCount, 0);
+  assert.equal(fork.history.some((entry) => entry.action === 'ordered'), false);
+  assert.deepEqual(fork.candidate, original.candidate);
+  assert.deepEqual(state.garments, [owned]);
+  assert.equal(page.app.pendingOptionChange(), null);
+  const reloaded = await boot(page.indexedDB, page.storage);
+  t.after(() => reloaded.close());
+  assert.deepEqual(reloaded.state().journeys, state.journeys);
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: quota failure during option correction keeps the original order and pending receipt choice retryable', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-option', 'M', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  const before = await stored(page);
+  const original = before.state.journeys.find((j) => j.id === journey.id);
+  page.input('journey-option', 'L', journey.id);
+  page.input('journey-reason', '실제 받은 옵션으로 정정', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'received');
+  await withMetadataQuota(() => page.click({ action: 'option-correction-confirm' }));
+  const failed = await stored(page);
+  assert.equal(failed.revision, before.revision);
+  assert.deepEqual(failed.state, before.state);
+  assert.deepEqual(page.state().journeys.find((j) => j.id === journey.id), original);
+  assert.ok(page.app.pendingOptionChange(), 'the failed write must retain the correction and receipt choice');
+  assert.ok(hasSheetAction(page, 'option-correction-confirm'));
+  assert.deepEqual(page.state().garments, [owned]);
+  await assertOriginalPhoto(page, asset);
+  await page.click({ action: 'option-correction-confirm' });
+  const after = await stored(page);
+  const updated = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, before.revision + 1);
+  assert.equal(updated.stage, 'received');
+  assert.equal(updated.option, 'L');
+  assert.equal(updated.reason, '실제 받은 옵션으로 정정');
+  assert.deepEqual(updated.history.slice(0, original.history.length), original.history);
+  assert.equal(after.state.garments.filter((g) => g.id === updated.garmentId).length, 1);
+  assert.equal(page.app.pendingOptionChange(), null);
+});
+
+test('purchase improvements: editing a received candidate waits for explicit garment review and preserves personal name, brand and photo', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  const garmentId = page.state().journeys.find((j) => j.id === journey.id).garmentId;
+  const receiptEvent = plain(page.state().journeys.find((j) => j.id === journey.id).history.find((entry) => entry.action === 'received'));
+  await page.click({ action: 'edit-own', id: garmentId });
+  page.input('garment-label', '내가 붙인 실제 옷 이름');
+  page.input('garment-brand', '직접 확인한 실제 브랜드');
+  await page.app.chooseGarmentPhoto(jpeg(89));
+  await page.app.saveGarmentDraft();
+  const actualBefore = plain(page.state().garments.find((g) => g.id === garmentId));
+  const color = actualBefore.color === 'navy' ? 'blue' : 'navy';
+  await page.click({ action: 'candidate-edit', id: journey.id });
+  await page.change('candidate-color', color);
+  await page.app.saveCandidateDraft();
+  assert.deepEqual(page.state().garments.find((g) => g.id === garmentId), actualBefore, 'candidate metadata alone cannot overwrite a personally edited received garment');
+  const candidateEdited = page.state().journeys.find((j) => j.id === journey.id);
+  assert.equal(candidateEdited.candidate.color, color);
+  assert.deepEqual(candidateEdited.history.find((entry) => entry.action === 'received'), receiptEvent);
+  page.app.beginCandidateGarmentReview(journey.id);
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(sheet, /내가 붙인 실제 옷 이름/);
+  assert.match(sheet, /직접 확인한 실제 브랜드/);
+  assert.match(sheet, /→/);
+  assert.ok(hasSheetAction(page, 'candidate-garment-apply'));
+  const before = await stored(page);
+  await withMetadataQuota(() => assert.rejects(page.app.applyCandidateGarmentReview(), (error) => error.name === 'QuotaExceededError'));
+  const failed = await stored(page);
+  assert.equal(failed.revision, before.revision);
+  assert.deepEqual(failed.state, before.state);
+  assert.deepEqual(page.state().garments.find((g) => g.id === garmentId), actualBefore);
+  await page.app.applyCandidateGarmentReview();
+  const after = await stored(page);
+  const updatedItem = after.state.garments.find((g) => g.id === garmentId);
+  const updatedJourney = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, before.revision + 1);
+  assert.deepEqual(updatedItem, { ...actualBefore, color });
+  assert.equal(updatedJourney.history.at(-1).action, 'garment-confirmed');
+  assert.deepEqual(updatedJourney.history.find((entry) => entry.action === 'received'), receiptEvent);
+  assert.equal(page.state().closet.some((g) => g.id === garmentId), false);
+  assert.deepEqual(after.state.garments.find((g) => g.id === owned.id), owned);
+  assert.deepEqual(new Uint8Array(await after.photos.get(updatedItem.photoId).arrayBuffer()), new Uint8Array(await jpeg(89).arrayBuffer()));
+  await assertOriginalPhoto(page, asset);
+});
+
+test('purchase improvements: stale received-garment review cannot overwrite another tab\'s actual garment and photo', async (t) => {
+  const { page: first, asset } = await personalPage();
+  t.after(() => first.close());
+  const journey = await saveCatalogCandidate(first);
+  await first.app.recordJourneyAction(journey.id, 'ordered');
+  await first.app.recordJourneyAction(journey.id, 'received');
+  const garmentId = first.state().journeys.find((j) => j.id === journey.id).garmentId;
+  const color = product.color === 'navy' ? 'blue' : 'navy';
+  await first.click({ action: 'candidate-edit', id: journey.id });
+  await first.change('candidate-color', color);
+  await first.app.saveCandidateDraft();
+  first.app.beginCandidateGarmentReview(journey.id);
+  const second = await boot(first.indexedDB, first.storage);
+  t.after(() => second.close());
+  await second.click({ action: 'edit-own', id: garmentId });
+  second.input('garment-label', '다른 탭에서 확인한 실제 옷');
+  await second.app.chooseGarmentPhoto(jpeg(97));
+  await second.app.saveGarmentDraft();
+  const live = await stored(second);
+  await assert.rejects(first.app.applyCandidateGarmentReview(), /다른|바뀌|최신|충돌/);
+  const failed = await stored(second);
+  assert.equal(failed.revision, live.revision);
+  assert.deepEqual(failed.state, live.state);
+  const actual = failed.state.garments.find((g) => g.id === garmentId);
+  assert.equal(actual.label, '다른 탭에서 확인한 실제 옷');
+  assert.equal(actual.color, product.color);
+  assert.deepEqual(new Uint8Array(await failed.photos.get(actual.photoId).arrayBuffer()), new Uint8Array(await jpeg(97).arrayBuffer()));
+  await assertOriginalPhoto(second, asset);
+});
+
+test('option protection: auxiliary feedback, garment review and editor entry wait for correction before retrying their writes', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const matching = PRODUCTS.find((p) => p.slot === owned.slot && p.color === owned.color && p.colorSource !== 'image');
+  const journey = await saveCatalogCandidate(page, matching);
+  page.input('journey-option', 'M', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  const garmentId = page.state().journeys.find((j) => j.id === journey.id).garmentId;
+  await page.click({ action: 'candidate-edit', id: journey.id });
+  await page.change('candidate-color', 'navy');
+  await page.app.saveCandidateDraft();
+  page.app.beginCandidateGarmentReview(journey.id);
+  const before = await stored(page);
+  const original = before.state.journeys.find((j) => j.id === journey.id);
+  page.input('journey-option', 'L', journey.id);
+  page.input('journey-reason', '주문 옵션을 잘못 적어 수정', journey.id);
+  const attempts = [
+    () => page.app.applyCandidateGarmentReview(),
+    () => page.app.setJourneyField(journey.id, 'feedback', { fit: 'right', returnReason: null }),
+    () => page.app.beginCandidateGarmentReview(journey.id),
+    () => page.click({ action: 'journey-check-own', id: journey.id, item: owned.id }),
+    () => page.click({ action: 'journey-add-own', id: journey.id }),
+  ];
+  for (const attempt of attempts) {
+    await attempt();
+    assert.ok(page.app.pendingOptionChange());
+    assert.ok(hasSheetAction(page, 'option-correction-confirm'));
+    assert.equal(page.app.draft(), null, 'an editor cannot open while a changed ordered option awaits a choice');
+    const waiting = await stored(page);
+    assert.equal(waiting.revision, before.revision);
+    assert.deepEqual(waiting.state, before.state);
+  }
+  await page.click({ action: 'option-correction-confirm' });
+  const corrected = await stored(page);
+  const correctedJourney = corrected.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(corrected.revision, before.revision + 1);
+  assert.equal(correctedJourney.option, 'L');
+  assert.deepEqual(correctedJourney.history.slice(0, original.history.length), original.history);
+  assert.deepEqual(correctedJourney.feedback, { fit: null, returnReason: null }, 'confirming the option must not silently perform the blocked feedback choice');
+  assert.deepEqual(corrected.state.garments, before.state.garments);
+  assert.equal(page.app.pendingOptionChange(), null);
+  await page.app.setJourneyField(journey.id, 'feedback', { fit: 'right', returnReason: null });
+  page.app.beginCandidateGarmentReview(journey.id);
+  await page.click({ action: 'candidate-garment-apply' });
+  assert.equal(page.state().garments.find((g) => g.id === garmentId).color, 'navy');
+  await page.click({ action: 'journey-check-own', id: journey.id, item: owned.id });
+  assert.equal(page.app.draft().id, owned.id);
+  page.input('garment-label', '옵션 확인 후 저장한 기존 셔츠');
+  await page.app.saveGarmentDraft();
+  const after = await stored(page);
+  const updated = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(updated.option, 'L');
+  assert.deepEqual(updated.feedback, { fit: 'right', returnReason: null });
+  assert.deepEqual(updated.history.slice(0, original.history.length), original.history);
+  assert.equal(after.state.garments.find((g) => g.id === owned.id).label, '옵션 확인 후 저장한 기존 셔츠');
+  assert.equal(after.state.garments.find((g) => g.id === owned.id).photoId, owned.photoId);
+  await assertOriginalPhoto(page, asset);
+});
+
+test('option protection: inline owned-color change gates a changed ordered option, then preserves photo and retries a failed write', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  await page.click({ action: 'edit-own', id: owned.id });
+  await page.click({ action: 'draft-color', color: '' });
+  await page.app.saveGarmentDraft();
+  assert.equal(page.state().garments.find((g) => g.id === owned.id).color, null);
+  const matching = PRODUCTS.find((p) => p.slot === owned.slot && p.color === owned.color && p.colorSource !== 'image');
+  const journey = await saveCatalogCandidate(page, matching);
+  page.input('journey-option', 'M', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="journey-own-color"/);
+  const before = await stored(page);
+  const original = before.state.journeys.find((j) => j.id === journey.id);
+  page.input('journey-option', 'L', journey.id);
+  page.input('journey-reason', '옵션을 먼저 정정하고 내 옷 색 확인', journey.id);
+  const target = { dataset: { action: 'journey-own-color', id: journey.id, item: owned.id } };
+  await page.change('', 'blue', target);
+  const waiting = await stored(page);
+  assert.equal(waiting.revision, before.revision);
+  assert.deepEqual(waiting.state, before.state);
+  assert.ok(page.app.pendingOptionChange());
+  await page.click({ action: 'option-correction-confirm' });
+  const corrected = await stored(page);
+  assert.equal(corrected.state.garments.find((g) => g.id === owned.id).color, null);
+  await withMetadataQuota(() => page.change('', 'blue', target));
+  const failed = await stored(page);
+  assert.equal(failed.revision, corrected.revision);
+  assert.deepEqual(failed.state, corrected.state);
+  assert.deepEqual([...failed.photos.keys()], [...corrected.photos.keys()]);
+  await assertOriginalPhoto(page, asset);
+  await page.change('', 'blue', target);
+  const after = await stored(page);
+  const updated = after.state.journeys.find((j) => j.id === journey.id);
+  assert.equal(after.revision, corrected.revision + 1);
+  assert.equal(updated.option, 'L');
+  assert.equal(updated.stage, 'ordered');
+  assert.deepEqual(updated.history.slice(0, original.history.length), original.history);
+  assert.equal(updated.history.at(-1).action, 'details-change');
+  assert.ok(updated.relatedGarmentIds.includes(owned.id));
+  assert.equal(after.state.garments.find((g) => g.id === owned.id).color, 'blue');
+  assert.equal(after.state.garments.find((g) => g.id === owned.id).photoId, owned.photoId);
+  await assertOriginalPhoto(page, asset);
+});
+
+test('option protection: checkbox change applies only explicitly selected garment fields and retains selection and photo after quota failure', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  const garmentId = page.state().journeys.find((j) => j.id === journey.id).garmentId;
+  await page.click({ action: 'edit-own', id: garmentId });
+  page.input('garment-label', '내가 붙인 원래 이름');
+  page.input('garment-brand', '사진과 함께 직접 남긴 브랜드');
+  await page.app.chooseGarmentPhoto(jpeg(103));
+  await page.app.saveGarmentDraft();
+  const actual = plain(page.state().garments.find((g) => g.id === garmentId));
+  const color = actual.color === 'navy' ? 'blue' : 'navy';
+  await page.click({ action: 'candidate-edit', id: journey.id });
+  page.input('candidate-name', '판매처에서 확인한 새 상품 이름');
+  await page.change('candidate-color', color);
+  await page.app.saveCandidateDraft();
+  const historyBefore = plain(page.state().journeys.find((j) => j.id === journey.id).history);
+  await page.click({ action: 'candidate-garment-review', id: journey.id });
+  await page.change('', '', { dataset: { action: 'candidate-garment-toggle', field: 'color' }, checked: false });
+  await page.change('', '', { dataset: { action: 'candidate-garment-toggle', field: 'label' }, checked: true });
+  assert.deepEqual([...page.app.candidateGarmentReview().selected], ['label']);
+  const before = await stored(page);
+  await withMetadataQuota(() => page.click({ action: 'candidate-garment-apply' }));
+  const failed = await stored(page);
+  assert.equal(failed.revision, before.revision);
+  assert.deepEqual(failed.state, before.state);
+  assert.deepEqual([...page.app.candidateGarmentReview().selected], ['label']);
+  assert.deepEqual(page.state().garments.find((g) => g.id === garmentId), actual);
+  assert.deepEqual(new Uint8Array(await failed.photos.get(actual.photoId).arrayBuffer()), new Uint8Array(await jpeg(103).arrayBuffer()));
+  assert.ok(hasSheetAction(page, 'candidate-garment-apply'));
+  await page.click({ action: 'candidate-garment-apply' });
+  const after = await stored(page);
+  assert.equal(after.revision, before.revision + 1);
+  assert.deepEqual(after.state.garments.find((g) => g.id === garmentId), { ...actual, label: '판매처에서 확인한 새 상품 이름' });
+  assert.deepEqual(after.state.journeys.find((j) => j.id === journey.id).history.slice(0, historyBefore.length), historyBefore);
+  assert.deepEqual(after.state.garments.find((g) => g.id === owned.id), owned);
+  assert.deepEqual(new Uint8Array(await after.photos.get(actual.photoId).arrayBuffer()), new Uint8Array(await jpeg(103).arrayBuffer()));
+  await assertOriginalPhoto(page, asset);
+});
+
+test('option protection: a new candidate shows original return feedback separately from later same-option notes and excludes corrected-option feedback', async (t) => {
+  const { page, owned, asset } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  page.input('journey-option', 'M', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'ordered');
+  await page.app.recordJourneyAction(journey.id, 'received');
+  await page.app.setJourneyField(journey.id, 'feedback', { fit: 'small', returnReason: 'size' });
+  page.input('journey-reason', 'M 옵션을 받아 입어 보고 반품', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'returned');
+  const originalReturn = plain(page.state().journeys.find((j) => j.id === journey.id).history.find((event) => event.action === 'returned'));
+  await page.app.setJourneyField(journey.id, 'feedback', { fit: 'right', returnReason: 'color' });
+  await page.click({ action: 'journey-fork', id: journey.id });
+  const forkId = page.state().journeys.find((j) => j.forkedFrom === journey.id).id;
+  const firstSheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(firstSheet, /M 옵션을 받아 입어 보고 반품/);
+  assert.match(firstSheet, /핏 직접 기록: 작음/);
+  assert.match(firstSheet, /같은 옵션으로 반품 후 저장한 정보: 핏 직접 기록: 맞음/);
+  assert.match(firstSheet, /반품 사유: 사이즈/);
+  assert.match(firstSheet, /반품 사유: 색/);
+  await page.click({ action: 'open-journey', id: journey.id });
+  page.input('journey-option', 'L', journey.id);
+  page.input('journey-reason', '다른 옵션으로 잘못 기록한 내용을 정정', journey.id);
+  await page.app.recordJourneyAction(journey.id, 'note');
+  await page.click({ action: 'option-correction-confirm' });
+  await page.app.setJourneyField(journey.id, 'feedback', { fit: 'large', returnReason: 'size' });
+  await page.click({ action: 'open-journey', id: forkId });
+  const afterSheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(afterSheet, /핏 직접 기록: 작음/);
+  assert.match(afterSheet, /같은 옵션으로 반품 후 저장한 정보: 핏 직접 기록: 맞음/);
+  assert.doesNotMatch(afterSheet, /핏 직접 기록: 큼/);
+  const updatedOriginal = page.state().journeys.find((j) => j.id === journey.id);
+  assert.equal(updatedOriginal.option, 'L');
+  assert.deepEqual(updatedOriginal.feedback, { fit: 'large', returnReason: 'size' });
+  assert.deepEqual(updatedOriginal.history.find((event) => event.action === 'returned'), originalReturn);
+  assert.deepEqual(page.state().garments.find((g) => g.id === owned.id), owned);
+  await assertOriginalPhoto(page, asset);
 });

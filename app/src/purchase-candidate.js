@@ -2,7 +2,7 @@
 import { PRODUCTS } from './data/products.js';
 import { SLOT_BY_ID, STYLES, COLORS } from './data/slots.js';
 import { fillLook, matchingLooks, seasonOf } from './engine.js';
-import { garmentSlotStatus } from './wardrobe.js';
+import { garmentSlotStatus, garmentLabel } from './wardrobe.js';
 import { productExclusionReason, productClassificationConflict } from './catalog-policy.js';
 import { isPublicPurchaseUrl, inactivePurchaseGarmentIds } from './purchase-journey.js';
 
@@ -101,7 +101,7 @@ function candidateContext(state, closet, gender) {
   };
 }
 
-export function compareCandidate(state, candidate, { absence = 'unknown', intent = 'add' } = {}) {
+export function compareCandidate(state, candidate, { absence = 'unknown', intent = 'add', replacementGarmentId = null } = {}) {
   const resultCandidate = { ...candidate };
   const gender = candidate?.gender === 'f' || candidate?.gender === 'F' ? 'F' : 'M';
   const inactiveIds = inactivePurchaseGarmentIds(state);
@@ -122,6 +122,7 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     classificationValid && garmentSlotStatus(item, slot) === 'confirmed');
   const similarOwned = classificationValid ? actual.filter((item) => !sameProduct.includes(item) &&
     garmentSlotStatus(item, slot) === 'confirmed' && hasColor && item.color === candidateColor) : [];
+  const sameTypeOwned = classificationValid ? actual.filter((item) => garmentSlotStatus(item, slot) === 'confirmed') : [];
   const uncertainOwned = actual.filter((item) =>
     !SLOT_BY_ID[item.slot] || !Object.hasOwn(COLORS, item.color) ||
     (slot && garmentSlotStatus(item, slot) === 'uncertain') ||
@@ -140,8 +141,10 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
   if (uncertainOwned.length)
     check('owned-details', '일부 내 옷의 세부 종류·색을 확인하면 비교에 포함할 수 있어요.', uncertainOwned.map((item) => item.id));
   if (!actual.length) check('actual-wardrobe', '예시 옷이 아닌 실제 가진 옷을 등록하면 비교할 수 있어요.');
-  if (!sameProduct.length && !similarOwned.length && acceptedAbsence === 'unknown')
+  if (acceptedIntent === 'add' && !sameProduct.length && !sameTypeOwned.length && acceptedAbsence === 'unknown')
     check('ownership-unknown', '등록되지 않은 옷이 있을 수 있어요. 비슷한 옷을 실제로 가지고 있는지 확인해 주세요.');
+  if (sameTypeOwned.length && acceptedAbsence === 'absent')
+    check('ownership-conflict', '등록한 같은 세부 종류의 옷이 있어요. 추가 구매인지 기존 옷 교체인지 확인해 주세요.', sameTypeOwned.map((item) => item.id));
   if (sameProduct.some((item) => !exactOwned.includes(item)))
     check('product-variant', '같은 상품 페이지의 옷이 있어요. 색·옵션이 같은지 확인해 주세요.', sameProduct.map((item) => item.id));
 
@@ -156,6 +159,19 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
   const completeCandidate = classificationValid && hasColor &&
     (!slot.requiredColors || slot.requiredColors.includes(candidateColor)) &&
     parsed.ok && candidate.productId === parsed.productId;
+  const requestedReplacement = acceptedIntent === 'replace'
+    ? actual.find((item) => item.id === replacementGarmentId) || null : null;
+  const replacementTarget = completeCandidate && requestedReplacement &&
+    requestedReplacement.kind === candidate.kind && SLOT_BY_ID[requestedReplacement.slot] &&
+    Object.hasOwn(COLORS, requestedReplacement.color) &&
+    garmentSlotStatus(requestedReplacement, SLOT_BY_ID[requestedReplacement.slot]) === 'confirmed'
+    ? requestedReplacement : null;
+  const replacement = { target: replacementTarget, beforeFormulaCount: 0, retainedFormulaCount: 0,
+    lostFormulaCount: 0, newFormulaCount: 0 };
+  if (acceptedIntent === 'replace' && !replacementTarget)
+    check('replacement-target', requestedReplacement
+      ? '교체할 내 옷과 후보의 종류·색을 먼저 확인해 주세요.'
+      : '교체할 실제 보유 옷 한 벌을 골라 주세요.');
   const looks = [];
   if (completeCandidate) {
     let anchorId = '__purchase_candidate__';
@@ -172,7 +188,16 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
       photoId: null,
       source: 'candidate',
     };
-    const withCandidate = { ...context, closet: [...confirmed, anchor] };
+    const withCandidate = { ...context, closet: [...confirmed.filter((item) => item.id !== replacementTarget?.id), anchor] };
+    if (replacementTarget) {
+      const beforeTarget = new Set(formulas.filter((look) =>
+        fillLook(look, context, { ownedOnly: true, anchorItem: replacementTarget })).map((look) => look.id));
+      const afterReplacement = new Set(formulas.filter((look) =>
+        fillLook(look, withCandidate, { ownedOnly: true })).map((look) => look.id));
+      replacement.beforeFormulaCount = beforeTarget.size;
+      replacement.retainedFormulaCount = [...beforeTarget].filter((id) => afterReplacement.has(id)).length;
+      replacement.lostFormulaCount = beforeTarget.size - replacement.retainedFormulaCount;
+    }
     for (const look of formulas) {
       const filled = fillLook(look, withCandidate, { ownedOnly: true, anchorItem: anchor });
       if (!filled || filled.uncertainCount) continue;
@@ -189,18 +214,28 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     }
   }
   const newFormulaCount = looks.filter((look) => look.new).length;
+  if (replacementTarget) replacement.newFormulaCount = newFormulaCount;
   const priceAmount = Number.isSafeInteger(candidate.price) && candidate.price >= 0 ? candidate.price : null;
   const budgetExceeded = Number.isFinite(state.budget) && priceAmount !== null && priceAmount > state.budget;
   if (budgetExceeded) check('budget', '입력한 상품 가격이 현재 예산을 넘어요. 판매처의 실제 결제 금액도 확인해 주세요.');
   let decision;
   if (completeCandidate && exactOwned.length && acceptedIntent === 'add') {
     decision = { kind: 'skip', reasons: ['이미 등록한 같은 상품·색의 옷을 먼저 활용해 보세요.', '추가 구매가 필요한 용도가 있는지 확인해 주세요.'] };
-  } else if (!completeCandidate || !actual.length || budgetExceeded || !newFormulaCount ||
-    acceptedAbsence === 'unknown' && !sameProduct.length && !similarOwned.length ||
-    acceptedAbsence === 'present' && !sameProduct.length && !similarOwned.length) {
-    decision = { kind: 'hold', reasons: checks.length
+  } else if (!completeCandidate || !actual.length || budgetExceeded ||
+    acceptedIntent === 'replace' && (!replacementTarget || !replacement.retainedFormulaCount && !replacement.newFormulaCount) ||
+    acceptedIntent === 'add' && !newFormulaCount ||
+    acceptedIntent === 'add' && ['unknown', 'present'].includes(acceptedAbsence) && !sameProduct.length && !sameTypeOwned.length) {
+    decision = { kind: 'hold', reasons: replacementTarget && !budgetExceeded
+      ? [`${garmentLabel(replacementTarget)} 교체 후 유지되는 코디 공식을 찾지 못했어요. 기존 공식 ${replacement.lostFormulaCount}개가 빠지고 새로 완성되는 공식은 ${replacement.newFormulaCount}개예요.`,
+        '교체할 용도와 다른 계절·소재·핏을 직접 확인한 뒤 결정해 주세요.']
+      : checks.length
       ? checks.slice(0, 3).map((entry) => entry.message)
       : ['현재 등록한 옷에서는 이 상품만 더해 새로 완성되는 코디 공식을 찾지 못했어요.', '등록하지 않은 옷·교체 목적·다른 계절을 확인한 뒤 결정해 주세요.'] };
+  } else if (acceptedIntent === 'replace') {
+    decision = { kind: 'consider', reasons: [
+      `${garmentLabel(replacementTarget)} 대신 이 후보를 넣으면 코디 공식 ${replacement.retainedFormulaCount}개가 유지되고 ${replacement.lostFormulaCount}개가 빠져요. 새로 완성되는 공식은 ${replacement.newFormulaCount}개예요.`,
+      '종류·색으로 만든 공식의 변화예요. 교체 필요성과 소재·핏·사이즈·현재 가격을 직접 확인해 주세요.',
+    ] };
   } else {
     decision = { kind: 'consider', reasons: [
       `확인한 내 옷에 이 상품 하나를 더하면 코디 공식 ${newFormulaCount}개가 새로 완성돼요.`,
@@ -213,10 +248,12 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     sameProduct,
     exactOwned,
     similarOwned,
+    sameTypeOwned,
     uncertainOwned,
     existingFormulaCount: existing.size,
     newFormulaCount,
     looks,
+    replacement,
     missingChecks: checks,
     price: { amount: priceAmount, source: candidate.priceSource || null, checkedAt: candidate.checkedAt || null, live: false },
     decision,

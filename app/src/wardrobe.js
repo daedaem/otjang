@@ -1,6 +1,7 @@
 import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, COLORS } from './data/slots.js';
 import { legacyWardrobeV2 } from './legacy-wardrobe.js';
-import { validatePurchaseJourney, returnedGarmentIds, MAX_PURCHASE_JOURNEYS, MAX_WARDROBE_STATE_BYTES } from './purchase-journey.js';
+import { legacyPurchaseV4 } from './legacy-purchase-v4.js';
+import { validatePurchaseJourney, upgradePurchaseJourneyV4, returnedGarmentIds, MAX_PURCHASE_JOURNEYS, MAX_WARDROBE_STATE_BYTES } from './purchase-journey.js';
 
 export const LEGACY_SLOT_MAP = {
   'm-oxford-white': ['m-oxford', 'white'],
@@ -120,7 +121,7 @@ export function demoGarments(gender = 'M') {
 }
 export function newWardrobeState() {
   return {
-    schema: 4,
+    schema: 5,
     onboarded: true,
     gender: 'M',
     styles: ['classic'],
@@ -244,10 +245,10 @@ export function validateWardrobe(record) {
     'legacyFingerprint',
     'legacyBaseline',
     'legacyDismissed',
-    ...(record?.schema === 4 ? ['journeys'] : []),
+    ...([4, 5].includes(record?.schema) ? ['journeys'] : []),
   ]);
   if (
-    ![3, 4].includes(record.schema) ||
+    ![3, 4, 5].includes(record.schema) ||
     typeof record.onboarded !== 'boolean' ||
     !['M', 'F', null].includes(record.gender) ||
     typeof record.demo !== 'boolean' ||
@@ -301,12 +302,13 @@ export function validateWardrobe(record) {
     }
   }
   if (record.demo && record.garments.length) throw new Error('예시와 개인 옷을 섞을 수 없습니다.');
-  if (record.schema === 4) {
+  if ([4, 5].includes(record.schema)) {
     if (!Array.isArray(record.journeys) || record.journeys.length > MAX_PURCHASE_JOURNEYS)
       throw new Error('구매 기록은 최대 200개까지 보관할 수 있어요.');
     const ids = new Set();
     for (const journey of record.journeys) {
-      validatePurchaseJourney(journey);
+      if (record.schema === 4) legacyPurchaseV4.validatePurchaseJourney(journey);
+      else validatePurchaseJourney(journey);
       if (ids.has(journey.id)) throw new Error('구매 기록 ID가 중복됩니다.');
       ids.add(journey.id);
     }
@@ -315,11 +317,14 @@ export function validateWardrobe(record) {
   }
   return record;
 }
-export function upgradeWardrobe(record) {
+export function upgradeWardrobe(record, { at = new Date().toISOString() } = {}) {
   validateWardrobe(record);
-  if (record.schema === 4) return structuredClone(record);
+  if (record.schema === 5) return structuredClone(record);
+  if (record.schema === 4)
+    return validateWardrobe({ ...structuredClone(record), schema: 5,
+      journeys: record.journeys.map((journey) => upgradePurchaseJourneyV4(journey, { at })) });
   if (record.schema === 3)
-    return validateWardrobe({ ...structuredClone(record), schema: 4, journeys: [] });
+    return validateWardrobe({ ...structuredClone(record), schema: 5, journeys: [] });
   const mapItem = (g) => {
     const [slot, color] = g.slotId ? LEGACY_SLOT_MAP[g.slotId] || [g.slotId, null] : [null, null];
     return makeGarment({

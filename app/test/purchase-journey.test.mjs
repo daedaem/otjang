@@ -86,7 +86,7 @@ test('candidate certainty and source snapshots are not silently upgraded or norm
   assert.throws(() => validatePurchaseCandidate(purchaseCandidate({ price: null })), /확인 정보/);
   assert.equal(validatePurchaseCandidate(purchaseCandidate({ source: 'catalog', price: 19000, priceSource: 'user' })).priceSource, 'user');
   assert.throws(() => validatePurchaseJourney({ ...created, ignoredFutureValue: true }), /지원하지/);
-  assert.throws(() => validatePurchaseJourney({ ...created, history: [{ action: 'created', at: '2026-02-31T00:00:00.000Z' }] }), /날짜/);
+  assert.throws(() => validatePurchaseJourney({ ...created, history: [{ ...created.history[0], at: '2026-02-31T00:00:00.000Z' }] }), /날짜/);
 });
 
 test('strict v3 migration adds journeys while preserving every known field and refusing unknown fields', () => {
@@ -95,7 +95,7 @@ test('strict v3 migration adds journeys while preserving every known field and r
   const original = structuredClone(old);
   assert.equal(validateWardrobe(old), old);
   const migrated = upgradeWardrobe(old);
-  assert.deepEqual(migrated, { ...original, schema: 4, journeys: [] });
+  assert.deepEqual(migrated, { ...original, schema: 5, journeys: [] });
   assert.deepEqual(old, original, 'migration is pure');
   assert.throws(() => upgradeWardrobe({ ...old, futureField: 'preserve' }), /지원하지/);
   assert.throws(() => upgradeWardrobe({ ...old, journeys: [] }), /지원하지/);
@@ -203,7 +203,7 @@ test('an existing v3 envelope and photo upgrade through one revision without cha
   const upgraded = upgradeWardrobe(read.state);
   await store.commit(upgraded, read.revision, [], read.epoch);
   const current = await store.read();
-  assert.equal(current.state.schema, 4);
+  assert.equal(current.state.schema, 5);
   assert.equal(current.revision, read.revision + 1);
   assert.equal(current.epoch, read.epoch);
   assert.deepEqual(current.state.garments, old.garments);

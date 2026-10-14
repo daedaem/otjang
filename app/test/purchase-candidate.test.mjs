@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { parseCandidateLink, candidateFromLink, candidateFromProduct, compareCandidate } from '../src/purchase-candidate.js';
 import { PRODUCTS } from '../src/data/products.js';
 import { SLOT_BY_ID } from '../src/data/slots.js';
-import { recommendItems, essentials, closetLooks, search } from '../src/engine.js';
+import { recommendItems, recommendLooks, essentials, closetLooks, search, SAFE_PRODUCTS } from '../src/engine.js';
+import { createPurchaseJourney, transitionPurchaseJourney } from '../src/purchase-journey.js';
 
 const candidateTestItem = (id, slot, color, extra = {}) => ({
   id, slot, color, kind: SLOT_BY_ID[slot]?.shape || 'shirt', gender: 'M', source: 'user',
@@ -23,6 +24,16 @@ const candidateTestJacket = (extra = {}) => ({
   slot: 'm-harrington', kind: 'jacket', color: 'beige', colorSource: 'user',
   classificationConfirmed: true, ...extra,
 });
+const candidateTestJourney = (stage, extra = {}) => {
+  const at = '2026-10-14T01:00:00.000Z';
+  let journey = createPurchaseJourney(candidateTestJacket(), { id: 'j_engine', at });
+  for (const action of ['ordered', 'received', 'kept', 'returned']) {
+    if (stage === 'candidate') break;
+    journey = transitionPurchaseJourney(journey, action, { at });
+    if (action === stage) break;
+  }
+  return { ...journey, ...extra };
+};
 
 test('candidate links canonicalize an exact catalog ID and retain the uncatalogued original item', () => {
   const parsed = parseCandidateLink('https://www.musinsa.com/app/goods/728000?utm_source=chat#reviews');
@@ -285,7 +296,7 @@ test('pending generic kind respects gender and verified color-specific essential
   assert.equal(keptEssential.pending, false);
 });
 
-test('an explicit similar-owned answer pauses home purchase suggestions without fabricating a garment, exact type, or complete formula', () => {
+test('an unlinked similar-owned answer stays local to its candidate instead of excluding other home purchases', () => {
   const garments = candidateTestBasics();
   const state = {
     ...candidateTestState(garments),
@@ -293,18 +304,19 @@ test('an explicit similar-owned answer pauses home purchase suggestions without 
   };
   const before = structuredClone(state);
   const homeState = { ...state, styles: ['amekaji'] };
-  assert.ok(recommendItems({ ...homeState, journeys: [] }, { limit: 100 }).some((row) => row.slot.shape === 'jacket'), 'fixture must contain a jacket purchase suggestion before ownership knowledge');
-  assert.equal(recommendItems(homeState, { limit: 100 }).some((row) => row.slot.shape === 'jacket'), false);
+  assert.ok(recommendItems({ ...homeState, journeys: [] }, { limit: 100 }).some((row) => row.slot.shape === 'jacket'), 'fixture must contain a jacket purchase suggestion');
+  assert.deepEqual(recommendItems(homeState, { limit: 100 }), recommendItems({ ...homeState, journeys: [] }, { limit: 100 }));
   const essential = essentials(state).find((row) => row.slot.id === 'm-harrington');
   assert.equal(essential.owned, false);
   assert.equal(essential.pending, false);
-  assert.equal(essential.ownershipCheck, true);
-  assert.equal(essential.needsCheck, true);
+  assert.equal(essential.ownershipCheck, false);
+  assert.equal(essential.needsCheck, false);
   assert.equal(closetLooks(state, { limit: 100 }).ready.some((row) => row.look.id === 'm-ivy-campus'), false);
   const comparison = compareCandidate(state, candidateTestJacket(), { absence: 'present' });
   assert.deepEqual(comparison.actualGarmentIds, garments.map((garment) => garment.id));
   assert.equal(comparison.exactOwned.length, 0);
   assert.equal(comparison.decision.kind, 'hold');
+  assert.equal(compareCandidate(state, candidateTestJacket({ color: 'navy' }), { absence: 'absent' }).decision.kind, 'consider', 'the local answer does not transfer to another candidate');
   assert.deepEqual(state, before);
   state.journeys[0].absence = 'unknown';
   assert.equal(essentials(state).find((row) => row.slot.id === 'm-harrington').ownershipCheck, false);
@@ -312,10 +324,11 @@ test('an explicit similar-owned answer pauses home purchase suggestions without 
     recommendItems({ ...candidateTestState(garments), styles: ['amekaji'] }, { limit: 100 }).map((row) => row.slot.id));
 });
 
-test('similar-owned knowledge keeps gender and color-specific evidence boundaries and yields to real registered ownership', () => {
+test('linked similar-owned knowledge keeps gender and color-specific evidence boundaries and yields to registered ownership', () => {
   const shoe = { ...candidateTestJacket(), slot: null, kind: 'sneaker', classificationConfirmed: false };
-  const state = { ...candidateTestState(candidateTestBasics()), styles: ['minimal'] };
-  const essentialFor = (candidate) => essentials({ ...state, journeys: [{ stage: 'candidate', absence: 'present', candidate }] }).find((row) => row.slot.id === 'm-white-sneaker');
+  const actualShoe = candidateTestItem('my-unclassified-shoe', null, null, { kind: 'sneaker' });
+  const state = { ...candidateTestState([...candidateTestBasics(), actualShoe]), styles: ['minimal'] };
+  const essentialFor = (candidate) => essentials({ ...state, journeys: [{ stage: 'candidate', absence: 'present', candidate, relatedGarmentIds: [actualShoe.id] }] }).find((row) => row.slot.id === 'm-white-sneaker');
   assert.equal(essentialFor({ ...shoe, color: 'red', colorSource: 'user' }).ownershipCheck, false);
   assert.equal(essentialFor({ ...shoe, color: 'white', colorSource: 'image' }).ownershipCheck, false);
   const white = essentialFor({ ...shoe, color: 'white', colorSource: 'user' });
@@ -328,4 +341,213 @@ test('similar-owned knowledge keeps gender and color-specific evidence boundarie
   const actual = essentials({ ...candidateTestState([...candidateTestBasics(), own]), journeys: [{ stage: 'candidate', absence: 'present', candidate: candidateTestJacket() }] }).find((row) => row.slot.id === 'm-harrington');
   assert.equal(actual.owned, true);
   assert.equal(actual.ownershipCheck, false);
+});
+
+test('automatic outfit purchases respect pending orders and receipts without dropping a required role', () => {
+  for (const stage of ['ordered', 'received']) {
+    const basics = candidateTestBasics();
+    const pending = candidateTestItem('g_pending', 'm-harrington', 'beige', { productId: 'ms-5755268' });
+    const state = {
+      ...candidateTestState([...basics, ...(stage === 'received' ? [pending] : [])]),
+      journeys: [candidateTestJourney(stage, { garmentId: stage === 'received' ? pending.id : null })],
+    };
+    const before = structuredClone(state);
+    const automatic = [...recommendLooks(state, { limit: 100 }), ...closetLooks(state, { limit: 100 }).almost];
+    assert.ok(automatic.length, 'unrelated formulas remain available');
+    assert.equal(automatic.some((row) => row.items.some((item) => !item.owned && item.slot.id === 'm-harrington')), false, stage);
+    assert.equal(automatic.some((row) => row.look.id === 'm-ivy-campus'), false, 'a required jacket is not silently skipped');
+    assert.equal(closetLooks(state, { limit: 100 }).ready.some((row) => row.look.id === 'm-ivy-campus'), false);
+    const pinned = SAFE_PRODUCTS.find((product) => product.slot === 'm-harrington');
+    assert.ok(recommendLooks(state, { limit: 100, pinnedProduct: pinned })
+      .some((row) => row.items.some((item) => item.product?.id === pinned.id)), 'a deliberately selected candidate remains comparable');
+    const namedQuery = search(state, '옥스퍼드 셔츠에 어울리는 블루종');
+    assert.ok(namedQuery.items.some((row) => row.slot.id === 'm-harrington'));
+    assert.ok(namedQuery.outfit?.items.some((item) => item.slot.id === 'm-harrington' && !item.owned), 'a named search can compare the requested type');
+    const looseQuery = search(state, '옥스퍼드 셔츠에 어울리는 옷');
+    assert.equal(looseQuery.outfit?.items.some((item) => item.slot.id === 'm-harrington' && !item.owned) || false, false);
+    assert.deepEqual(state, before, 'original IDs, photos and purchase records remain unchanged');
+  }
+});
+
+test('generic pending kinds suppress automatic outfit purchases but allow explicitly requested candidates', () => {
+  const basics = candidateTestBasics();
+  const base = { ...candidateTestState(basics), styles: ['amekaji', 'classic'] };
+  assert.ok(recommendLooks(base, { limit: 100 }).some((row) => row.items.some((item) => !item.owned && item.slot.shape === 'jacket')));
+  for (const journey of ['ordered', 'received'].map((stage) => candidateTestJourney(stage, { candidate: candidateTestJacket({ slot: null, classificationConfirmed: false }) }))) {
+    const state = { ...base, journeys: [journey] };
+    const automatic = [...recommendLooks(state, { limit: 100 }), ...closetLooks(state, { limit: 100 }).almost];
+    assert.equal(automatic.some((row) => row.items.some((item) => !item.owned && item.slot.shape === 'jacket')), false);
+    assert.equal(closetLooks(state, { limit: 100 }).ready.some((row) => row.look.id === 'm-ivy-campus'), false);
+    assert.ok(search(state, '재킷').items.some((row) => row.slot.shape === 'jacket'));
+    assert.deepEqual(compareCandidate(state, candidateTestJacket(), { absence: 'absent' }).actualGarmentIds, basics.map((item) => item.id));
+  }
+});
+
+test('unlinked or missing ownership references do not suppress automatic outfit purchases', () => {
+  const basics = candidateTestBasics();
+  const base = { ...candidateTestState(basics), styles: ['amekaji', 'classic'] };
+  const automaticFor = (state) => [...recommendLooks(state, { limit: 100 }), ...closetLooks(state, { limit: 100 }).almost];
+  const baseline = automaticFor(base);
+  assert.ok(baseline.some((row) => row.items.some((item) => !item.owned && item.slot.shape === 'jacket')));
+  for (const links of [
+    {},
+    { relatedGarmentIds: ['missing-owned-jacket'] },
+    { replacementGarmentId: 'missing-owned-jacket' },
+  ]) {
+    const state = { ...base, journeys: [candidateTestJourney('candidate', { absence: 'present', ...links })] };
+    const before = structuredClone(state);
+    assert.deepEqual(automaticFor(state), baseline);
+    assert.ok(search(state, '재킷').items.some((row) => row.slot.shape === 'jacket'));
+    assert.equal(compareCandidate(state, candidateTestJacket(), { absence: 'present' }).decision.kind, 'hold');
+    assert.deepEqual(state, before, 'the answer and original reference are retained');
+  }
+});
+
+test('demo links cannot turn an unregistered answer into global ownership evidence', () => {
+  const sample = candidateTestItem('demo_unclassified-jacket', null, null, { kind: 'jacket', source: 'demo' });
+  const base = { ...candidateTestState([...candidateTestBasics(), sample]), demo: true, styles: ['amekaji', 'classic'] };
+  const state = { ...base, journeys: [candidateTestJourney('candidate', { absence: 'present', relatedGarmentIds: [sample.id] })] };
+  assert.equal(essentials({ ...state, styles: ['classic'] }).find((row) => row.slot.id === 'm-harrington').ownershipCheck, false);
+  assert.deepEqual(recommendItems(state, { limit: 100 }), recommendItems(base, { limit: 100 }));
+  assert.deepEqual(recommendLooks(state, { limit: 100 }), recommendLooks(base, { limit: 100 }));
+});
+
+test('a kept jacket supplies actual owned roles and a returned jacket does not remain pending', () => {
+  const jacket = candidateTestItem('g_kept', 'm-harrington', 'beige', { productId: 'ms-5755268' });
+  const state = {
+    ...candidateTestState([...candidateTestBasics(), jacket]),
+    journeys: [candidateTestJourney('kept', { garmentId: jacket.id })],
+  };
+  const ready = closetLooks(state, { limit: 100 }).ready.find((row) => row.look.id === 'm-ivy-campus');
+  assert.ok(ready?.items.some((item) => item.owned && item.item.id === jacket.id));
+  assert.equal(essentials(state).find((row) => row.slot.id === 'm-harrington').owned, true);
+  const returned = { ...state, journeys: [candidateTestJourney('returned', { garmentId: jacket.id })] };
+  assert.equal(essentials(returned).find((row) => row.slot.id === 'm-harrington').pending, false);
+  assert.ok(closetLooks(returned, { limit: 100 }).almost.some((row) => row.look.id === 'm-ivy-campus'));
+  assert.deepEqual(compareCandidate(returned, candidateTestJacket(), { absence: 'absent' }).actualGarmentIds, candidateTestBasics().map((item) => item.id));
+});
+
+test('linked ownership knowledge expires when every linked garment is retired or returned', () => {
+  const basics = candidateTestBasics();
+  const older = candidateTestItem('g_old', 'm-harrington', 'navy', { photoId: 'old-original-photo' });
+  const newer = candidateTestItem('g_new', 'm-harrington', 'beige');
+  const journey = candidateTestJourney('returned', {
+    absence: 'present', intent: 'replace', garmentId: newer.id,
+    relatedGarmentIds: [older.id], replacementGarmentId: older.id, replacementConfirmed: true,
+  });
+  const state = { ...candidateTestState([...basics, older, newer]), journeys: [journey] };
+  const before = structuredClone(state);
+  const essential = essentials(state).find((row) => row.slot.id === 'm-harrington');
+  assert.equal(essential.owned, false);
+  assert.equal(essential.ownershipCheck, false);
+  assert.ok(closetLooks(state, { limit: 100 }).almost.some((row) => row.look.id === 'm-ivy-campus'));
+  assert.deepEqual(compareCandidate(state, candidateTestJacket(), { absence: 'absent' }).actualGarmentIds, basics.map((item) => item.id));
+  assert.deepEqual(state, before, 'expiration changes the view without deleting original records or photos');
+  const corrected = { ...state, journeys: [{ ...journey, replacementConfirmed: false }] };
+  assert.equal(essentials(corrected).find((row) => row.slot.id === 'm-harrington').owned, true);
+});
+
+test('an active related garment retains ownership knowledge when another linked garment is retired', () => {
+  const older = candidateTestItem('g_old', 'm-harrington', 'navy');
+  const other = candidateTestItem('g_other', 'm-trucker', 'indigo', { photoId: 'other-original-photo' });
+  const newer = candidateTestItem('g_new', 'm-harrington', 'beige');
+  const journey = candidateTestJourney('returned', {
+    absence: 'present', intent: 'replace', garmentId: newer.id,
+    relatedGarmentIds: [older.id, other.id], replacementGarmentId: older.id, replacementConfirmed: true,
+  });
+  const state = { ...candidateTestState([...candidateTestBasics(), older, newer, other]), journeys: [journey] };
+  const essential = essentials(state).find((row) => row.slot.id === 'm-harrington');
+  assert.equal(essential.owned, false);
+  assert.equal(essential.ownershipCheck, true);
+  assert.equal(closetLooks(state, { limit: 100 }).almost.some((row) => row.look.id === 'm-ivy-campus'), false);
+  assert.equal(state.garments.find((item) => item.id === other.id).photoId, 'other-original-photo');
+  const removed = { ...state, garments: state.garments.filter((item) => item.id !== other.id), closet: state.closet.filter((item) => item.id !== other.id) };
+  assert.equal(essentials(removed).find((row) => row.slot.id === 'm-harrington').ownershipCheck, false);
+});
+
+test('a registered same subtype remains ownership evidence across colors and contradicts a reported absence', () => {
+  const blue = { ...candidateTestBasics()[0], color: 'blue', label: '파란 옥스퍼드 셔츠' };
+  const state = candidateTestState([blue, ...candidateTestBasics().slice(1)]);
+  const whiteCandidate = candidateFromLink('https://www.musinsa.com/products/728000');
+  const known = compareCandidate(state, whiteCandidate);
+  assert.deepEqual(known.sameTypeOwned.map((item) => item.id), [blue.id]);
+  assert.equal(known.similarOwned.length, 0, 'different colors remain distinct');
+  assert.equal(known.exactOwned.length, 0, 'same subtype never implies the same product');
+  assert.equal(known.missingChecks.some((check) => check.code === 'ownership-unknown'), false);
+  const absent = compareCandidate(state, whiteCandidate, { absence: 'absent' });
+  assert.ok(absent.missingChecks.some((check) => check.code === 'ownership-conflict' && check.garmentIds.includes(blue.id)));
+});
+
+test('a selected blue-to-white Oxford replacement can retain a formula without claiming a new formula or changing original records', () => {
+  const blue = { ...candidateTestBasics()[0], color: 'blue', label: '파란 옥스퍼드 셔츠' };
+  const jacket = candidateTestItem('my-jacket', 'm-harrington', 'navy', { photoId: 'original-jacket-photo' });
+  const state = candidateTestState([blue, ...candidateTestBasics().slice(1), jacket]);
+  const before = structuredClone(state);
+  const candidate = candidateFromLink('https://www.musinsa.com/products/728000');
+  const result = compareCandidate(state, candidate, { intent: 'replace', replacementGarmentId: blue.id });
+  assert.equal(result.replacement.target.id, blue.id);
+  assert.equal(result.replacement.beforeFormulaCount, 1);
+  assert.equal(result.replacement.retainedFormulaCount, 1);
+  assert.equal(result.replacement.lostFormulaCount, 0);
+  assert.equal(result.replacement.newFormulaCount, 0);
+  assert.equal(result.newFormulaCount, 0);
+  assert.equal(result.decision.kind, 'consider');
+  assert.match(result.decision.reasons.join(' '), /파란 옥스퍼드 셔츠/);
+  assert.match(result.decision.reasons.join(' '), /유지/);
+  assert.equal(result.missingChecks.some((check) => check.code === 'ownership-unknown'), false);
+  assert.equal(result.looks.some((look) => look.items.some((row) => row.item?.id === blue.id)), false, 'only the selected target is removed from hypothetical looks');
+  assert.ok(result.looks.some((look) => look.items.some((row) => row.item?.id === jacket.id && row.item.photoId === jacket.photoId)));
+  assert.deepEqual(result.actualGarmentIds, state.garments.map((item) => item.id), 'current ownership remains the original actual records');
+  assert.deepEqual(state, before);
+  const overBudget = compareCandidate({ ...state, budget: 1000 }, candidate, { intent: 'replace', replacementGarmentId: blue.id });
+  assert.equal(overBudget.decision.kind, 'hold');
+  assert.ok(overBudget.missingChecks.some((check) => check.code === 'budget'));
+});
+
+test('replacement requires an explicit active same-kind target with confirmed subtype and color', () => {
+  const blue = { ...candidateTestBasics()[0], color: 'blue' };
+  const state = candidateTestState([blue, ...candidateTestBasics().slice(1), candidateTestItem('my-jacket', 'm-harrington', 'navy')]);
+  const candidate = candidateFromLink('https://www.musinsa.com/products/728000');
+  for (const [replacementGarmentId, garments] of [
+    [null, state.garments],
+    ['missing', state.garments],
+    ['my-chino-beige', state.garments],
+    [blue.id, state.garments.map((item) => item.id === blue.id ? { ...item, slot: null } : item)],
+    [blue.id, state.garments.map((item) => item.id === blue.id ? { ...item, color: null } : item)],
+  ]) {
+    const result = compareCandidate({ ...state, garments, closet: garments }, candidate, { intent: 'replace', replacementGarmentId });
+    assert.equal(result.replacement.target, null);
+    assert.equal(result.replacement.retainedFormulaCount, 0);
+    assert.equal(result.decision.kind, 'hold');
+    assert.ok(result.missingChecks.some((check) => check.code === 'replacement-target'));
+  }
+  const returned = { ...state, journeys: [candidateTestJourney('returned', { garmentId: blue.id, candidate })] };
+  assert.equal(compareCandidate(returned, candidate, { intent: 'replace', replacementGarmentId: blue.id }).replacement.target, null);
+  for (const unknown of [{ ...candidate, color: null, colorSource: null }, { ...candidate, classificationConfirmed: false }, { ...candidate, colorSource: 'image' }]) {
+    const result = compareCandidate(state, unknown, { intent: 'replace', replacementGarmentId: blue.id });
+    assert.equal(result.replacement.target, null);
+    assert.equal(result.replacement.retainedFormulaCount, 0);
+    assert.equal(result.decision.kind, 'hold');
+  }
+});
+
+test('replacement reports a lost formula while other actual garments can preserve that formula', () => {
+  const target = candidateTestItem('my-chambray', 'm-chambray', 'blue', { photoId: 'chambray-original-photo', label: '데님 셔츠' });
+  const garments = [target, candidateTestItem('my-work-pants', 'm-work-pants', 'olive'),
+    candidateTestItem('my-boots', 'm-workboots', 'brown'), candidateTestItem('my-chore', 'm-chore', 'navy')];
+  const state = { ...candidateTestState(garments), styles: ['classic', 'amekaji'] };
+  const candidate = candidateFromLink('https://www.musinsa.com/products/728000');
+  const lost = compareCandidate(state, candidate, { intent: 'replace', replacementGarmentId: target.id });
+  assert.equal(lost.replacement.beforeFormulaCount, 1);
+  assert.equal(lost.replacement.retainedFormulaCount, 0);
+  assert.equal(lost.replacement.lostFormulaCount, 1);
+  assert.equal(lost.decision.kind, 'hold');
+  assert.match(lost.decision.reasons.join(' '), /데님 셔츠/);
+  assert.equal(lost.missingChecks.some((check) => check.code === 'ownership-unknown'), false, 'the selected known target already establishes ownership');
+  const other = candidateTestItem('other-chambray', 'm-chambray', 'white', { photoId: 'other-shirt-original-photo' });
+  const preserved = compareCandidate({ ...state, garments: [...garments, other], closet: [...garments, other] }, candidate, { intent: 'replace', replacementGarmentId: target.id });
+  assert.equal(preserved.replacement.retainedFormulaCount, 1);
+  assert.equal(preserved.replacement.lostFormulaCount, 0, 'a surviving actual garment keeps the formula available');
+  assert.equal(target.photoId, 'chambray-original-photo');
+  assert.equal(other.photoId, 'other-shirt-original-photo');
 });
