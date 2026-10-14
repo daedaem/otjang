@@ -5,6 +5,8 @@ export const WARDROBE_ERASE_SCOPE = Object.freeze({
   databases: Object.freeze(['eoul-wardrobe-v2', 'eoul']),
   localStorageKeys: Object.freeze(['eoul:v1', 'eoul:v2', 'eoul:v2:unreadable']),
 });
+// This guard stores only deletion state, never a record or migration source.
+export const WARDROBE_ERASE_PENDING_KEY = 'eoul:erase-pending';
 
 const DATABASE_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -181,10 +183,12 @@ function eraseError(result, cause) {
   const done = entries.filter(finished).map((entry) => entry.name || entry.key);
   const message = result.mayRemain.length
     ? `전체 삭제를 완료하지 못했습니다. ${done.length ? `삭제 완료 또는 자료 없음: ${done.join(', ')}. ` : ''}남아 있거나 삭제 여부를 확인하지 못한 범위: ${result.mayRemain.join(', ')}. 다른 옷장 탭을 모두 닫은 뒤 다시 시도해 주세요.`
-    : '각 저장 범위는 삭제된 상태로 확인됐지만 삭제 작업 중 오류가 발생했습니다. 완료 상태를 다시 확인해 주세요.';
+    : result.pendingMarker.code
+      ? '각 저장 범위는 삭제된 상태로 확인됐지만 삭제 대기 표식의 해제를 확인하지 못했습니다. 전체 삭제를 다시 시도해 주세요.'
+      : '각 저장 범위는 삭제된 상태로 확인됐지만 삭제 작업 중 오류가 발생했습니다. 완료 상태를 다시 확인해 주세요.';
   const error = new Error(message, { cause });
   error.name = 'WardrobeEraseError';
-  error.code = entries.find((entry) => entry.code)?.code || 'erase-failed';
+  error.code = result.pendingMarker.code || entries.find((entry) => entry.code)?.code || 'erase-failed';
   // A detached snapshot cannot later turn into success when a delayed IDB event
   // arrives. It contains only scope/status metadata, never customer record values.
   error.result = structuredClone(result);
@@ -203,6 +207,7 @@ export async function eraseWardrobeData(options = {}) {
     localStorageEntries,
     // Compatibility alias; all scope reporting must use localStorageEntries.
     localStorage: localStorageEntries[0],
+    pendingMarker: { key: WARDROBE_ERASE_PENDING_KEY, status: 'not-started', phase: 'not-started' },
     mayRemain: [],
     uncertain: [],
   };
@@ -225,6 +230,25 @@ export async function eraseWardrobeData(options = {}) {
       status: 'uncertain',
       code: 'unavailable',
       reason: '브라우저 저장소에 접근하지 못했습니다.',
+    });
+    throw eraseError(result, cause);
+  }
+
+  // A partial erase must survive reload without importing a retained source
+  // back into the cleared current DB. Verify the durable guard before opening
+  // either DB, and leave it pending until every personal-data scope is cleared.
+  try {
+    if (typeof localStorage.setItem !== 'function') throw new Error('삭제 대기 상태를 보관할 수 없습니다.');
+    localStorage.setItem(WARDROBE_ERASE_PENDING_KEY, '1');
+    if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) !== '1')
+      throw new Error('삭제 대기 표식의 저장이 반영되지 않았습니다.');
+    Object.assign(result.pendingMarker, { status: 'pending', phase: 'ready' });
+  } catch (cause) {
+    Object.assign(result.pendingMarker, {
+      status: 'uncertain',
+      phase: 'marking',
+      code: 'pending-marker-failed',
+      reason: '삭제 대기 상태를 보관하지 못해 삭제 작업을 시작하지 않았습니다.',
     });
     throw eraseError(result, cause);
   }
@@ -260,6 +284,29 @@ export async function eraseWardrobeData(options = {}) {
       });
       throw eraseError(result, cause);
     }
+  }
+  try {
+    localStorage.removeItem(WARDROBE_ERASE_PENDING_KEY);
+    if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) !== null)
+      throw new Error('삭제 대기 표식의 해제가 반영되지 않았습니다.');
+    Object.assign(result.pendingMarker, { status: 'removed', phase: 'complete' });
+  } catch (cause) {
+    // A removal can take effect and then fail verification. Re-establish the
+    // guard when possible so a failed operation remains safe across reloads.
+    let status = 'uncertain';
+    try {
+      localStorage.setItem(WARDROBE_ERASE_PENDING_KEY, '1');
+      if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) === '1') status = 'pending';
+    } catch {
+      /* Storage access itself may have failed. */
+    }
+    Object.assign(result.pendingMarker, {
+      status,
+      phase: 'removing',
+      code: 'pending-marker-failed',
+      reason: '삭제 대기 표식의 해제를 확인하지 못했습니다.',
+    });
+    throw eraseError(result, cause);
   }
   result.ok = true;
   return result;

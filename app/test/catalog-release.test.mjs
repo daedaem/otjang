@@ -106,3 +106,31 @@ test('생성 결과는 반복해도 같으며 저장된 모듈·확인 날짜와
   assert.ok(first.list.every(productEligible));
   assert.deepEqual([...new Set(first.list.map((p) => p.checkedAt))].sort(), ['2026-10-13', '2026-10-14']);
 });
+
+test('명시적인 코트 형태는 캐시미어 소재를 이유로 니트에 들어가지 않는다', () => {
+  const row = source.brandProducts.find((p) => p.id === '4452218');
+  assert.ok(row);
+  assert.equal(row.slot, 'm-knit', '고정 원문 입력의 오류를 보존해서 검증');
+  assert.equal(productExclusionReason(row), 'category-conflict');
+  assert.equal(classify(row.name, 'M'), null, '불명확한 코트 종류로 임의 이동하지 않음');
+  assert.ok(!buildProducts(source).list.some((p) => p.id === 'ms-4452218'));
+  assert.ok(!PRODUCTS.some((p) => p.id === 'ms-4452218'));
+  assert.equal(productEligible({ name: '캐시미어 울 코트', slot: 'm-balmacaan', price: 100000 }), true);
+  assert.equal(productEligible({ name: 'COATED WORK SHIRT JACKET BLACK', slot: 'm-chore', price: 100000 }), true);
+});
+
+test('화이트 운동화 자리는 실제 화이트 색 근거가 있는 상품만 생성한다', () => {
+  const red = source.brandProducts.find((p) => p.id === '6192515');
+  assert.ok(red);
+  assert.equal(red.color, 'red');
+  assert.equal(productExclusionReason(red), 'required-color-unverified');
+  const result = buildProducts(source);
+  assert.ok(!result.list.some((p) => p.id === 'ms-6192515'));
+  const white = result.list.filter((p) => p.slot === 'm-white-sneaker');
+  assert.ok(white.length);
+  assert.ok(white.every((p) => p.color === 'white' && p.colorSource !== 'image'));
+  for (const [color, colorSource, eligible] of [['white', 'name', true], ['white', 'curation', true], ['white', 'image', false], ['ivory', 'name', false], ['red', 'name', false], [null, 'image', false]]) {
+    assert.equal(productEligible({ name: '레더 스니커즈', slot: 'm-white-sneaker', color, colorSource, price: 70000 }), eligible);
+  }
+  assert.equal(productEligible({ name: '러닝 스니커즈 Red', slot: 'm-runner', color: 'red', colorSource: 'name', price: 70000 }), true);
+});

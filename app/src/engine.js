@@ -90,7 +90,10 @@ function ctx(state) {
     styles: styles.length ? styles : [gender === 'F' ? 'classic' : 'classic'],
     occasion: state.occasion || null,
     season: state.season || seasonOf(state.now ? new Date(state.now) : new Date()),
-    maxPrice: state.budget || null,
+    maxPrice: state.budget ?? null,
+    minPrice: state.minPrice ?? null,
+    minPriceExclusive: !!state.minPriceExclusive,
+    maxPriceExclusive: !!state.maxPriceExclusive,
     closet,
     ownedSlots: new Set([
       ...SLOTS.filter((s) => wardrobeSlotStatus(closet, s) === 'confirmed').map((s) => s.id),
@@ -114,6 +117,9 @@ export function productsFor(
   slotId,
   {
     maxPrice = null,
+    minPrice = null,
+    minPriceExclusive = false,
+    maxPriceExclusive = false,
     hidden = new Set(),
     color = null,
     brands = new Set(),
@@ -127,7 +133,8 @@ export function productsFor(
     .filter(
       (p) =>
         !hide.has(p.id) &&
-        (!maxPrice || p.price <= maxPrice) &&
+        (maxPrice === null || (maxPriceExclusive ? p.price < maxPrice : p.price <= maxPrice)) &&
+        (minPrice === null || (minPriceExclusive ? p.price > minPrice : p.price >= minPrice)) &&
         (!color || evidenceColor(p) === color) &&
         (!brand || p.brand === brand) &&
         (!brandOnly || brands.has(p.brand)) &&
@@ -139,6 +146,9 @@ export function productsFor(
 function productOpts(c, extra = {}) {
   return {
     maxPrice: c.maxPrice,
+    minPrice: c.minPrice,
+    minPriceExclusive: c.minPriceExclusive,
+    maxPriceExclusive: c.maxPriceExclusive,
     hidden: c.hidden,
     brands: c.brands,
     brandOnly: c.brandOnly,
@@ -287,7 +297,14 @@ export function recommendItems(state, { limit = 8 } = {}) {
 export function fillLook(
   look,
   c,
-  { forceOwned = new Set(), ownedOnly = false, maxBuy = Infinity, anchorItem = null, pinnedProduct = null } = {},
+  {
+    forceOwned = new Set(),
+    ownedOnly = false,
+    maxBuy = Infinity,
+    anchorItem = null,
+    pinnedProduct = null,
+    anchorColor = null,
+  } = {},
 ) {
   const items = [],
     used = new Set();
@@ -304,11 +321,18 @@ export function fillLook(
     const current = items.map((i) => ({ color: i.color, cat: i.slot.cat }));
 
     // 1) 기준 아이템 · 가진 옷
-    if (
-      pinnedProduct &&
-      candidates.includes(pinnedProduct.slot) &&
-      !c.closet.some((i) => i.productId === pinnedProduct.id)
-    ) {
+    if (pinnedProduct && candidates.includes(pinnedProduct.slot)) {
+      const ownedPin = c.closet.find(
+        (i) => i.productId === pinnedProduct.id && (!anchorColor || i.color === anchorColor),
+      );
+      if (ownedPin) {
+        const slot = SLOT_BY_ID[pinnedProduct.slot];
+        const certainty = garmentSlotStatus(ownedPin, slot);
+        if (used.has(ownedPin.id) || certainty === 'missing' || (ownedOnly && certainty !== 'confirmed')) return null;
+        items.push({ role, slot, owned: true, item: ownedPin, color: ownedPin.color, certainty });
+        used.add(ownedPin.id);
+        continue;
+      }
       if (ownedOnly || buys >= maxBuy) return null;
       items.push({
         role,
@@ -390,6 +414,9 @@ export function fillLook(
     } else if (!optional) return null;
   }
   const buy = items.filter((i) => !i.owned);
+  if (pinnedProduct && !items.some((i) => i.product?.id === pinnedProduct.id || i.item?.productId === pinnedProduct.id))
+    return null;
+  if (anchorItem && !items.some((i) => i.owned && i.item?.id === anchorItem.id)) return null;
   const requiredCats = [...new Set([...forceOwned].map((id) => SLOT_BY_ID[id]?.cat))];
   if (requiredCats.some((cat) => !items.some((i) => i.slot.cat === cat && forceOwned.has(i.slot.id)))) return null;
   return {
@@ -422,7 +449,7 @@ function rankLooks(results, c) {
 // 오늘의 코디 (사야 할 상품 포함)
 export function recommendLooks(
   state,
-  { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null } = {},
+  { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null, anchorColor = null } = {},
 ) {
   if (pinnedProduct && !productEligible(pinnedProduct)) return [];
   const c = ctx(state);
@@ -439,7 +466,7 @@ export function recommendLooks(
     looks = looks.filter((l) => slotsInLook(l).some((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id])));
   if (pinnedProduct) looks = looks.filter((l) => slotsInLook(l).includes(pinnedProduct.slot));
   return rankLooks(
-    looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem, pinnedProduct })),
+    looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem, pinnedProduct, anchorColor })),
     c,
   ).slice(0, limit);
 }
@@ -473,7 +500,7 @@ export function essentials(state) {
 }
 
 // 한 줄 검색: "출근용 셔츠 10만원 이하", "청바지에 어울리는 신발", "폴로 니트"
-export function search(state, text) {
+export function search(state, text, { anchorItemId = null } = {}) {
   const brandNames = [...new Set(SAFE_PRODUCTS.map((p) => p.brand))];
   const q = parseQuery(text, { brands: brandNames });
   const c = ctx({
@@ -483,14 +510,51 @@ export function search(state, text) {
     occasion: q.occasion || state.occasion || null,
     season: q.season || state.season,
     budget: q.maxPrice ?? state.budget,
+    minPrice: q.minPrice,
+    minPriceExclusive: q.minPriceExclusive,
+    maxPriceExclusive: q.maxPriceExclusive,
     brandOnly: q.brand ? false : state.brandOnly,
   });
 
   const genderSlots = SLOTS.filter((s) => s.g === c.gender);
-  const anchors = genderSlots.filter((s) => q.anchorMatch(s));
+  const selectedAnchor = anchorItemId !== null;
+  let anchorUnavailable = null;
+  let anchorItem = null;
+  let anchorProduct = null;
+  let anchors = genderSlots.filter((s) => q.anchorMatch(s));
+  if (selectedAnchor) {
+    anchorItem = !state.demo
+      ? c.closet.find((i) => i.id === anchorItemId && i.source !== 'demo' && !i.id.startsWith('demo_')) || null
+      : null;
+    if (anchorItem) anchors = genderSlots.filter((s) => garmentMatchesSlot(anchorItem, s));
+    if (!anchorItem || !anchors.length) {
+      anchorItem = null;
+      anchors = [];
+      anchorUnavailable = '선택한 옷을 현재 옷장에서 확인할 수 없어요. 옷장에서 다시 선택해 주세요.';
+    }
+  } else if (anchors.length) {
+    anchorItem =
+      c.closet
+        .filter(
+          (i) => anchors.some((slot) => garmentMatchesSlot(i, slot)) && (!q.anchorColor || i.color === q.anchorColor),
+        )
+        .sort((a, b) => Number(!!b.slot) - Number(!!a.slot) || a.id.localeCompare(b.id))[0] || null;
+    if (q.anchorColor && !anchorItem) {
+      anchorProduct =
+        anchors.flatMap((slot) =>
+          productsFor(slot.id, {
+            ...productOpts(c),
+            color: q.anchorColor,
+            season: q.season || null,
+          }),
+        )[0] || null;
+      if (anchorProduct) anchors = anchors.filter((slot) => slot.id === anchorProduct.slot);
+      else anchorUnavailable = '요청한 기준 옷의 색을 확인할 수 있는 옷장 기록이나 상품이 없어요.';
+    }
+  }
   let targets = genderSlots.filter((s) => q.targetMatch(s));
   if (!targets.length && anchors.length) targets = genderSlots.filter((s) => !anchors.some((a) => a.cat === s.cat));
-  const understood = q.terms.length > 0;
+  const understood = q.terms.length > 0 || !!anchorItem;
   if (!targets.length) targets = genderSlots;
 
   const looks = LOOKS.filter((l) => l.g === c.gender);
@@ -502,7 +566,9 @@ export function search(state, text) {
     let score = base.score;
     let reasons = [slot.why, ...base.reasons].slice(0, 2);
     if (anchors.length) {
-      const a = shortName(anchors[0]);
+      const a = anchorItem
+        ? garmentLabel(anchorItem)
+        : `${q.anchorColor ? `${COLORS[q.anchorColor]?.label || q.anchorColor} ` : ''}${shortName(anchors[0])}`;
       reasons = [`${a}${josa(a, '과', '와')} 잘 어울려요`, ...base.reasons.filter((r) => !r.startsWith('가진 '))].slice(
         0,
         2,
@@ -521,29 +587,54 @@ export function search(state, text) {
       brand: q.brand,
       season: q.season || (q.slotNamed ? null : c.season),
     });
-    if (q.premium) products = [...products].sort((a, b) => b.price - a.price);
-    const selected = q.priceSort === 'asc' ? products : products.slice(0, q.brand ? 6 : 3);
+    const selected = q.priceSort ? products : products.slice(0, q.brand ? 6 : 3);
     selected.forEach((product, i) => {
       results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3, reasons });
     });
   }
   results.sort(
-    q.priceSort === 'asc'
-      ? (a, b) => a.product.price - b.product.price || a.product.id.localeCompare(b.product.id)
+    q.priceSort
+      ? (a, b) =>
+          (q.priceSort === 'desc' ? b.product.price - a.product.price : a.product.price - b.product.price) ||
+          a.product.id.localeCompare(b.product.id)
       : (a, b) => b.score - a.score,
   );
 
   const items = results.slice(0, 16);
-  const anchorItem =
-    c.closet
-      .filter((i) => anchors.some((slot) => garmentMatchesSlot(i, slot)))
-      .sort((a, b) => Number(!!b.slot) - Number(!!a.slot) || a.id.localeCompare(b.id))[0] || null;
   const outfit =
-    anchors.length || c.occasion
+    !anchorUnavailable && (anchors.length || c.occasion)
       ? recommendLooks(
-          { ...state, gender: c.gender, styles: c.styles, season: c.season, budget: c.maxPrice, occasion: c.occasion },
-          { limit: 1, forceOwned: [...anchorIds], anchorItem },
+          {
+            ...state,
+            gender: c.gender,
+            styles: c.styles,
+            season: c.season,
+            budget: c.maxPrice,
+            minPrice: c.minPrice,
+            minPriceExclusive: c.minPriceExclusive,
+            maxPriceExclusive: c.maxPriceExclusive,
+            occasion: c.occasion,
+          },
+          {
+            limit: 1,
+            forceOwned: [...anchorIds],
+            anchorItem,
+            pinnedProduct: anchorProduct,
+            anchorColor: q.anchorColor,
+          },
         )[0] || null
       : null;
-  return { query: q, understood, items, outfit, season: c.season, gender: c.gender };
+  if (!anchorProduct && !anchorItem && outfit && anchors.length)
+    anchorProduct = outfit.items.find((i) => anchorIds.has(i.slot.id) && !i.owned)?.product || null;
+  return {
+    query: q,
+    understood,
+    items,
+    outfit,
+    anchorItem,
+    anchorProduct,
+    anchorUnavailable,
+    season: c.season,
+    gender: c.gender,
+  };
 }

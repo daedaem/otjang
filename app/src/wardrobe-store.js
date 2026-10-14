@@ -18,7 +18,22 @@ function packBackup(metadata, rows) {
     parts.push(row.blob);
     offset += row.blob.size;
   }
-  const manifest = new TextEncoder().encode(JSON.stringify({ ...metadata, photos }));
+  const content = { ...metadata, photos };
+  if (metadata.format === 'eoul-wardrobe-recovery') {
+    try {
+      // Only actual photo Blobs use the binary section. Records, keys and
+      // invalid photo values must retain their exact JSON representation.
+      rawRecordToken(content, true);
+    } catch (cause) {
+      const error = new Error(
+        '진단 백업 파일로 정확히 보존할 수 없는 기록이 있습니다. 원본은 변경하지 않았습니다. 개발 지원으로 복구해 주세요.',
+        { cause },
+      );
+      error.code = 'unsupported-diagnostic-value';
+      throw error;
+    }
+  }
+  const manifest = new TextEncoder().encode(JSON.stringify(content));
   if (manifest.length > MAX_BACKUP_MANIFEST_BYTES)
     throw new Error('백업의 기록 정보가 너무 큽니다. 원본은 변경하지 않았습니다.');
   const header = new Uint8Array(12);
@@ -48,7 +63,8 @@ export async function photoAsset(blob) {
 function rawRecordToken(row, exists) {
   if (!exists) return 'missing';
   const seen = new Set();
-  function exact(value) {
+  function exact(value, depth = 0) {
+    if (depth > 100) throw new Error('원문의 중첩 구조가 너무 깊습니다. 원본을 보존했습니다.');
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
     if (typeof value === 'number' && Number.isFinite(value) && !Object.is(value, -0)) return value;
     if (!value || typeof value !== 'object' || seen.has(value))
@@ -61,13 +77,13 @@ function rawRecordToken(row, exists) {
       result = [];
       for (let i = 0; i < value.length; i++) {
         if (!Object.hasOwn(value, i)) throw new Error('원문을 안전하게 비교할 수 없습니다. 원본을 보존했습니다.');
-        result.push(exact(value[i]));
+        result.push(exact(value[i], depth + 1));
       }
     } else if (Object.prototype.toString.call(value) === '[object Object]') {
       result = Object.fromEntries(
         Object.keys(value)
           .sort()
-          .map((key) => [key, exact(value[key])]),
+          .map((key) => [key, exact(value[key], depth + 1)]),
       );
     } else throw new Error('원문을 안전하게 비교할 수 없습니다. 원본을 보존하고 개발 지원으로 복구해 주세요.');
     seen.delete(value);
@@ -128,7 +144,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
 
   async function read() {
     const db = await open();
-    return new Promise((resolve, reject) => {
+    const snapshot = await new Promise((resolve, reject) => {
       const tx = db.transaction(['records', 'photos'], 'readonly');
       const request = tx.objectStore('records').get('current');
       let result = null,
@@ -155,12 +171,21 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
           };
         }
       };
-      tx.oncomplete = () => {
-        observedEpoch = result?.epoch || null;
-        resolve(result);
-      };
+      tx.oncomplete = () => resolve(result);
       tx.onabort = () => reject(failure || tx.error || new Error('옷장을 읽지 못했습니다.'));
     });
+    // Blob values are immutable snapshots. Hash them after the transaction ends
+    // so asynchronous validation cannot leave IndexedDB requests inactive.
+    for (const [id, blob] of snapshot?.photos || []) {
+      try {
+        const checked = await photoAsset(blob);
+        if (checked.id !== id) throw new Error('사진과 참조 정보가 다릅니다.');
+      } catch (cause) {
+        throw new Error('일부 사진을 읽지 못했습니다. 기록을 덮어쓰지 않았습니다.', { cause });
+      }
+    }
+    observedEpoch = snapshot?.epoch || null;
+    return snapshot;
   }
 
   async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch) {
@@ -307,7 +332,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
                 format: 'eoul-wardrobe-recovery-snapshot',
                 version: 1,
                 createdAt: new Date().toISOString(),
-                source: { key: 'current', exists: !!exists.result, row: row.result },
+                source: { key: 'current', exists: !!exists.result, ...(exists.result ? { row: row.result } : {}) },
                 legacyRaw,
                 photos: mapping,
               },

@@ -35,7 +35,7 @@ import {
   wardrobeSlotStatus,
 } from './wardrobe.js';
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint } from './wardrobe-store.js';
-import { eraseWardrobeData } from './wardrobe-erase.js';
+import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
 import { prepareGarmentPhoto } from './garment-photo.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 
@@ -55,6 +55,7 @@ const EXAMPLES = {
 const wardrobeStore = createWardrobeStore();
 let state = wardrobeView(newWardrobeState());
 let query = '',
+  searchAnchorId = null,
   obStep = 1,
   lastLooks = [],
   closetFilter = 'all',
@@ -95,6 +96,12 @@ async function bootWardrobe() {
   if (bootBusy || erasingAll) throw new Error('저장소 작업을 마무리하고 있어요. 잠시 후 다시 눌러 주세요.');
   bootBusy = true;
   try {
+    if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) !== null) {
+      pendingLegacy = null;
+      throw new Error(
+        '이전 전체 삭제가 끝나지 않았어요. 남은 자료를 자동으로 가져오지 않습니다. 삭제 범위를 다시 확인하고 완료해 주세요.',
+      );
+    }
     claudeLatestPresent =
       localStorage.getItem('eoul:v2') !== null || localStorage.getItem('eoul:v2:unreadable') !== null;
     let current = await wardrobeStore.read();
@@ -119,6 +126,7 @@ async function bootWardrobe() {
     storageConflict = false;
     legacyChanged = (await legacyWardrobeFingerprint(localStorage.getItem(KEY))) !== state.legacyFingerprint;
   } catch (error) {
+    storageReady = false;
     storageError = storageMessage(error);
     storageConflict = error.code === 'conflict';
   } finally {
@@ -216,7 +224,7 @@ const mine = (p) => state.brands.includes(p.brand);
 function brandTag(p) {
   return `<div class="brand-name">${esc(p.brand)}${mine(p) ? ' <span class="mine">내 브랜드</span>' : ''}</div>`;
 }
-function itemCard({ slot, product, reasons }) {
+function itemCard({ slot, product, reasons, ownership }) {
   return `<article class="item">
     <button data-action="open-item" data-id="${product.id}" aria-label="${esc(product.brand)} ${esc(product.name)} 자세히">${picture(product, slot)}</button>
     <div class="item-body">
@@ -224,6 +232,7 @@ function itemCard({ slot, product, reasons }) {
       <button class="name" data-action="open-item" data-id="${product.id}" style="text-align:left">${esc(product.name)}</button>
       <div class="price">${formatPrice(product.price)}${stars(product)}</div>
       <div class="reason">${esc((reasons?.[0] || slot.why).replace(/^가진 /, state.demo ? '예시 ' : '가진 '))}</div>
+    ${ownership === 'missing' && !state.demo ? '<p class="fine">등록 안 된 종류 · 이미 가진 옷일 수 있어요</p>' : ''}
     </div>
     ${heartBtn(product)}
   </article>`;
@@ -256,7 +265,7 @@ function lookCard(r, { wide = false } = {}) {
       <div class="look-title">${esc(r.look.title)}</div>
       <div class="look-note">${esc(r.look.note)}</div>
       <div class="look-meta">
-        <span>${r.ownedCount ? `${state.demo ? '예시 옷' : '내 옷'} ${r.ownedCount}개${r.buyCount ? ` + 새로 ${r.buyCount}개` : ''}` : `새로 ${r.buyCount}개`}</span>
+        <span>${r.ownedCount ? `${state.demo ? '예시 옷' : '내 옷'} ${r.ownedCount}개${r.buyCount ? ` + 후보 ${r.buyCount}개` : ''}` : `구매 후보 ${r.buyCount}개`}</span>
         <b>${r.uncertainCount ? '옷 종류 확인 필요' : r.buyCount ? formatPrice(r.buyTotal) : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</b>
       </div>
       ${r.uncertainCount ? `<p class="fine">${r.uncertainCount}벌은 세부 종류가 미확인입니다. 확인 후 구매를 판단해 주세요.${r.buyCount ? ` 후보 합계 ${formatPrice(r.buyTotal)}` : ''}</p>` : ''}
@@ -415,14 +424,15 @@ function renderHome() {
     </section>
     ${myBrandRow()}
     <section class="section">
-      <div class="section-head"><div><h2>지금 사면 좋은 아이템</h2><div class="sub">${ownedCount ? (state.demo ? '예시 옷과 연결되는 종류 순서예요' : '보유 종류와 코디 공식으로 고른 순서예요') : '고른 스타일의 기본부터 골랐어요'}${state.brandOnly ? ' · 내 브랜드만' : ''}</div></div></div>
+      <div class="section-head"><div><h2>내 옷과 비교할 구매 후보</h2><div class="sub">${ownedCount ? (state.demo ? '예시 옷과 연결되는 종류 순서예요' : '등록한 옷과 코디 공식으로 고른 순서예요') : '고른 스타일의 기본부터 골랐어요'}${state.brandOnly ? ' · 내 브랜드만' : ''}</div></div></div>
+      ${!state.demo ? '<p class="sub">등록하지 않은 옷이 없다는 뜻은 아니에요. 이미 비슷한 옷이 있다면 상품에서 알려 주세요.</p>' : ''}
       ${items.length ? `<div class="list">${items.map(itemCard).join('')}</div>` : `<div class="empty"><b>추천할 아이템이 없어요</b>예산을 넓히거나 "내 브랜드만"을 꺼 보세요.</div>`}
     </section>
     ${footer()}`;
 }
 
 function renderSearch() {
-  const r = search(state, query);
+  const r = search(state, query, { anchorItemId: searchAnchorId });
   lastLooks = [];
   const head = `<div class="result-head">
     <h2>${r.query.summary ? esc(r.query.summary) : `‘${esc(query)}’`}</h2>
@@ -435,9 +445,17 @@ function renderSearch() {
     ? `<section class="section"><div class="section-head"><div><h2>이렇게 입어 보세요</h2><div class="sub">${esc(r.outfit.look.title)}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
     : '';
   const items = r.items.length
-    ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${r.query.priceSort === 'asc' ? '수집일 가격이 낮은 순서 · 옵션과 배송비는 판매 페이지에서 확인해요' : `${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요`}</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
+    ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${r.query.priceSort ? `수집일 가격이 ${r.query.priceSort === 'desc' ? '높은' : '낮은'} 순서 · 옵션과 배송비는 판매 페이지에서 확인해요` : `${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요`}</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
     : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>예산을 조금 넓히거나 다른 표현으로 찾아보세요.</div>`;
-  return head + notice + outfit + items + footer();
+  const anchor = r.anchorItem
+    ? `<div class="notice search-anchor">${itemPicture(r.anchorItem)}<div><b>이 옷을 기준으로 찾아요</b><p>${esc(garmentLabel(r.anchorItem))} · ${esc(COLORS[r.anchorItem.color]?.label || '색 미확인')}</p></div><button class="link" data-action="clear-anchor">기준 해제</button></div>`
+    : r.anchorUnavailable
+      ? `<div class="notice" role="status">${esc(r.anchorUnavailable)} <button class="link" data-action="tab" data-tab="closet">내 옷 다시 고르기</button></div>`
+      : '';
+  const qualityNotice = r.query.qualityUnavailable
+    ? '<p class="notice">품질을 비교할 자료는 없어요. 가격으로 품질을 판단하지 않고 평점·후기 등 인기 정보를 참고했어요.</p>'
+    : '';
+  return head + anchor + notice + qualityNotice + outfit + items + footer();
 }
 
 // ── 내 옷장
@@ -473,7 +491,7 @@ function renderCloset() {
   const today = `<section class="section">
     <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.demo ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div></div></div>
     ${ready.length ? `<div class="looks">${ready.map((r) => lookCard(r)).join('')}</div>` : ''}
-    ${almost.length ? `<h3 class="block">하나만 사면 완성</h3><div class="looks">${almost.map((r) => lookCard(r)).join('')}</div>` : ''}
+    ${almost.length ? `<h3 class="block">등록한 옷에 후보 한 벌 더하기</h3><div class="looks">${almost.map((r) => lookCard(r)).join('')}</div>` : ''}
   </section>`;
 
   const cats = Object.entries(CATS).filter(([cat]) => items.some((i) => slotForItem(i).cat === cat));
@@ -502,7 +520,7 @@ function essentialSection(ess) {
       myStyles()
         .map((s) => STYLES[s].label)
         .join('·'),
-    )}의 기본 종류예요. 이미 있는 옷은 눌러서 넣을 수 있어요.</p>
+    )}의 기본 종류예요. 미등록은 미보유를 뜻하지 않아요. 이미 있는 옷은 눌러서 넣을 수 있어요.</p>
     ${uncertain ? '<p class="sub">종류만 등록한 옷은 소재·무늬까지 확인되지 않아 세부 기본템 보유 수에 넣지 않았어요.</p>' : ''}
     <div class="closet-grid">${missing.map(({ slot }) => `<button class="own" data-action="add-slot" data-slot="${slot.id}">${art(slot)}<span>${esc(slot.name)}</span></button>`).join('')}</div>
   </details></section>`;
@@ -579,7 +597,9 @@ function lookRows(r) {
       if (i.owned) {
         const pic = i.item ? itemPicture(i.item) : `<div class="thumb">${art(i.slot, i.color)}</div>`;
         const brand = i.item?.productId ? PRODUCT_BY_ID[i.item.productId]?.brand : i.item?.brand;
-        return `<div class="look-row">${pic}<div><div class="role">${ROLE_LABEL[i.role]} · ${state.demo ? '예시 옷' : '내 옷'}${i.certainty === 'uncertain' ? ` · ${esc(shortName(i.slot))}인지 확인 필요` : ''}</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.item ? garmentLabel(i.item) : i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">${i.certainty === 'uncertain' ? '종류 확인' : state.demo ? '예시' : '보유'}</span></div>`;
+        const confirm = i.certainty === 'uncertain' && i.item && !state.demo;
+        const tag = confirm ? 'button' : 'div';
+        return `<${tag} class="look-row"${confirm ? ` data-action="confirm-own-kind" data-id="${i.item.id}" data-look="${r.look.id}"` : ''}>${pic}<div><div class="role">${ROLE_LABEL[i.role]} · ${state.demo ? '예시 옷' : '내 옷'}${i.certainty === 'uncertain' ? ` · ${esc(shortName(i.slot))}인지 확인 필요` : ''}</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.item ? garmentLabel(i.item) : i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">${i.certainty === 'uncertain' ? '종류 확인' : state.demo ? '예시' : '보유'}</span></${tag}>`;
       }
       return `<button class="look-row" data-action="open-item" data-id="${i.product.id}">${picture(i.product, i.slot)}<div><div class="role">${ROLE_LABEL[i.role]} · ${esc(i.product.brand)}</div><div class="nm">${esc(i.product.name)}</div></div><span class="pr">${formatPrice(i.product.price)}</span></button>`;
     })
@@ -626,6 +646,7 @@ function itemSheet(id) {
     <h2 class="detail-title">${esc(p.name)}</h2>
     <div class="detail-price">${formatPrice(p.price)}${stars(p)}</div>
     <div class="fine">${esc(p.store)} 판매가 · ${esc(p.checkedAt)} 확인${p.color ? ` · ${COLORS[p.color]?.label || ''} (${p.colorSource === 'image' ? '상품 사진 추정' : '상품명·편집 분류'})` : ''}</div>
+    ${!state.demo && !owned && !needsCheck ? '<p class="notice">등록한 옷 기준의 구매 후보예요. 실제로 없는 옷인지 먼저 확인해 주세요.</p>' : ''}
     ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>
       ${[...new Set([slot.why, ...reasons])]
@@ -657,8 +678,8 @@ function lookSheet(index) {
     <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
     ${lookRows(r)}
     ${r.uncertainCount ? `<p class="notice">${r.uncertainCount}벌의 세부 종류를 확인해야 이 코디를 확정할 수 있어요. 확인 전에는 새 옷이 꼭 필요한지 판단하지 않습니다.</p>` : ''}
-    <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `새로 살 것 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
-    ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">필요한 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
+    <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `구매 후보 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
+    ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">후보 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
   `);
 }
 
@@ -690,12 +711,14 @@ function ownSheet(id) {
 }
 
 // Required: kind. Color, brand, photo and name remain optional.
-function beginDraft(item = null, slot = null) {
+function beginDraft(item = null, slot = null, { confirmDetails = false, returnLookId = null } = {}) {
   if (draft?.preview) URL.revokeObjectURL(draft.preview);
   const base = item || makeGarment({ kind: slot ? SLOT_BY_ID[slot].shape : null, slot, gender: state.gender });
   draft = {
     ...structuredClone(base),
     before: item ? JSON.stringify(item) : null,
+    confirmDetails,
+    returnLookId,
     asset: null,
     preview: null,
     processing: false,
@@ -717,7 +740,7 @@ function addSheet() {
  <div class="photo-editor">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '사진 고르기'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : ''}</div></div>
  ${draft.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 다시 고를 수 있습니다.</p>' : ''}
  <fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>
- ${specificKinds.length ? `<details class="garment-name"><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><p class="sub">모르면 종류만 저장해도 돼요. 소재·형태가 맞는 경우에만 확인해 주세요.</p><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
+ ${specificKinds.length ? `<details class="garment-name"${draft.confirmDetails ? ' open' : ''}><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><p class="sub">모르면 종류만 저장해도 돼요. 소재·형태가 맞는 경우에만 확인해 주세요.</p><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
  <details class="garment-name"><summary>색·브랜드·이름 추가 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">사진만으로 색·브랜드를 확정하지 않아요.</p><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(
    COLORS,
  )
@@ -760,6 +783,7 @@ async function saveGarmentDraft() {
   current.error = '';
   addSheet();
   try {
+    const wasDemo = state.demo;
     const actual = state.demo ? [] : state.garments;
     const existing = actual.find((i) => i.id === current.id);
     if (current.before && JSON.stringify(existing) !== current.before)
@@ -772,7 +796,20 @@ async function saveGarmentDraft() {
     );
     current.saving = false;
     closeSheet();
-    toast('내 옷을 저장했어요');
+    if (current.returnLookId) {
+      const updated = recommendLooks(state, { limit: 32, occasion: null, anchorItem: item }).find(
+        (r) => r.look.id === current.returnLookId,
+      );
+      if (updated) {
+        lastLooks = [updated];
+        lookSheet(0);
+      } else {
+        ownSheet(item.id);
+        toast('옷 정보가 바뀌어 코디를 다시 확인해 주세요');
+        return;
+      }
+    }
+    toast(wasDemo ? '내 옷을 저장했어요. 이제 예시를 빼고 등록한 내 옷만 반영해요' : '내 옷을 저장했어요');
   } catch (error) {
     current.error = storageMessage(error);
     current.saving = false;
@@ -826,7 +863,7 @@ function optionSheet(kind) {
 // ── 알림
 function showEraseReview(step = 1) {
   openSheet(
-    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다. 아직 이 앱에서 열 수 없는 이전 형식 자료도 지워집니다.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
+    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다. Claude 최신 버전의 기록·원문 사본도 포함됩니다. 이 앱에서는 해당 자료를 열거나 백업할 수 없으니 최신 버전에서 먼저 백업해 주세요.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
   );
   eraseReviewStep = step;
 }
@@ -873,6 +910,7 @@ async function eraseAllWardrobe() {
     pendingLegacy = null;
     legacyChanged = false;
     query = '';
+    searchAnchorId = null;
     lastLooks = [];
     state = wardrobeView(newWardrobeState());
     storageRevision = 0;
@@ -882,7 +920,7 @@ async function eraseAllWardrobe() {
   } catch (error) {
     failureResult = error.result || {};
     storageError =
-      '전체 삭제를 완료하지 못했습니다. 아래 범위를 확인해 주세요. 다시 불러오면 남아 있는 이전 자료가 표시될 수 있습니다.';
+      '전체 삭제를 완료하지 못했습니다. 아래 범위를 확인해 주세요. 미완료 표시를 유지하며 남은 이전 자료를 자동으로 가져오지 않습니다.';
     // Removed records must not remain usable in this tab after partial success.
     for (const url of photos.values()) URL.revokeObjectURL(url);
     if (draft?.preview) URL.revokeObjectURL(draft.preview);
@@ -899,7 +937,7 @@ async function eraseAllWardrobe() {
   if (failureResult) {
     render();
     openSheet(
-      `<h2>전체 삭제 미완료</h2><p role="alert">${esc(storageError)}</p>${eraseFailureNotice(failureResult)}<button class="chip" data-action="erase-review">범위를 다시 확인하고 재시도</button><button class="chip" data-action="recovery-backup">남은 저장 원문 받기</button>`,
+      `<h2>전체 삭제 미완료</h2><p role="alert">${esc(storageError)}</p>${eraseFailureNotice(failureResult)}<button class="chip" data-action="erase-review">범위를 다시 확인하고 재시도</button><button class="chip" data-action="recovery-backup">현재 저장소·이전 기록 원문 받기</button><p class="sub">이 파일에는 현재 저장소와 이전 옷장 기록만 담깁니다. 이전 사진과 Claude 최신 버전의 기록·원문 사본은 해당 버전에서 따로 백업해 주세요.</p>`,
     );
     return;
   }
@@ -943,6 +981,10 @@ function downloadWardrobe(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 async function chooseWardrobeBackup(file) {
+  if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) !== null) {
+    toast('미완료된 전체 삭제를 먼저 마무리해 주세요. 원문 받기는 계속 사용할 수 있어요');
+    return;
+  }
   openSheet('<h2>백업 확인 중</h2><p>현재 옷장은 그대로입니다.</p>');
   const revision = sheetRevision;
   try {
@@ -955,7 +997,7 @@ async function chooseWardrobeBackup(file) {
       if (sheetRevision !== revision) return;
     }
     openSheet(
-      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > 3 ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 교체 뒤에도 저장 원문 받기로 사본을 받을 수 있습니다.</p>` : '<p>현재 옷장·찜·취향을 교체합니다. 필요한 기록은 먼저 백업해 주세요.</p>'}<button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
+      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > 3 ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 사본은 이 브라우저에 남습니다. 저장 원문 받기는 자료 형식·파일 크기에 따라 실패할 수 있어요. 중요한 원문은 교체 전에 먼저 내려받아 주세요.</p>` : `<p class="notice">현재 개인 옷 ${state.garments.length}벌 · 사진 ${photoBlobs.size}장 · 찜 ${state.saved.length}개와 취향을 교체합니다. 복구 사본을 만들지 않으니 필요한 기록은 먼저 백업해 주세요.</p>`}<button class="chip" data-action="${parsed.recovery ? 'recovery-backup' : 'backup'}">현재 자료 먼저 받기</button><button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
     );
     restoreDraft = parsed;
   } catch (error) {
@@ -964,6 +1006,10 @@ async function chooseWardrobeBackup(file) {
   }
 }
 async function reviewLegacyChanges() {
+  if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) !== null) {
+    toast('미완료된 전체 삭제를 먼저 마무리해 주세요');
+    return;
+  }
   const raw = localStorage.getItem(KEY);
   openSheet('<h2>이전 기록 확인 중</h2>');
   const revision = sheetRevision;
@@ -987,6 +1033,7 @@ async function reviewLegacyChanges() {
     );
     pendingLegacy = { ...prepared, raw, added, saved, initial: !storageReady };
   } catch (error) {
+    if (sheetRevision !== revision) return;
     openSheet(
       `<h2>이전 기록 확인 필요</h2><p role="alert">${esc(storageMessage(error))}</p><button class="chip" data-action="recovery-backup">원문 받기</button>`,
     );
@@ -1107,15 +1154,20 @@ document.addEventListener('click', async (e) => {
         break;
       case 'clear-q':
         query = '';
+        searchAnchorId = null;
         render();
         break;
       case 'example':
+        searchAnchorId = null;
         query = el.dataset.q;
         render();
         break;
       case 'tab':
         closeSheet();
-        if (el.dataset.tab === 'home' && state.tab === 'home') query = '';
+        if (el.dataset.tab === 'home' && state.tab === 'home') {
+          query = '';
+          searchAnchorId = null;
+        }
         await set({ tab: el.dataset.tab });
         window.scrollTo(0, 0);
         break;
@@ -1158,10 +1210,11 @@ document.addEventListener('click', async (e) => {
         const ids = el.dataset.ids.split(',');
         await set({ saved: [...new Set([...state.saved, ...ids])] });
         closeSheet();
-        toast('필요한 상품을 찜했어요');
+        toast('구매 후보를 찜했어요');
         break;
       }
       case 'own-product': {
+        const wasDemo = state.demo;
         const p = PRODUCT_BY_ID[el.dataset.id];
         if (!p) break;
         if (!state.demo && state.garments.some((i) => i.productId === p.id)) {
@@ -1186,7 +1239,16 @@ document.addEventListener('click', async (e) => {
           tab: 'closet',
         });
         closeSheet();
-        toast('내 옷장에 저장했어요');
+        toast(wasDemo ? '내 옷장에 저장했어요. 이제 예시를 빼고 등록한 내 옷만 반영해요' : '내 옷장에 저장했어요');
+        break;
+      }
+      case 'clear-anchor':
+        searchAnchorId = null;
+        render();
+        break;
+      case 'confirm-own-kind': {
+        const item = state.garments.find((i) => i.id === el.dataset.id);
+        if (item) beginDraft(item, null, { confirmDetails: true, returnLookId: el.dataset.look });
         break;
       }
       case 'edit-own': {
@@ -1220,6 +1282,7 @@ document.addEventListener('click', async (e) => {
         if (!item) break;
         const slot = slotForItem(item);
         closeSheet();
+        searchAnchorId = item.id;
         query = `${shortName(slot)}에 어울리는 ${slot.cat === 'shoes' ? '바지' : slot.cat === 'bottom' ? '상의' : '바지'}`;
         await set({ tab: 'home' });
         break;
@@ -1326,9 +1389,15 @@ document.addEventListener('click', async (e) => {
           break;
         }
         if (pending.initial) {
-          await wardrobeStore.commit(pending.state, 0, pending.assets);
-          pendingLegacy = null;
-          await bootWardrobe();
+          if (writeBusy || bootBusy) throw new Error('저장소 작업을 마무리하고 있어요. 완료 후 다시 눌러 주세요.');
+          writeBusy = true;
+          try {
+            await wardrobeStore.commit(pending.state, 0, pending.assets);
+            pendingLegacy = null;
+            await bootWardrobe();
+          } finally {
+            writeBusy = false;
+          }
         } else {
           const additions = a === 'ignore-legacy' ? [] : pending.added;
           const used = new Set(additions.map((i) => i.photoId).filter(Boolean));
@@ -1389,6 +1458,7 @@ document.addEventListener('submit', (e) => {
   const form = e.target.closest('form[data-action="ask"]');
   if (!form) return;
   e.preventDefault();
+  searchAnchorId = null;
   query = form.q.value.trim();
   form.q.blur();
   render();

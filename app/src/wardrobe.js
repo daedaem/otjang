@@ -47,11 +47,11 @@ export function garmentKindName(kind) {
   return GARMENT_KINDS.find((k) => k.id === kind)?.name || '옷';
 }
 export function garmentLabel(item) {
-  return item.label || (item.slot ? SLOT_BY_ID[item.slot]?.name : garmentKindName(item.kind)) || '내 옷';
+  return item.label || slotForItem(item).name || '내 옷';
 }
 // A generic garment must not inherit a specific material, pattern or styling tip.
 export function slotForItem(item) {
-  if (SLOT_BY_ID[item.slot]) return SLOT_BY_ID[item.slot];
+  if (SLOT_BY_ID[item.slot] && garmentSlotStatus(item, SLOT_BY_ID[item.slot]) !== 'missing') return SLOT_BY_ID[item.slot];
   const kind = item.kind || 'tee';
   const cat = ['pants', 'jeans', 'skirt'].includes(kind)
     ? 'bottom'
@@ -75,12 +75,17 @@ export function slotForItem(item) {
   };
 }
 export function garmentMatchesSlot(item, slot) {
-  return item.gender === slot.g && (item.slot ? item.slot === slot.id : item.kind === slot.shape);
+  return garmentSlotStatus(item, slot) !== 'missing';
 }
 
 // A real garment may be owned while its recipe-specific material/type is unknown.
 export function garmentSlotStatus(item, slot) {
-  if (!garmentMatchesSlot(item, slot)) return 'missing';
+  if (item.gender !== slot.g || (item.slot ? item.slot !== slot.id : item.kind !== slot.shape)) return 'missing';
+  // A named color-specific essential needs actual color evidence, even for an explicit legacy slot.
+  if (slot.requiredColors) {
+    if (!item.color) return 'uncertain';
+    if (!slot.requiredColors.includes(item.color)) return 'missing';
+  }
   return item.slot ? 'confirmed' : 'uncertain';
 }
 export function wardrobeSlotStatus(items, slot) {

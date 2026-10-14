@@ -4,7 +4,7 @@
   --sunk: #F2F1ED;
   --ink: #141413;
   --ink-2: #57574F;
-  --ink-3: #8F8E86;
+  --ink-3: #6E6D66;
   --line: #E9E7E1;
   --accent: #1F4D3A;
   --accent-soft: #E6EFE9;
@@ -17,13 +17,13 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121312; --surface: #1B1C1B; --sunk: #232523; --ink: #F3F3EF; --ink-2: #BDBDB5; --ink-3: #8A8A83;
+    --bg: #121312; --surface: #1B1C1B; --sunk: #232523; --ink: #F3F3EF; --ink-2: #BDBDB5; --ink-3: #909089;
     --line: #2C2E2C; --accent: #8FD1B0; --accent-soft: #1E3329; --art-line: #7D7D76; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #121312; --surface: #1B1C1B; --sunk: #232523; --ink: #F3F3EF; --ink-2: #BDBDB5; --ink-3: #8A8A83;
+  --bg: #121312; --surface: #1B1C1B; --sunk: #232523; --ink: #F3F3EF; --ink-2: #BDBDB5; --ink-3: #909089;
   --line: #2C2E2C; --accent: #8FD1B0; --accent-soft: #1E3329; --art-line: #7D7D76; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
   color-scheme: dark;
 }
@@ -172,7 +172,7 @@ img { display: block; max-width: 100%; }
 .hero .art { width: 60%; height: 60%; }
 .detail-title { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.35; margin: 4px 0 0; }
 .detail-price { font-size: 22px; font-weight: 800; margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
-.fine { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.fine { font-size: 14px; color: var(--ink-3); margin-top: 4px; }
 .why { margin: 16px 0 0; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
 .why h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
 .why ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
@@ -307,3 +307,8 @@ img { display: block; max-width: 100%; }
 @media (max-width: 359px) { .kind-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 
 .demo-notice{margin:16px}.demo-notice p{margin:8px 0}.thumb img[data-own-photo],.hero img[data-own-photo]{object-fit:contain}
+
+.search-anchor { display: flex; align-items: center; gap: 12px; }
+.search-anchor .thumb { width: 56px; height: 64px; flex: none; border-radius: 10px; overflow: hidden; }
+.search-anchor p { margin: 4px 0 0; }
+.search-anchor .link { margin-left: auto; flex: none; }

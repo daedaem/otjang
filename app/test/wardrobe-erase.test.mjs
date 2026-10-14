@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
-import { eraseWardrobeData, WARDROBE_ERASE_SCOPE } from '../src/wardrobe-erase.js';
+import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY, WARDROBE_ERASE_SCOPE } from '../src/wardrobe-erase.js';
 
 const currentName = 'eoul-wardrobe-v2',
   legacyName = 'eoul';
@@ -26,6 +26,10 @@ function storage(
     getItem(key) {
       calls.push(['get', key]);
       return rows.get(key) ?? null;
+    },
+    setItem(key, value) {
+      calls.push(['set', key, value]);
+      rows.set(key, value);
     },
     removeItem(key) {
       calls.push(['remove', key]);
@@ -94,7 +98,9 @@ test('explicit erase clears all current/legacy rows and recovery evidence, prese
       ['eoul:probe', 'untouched probe'],
     ],
   );
-  assert.ok(localStorage.calls.every(([, key]) => storageKeys.includes(key)));
+  assert.ok(localStorage.calls.every(([, key]) => [...storageKeys, WARDROBE_ERASE_PENDING_KEY].includes(key)));
+  assert.deepEqual(localStorage.calls.filter(([action]) => action === 'set'), [['set', WARDROBE_ERASE_PENDING_KEY, '1']]);
+  assert.deepEqual(result.pendingMarker, { key: WARDROBE_ERASE_PENDING_KEY, status: 'removed', phase: 'complete' });
   assert.deepEqual(WARDROBE_ERASE_SCOPE.databases, [currentName, legacyName]);
   assert.deepEqual(WARDROBE_ERASE_SCOPE.localStorageKeys, storageKeys);
   assert.deepEqual(
@@ -136,6 +142,8 @@ test('higher-version legacy DB preserves its records and localStorage after curr
   assert.deepEqual(await counts(indexedDB, legacyName, 2), { 'future-records': 1, photos: 1 });
   assert.equal(localStorage.rows.get('eoul:v1'), 'synthetic legacy text');
   assert.ok(storageKeys.every((key) => localStorage.rows.has(key)));
+  assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
+  assert.equal(localStorage.calls.some(([action, key]) => action === 'remove' && key === WARDROBE_ERASE_PENDING_KEY), false);
   assert.equal(localStorage.calls.filter(([action]) => action === 'remove').length, 0);
 });
 
@@ -178,6 +186,7 @@ test('success and localStorage removal occur only after both clear transactions 
       successfulClears += 1;
       assert.equal(resolved, false);
       assert.ok(storageKeys.every((key) => localStorage.rows.has(key)));
+      assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
     };
     return request;
   };
@@ -247,6 +256,7 @@ test('blocked defaults to five seconds; a late open never clears records or chan
   assert.deepEqual(snapshot, originalSnapshot);
   assert.deepEqual(await counts(factory, currentName), { photos: 1, records: 1, recovery: 1 });
   assert.ok(localStorage.rows.has('eoul:v1'));
+  assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
 });
 
 test('a transaction timeout aborts the pending clear and cannot later report success or remove the legacy source', async (context) => {
@@ -332,6 +342,9 @@ test('all three source keys are inspected before the first database operation', 
         localStorage.calls.filter(([action]) => action === 'get').slice(0, 3),
         storageKeys.map((key) => ['get', key]),
       );
+      assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
+      assert.ok(localStorage.calls.some(([action, key, value]) => action === 'set' && key === WARDROBE_ERASE_PENDING_KEY && value === '1'));
+      assert.ok(localStorage.calls.some(([action, key]) => action === 'get' && key === WARDROBE_ERASE_PENDING_KEY));
       return factory.open(name, version);
     },
   };
@@ -420,4 +433,126 @@ test('post-removal access failure keeps only that source uncertain and does not 
   });
   assert.equal(localStorage.rows.has('eoul:v2'), false);
   assert.equal(localStorage.rows.has('eoul:v2:unreadable'), true);
+});
+
+test('a missing, rejected, ineffective or unreadable pending marker prevents every database operation', async (context) => {
+  for (const behavior of ['unsupported', 'rejected', 'ineffective', 'unreadable']) {
+    await context.test(behavior, async () => {
+      const factory = new IDBFactory(),
+        localStorage = storage();
+      await seed(factory, currentName);
+      await seed(factory, legacyName, 1, ['photos']);
+      let opens = 0;
+      const indexedDB = {
+        open(name, version) {
+          opens += 1;
+          return factory.open(name, version);
+        },
+      };
+      if (behavior === 'unsupported') delete localStorage.setItem;
+      else if (behavior === 'rejected')
+        localStorage.setItem = () => {
+          throw new DOMException('synthetic write denial', 'SecurityError');
+        };
+      else if (behavior === 'ineffective') localStorage.setItem = () => {};
+      else {
+        const getItem = localStorage.getItem;
+        localStorage.getItem = (key) => {
+          if (key === WARDROBE_ERASE_PENDING_KEY)
+            throw new DOMException('synthetic guard verification denial', 'SecurityError');
+          return getItem(key);
+        };
+      }
+      await assert.rejects(eraseWardrobeData({ indexedDB, localStorage }), (error) => {
+        assert.equal(error.code, 'pending-marker-failed');
+        assert.deepEqual(error.result.databases.map((entry) => entry.status), ['not-started', 'not-started']);
+        assert.deepEqual(error.result.mayRemain, [currentName, legacyName, ...storageKeys]);
+        assert.equal(error.result.pendingMarker.phase, 'marking');
+        return true;
+      });
+      assert.equal(opens, 0);
+      assert.equal(localStorage.calls.some(([action]) => action === 'remove'), false);
+      assert.ok(storageKeys.every((key) => localStorage.rows.has(key)));
+      assert.deepEqual(await counts(factory, currentName), { photos: 1, records: 1, recovery: 1 });
+      assert.deepEqual(await counts(factory, legacyName), { photos: 1 });
+      assert.equal(localStorage.rows.get('other-app'), 'keep me');
+    });
+  }
+});
+
+test('a partial erase keeps the durable marker and a complete retry removes it after the unchanged record scope', async () => {
+  const factory = new IDBFactory(),
+    localStorage = storage();
+  await seed(factory, currentName);
+  await seed(factory, legacyName, 1, ['photos']);
+  await seed(factory, 'other-app-db');
+  let denyLegacy = true;
+  const indexedDB = {
+    open(name, version) {
+      if (name === legacyName && denyLegacy) throw new DOMException('synthetic legacy denial', 'SecurityError');
+      return factory.open(name, version);
+    },
+  };
+  await assert.rejects(eraseWardrobeData({ indexedDB, localStorage }), (error) => {
+    assert.deepEqual(error.result.databases.map((entry) => entry.status), ['cleared', 'retained']);
+    assert.deepEqual(error.result.mayRemain, [legacyName, ...storageKeys]);
+    assert.equal(error.result.pendingMarker.status, 'pending');
+    return true;
+  });
+  assert.deepEqual(await counts(factory, currentName), { photos: 0, records: 0, recovery: 0 });
+  assert.deepEqual(await counts(factory, legacyName), { photos: 1 });
+  assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
+  assert.ok(storageKeys.every((key) => localStorage.rows.has(key)));
+  assert.equal(localStorage.calls.some(([action]) => action === 'remove'), false);
+
+  denyLegacy = false;
+  const result = await eraseWardrobeData({ indexedDB, localStorage });
+  assert.equal(result.ok, true);
+  assert.equal(result.pendingMarker.status, 'removed');
+  assert.equal(localStorage.rows.has(WARDROBE_ERASE_PENDING_KEY), false);
+  assert.deepEqual(localStorage.calls.filter(([action]) => action === 'remove').map(([, key]) => key), [
+    ...storageKeys,
+    WARDROBE_ERASE_PENDING_KEY,
+  ]);
+  assert.deepEqual(localStorage.calls.filter(([action]) => action === 'set'), [
+    ['set', WARDROBE_ERASE_PENDING_KEY, '1'],
+    ['set', WARDROBE_ERASE_PENDING_KEY, '1'],
+  ]);
+  assert.deepEqual(WARDROBE_ERASE_SCOPE.localStorageKeys, storageKeys);
+  assert.deepEqual([...localStorage.rows], [
+    ['other-app', 'keep me'],
+    ['eoul:v1:unrelated', 'also keep'],
+    ['eoul:probe', 'untouched probe'],
+  ]);
+  assert.deepEqual(await counts(factory, legacyName), { photos: 0 });
+  assert.deepEqual(await counts(factory, 'other-app-db'), { photos: 1, records: 1, recovery: 1 });
+});
+
+test('failed marker-removal verification restores the guard and never acknowledges success', async () => {
+  const indexedDB = new IDBFactory(),
+    localStorage = storage();
+  await seed(indexedDB, currentName);
+  await seed(indexedDB, legacyName, 1, ['photos']);
+  const getItem = localStorage.getItem;
+  let denyRemovedMarker = true;
+  localStorage.getItem = (key) => {
+    if (key === WARDROBE_ERASE_PENDING_KEY && !localStorage.rows.has(key) && denyRemovedMarker)
+      throw new DOMException('synthetic verification denial', 'SecurityError');
+    return getItem(key);
+  };
+  await assert.rejects(eraseWardrobeData({ indexedDB, localStorage }), (error) => {
+    assert.equal(error.result.ok, false);
+    assert.equal(error.code, 'pending-marker-failed');
+    assert.deepEqual(error.result.mayRemain, []);
+    assert.equal(error.result.pendingMarker.status, 'pending');
+    assert.equal(error.result.pendingMarker.phase, 'removing');
+    return true;
+  });
+  assert.ok(storageKeys.every((key) => !localStorage.rows.has(key)));
+  assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
+  assert.deepEqual(await counts(indexedDB, currentName), { photos: 0, records: 0, recovery: 0 });
+  assert.deepEqual(await counts(indexedDB, legacyName), { photos: 0 });
+  denyRemovedMarker = false;
+  assert.equal((await eraseWardrobeData({ indexedDB, localStorage })).ok, true);
+  assert.equal(localStorage.rows.has(WARDROBE_ERASE_PENDING_KEY), false);
 });

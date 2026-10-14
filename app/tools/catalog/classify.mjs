@@ -2,7 +2,7 @@
 // 사용: node classify.mjs raw.json classified.json
 // 이름에 쓰인 단어로만 판단하므로, 결과는 사진 검수(편집자)를 거쳐 curation에 반영한다.
 import fs from 'node:fs';
-import { productExclusionReason } from '../../src/catalog-policy.js';
+import { productExclusionReason, productClassificationConflict } from '../../src/catalog-policy.js';
 
 const isHood = (n) =>
   /후드|후디|hood|hoodie/i.test(n) &&
@@ -346,7 +346,7 @@ export function classify(name, g) {
     const hit = typeof re === 'function' ? re(n) : re.test(n);
     if (hit) {
       // 스타일 단어(jungle, hunting 등)가 상품의 실제 형태와 충돌하면 다음 규칙을 본다.
-      if (slot && productExclusionReason({ name, slot, price: 1 })) continue;
+      if (slot && productClassificationConflict({ name, slot })) continue;
       return slot;
     }
   }

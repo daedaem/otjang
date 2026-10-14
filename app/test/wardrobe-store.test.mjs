@@ -16,6 +16,11 @@ async function manifest(file) {
   assert.equal(header.subarray(0, 8).toString(), 'EOULBK02');
   return JSON.parse(await file.slice(12, 12 + header.readUInt32LE(8)).text());
 }
+async function backupPhotoBytes(file, row) {
+  const header = Buffer.from(await file.slice(0, 12).arrayBuffer());
+  const start = 12 + header.readUInt32LE(8) + row.offset;
+  return new Uint8Array(await file.slice(start, start + row.bytes).arrayBuffer());
+}
 async function setup() {
   const indexedDB = new IDBFactory();
   const store = createWardrobeStore({ indexedDB });
@@ -33,6 +38,32 @@ async function alter(indexedDB, callback) {
       const tx = db.transaction(['records', 'photos'], 'readwrite');
       callback(tx);
       tx.oncomplete = resolve;
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function rawSnapshot(indexedDB) {
+  const db = await new Promise((resolve, reject) => {
+    const request = indexedDB.open('eoul-wardrobe-v2', 1);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(['records', 'photos'], 'readonly'),
+        records = tx.objectStore('records').getAll(),
+        recordKeys = tx.objectStore('records').getAllKeys(),
+        photos = tx.objectStore('photos').getAll(),
+        photoKeys = tx.objectStore('photos').getAllKeys();
+      tx.oncomplete = () =>
+        resolve({
+          records: records.result,
+          recordKeys: recordKeys.result,
+          photos: photos.result,
+          photoKeys: photoKeys.result,
+        });
       tx.onabort = () => reject(tx.error);
     });
   } finally {
@@ -73,6 +104,65 @@ test('a missing referenced photo aborts replacement and rolls back deletion of t
     new Uint8Array(await asset.blob.arrayBuffer()),
   );
   store.close();
+});
+
+test('a damaged Blob under a valid photo ID blocks reads and survives recovery from a verified backup', async () => {
+  const { indexedDB, store } = await setup();
+  const asset = await photoAsset(jpeg(41)),
+    damaged = jpeg(42);
+  await store.commit(personal([garment('g_damaged', asset.id)]), 1, [asset]);
+  const backup = await store.backup(),
+    original = await store.read(),
+    observedEpoch = store.currentEpoch(),
+    raw = { revision: original.revision, epoch: crypto.randomUUID(), state: original.state };
+  await alter(indexedDB, (tx) => {
+    tx.objectStore('records').put(raw, 'current');
+    tx.objectStore('photos').put(damaged, asset.id);
+  });
+
+  await assert.rejects(store.read(), /일부 사진을 읽지 못했습니다/);
+  assert.equal(store.currentEpoch(), observedEpoch, 'an invalid snapshot cannot authorize a new epoch');
+  const beforeFile = await store.recoveryBackup(),
+    before = await manifest(beforeFile),
+    beforePhoto = before.photos.find((row) => row.id === asset.id);
+  assert.deepEqual(before.records, [{ key: 'current', value: raw }]);
+  assert.deepEqual(await backupPhotoBytes(beforeFile, beforePhoto), new Uint8Array(await damaged.arrayBuffer()));
+
+  const parsed = await parseWardrobeBackup(backup);
+  await store.recover(parsed.state, await store.recoveryState(), parsed.assets);
+  const current = await store.read(),
+    recoveryFile = await store.recoveryBackup(),
+    recovery = await manifest(recoveryFile),
+    saved = recovery.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot'),
+    mapping = saved.value.photos.find((row) => row.sourceKey === asset.id),
+    archived = recovery.photos.find((row) => row.id === mapping.snapshotKey);
+  assert.deepEqual(current.state, parsed.state);
+  assert.deepEqual(
+    new Uint8Array(await current.photos.get(asset.id).arrayBuffer()),
+    new Uint8Array(await asset.blob.arrayBuffer()),
+  );
+  assert.deepEqual(saved.value.source.row, raw);
+  assert.notEqual(mapping.snapshotKey, asset.id);
+  assert.deepEqual(await backupPhotoBytes(recoveryFile, archived), new Uint8Array(await damaged.arrayBuffer()));
+  store.close();
+});
+
+test('stored photos with invalid MIME, size or JPEG signature cannot be read as a valid wardrobe', async () => {
+  const oversized = new Uint8Array(800001);
+  oversized.set([255, 216, 255]);
+  for (const damaged of [
+    new Blob([new Uint8Array([255, 216, 255, 43])], { type: 'text/plain' }),
+    new Blob([new Uint8Array([255, 216])], { type: 'image/jpeg' }),
+    new Blob([new Uint8Array([255, 216, 0, 43])], { type: 'image/jpeg' }),
+    new Blob([oversized], { type: 'image/jpeg' }),
+  ]) {
+    const { indexedDB, store } = await setup();
+    const asset = await photoAsset(jpeg(43));
+    await store.commit(personal([garment('g_invalid', asset.id)]), 1, [asset]);
+    await alter(indexedDB, (tx) => tx.objectStore('photos').put(damaged, asset.id));
+    await assert.rejects(store.read(), /일부 사진을 읽지 못했습니다/);
+    store.close();
+  }
 });
 
 test('shared photo is retained until its last garment is deleted; unrelated orphan photos are not collected', async () => {
@@ -180,6 +270,101 @@ test('unsupported or falsy stored rows block initialization and commits without 
     assert.equal(raw.legacyRaw, 'original localStorage text');
     store.close();
   }
+});
+
+test('diagnostic export refuses lossy non-JSON record values and leaves raw records and photo bytes unchanged', async () => {
+  const cyclic = {};
+  cyclic.self = cyclic;
+  let deeplyNested = null;
+  for (let depth = 0; depth < 105; depth++) deeplyNested = { nested: deeplyNested };
+  for (const value of [
+    new Date('2026-10-14T00:00:00.000Z'),
+    undefined,
+    { attachment: jpeg(81) },
+    NaN,
+    -0,
+    [undefined],
+    new Map([['future', 'value']]),
+    cyclic,
+    deeplyNested,
+  ]) {
+    const { indexedDB, store } = await setup(),
+      raw = { revision: 7, state: { schema: 99, future: value } },
+      photo = jpeg(82);
+    await alter(indexedDB, (tx) => {
+      tx.objectStore('records').put(raw, 'current');
+      tx.objectStore('photos').put(photo, 'original-photo');
+    });
+    const before = await rawSnapshot(indexedDB);
+    await assert.rejects(
+      store.recoveryBackup('synthetic legacy original'),
+      (error) => error.code === 'unsupported-diagnostic-value' && /원본은 변경하지 않았습니다/.test(error.message),
+    );
+    const after = await rawSnapshot(indexedDB);
+    assert.deepEqual(after, before);
+    assert.deepEqual(new Uint8Array(await after.photos[0].arrayBuffer()), new Uint8Array(await photo.arrayBuffer()));
+    store.close();
+  }
+});
+
+test('diagnostic export also refuses non-JSON database keys and invalid photo values without changing either store', async () => {
+  for (const invalid of [
+    { store: 'records', key: new Date('2026-10-14T00:00:00.000Z'), value: { future: 'record' } },
+    { store: 'photos', key: new Date('2026-10-14T00:00:00.000Z'), value: jpeg(83) },
+    { store: 'photos', key: 'invalid-photo', value: { attachment: jpeg(84) } },
+    { store: 'photos', key: 'invalid-photo', value: undefined },
+  ]) {
+    const { indexedDB, store } = await setup();
+    await alter(indexedDB, (tx) => tx.objectStore(invalid.store).put(invalid.value, invalid.key));
+    const before = await rawSnapshot(indexedDB);
+    await assert.rejects(store.recoveryBackup(), (error) => error.code === 'unsupported-diagnostic-value');
+    assert.deepEqual(await rawSnapshot(indexedDB), before);
+    store.close();
+  }
+});
+
+test('supported diagnostic exports retain unknown JSON records, invalid JSON photo values and binary photo bytes', async () => {
+  const { indexedDB, store } = await setup(),
+    raw = { revision: 7, state: { schema: 99, future: { nested: [null, false, 0, 'keep'] } } },
+    invalidPhoto = { reason: 'synthetic invalid photo', value: [1, null] },
+    photo = jpeg(85);
+  await alter(indexedDB, (tx) => {
+    tx.objectStore('records').put(raw, 'current');
+    tx.objectStore('photos').put(invalidPhoto, 'invalid-photo');
+    tx.objectStore('photos').put(photo, 'original-photo');
+  });
+  const file = await store.recoveryBackup('synthetic exact legacy text'),
+    decoded = await manifest(file);
+  assert.deepEqual(decoded.records, [{ key: 'current', value: raw }]);
+  assert.equal(decoded.legacyRaw, 'synthetic exact legacy text');
+  assert.deepEqual(
+    decoded.photos.find((row) => row.id === 'invalid-photo'),
+    { id: 'invalid-photo', invalidValue: invalidPhoto },
+  );
+  assert.deepEqual(
+    await backupPhotoBytes(
+      file,
+      decoded.photos.find((row) => row.id === 'original-photo'),
+    ),
+    new Uint8Array(await photo.arrayBuffer()),
+  );
+  store.close();
+});
+
+test('recovery from an absent current record creates a JSON-compatible archive instead of an undefined source row', async () => {
+  const indexedDB = new IDBFactory(),
+    store = createWardrobeStore({ indexedDB });
+  await store.recover(personal([]), await store.recoveryState());
+  const stored = await rawSnapshot(indexedDB),
+    storedArchive = stored.records.find((row) => row?.format === 'eoul-wardrobe-recovery-snapshot');
+  assert.deepEqual(storedArchive.source, { key: 'current', exists: false });
+  assert.equal(Object.hasOwn(storedArchive.source, 'row'), false);
+  const decoded = await manifest(await store.recoveryBackup()),
+    archive = decoded.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
+  assert.deepEqual(archive.value.source, { key: 'current', exists: false });
+  assert.equal(Object.hasOwn(archive.value.source, 'row'), false);
+  assert.equal((await store.read()).state.garments.length, 0);
+  store.close();
 });
 
 test('legacy migration is deterministic and rejects a corrupt demo flag without dropping owned clothes', () => {

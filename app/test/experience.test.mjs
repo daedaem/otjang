@@ -141,6 +141,37 @@ async function boot(initial = new Map(), indexedDB = new IDBFactory()) {
   };
 }
 const jpeg = (value = 7) => new Blob([new Uint8Array([255, 216, 255, value])], { type: 'image/jpeg' });
+function delayedDatabaseOpen(factory, shouldDelay) {
+  let holding = false,
+    release,
+    entered;
+  const pause = new Promise((resolve) => (release = resolve)),
+    started = new Promise((resolve) => (entered = resolve));
+  return {
+    indexedDB: {
+      open(name, version) {
+        const request = version === undefined ? factory.open(name) : factory.open(name, version);
+        if (!holding || !shouldDelay(name, version)) return request;
+        const delayed = {};
+        for (const property of ['result', 'transaction', 'error'])
+          Object.defineProperty(delayed, property, { get: () => request[property] });
+        for (const event of ['onblocked', 'onerror', 'onupgradeneeded'])
+          request[event] = (value) => delayed[event]?.(value);
+        request.onsuccess = async (event) => {
+          entered();
+          await pause;
+          delayed.onsuccess?.(event);
+        };
+        return delayed;
+      },
+    },
+    hold() {
+      holding = true;
+    },
+    started,
+    release: () => release(),
+  };
+}
 async function manifest(file) {
   const header = Buffer.from(await file.slice(0, 12).arrayBuffer());
   return JSON.parse(await file.slice(12, 12 + header.readUInt32LE(8)).text());
@@ -403,6 +434,47 @@ test('future-schema startup explicitly confirms replacement and preserves its ra
   assert.deepEqual(preserved.value.source.row, future);
   assert.equal((await broken.app.store.read()).state.schema, 3);
 });
+test('a ready tab with a later failed read confirms preserved recovery before replacing a future record or missing photo', async () => {
+  for (const failure of ['future', 'missing-photo']) {
+    const page = await boot();
+    await addWithPhoto(page, 'shirt', '복구할 셔츠', jpeg(41));
+    const before = await page.app.store.read(),
+      backup = await page.app.store.backup();
+    await page.click({ action: 'add-start' });
+    await page.click({ action: 'draft-kind', kind: 'pants' });
+    page.input('garment-label', '복구 전 입력 유지');
+    const rawRecord =
+      failure === 'future'
+        ? { revision: before.revision, epoch: before.epoch, state: { schema: 99, syntheticFutureField: 'keep' } }
+        : { revision: before.revision, epoch: before.epoch, state: before.state };
+    await mutateWardrobeDB(page.indexedDB, (tx) => {
+      if (failure === 'future') tx.objectStore('records').put(rawRecord, 'current');
+      else tx.objectStore('photos').delete(before.state.garments[0].photoId);
+    });
+    await page.click({ action: 'reload-wardrobe' });
+    assert.equal(page.app.draft().label, '복구 전 입력 유지');
+    await assert.rejects(page.app.store.read());
+    await page.app.chooseWardrobeBackup(backup);
+    assert.match(page.nodes.get('sheet-root').innerHTML, /원문을 보존하고 이 백업으로 교체/);
+    const beforeConfirmation = await manifest(await page.app.store.recoveryBackup());
+    assert.deepEqual(beforeConfirmation.records, [{ key: 'current', value: rawRecord }]);
+    await page.click({ action: 'restore-backup' });
+    const restored = await page.app.store.read();
+    assert.deepEqual(restored.state, before.state);
+    assert.deepEqual(
+      new Uint8Array(await [...restored.photos.values()][0].arrayBuffer()),
+      new Uint8Array(await jpeg(41).arrayBuffer()),
+    );
+    const afterConfirmation = await manifest(await page.app.store.recoveryBackup()),
+      preserved = afterConfirmation.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
+    assert.deepEqual(preserved.value.source.row, rawRecord);
+    assert.equal(preserved.value.photos.length, failure === 'future' ? 1 : 0);
+    assert.match(page.nodes.get('toast').innerHTML, /옷장과 사진을 복원했어요/);
+    await add(page, 'pants', '복구 후 저장');
+    assert.equal((await page.app.store.read()).state.garments.length, 2);
+  }
+});
+
 test('recovery preservation failure does not display restoration success or replace the broken source', async () => {
   const source = await boot(),
     backup = await source.app.store.backup();
@@ -573,6 +645,126 @@ test('missing legacy photo requires explicit confirmation, retains garment and f
   await add(page, 'pants');
   assert.equal(page.state().garments.length, 2);
 });
+test('initial legacy photo verification blocks closing and full erase until the durable import finishes', async (context) => {
+  const factory = new IDBFactory(),
+    delayed = delayedDatabaseOpen(factory, (name, version) => name === 'eoul' && version === 1);
+  const raw = JSON.stringify({
+    v: 2,
+    onboarded: true,
+    gender: 'M',
+    styles: ['classic'],
+    brands: [],
+    brandOnly: false,
+    occasion: null,
+    budget: null,
+    closet: [
+      { id: 'c_present', slot: 'm-oxford', color: 'white', photo: true },
+      { id: 'c_missing', slot: 'm-oxford', color: 'blue', photo: true },
+    ],
+    saved: [],
+    hidden: [],
+  });
+  await seedSyntheticDB(factory, 'eoul', 1, 'photos', 'c_present', 'data:image/jpeg;base64,/9j/Bw==');
+  const page = await boot(new Map([['eoul:v1', raw]]), delayed.indexedDB);
+  await page.click({ action: 'review-legacy' });
+  const importSheet = page.nodes.get('sheet-root').innerHTML,
+    previousPhotos = await syntheticDBRows(factory, 'eoul');
+  let releasePhoto, photoEntered;
+  const photoPause = new Promise((resolve) => (releasePhoto = resolve)),
+    photoStarted = new Promise((resolve) => (photoEntered = resolve));
+  const arrayBuffer = Blob.prototype.arrayBuffer;
+  let first = true;
+  context.mock.method(Blob.prototype, 'arrayBuffer', async function () {
+    if (this.type === 'image/jpeg' && first) {
+      first = false;
+      photoEntered();
+      await photoPause;
+    }
+    return arrayBuffer.call(this);
+  });
+  const importing = page.click({ action: 'import-legacy' });
+  let erasing, eraseOpenedLegacy, closeWasBlocked, whilePending, toastWhilePending;
+  try {
+    await photoStarted;
+    await page.click({ action: 'close-sheet' });
+    closeWasBlocked = page.nodes.get('sheet-root').innerHTML === importSheet;
+    await page.click({ action: 'erase-review' });
+    await page.click({ action: 'erase-confirm' });
+    delayed.hold();
+    erasing = page.click({ action: 'erase-execute' });
+    eraseOpenedLegacy = await Promise.race([erasing.then(() => false), delayed.started.then(() => true)]);
+    whilePending = await syntheticDBRows(factory, 'eoul-wardrobe-v2');
+    toastWhilePending = page.nodes.get('toast').innerHTML;
+    // The old implementation writes imported rows after clearing the current DB,
+    // before clearing the legacy DB and falsely acknowledging full deletion.
+    releasePhoto();
+    await importing;
+  } finally {
+    releasePhoto();
+    delayed.release();
+    await importing;
+    await erasing;
+  }
+  assert.equal(closeWasBlocked, true);
+  assert.equal(eraseOpenedLegacy, false, 'no clear operation starts while import photo verification is pending');
+  assert.deepEqual(whilePending, { photos: [], records: [] });
+  assert.doesNotMatch(toastWhilePending, /현재·이전 옷장과 사진·복구 사본을 삭제했어요/);
+  assert.equal(page.storage.get('eoul:v1'), raw);
+  assert.deepEqual(await syntheticDBRows(factory, 'eoul'), previousPhotos);
+  const imported = await page.app.store.read();
+  assert.deepEqual(
+    imported.state.garments.map((item) => item.id),
+    ['c_present', 'c_missing'],
+  );
+  assert.equal(imported.photos.size, 1);
+  await confirmFullErase(page);
+  assert.deepEqual((await page.app.store.read()).state.garments, []);
+  assert.equal((await page.app.store.read()).photos.size, 0);
+  assert.equal(page.storage.has('eoul:v1'), false);
+});
+
+test('a cancelled legacy read failure preserves a newer garment draft or final erase confirmation', async () => {
+  for (const nextSheet of ['draft', 'erase']) {
+    const factory = new IDBFactory(),
+      delayed = delayedDatabaseOpen(factory, (name, version) => name === 'eoul' && version === undefined);
+    await seedSyntheticDB(factory, 'eoul', 1, 'photos', 'c_bad', 'synthetic invalid photo');
+    const page = await boot(new Map([['eoul:v1', JSON.stringify(oldState)]]), delayed.indexedDB);
+    const legacy = JSON.parse(newerSourceRaw);
+    delete legacy.example;
+    legacy.closet = [{ id: 'c_bad', slot: 'm-oxford', color: 'white', photo: true }];
+    page.storage.set('eoul:v1', JSON.stringify(legacy));
+    delayed.hold();
+    const reviewing = page.click({ action: 'review-legacy' });
+    await delayed.started;
+    await page.click({ action: 'close-sheet' });
+    if (nextSheet === 'draft') {
+      await page.click({ action: 'add-start' });
+      await page.click({ action: 'draft-kind', kind: 'shirt' });
+      page.input('garment-label', '유지할 새 입력');
+    } else {
+      await page.click({ action: 'erase-review' });
+      await page.click({ action: 'erase-confirm' });
+    }
+    const expectedSheet = page.nodes.get('sheet-root').innerHTML,
+      draftId = page.app.draft()?.id;
+    delayed.release();
+    await reviewing;
+    assert.equal(page.nodes.get('sheet-root').innerHTML, expectedSheet);
+    assert.doesNotMatch(expectedSheet, /이전 기록 확인 필요/);
+    if (nextSheet === 'draft') {
+      assert.equal(page.app.draft().id, draftId);
+      assert.equal(page.app.draft().label, '유지할 새 입력');
+      await page.click({ action: 'draft-save' });
+      assert.equal((await page.app.store.read()).state.garments.at(-1).label, '유지할 새 입력');
+    } else {
+      assert.match(expectedSheet, /data-action="erase-execute"/);
+      await page.click({ action: 'erase-execute' });
+      assert.equal(page.storage.has('eoul:v1'), false);
+      assert.deepEqual((await page.app.store.read()).state.garments, []);
+    }
+  }
+});
+
 test('durable UI has no legacy write path and bundled script remains executable', () => {
   const source = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
   assert.doesNotMatch(source, /localStorage\.setItem|function persist\(|photoPut\(/);
@@ -822,6 +1014,8 @@ test('partial full erase reports retained legacy scope and never acknowledges co
   assert.match(sheet, /이전 옷장·찜·취향<\/b>: 보존 또는 아직 시작하지 않음/);
   assert.match(sheet, /Claude 최신 옷장·찜·취향<\/b>: 보존 또는 아직 시작하지 않음/);
   assert.match(sheet, /Claude 최신 저장 원문 사본<\/b>: 보존 또는 아직 시작하지 않음/);
+  assert.match(sheet, /현재 저장소·이전 기록 원문 받기/);
+  assert.match(sheet, /이전 사진과 Claude 최신 버전의 기록·원문 사본은 해당 버전에서 따로 백업/);
   assert.doesNotMatch(page.nodes.get('toast').innerHTML, /현재·이전 옷장과 사진·복구 사본을 삭제했어요/);
   assert.deepEqual(await syntheticDBRows(indexedDB, 'eoul-wardrobe-v2'), { photos: [], records: [] });
   assert.deepEqual(await syntheticDBRows(indexedDB, 'eoul', 2), { photos: ['synthetic retained photo'] });
@@ -831,6 +1025,14 @@ test('partial full erase reports retained legacy scope and never acknowledges co
   assert.equal(page.storage.get('eoul:probe'), 'preserve probe');
   assert.equal(page.urls.size, 0);
   assert.doesNotMatch(page.nodes.get('app').innerHTML, /부분 삭제 전 셔츠/);
+  assert.equal(page.storage.get('eoul:erase-pending'), '1');
+  const reloaded = await boot(page.storage, indexedDB);
+  assert.match(reloaded.nodes.get('app').innerHTML, /남은 자료를 자동으로 가져오지 않습니다/);
+  assert.deepEqual(await syntheticDBRows(indexedDB, 'eoul-wardrobe-v2'), { photos: [], records: [] });
+  assert.equal(reloaded.state().garments.length, 0);
+  await reloaded.app.chooseWardrobeBackup(new Blob(['invalid backup']));
+  assert.match(reloaded.nodes.get('toast').innerHTML, /미완료된 전체 삭제를 먼저 마무리/);
+  assert.deepEqual(await syntheticDBRows(indexedDB, 'eoul-wardrobe-v2'), { photos: [], records: [] });
 });
 
 test('a prior tab cannot resurrect deleted clothes or photos when fresh boot reuses the same revision', async () => {
@@ -1003,4 +1205,79 @@ test('optional jacket detail can confirm fleece and remove its repeated recommen
     .recommendItems({ ...again.app.state(), now: '2026-10-14T12:00:00+09:00' }, { limit: 30 })
     .find((row) => row.slot.id === 'm-fleece');
   assert.equal(recommendation.ownership, 'uncertain');
+});
+
+test('search-with retains the selected real shirt and its photograph when two shirts share a kind', async () => {
+  const page = await boot();
+  await addWithPhoto(page, 'shirt', '흰 셔츠 기준', jpeg(71));
+  const first = page.state().garments[0];
+  await page.click({ action: 'edit-own', id: first.id });
+  await page.click({ action: 'draft-slot', slot: 'm-oxford' });
+  await page.click({ action: 'draft-color', color: 'white' });
+  await page.click({ action: 'draft-save' });
+  await addWithPhoto(page, 'shirt', '파란 셔츠 기준', jpeg(72));
+  const second = page.state().garments[1];
+  await page.click({ action: 'edit-own', id: second.id });
+  await page.click({ action: 'draft-slot', slot: 'm-oxford' });
+  await page.click({ action: 'draft-color', color: 'blue' });
+  await page.click({ action: 'draft-save' });
+  for (const selected of page.state().garments) {
+    await page.click({ action: 'open-own', id: selected.id });
+    await page.click({ action: 'search-with', id: selected.id });
+    const view = page.nodes.get('app').innerHTML;
+    assert.match(view, /이 옷을 기준으로 찾아요/);
+    const result = page.app.search(page.app.state(), '옥스퍼드 셔츠에 어울리는 바지', { anchorItemId: selected.id });
+    assert.equal(result.anchorItem.id, selected.id);
+    assert.equal(result.anchorItem.photoId, selected.photoId);
+    assert.ok(result.outfit.items.some((row) => row.item?.id === selected.id));
+    const anchorPart = view.match(
+      /<div class="notice search-anchor">([\s\S]*?)<button class="link" data-action="clear-anchor"/,
+    )[1];
+    assert.ok(anchorPart.includes(selected.label));
+    assert.ok(!anchorPart.includes(page.state().garments.find((i) => i.id !== selected.id).label));
+  }
+  await page.click({ action: 'example', q: '셔츠 높은 가격순' });
+  assert.doesNotMatch(page.nodes.get('app').innerHTML, /이 옷을 기준으로 찾아요/);
+  assert.match(page.nodes.get('app').innerHTML, /수집일 가격이 높은 순서/);
+});
+
+test('unconfirmed outfit row opens that garment detail and returns to a refreshed formula after saving', async () => {
+  const page = await boot();
+  await addWithPhoto(page, 'shirt', '확인할 셔츠', jpeg(81));
+  await add(page, 'pants', '확인할 바지');
+  await add(page, 'sneaker', '확인할 운동화');
+  await add(page, 'jacket', '확인할 재킷');
+  const outfit = page.app
+    .recommendLooks(page.app.state(), { limit: 32, occasion: null })
+    .find((r) => r.items.some((i) => i.item?.label === '확인할 셔츠' && i.certainty === 'uncertain'));
+  assert.ok(outfit);
+  page.app.showLook(outfit);
+  const row = outfit.items.find((i) => i.item?.label === '확인할 셔츠');
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="confirm-own-kind"/);
+  await page.click({ action: 'confirm-own-kind', id: row.item.id, look: outfit.look.id });
+  assert.match(page.nodes.get('sheet-root').innerHTML, /<details class="garment-name" open><summary>세부 종류 확인/);
+  assert.equal(page.app.draft().id, row.item.id);
+  await page.click({ action: 'draft-slot', slot: row.slot.id });
+  await page.click({ action: 'draft-save' });
+  assert.equal(page.state().garments.find((i) => i.id === row.item.id).slot, row.slot.id);
+  assert.equal(page.state().garments.find((i) => i.id === row.item.id).photoId, row.item.photoId);
+  const refreshed = page.nodes.get('sheet-root').innerHTML;
+  assert.ok(refreshed.includes(outfit.look.title));
+  assert.ok(!refreshed.includes(`data-action="confirm-own-kind" data-id="${row.item.id}"`));
+  assert.ok(refreshed.includes('확인할 셔츠'));
+  assert.equal((await page.app.store.read()).state.garments.find((i) => i.id === row.item.id).slot, row.slot.id);
+});
+
+test('unregistered recommendations are candidates and keep the similar-owned registration route', async () => {
+  const page = await boot();
+  await add(page, 'shirt', '등록한 셔츠 한 벌');
+  await page.click({ action: 'tab', tab: 'home' });
+  const view = page.nodes.get('app').innerHTML;
+  assert.match(view, /등록하지 않은 옷이 없다는 뜻은 아니에요/);
+  assert.match(view, /등록 안 된 종류 · 이미 가진 옷일 수 있어요/);
+  assert.doesNotMatch(view, /지금 사면 좋은 아이템/);
+  const candidate = page.app.recommendItems(page.app.state())[0];
+  page.app.itemSheet(candidate.product.id);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /구매 후보예요|인지 확인한 뒤 추가 구매를 판단/);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="add-slot"/);
 });

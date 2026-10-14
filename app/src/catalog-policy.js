@@ -16,8 +16,10 @@ export function productClassificationConflict(product) {
   );
   const fleece = /플리스|후리스|fleece|베터\s*스웨터|better\s*sweater/i.test(name);
   const sweater = /니트|스웨터|knit|sweater/i.test(name);
+  const coat = /코트|\bcoats?\b/i.test(name);
 
   if (pants && slot.cat !== 'bottom') return 'category-conflict';
+  if (coat && slot.cat !== 'outer') return 'category-conflict';
   if (vest && slot.shape !== 'vest' && !(slot.shape === 'cardigan' && /가디건|카디건|cardigan/i.test(name)))
     return 'shape-conflict';
   if (shirt && slot.cat === 'outer' && !outer) return 'shape-conflict';
@@ -46,7 +48,11 @@ export function productExclusionReason(product) {
   )
     return 'childrenswear';
   if (!name || !Number.isFinite(product.price) || product.price <= 0) return 'incomplete';
-  return productClassificationConflict(product);
+  const conflict = productClassificationConflict(product);
+  if (conflict) return conflict;
+  const requiredColors = SLOT_BY_ID[product.slot]?.requiredColors;
+  if (requiredColors && !requiredColors.includes(evidenceColor(product))) return 'required-color-unverified';
+  return null;
 }
 export function productEligible(product) {
   return !productExclusionReason(product);
