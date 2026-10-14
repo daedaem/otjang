@@ -285,6 +285,20 @@ img { display: block; max-width: 100%; }
 .photo-editor input[type=file] { width: 100%; max-width: 100%; font-size: 12px; margin-top: 8px; }
 .photo-label, .photo-editor .link { display: inline-flex; min-height: 44px; align-items: center; cursor: pointer; }
 .photo-editor .link { margin-left: 10px; }
+.photo-analysis { margin: 20px 0; padding: 16px; background: var(--sunk); border-radius: 14px; }
+.photo-analysis h3 { margin: 0 0 12px; }
+.photo-analysis .photo-label { display: block; margin: 14px 0; }
+.photo-analysis summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
+.photo-analysis label { display: block; margin: 10px 0 6px; }
+.photo-analysis textarea { width: 100%; max-width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.photo-analysis .opts { flex-wrap: wrap; }
+.label-preview { max-width: 100%; width: 140px; height: 100px; object-fit: contain; margin: 12px 0; }
+.photo-products { display: grid; gap: 8px; margin: 12px 0; }
+.photo-product { display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; text-align: left; background: var(--surface); width: 100%; }
+.photo-product img { flex: 0 0 64px; width: 64px; height: 76px; object-fit: contain; }
+.photo-product span { min-width: 0; overflow-wrap: anywhere; }
+.photo-product b, .photo-product small { display: block; }
+.photo-product small { margin-top: 6px; color: var(--ink-3); }
 .garment-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .garment-editor legend { font-weight: 700; margin-bottom: 12px; }
 .kind-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }

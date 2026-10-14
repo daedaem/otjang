@@ -1,4 +1,5 @@
-// app/ 의 모듈을 HTML 파일 하나로 묶는다. 외부 의존성 없음.
+// app/ 의 모듈을 HTML 파일 하나로 묶는다. 빌드 도구는 외부 의존성 없음.
+// 선택 기능인 사진 분석은 고정된 공개 런타임·모델을 다운로드한다.
 // 사용: node app/tools/build.mjs                         →  app/dist/index.html
 //       node app/tools/build.mjs --images thumbs.json   →  상품 이미지 주소를 thumbs.json의 data: URI로 바꿔 넣는다
 //                                                          (외부 이미지를 막는 환경에서 미리보기할 때)
@@ -24,6 +25,8 @@ const order = [
   'src/wardrobe-store.js',
   'src/wardrobe-erase.js',
   'src/garment-photo.js',
+  'src/photo-recognition.js',
+  'src/photo-identity.js',
   'src/legacy-photos.js',
   'src/query.js',
   'src/engine.js',
