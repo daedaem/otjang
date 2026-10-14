@@ -883,14 +883,16 @@ function nav() {
   return `<nav class="nav" aria-label="주요 메뉴"><div class="nav-inner">${tabs.map(([k, label, icon, n]) => `<button data-action="tab" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">${icon}${label}${n ? `<span class="count">${n}</span>` : ''}</button>`).join('')}</div></nav>`;
 }
 
+const TAB_TITLE = { home: '추천', closet: '내 옷장', saved: '구매 여정' };
 function render() {
   if (tastePicking || !state.onboarded || !state.gender || !myStyles().length) {
-    $app.innerHTML = storageNotice() + renderOnboarding();
+    $app.innerHTML = `<main><h1 class="sr-only">어울 시작하기</h1>${storageNotice()}${renderOnboarding()}</main>`;
     return;
   }
   const body = state.tab === 'closet' ? renderCloset() : state.tab === 'saved' ? renderSaved() : renderHome();
+  // 저장·예시 안내도 본문 구역 안에 둔다(화면 낭독기로 본문에 바로 가도 안내와 복구 버튼을 지나치지 않게). 보이는 순서는 그대로다.
   $app.innerHTML =
-    storageNotice() + demoNotice() + (state.tab === 'home' ? topBar() : '') + `<main>${body}</main>` + nav();
+    `<main><h1 class="sr-only">어울 ${TAB_TITLE[state.tab] || ''}</h1>${storageNotice()}${demoNotice()}${state.tab === 'home' ? topBar() : ''}${body}</main>` + nav();
 }
 
 // ── 시트

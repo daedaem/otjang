@@ -413,3 +413,15 @@ test('every bottom sheet is a named dialog so screen readers say which window op
   assert.match(sheet, /<h2 id="sheet-title" class="detail-title">옷 한 벌 추가<\/h2>/);
   assert.equal(sheet.match(/id="sheet-title"/g).length, 1, 'only the first heading names the dialog');
 });
+
+test('storage and example notices live inside the main landmark under one page heading', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  const markup = page.nodes.get('app').innerHTML;
+  assert.match(markup, /^<main><h1 class="sr-only">어울 추천<\/h1>/);
+  assert.ok(markup.indexOf('demo-notice') > markup.indexOf('<main>'), 'the example notice is inside main');
+  assert.ok(markup.indexOf('demo-notice') < markup.indexOf('</main>'));
+  assert.equal(markup.match(/<h1\b/g).length, 1);
+  await page.click({ action: 'tab', tab: 'closet' });
+  assert.match(page.nodes.get('app').innerHTML, /^<main><h1 class="sr-only">어울 내 옷장<\/h1>/);
+});

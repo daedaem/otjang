@@ -416,3 +416,4 @@ img { display: block; max-width: 100%; }
 .garment-differences input { width: 20px; height: 20px; accent-color: var(--accent); }
 .garment-differences span { grid-column: 2; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
 .photo-error .opts { margin-top: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
