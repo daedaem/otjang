@@ -1,16 +1,16 @@
 {
-  "sourceCommit": "089fa816dead1a2a3d7fa5a0a9e0889466537999",
+  "sourceCommit": "6ca51dbb71c0d903c45ff92d50317600ba7236f5",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "claudeMergeCommit": "438500b",
   "upstreamObservedCommit": "d5fbe99cbb51b216ef7a7afde81078e4298b8f48",
   "upstreamLatestIntegrated": false,
   "legacyEoulV2Imported": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T15:13:43.520Z",
+  "builtAt": "2026-10-14T15:26:07.480Z",
   "files": {
     "index.html": {
-      "bytes": 848963,
-      "sha256": "b0c4054f1772122921cb80c1655f0ec8f74cab7de99d2299a3d3346ea39771b2"
+      "bytes": 849252,
+      "sha256": "47258954f0aa557a4aa00da8f1211b8523ae048d2189e059a7b2de31a30a9a23"
     },
     "THIRD_PARTY_NOTICES.md": {
       "bytes": 50703,
@@ -27,7 +27,7 @@
   "storageSchema": 5,
   "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 360,
+    "passed": 362,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
@@ -176,16 +176,24 @@
     "schemaUnchanged": 5,
     "callbackTests": 17,
     "ownedCatalogRegistration": true,
-    "ownedCatalogFlowTests": 12,
+    "ownedCatalogFlowTests": 13,
     "ownedCatalogQueriesUseShoppingFilters": false,
     "ownProductRequiresConfirmation": true,
-    "catalogColorRequiresOwnConfirmation": true
+    "catalogColorRequiresOwnConfirmation": true,
+    "ownedCatalogPreservesPreferences": true,
+    "activeClosetIncludesAllGenderClassifications": true,
+    "numericClothingModelLookup": true
   },
   "claudeRegistrationFixes": {
     "source": "d5fbe99cbb51b216ef7a7afde81078e4298b8f48",
     "fullBranchMerged": false,
     "codeFixesSelected": true,
     "currentOwnedCatalogSourceReviewCompleted": false,
-    "realMobileVerified": false
+    "realMobileVerified": false,
+    "reviewedSource": "089fa816dead1a2a3d7fa5a0a9e0889466537999",
+    "issuesAddressed": [
+      "cross-gender-preference-loss",
+      "numeric-model-name-lookup"
+    ]
   }
 }
