@@ -1,4 +1,5 @@
-// app/ 의 모듈을 HTML 파일 하나로 묶는다. 외부 의존성 없음.
+// app/ 의 모듈을 HTML 파일 하나로 묶는다. 빌드 도구는 외부 의존성 없음.
+// 선택 기능인 사진 분석은 고정된 공개 런타임·모델을 다운로드한다.
 // 사용: node app/tools/build.mjs                         →  app/dist/index.html
 //       node app/tools/build.mjs --images thumbs.json   →  상품 이미지 주소를 thumbs.json의 data: URI로 바꿔 넣는다
 //                                                          (외부 이미지를 막는 환경에서 미리보기할 때)
@@ -12,12 +13,35 @@ const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
 
-const order = ['src/data/slots.js', 'src/data/looks.js', 'src/data/products.js', 'src/query.js', 'src/engine.js', 'src/store.js', 'src/icons.js', 'src/main.js'];
+const order = [
+  'src/data/slots.js',
+  'src/data/looks.js',
+  'src/data/products.js',
+  'src/catalog-policy.js',
+  'src/legacy-wardrobe.js',
+  'src/legacy-purchase-v4.js',
+  'src/purchase-journey.js',
+  'src/wardrobe.js',
+  'src/wardrobe-store.js',
+  'src/wardrobe-erase.js',
+  'src/garment-photo.js',
+  'src/photo-recognition.js',
+  'src/photo-identity.js',
+  'src/owned-catalog.js',
+  'src/legacy-photos.js',
+  'src/query.js',
+  'src/engine.js',
+  'src/purchase-candidate.js',
+  'src/icons.js',
+  'src/zip-store.js',
+  'src/main.js',
+];
 let js = order
   .map((file) => {
-    const src = fs.readFileSync(path.join(root, file), 'utf8')
+    const src = fs
+      .readFileSync(path.join(root, file), 'utf8')
       .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
-      .replace(/^export\s+(const|function|let|class)\s/gm, '$1 ');
+      .replace(/^export\s+(const|function|async function|let|class)\s/gm, '$1 ');
     return `// ── ${file}\n${src}`;
   })
   .join('\n');
@@ -44,7 +68,8 @@ if (flag('--fragment')) {
   const body = source.match(/<body>([\s\S]*?)<script/)[1].trim();
   html = `${title}\n<style>\n${css}</style>\n${body}\n${script}\n`;
 } else {
-  html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+  html = fs
+    .readFileSync(path.join(root, 'index.html'), 'utf8')
     .replace('<link rel="stylesheet" href="./styles.css">', () => `<style>\n${css}</style>`)
     .replace('<script type="module" src="./src/main.js"></script>', () => script);
 }

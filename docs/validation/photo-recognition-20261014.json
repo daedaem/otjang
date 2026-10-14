@@ -1,0 +1,607 @@
+{
+  "checkedDate": "2026-10-14",
+  "scope": "Node CPU public images and Node OCR synthetic label; not browser/mobile/accuracy validation",
+  "privatePhotosUsed": false,
+  "defaultColorInferenceEnabled": false,
+  "nodeVersion": "v22.23.2",
+  "nodeOcrCoreVersion": "6.1.2",
+  "browserOcrCoreVersion": "6.0.0",
+  "imageFiles": {
+    "m-oxford.jpg": {
+      "bytes": 113454,
+      "sha256": "cf26b0fc812f0ac9fe1c7f3c09ebae45f378b8ed4d628e8384e68dd83b3fad86"
+    },
+    "m-trucker.jpg": {
+      "bytes": 234539,
+      "sha256": "5954e638b58e8b9bcd820db4d2252c803735734fc520a84589235e3c3735ace0"
+    },
+    "m-denim.jpg": {
+      "bytes": 27182,
+      "sha256": "55ff79542e1f8af2c1bb21689f1aeb62c46dac661b30d32d69ae41c6fd8043aa"
+    },
+    "synthetic-label.png": {
+      "bytes": 37999,
+      "sha256": "cec3e8da23cb013a32085f6bf849c20e6d0fc2c8c3f04098195ddb66df0d78f6"
+    }
+  },
+  "reports": {
+    "model-check": {
+      "model": "onnx-community/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M-ONNX",
+      "revision": "9463a9c508a344c837ffefe9d724f3827bf2dc79",
+      "device": "cpu",
+      "dtype": "q8",
+      "samples": [
+        {
+          "productId": "ms-728000",
+          "name": "베이식 옥스포드 셔츠 [화이트]",
+          "brand": "무신사 스탠다드",
+          "slot": "m-oxford",
+          "color": "white",
+          "imageUrl": "https://image.msscdn.net/images/goods_img/20180305/728000/728000_17286256542856_500.jpg",
+          "imageBytes": 113454,
+          "inferenceMs": 39,
+          "ranked": [
+            {
+              "score": 0.31575796008110046,
+              "label": "a coat"
+            },
+            {
+              "score": 0.20046158134937286,
+              "label": "a jacket"
+            },
+            {
+              "score": 0.08402832597494125,
+              "label": "a cardigan"
+            },
+            {
+              "score": 0.07954715937376022,
+              "label": "a vest"
+            },
+            {
+              "score": 0.05333530157804489,
+              "label": "trousers"
+            }
+          ]
+        },
+        {
+          "productId": "ms-3084874",
+          "name": "타입 I 트러커 자켓",
+          "brand": "리바이스",
+          "slot": "m-trucker",
+          "color": "blue",
+          "imageUrl": "https://image.msscdn.net/images/goods_img/20230215/3084874/3084874_17790691437470_500.jpg",
+          "imageBytes": 234539,
+          "inferenceMs": 24,
+          "ranked": [
+            {
+              "score": 0.16129067540168762,
+              "label": "a coat"
+            },
+            {
+              "score": 0.1612122505903244,
+              "label": "a sweater"
+            },
+            {
+              "score": 0.15778322517871857,
+              "label": "a jacket"
+            },
+            {
+              "score": 0.10495183616876602,
+              "label": "a cardigan"
+            },
+            {
+              "score": 0.09534072130918503,
+              "label": "jeans"
+            }
+          ]
+        },
+        {
+          "productId": "ms-7055559",
+          "name": "[Slim fit] 덴톤 코튼 블렌드 데님 팬츠",
+          "brand": "타미힐피거",
+          "slot": "m-denim",
+          "color": "indigo",
+          "imageUrl": "https://image.msscdn.net/thumbnails/images/goods_img/20260812/7055559/7055559_17865115958791_big.jpg?w=600",
+          "imageBytes": 27182,
+          "inferenceMs": 24,
+          "ranked": [
+            {
+              "score": 0.19599035382270813,
+              "label": "trousers"
+            },
+            {
+              "score": 0.17781250178813934,
+              "label": "jeans"
+            },
+            {
+              "score": 0.10420311987400055,
+              "label": "a sweater"
+            },
+            {
+              "score": 0.08046512305736542,
+              "label": "a jacket"
+            },
+            {
+              "score": 0.07269695401191711,
+              "label": "a coat"
+            }
+          ]
+        }
+      ]
+    },
+    "tiny-fp32": {
+      "model": "onnx-community/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M-ONNX",
+      "revision": "9463a9c508a344c837ffefe9d724f3827bf2dc79",
+      "dtype": "fp32",
+      "device": "cpu",
+      "samples": [
+        {
+          "slot": "m-oxford",
+          "ms": 75,
+          "ranked": [
+            {
+              "score": 0.3613855540752411,
+              "label": "coat"
+            },
+            {
+              "score": 0.223361998796463,
+              "label": "jacket"
+            },
+            {
+              "score": 0.06151794269680977,
+              "label": "vest"
+            },
+            {
+              "score": 0.05715430900454521,
+              "label": "trousers"
+            },
+            {
+              "score": 0.04848698899149895,
+              "label": "cardigan"
+            },
+            {
+              "score": 0.04237637296319008,
+              "label": "denim jacket"
+            }
+          ]
+        },
+        {
+          "slot": "m-trucker",
+          "ms": 35,
+          "ranked": [
+            {
+              "score": 0.23350761830806732,
+              "label": "coat"
+            },
+            {
+              "score": 0.19914725422859192,
+              "label": "jacket"
+            },
+            {
+              "score": 0.12305151671171188,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.11165355145931244,
+              "label": "cardigan"
+            },
+            {
+              "score": 0.08132199943065643,
+              "label": "vest"
+            },
+            {
+              "score": 0.05619274452328682,
+              "label": "trousers"
+            }
+          ]
+        },
+        {
+          "slot": "m-denim",
+          "ms": 49,
+          "ranked": [
+            {
+              "score": 0.16750510036945343,
+              "label": "jeans"
+            },
+            {
+              "score": 0.15258671343326569,
+              "label": "trousers"
+            },
+            {
+              "score": 0.10624632984399796,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.09866386651992798,
+              "label": "jacket"
+            },
+            {
+              "score": 0.07805193215608597,
+              "label": "coat"
+            },
+            {
+              "score": 0.0763007402420044,
+              "label": "cardigan"
+            }
+          ]
+        }
+      ]
+    },
+    "clip-q8": {
+      "model": "Xenova/clip-vit-base-patch32",
+      "revision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+      "dtype": "q8",
+      "device": "cpu",
+      "samples": [
+        {
+          "slot": "m-oxford",
+          "ms": 82,
+          "ranked": [
+            {
+              "score": 0.7526942491531372,
+              "label": "button-up shirt"
+            },
+            {
+              "score": 0.09798628091812134,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.07297906279563904,
+              "label": "polo shirt"
+            },
+            {
+              "score": 0.01795760728418827,
+              "label": "jacket"
+            },
+            {
+              "score": 0.017116518691182137,
+              "label": "several garments worn by a person"
+            },
+            {
+              "score": 0.011941189877688885,
+              "label": "coat"
+            }
+          ]
+        },
+        {
+          "slot": "m-trucker",
+          "ms": 106,
+          "ranked": [
+            {
+              "score": 0.7703378200531006,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.08996113389730453,
+              "label": "jacket"
+            },
+            {
+              "score": 0.02897738292813301,
+              "label": "button-up shirt"
+            },
+            {
+              "score": 0.025714635848999023,
+              "label": "coat"
+            },
+            {
+              "score": 0.01480745617300272,
+              "label": "several garments worn by a person"
+            },
+            {
+              "score": 0.012979896739125252,
+              "label": "polo shirt"
+            }
+          ]
+        },
+        {
+          "slot": "m-denim",
+          "ms": 153,
+          "ranked": [
+            {
+              "score": 0.5370885133743286,
+              "label": "knitted sweater"
+            },
+            {
+              "score": 0.08466216176748276,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.06790648400783539,
+              "label": "polo shirt"
+            },
+            {
+              "score": 0.03739716485142708,
+              "label": "sweatshirt"
+            },
+            {
+              "score": 0.03494686633348465,
+              "label": "button-up shirt"
+            },
+            {
+              "score": 0.029052039608359337,
+              "label": "jacket"
+            }
+          ]
+        }
+      ]
+    },
+    "worker-prompt-check": {
+      "model": "Xenova/clip-vit-base-patch32",
+      "revision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+      "dtype": "q8",
+      "device": "cpu",
+      "runtime": "@huggingface/transformers@3.8.1",
+      "sampleSource": "three previously downloaded public catalog images, no private photos",
+      "network": "disabled model downloads; cached public assets only",
+      "labels": [
+        "button-up shirt",
+        "t-shirt",
+        "knitted sweater",
+        "trousers",
+        "jeans",
+        "jacket",
+        "sneakers",
+        "cardigan",
+        "long sleeve t-shirt",
+        "sweatshirt",
+        "polo shirt",
+        "blazer",
+        "coat",
+        "puffer jacket",
+        "dress",
+        "skirt",
+        "leather shoes",
+        "boots",
+        "bag",
+        "hat",
+        "belt",
+        "denim jacket",
+        "hoodie",
+        "several garments worn by a person",
+        "no garment"
+      ],
+      "colors": [
+        "white",
+        "ivory",
+        "beige",
+        "light blue",
+        "gray",
+        "olive green",
+        "brown",
+        "indigo blue",
+        "charcoal gray",
+        "navy blue",
+        "black",
+        "green",
+        "red or burgundy",
+        "pink",
+        "yellow",
+        "purple",
+        "orange"
+      ],
+      "samples": [
+        {
+          "sample": "m-oxford",
+          "elapsedMs": 162,
+          "requiresCrop": false,
+          "kindCandidates": [
+            {
+              "kind": "shirt",
+              "label": "셔츠",
+              "score": 0.6898621916770935
+            },
+            {
+              "kind": "jacket",
+              "label": "재킷",
+              "score": 0.11560572683811188
+            },
+            {
+              "kind": "polo",
+              "label": "폴로 셔츠",
+              "score": 0.0706101581454277
+            }
+          ],
+          "rankedKinds": [
+            {
+              "score": 0.6898621916770935,
+              "label": "button-up shirt"
+            },
+            {
+              "score": 0.11560572683811188,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.0706101581454277,
+              "label": "polo shirt"
+            },
+            {
+              "score": 0.02317584864795208,
+              "label": "several garments worn by a person"
+            },
+            {
+              "score": 0.02286681719124317,
+              "label": "long sleeve t-shirt"
+            },
+            {
+              "score": 0.019870711490511894,
+              "label": "jacket"
+            }
+          ],
+          "rankedColors": [
+            {
+              "score": 0.22982770204544067,
+              "label": "charcoal gray button-up shirt"
+            },
+            {
+              "score": 0.1223888024687767,
+              "label": "gray button-up shirt"
+            },
+            {
+              "score": 0.12032300978899002,
+              "label": "light blue button-up shirt"
+            },
+            {
+              "score": 0.11523600667715073,
+              "label": "navy blue button-up shirt"
+            },
+            {
+              "score": 0.09361671656370163,
+              "label": "white button-up shirt"
+            }
+          ]
+        },
+        {
+          "sample": "m-trucker",
+          "elapsedMs": 175,
+          "requiresCrop": false,
+          "kindCandidates": [
+            {
+              "kind": "jacket",
+              "label": "재킷",
+              "score": 0.6904922723770142
+            },
+            {
+              "kind": "down",
+              "label": "패딩",
+              "score": 0.11468936502933502
+            },
+            {
+              "kind": "coat",
+              "label": "코트",
+              "score": 0.02416330762207508
+            }
+          ],
+          "rankedKinds": [
+            {
+              "score": 0.6904922723770142,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.11468936502933502,
+              "label": "puffer jacket"
+            },
+            {
+              "score": 0.06880361586809158,
+              "label": "jacket"
+            },
+            {
+              "score": 0.02416330762207508,
+              "label": "coat"
+            },
+            {
+              "score": 0.023386934772133827,
+              "label": "button-up shirt"
+            },
+            {
+              "score": 0.015301353298127651,
+              "label": "several garments worn by a person"
+            }
+          ],
+          "rankedColors": [
+            {
+              "score": 0.22063444554805756,
+              "label": "charcoal gray denim jacket"
+            },
+            {
+              "score": 0.1664232760667801,
+              "label": "navy blue denim jacket"
+            },
+            {
+              "score": 0.11937461048364639,
+              "label": "brown denim jacket"
+            },
+            {
+              "score": 0.10698875784873962,
+              "label": "indigo blue denim jacket"
+            },
+            {
+              "score": 0.08385095745325089,
+              "label": "light blue denim jacket"
+            }
+          ]
+        },
+        {
+          "sample": "m-denim",
+          "elapsedMs": 160,
+          "requiresCrop": false,
+          "kindCandidates": [
+            {
+              "kind": "knit",
+              "label": "니트",
+              "score": 0.48294273018836975
+            },
+            {
+              "kind": "jacket",
+              "label": "재킷",
+              "score": 0.07822888344526291
+            },
+            {
+              "kind": "polo",
+              "label": "폴로 셔츠",
+              "score": 0.07480044662952423
+            }
+          ],
+          "rankedKinds": [
+            {
+              "score": 0.48294273018836975,
+              "label": "knitted sweater"
+            },
+            {
+              "score": 0.07822888344526291,
+              "label": "denim jacket"
+            },
+            {
+              "score": 0.07480044662952423,
+              "label": "polo shirt"
+            },
+            {
+              "score": 0.042737558484077454,
+              "label": "long sleeve t-shirt"
+            },
+            {
+              "score": 0.03654038533568382,
+              "label": "button-up shirt"
+            },
+            {
+              "score": 0.033672019839286804,
+              "label": "sweatshirt"
+            }
+          ],
+          "rankedColors": [
+            {
+              "score": 0.414286732673645,
+              "label": "navy blue knitted sweater"
+            },
+            {
+              "score": 0.10863012075424194,
+              "label": "light blue knitted sweater"
+            },
+            {
+              "score": 0.07626350969076157,
+              "label": "indigo blue knitted sweater"
+            },
+            {
+              "score": 0.06937835365533829,
+              "label": "gray knitted sweater"
+            },
+            {
+              "score": 0.05592332407832146,
+              "label": "charcoal gray knitted sweater"
+            }
+          ]
+        }
+      ]
+    },
+    "ocr-check": {
+      "runtime": "node-worker",
+      "library": "tesseract.js@6.0.1",
+      "languages": [
+        "eng",
+        "kor"
+      ],
+      "image": "synthetic English label, no personal photo",
+      "elapsedMs": 658,
+      "text": "MUSINSA STANDARD\n\nBASE OXFORD SHIRT\n\nWHITE /M/100% COTTON\n"
+    }
+  }
+}

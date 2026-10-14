@@ -116,6 +116,16 @@ export const LOOKS = [
   { id: 'f-summer', g: 'F', title: '셔츠·스커트 여름', styles: ['classic', 'casual', 'minimal', 'french'], occ: ['daily', 'date', 'work'], seasons: ['summer'],
     note: '얇은 셔츠나 티에 스커트, 플랫으로 시원하게.',
     roles: { top: { s: ['f-shirt', 'f-tee', 'f-stripe'], c: ['white', 'blue'] }, bottom: { s: ['f-skirt', 'f-denim', 'f-slacks'], c: ['beige', 'blue', 'black'] }, shoes: { s: ['f-flat', 'f-sneaker'], c: ['black', 'white'] }, acc: { s: ['f-bag'], c: ['brown'] } } },
+  // 여름에도 아메카지·고프코어 코디가 비지 않게 (계절별 코디 공식 검사에서 빠져 있던 조합)
+  { id: 'm-amekaji-summer', g: 'M', title: '아메카지 여름', styles: ['amekaji', 'cityboy'], occ: ['weekend', 'daily'], seasons: ['summer'],
+    note: '두툼한 무지 티 하나에 청바지나 치노, 캔버스 운동화와 볼캡으로 마무리해요.',
+    roles: { top: { s: ['m-tee'], c: ['white', 'olive', 'navy'] }, bottom: { s: ['m-denim', 'm-chino'], c: ['indigo', 'beige'] }, shoes: { s: ['m-canvas'], c: ['ivory', 'black'] }, acc: { s: ['m-cap'], c: ['navy', 'olive'] } } },
+  { id: 'm-gorp-summer', g: 'M', title: '고프코어 여름', styles: ['gorp'], occ: ['weekend', 'daily'], seasons: ['summer'],
+    note: '티셔츠에 카고 팬츠와 트레일 러너를 맞추고, 볼캡으로 햇빛을 가려요.',
+    roles: { top: { s: ['m-tee'], c: ['grey', 'black', 'olive'] }, bottom: { s: ['m-cargo'], c: ['black', 'olive', 'charcoal'] }, shoes: { s: ['m-trail', 'm-runner'], c: ['grey', 'black'] }, acc: { s: ['m-cap'], c: ['olive', 'black'] } } },
+  { id: 'f-amekaji-summer', g: 'F', title: '아메카지 여름', styles: ['amekaji', 'casual'], occ: ['weekend', 'daily'], seasons: ['summer'],
+    note: '무지나 줄무늬 티에 넉넉한 바지나 롱 스커트, 스니커즈와 큰 가방으로 편하게 입어요.',
+    roles: { top: { s: ['f-tee', 'f-stripe'], c: ['white', 'navy', 'blue'] }, bottom: { s: ['f-slacks', 'f-skirt'], c: ['beige', 'olive', 'black'] }, shoes: { s: ['f-sneaker'], c: ['white', 'ivory'] }, acc: { s: ['f-bag'], c: ['beige', 'brown'] } } },
 ];
 
 export const ROLE_ORDER = ['outer', 'top', 'inner', 'dress', 'bottom', 'shoes', 'acc'];
