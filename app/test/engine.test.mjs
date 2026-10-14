@@ -200,7 +200,7 @@ test('모든 종류 정의가 올바르다', () => {
 });
 
 test('한 파일 빌드에서 모듈의 최상위 이름이 겹치지 않는다', () => {
-  const files = ['data/slots.js', 'data/looks.js', 'data/products.js', 'query.js', 'engine.js', 'icons.js', 'main.js'];
+  const files = ['data/slots.js', 'data/looks.js', 'data/products.js', 'query.js', 'engine.js', 'icons.js', 'zip-store.js', 'main.js'];
   const seen = new Map();
   for (const f of files) {
     const src = fs.readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
@@ -263,8 +263,10 @@ test('care tools and childrenswear are excluded in catalog, classification, sear
     PRODUCTS.some((p) => p.id === 'ms-7384409' || p.id === 'ms-6317624'),
     false,
   );
+  // 구두주걱은 빠지고, 신발 분류로 바로잡은 레드윙 위켄더 옥스포드(실제 구두)만 남는다
   const found = search(base, '레드윙 구두');
-  assert.equal(found.items.length, 0);
+  assert.ok(found.items.every((i) => i.slot.cat === 'shoes' && i.product.brand === '레드윙' && !productExclusionReason(i.product)));
+  assert.ok(found.items.every((i) => !/주걱|슈혼/.test(i.product.name)));
   for (const k of Object.keys(STYLES))
     for (const g of STYLES[k].g) {
       const s = { ...base, gender: g, styles: [k] };
