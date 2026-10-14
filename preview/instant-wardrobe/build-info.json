@@ -1,16 +1,16 @@
 {
-  "sourceCommit": "d653ad7e8711ad58e32e5746f8f7341a60626241",
+  "sourceCommit": "f2cc1d3c8329001e687d805550c795084cb66be4",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "claudeMergeCommit": "438500b",
   "upstreamObservedCommit": "9e050d338092125f1e8eb4ee980032c106ab76d5",
   "upstreamLatestIntegrated": false,
   "legacyEoulV2Imported": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T05:43:02.124455+00:00",
+  "builtAt": "2026-10-14T06:09:52.094160+00:00",
   "files": {
     "index.html": {
-      "bytes": 822661,
-      "sha256": "b87c7a17c3b73430839e988cc01481f2dac7529e45c8201bf8b90748b1c8ae29"
+      "bytes": 827806,
+      "sha256": "b06f5838906fc45032d5c3897a4bdd67c15ce105652698c798d872f49490e8e7"
     },
     "THIRD_PARTY_NOTICES.md": {
       "bytes": 50703,
@@ -27,7 +27,7 @@
   "storageSchema": 5,
   "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 303,
+    "passed": 319,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
@@ -133,13 +133,30 @@
     "realPhoneAccuracyVerified": false,
     "evidence": "Node CPU on 3 public product images, Node OCR on 1 synthetic English label; full-body and color failures recorded",
     "nodeOcrCoreVersion": "6.1.2",
-    "browserOcrCoreVersion": "6.0.0"
+    "browserOcrCoreVersion": "6.0.0",
+    "firstAnalysisExplicitChoice": true,
+    "sessionOnlyAutoAnalysisChoice": true,
+    "dataSaverSkipsAutomaticAnalysis": true,
+    "preparationTimeoutMs": 600000,
+    "inferenceTimeoutMs": 90000,
+    "completedRecognizerReusedWithinDraft": true,
+    "referenceProductsCannotBecomeIdentity": true,
+    "unknownOwnedColorRequiresSeparateConfirmation": true,
+    "ocrMatchingTests": 17,
+    "adapterTests": 29,
+    "registrationFlowTests": 24
   },
   "claudePhotoReview": {
     "model": "Opus 5.5",
     "sessionTitle": "FASHN VTON v1.5 M1 Mac 테스트",
-    "reviewType": "catalog-data-counterexamples-and-design",
-    "reviewedSource": "e2f18c515e7d43323c3d7d911afacfb4b8817204",
-    "directRuntimeVerified": false
+    "reviewType": "source-and-pure-data-counterexamples",
+    "reviewedSource": "d653ad7e8711ad58e32e5746f8f7341a60626241",
+    "directRuntimeVerified": false,
+    "reportedNodeTestsPassed": 303,
+    "findingsAddressed": [
+      "first-download-explicit-choice",
+      "separate-preparation-and-inference-clocks",
+      "strong-product-evidence-and-separate-color-confirmation"
+    ]
   }
 }
