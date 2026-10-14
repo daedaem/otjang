@@ -1,0 +1,179 @@
+{
+  "sourceCommit": "98de4cc3c20b42d96afb93eee414da11e4b7c9ac",
+  "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
+  "claudeMergeCommit": "438500b",
+  "upstreamObservedCommit": "9e050d338092125f1e8eb4ee980032c106ab76d5",
+  "upstreamLatestIntegrated": false,
+  "legacyEoulV2Imported": false,
+  "branch": "feat/instant-wardrobe-demo-20261014",
+  "builtAt": "2026-10-14T06:51:25.053617+00:00",
+  "files": {
+    "index.html": {
+      "bytes": 834612,
+      "sha256": "1fedbfb719f674886de43cd1b50a4f95e35659a0fc067d50f7c4b903298c7ca3"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "bytes": 50703,
+      "sha256": "e938338f8587f6ed9de1d898d1bcc86868fcb0c5769a70bf5d24f6daca1a9a64"
+    }
+  },
+  "catalog": {
+    "products": 891,
+    "brands": 115,
+    "slots": 68,
+    "styles": 8,
+    "looks": 35
+  },
+  "storageSchema": 5,
+  "storageEnvelopeEpoch": true,
+  "tests": {
+    "passed": 329,
+    "failed": 0,
+    "nodeVersion": "v22.23.2",
+    "browserRenderingVerified": false,
+    "realCameraVerified": false
+  },
+  "independentReview": {
+    "codexReviewers": 5,
+    "claudeConversations": 5,
+    "initialAndCrossCompleted": true,
+    "reviewedSource": "c44784136d7424ea59d44ec44c22ff90b09ccd73"
+  },
+  "releaseStatus": "preview-only",
+  "unresolvedReleaseGates": [
+    "product-data-permissions",
+    "real-mobile-device-qa",
+    "dedicated-origin-and-operations",
+    "legacy-eoul-v2-data-and-backup-migration",
+    "purchase-decision-pilot",
+    "recovery-archive-export-capacity",
+    "community-and-account-sync",
+    "vton-quality-rights-and-photo-consent",
+    "live-same-option-price-comparison",
+    "verified-order-checkout-and-return-integration",
+    "real-photo-and-label-quality",
+    "photo-worker-browser-and-cold-start-qa",
+    "runtime-model-language-asset-operations"
+  ],
+  "upstreamSelectedUxIntegrated": [
+    "same-sheet-scroll-and-focus",
+    "search-product-link-entry"
+  ],
+  "onestop": {
+    "candidateComparison": true,
+    "selfReportedJourney": [
+      "candidate",
+      "ordered",
+      "received",
+      "kept",
+      "returned"
+    ],
+    "variantForking": true,
+    "commercialServiceComplete": false,
+    "community": false,
+    "vton": false,
+    "liveMultiSellerPriceComparison": false,
+    "verifiedOrdersAndCheckout": false,
+    "eventDetailsSnapshots": true,
+    "postOrderOptionCorrectionOrFork": true,
+    "selectiveReceivedGarmentConfirmation": true,
+    "selfReportedFitAndReturnFeedback": true
+  },
+  "claudeOnestopReview": {
+    "model": "Opus 5.5",
+    "conversation": "https://claude.ai/chat/edb94e33-80fa-4c8f-9175-a74a92c2e917",
+    "initialAndCrossCompleted": true,
+    "reviewType": "design-description-only",
+    "directRuntimeVerified": false
+  },
+  "storageLimits": {
+    "wholeStateBytes": 850000,
+    "journeyGrowthBytes": 614400,
+    "ownershipJourneyGrowthBytes": 696320,
+    "journeyWarningBytes": 512000,
+    "wholeStateHeadroomWarningBytes": 65536,
+    "eventsPerJourney": 512,
+    "photoBytesInStateJson": false
+  },
+  "claudeImprovementReview": {
+    "model": "Opus 5.5",
+    "conversation": "https://claude.ai/chat/edb94e33-80fa-4c8f-9175-a74a92c2e917",
+    "initialCrossFinalAndClosureCompleted": true,
+    "reviewType": "design-description-only",
+    "directSourceVerified": false,
+    "directRuntimeVerified": false
+  },
+  "improvements": [
+    "atomic-garment-and-pending-journey-inputs",
+    "event-values-preserved",
+    "post-order-option-choice",
+    "same-kind-replacement-selection",
+    "automatic-outfit-pending-suppression",
+    "unlinked-presence-journey-scope",
+    "selective-received-garment-confirmation",
+    "same-option-return-evidence",
+    "manual-product-hiding",
+    "storage-warning-and-ownership-reserve"
+  ],
+  "photoRecognition": {
+    "onDeviceKinds": true,
+    "localLabelOcr": [
+      "eng",
+      "kor"
+    ],
+    "exactVisualBrandOrProductRecognition": false,
+    "requiresHumanConfirmation": true,
+    "defaultColorInference": false,
+    "labelPhotoReplacesGarmentPhoto": false,
+    "model": "Xenova/clip-vit-base-patch32",
+    "revision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+    "dtype": "q8",
+    "onnxBytes": 153695702,
+    "browserRuntimeVerified": false,
+    "realPhoneAccuracyVerified": false,
+    "evidence": "Node CPU on 3 public product images, Node OCR on 1 synthetic English label; full-body and color failures recorded",
+    "nodeOcrCoreVersion": "6.1.2",
+    "browserOcrCoreVersion": "6.0.0",
+    "firstAnalysisExplicitChoice": true,
+    "sessionOnlyAutoAnalysisChoice": true,
+    "dataSaverSkipsAutomaticAnalysis": true,
+    "preparationTimeoutMs": 600000,
+    "inferenceTimeoutMs": 90000,
+    "completedRecognizerReusedWithinDraft": true,
+    "referenceProductsCannotBecomeIdentity": true,
+    "unknownOwnedColorRequiresSeparateConfirmation": true,
+    "ocrMatchingTests": 17,
+    "adapterTests": 29,
+    "registrationFlowTests": 24
+  },
+  "claudePhotoReview": {
+    "model": "Opus 5.5",
+    "sessionTitle": "FASHN VTON v1.5 M1 Mac 테스트",
+    "reviewType": "source-and-pure-data-counterexamples",
+    "reviewedSource": "d653ad7e8711ad58e32e5746f8f7341a60626241",
+    "directRuntimeVerified": false,
+    "reportedNodeTestsPassed": 303,
+    "findingsAddressed": [
+      "first-download-explicit-choice",
+      "separate-preparation-and-inference-clocks",
+      "strong-product-evidence-and-separate-color-confirmation"
+    ]
+  },
+  "previewVariant": "wardrobe-first",
+  "previousPreviewPreserved": "https://daedaem.github.io/otjang/preview/instant-wardrobe/?build=f2cc1d3",
+  "wardrobeFirstUx": {
+    "photosBeforeOutfitFeed": true,
+    "albumAndCameraEntry": true,
+    "realCaptureFileInput": true,
+    "metadataCollapsedByDefault": true,
+    "cameraOnRealPhoneVerified": false,
+    "photoBackgroundRemoval": false,
+    "heicSupport": false,
+    "storeAccountImport": false,
+    "emailImport": false,
+    "consumerRegistrationTimeMeasured": false,
+    "sameInputAclosetBenchmarkCompleted": false,
+    "schemaUnchanged": 5,
+    "callbackTests": 10
+  }
+}
