@@ -7,6 +7,8 @@ import { productExclusionReason } from '../../src/catalog-policy.js';
 const isHood = (n) =>
   /후드|후디|hood|hoodie/i.test(n) &&
   !/패딩|다운|down\b|puffer|padded|재킷|자켓|jacket|parka|파카|코트|coat|아노락|anorak|바람막이|쉘/i.test(n);
+const isPkPolo = (n) =>
+  /\bpk\b/i.test(n) && /셔츠|shirt\b|TEETOP/i.test(n) && !/라운드|round|크루|crew/i.test(n);
 
 // 앞에서부터 처음 맞는 규칙을 쓴다. g: 이 규칙을 적용할 성별
 const RULES = [
@@ -94,6 +96,7 @@ const RULES = [
   [/SWEATTOP/, 'm-sweat', 'M'],
   [(n) => /SWEATTOP|후드|hood/i.test(n) && !/팬츠|pants|스커트|skirt/i.test(n), 'f-sweat', 'F'],
   [isHood, 'm-hoodie', 'M'],
+  [isPkPolo, 'm-polo', 'M'],
   [(n) => /TEETOP/.test(n) && /헨리|henley/i.test(n), 'm-henley', 'M'],
   [(n) => /TEETOP/.test(n) && /폴로|polo|피케|pique|카라|collar/i.test(n), 'm-polo', 'M'],
   [(n) => /TEETOP/.test(n) && /럭비|rugby/i.test(n), 'm-rugby', 'M'],
@@ -101,6 +104,13 @@ const RULES = [
   [(n) => /TEETOP/.test(n) && /긴팔|긴소매|롱\s*슬리브|long\s*sleeve|\bl\/s\b|롱슬리브/i.test(n), 'm-longtee', 'M'],
   [/TEETOP/, 'm-tee', 'M'],
   [/TEETOP/, 'f-tee', 'F'],
+
+  // 형태가 분명한 보온 조끼는 재킷·니트의 스타일 단어보다 먼저 판별한다.
+  [
+    (n) => /베스트|조끼|\bvests?\b/i.test(n) && !productExclusionReason({ name: n, slot: 'm-downvest', price: 1 }),
+    'm-downvest',
+    'M',
+  ],
 
   // 아우터
   [/덱\s*(재킷|자켓)|deck\s*jacket|n-?1\b/i, 'm-deck', 'M'],
@@ -334,7 +344,11 @@ export function classify(name, g) {
     if (only && only !== g) continue;
     if (slot && SHOE_SLOTS.has(slot) && !shoe) continue;
     const hit = typeof re === 'function' ? re(n) : re.test(n);
-    if (hit) return slot;
+    if (hit) {
+      // 스타일 단어(jungle, hunting 등)가 상품의 실제 형태와 충돌하면 다음 규칙을 본다.
+      if (slot && productExclusionReason({ name, slot, price: 1 })) continue;
+      return slot;
+    }
   }
   return null;
 }

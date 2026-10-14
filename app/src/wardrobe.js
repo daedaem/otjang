@@ -77,6 +77,16 @@ export function slotForItem(item) {
 export function garmentMatchesSlot(item, slot) {
   return item.gender === slot.g && (item.slot ? item.slot === slot.id : item.kind === slot.shape);
 }
+
+// A real garment may be owned while its recipe-specific material/type is unknown.
+export function garmentSlotStatus(item, slot) {
+  if (!garmentMatchesSlot(item, slot)) return 'missing';
+  return item.slot ? 'confirmed' : 'uncertain';
+}
+export function wardrobeSlotStatus(items, slot) {
+  if (items.some((item) => garmentSlotStatus(item, slot) === 'confirmed')) return 'confirmed';
+  return items.some((item) => garmentSlotStatus(item, slot) === 'uncertain') ? 'uncertain' : 'missing';
+}
 export const DEMO_SLOTS = {
   M: [
     ['m-oxford', 'white'],

@@ -51,6 +51,7 @@ const ITEM_WORDS = [
   [/럭비/, (s) => s.id === 'm-rugby', '럭비 셔츠'],
   [/헨리/, (s) => s.id === 'm-henley', '헨리넥'],
   [/케이블|꽈배기/, (s) => s.id === 'm-cable', '케이블 니트'],
+  [/(?:패딩|다운|푸퍼)\s*(?:베스트|조끼)/, (s) => s.id === 'm-downvest', '패딩 베스트'],
   [/베스트|조끼/, (s) => s.shape === 'vest', '베스트'],
   [/카디건|가디건/, (s) => s.shape === 'cardigan', '카디건'],
   [/니트|스웨터/, (s) => s.shape === 'knit', '니트'],
@@ -63,7 +64,6 @@ const ITEM_WORDS = [
   [/발마칸/, (s) => s.id === 'm-balmacaan', '발마칸 코트'],
   [/피코트|더플/, (s) => s.id === 'm-peacoat', '피코트'],
   [/코트/, (s) => s.shape === 'coat', '코트'],
-  [/패딩\s*베스트|다운\s*베스트/, (s) => s.id === 'm-downvest', '패딩 베스트'],
   [/패딩|다운|푸퍼/, (s) => s.shape === 'down', '패딩'],
   [/플리스|후리스/, (s) => s.id === 'm-fleece', '플리스'],
   [/바람막이|쉘|아노락|윈드브레이커/, (s) => s.id === 'm-shell', '바람막이'],
@@ -182,18 +182,22 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
 
   let maxPrice = null;
   const won = text.match(/(\d+(?:\.\d+)?)\s*만\s*(?:원)?\s*(대)?/);
-  const plain = text.match(/(\d{4,7})\s*원/);
+  const plain = text.match(/(\d{1,3}(?:,\d{3})+|\d{4,7})\s*원/);
   if (won) {
     const n = parseFloat(won[1]);
     maxPrice = Math.round(n * 10000) + (won[2] ? (n < 10 ? 9999 : 99999) : 0);
   } else if (plain) {
-    maxPrice = parseInt(plain[1], 10);
+    maxPrice = parseInt(plain[1].replaceAll(',', ''), 10);
   }
+  const ascendingPrice = /최저\s*가|낮은\s*가격\s*순|가격\s*낮은\s*순|가격\s*오름차순/.test(text);
+  const plainPriceOrder = /가격\s*순/.test(text) && !/높은\s*가격\s*순/.test(text);
+  const priceSort = ascendingPrice || plainPriceOrder ? 'asc' : null;
   const cheap = /저렴|가성비|싼|저가|부담\s*없/.test(text);
   const premium = /고급|명품|비싸도|좋은\s*거|퀄리티|오래\s*입을/.test(text);
-  if (!maxPrice && cheap) maxPrice = 60000;
+  if (!maxPrice && cheap && !priceSort) maxPrice = 60000;
   if (maxPrice) terms.push(`${Math.round(maxPrice / 10000)}만원 이하`);
   if (premium) terms.push('품질 우선');
+  if (priceSort) terms.push('낮은 가격순');
 
   const occLabel = { work: '출근', formal: '격식 있는 자리', date: '데이트', weekend: '주말', daily: '데일리' }[occ?.value] || '';
   const what = targets.map((t) => t.label).join('·') || (anchors.length ? '함께 입을 아이템' : '');
@@ -209,7 +213,7 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
       color ? color.label : '',
       noun,
     ].filter(Boolean).join(' ');
-    summary = `${head}${objectParticle(noun)} ${maxPrice ? `${Math.round(maxPrice / 10000)}만원 이하로 ` : ''}골랐어요`;
+    summary = `${head}${objectParticle(noun)} ${maxPrice ? `${Math.round(maxPrice / 10000)}만원 이하로 ` : ''}${priceSort ? '낮은 가격순으로 ' : ''}골랐어요`;
   }
 
   return {
@@ -222,6 +226,7 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
     color: color?.value || null,
     gender,
     maxPrice,
+    priceSort,
     premium,
     brand,
     slotNamed: targets.length > 0,

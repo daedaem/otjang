@@ -5,7 +5,7 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, COLORS } from './data/slots.js';
 import { LOOKS, ROLE_ORDER } from './data/looks.js';
 import { PRODUCTS } from './data/products.js';
 import { parseQuery } from './query.js';
-import { garmentMatchesSlot, garmentLabel } from './wardrobe.js';
+import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus } from './wardrobe.js';
 import { productEligible, evidenceColor } from './catalog-policy.js';
 export const SAFE_PRODUCTS = PRODUCTS.filter(productEligible);
 
@@ -93,7 +93,7 @@ function ctx(state) {
     maxPrice: state.budget || null,
     closet,
     ownedSlots: new Set([
-      ...SLOTS.filter((s) => closet.some((i) => garmentMatchesSlot(i, s))).map((s) => s.id),
+      ...SLOTS.filter((s) => wardrobeSlotStatus(closet, s) === 'confirmed').map((s) => s.id),
       ...(state.owned || []),
     ]),
     brands: new Set(state.brands || []),
@@ -128,7 +128,7 @@ export function productsFor(
       (p) =>
         !hide.has(p.id) &&
         (!maxPrice || p.price <= maxPrice) &&
-        (!color || p.color === color) &&
+        (!color || evidenceColor(p) === color) &&
         (!brand || p.brand === brand) &&
         (!brandOnly || brands.has(p.brand)) &&
         (!season || season === 'summer' || !p.summer),
@@ -264,12 +264,17 @@ export function recommendItems(state, { limit = 8 } = {}) {
     perBrand[product.brand] = (perBrand[product.brand] || 0) + 1;
     const pair = r.reasons.find((x) => x.startsWith('가진 '));
     const reasons = pair ? [pair, r.slot.why] : [r.slot.why, ...r.reasons];
+    const ownership = wardrobeSlotStatus(c.closet, r.slot);
     out.push({
       slot: r.slot,
       product,
       alternatives: products.filter((p) => p !== product).slice(0, 6),
       score: r.score,
-      reasons: reasons.slice(0, 2),
+      ownership,
+      reasons:
+        ownership === 'uncertain'
+          ? [`비슷한 종류가 있어요. ${shortName(r.slot)}인지 먼저 확인해요`, ...reasons].slice(0, 2)
+          : reasons.slice(0, 2),
     });
     if (out.length >= limit) break;
   }
@@ -292,11 +297,18 @@ export function fillLook(
     const r = roleOf(look, role);
     if (!r) continue;
     const optional = role === 'acc' || (role === 'inner' && ownedOnly);
-    const inSeason = r.s.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
+    const anchorChoices = r.s.filter((id) => forceOwned.has(id));
+    const candidates =
+      anchorChoices.length && !items.some((i) => anchorChoices.includes(i.slot.id)) ? anchorChoices : r.s;
+    const inSeason = candidates.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
     const current = items.map((i) => ({ color: i.color, cat: i.slot.cat }));
 
     // 1) 기준 아이템 · 가진 옷
-    if (pinnedProduct && r.s.includes(pinnedProduct.slot) && !c.closet.some((i) => i.productId === pinnedProduct.id)) {
+    if (
+      pinnedProduct &&
+      candidates.includes(pinnedProduct.slot) &&
+      !c.closet.some((i) => i.productId === pinnedProduct.id)
+    ) {
       if (ownedOnly || buys >= maxBuy) return null;
       items.push({
         role,
@@ -308,26 +320,48 @@ export function fillLook(
       buys++;
       continue;
     }
-    if (anchorItem && !used.has(anchorItem.id) && r.s.some((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id]))) {
-      const id = r.s.find((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id]));
-      items.push({ role, slot: SLOT_BY_ID[id], owned: true, item: anchorItem, color: anchorItem.color });
+    if (
+      anchorItem &&
+      !used.has(anchorItem.id) &&
+      candidates.some((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id]))
+    ) {
+      const id = candidates.find((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id]));
+      const certainty = garmentSlotStatus(anchorItem, SLOT_BY_ID[id]);
+      if (ownedOnly && certainty !== 'confirmed') return null;
+      items.push({ role, slot: SLOT_BY_ID[id], owned: true, item: anchorItem, color: anchorItem.color, certainty });
       used.add(anchorItem.id);
       continue;
     }
     const ownedItems = c.closet
-      .filter((i) => !used.has(i.id) && r.s.some((id) => garmentMatchesSlot(i, SLOT_BY_ID[id])))
-      .map((i) => ({ ...i, matchedSlot: i.slot || r.s.find((id) => garmentMatchesSlot(i, SLOT_BY_ID[id])) }));
+      .filter(
+        (i) =>
+          !used.has(i.id) &&
+          candidates.some(
+            (id) =>
+              garmentMatchesSlot(i, SLOT_BY_ID[id]) &&
+              (!ownedOnly || garmentSlotStatus(i, SLOT_BY_ID[id]) === 'confirmed'),
+          ),
+      )
+      .map((i) => ({ ...i, matchedSlot: i.slot || candidates.find((id) => garmentMatchesSlot(i, SLOT_BY_ID[id])) }));
     if (ownedItems.length) {
       const best = ownedItems
         .map((i) => ({
           i,
           s:
             harmony([...current, { color: i.color, cat: SLOT_BY_ID[i.matchedSlot].cat }], { tonal }) +
-            (r.c.includes(i.color) ? 1 : 0) -
+            (r.c.includes(i.color) ? 1 : 0) +
+            (i.slot ? 3 : 0) -
             r.s.indexOf(i.matchedSlot) * 0.3,
         }))
         .sort((a, b) => b.s - a.s)[0].i;
-      items.push({ role, slot: SLOT_BY_ID[best.matchedSlot], owned: true, item: best, color: best.color });
+      items.push({
+        role,
+        slot: SLOT_BY_ID[best.matchedSlot],
+        owned: true,
+        item: best,
+        color: best.color,
+        certainty: garmentSlotStatus(best, SLOT_BY_ID[best.matchedSlot]),
+      });
       used.add(best.id);
       continue;
     }
@@ -356,10 +390,13 @@ export function fillLook(
     } else if (!optional) return null;
   }
   const buy = items.filter((i) => !i.owned);
+  const requiredCats = [...new Set([...forceOwned].map((id) => SLOT_BY_ID[id]?.cat))];
+  if (requiredCats.some((cat) => !items.some((i) => i.slot.cat === cat && forceOwned.has(i.slot.id)))) return null;
   return {
     look,
     items,
     ownedCount: items.length - buy.length,
+    uncertainCount: items.filter((i) => i.owned && i.certainty === 'uncertain').length,
     buyCount: buy.length,
     buyTotal: buy.reduce((sum, i) => sum + i.product.price, 0),
     harmony: harmony(
@@ -387,11 +424,17 @@ export function recommendLooks(
   state,
   { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null } = {},
 ) {
+  if (pinnedProduct && !productEligible(pinnedProduct)) return [];
   const c = ctx(state);
   const force = new Set(forceOwned);
   let looks = matchingLooks(c, { occasion: occasion ?? c.occasion });
   if (!looks.length) looks = matchingLooks(c, { occasion: null });
-  if (force.size) looks = looks.filter((l) => slotsInLook(l).some((id) => force.has(id)));
+  if (force.size) {
+    const cats = [...new Set([...force].map((id) => SLOT_BY_ID[id]?.cat))];
+    looks = looks.filter((l) =>
+      cats.every((cat) => slotsInLook(l).some((id) => force.has(id) && SLOT_BY_ID[id].cat === cat)),
+    );
+  }
   if (anchorItem)
     looks = looks.filter((l) => slotsInLook(l).some((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id])));
   if (pinnedProduct) looks = looks.filter((l) => slotsInLook(l).includes(pinnedProduct.slot));
@@ -414,7 +457,7 @@ export function closetLooks(state, { limit = 3 } = {}) {
     looks.filter((l) => !readyIds.has(l.id)).map((l) => fillLook(l, c, { maxBuy: 1 })),
     c,
   )
-    .filter((r) => r.buyCount === 1 && r.ownedCount >= 2)
+    .filter((r) => r.buyCount === 1 && r.ownedCount >= 2 && r.uncertainCount === 0)
     .slice(0, limit);
   return { ready, almost };
 }
@@ -424,14 +467,14 @@ export function essentials(state) {
   const c = ctx(state);
   return SLOTS.filter((s) => s.g === c.gender && styleScore(s, c.styles) >= 3 && s.cat !== 'acc').map((slot) => ({
     slot,
-    owned: c.closet.some((i) => i.slot === slot.id),
-    needsCheck: c.closet.some((i) => !i.slot && garmentMatchesSlot(i, slot)),
+    owned: wardrobeSlotStatus(c.closet, slot) === 'confirmed',
+    needsCheck: wardrobeSlotStatus(c.closet, slot) === 'uncertain',
   }));
 }
 
 // 한 줄 검색: "출근용 셔츠 10만원 이하", "청바지에 어울리는 신발", "폴로 니트"
 export function search(state, text) {
-  const brandNames = brandsFor(state.gender || 'M').map((b) => b.name);
+  const brandNames = [...new Set(SAFE_PRODUCTS.map((p) => p.brand))];
   const q = parseQuery(text, { brands: brandNames });
   const c = ctx({
     ...state,
@@ -479,18 +522,27 @@ export function search(state, text) {
       season: q.season || (q.slotNamed ? null : c.season),
     });
     if (q.premium) products = [...products].sort((a, b) => b.price - a.price);
-    products.slice(0, q.brand ? 6 : 3).forEach((product, i) => {
+    const selected = q.priceSort === 'asc' ? products : products.slice(0, q.brand ? 6 : 3);
+    selected.forEach((product, i) => {
       results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3, reasons });
     });
   }
-  results.sort((a, b) => b.score - a.score);
+  results.sort(
+    q.priceSort === 'asc'
+      ? (a, b) => a.product.price - b.product.price || a.product.id.localeCompare(b.product.id)
+      : (a, b) => b.score - a.score,
+  );
 
   const items = results.slice(0, 16);
+  const anchorItem =
+    c.closet
+      .filter((i) => anchors.some((slot) => garmentMatchesSlot(i, slot)))
+      .sort((a, b) => Number(!!b.slot) - Number(!!a.slot) || a.id.localeCompare(b.id))[0] || null;
   const outfit =
     anchors.length || c.occasion
       ? recommendLooks(
           { ...state, gender: c.gender, styles: c.styles, season: c.season, budget: c.maxPrice, occasion: c.occasion },
-          { limit: 1, forceOwned: [...anchorIds] },
+          { limit: 1, forceOwned: [...anchorIds], anchorItem },
         )[0] || null
       : null;
   return { query: q, understood, items, outfit, season: c.season, gender: c.gender };

@@ -10,12 +10,6 @@ import { fileURLToPath } from 'node:url';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const read = (f, fallback) =>
   fs.existsSync(path.join(dir, f)) ? JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) : fallback;
-const curation = read('curation.json', {});
-const snapshot = read('snapshot.json', {});
-const brandProducts = read('brands.json', []);
-const imageColors = read('image-colors.json', {});
-const exclude = new Set(read('exclude.json', []));
-const fixes = read('fixes.json', {}); // { 상품번호: { slot?, color?, name? } } 사진 검수로 바로잡은 값
 
 // 첫 버전의 아이템 자리(색이 붙은 이름)를 지금의 종류로 옮긴다
 const LEGACY = {
@@ -69,106 +63,141 @@ export function cleanName(name) {
   );
 }
 
-const products = new Map();
-const missing = [];
-
-// 1) 편집자가 고른 상품
-for (const [id, [slot0, color0, displayName]] of Object.entries(curation)) {
-  const s = snapshot[id];
-  if (exclude.has(id) || !s?.name || !s.price) {
-    missing.push(id);
-    continue;
-  }
-  const slot = LEGACY[slot0] || slot0;
-  const color = JEANS.has(slot) && color0 === 'navy' ? 'indigo' : color0;
-  products.set(id, {
-    id: `ms-${id}`,
-    slot,
-    color,
-    colorSource: 'curation',
-    classification: 'curated',
-    brand: s.brand,
-    name: displayName || cleanName(s.name),
-    price: Math.round(Number(s.price)),
-    img: s.image,
-    url: `https://www.musinsa.com/products/${id}`,
-    rating: s.rating ? Number(s.rating) : null,
-    reviews: s.reviews ? Number(s.reviews) : 0,
-    likes: 0,
-    store: '무신사',
-    checkedAt: s.checkedAt,
-    picked: true,
-  });
-}
-
-// 2) 브랜드 목록에서 분류한 상품: 브랜드·종류마다 인기 있는 것부터 몇 개씩
 const quality = (p) => (p.rating ?? 4.4) * Math.log10((p.reviews || 0) + (p.likes || 0) / 8 + 10);
 const PER_BRAND_SLOT = 3;
-const groups = {};
-for (const p of brandProducts) {
-  if (exclude.has(p.id) || products.has(p.id)) continue;
-  const fix = fixes[p.id] || {};
-  const slot = fix.slot || p.slot;
-  if (!slot || fix.slot === null) continue;
-  const color = fix.color || p.color || imageColors[p.id] || null;
-  if (!color) continue;
-  const key = `${p.brand}|${slot}`;
-  (groups[key] ||= []).push({
-    ...p,
-    slot,
-    color,
-    colorSource: fix.color ? 'correction' : p.color ? 'name' : 'image',
-    name: fix.name || p.name,
-  });
-}
-for (const list of Object.values(groups)) {
-  list.sort((a, b) => quality(b) - quality(a));
-  for (const p of list.slice(0, PER_BRAND_SLOT)) {
-    products.set(p.id, {
-      id: `ms-${p.id}`,
-      slot: p.slot,
-      color: p.color,
-      colorSource: p.colorSource,
-      classification: 'name-rules',
-      brand: p.brand,
-      name: cleanName(p.name),
-      price: p.price,
-      img: p.img,
-      url: `https://www.musinsa.com/products/${p.id}`,
-      rating: p.rating,
-      reviews: p.reviews || 0,
-      likes: p.likes || 0,
-      ...(p.summer ? { summer: true } : {}),
-      store: '무신사',
-      checkedAt: p.checkedAt || '2026-10-14',
-    });
-  }
+export function selectBrandProducts(list) {
+  // 제외되는 인기 상품이 상위 세 자리 안에서 유효한 상품을 밀어내지 않게 한다.
+  return list
+    .filter(productEligible)
+    .sort((a, b) => quality(b) - quality(a))
+    .slice(0, PER_BRAND_SLOT);
 }
 
-const list = [...products.values()].filter(productEligible);
-const dates = [...new Set(list.map((p) => p.checkedAt))].sort();
-const last = dates[dates.length - 1] || '';
-const first = dates[0] || '';
-const label = (d) => {
-  const [y, m, dd] = d.split('-').map(Number);
-  return `${y}년 ${m}월 ${dd}일`;
-};
-const out = `// 자동 생성 파일: app/tools/catalog/make-products.mjs 로 다시 만든다. 직접 고치지 않는다.
+export function buildProducts({
+  curation = {},
+  snapshot = {},
+  brandProducts = [],
+  imageColors = {},
+  exclude = [],
+  fixes = {},
+}) {
+  const excluded = new Set(exclude);
+  const products = new Map();
+  const missing = [];
+
+  // 1) 편집자가 고른 상품에도 같은 분류 충돌 검증을 적용한다.
+  for (const [id, [slot0, color0, displayName]] of Object.entries(curation)) {
+    const s = snapshot[id];
+    if (excluded.has(id) || !s?.name || !s.price) {
+      missing.push(id);
+      continue;
+    }
+    const slot = LEGACY[slot0] || slot0;
+    const color = JEANS.has(slot) && color0 === 'navy' ? 'indigo' : color0;
+    const product = {
+      id: `ms-${id}`,
+      slot,
+      color,
+      colorSource: 'curation',
+      classification: 'curated',
+      brand: s.brand,
+      name: displayName || cleanName(s.name),
+      price: Math.round(Number(s.price)),
+      img: s.image,
+      url: `https://www.musinsa.com/products/${id}`,
+      rating: s.rating ? Number(s.rating) : null,
+      reviews: s.reviews ? Number(s.reviews) : 0,
+      likes: 0,
+      store: '무신사',
+      checkedAt: s.checkedAt,
+      picked: true,
+    };
+    if (productEligible(product)) products.set(id, product);
+  }
+
+  // 2) 브랜드·종류별로 충돌 없는 후보의 인기 순위를 계산한다.
+  const groups = {};
+  for (const p of brandProducts) {
+    if (excluded.has(p.id) || products.has(p.id)) continue;
+    const fix = fixes[p.id] || {};
+    const slot = fix.slot || p.slot;
+    if (!slot || fix.slot === null) continue;
+    const color = fix.color || p.color || imageColors[p.id] || null;
+    if (!color) continue;
+    const key = `${p.brand}|${slot}`;
+    (groups[key] ||= []).push({
+      ...p,
+      slot,
+      color,
+      colorSource: fix.color ? 'correction' : p.color ? 'name' : 'image',
+      name: cleanName(fix.name || p.name),
+    });
+  }
+  for (const group of Object.values(groups)) {
+    for (const p of selectBrandProducts(group)) {
+      products.set(p.id, {
+        id: `ms-${p.id}`,
+        slot: p.slot,
+        color: p.color,
+        colorSource: p.colorSource,
+        classification: 'name-rules',
+        brand: p.brand,
+        name: p.name,
+        price: p.price,
+        img: p.img,
+        url: `https://www.musinsa.com/products/${p.id}`,
+        rating: p.rating,
+        reviews: p.reviews || 0,
+        likes: p.likes || 0,
+        ...(p.summer ? { summer: true } : {}),
+        store: '무신사',
+        checkedAt: p.checkedAt || '2026-10-14',
+      });
+    }
+  }
+  return {
+    list: [...products.values()].filter(productEligible),
+    missing,
+    pickedCount: [...products.values()].filter((p) => p.picked).length,
+  };
+}
+
+export function renderProductsModule(list) {
+  const dates = [...new Set(list.map((p) => p.checkedAt))].sort();
+  const last = dates[dates.length - 1] || '';
+  const first = dates[0] || '';
+  const label = (d) => {
+    const [y, m, dd] = d.split('-').map(Number);
+    return `${y}년 ${m}월 ${dd}일`;
+  };
+  return `// 자동 생성 파일: app/tools/catalog/make-products.mjs 로 다시 만든다. 직접 고치지 않는다.
 // 상품명·브랜드·가격·평점·후기 수·이미지는 무신사 상품 페이지와 브랜드 목록 화면에서 읽은 값이다.
 // 가격은 확인 시점의 판매가이며 쿠폰·회원 할인·배송비는 반영하지 않는다. 색 일부는 상품 사진에서 짐작한 값이다.
 export const CATALOG = ${JSON.stringify({ store: '무신사', checkedAt: last, checkedLabel: first === last ? label(last) : `${label(first)}~${label(last).replace(/^\d+년 /, '')}`, count: list.length })};
 
 export const PRODUCTS = ${JSON.stringify(list.map(({ picked, ...p }) => p))};
 `;
-fs.writeFileSync(path.join(dir, '../../src/data/products.js'), out);
-const bySlot = {};
-for (const p of list) bySlot[p.slot] = (bySlot[p.slot] || 0) + 1;
-console.log(
-  `products: ${list.length} (편집 ${[...products.values()].filter((p) => p.picked).length}), missing: ${missing.length ? missing.join(',') : 'none'}`,
-);
-console.log(
-  Object.entries(bySlot)
-    .sort()
-    .map(([k, v]) => `${k}:${v}`)
-    .join(' '),
-);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { list, missing, pickedCount } = buildProducts({
+    curation: read('curation.json', {}),
+    snapshot: read('snapshot.json', {}),
+    brandProducts: read('brands.json', []),
+    imageColors: read('image-colors.json', {}),
+    exclude: read('exclude.json', []),
+    fixes: read('fixes.json', {}),
+  });
+  fs.writeFileSync(path.join(dir, '../../src/data/products.js'), renderProductsModule(list));
+  const bySlot = {};
+  for (const p of list) bySlot[p.slot] = (bySlot[p.slot] || 0) + 1;
+  console.log(
+    `products: ${list.length} (편집 ${pickedCount}), missing: ${missing.length ? missing.join(',') : 'none'}`,
+  );
+  console.log(
+    Object.entries(bySlot)
+      .sort()
+      .map(([k, v]) => `${k}:${v}`)
+      .join(' '),
+  );
+}
