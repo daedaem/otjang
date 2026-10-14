@@ -1,12 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { createWardrobeStore, photoAsset, parseWardrobeBackup } from '../src/wardrobe-store.js';
-import { makeGarment, newWardrobeState, migrateLegacyWardrobe } from '../src/wardrobe.js';
+import { makeGarment, newWardrobeState, migrateLegacyWardrobe, validateWardrobe } from '../src/wardrobe.js';
 
 const jpeg = (byte = 7) => new Blob([new Uint8Array([255, 216, 255, byte])], { type: 'image/jpeg' });
 const personal = (garments) => ({ ...newWardrobeState(), demo: false, demoSelected: [], garments });
-const garment = (id, photoId = null) => makeGarment({ id, kind: 'shirt', gender: 'M', photoId, createdAt: '2026-10-14T00:00:00.000Z' });
+const garment = (id, photoId = null) =>
+  makeGarment({ id, kind: 'shirt', gender: 'M', photoId, createdAt: '2026-10-14T00:00:00.000Z' });
 async function manifest(file) {
   const header = Buffer.from(await file.slice(0, 12).arrayBuffer());
   assert.equal(header.subarray(0, 8).toString(), 'EOULBK02');
@@ -21,14 +25,19 @@ async function setup() {
 async function alter(indexedDB, callback) {
   const db = await new Promise((resolve, reject) => {
     const request = indexedDB.open('eoul-wardrobe-v2', 1);
-    request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
   });
   try {
     await new Promise((resolve, reject) => {
       const tx = db.transaction(['records', 'photos'], 'readwrite');
-      callback(tx); tx.oncomplete = resolve; tx.onabort = () => reject(tx.error);
+      callback(tx);
+      tx.oncomplete = resolve;
+      tx.onabort = () => reject(tx.error);
     });
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
 
 test('new photo write rolls back when metadata write fails; neither a garment nor orphan blob is acknowledged', async () => {
@@ -39,8 +48,11 @@ test('new photo write rolls back when metadata write fails; neither a garment no
     if (this.name === 'records') throw new DOMException('metadata quota', 'QuotaExceededError');
     return put.apply(this, args);
   };
-  try { await assert.rejects(store.commit(personal([garment('g_a', asset.id)]), 1, [asset]), /metadata quota/); }
-  finally { IDBObjectStore.prototype.put = put; }
+  try {
+    await assert.rejects(store.commit(personal([garment('g_a', asset.id)]), 1, [asset]), /metadata quota/);
+  } finally {
+    IDBObjectStore.prototype.put = put;
+  }
   assert.equal((await store.read()).revision, 1);
   assert.equal((await store.read()).state.demo, true);
   assert.equal((await manifest(await store.recoveryBackup())).photos.length, 0);
@@ -56,20 +68,27 @@ test('a missing referenced photo aborts replacement and rolls back deletion of t
   const current = await store.read();
   assert.equal(current.revision, 2);
   assert.equal(current.state.garments[0].photoId, asset.id);
-  assert.deepEqual(new Uint8Array(await current.photos.get(asset.id).arrayBuffer()), new Uint8Array(await asset.blob.arrayBuffer()));
+  assert.deepEqual(
+    new Uint8Array(await current.photos.get(asset.id).arrayBuffer()),
+    new Uint8Array(await asset.blob.arrayBuffer()),
+  );
   store.close();
 });
 
 test('shared photo is retained until its last garment is deleted; unrelated orphan photos are not collected', async () => {
   const { indexedDB, store } = await setup();
-  const asset = await photoAsset(jpeg()), orphan = await photoAsset(jpeg(10));
+  const asset = await photoAsset(jpeg()),
+    orphan = await photoAsset(jpeg(10));
   await store.commit(personal([garment('g_a', asset.id), garment('g_b', asset.id)]), 1, [asset]);
   await alter(indexedDB, (tx) => tx.objectStore('photos').put(orphan.blob, orphan.id));
   await store.commit(personal([garment('g_b', asset.id)]), 2);
   assert.equal((await store.read()).photos.size, 1);
   await store.commit(personal([]), 3);
   const raw = await manifest(await store.recoveryBackup());
-  assert.deepEqual(raw.photos.map((row) => row.id), [orphan.id]);
+  assert.deepEqual(
+    raw.photos.map((row) => row.id),
+    [orphan.id],
+  );
   assert.equal((await store.read()).photos.size, 0);
   store.close();
 });
@@ -87,21 +106,31 @@ test('two tabs cannot overwrite each other or resurrect a stale photo reference'
   // A deliberate new commit supplying the Blob can create the reference again.
   await second.commit(personal([garment('g_b', asset.id)]), 3, [asset]);
   assert.equal((await first.read()).photos.size, 1);
-  first.close(); second.close();
+  first.close();
+  second.close();
 });
 
 test('backup round trip retains IDs, preferences, shared photo bytes and duplicate kinds', async () => {
   const { store } = await setup();
   const asset = await photoAsset(jpeg());
-  const state = { ...personal([garment('g_a', asset.id), garment('g_b', asset.id)]), saved: ['ms-1115031'], budget: 50000 };
+  const state = {
+    ...personal([garment('g_a', asset.id), garment('g_b', asset.id)]),
+    saved: ['ms-1115031'],
+    budget: 50000,
+  };
   await store.commit(state, 1, [asset]);
-  const text = await store.backup(), parsed = await parseWardrobeBackup(text);
+  const text = await store.backup(),
+    parsed = await parseWardrobeBackup(text);
   assert.equal(parsed.assets.length, 1);
   const target = createWardrobeStore({ indexedDB: new IDBFactory() });
   await target.commit(parsed.state, 0, parsed.assets);
   assert.deepEqual((await target.read()).state, state);
-  assert.deepEqual(new Uint8Array(await (await target.read()).photos.get(asset.id).arrayBuffer()), new Uint8Array(await asset.blob.arrayBuffer()));
-  store.close(); target.close();
+  assert.deepEqual(
+    new Uint8Array(await (await target.read()).photos.get(asset.id).arrayBuffer()),
+    new Uint8Array(await asset.blob.arrayBuffer()),
+  );
+  store.close();
+  target.close();
 });
 
 test('tampered, incomplete, future-format and unreferenced-photo backups fail before commit', async () => {
@@ -109,13 +138,25 @@ test('tampered, incomplete, future-format and unreferenced-photo backups fail be
   const asset = await photoAsset(jpeg());
   await store.commit(personal([garment('g_a', asset.id)]), 1, [asset]);
   const binary = await store.backup();
-  const good = { format: 'eoul-wardrobe-backup', version: 1, state: (await store.read()).state, photos: [{ id: asset.id, type: 'image/jpeg', base64: btoa(String.fromCharCode(255, 216, 255, 7)) }] };
-  const tampered = structuredClone(good); tampered.photos[0].base64 = btoa(String.fromCharCode(255, 216, 255, 8));
-  const missing = structuredClone(good); missing.photos = [];
+  const good = {
+    format: 'eoul-wardrobe-backup',
+    version: 1,
+    state: (await store.read()).state,
+    photos: [{ id: asset.id, type: 'image/jpeg', base64: btoa(String.fromCharCode(255, 216, 255, 7)) }],
+  };
+  const tampered = structuredClone(good);
+  tampered.photos[0].base64 = btoa(String.fromCharCode(255, 216, 255, 8));
+  const missing = structuredClone(good);
+  missing.photos = [];
   const future = { ...good, futureField: true };
-  const unreferenced = structuredClone(good); unreferenced.state.garments[0].photoId = null;
-  for (const invalid of [tampered, missing, future, unreferenced, null]) await assert.rejects(parseWardrobeBackup(JSON.stringify(invalid)));
-  await assert.rejects(parseWardrobeBackup(new Blob([binary.slice(0, binary.size - 1), new Uint8Array([99])])), /사진이 변경/);
+  const unreferenced = structuredClone(good);
+  unreferenced.state.garments[0].photoId = null;
+  for (const invalid of [tampered, missing, future, unreferenced, null])
+    await assert.rejects(parseWardrobeBackup(JSON.stringify(invalid)));
+  await assert.rejects(
+    parseWardrobeBackup(new Blob([binary.slice(0, binary.size - 1), new Uint8Array([99])])),
+    /사진이 변경/,
+  );
   await assert.rejects(parseWardrobeBackup(binary.slice(0, binary.size - 1)), /구간 정보/);
   await assert.rejects(parseWardrobeBackup(new Blob([binary, new Uint8Array([0])])), /불필요한 내용/);
   await assert.rejects(parseWardrobeBackup(await store.recoveryBackup()), /지원하는 옷장 백업/);
@@ -127,7 +168,10 @@ test('unsupported or falsy stored rows block initialization and commits without 
   for (const invalid of [null, 0, { revision: 7, state: { ...newWardrobeState(), futureField: 'keep' } }]) {
     const { indexedDB, store } = await setup();
     const photo = await photoAsset(jpeg());
-    await alter(indexedDB, (tx) => { tx.objectStore('records').put(invalid, 'current'); tx.objectStore('photos').put(photo.blob, photo.id); });
+    await alter(indexedDB, (tx) => {
+      tx.objectStore('records').put(invalid, 'current');
+      tx.objectStore('photos').put(photo.blob, photo.id);
+    });
     await assert.rejects(store.load());
     await assert.rejects(store.commit(newWardrobeState(), 0));
     const raw = await manifest(await store.recoveryBackup('original localStorage text'));
@@ -139,8 +183,15 @@ test('unsupported or falsy stored rows block initialization and commits without 
 });
 
 test('legacy migration is deterministic and rejects a corrupt demo flag without dropping owned clothes', () => {
-  const raw = JSON.stringify({ onboarded: true, gender: 'M', style: 'classic', owned: ['m-chino', 'm-chino'], saved: ['ms-1115031'] });
-  const a = migrateLegacyWardrobe(raw), b = migrateLegacyWardrobe(raw);
+  const raw = JSON.stringify({
+    onboarded: true,
+    gender: 'M',
+    style: 'classic',
+    owned: ['m-chino', 'm-chino'],
+    saved: ['ms-1115031'],
+  });
+  const a = migrateLegacyWardrobe(raw),
+    b = migrateLegacyWardrobe(raw);
   assert.deepEqual(a, b);
   assert.equal(a.garments.length, 1);
   assert.equal(a.garments[0].id, 'legacy_m-chino');
@@ -160,18 +211,238 @@ test('maximum 200-photo archive retains full bytes and uses bounded manifest and
   await store.commit(state, 1, assets);
   const archive = await store.backup();
   assert.ok(archive.size >= 160000000 && archive.size < 161000000);
-  archive.text = () => { throw new Error('must not read the whole archive as text'); };
-  archive.arrayBuffer = () => { throw new Error('must not read the whole archive into one buffer'); };
+  archive.text = () => {
+    throw new Error('must not read the whole archive as text');
+  };
+  archive.arrayBuffer = () => {
+    throw new Error('must not read the whole archive into one buffer');
+  };
   const slice = archive.slice.bind(archive);
   let largestRead = 0;
-  archive.slice = (start, end, type) => { largestRead = Math.max(largestRead, end - start); return slice(start, end, type); };
+  archive.slice = (start, end, type) => {
+    largestRead = Math.max(largestRead, end - start);
+    return slice(start, end, type);
+  };
   const restored = await parseWardrobeBackup(archive);
   assert.equal(restored.assets.length, 200);
   assert.ok(largestRead <= 1000000);
-  assert.deepEqual(restored.assets.map((asset) => asset.id), assets.map((asset) => asset.id));
+  assert.deepEqual(
+    restored.assets.map((asset) => asset.id),
+    assets.map((asset) => asset.id),
+  );
   const target = createWardrobeStore({ indexedDB: new IDBFactory() });
   await target.commit(restored.state, 0, restored.assets);
   assert.equal((await target.read()).photos.size, 200);
   assert.deepEqual((await target.read()).state, state);
-  store.close(); target.close();
+  store.close();
+  target.close();
+});
+
+test('confirmed recovery preserves a future raw record and every original photo with reconstructable keys', async () => {
+  const { indexedDB, store } = await setup();
+  const original = await photoAsset(jpeg(61)),
+    replacement = await photoAsset(jpeg(62));
+  const raw = { revision: 7, state: { schema: 99, futureField: 'preserve this exact synthetic source' } };
+  await alter(indexedDB, (tx) => {
+    tx.objectStore('records').put(raw, 'current');
+    // A damaged source Blob under the backup's photo key must survive its replacement.
+    tx.objectStore('photos').put(original.blob, replacement.id);
+  });
+  const expected = await store.recoveryState();
+  const next = personal([garment('g_restored', replacement.id)]);
+  const recovered = await store.recover(next, expected, [replacement], 'synthetic old localStorage');
+  assert.deepEqual(recovered.state, next);
+  assert.equal(recovered.revision, 8);
+  const rawBackup = await manifest(await store.recoveryBackup());
+  const saved = rawBackup.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
+  assert.deepEqual(saved.value.source.row, raw);
+  assert.equal(saved.value.legacyRaw, 'synthetic old localStorage');
+  const mapping = saved.value.photos.find((row) => row.sourceKey === replacement.id);
+  assert.ok(mapping);
+  assert.ok(rawBackup.photos.some((row) => row.id === mapping.snapshotKey));
+  const db = await new Promise((resolve) => {
+    const request = indexedDB.open('eoul-wardrobe-v2');
+    request.onsuccess = () => resolve(request.result);
+  });
+  const preserved = await new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readonly'),
+      request = tx.objectStore('photos').get(mapping.snapshotKey);
+    tx.oncomplete = () => resolve(request.result);
+    tx.onabort = () => reject(tx.error);
+  });
+  assert.deepEqual(new Uint8Array(await preserved.arrayBuffer()), new Uint8Array(await original.blob.arrayBuffer()));
+  db.close();
+  await store.commit(personal([]), recovered.revision, [], recovered.epoch);
+  const afterReset = await manifest(await store.recoveryBackup());
+  assert.ok(afterReset.photos.some((row) => row.id === mapping.snapshotKey));
+  assert.ok(afterReset.records.some((row) => row.key === saved.key));
+  store.close();
+});
+
+test('recovery rejects a changed raw record even when its revision is unchanged', async () => {
+  const { indexedDB, store } = await setup();
+  const raw = { revision: 3, state: { schema: 99, unknown: 'before' } };
+  await alter(indexedDB, (tx) => tx.objectStore('records').put(raw, 'current'));
+  const expected = await store.recoveryState();
+  const changed = { ...raw, state: { ...raw.state, unknown: 'another tab' } };
+  await alter(indexedDB, (tx) => tx.objectStore('records').put(changed, 'current'));
+  await assert.rejects(store.recover(personal([]), expected), (error) => error.code === 'conflict');
+  const preserved = await manifest(await store.recoveryBackup());
+  assert.deepEqual(preserved.records, [{ key: 'current', value: changed }]);
+  store.close();
+});
+
+test('recovery preservation failure rolls back copied photos and replacement together', async () => {
+  const { indexedDB, store } = await setup();
+  const original = await photoAsset(jpeg(71));
+  const raw = { revision: 2, state: { schema: 99 } };
+  await alter(indexedDB, (tx) => {
+    tx.objectStore('records').put(raw, 'current');
+    tx.objectStore('photos').put(original.blob, original.id);
+  });
+  const expected = await store.recoveryState(),
+    add = IDBObjectStore.prototype.add;
+  IDBObjectStore.prototype.add = function (...args) {
+    if (this.name === 'records') throw new DOMException('recovery quota', 'QuotaExceededError');
+    return add.apply(this, args);
+  };
+  try {
+    await assert.rejects(store.recover(personal([]), expected), /recovery quota/);
+  } finally {
+    IDBObjectStore.prototype.add = add;
+  }
+  const preserved = await manifest(await store.recoveryBackup());
+  assert.deepEqual(preserved.records, [{ key: 'current', value: raw }]);
+  assert.deepEqual(
+    preserved.photos.map((row) => row.id),
+    [original.id],
+  );
+  store.close();
+});
+
+test('recovery epochs reject a stale pre-recovery tab despite revision number reuse', async () => {
+  const { indexedDB, store: stale } = await setup();
+  const previous = await stale.read();
+  await alter(indexedDB, (tx) => tx.objectStore('records').put(null, 'current'));
+  const repair = createWardrobeStore({ indexedDB });
+  await repair.recover(personal([garment('g_repaired')]), await repair.recoveryState());
+  const current = await repair.read();
+  assert.equal(current.revision, previous.revision);
+  assert.notEqual(current.epoch, previous.epoch);
+  // Internal backup reads cannot authorize stale UI state to use the new epoch.
+  await stale.backup();
+  await assert.rejects(
+    stale.commit(previous.state, previous.revision, [], previous.epoch),
+    (error) => error.code === 'conflict',
+  );
+  assert.equal((await repair.read()).state.garments[0].id, 'g_repaired');
+  stale.close();
+  repair.close();
+});
+
+test('clearing the stores creates a fresh epoch and blocks a tab opened before erasure', async () => {
+  const { indexedDB, store: stale } = await setup();
+  const previous = await stale.read();
+  await alter(indexedDB, (tx) => {
+    tx.objectStore('records').clear();
+    tx.objectStore('photos').clear();
+  });
+  const restarted = createWardrobeStore({ indexedDB });
+  const fresh = await restarted.load();
+  assert.equal(fresh.revision, previous.revision);
+  assert.notEqual(fresh.epoch, previous.epoch);
+  await assert.rejects(
+    stale.commit(personal([garment('g_stale')]), previous.revision, [], previous.epoch),
+    (error) => error.code === 'conflict',
+  );
+  assert.equal((await restarted.read()).state.garments.length, 0);
+  stale.close();
+  restarted.close();
+});
+
+test('legacy envelopes without an epoch remain readable and gain an epoch on the next confirmed write', async () => {
+  const { indexedDB, store } = await setup();
+  await alter(indexedDB, (tx) => tx.objectStore('records').put({ revision: 1, state: newWardrobeState() }, 'current'));
+  const legacy = await store.read();
+  assert.equal(legacy.epoch, undefined);
+  await store.commit(personal([]), legacy.revision, [], null);
+  assert.match((await store.read()).epoch, /^[a-f0-9-]{36}$/);
+  store.close();
+});
+
+test('the actual pre-epoch fd06eb9 store refuses the new envelope after clear and recovery', async () => {
+  // Frozen public module from fd06eb9, rather than a made-up revision-only writer.
+  const source = fs.readFileSync(new URL('./fixtures/wardrobe-store-fd06eb9.txt', import.meta.url), 'utf8');
+  assert.equal(
+    createHash('sha256').update(source).digest('hex'),
+    '937083ff44906adc4dffb0cab57f62fb322b4f31a39f040f6349595cf23771c9',
+  );
+  const context = vm.createContext({
+    Blob,
+    crypto: globalThis.crypto,
+    structuredClone,
+    TextEncoder,
+    TextDecoder,
+    Uint8Array,
+    DataView,
+    setTimeout,
+    clearTimeout,
+    atob,
+    btoa,
+    validateWardrobe,
+    migrateLegacyWardrobe,
+  });
+  vm.runInContext(
+    source.replace(/^import[^\n]+\n/gm, '').replace(/^export\s+/gm, '') +
+      '\nglobalThis.oldStore = createWardrobeStore;',
+    context,
+  );
+  for (const operation of ['clear', 'recover']) {
+    const { indexedDB, store } = await setup();
+    const oldState = personal([garment('old-tab-record')]);
+    await alter(indexedDB, (tx) => tx.objectStore('records').put({ revision: 1, state: oldState }, 'current'));
+    const old = context.oldStore({ indexedDB });
+    const before = await old.read();
+    if (operation === 'clear') {
+      await alter(indexedDB, (tx) => {
+        tx.objectStore('records').clear();
+        tx.objectStore('photos').clear();
+      });
+      await store.load();
+    } else {
+      await alter(indexedDB, (tx) => tx.objectStore('records').put(null, 'current'));
+      await store.recover(personal([]), await store.recoveryState());
+    }
+    const current = await store.read();
+    assert.equal(current.revision, before.revision, operation);
+    await assert.rejects(old.commit(before.state, before.revision), /저장된 버전을 읽지 못했습니다/);
+    assert.equal((await store.read()).state.garments.length, 0);
+    old.close();
+    store.close();
+  }
+});
+
+test('a subsequent recovery retains archive photo keys without recursively copying earlier archives', async () => {
+  const { store } = await setup();
+  const asset = await photoAsset(jpeg(91));
+  const next = personal([garment('repeated-backup', asset.id)]);
+  await store.commit(next, 1, [asset]);
+  await store.recover(next, await store.recoveryState(), [asset]);
+  const first = await manifest(await store.recoveryBackup());
+  const archived = first.photos.find((row) => row.id.startsWith('recovery-photo:')).id;
+  await store.recover(next, await store.recoveryState(), [asset]);
+  const second = await manifest(await store.recoveryBackup());
+  assert.equal(
+    second.photos.length,
+    first.photos.length + 1,
+    'only the current original key needs a new preservation copy',
+  );
+  assert.ok(second.photos.some((row) => row.id === archived));
+  const archives = second.records.filter((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
+  assert.ok(
+    archives.some((row) =>
+      row.value.photos.some((photo) => photo.sourceKey === archived && photo.snapshotKey === archived),
+    ),
+  );
+  store.close();
 });

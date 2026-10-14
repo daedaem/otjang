@@ -32,8 +32,10 @@ import {
   GARMENT_KINDS,
   slotForItem,
   demoGarments,
+  wardrobeSlotStatus,
 } from './wardrobe.js';
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint } from './wardrobe-store.js';
+import { eraseWardrobeData } from './wardrobe-erase.js';
 import { prepareGarmentPhoto } from './garment-photo.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 
@@ -58,6 +60,7 @@ let query = '',
   closetFilter = 'all',
   draft = null;
 let storageRevision = 0,
+  storageEpoch = null,
   storageReady = false,
   storageError = '',
   storageConflict = false,
@@ -68,21 +71,32 @@ let photoBlobs = new Map(),
   restoreDraft = null,
   pendingLegacy = null,
   legacyChanged = false;
+let claudeLatestPresent = false;
 let returnFocus = null;
+let eraseReviewStep = 0,
+  erasingAll = false,
+  bootBusy = false;
 function applySnapshot(snapshot) {
   for (const url of photos.values()) URL.revokeObjectURL(url);
   photoBlobs = snapshot.photos;
   photos = new Map([...snapshot.photos].map(([id, blob]) => [id, URL.createObjectURL(blob)]));
   storageRevision = snapshot.revision;
+  storageEpoch = snapshot.epoch || null;
   state = wardrobeView(snapshot.state, state.tab);
 }
 function storageMessage(error) {
   return error?.name === 'QuotaExceededError'
-    ? '저장 공간이 부족해요. 입력은 그대로 두었습니다. 백업 후 필요 없는 옷을 정리해 주세요.'
+    ? storageReady
+      ? '저장 공간이 부족해요. 입력은 그대로 두었습니다. 백업 후 필요 없는 옷을 정리해 주세요.'
+      : '원문과 복구 사본을 함께 보관할 저장 공간이 부족해요. 기존 자료는 유지했습니다. 저장 원문 파일을 받은 뒤 저장 공간을 확보해 주세요.'
     : error?.message || '저장하지 못했어요. 입력을 유지했습니다.';
 }
 async function bootWardrobe() {
+  if (bootBusy || erasingAll) throw new Error('저장소 작업을 마무리하고 있어요. 잠시 후 다시 눌러 주세요.');
+  bootBusy = true;
   try {
+    claudeLatestPresent =
+      localStorage.getItem('eoul:v2') !== null || localStorage.getItem('eoul:v2:unreadable') !== null;
     let current = await wardrobeStore.read();
     if (!current) {
       const raw = localStorage.getItem(KEY),
@@ -96,8 +110,8 @@ async function bootWardrobe() {
       current = await wardrobeStore.read();
     } else if (current.state.schema === 2) {
       const upgraded = upgradeWardrobe(current.state);
-      await wardrobeStore.commit(upgraded, current.revision);
-      current = { ...current, state: upgraded, revision: current.revision + 1 };
+      await wardrobeStore.commit(upgraded, current.revision, [], current.epoch || null);
+      current = { ...current, state: upgraded, revision: current.revision + 1, epoch: wardrobeStore.currentEpoch() };
     }
     applySnapshot(current);
     storageReady = true;
@@ -107,6 +121,8 @@ async function bootWardrobe() {
   } catch (error) {
     storageError = storageMessage(error);
     storageConflict = error.code === 'conflict';
+  } finally {
+    bootBusy = false;
   }
   render();
 }
@@ -122,10 +138,10 @@ async function set(patch, { rerender = true, assets = [] } = {}) {
   const next = storedWardrobe({ ...state, ...changes, ...(closet ? { garments: closet } : {}) });
   writeBusy = true;
   try {
-    const revision = await wardrobeStore.commit(next, storageRevision, assets);
+    const revision = await wardrobeStore.commit(next, storageRevision, assets, storageEpoch);
     const needed = new Set(next.garments.map((i) => i.photoId).filter(Boolean));
     const rows = new Map([...photoBlobs, ...assets.map((a) => [a.id, a.blob])].filter(([id]) => needed.has(id)));
-    applySnapshot({ state: next, revision, photos: rows });
+    applySnapshot({ state: next, revision, epoch: wardrobeStore.currentEpoch(), photos: rows });
     if (tab) state.tab = tab;
     storageError = '';
     storageConflict = false;
@@ -141,10 +157,13 @@ async function set(patch, { rerender = true, assets = [] } = {}) {
 function storageNotice() {
   return (
     (storageError
-      ? `<section class="storage-error" role="alert"><b>저장 확인이 필요해요</b><p>${esc(storageError)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button>${pendingLegacy?.initial ? '<button class="chip" data-action="review-legacy">누락 사진 확인하기</button>' : ''}</section>`
+      ? `<section class="storage-error" role="alert"><b>저장 확인이 필요해요</b><p>${esc(storageError)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button><button class="chip" data-action="choose-backup">정상 백업으로 복구</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button>${pendingLegacy?.initial ? '<button class="chip" data-action="review-legacy">누락 사진 확인하기</button>' : ''}</section>`
       : '') +
     (legacyChanged
       ? '<div class="notice legacy-notice">이전 버전에서 옷장이 바뀌었어요. <button class="link" data-action="review-legacy">변경 확인</button></div>'
+      : '') +
+    (claudeLatestPresent
+      ? '<div class="notice legacy-notice">Claude 최신 버전의 기록이 별도로 있습니다. 이 미리보기로 자동 이전되지 않았으며 원본은 유지 중입니다. 최신 버전에서 백업한 자료를 보관해 주세요.</div>'
       : '')
   );
 }
@@ -238,8 +257,9 @@ function lookCard(r, { wide = false } = {}) {
       <div class="look-note">${esc(r.look.note)}</div>
       <div class="look-meta">
         <span>${r.ownedCount ? `${state.demo ? '예시 옷' : '내 옷'} ${r.ownedCount}개${r.buyCount ? ` + 새로 ${r.buyCount}개` : ''}` : `새로 ${r.buyCount}개`}</span>
-        <b>${r.buyCount ? formatPrice(r.buyTotal) : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</b>
+        <b>${r.uncertainCount ? '옷 종류 확인 필요' : r.buyCount ? formatPrice(r.buyTotal) : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</b>
       </div>
+      ${r.uncertainCount ? `<p class="fine">${r.uncertainCount}벌은 세부 종류가 미확인입니다. 확인 후 구매를 판단해 주세요.${r.buyCount ? ` 후보 합계 ${formatPrice(r.buyTotal)}` : ''}</p>` : ''}
     </div>
   </button>`;
 }
@@ -415,7 +435,7 @@ function renderSearch() {
     ? `<section class="section"><div class="section-head"><div><h2>이렇게 입어 보세요</h2><div class="sub">${esc(r.outfit.look.title)}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
     : '';
   const items = r.items.length
-    ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
+    ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${r.query.priceSort === 'asc' ? '수집일 가격이 낮은 순서 · 옵션과 배송비는 판매 페이지에서 확인해요' : `${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요`}</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
     : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>예산을 조금 넓히거나 다른 표현으로 찾아보세요.</div>`;
   return head + notice + outfit + items + footer();
 }
@@ -531,6 +551,7 @@ function render() {
 function openSheet(html) {
   sheetRevision++;
   restoreDraft = null;
+  eraseReviewStep = 0;
   if (!$sheet.innerHTML) returnFocus = document.activeElement;
   $app.inert = true;
   const scroll = $sheet.querySelector('.sheet')?.scrollTop;
@@ -543,6 +564,7 @@ function closeSheet() {
   if (writeBusy || draft?.saving) return;
   sheetRevision++;
   restoreDraft = null;
+  eraseReviewStep = 0;
   $app.inert = false;
   returnFocus?.focus?.();
   if (draft?.preview) URL.revokeObjectURL(draft.preview);
@@ -557,7 +579,7 @@ function lookRows(r) {
       if (i.owned) {
         const pic = i.item ? itemPicture(i.item) : `<div class="thumb">${art(i.slot, i.color)}</div>`;
         const brand = i.item?.productId ? PRODUCT_BY_ID[i.item.productId]?.brand : i.item?.brand;
-        return `<div class="look-row">${pic}<div><div class="role">${ROLE_LABEL[i.role]} · ${state.demo ? '예시 옷' : '내 옷'}${i.item && !i.item.slot ? ' · 종류 기준' : ''}</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.item ? garmentLabel(i.item) : i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">${state.demo ? '예시' : '보유'}</span></div>`;
+        return `<div class="look-row">${pic}<div><div class="role">${ROLE_LABEL[i.role]} · ${state.demo ? '예시 옷' : '내 옷'}${i.certainty === 'uncertain' ? ` · ${esc(shortName(i.slot))}인지 확인 필요` : ''}</div><div class="nm">${esc([COLORS[i.color]?.label, brand, i.item ? garmentLabel(i.item) : i.slot.name].filter(Boolean).join(' '))}</div></div><span class="badge">${i.certainty === 'uncertain' ? '종류 확인' : state.demo ? '예시' : '보유'}</span></div>`;
       }
       return `<button class="look-row" data-action="open-item" data-id="${i.product.id}">${picture(i.product, i.slot)}<div><div class="role">${ROLE_LABEL[i.role]} · ${esc(i.product.brand)}</div><div class="nm">${esc(i.product.name)}</div></div><span class="pr">${formatPrice(i.product.price)}</span></button>`;
     })
@@ -568,23 +590,35 @@ function itemSheet(id) {
   const p = PRODUCT_BY_ID[id];
   if (!p) return;
   const slot = SLOT_BY_ID[p.slot];
+  const productGender = slot.g;
+  const compatibleStyles = state.styles.filter((k) => STYLES[k]?.g.includes(productGender));
+  const productStyles = compatibleStyles.length ? compatibleStyles : stylesFor(productGender).slice(0, 1);
+  const productCloset = state.closet.filter((i) => i.gender === productGender);
   const c = {
-    gender: state.gender,
-    styles: myStyles(),
+    gender: productGender,
+    styles: productStyles,
     occasion: state.occasion,
     season: seasonOf(),
-    closet: myCloset(),
-    ownedSlots: new Set(myCloset().map((i) => i.slot)),
+    closet: productCloset,
+    ownedSlots: new Set(productCloset.map((i) => i.slot)),
   };
   const { reasons } = scoreSlot(slot, c);
   const alts = productsFor(slot.id)
     .filter((x) => x.id !== p.id)
     .slice(0, 8);
   const sameBrand = SAFE_PRODUCTS.filter(
-    (x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === state.gender && x.slot !== p.slot,
+    (x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === productGender && x.slot !== p.slot,
   ).slice(0, 8);
-  const look = recommendLooks({ ...state, budget: null }, { limit: 1, occasion: null, pinnedProduct: p })[0];
+  const look = recommendLooks(
+    { ...state, gender: productGender, styles: productStyles, budget: null },
+    { limit: 1, occasion: null, pinnedProduct: p },
+  )[0];
   const owned = state.closet.some((i) => i.productId === p.id);
+  const needsCheck =
+    wardrobeSlotStatus(
+      state.closet.filter((i) => i.gender === slot.g),
+      slot,
+    ) === 'uncertain';
   lastLooks = look ? [look] : [];
   openSheet(`
     ${picture(p, slot, 'hero')}
@@ -592,6 +626,7 @@ function itemSheet(id) {
     <h2 class="detail-title">${esc(p.name)}</h2>
     <div class="detail-price">${formatPrice(p.price)}${stars(p)}</div>
     <div class="fine">${esc(p.store)} 판매가 · ${esc(p.checkedAt)} 확인${p.color ? ` · ${COLORS[p.color]?.label || ''} (${p.colorSource === 'image' ? '상품 사진 추정' : '상품명·편집 분류'})` : ''}</div>
+    ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>
       ${[...new Set([slot.why, ...reasons])]
         .slice(0, 3)
@@ -621,7 +656,8 @@ function lookSheet(index) {
     <h2 class="detail-title" style="padding-right:48px">${esc(r.look.title)}</h2>
     <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
     ${lookRows(r)}
-    <div class="total"><span>${r.buyCount ? `새로 살 것 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
+    ${r.uncertainCount ? `<p class="notice">${r.uncertainCount}벌의 세부 종류를 확인해야 이 코디를 확정할 수 있어요. 확인 전에는 새 옷이 꼭 필요한지 판단하지 않습니다.</p>` : ''}
+    <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `새로 살 것 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
     ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">필요한 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
   `);
 }
@@ -676,10 +712,12 @@ function addSheet() {
   const kindButton = (k) =>
     `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${art(SLOTS.find((s) => s.g === state.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
   const photo = draft.preview || photos.get(draft.photoId);
+  const specificKinds = SLOTS.filter((s) => s.g === draft.gender && s.shape === draft.kind);
   openSheet(`<div class="garment-editor"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">종류만 고르면 저장할 수 있어요.</p>
  <div class="photo-editor">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '사진 고르기'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : ''}</div></div>
  ${draft.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 다시 고를 수 있습니다.</p>' : ''}
  <fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>
+ ${specificKinds.length ? `<details class="garment-name"><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><p class="sub">모르면 종류만 저장해도 돼요. 소재·형태가 맞는 경우에만 확인해 주세요.</p><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
  <details class="garment-name"><summary>색·브랜드·이름 추가 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">사진만으로 색·브랜드를 확정하지 않아요.</p><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(
    COLORS,
  )
@@ -781,11 +819,98 @@ function optionSheet(kind) {
     ${state.brands.length ? `<label class="toggle"><input type="checkbox" id="brand-only" data-action="toggle-brand-only-box" ${state.brandOnly ? 'checked' : ''}> 내 브랜드 상품만 추천</label>` : ''}</div>
     <div class="opt-group"><h3>한 벌 예산</h3><div class="opts">${budgetOpts}</div></div>
     <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 이 브라우저에 저장돼요. 다른 기기에서는 백업 파일로 옮길 수 있습니다.</p>
-      <button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><button class="chip" data-action="reset" style="margin-top:10px">모두 지우고 처음부터</button></div>
+      <button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><p class="sub">현재 옷장을 비워도 이전 버전의 자료와 복구용 사본은 유지됩니다.</p><button class="chip" data-action="reset" style="margin-top:10px">현재 옷장 비우기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button></div>
   `);
 }
 
 // ── 알림
+function showEraseReview(step = 1) {
+  openSheet(
+    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
+  );
+  eraseReviewStep = step;
+}
+function eraseFailureNotice(result) {
+  const labels = {
+    'eoul-wardrobe-v2': '현재 옷장·사진·복구 사본',
+    eoul: '이전 사진',
+    'eoul:v1': '이전 옷장·찜·취향',
+    'eoul:v2': 'Claude 최신 옷장·찜·취향',
+    'eoul:v2:unreadable': 'Claude 최신 저장 원문 사본',
+  };
+  const entries = [
+    ...(result?.databases || []),
+    ...(result?.localStorageEntries || (result?.localStorage ? [result.localStorage] : [])),
+  ];
+  return entries
+    .map(
+      (entry) =>
+        `<p><b>${labels[entry.name || entry.key] || '옷장 자료'}</b>: ${['cleared', 'removed', 'absent'].includes(entry.status) ? '삭제 완료 또는 자료 없음' : entry.status === 'uncertain' ? '완료 여부 확인 필요' : '보존 또는 아직 시작하지 않음'}${entry.reason ? ` · ${esc(entry.reason)}` : ''}</p>`,
+    )
+    .join('');
+}
+async function eraseAllWardrobe() {
+  if (eraseReviewStep !== 2) return;
+  if (writeBusy || bootBusy)
+    throw new Error('저장소 작업을 마무리하고 있어요. 완료 후 삭제 범위를 다시 확인해 주세요.');
+  eraseReviewStep = 0;
+  sheetRevision++;
+  writeBusy = true;
+  erasingAll = true;
+  storageReady = false;
+  wardrobeStore.close();
+  $sheet.innerHTML =
+    '<div class="sheet" role="dialog" aria-modal="true"><h2>확인한 옷장 자료 삭제 중</h2><p role="status">완료를 확인할 때까지 기다려 주세요.</p></div>';
+  let failureResult = null;
+  try {
+    await eraseWardrobeData();
+    for (const url of photos.values()) URL.revokeObjectURL(url);
+    if (draft?.preview) URL.revokeObjectURL(draft.preview);
+    photoBlobs = new Map();
+    photos = new Map();
+    draft = null;
+    restoreDraft = null;
+    pendingLegacy = null;
+    legacyChanged = false;
+    query = '';
+    lastLooks = [];
+    state = wardrobeView(newWardrobeState());
+    storageRevision = 0;
+    storageEpoch = null;
+    storageError = '';
+    storageConflict = false;
+  } catch (error) {
+    failureResult = error.result || {};
+    storageError =
+      '전체 삭제를 완료하지 못했습니다. 아래 범위를 확인해 주세요. 다시 불러오면 남아 있는 이전 자료가 표시될 수 있습니다.';
+    // Removed records must not remain usable in this tab after partial success.
+    for (const url of photos.values()) URL.revokeObjectURL(url);
+    if (draft?.preview) URL.revokeObjectURL(draft.preview);
+    photoBlobs = new Map();
+    photos = new Map();
+    draft = null;
+    pendingLegacy = null;
+    legacyChanged = false;
+    state = wardrobeView(newWardrobeState());
+  } finally {
+    writeBusy = false;
+    erasingAll = false;
+  }
+  if (failureResult) {
+    render();
+    openSheet(
+      `<h2>전체 삭제 미완료</h2><p role="alert">${esc(storageError)}</p>${eraseFailureNotice(failureResult)}<button class="chip" data-action="erase-review">범위를 다시 확인하고 재시도</button><button class="chip" data-action="recovery-backup">남은 저장 원문 받기</button>`,
+    );
+    return;
+  }
+  closeSheet();
+  await bootWardrobe();
+  toast(
+    storageReady
+      ? '현재·이전 옷장과 사진·복구 사본을 삭제했어요'
+      : '옷장 자료 삭제는 완료했지만 새 옷장을 불러오지 못했어요',
+  );
+}
 let toastTimer;
 function toast(message, undo) {
   clearTimeout(toastTimer);
@@ -824,8 +949,13 @@ async function chooseWardrobeBackup(file) {
     const parsed = await parseWardrobeBackup(file);
     if (sheetRevision !== revision) return;
     parsed.state = upgradeWardrobe(parsed.state);
+    if (!storageReady) {
+      parsed.recovery = await wardrobeStore.recoveryState();
+      parsed.legacyRaw = localStorage.getItem(KEY);
+      if (sheetRevision !== revision) return;
+    }
     openSheet(
-      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p><p>현재 옷장·찜·취향을 교체합니다. 필요한 기록은 먼저 백업해 주세요.</p><button class="btn" data-action="restore-backup">이 백업으로 바꾸기</button>`,
+      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > 3 ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 교체 뒤에도 저장 원문 받기로 사본을 받을 수 있습니다.</p>` : '<p>현재 옷장·찜·취향을 교체합니다. 필요한 기록은 먼저 백업해 주세요.</p>'}<button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
     );
     restoreDraft = parsed;
   } catch (error) {
@@ -868,6 +998,10 @@ document.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const a = el.dataset.action;
+  if (erasingAll) {
+    toast('옷장 자료 삭제 완료를 확인하고 있어요');
+    return;
+  }
   try {
     switch (a) {
       case 'ob-gender':
@@ -941,7 +1075,7 @@ document.addEventListener('click', async (e) => {
       case 'reset':
         if (el.dataset.armed !== '1') {
           el.dataset.armed = '1';
-          el.textContent = '한 번 더 누르면 이 옷장을 비워요';
+          el.textContent = '한 번 더 누르면 현재 옷장만 비워요';
           break;
         }
         await set({
@@ -961,6 +1095,15 @@ document.addEventListener('click', async (e) => {
         });
         obStep = 1;
         closeSheet();
+        break;
+      case 'erase-review':
+        showEraseReview();
+        break;
+      case 'erase-confirm':
+        if (eraseReviewStep === 1) showEraseReview(2);
+        break;
+      case 'erase-execute':
+        await eraseAllWardrobe();
         break;
       case 'clear-q':
         query = '';
@@ -1036,6 +1179,10 @@ document.addEventListener('click', async (e) => {
           demo: false,
           demoSelected: [],
           garments: [...(state.demo ? [] : state.garments), item],
+          gender: item.gender,
+          styles: state.styles.filter((k) => STYLES[k]?.g.includes(item.gender)).length
+            ? state.styles.filter((k) => STYLES[k]?.g.includes(item.gender))
+            : stylesFor(item.gender).slice(0, 1),
           tab: 'closet',
         });
         closeSheet();
@@ -1105,6 +1252,15 @@ document.addEventListener('click', async (e) => {
           addSheet();
         }
         break;
+      case 'draft-slot': {
+        if (!draft) break;
+        const slot = SLOT_BY_ID[el.dataset.slot];
+        if (el.dataset.slot && (!slot || slot.g !== draft.gender || slot.shape !== draft.kind)) break;
+        draft.slot = slot?.id || null;
+        if (draft.productId && PRODUCT_BY_ID[draft.productId]?.slot !== draft.slot) draft.productId = null;
+        addSheet();
+        break;
+      }
       case 'clear-photo':
         if (draft) {
           draft.token++;
@@ -1136,7 +1292,24 @@ document.addEventListener('click', async (e) => {
       case 'restore-backup': {
         const saved = restoreDraft;
         if (!saved) break;
-        await set(saved.state, { assets: saved.assets });
+        if (saved.recovery) {
+          if (writeBusy) throw new Error('이전 저장을 마무리하고 있어요. 잠시 후 다시 눌러 주세요.');
+          if (localStorage.getItem(KEY) !== saved.legacyRaw)
+            throw new Error('이전 자료가 바뀌었습니다. 백업을 다시 선택해 확인해 주세요.');
+          writeBusy = true;
+          try {
+            const recovered = await wardrobeStore.recover(saved.state, saved.recovery, saved.assets, saved.legacyRaw);
+            applySnapshot(recovered);
+            storageReady = true;
+            storageError = '';
+            storageConflict = false;
+            pendingLegacy = null;
+            legacyChanged = (await legacyWardrobeFingerprint(saved.legacyRaw)) !== state.legacyFingerprint;
+            render();
+          } finally {
+            writeBusy = false;
+          }
+        } else await set(saved.state, { assets: saved.assets });
         closeSheet();
         toast('옷장과 사진을 복원했어요');
         break;

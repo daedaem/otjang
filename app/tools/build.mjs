@@ -12,10 +12,26 @@ const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
 
-const order = ['src/data/slots.js', 'src/data/looks.js', 'src/data/products.js', 'src/catalog-policy.js', 'src/legacy-wardrobe.js', 'src/wardrobe.js', 'src/wardrobe-store.js', 'src/garment-photo.js', 'src/legacy-photos.js', 'src/query.js', 'src/engine.js', 'src/icons.js', 'src/main.js'];
+const order = [
+  'src/data/slots.js',
+  'src/data/looks.js',
+  'src/data/products.js',
+  'src/catalog-policy.js',
+  'src/legacy-wardrobe.js',
+  'src/wardrobe.js',
+  'src/wardrobe-store.js',
+  'src/wardrobe-erase.js',
+  'src/garment-photo.js',
+  'src/legacy-photos.js',
+  'src/query.js',
+  'src/engine.js',
+  'src/icons.js',
+  'src/main.js',
+];
 let js = order
   .map((file) => {
-    const src = fs.readFileSync(path.join(root, file), 'utf8')
+    const src = fs
+      .readFileSync(path.join(root, file), 'utf8')
       .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
       .replace(/^export\s+(const|function|async function|let|class)\s/gm, '$1 ');
     return `// ── ${file}\n${src}`;
@@ -44,7 +60,8 @@ if (flag('--fragment')) {
   const body = source.match(/<body>([\s\S]*?)<script/)[1].trim();
   html = `${title}\n<style>\n${css}</style>\n${body}\n${script}\n`;
 } else {
-  html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+  html = fs
+    .readFileSync(path.join(root, 'index.html'), 'utf8')
     .replace('<link rel="stylesheet" href="./styles.css">', () => `<style>\n${css}</style>`)
     .replace('<script type="module" src="./src/main.js"></script>', () => script);
 }
