@@ -1,14 +1,14 @@
 {
-  "sourceCommit": "f547707de3fb20a00563040cf567dc459f22f980",
+  "sourceCommit": "c44784136d7424ea59d44ec44c22ff90b09ccd73",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "upstreamObservedCommit": "b0f258960ed0b9284cbdead7f0209aaf27aa17d1",
   "upstreamLatestIntegrated": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T00:04:29.729Z",
+  "builtAt": "2026-10-14T00:11:04.062Z",
   "files": {
     "index.html": {
-      "bytes": 644716,
-      "sha256": "a3531d7e04c7fc00709d71494168867b6f402b486ec79a6229655c65a5e4073b"
+      "bytes": 644793,
+      "sha256": "5f00aa267ce98c905a801eb21675c479e2640caacb81cafdc0facf5d0d3d1ca6"
     }
   },
   "catalog": {
