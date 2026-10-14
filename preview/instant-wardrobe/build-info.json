@@ -1,27 +1,38 @@
 {
-  "sourceCommit": "fd06eb98485b5cbbd0f83ac61eac53ab7431114b",
+  "sourceCommit": "f547707de3fb20a00563040cf567dc459f22f980",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
+  "upstreamObservedCommit": "b0f258960ed0b9284cbdead7f0209aaf27aa17d1",
+  "upstreamLatestIntegrated": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-13T23:17:49.544Z",
+  "builtAt": "2026-10-14T00:04:29.729Z",
   "files": {
     "index.html": {
-      "bytes": 614169,
-      "sha256": "466731739e36ebd3b644e8dab00d0e6f2b0cfebacb0942b9a0009f98cba54b8e"
+      "bytes": 644716,
+      "sha256": "a3531d7e04c7fc00709d71494168867b6f402b486ec79a6229655c65a5e4073b"
     }
   },
   "catalog": {
-    "products": 916,
+    "products": 910,
     "brands": 115,
     "slots": 68,
     "styles": 8,
     "looks": 32
   },
   "storageSchema": 3,
+  "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 50,
+    "passed": 103,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
     "realCameraVerified": false
-  }
+  },
+  "releaseStatus": "preview-only",
+  "unresolvedReleaseGates": [
+    "product-data-permissions",
+    "real-mobile-device-qa",
+    "dedicated-origin-and-operations",
+    "latest-upstream-storage-integration",
+    "purchase-decision-pilot"
+  ]
 }
