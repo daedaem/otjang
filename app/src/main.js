@@ -526,8 +526,10 @@ function renderCloset() {
   </section>`;
   // Registration time is not a purchase or photo capture date. Demo clothes
   // have no real registration date, and old missing dates keep their order.
+  // Only garments registered in this app carry a real registration time. Migrated
+  // records received a placeholder date and are shown as moved, not dated.
   const shown = items
-    .map((item, index) => ({ item, index, registered: Date.parse(item.createdAt) }))
+    .map((item, index) => ({ item, index, registered: item.source === 'user' ? Date.parse(item.createdAt) : NaN }))
     .filter(({ item }) => closetFilter === 'all' || slotForItem(item).cat === closetFilter)
     .sort((a, b) => {
       const aValid = Number.isFinite(a.registered), bValid = Number.isFinite(b.registered);
@@ -543,7 +545,7 @@ function renderCloset() {
       const date = Number.isFinite(registered) ? new Date(registered) : null;
       const registration = !demo && date
         ? `등록 ${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, '0')}. ${String(date.getDate()).padStart(2, '0')}.`
-        : '';
+        : !demo && i.source === 'legacy' ? '이전 버전에서 옮김' : '';
       return `<button class="citem" data-action="open-own" data-id="${esc(i.id)}">${itemPicture(i)}<span class="cbrand">${esc(brand)}</span><span class="cname">${esc(garmentLabel(i))}</span>${demo ? '<span class="closet-tag">예시 옷</span>' : registration ? `<span class="cdate">${registration}</span>` : ''}</button>`;
     }).join('')}<button class="closet-add-tile" data-action="add-start"><span class="closet-add-stage">${ICON.plus}</span><span>옷 추가</span></button></div>
   </section>`;
@@ -1224,20 +1226,22 @@ function addSheet() {
   const kindButton = (k) => `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === state.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
   const photo = draft.preview || photos.get(draft.photoId);
   const entry = !draft.before && draft.entryMode === 'choice' && !photo && !draft.kind;
-  const manual = draft.entryMode === 'manual' || draft.entryMode === 'edit';
+  // The kind grid stays open unless a visual suggestion or a chosen kind is shown above it.
+  const suggested = (draft.photoRecognition?.kinds || []).some((x) => SLOTS.some((s) => s.g === draft.gender && s.shape === x.kind));
+  const manual = draft.entryMode === 'manual' || draft.entryMode === 'edit' || (!suggested && !draft.kind);
   const specificKinds = SLOTS.filter((s) => s.g === draft.gender && s.shape === draft.kind);
   const manualKinds = `<fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>옷 사진 한 장</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p><fieldset${draft.saving ? ' disabled' : ''}>
-  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="tab" data-tab="home">상품 목록에서 찾아 추가</button></div>` : `<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions"><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>
+  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="tab" data-tab="home">추천 상품에서 찾아 '이 상품 있어요'로 추가</button></div>` : `<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions"><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>
   ${draft.photoMissing ? '<p class="notice">이전 버전에서 저장되지 않은 사진이에요. 다시 고를 수 있어요.</p>' : ''}
   ${photoAnalysisPanel()}
   ${draft.kind ? `<div class="confirmed-kind"><span>확인한 종류</span><b>${esc(garmentKindName(draft.kind))}</b>${draft.brand ? `<small>${esc(draft.brand)}</small>` : ''}</div>` : photo ? '<p class="sub registration-kind-hint">종류를 확인해 주세요. 모르면 아래에서 직접 고를 수 있어요.</p>' : ''}
-  ${manual ? manualKinds : `<details class="manual-kinds"><summary>다른 종류로 등록</summary>${manualKinds}</details>`}
+  ${manual ? manualKinds : `<details class="manual-kinds"><summary>${draft.kind ? '다른 종류로 바꾸기' : '다른 종류로 등록'}</summary>${manualKinds}</details>`}
   ${specificKinds.length ? `<details class="garment-name"${draft.confirmDetails ? ' open' : ''}><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
   <details class="garment-name"><summary>색·브랜드·이름 수정 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">모르는 정보는 비워 둬도 돼요.</p><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(COLORS).map(([id, c]) => `<button class="sw" data-action="draft-color" data-color="${id}" aria-label="${c.label}" aria-pressed="${draft.color === id}"><i style="background:${c.hex}"></i></button>`).join('')}</div></details>
   <div class="cta registration-save"><button class="btn" data-action="draft-save"${!draft.kind || draft.processing || draft.saving ? ' disabled' : ''}>${draft.saving ? '저장 중…' : '옷장에 저장'}</button></div>`}
-  ${draft.processing ? '<p role="status">사진 준비 중…</p>' : ''}${draft.error ? `<p class="editor-error" role="alert">${esc(draft.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 최신 옷장 불러오기</button>` : ''}
+  ${draft.processing ? '<p role="status">사진 준비 중…</p>' : ''}${draft.photoError ? `<div class="photo-error"><p class="editor-error" role="alert">${esc(draft.photoError)}</p><div class="opts"><button class="chip" data-action="add-photo">다른 사진 고르기</button><button class="chip" data-action="add-camera">카메라로 촬영</button>${draft.kind ? '' : '<button class="chip" data-action="draft-manual">사진 없이 종류로</button>'}</div></div>` : ''}${draft.error ? `<p class="editor-error" role="alert">${esc(draft.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 최신 옷장 불러오기</button>` : ''}
   </fieldset></div>`, { key: `garment:${draft.id}` });
 }
 async function chooseGarmentPhoto(file) {
@@ -1248,6 +1252,7 @@ async function chooseGarmentPhoto(file) {
     token = ++current.token;
   current.processing = true;
   current.error = '';
+  current.photoError = '';
   addSheet();
   try {
     const asset = await prepareGarmentPhoto(file);
@@ -1259,14 +1264,14 @@ async function chooseGarmentPhoto(file) {
     current.photoMissing = false;
     current.preview = URL.createObjectURL(asset.blob);
   } catch (error) {
-    if (draft === current && current.token === token) current.error = storageMessage(error);
+    if (draft === current && current.token === token) current.photoError = error?.message || '사진을 읽지 못했어요.';
   } finally {
     if (draft === current && current.token === token) {
       current.processing = false;
       addSheet();
     }
   }
-  if (photoCanAutoAnalyze() && draft === current && current.token === token && current.asset && !current.error)
+  if (photoCanAutoAnalyze() && draft === current && current.token === token && current.asset && !current.error && !current.photoError)
     await analyzeDraftPhoto();
 }
 async function saveGarmentDraft() {

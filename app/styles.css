@@ -415,3 +415,4 @@ img { display: block; max-width: 100%; }
 .garment-differences label { display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 6px 10px; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
 .garment-differences input { width: 20px; height: 20px; accent-color: var(--accent); }
 .garment-differences span { grid-column: 2; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.photo-error .opts { margin-top: 6px; }
