@@ -1,16 +1,16 @@
 {
-  "sourceCommit": "e51f1187af1dd3a71f953e336cc1850e475200ab",
+  "sourceCommit": "e2f18c515e7d43323c3d7d911afacfb4b8817204",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "claudeMergeCommit": "438500b",
   "upstreamObservedCommit": "9ec002ed09bc40bebc0b4c5daa9b2e524d53f4ef",
   "upstreamLatestIntegrated": false,
   "legacyEoulV2Imported": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T03:27:48.962527+00:00",
+  "builtAt": "2026-10-14T04:21:22.520668+00:00",
   "files": {
     "index.html": {
-      "bytes": 729420,
-      "sha256": "a6ac4294518dba6653c626b4f2c0b30d9c8021ae1db8aa2acf6f8dd896ff5acb"
+      "bytes": 775668,
+      "sha256": "8cc5d89d2de579fe26499dcbc646b8af9b0c5c3be4990436430c89fe50ed731b"
     }
   },
   "catalog": {
@@ -20,10 +20,10 @@
     "styles": 8,
     "looks": 35
   },
-  "storageSchema": 4,
+  "storageSchema": 5,
   "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 194,
+    "passed": 249,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
@@ -66,7 +66,11 @@
     "community": false,
     "vton": false,
     "liveMultiSellerPriceComparison": false,
-    "verifiedOrdersAndCheckout": false
+    "verifiedOrdersAndCheckout": false,
+    "eventDetailsSnapshots": true,
+    "postOrderOptionCorrectionOrFork": true,
+    "selectiveReceivedGarmentConfirmation": true,
+    "selfReportedFitAndReturnFeedback": true
   },
   "claudeOnestopReview": {
     "model": "Opus 5.5",
@@ -74,5 +78,34 @@
     "initialAndCrossCompleted": true,
     "reviewType": "design-description-only",
     "directRuntimeVerified": false
-  }
+  },
+  "storageLimits": {
+    "wholeStateBytes": 850000,
+    "journeyGrowthBytes": 614400,
+    "ownershipJourneyGrowthBytes": 696320,
+    "journeyWarningBytes": 512000,
+    "wholeStateHeadroomWarningBytes": 65536,
+    "eventsPerJourney": 512,
+    "photoBytesInStateJson": false
+  },
+  "claudeImprovementReview": {
+    "model": "Opus 5.5",
+    "conversation": "https://claude.ai/chat/edb94e33-80fa-4c8f-9175-a74a92c2e917",
+    "initialCrossFinalAndClosureCompleted": true,
+    "reviewType": "design-description-only",
+    "directSourceVerified": false,
+    "directRuntimeVerified": false
+  },
+  "improvements": [
+    "atomic-garment-and-pending-journey-inputs",
+    "event-values-preserved",
+    "post-order-option-choice",
+    "same-kind-replacement-selection",
+    "automatic-outfit-pending-suppression",
+    "unlinked-presence-journey-scope",
+    "selective-received-garment-confirmation",
+    "same-option-return-evidence",
+    "manual-product-hiding",
+    "storage-warning-and-ownership-reserve"
+  ]
 }
