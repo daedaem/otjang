@@ -4,7 +4,7 @@
   "6981021": { "slot": "f-denim", "color": "indigo" },
   "7460183": { "color": "grey" },
   "7473394": { "color": "ivory" },
-  "6894812": { "slot": "m-downvest", "color": "charcoal" },
+  "6894812": { "slot": null, "color": "charcoal" },
   "4865846": { "color": "grey" },
   "3654689": { "color": "beige" }
 }
