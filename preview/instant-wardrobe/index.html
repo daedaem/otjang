@@ -295,6 +295,20 @@ img { display: block; max-width: 100%; }
 .photo-editor input[type=file] { width: 100%; max-width: 100%; font-size: 12px; margin-top: 8px; }
 .photo-label, .photo-editor .link { display: inline-flex; min-height: 44px; align-items: center; cursor: pointer; }
 .photo-editor .link { margin-left: 10px; }
+.photo-analysis { margin: 20px 0; padding: 16px; background: var(--sunk); border-radius: 14px; }
+.photo-analysis h3 { margin: 0 0 12px; }
+.photo-analysis .photo-label { display: block; margin: 14px 0; }
+.photo-analysis summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
+.photo-analysis label { display: block; margin: 10px 0 6px; }
+.photo-analysis textarea { width: 100%; max-width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.photo-analysis .opts { flex-wrap: wrap; }
+.label-preview { max-width: 100%; width: 140px; height: 100px; object-fit: contain; margin: 12px 0; }
+.photo-products { display: grid; gap: 8px; margin: 12px 0; }
+.photo-product { display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; text-align: left; background: var(--surface); width: 100%; }
+.photo-product img { flex: 0 0 64px; width: 64px; height: 76px; object-fit: contain; }
+.photo-product span { min-width: 0; overflow-wrap: anywhere; }
+.photo-product b, .photo-product small { display: block; }
+.photo-product small { margin-top: 6px; color: var(--ink-3); }
 .garment-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .garment-editor legend { font-weight: 700; margin-bottom: 12px; }
 .kind-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
@@ -382,6 +396,7 @@ img { display: block; max-width: 100%; }
   <div id="sheet-root"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="photo-input" type="file" accept="image/*" hidden>
+  <input id="label-photo-input" type="file" accept="image/*" hidden>
   <input id="wardrobe-backup-input" type="file" hidden aria-label="옷장 백업 파일 선택">
   <script type="module">
 (() => {
@@ -2717,6 +2732,517 @@ async function prepareGarmentPhoto(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 
+// ── src/photo-recognition.js
+// Optional, on-device suggestions. Only public runtime/model assets are fetched;
+// the selected image Blob is passed to local workers, never to an inference API.
+// Scores compare the supplied labels and are not calibrated probabilities.
+const PHOTO_RECOGNITION_MODEL = 'Xenova/clip-vit-base-patch32';
+const PHOTO_RECOGNITION_REVISION = 'd15189d7028b43f1d3e65039190477f6af591c2a';
+const PHOTO_RECOGNITION_DTYPE = 'q8';
+const PHOTO_RECOGNITION_KIND_LABELS = [
+  ['shirt', '셔츠', 'button-up shirt'], ['tee', '티셔츠', 't-shirt'],
+  ['knit', '니트', 'knitted sweater'], ['pants', '바지', 'trousers'],
+  ['jeans', '청바지', 'jeans'], ['jacket', '재킷', 'jacket'],
+  ['sneaker', '운동화', 'sneakers'], ['cardigan', '카디건', 'cardigan'],
+  ['longtee', '긴팔 티', 'long sleeve t-shirt'], ['sweat', '맨투맨', 'sweatshirt'],
+  ['polo', '폴로 셔츠', 'polo shirt'], ['blazer', '블레이저', 'blazer'],
+  ['coat', '코트', 'coat'], ['down', '패딩', 'puffer jacket'],
+  ['dress', '원피스', 'dress'], ['skirt', '스커트', 'skirt'],
+  ['loafer', '구두·로퍼', 'leather shoes'], ['boot', '부츠', 'boots'],
+  ['bag', '가방', 'bag'], ['cap', '모자', 'hat'], ['belt', '벨트', 'belt'],
+];
+const PHOTO_RECOGNITION_KIND_ALIASES = [['jacket', 'denim jacket'], ['sweat', 'hoodie']];
+const PHOTO_RECOGNITION_DISTRACTORS = ['several garments worn by a person', 'no garment'];
+const PHOTO_RECOGNITION_COLOR_LABELS = [
+  ['white', '화이트', 'white'], ['ivory', '아이보리', 'ivory'], ['beige', '베이지', 'beige'],
+  ['blue', '라이트 블루', 'light blue'], ['grey', '그레이', 'gray'], ['olive', '올리브', 'olive green'],
+  ['brown', '브라운', 'brown'], ['indigo', '인디고', 'indigo blue'], ['charcoal', '차콜', 'charcoal gray'],
+  ['navy', '네이비', 'navy blue'], ['black', '블랙', 'black'], ['green', '그린', 'green'],
+  ['red', '레드·버건디', 'red or burgundy'], ['pink', '핑크', 'pink'], ['yellow', '옐로', 'yellow'],
+  ['purple', '퍼플', 'purple'], ['orange', '오렌지', 'orange'],
+];
+
+const PHOTO_RECOGNITION_RUNTIME = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js';
+const PHOTO_RECOGNITION_OCR_SCRIPT = 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js';
+const PHOTO_RECOGNITION_OCR_WORKER = 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js';
+const PHOTO_RECOGNITION_OCR_CORE = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0';
+const PHOTO_RECOGNITION_OCR_LANG = 'https://tessdata.projectnaptha.com/4.0.0';
+const PHOTO_RECOGNITION_TIMEOUT = 90000;
+let photoRecognitionOcrLibrary = null;
+
+function photoRecognitionError(message, name = 'Error') {
+  const error = new Error(message);
+  error.name = name;
+  return error;
+}
+
+// This function is stringified into a standalone module worker by the single-
+// HTML builder. It deliberately has no closure references or image URL inputs.
+function photoRecognitionWorkerMain(config) {
+  let pipelinePromise = null;
+  let activeId = null;
+  const progress = (id, stage, value = null) => self.postMessage({ type: 'progress', id, stage, progress: value });
+  const classifier = () => {
+    if (!pipelinePromise) {
+      pipelinePromise = import(config.runtime).then(({ env, pipeline }) => {
+        env.allowLocalModels = false;
+        env.backends.onnx.wasm.numThreads = 1;
+        env.backends.onnx.wasm.proxy = false;
+        return pipeline('zero-shot-image-classification', config.model, {
+          revision: config.revision, dtype: config.dtype, device: 'wasm',
+          progress_callback: (event) => progress(activeId, 'model-loading',
+            Number.isFinite(event.progress) ? event.progress / 100 : null),
+        });
+      }).catch((error) => { pipelinePromise = null; throw error; });
+    }
+    return pipelinePromise;
+  };
+  self.onmessage = async ({ data }) => {
+    if (!data || data.type !== 'analyze' || typeof data.id !== 'string') return;
+    const id = data.id;
+    if (!(data.blob instanceof Blob) || !['image/jpeg', 'image/png', 'image/webp'].includes(data.blob.type)) {
+      self.postMessage({ type: 'error', id, message: '선택한 사진을 읽지 못했습니다.' });
+      return;
+    }
+    if (activeId !== null) {
+      self.postMessage({ type: 'error', id, message: '앞선 사진 분석이 아직 진행 중입니다.' });
+      return;
+    }
+    activeId = id;
+    try {
+      if (typeof self.OffscreenCanvas !== 'function' || typeof self.createImageBitmap !== 'function') {
+        throw new Error('이 브라우저는 사진 종류 분석을 지원하지 않습니다. 직접 고르거나 다른 브라우저에서 다시 시도해 주세요.');
+      }
+      progress(id, 'model-loading');
+      const classify = await classifier();
+      const distractors = config.distractors;
+      progress(id, 'kind-analysis');
+      const kinds = await classify(data.blob, [...config.kinds.map((row) => row[2]), ...config.aliases.map((row) => row[1]), ...distractors]);
+      const requiresCrop = distractors.includes(kinds[0]?.label);
+      self.postMessage({ type: 'result', id, result: {
+        kinds: requiresCrop ? [] : kinds.flatMap((result) => {
+          const alias = config.aliases.find((entry) => entry[1] === result.label);
+          const row = config.kinds.find((entry) => entry[2] === result.label || entry[0] === alias?.[0]);
+          return row ? [{ kind: row[0], label: row[1], score: result.score }] : [];
+        }).filter((row, index, all) => all.findIndex((entry) => entry.kind === row.kind) === index).slice(0, 3),
+        // Public-sample testing misclassified a white shirt as charcoal.
+        // Do not expose an unverified color prediction; use manual color input.
+        colors: [],
+        requiresCrop,
+      } });
+    } catch (error) {
+      self.postMessage({ type: 'error', id, message: error?.message || '사진 종류 분석을 완료하지 못했습니다.' });
+    } finally { activeId = null; }
+  };
+}
+
+function photoRecognitionWorkerSource() {
+  return `(${photoRecognitionWorkerMain.toString()})(${JSON.stringify({
+    runtime: PHOTO_RECOGNITION_RUNTIME, model: PHOTO_RECOGNITION_MODEL, revision: PHOTO_RECOGNITION_REVISION, dtype: PHOTO_RECOGNITION_DTYPE,
+    kinds: PHOTO_RECOGNITION_KIND_LABELS, aliases: PHOTO_RECOGNITION_KIND_ALIASES,
+    distractors: PHOTO_RECOGNITION_DISTRACTORS,
+  })});`;
+}
+
+function photoRecognitionDefaultWorker({ source, type }) {
+  if (typeof Worker !== 'function' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    throw photoRecognitionError('이 브라우저는 사진 분석 Worker를 지원하지 않습니다. 직접 종류를 선택해 주세요.', 'NotSupportedError');
+  }
+  const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+  try {
+    const worker = new Worker(url, { type });
+    return { worker, dispose() { worker.terminate(); URL.revokeObjectURL(url); } };
+  } catch (error) { URL.revokeObjectURL(url); throw error; }
+}
+
+function photoRecognitionLoadOcrLibrary() {
+  if (!photoRecognitionOcrLibrary) {
+    photoRecognitionOcrLibrary = new Promise((resolve, reject) => {
+      if (typeof Worker !== 'function' || typeof document === 'undefined' || !document.head?.appendChild) {
+        reject(photoRecognitionError('이 브라우저는 라벨 문자 분석 Worker를 지원하지 않습니다. 라벨 글자를 직접 적어 주세요.', 'NotSupportedError'));
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = PHOTO_RECOGNITION_OCR_SCRIPT;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      const timer = setTimeout(() => finish(photoRecognitionError('라벨 분석 도구 다운로드 시간이 초과되었습니다.', 'TimeoutError')), 30000);
+      const finish = (error) => {
+        clearTimeout(timer);
+        script.onload = script.onerror = null;
+        if (error) { script.remove?.(); reject(error); }
+        else if (typeof globalThis.Tesseract?.createWorker === 'function') resolve(globalThis.Tesseract);
+        else reject(photoRecognitionError('라벨 분석 도구를 시작하지 못했습니다. 다시 시도해 주세요.'));
+      };
+      script.onload = () => finish();
+      script.onerror = () => finish(photoRecognitionError('라벨 분석 도구를 내려받지 못했습니다. 인터넷 연결을 확인해 주세요.'));
+      document.head.appendChild(script);
+    }).catch((error) => { photoRecognitionOcrLibrary = null; throw error; });
+  }
+  return photoRecognitionOcrLibrary;
+}
+
+async function photoRecognitionDefaultOcr({ onProgress, onCreated, isCurrent }) {
+  const tesseract = await photoRecognitionLoadOcrLibrary();
+  if (!isCurrent()) throw photoRecognitionError('사진 분석을 취소했습니다.', 'AbortError');
+  const worker = await tesseract.createWorker(['eng', 'kor'], 1, {
+    workerPath: PHOTO_RECOGNITION_OCR_WORKER, corePath: PHOTO_RECOGNITION_OCR_CORE,
+    langPath: PHOTO_RECOGNITION_OCR_LANG, cacheMethod: 'write',
+    logger: onProgress, errorHandler: () => {},
+  });
+  onCreated(worker);
+  if (!isCurrent()) throw photoRecognitionError('사진 분석을 취소했습니다.', 'AbortError');
+  await worker.setParameters({ tessedit_pageseg_mode: tesseract.PSM.SPARSE_TEXT, preserve_interword_spaces: '1' });
+  return worker;
+}
+
+function photoRecognitionCandidates(value, type, choices) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value.flatMap((row) => {
+    const known = choices.find((entry) => entry[0] === row?.[type]);
+    if (!known || seen.has(known[0]) || !Number.isFinite(row.score) || row.score < 0 || row.score > 1) return [];
+    seen.add(known[0]);
+    return [{ [type]: known[0], label: known[1], score: row.score }];
+  }).sort((a, b) => b.score - a.score).slice(0, 3);
+}
+
+/**
+ * Suggestions stay outside wardrobe state until the caller confirms them.
+ * Only image Blobs are accepted: URLs/base64/paths cannot cause remote reads.
+ * Factories and a shorter deadline are injectable for protocol/lifecycle tests.
+ * Cancelling during Tesseract initialization invalidates the job immediately;
+ * its handle is terminated as soon as the library returns it.
+ */
+function createPhotoRecognizer({
+  workerFactory = photoRecognitionDefaultWorker, ocrFactory = photoRecognitionDefaultOcr,
+  timeoutMs = PHOTO_RECOGNITION_TIMEOUT,
+} = {}) {
+  if (typeof workerFactory !== 'function' || typeof ocrFactory !== 'function' ||
+      !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > PHOTO_RECOGNITION_TIMEOUT) {
+    throw new Error('사진 분석 설정이 올바르지 않습니다.');
+  }
+  let disposed = false, current = null, sequence = 0, vision = null, ocr = null;
+  const terminatedOcr = new WeakSet();
+  const terminateOcr = (worker) => {
+    if (!worker || typeof worker !== 'object' || terminatedOcr.has(worker)) return;
+    terminatedOcr.add(worker);
+    try { Promise.resolve(worker.terminate?.()).catch(() => {}); } catch {}
+  };
+  const stopResources = () => {
+    if (vision) { try { vision.dispose(); } catch {} vision = null; }
+    if (ocr) { terminateOcr(ocr); ocr = null; }
+  };
+  const abort = (message = '사진 분석을 취소했습니다.', name = 'AbortError') => {
+    const job = current;
+    current = null;
+    stopResources();
+    if (job) { clearTimeout(job.timer); job.reject(photoRecognitionError(message, name)); }
+  };
+  const emit = (job, value) => {
+    if (current !== job) return;
+    const progress = Number.isFinite(value?.progress) ? Math.max(0, Math.min(1, value.progress)) : null;
+    try { job.onProgress({ task: value.task, stage: String(value.stage || '').slice(0, 120), progress }); } catch {}
+  };
+  const finish = (job, timedOut = false) => {
+    if (current !== job || (!timedOut && (!job.visionDone || !job.ocrDone))) return;
+    clearTimeout(job.timer);
+    current = null;
+    if (timedOut) {
+      if (!job.visionDone) job.warnings.push('옷 종류 분석 시간이 초과되었습니다. 다시 시도하거나 직접 골라 주세요.');
+      if (!job.ocrDone) job.warnings.push('라벨 문자 분석 시간이 초과되었습니다. 다시 시도하거나 라벨 글자를 직접 적어 주세요.');
+      stopResources();
+    }
+    if (!job.visionOK && !job.ocrOK) {
+      job.reject(photoRecognitionError(job.warnings.join(' ') || '사진 분석을 완료하지 못했습니다. 다시 시도해 주세요.',
+        timedOut ? 'TimeoutError' : 'NotSupportedError'));
+      return;
+    }
+    job.resolve({
+      kinds: job.kinds, colors: job.colors, text: job.text,
+      requiresCrop: job.requiresCrop, warnings: job.warnings,
+      model: job.mode === 'label' ? null : PHOTO_RECOGNITION_MODEL,
+      revision: job.mode === 'label' ? null : PHOTO_RECOGNITION_REVISION,
+      scoreMeaning: 'relative-label-score', requiresConfirmation: true,
+      elapsedMs: Math.max(0, Date.now() - job.started),
+    });
+  };
+  const failVision = (job, message) => {
+    if (current !== job || job.visionDone) return;
+    job.visionDone = true;
+    job.warnings.push(message || '옷 종류 분석을 완료하지 못했습니다. 직접 골라 주세요.');
+    if (vision) { try { vision.dispose(); } catch {} vision = null; }
+    finish(job);
+  };
+  const startVision = (job, blob) => {
+    try {
+      if (!vision) {
+        const handle = workerFactory({ source: photoRecognitionWorkerSource(), type: 'module' });
+        const worker = handle?.worker || handle;
+        if (!worker || typeof worker.postMessage !== 'function' || typeof worker.terminate !== 'function') {
+          try { handle?.dispose?.(); } catch {}
+          throw new Error('사진 분석 Worker를 시작하지 못했습니다.');
+        }
+        vision = { worker, dispose: handle?.dispose ? () => handle.dispose() : () => worker.terminate() };
+        worker.onmessage = ({ data }) => {
+          const active = current;
+          if (!active || data?.id !== active.id || active.visionDone) return;
+          if (data.type === 'progress') emit(active, { task: 'vision', stage: data.stage, progress: data.progress });
+          else if (data.type === 'error') failVision(active, typeof data.message === 'string' ? data.message.slice(0, 500) : '사진 종류 분석을 완료하지 못했습니다.');
+          else if (data.type === 'result') {
+            active.visionDone = active.visionOK = true;
+            active.requiresCrop = data.result?.requiresCrop === true;
+            active.kinds = active.requiresCrop ? [] : photoRecognitionCandidates(data.result?.kinds, 'kind', PHOTO_RECOGNITION_KIND_LABELS);
+            active.colors = active.requiresCrop ? [] : photoRecognitionCandidates(data.result?.colors, 'color', PHOTO_RECOGNITION_COLOR_LABELS);
+            if (active.requiresCrop) active.warnings.push('옷 한 벌이 잘 보이도록 가까이 찍거나 잘라서 다시 분석해 주세요.');
+            finish(active);
+          }
+        };
+        worker.onerror = () => {
+          if (current && vision?.worker === worker) failVision(current, '사진 분석 도구를 시작하지 못했습니다. 인터넷 연결·브라우저 지원을 확인하고 다시 시도해 주세요.');
+        };
+        worker.onmessageerror = () => {
+          if (current && vision?.worker === worker) failVision(current, '사진 분석 결과를 읽지 못했습니다. 다시 시도해 주세요.');
+        };
+      }
+      vision.worker.postMessage({ type: 'analyze', id: job.id, blob });
+    } catch (error) { failVision(job, error?.message); }
+  };
+  const startOcr = async (job, blob) => {
+    let created = null;
+    try {
+      if (!ocr) {
+        const onCreated = (worker) => {
+          created = worker;
+          if (current !== job) terminateOcr(worker);
+        };
+        const worker = await ocrFactory({
+          onCreated, isCurrent: () => current === job,
+          onProgress: (event) => {
+            const active = current;
+            if (active && (active === job || ocr === created)) emit(active, { task: 'ocr', stage: event?.status || 'label-analysis', progress: event?.progress });
+          },
+        });
+        if (current !== job) { if (worker !== created) terminateOcr(worker); return; }
+        if (!worker || typeof worker.recognize !== 'function' || typeof worker.terminate !== 'function') {
+          throw new Error('라벨 분석 Worker를 시작하지 못했습니다.');
+        }
+        created = ocr = worker;
+      }
+      emit(job, { task: 'ocr', stage: 'label-analysis', progress: 0 });
+      const result = await ocr.recognize(blob);
+      if (current !== job) return;
+      job.text = typeof result?.data?.text === 'string' ? result.data.text.slice(0, 1200) : '';
+      job.ocrDone = job.ocrOK = true;
+      finish(job);
+    } catch (error) {
+      if (current !== job) { if (created) terminateOcr(created); return; }
+      job.ocrDone = true;
+      job.warnings.push(error?.message || '라벨 문자를 읽지 못했습니다. 라벨 가까이에서 다시 찍어 주세요.');
+      if (ocr) { terminateOcr(ocr); ocr = null; }
+      else if (created) terminateOcr(created);
+      finish(job);
+    }
+  };
+  return {
+    analyze(blob, { mode = 'garment', onProgress = () => {} } = {}) {
+      if (disposed) return Promise.reject(photoRecognitionError('사진 분석 도구가 닫혔습니다. 다시 열어 주세요.', 'InvalidStateError'));
+      if (!(blob instanceof Blob) || !['image/jpeg', 'image/png', 'image/webp'].includes(blob.type) ||
+          blob.size < 1 || blob.size > 25000000) {
+        return Promise.reject(photoRecognitionError('25MB 이하 JPG·PNG·WebP 사진을 골라 주세요.', 'TypeError'));
+      }
+      if (!['garment', 'label'].includes(mode) || typeof onProgress !== 'function') {
+        return Promise.reject(photoRecognitionError('사진 분석 방식이 올바르지 않습니다.', 'TypeError'));
+      }
+      if (current) abort();
+      return new Promise((resolve, reject) => {
+        const job = {
+          id: `photo-${++sequence}`, mode, resolve, reject, onProgress, started: Date.now(),
+          kinds: [], colors: [], text: '', requiresCrop: false, warnings: [],
+          visionDone: mode === 'label', visionOK: false, ocrDone: false, ocrOK: false,
+        };
+        current = job;
+        job.timer = setTimeout(() => finish(job, true), timeoutMs);
+        emit(job, { task: 'recognition', stage: 'starting', progress: 0 });
+        if (mode === 'garment') startVision(job, blob);
+        // Do not let factory/worker bootstrap rejections escape the job lifecycle.
+        void startOcr(job, blob);
+      });
+    },
+    cancel() { abort(); },
+    dispose() { disposed = true; abort(); },
+  };
+}
+
+// ── src/photo-identity.js
+// Local OCR text can suggest catalog entries. It does not prove that the pictured
+// garment is that product, and never writes a brand/product into the wardrobe.
+
+
+const PHOTO_IDENTITY_TEXT_LIMIT = 1200;
+// Only aliases for brands actually present in the supplied catalog are enabled.
+// Short/common aliases such as POLO or NB are deliberately absent.
+const PHOTO_IDENTITY_ALIASES = {
+  '무신사 스탠다드': ['MUSINSA STANDARD', 'MUSINSASTANDARD'],
+  '무신사 스탠다드 우먼': ['MUSINSA STANDARD WOMAN', 'MUSINSA STANDARD WOMEN'],
+  '폴로 랄프 로렌': ['POLO RALPH LAUREN', 'RALPH LAUREN'],
+  '나이키': ['NIKE'], '아디다스': ['ADIDAS'], '리복': ['REEBOK'],
+  '리바이스': ["LEVI'S", 'LEVIS'], '리': ['LEE'],
+  '뉴발란스': ['NEW BALANCE'], '챔피온': ['CHAMPION'],
+  '컨버스': ['CONVERSE'], '디키즈': ['DICKIES'],
+  '오어슬로우': ['ORSLOW'], '유니폼브릿지': ['UNIFORM BRIDGE'],
+  '프리즘웍스': ['FRIZMWORKS'], '포터리': ['POTTERY'],
+  '커버낫': ['COVERNAT'], '브룩스 브라더스': ['BROOKS BROTHERS'],
+  '타미힐피거': ['TOMMY HILFIGER'], '라코스테': ['LACOSTE'],
+  '레드윙': ['RED WING'], '바버': ['BARBOUR'],
+  '디스이즈네버댓': ['THISISNEVERTHAT'], '인사일런스': ['INSILENCE'],
+  '인사일런스 우먼': ['INSILENCE WOMAN', 'INSILENCE WOMEN'],
+  '살로몬': ['SALOMON'], '파타고니아': ['PATAGONIA'],
+  '스노우피크 어패럴': ['SNOW PEAK APPAREL'],
+  '아크테릭스': ["ARC'TERYX", 'ARCTERYX'], '호카': ['HOKA'], '반스': ['VANS'],
+};
+const PHOTO_IDENTITY_GENERIC_WORDS = new Set([
+  'shirt', 'shirts', 'tee', 'tshirt', 't', 'hoodie', 'knit', 'sweater', 'oxford', 'zip', 'up',
+  'jacket', 'pants', 'jeans', 'coat', 'shoes', 'sneakers', 'vest', 'polo',
+  '셔츠', '티셔츠', '후드', '집업', '후드집업', '옥스포드', '옥스퍼드', '옥스포드셔츠', '옥스퍼드셔츠',
+  '니트', '스웨터', '재킷', '자켓', '팬츠', '바지', '청바지', '코트', '베스트',
+  '남성', '여성', '남자', '여자', '맨즈', '우먼즈', 'mens', 'men', 'women', 'womens',
+  'white', 'black', 'blue', 'grey', 'gray', 'navy', 'beige', 'brown', 'red',
+  'green', 'pink', '화이트', '블랙', '블루', '그레이', '네이비', '베이지',
+  '브라운', '레드', '그린', '핑크', '아이보리', '올리브', '차콜',
+]);
+
+function photoIdentityNormalize(value) {
+  return String(value || '').normalize('NFKC').toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
+}
+
+function photoIdentityPhrase(text, phrase) {
+  let start = text.indexOf(phrase);
+  while (start >= 0) {
+    const end = start + phrase.length;
+    if ((!start || !/[\p{L}\p{N}]/u.test(text[start - 1])) &&
+        (end === text.length || !/[\p{L}\p{N}]/u.test(text[end]))) return { start, end };
+    start = text.indexOf(phrase, start + 1);
+  }
+  return null;
+}
+
+function photoIdentityBrandMatches(rawText, normalized, products) {
+  const lines = rawText.split(/\r?\n/).map(photoIdentityNormalize);
+  const matches = [];
+  for (const brand of new Set(products.map((p) => p.brand))) {
+    const aliases = [brand, ...(PHOTO_IDENTITY_ALIASES[brand] || [])];
+    if (/\s/.test(brand)) aliases.push(brand.replace(/\s+/g, ''));
+    for (const alias of new Set(aliases.map(photoIdentityNormalize))) {
+      if (!alias) continue;
+      // One Korean character and a short/common English label are too weak in
+      // running text. A complete logo/brand line is still a visible-text hint.
+      const weak = alias.length <= 4 || ['lee', 'levis', 'coach', 'signature'].includes(alias);
+      if (weak && !lines.some((line) => line === alias || line === `brand ${alias}` || line === `브랜드 ${alias}`)) continue;
+      const span = photoIdentityPhrase(normalized, alias);
+      if (span) matches.push({ brand, evidence: alias, source: 'ocr-text', ...span });
+    }
+  }
+  // WOMAN and other longer visible names should not also identify their parent
+  // brand simply because it is the beginning of the same OCR phrase.
+  return matches.filter((m) => !matches.some((other) => other.brand !== m.brand &&
+    other.start <= m.start && other.end >= m.end && other.end - other.start > m.end - m.start))
+    .filter((m, index, all) => all.findIndex((other) => other.brand === m.brand) === index)
+    .map(({ brand, evidence, source }) => ({ brand, evidence, source }));
+}
+
+function photoIdentityProductLinks(rawText, products) {
+  const links = [];
+  const unresolved = [];
+  for (const raw of rawText.match(/https:\/\/[^\s<>"']+/gi) || []) {
+    let url;
+    try { url = new URL(raw.replace(/[),.;\]}]+$/, '')); } catch { continue; }
+    if (!/^(?:www\.|m\.)?musinsa\.com$/.test(url.hostname) || url.username || url.password ||
+        (url.port && url.port !== '443')) continue;
+    const path = url.pathname.match(/^\/(?:products|app\/goods)\/([1-9]\d{0,15})\/?$/);
+    if (!path) continue;
+    const product = products.find((p) => p.id === `ms-${path[1]}`);
+    const canonicalUrl = `https://www.musinsa.com/products/${path[1]}`;
+    if (product && !links.some((link) => link.product.id === product.id)) links.push({ product, url: canonicalUrl });
+    else if (!product && !unresolved.includes(canonicalUrl)) unresolved.push(canonicalUrl);
+  }
+  return { links, unresolved };
+}
+
+function photoIdentityConstraints(product, { gender, kind, color }) {
+  const slot = SLOT_BY_ID[product.slot];
+  const conflicts = [];
+  if (gender && slot?.g && slot.g !== gender) conflicts.push('gender');
+  if (kind && slot?.shape && slot.shape !== kind) conflicts.push('kind');
+  // Image-curated color is not evidence strong enough to exclude a text match.
+  if (color && product.color && product.colorSource !== 'image' && product.color !== color) conflicts.push('color');
+  return conflicts;
+}
+
+function photoIdentityDistinctiveName(name) {
+  const words = name.split(' ').filter((word) => word.length >= 2);
+  return words.some((word) => !PHOTO_IDENTITY_GENERIC_WORDS.has(word) && !/^\d+$/.test(word));
+}
+
+/**
+ * Suggest identity from locally read label/product text, never from appearance.
+ * `exact` means exact catalog text/link evidence, not verified photo identity.
+ * Callers must show the evidence and ask for confirmation before storing it.
+ */
+function suggestPhotoIdentity(text, { products = PRODUCTS, gender = null, kind = null, color = null, limit = 6 } = {}) {
+  const input = typeof text === 'string' ? text : '';
+  const rawText = input.slice(0, PHOTO_IDENTITY_TEXT_LIMIT);
+  const normalized = photoIdentityNormalize(rawText);
+  const catalog = Array.isArray(products) ? products.filter((p) => p && typeof p.id === 'string' &&
+    typeof p.brand === 'string' && p.brand.trim() && typeof p.name === 'string' && p.name.trim()) : [];
+  const brands = photoIdentityBrandMatches(rawText, normalized, catalog);
+  const explicitLabel = rawText.match(/(?:^|\n)\s*(?:brand|브랜드)\s*[:：]\s*([^\r\n]{1,120})/i)?.[1]?.trim() || null;
+  const unknownBrandText = explicitLabel && !brands.some((brand) =>
+    photoIdentityPhrase(photoIdentityNormalize(explicitLabel), brand.evidence)) ? explicitLabel : null;
+  const { links, unresolved } = photoIdentityProductLinks(rawText, catalog);
+  const constraints = { gender: ['M', 'F'].includes(String(gender).toUpperCase()) ? String(gender).toUpperCase() : null, kind, color };
+  const candidates = [];
+  for (const { product, url } of links) {
+    const conflicts = photoIdentityConstraints(product, constraints);
+    if (brands.some((brand) => brand.brand !== product.brand)) conflicts.push('brand-text');
+    if (unknownBrandText) conflicts.push('unknown-brand-text');
+    candidates.push({ productId: product.id, brand: product.brand, name: product.name,
+      match: 'product-link', exact: conflicts.length === 0, identityConfirmed: false,
+      evidence: [url], conflicts, product: { ...product } });
+  }
+  for (const product of catalog) {
+    if (candidates.some((candidate) => candidate.productId === product.id)) continue;
+    const brand = brands.find((match) => match.brand === product.brand);
+    if (!brand || photoIdentityConstraints(product, constraints).length) continue;
+    const name = photoIdentityNormalize(product.name);
+    const fullName = photoIdentityPhrase(normalized, name);
+    const nameTokens = new Set(name.split(' ').filter((word) => word.length >= 3 && !PHOTO_IDENTITY_GENERIC_WORDS.has(word)));
+    const matchedTokens = [...nameTokens].filter((word) => photoIdentityPhrase(normalized, word));
+    const sameKind = !!kind && SLOT_BY_ID[product.slot]?.shape === kind;
+    if (!fullName && matchedTokens.length < 2 && !sameKind) continue;
+    const uniqueFullName = fullName && photoIdentityDistinctiveName(name) &&
+      catalog.filter((p) => p.brand === product.brand && photoIdentityNormalize(p.name) === name).length === 1;
+    const exact = !!uniqueFullName && brands.length === 1 && !unknownBrandText;
+    candidates.push({ productId: product.id, brand: product.brand, name: product.name,
+      match: fullName ? 'brand-and-name' : matchedTokens.length >= 2 ? 'brand-and-name' : 'brand-and-kind',
+      exact, identityConfirmed: false, evidence: [brand.evidence, ...(fullName ? [product.name] : matchedTokens)],
+      conflicts: [], product: { ...product }, _matchedTokens: matchedTokens.length });
+  }
+  candidates.sort((a, b) => Number(b.match === 'product-link') - Number(a.match === 'product-link') ||
+    Number(b.exact) - Number(a.exact) || Number(b.match === 'brand-and-name') - Number(a.match === 'brand-and-name') ||
+    (b._matchedTokens || 0) - (a._matchedTokens || 0) || a.productId.localeCompare(b.productId));
+  const boundedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(12, Math.floor(limit))) : 6;
+  const hasConflict = candidates.some((candidate) => candidate.conflicts.length);
+  const ambiguous = brands.length > 1 || candidates.filter((candidate) => candidate.exact).length > 1;
+  const status = !normalized ? 'no-text' : hasConflict ? 'conflict' : ambiguous ? 'ambiguous' :
+    candidates.length || brands.length ? 'suggestions' : unknownBrandText ? 'unknown-brand' : 'no-match';
+  return { status, rawText, textTruncated: input.length > rawText.length, brands,
+    candidates: candidates.slice(0, boundedLimit).map(({ _matchedTokens, ...candidate }) => candidate),
+    unknownBrandText, unresolvedProductLinks: unresolved, totalCandidates: candidates.length,
+    requiresConfirmation: true, identityConfirmed: false };
+}
+
 // ── src/legacy-photos.js
 
 
@@ -4357,6 +4883,8 @@ async function unzipSingle(blob) {
 
 
 
+
+
 const KEY = 'eoul:v1';
 const BUDGETS = [
   [null, '예산 전체'],
@@ -4393,6 +4921,7 @@ let photoBlobs = new Map(),
 let claudeLatestPresent = false;
 let returnFocus = null;
 let candidateDraft = null;
+let photoRecognizerFactory = () => createPhotoRecognizer();
 const journeyForms = new Map();
 let pendingOptionChange = null, candidateGarmentReview = null;
 let eraseReviewStep = 0,
@@ -5234,6 +5763,7 @@ function openSheet(html, { key = null } = {}) {
 }
 function closeSheet() {
   if (writeBusy || draft?.saving || candidateDraft?.saving) return;
+  releaseDraftPhotoAnalysis(draft);
   sheetRevision++;
   restoreDraft = null;
   eraseReviewStep = 0;
@@ -5374,10 +5904,13 @@ function ownSheet(id) {
 
 // Required: kind. Color, brand, photo and name remain optional.
 function beginDraft(item = null, slot = null, { confirmDetails = false, returnLookId = null } = {}) {
+  if (draft?.saving) return;
+  releaseDraftPhotoAnalysis(draft);
   if (draft?.preview) URL.revokeObjectURL(draft.preview);
   const base = item || makeGarment({ kind: slot ? SLOT_BY_ID[slot].shape : null, slot, gender: state.gender });
   draft = {
     ...structuredClone(base),
+    kind: base.kind || null,
     before: item ? JSON.stringify(item) : null,
     confirmDetails,
     returnLookId,
@@ -5387,8 +5920,127 @@ function beginDraft(item = null, slot = null, { confirmDetails = false, returnLo
     saving: false,
     token: 0,
     error: '',
+    recognizing: false,
+    analysisToken: 0,
+    labelToken: 0,
+    photoRecognition: null,
+    photoIdentity: null,
+    identitySource: null,
+    labelText: '',
+    labelTextRevision: 0,
+    labelPreview: null,
+    recognitionError: '',
+    recognitionProgress: null,
+    recognizer: null,
+    photoReview: null,
   };
   addSheet();
+}
+
+// Inference is transient. Only a human-confirmed value reaches makeGarment.
+function releaseDraftPhotoAnalysis(current, { clearResults = false } = {}) {
+  if (!current) return;
+  current.analysisToken++;
+  current.labelToken = (current.labelToken || 0) + 1;
+  try { current.recognizer?.cancel?.(); } catch {}
+  try { current.recognizer?.dispose?.(); } catch {}
+  current.recognizer = null;
+  current.recognizing = false;
+  current.photoReview = null;
+  if (current.labelPreview) URL.revokeObjectURL(current.labelPreview);
+  current.labelPreview = null;
+  if (clearResults) {
+    current.photoRecognition = null;
+    current.photoIdentity = null;
+    current.identitySource = null;
+    current.labelText = '';
+    current.labelTextRevision = (current.labelTextRevision || 0) + 1;
+    current.recognitionError = '';
+    current.recognitionProgress = null;
+  }
+}
+function refreshPhotoIdentity() {
+  if (!draft) return;
+  draft.photoIdentity = suggestPhotoIdentity(draft.labelText, {
+    gender: draft.gender, kind: draft.kind, color: draft.color, limit: 4,
+  });
+  draft.photoReview = null;
+}
+function photoLabelLines() {
+  return [...new Set((draft?.labelText || '').split(/\r?\n/).map((line) => line.trim()))]
+    .filter((line) => line && line.length <= 120 && !/https?:\/\//i.test(line)).slice(0, 8);
+}
+function photoAnalysisPanel() {
+  if (!draft || (!draft.photoId && !draft.photoRecognition && !draft.recognitionError)) return '';
+  const r = draft.photoRecognition, identity = draft.photoIdentity;
+  const confirmedText = ['label', 'text'].includes(draft.identitySource);
+  const progress = draft.recognitionProgress;
+  const stage = progress?.task === 'ocr' ? '라벨 글자 읽는 중' :
+    progress?.stage === 'kind-analysis' ? '옷 종류 분석 중' :
+    progress?.stage === 'color-analysis' ? '색 후보 분석 중' : '분석 도구 준비 중';
+  const kinds = (r?.kinds || []).filter((x) => SLOTS.some((s) => s.g === draft.gender && s.shape === x.kind));
+  const candidates = confirmedText ? identity?.candidates || [] : [];
+  return `<section class="photo-analysis" aria-label="사진 분석 후보"><h3>사진에서 찾았어요</h3>
+    ${draft.recognizing ? `<p role="status" data-photo-progress>${stage}…</p><p class="sub">첫 분석은 큰 분석 도구(약 154MB와 문자 도구)를 내려받아 시간이 걸려요. 사진은 이 기기에서 처리해요.</p><button class="chip" data-action="photo-cancel">분석 취소하고 직접 고르기</button>` : ''}
+    ${kinds.length ? `<p class="sub">어떤 옷을 넣나요? 맞는 종류를 눌러 주세요.</p><div class="opts">${kinds.map((x) => `<button class="chip" data-action="photo-kind" data-kind="${x.kind}" aria-pressed="${draft.kind === x.kind}">${esc(x.label)}</button>`).join('')}</div>` : ''}
+    ${r?.colors?.length ? `<p class="sub">맞는 색이 있나요?</p><div class="opts">${r.colors.map((x) => `<button class="chip" data-action="photo-color" data-color="${x.color}" aria-pressed="${draft.color === x.color}">${esc(x.label)}</button>`).join('')}<button class="chip" data-action="draft-color" data-color="">색 모름</button></div>` : ''}
+    ${r?.requiresCrop ? '<p class="notice">한 벌을 구분하기 어려워요. 등록할 옷만 크게 찍거나 아래에서 종류를 골라 주세요.</p>' : ''}
+    ${r?.warnings?.length ? `<p class="sub">${esc(r.warnings.join(' '))}</p>` : ''}
+    ${draft.recognitionError ? `<p class="editor-error" role="alert">${esc(draft.recognitionError)}</p>` : ''}
+    ${draft.labelPreview ? `<img class="label-preview" src="${esc(draft.labelPreview)}" alt="문자 분석에만 사용하는 라벨 사진">` : ''}
+    <details class="photo-label"${draft.labelText || confirmedText ? ' open' : ''}><summary>${draft.labelText ? '읽힌 글자 확인' : '브랜드·상품 찾기'}</summary><p class="sub">프린트 문구도 읽힐 수 있어요. 라벨의 브랜드·상품 글자인지 확인해 주세요.</p><label for="photo-label-text">라벨에 적힌 글자</label><textarea id="photo-label-text" maxlength="1200" rows="3" placeholder="예: MUSINSA STANDARD 또는 브랜드: BARACUTA">${esc(draft.labelText)}</textarea><button class="chip" data-action="photo-text-match">이 글자로 브랜드·상품 찾기</button></details>
+    ${confirmedText && identity?.brands?.length ? `<p class="sub">라벨에 적힌 브랜드가 맞나요?</p><div class="opts">${identity.brands.map((x) => `<button class="chip" data-action="photo-brand" data-brand="${esc(x.brand)}" aria-pressed="${draft.brand === x.brand}">${esc(x.brand)}</button>`).join('')}</div>` : ''}
+    ${confirmedText && identity?.unknownBrandText ? `<p class="sub">목록에 없는 브랜드예요. 라벨을 확인했다면 이름만 저장할 수 있어요.</p><button class="chip" data-action="photo-brand" data-brand="${esc(identity.unknownBrandText)}">${esc(identity.unknownBrandText)} 확인</button>` : ''}
+    ${confirmedText && !identity?.brands?.length && !identity?.unknownBrandText && photoLabelLines().length ? `<label for="photo-brand-line">읽힌 줄 중 브랜드 이름이 있나요?</label><select id="photo-brand-line"><option value="">고르기·모름</option>${photoLabelLines().map((line) => `<option value="${esc(line)}"${draft.brand === line ? ' selected' : ''}>${esc(line)}</option>`).join('')}</select><p class="sub">고른 글자만 브랜드로 저장해요. 상품이 확인된 것은 아니에요.</p>` : ''}
+    ${candidates.length ? `<p class="sub">같은 상품인지 사진과 이름을 확인해 주세요. 닮았다는 이유만으로 연결하지 않아요.</p><div class="photo-products">${candidates.map((x) => `<button class="photo-product" data-action="photo-candidate-review" data-id="${esc(x.productId)}">${x.product.img ? `<img src="${esc(x.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<span><b>${esc(x.brand)}</b>${esc(x.name)}<small>${x.conflicts.length ? '종류·색 등 확인한 정보와 다름' : x.exact ? '상품 글자·주소와 일치하는 후보' : '브랜드가 같은 상품 후보'}</small></span></button>`).join('')}</div>` : confirmedText ? '<p class="sub">확정할 상품을 찾지 못했어요. 브랜드가 없어도 종류·색으로 코디를 추천할 수 있어요.</p>' : ''}
+    ${confirmedText && identity?.unresolvedProductLinks?.length ? `<p class="sub">읽힌 상품 주소가 현재 목록에 없어서 연결하지 않았어요. ${identity.unresolvedProductLinks.map((url) => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">원래 상품 보기</a>`).join(' · ')}</p>` : ''}
+    ${draft.photoReview ? photoCandidateReviewPanel() : ''}
+    <div class="opts"><button class="chip" data-action="photo-label-picker">라벨·로고를 크게 찍어 추가</button>${!draft.recognizing && draft.photoId ? '<button class="link" data-action="photo-retry">사진 다시 분석</button>' : ''}</div><p class="sub">한 벌이 크게 보이는 사진이 좋아요. 모델 후보는 확인 전까지 저장하지 않아요.</p>
+  </section>`;
+}
+function photoCandidateReviewPanel() {
+  const p = PRODUCT_BY_ID[draft.photoReview.id];
+  if (!p) return '';
+  const slot = SLOT_BY_ID[p.slot];
+  return `<div class="notice"><h4>이 상품이 내 옷과 같은가요?</h4><p>${esc(p.brand)} · ${esc(p.name)}</p><p>종류: ${esc(garmentKindName(draft.kind))} → ${esc(garmentKindName(slot.shape))}<br>세부 종류: ${esc(SLOT_BY_ID[draft.slot]?.name || '모름')} → ${esc(slot.name)}<br>브랜드: ${esc(draft.brand || '모름')} → ${esc(p.brand)}<br>이름: ${esc(draft.label || '없음')} → ${esc(draft.label || p.name)}${!draft.color && p.color && p.colorSource !== 'image' ? `<br>색: 모름 → ${esc(COLORS[p.color]?.label || p.color)}` : ''}</p><p class="sub">같은 색·옵션인지 확인해 주세요. 내 사진과 직접 적은 이름은 유지해요.</p><button class="chip" data-action="photo-candidate-confirm" data-id="${esc(p.id)}">같은 상품 확인하고 적용</button></div>`;
+}
+async function analyzeDraftPhoto({ mode = 'garment', file = null } = {}) {
+  const current = draft;
+  if (!current || current.saving || !['garment', 'label'].includes(mode)) return;
+  const blob = file || current.asset?.blob || photoBlobs.get(current.photoId);
+  if (!(blob instanceof Blob)) return;
+  releaseDraftPhotoAnalysis(current);
+  const token = current.analysisToken;
+  const textRevision = current.labelTextRevision;
+  current.recognizing = true;
+  current.recognitionError = '';
+  current.recognitionProgress = null;
+  if (mode === 'label') current.labelPreview = URL.createObjectURL(blob);
+  addSheet();
+  try {
+    const recognizer = photoRecognizerFactory();
+    if (typeof recognizer?.analyze !== 'function') throw new Error('사진 분석 도구를 시작하지 못했어요. 종류는 직접 골라 저장할 수 있어요.');
+    current.recognizer = recognizer;
+    const result = await recognizer.analyze(blob, { mode, onProgress(value) {
+      if (draft !== current || current.analysisToken !== token || !current.recognizing) return;
+      current.recognitionProgress = value;
+      const status = $sheet.querySelector('[data-photo-progress]');
+      if (status) status.textContent = value?.task === 'ocr' ? '라벨 글자 읽는 중…' :
+        value?.stage === 'kind-analysis' ? '옷 종류 분석 중…' : '분석 도구 준비 중…';
+    } });
+    if (draft !== current || current.analysisToken !== token) return;
+    current.photoRecognition = mode === 'label' ? { ...current.photoRecognition, text: result.text, warnings: result.warnings } : result;
+    if (current.labelTextRevision === textRevision) {
+      current.labelText = String(result.text || '').slice(0, 1200);
+      current.identitySource = mode === 'label' ? 'label' : null;
+    }
+    refreshPhotoIdentity();
+  } catch (error) {
+    if (draft === current && current.analysisToken === token && error?.name !== 'AbortError')
+      current.recognitionError = error?.message || '분석하지 못했어요. 종류를 직접 골라 저장할 수 있어요.';
+  } finally {
+    if (draft === current && current.analysisToken === token) { current.recognizing = false; addSheet(); }
+  }
 }
 function addSheet() {
   if (!draft) return;
@@ -5398,12 +6050,13 @@ function addSheet() {
     `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === state.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
   const photo = draft.preview || photos.get(draft.photoId);
   const specificKinds = SLOTS.filter((s) => s.g === draft.gender && s.shape === draft.kind);
-  openSheet(`<div class="garment-editor"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">종류만 고르면 저장할 수 있어요.</p>
+  openSheet(`<div class="garment-editor"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">종류만 고르면 저장할 수 있어요.</p><fieldset${draft.saving ? ' disabled' : ''}>
  <div class="photo-editor">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '사진 고르기'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : ''}</div></div>
+ ${photoAnalysisPanel()}
  ${draft.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 다시 고를 수 있습니다.</p>' : ''}
  <fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>
  ${specificKinds.length ? `<details class="garment-name"${draft.confirmDetails ? ' open' : ''}><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><p class="sub">모르면 종류만 저장해도 돼요. 소재·형태가 맞는 경우에만 확인해 주세요.</p><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
- <details class="garment-name"><summary>색·브랜드·이름 추가 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">사진만으로 색·브랜드를 확정하지 않아요.</p><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(
+ <details class="garment-name"${draft.photoId ? ' open' : ''}><summary>색·브랜드·이름 확인 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">브랜드가 보이지 않으면 비워 두세요. 색은 직접 확인해 주세요.</p><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(
    COLORS,
  )
    .map(
@@ -5412,10 +6065,12 @@ function addSheet() {
    )
    .join('')}</div></details>
  ${draft.processing ? '<p role="status">사진 준비 중…</p>' : ''}${draft.error ? `<p class="editor-error" role="alert">${esc(draft.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 최신 옷장 불러오기</button>` : ''}
- <div class="cta"><button class="btn" data-action="draft-save" ${!draft.kind || draft.processing || draft.saving ? 'disabled' : ''}>${draft.saving ? '저장 중…' : '옷장에 저장'}</button></div></div>`, { key: `garment:${draft.id}` });
+ <div class="cta"><button class="btn" data-action="draft-save" ${!draft.kind || draft.processing || draft.saving ? 'disabled' : ''}>${draft.saving ? '저장 중…' : '옷장에 저장'}</button></div></fieldset></div>`, { key: `garment:${draft.id}` });
 }
 async function chooseGarmentPhoto(file) {
   if (!draft) beginDraft();
+  if (draft.saving) return;
+  releaseDraftPhotoAnalysis(draft, { clearResults: true });
   const current = draft,
     token = ++current.token;
   current.processing = true;
@@ -5437,10 +6092,13 @@ async function chooseGarmentPhoto(file) {
       addSheet();
     }
   }
+  if (draft === current && current.token === token && current.asset && !current.error)
+    await analyzeDraftPhoto();
 }
 async function saveGarmentDraft() {
   const current = draft;
   if (!current || !current.kind || current.processing || current.saving) return;
+  releaseDraftPhotoAnalysis(current);
   current.saving = true;
   current.error = '';
   addSheet();
@@ -5569,6 +6227,7 @@ async function eraseAllWardrobe() {
   if (eraseReviewStep !== 2) return;
   if (writeBusy || bootBusy)
     throw new Error('저장소 작업을 마무리하고 있어요. 완료 후 삭제 범위를 다시 확인해 주세요.');
+  releaseDraftPhotoAnalysis(draft, { clearResults: true });
   eraseReviewStep = 0;
   tastePicking = false;
   tasteBefore = null;
@@ -5749,6 +6408,7 @@ async function reviewLegacyChanges() {
 document.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
+  if (draft?.saving) { e.preventDefault(); return; }
   const a = el.dataset.action;
   if (erasingAll) {
     toast('옷장 자료 삭제 완료를 확인하고 있어요');
@@ -6203,30 +6863,103 @@ document.addEventListener('click', async (e) => {
         document.getElementById('photo-input')?.click();
         break;
       case 'draft-kind':
+      case 'photo-kind':
         if (draft) {
+          if (!GARMENT_KINDS.some((k) => k.id === el.dataset.kind) ||
+              !SLOTS.some((s) => s.g === draft.gender && s.shape === el.dataset.kind)) break;
+          if (el.dataset.action === 'photo-kind' && !draft.photoRecognition?.kinds?.some((x) => x.kind === el.dataset.kind)) break;
           draft.kind = el.dataset.kind;
           draft.slot = null;
           draft.productId = null;
+          refreshPhotoIdentity();
           addSheet();
         }
         break;
       case 'draft-color':
+      case 'photo-color':
         if (draft) {
+          if (el.dataset.color && !COLORS[el.dataset.color]) break;
+          if (el.dataset.action === 'photo-color' && !draft.photoRecognition?.colors?.some((x) => x.color === el.dataset.color)) break;
           draft.color = el.dataset.color || null;
+          const p = PRODUCT_BY_ID[draft.productId];
+          if (p?.color && p.colorSource !== 'image' && p.color !== draft.color) draft.productId = null;
+          refreshPhotoIdentity();
           addSheet();
         }
+        break;
+      case 'photo-text-match':
+        if (draft && !draft.saving) {
+          draft.labelTextRevision++;
+          draft.identitySource = 'text';
+          refreshPhotoIdentity();
+          addSheet();
+        }
+        break;
+      case 'photo-brand': {
+        if (!draft || !['text', 'label'].includes(draft.identitySource)) break;
+        const identity = draft.photoIdentity;
+        if (!identity?.brands.some((x) => x.brand === el.dataset.brand) && identity?.unknownBrandText !== el.dataset.brand) break;
+        draft.brand = el.dataset.brand;
+        if (draft.productId && PRODUCT_BY_ID[draft.productId]?.brand !== draft.brand) draft.productId = null;
+        draft.photoReview = null;
+        addSheet();
+        break;
+      }
+      case 'photo-candidate-review': {
+        if (!draft || !['text', 'label'].includes(draft.identitySource)) break;
+        const candidate = draft.photoIdentity?.candidates.find((x) => x.productId === el.dataset.id);
+        if (!candidate) break;
+        if (candidate.conflicts.length || (draft.brand && draft.brand !== candidate.brand)) {
+          draft.recognitionError = '확인한 종류·색·브랜드와 다른 후보예요. 같은 상품으로 연결하지 않았어요.';
+          draft.photoReview = null;
+        } else {
+          draft.recognitionError = '';
+          draft.photoReview = { id: candidate.productId, analysisToken: draft.analysisToken,
+    values: JSON.stringify([draft.kind, draft.color, draft.brand, draft.label, draft.photoId, draft.slot, draft.productId]) };
+        }
+        addSheet();
+        break;
+      }
+      case 'photo-candidate-confirm': {
+        const review = draft?.photoReview;
+        if (!review || review.id !== el.dataset.id || review.analysisToken !== draft.analysisToken ||
+            review.values !== JSON.stringify([draft.kind, draft.color, draft.brand, draft.label, draft.photoId, draft.slot, draft.productId])) break;
+        const candidate = draft.photoIdentity?.candidates.find((x) => x.productId === review.id);
+        const p = PRODUCT_BY_ID[review.id], slot = SLOT_BY_ID[p?.slot];
+        if (!candidate || candidate.conflicts.length || !p || !slot || slot.g !== draft.gender ||
+            (draft.brand && draft.brand !== p.brand)) break;
+        draft.productId = p.id;
+        draft.slot = slot.id;
+        draft.kind = slot.shape;
+        draft.brand = p.brand;
+        if (!draft.label) draft.label = p.name.slice(0, 80);
+        if (!draft.color && p.colorSource !== 'image') draft.color = p.color || null;
+        draft.photoReview = null;
+        addSheet();
+        break;
+      }
+      case 'photo-label-picker':
+        if (draft && !draft.saving) document.getElementById('label-photo-input')?.click();
+        break;
+      case 'photo-cancel':
+        if (draft) { releaseDraftPhotoAnalysis(draft); addSheet(); }
+        break;
+      case 'photo-retry':
+        await analyzeDraftPhoto();
         break;
       case 'draft-slot': {
         if (!draft) break;
         const slot = SLOT_BY_ID[el.dataset.slot];
         if (el.dataset.slot && (!slot || slot.g !== draft.gender || slot.shape !== draft.kind)) break;
         draft.slot = slot?.id || null;
+        draft.photoReview = null;
         if (draft.productId && PRODUCT_BY_ID[draft.productId]?.slot !== draft.slot) draft.productId = null;
         addSheet();
         break;
       }
       case 'clear-photo':
         if (draft) {
+          releaseDraftPhotoAnalysis(draft, { clearResults: true });
           draft.token++;
           draft.processing = false;
           if (draft.preview) URL.revokeObjectURL(draft.preview);
@@ -6355,8 +7088,18 @@ document.addEventListener('input', (e) => {
     if (form) form[id === 'journey-option' ? 'option' : 'reason'] = value;
   }
   if (!draft) return;
+  if (draft.saving) return;
+  if (e.target.id === 'photo-label-text') {
+    draft.labelTextRevision++;
+    draft.labelText = e.target.value.slice(0, 1200);
+    draft.identitySource = null;
+    draft.photoReview = null;
+  }
   if (e.target.id === 'garment-label') draft.label = e.target.value;
-  if (e.target.id === 'garment-brand') draft.brand = e.target.value || null;
+  if (e.target.id === 'garment-brand') {
+    draft.brand = e.target.value || null;
+    if (draft.productId && PRODUCT_BY_ID[draft.productId]?.brand !== draft.brand) draft.productId = null;
+  }
 });
 document.addEventListener('change', async (e) => {
   try {
@@ -6365,6 +7108,13 @@ document.addEventListener('change', async (e) => {
       if (e.target.id === 'candidate-kind') { c.kind = e.target.value || null; c.slot = null; c.classificationConfirmed = false; candidateSheet(); }
       if (e.target.id === 'candidate-slot') { c.slot = e.target.value || null; c.classificationConfirmed = !!c.slot; candidateSheet(); }
       if (e.target.id === 'candidate-color') { c.color = e.target.value || null; c.colorSource = c.color ? 'user' : null; }
+    }
+    if (e.target.id === 'photo-brand-line' && draft && !draft.saving &&
+        ['label', 'text'].includes(draft.identitySource) && photoLabelLines().includes(e.target.value)) {
+      draft.brand = e.target.value;
+      draft.productId = null;
+      draft.photoReview = null;
+      addSheet();
     }
     if (e.target.dataset?.action === 'candidate-garment-toggle' && candidateGarmentReview?.fields.includes(e.target.dataset.field)) {
       if (e.target.checked) candidateGarmentReview.selected.add(e.target.dataset.field);
@@ -6376,6 +7126,24 @@ document.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       e.target.value = '';
       await chooseGarmentPhoto(file);
+    }
+    if (e.target.id === 'label-photo-input' && e.target.files?.[0]) {
+      const file = e.target.files[0];
+      e.target.value = '';
+      const current = draft, token = current?.token;
+      if (!current || current.saving) return;
+      const labelToken = ++current.labelToken;
+      const textRevision = current.labelTextRevision;
+      try {
+        const asset = await prepareGarmentPhoto(file);
+        if (draft === current && current.token === token && current.labelToken === labelToken &&
+            current.labelTextRevision === textRevision)
+          await analyzeDraftPhoto({ mode: 'label', file: asset.blob });
+      } catch (error) {
+        if (draft === current && current.token === token && current.labelToken === labelToken) {
+          current.recognitionError = error?.message || '라벨 사진을 읽지 못했어요.'; addSheet();
+        }
+      }
     }
     if (e.target.id === 'wardrobe-backup-input' && e.target.files?.[0]) {
       const file = e.target.files[0];

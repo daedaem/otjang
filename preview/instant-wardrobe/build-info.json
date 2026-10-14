@@ -1,16 +1,20 @@
 {
-  "sourceCommit": "e2f18c515e7d43323c3d7d911afacfb4b8817204",
+  "sourceCommit": "d653ad7e8711ad58e32e5746f8f7341a60626241",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "claudeMergeCommit": "438500b",
-  "upstreamObservedCommit": "9ec002ed09bc40bebc0b4c5daa9b2e524d53f4ef",
+  "upstreamObservedCommit": "9e050d338092125f1e8eb4ee980032c106ab76d5",
   "upstreamLatestIntegrated": false,
   "legacyEoulV2Imported": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T04:21:22.520668+00:00",
+  "builtAt": "2026-10-14T05:43:02.124455+00:00",
   "files": {
     "index.html": {
-      "bytes": 775668,
-      "sha256": "8cc5d89d2de579fe26499dcbc646b8af9b0c5c3be4990436430c89fe50ed731b"
+      "bytes": 822661,
+      "sha256": "b87c7a17c3b73430839e988cc01481f2dac7529e45c8201bf8b90748b1c8ae29"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "bytes": 50703,
+      "sha256": "e938338f8587f6ed9de1d898d1bcc86868fcb0c5769a70bf5d24f6daca1a9a64"
     }
   },
   "catalog": {
@@ -23,7 +27,7 @@
   "storageSchema": 5,
   "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 249,
+    "passed": 303,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
@@ -46,7 +50,10 @@
     "community-and-account-sync",
     "vton-quality-rights-and-photo-consent",
     "live-same-option-price-comparison",
-    "verified-order-checkout-and-return-integration"
+    "verified-order-checkout-and-return-integration",
+    "real-photo-and-label-quality",
+    "photo-worker-browser-and-cold-start-qa",
+    "runtime-model-language-asset-operations"
   ],
   "upstreamSelectedUxIntegrated": [
     "same-sheet-scroll-and-focus",
@@ -107,5 +114,32 @@
     "same-option-return-evidence",
     "manual-product-hiding",
     "storage-warning-and-ownership-reserve"
-  ]
+  ],
+  "photoRecognition": {
+    "onDeviceKinds": true,
+    "localLabelOcr": [
+      "eng",
+      "kor"
+    ],
+    "exactVisualBrandOrProductRecognition": false,
+    "requiresHumanConfirmation": true,
+    "defaultColorInference": false,
+    "labelPhotoReplacesGarmentPhoto": false,
+    "model": "Xenova/clip-vit-base-patch32",
+    "revision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+    "dtype": "q8",
+    "onnxBytes": 153695702,
+    "browserRuntimeVerified": false,
+    "realPhoneAccuracyVerified": false,
+    "evidence": "Node CPU on 3 public product images, Node OCR on 1 synthetic English label; full-body and color failures recorded",
+    "nodeOcrCoreVersion": "6.1.2",
+    "browserOcrCoreVersion": "6.0.0"
+  },
+  "claudePhotoReview": {
+    "model": "Opus 5.5",
+    "sessionTitle": "FASHN VTON v1.5 M1 Mac 테스트",
+    "reviewType": "catalog-data-counterexamples-and-design",
+    "reviewedSource": "e2f18c515e7d43323c3d7d911afacfb4b8817204",
+    "directRuntimeVerified": false
+  }
 }
