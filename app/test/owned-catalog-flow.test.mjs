@@ -11,6 +11,8 @@ import { PRODUCTS } from '../src/data/products.js';
 import { SLOT_BY_ID } from '../src/data/slots.js';
 import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
 import { createWardrobeStore, photoAsset } from '../src/wardrobe-store.js';
+import { candidateFromProduct } from '../src/purchase-candidate.js';
+import { createPurchaseJourney, transitionPurchaseJourney } from '../src/purchase-journey.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'eoul-owned-catalog-flow-'));
@@ -80,11 +82,11 @@ async function samePhoto(saved, source) {
   assert.ok(saved, 'the selected private photograph must remain available');
   assert.deepEqual(new Uint8Array(await saved.arrayBuffer()), new Uint8Array(await source.arrayBuffer()));
 }
-async function seed({ garments = [], assets = [], preferences = {} } = {}) {
+async function seed({ garments = [], assets = [], journeys = [], preferences = {} } = {}) {
   const indexedDB = new IDBFactory();
   const store = createWardrobeStore({ indexedDB });
   const first = await store.load();
-  await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments, ...preferences }, first.revision, assets, first.epoch);
+  await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments, journeys, ...preferences }, first.revision, assets, first.epoch);
   store.close();
   return boot(indexedDB);
 }
@@ -323,9 +325,10 @@ test('a failed latest read refuses catalog ownership writes but retains selectio
   await samePhoto(saved.photos.get(photoId), source);
 });
 
-test('female catalog clothes can be found from male preferences and become visible only after confirmation', async (t) => {
+test('female catalog clothes become visible without rewriting any male-only recommendation preferences', async (t) => {
   const male = makeGarment({ id: 'male-owned', kind: 'shirt', gender: 'M', label: '남성 기존 셔츠' });
-  const page = await seed({ garments: [male], preferences: { budget: 1, styles: ['amekaji'], brands: ['리바이스'], brandOnly: true } });
+  const preferences = { gender: 'M', budget: 1, styles: ['cityboy', 'dandy'], brands: ['리바이스'], brandOnly: true, occasion: 'formal' };
+  const page = await seed({ garments: [male], preferences });
   t.after(() => page.close());
   await select(page, female);
   assert.equal(page.state().gender, 'M');
@@ -334,11 +337,51 @@ test('female catalog clothes can be found from male preferences and become visib
   const owned = page.state().garments.find((g) => g.productId === female.id);
   assert.ok(owned);
   assert.equal(owned.gender, 'F');
-  assert.equal(page.state().gender, 'F');
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(page.state()[key], value, key);
   assert.equal(page.state().tab, 'closet');
   assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${owned.id}"`));
-  assert.ok(!page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${male.id}"`));
+  assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${male.id}"`));
   assert.deepEqual(page.state().garments.find((g) => g.id === male.id), male);
+  assert.match(page.nodes.get('app').innerHTML, /코디 추천 기준: 남성/);
+  const saved = await stored(page);
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(saved.state[key], value, `persisted ${key}`);
+  const again = await boot(page.indexedDB);
+  t.after(() => again.close());
+  await again.click({ action: 'tab', tab: 'closet' });
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(again.state()[key], value, `reloaded ${key}`);
+  assert.ok(again.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${owned.id}"`));
+  assert.ok(again.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${male.id}"`));
+});
+
+test('the mixed wardrobe lists active male and female garments while excluding pending and returned female records', async (t) => {
+  const at = '2026-10-14T00:00:00.000Z';
+  const asset = await photoAsset(jpeg(56));
+  const male = makeGarment({ id: 'mixed-active-m', kind: 'shirt', gender: 'M', label: '보유 남성 셔츠' });
+  const active = makeGarment({ id: 'mixed-active-f', kind: 'sneaker', gender: 'F', label: '보유 여성 신발' });
+  const pending = makeGarment({ id: 'mixed-pending-f', kind: 'sneaker', gender: 'F', label: '보관 미확정 여성 신발', photoId: asset.id });
+  const returned = makeGarment({ id: 'mixed-returned-f', kind: 'sneaker', gender: 'F', label: '반품 여성 신발', photoId: asset.id });
+  function journeyFor(garment, stage) {
+    let journey = createPurchaseJourney(candidateFromProduct(female), { id: `journey-${garment.id}`, at });
+    journey = transitionPurchaseJourney(journey, 'ordered', { at });
+    journey = transitionPurchaseJourney(journey, 'received', { at, changes: { garmentId: garment.id } });
+    if (stage === 'returned') journey = transitionPurchaseJourney(journey, 'returned', { at });
+    return journey;
+  }
+  const journeys = [journeyFor(pending, 'received'), journeyFor(returned, 'returned')];
+  const page = await seed({ garments: [male, active, pending, returned], assets: [asset], journeys, preferences: { gender: 'M', styles: ['cityboy', 'dandy'] } });
+  t.after(() => page.close());
+  await page.click({ action: 'tab', tab: 'closet' });
+  const grid = page.nodes.get('app').innerHTML.match(/<div class="closet-items">([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(grid);
+  for (const item of [male, active]) assert.ok(grid.includes(`data-action="open-own" data-id="${item.id}"`), item.id);
+  for (const item of [pending, returned]) assert.ok(!grid.includes(`data-action="open-own" data-id="${item.id}"`), item.id);
+  assert.deepEqual(page.state().closet.map((g) => g.id), [male.id, active.id]);
+  assert.equal(page.state().garments.length, 4, 'inactive records are retained rather than silently deleted');
+  assert.match(page.nodes.get('app').innerHTML, /등록한 내 옷 2벌/);
+  const saved = await stored(page);
+  assert.deepEqual(saved.state.journeys, journeys);
+  assert.deepEqual(saved.state.garments, [male, active, pending, returned]);
+  await samePhoto(saved.photos.get(asset.id), asset.blob);
 });
 
 test('double clicking confirmation creates one garment and another explicit selection still needs its own confirmation', async (t) => {

@@ -32,9 +32,14 @@ export function findOwnedCatalog(query, products, { limit = 24 } = {}) {
   if (/[\\\u0000-\u001f\u007f-\u009f]/u.test(raw)) return empty('unsupported-link');
   const catalog = Array.isArray(products) ? products.filter((product) => product && typeof product.id === 'string') : [];
   let matches;
-  const numericId = input.normalize('NFC').toLowerCase().match(/^(?:ms-)?(\d+)$/)?.[1];
-  if (numericId) {
-    matches = catalog.filter((product) => product.id === `ms-${numericId}`);
+  const identifier = input.normalize('NFC').toLowerCase();
+  const explicitId = identifier.match(/^ms-(\d+)$/)?.[1];
+  const bareNumber = identifier.match(/^(\d+)$/)?.[1];
+  const exactNumber = bareNumber ? catalog.filter((product) => product.id === `ms-${bareNumber}`) : [];
+  if (explicitId) {
+    matches = catalog.filter((product) => product.id === `ms-${explicitId}`);
+  } else if (exactNumber.length) {
+    matches = exactNumber;
   } else if (ownedCatalogLooksLikeLink(input)) {
     const linkId = ownedCatalogLinkId(input);
     if (!linkId) return empty('unsupported-link');

@@ -1107,9 +1107,14 @@ test('generic owned clothes display uncertainty in cards and detail instead of a
   assert.doesNotMatch(page.nodes.get('app').innerHTML, /하나만 사면 완성/);
 });
 
-test('owning an opposite-gender product switches the visible wardrobe while retaining existing garments across reload', async () => {
+test('owning an opposite-gender product shows both classifications while retaining preferences and garments across reload', async () => {
   const page = await boot();
   await add(page, 'shirt', '기존 남성 셔츠');
+  await page.click({ action: 'profile-style', style: 'cityboy' });
+  await page.click({ action: 'profile-style', style: 'dandy' });
+  await page.click({ action: 'profile-style', style: 'classic' });
+  const preferences = Object.fromEntries(['gender', 'styles', 'brands', 'brandOnly', 'budget', 'occasion'].map((key) => [key, page.state()[key]]));
+  assert.deepEqual(preferences.styles, ['cityboy', 'dandy']);
   const originalId = page.state().garments[0].id;
   await page.click({ action: 'open-item', id: 'ms-1115031' });
   await page.click({ action: 'own-product', id: 'ms-1115031' });
@@ -1119,13 +1124,13 @@ test('owning an opposite-gender product switches the visible wardrobe while reta
   const owned = page.state().garments.find((item) => item.productId === 'ms-1115031');
   assert.ok(owned);
   assert.equal(owned.gender, 'F');
-  assert.equal(page.state().gender, 'F');
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(page.state()[key], value, key);
   assert.equal(page.state().tab, 'closet');
   assert.equal(page.state().garments.length, 2);
   assert.equal(page.state().garments.find((item) => item.id === originalId).gender, 'M');
   assert.match(page.nodes.get('app').innerHTML, /단테 - 화이트/);
   assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${owned.id}"`));
-  assert.ok(!page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${originalId}"`));
+  assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${originalId}"`));
   await page.click({ action: 'open-item', id: 'ms-1115031' });
   assert.match(page.nodes.get('sheet-root').innerHTML, /보유 옷 확인·추가/);
   await page.click({ action: 'own-product', id: 'ms-1115031' });
@@ -1134,7 +1139,7 @@ test('owning an opposite-gender product switches the visible wardrobe while reta
   await page.click({ action: 'close-sheet' });
   const again = await boot(page.storage, page.indexedDB);
   await again.click({ action: 'tab', tab: 'closet' });
-  assert.equal(again.state().gender, 'F');
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(again.state()[key], value, `reloaded ${key}`);
   assert.equal(again.state().garments.length, 2);
   assert.match(again.nodes.get('app').innerHTML, /단테 - 화이트/);
 });

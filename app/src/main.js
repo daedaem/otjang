@@ -516,12 +516,14 @@ function renderSearch() {
 // ── 내 옷장
 function renderCloset() {
   lastLooks = [];
-  const items = myCloset();
+  // The wardrobe lists all active owned garments; recommendation preferences
+  // must never hide an item or change merely because a catalog item was added.
+  const items = state.closet;
   const ess = essentials(state);
   const cats = Object.entries(CATS).filter(([cat]) => items.some((i) => slotForItem(i).cat === cat));
   if (closetFilter !== 'all' && !cats.some(([cat]) => cat === closetFilter)) closetFilter = 'all';
   const head = `<section class="section closet-toolbar">
-    <div class="section-head"><div><h2>내 옷장</h2><div class="sub">${state.demo ? `예시 옷 ${items.length}벌` : `등록한 내 옷 ${items.length}벌`}</div></div>
+    <div class="section-head"><div><h2>내 옷장</h2><div class="sub">${state.demo ? `예시 옷 ${items.length}벌` : `등록한 내 옷 ${items.length}벌`}</div>${items.some((i) => i.gender !== state.gender) ? `<p class="fine">코디 추천 기준: ${state.gender === 'F' ? '여성' : '남성'} · ${esc(styleLine())}. 다른 분류의 옷도 목록에 보관해요.</p>` : ''}</div>
       <button class="btn small" data-action="add-start">${ICON.plus}옷 추가</button></div>
     <div class="closet-toolbar-tabs" role="group" aria-label="옷 종류"><button data-action="closet-filter" data-cat="all" aria-pressed="${closetFilter === 'all'}">전체 <span>${items.length}</span></button>${cats.map(([cat, label]) => `<button data-action="closet-filter" data-cat="${cat}" aria-pressed="${closetFilter === cat}">${label} <span>${items.filter((i) => slotForItem(i).cat === cat).length}</span></button>`).join('')}</div>
   </section>`;
@@ -878,7 +880,7 @@ function footer() {
 function nav() {
   const tabs = [
     ['home', '추천', ICON.sparkle, 0],
-    ['closet', '내 옷장', ICON.hanger, myCloset().length],
+    ['closet', '내 옷장', ICON.hanger, state.closet.length],
     ['saved', '구매 여정', ICON.heart, state.journeys.length || state.saved.length],
   ];
   return `<nav class="nav" aria-label="주요 메뉴"><div class="nav-inner">${tabs.map(([k, label, icon, n]) => `<button data-action="tab" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">${icon}${label}${n ? `<span class="count">${n}</span>` : ''}</button>`).join('')}</div></nav>`;
@@ -1106,7 +1108,6 @@ function beginDraft(item = null, slot = null, { confirmDetails = false, returnLo
     catalogProductId: null,
     catalogColor: null,
     catalogReturnMode: null,
-    catalogOrigin: false,
   };
   addSheet();
 }
@@ -1130,7 +1131,7 @@ function ownedCatalogSheet() {
   const p = ownedCatalogProduct();
   const ownPhoto = draft.preview || photos.get(draft.photoId);
   const knownColor = p?.color && p.colorSource !== 'image' && COLORS[p.color];
-  const previous = p ? (state.demo ? [] : myCloset()).filter((i) => i.productId === p.id && i.id !== draft.id) : [];
+  const previous = p ? (state.demo ? [] : state.closet).filter((i) => i.productId === p.id && i.id !== draft.id) : [];
   const conflict = p && ownedCatalogColorConflict(p);
   openSheet(`<div class="garment-editor owned-catalog"><h2 class="detail-title">${p ? '이 상품을 가지고 있나요?' : '내 옷을 상품 목록에서 찾기'}</h2><fieldset${draft.saving ? ' disabled' : ''}>
   <button class="link" data-action="${p ? 'owned-catalog-search' : 'owned-catalog-back'}">${p ? '다른 상품 찾기' : '사진·종류로 돌아가기'}</button>
@@ -1152,7 +1153,6 @@ function startOwnedCatalog(productId = null) {
   releaseDraftPhotoAnalysis(draft);
   if (draft.entryMode !== 'catalog') draft.catalogReturnMode = draft.entryMode;
   draft.entryMode = 'catalog';
-  draft.catalogOrigin = true;
   draft.catalogProductId = SAFE_PRODUCTS.some((p) => p.id === productId) ? productId : null;
   draft.catalogColor = draft.color || null;
   draft.error = '';
@@ -1367,8 +1367,7 @@ async function saveGarmentDraft() {
       journeys = journeys.map((j) => j.id === journey.id ? updated : j);
     }
     await set(
-      { demo: false, demoSelected: [], garments: [...actual.filter((i) => i.id !== item.id), item], journeys,
-        ...(current.catalogOrigin ? { gender: item.gender, styles: state.styles.filter((k) => STYLES[k]?.g.includes(item.gender)).length ? state.styles.filter((k) => STYLES[k]?.g.includes(item.gender)) : stylesFor(item.gender).slice(0, 1) } : {}), tab: 'closet' },
+      { demo: false, demoSelected: [], garments: [...actual.filter((i) => i.id !== item.id), item], journeys, tab: 'closet' },
       { assets: current.asset ? [current.asset] : [] },
     );
     current.saving = false;
@@ -2056,7 +2055,6 @@ document.addEventListener('click', async (e) => {
         if (draft?.entryMode === 'catalog') {
           draft.entryMode = draft.catalogReturnMode || (draft.photoId ? 'photo' : 'choice');
           draft.catalogProductId = null;
-          draft.catalogOrigin = false;
           draft.error = '';
           addSheet();
         }

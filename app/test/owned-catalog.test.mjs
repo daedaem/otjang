@@ -44,14 +44,28 @@ test('브랜드와 상품명 사이 문장 부호는 AND 검색 구분자로 처
   }
 });
 
-test('상품 번호와 ms 식별자는 정확히 같은 카탈로그 식별자만 찾는다', () => {
+test('명시적인 ms 식별자는 정확히 같은 상품만 찾고, 존재하는 숫자 상품 번호를 우선한다', () => {
   for (const query of ['5755268', 5755268, 'ms-5755268', 'MS-5755268']) {
     assert.deepEqual(findOwnedCatalog(query, catalog).items.map((p) => p.id), ['ms-5755268']);
   }
   for (const query of ['575526', 'ms-575526', '05755268', 'ms-999999']) {
     assert.deepEqual(findOwnedCatalog(query, catalog), { items: [], total: 0, status: 'no-match' });
   }
-  assert.equal(findOwnedCatalog('999999', [{ id: 'ms-7', brand: '999999', name: '999999' }]).status, 'no-match');
+  assert.equal(findOwnedCatalog('ms-999999', [{ id: 'ms-7', brand: '999999', name: '999999' }]).status, 'no-match');
+  assert.deepEqual(findOwnedCatalog('728000', [...catalog, { id: 'ms-8', brand: '브랜드', name: '모델 728000' }]).items.map((p) => p.id), ['ms-728000']);
+});
+
+test('상품 번호로 없는 숫자는 실제 상품명의 모델 번호를 검색하되 명시적인 ID·주소는 넓히지 않는다', () => {
+  const safeProducts = PRODUCTS.filter(productEligible);
+  for (const [query, expectedBrand] of [['501', '리바이스'], ['530', '뉴발란스'], ['874', '디키즈']]) {
+    assert.ok(!safeProducts.some((p) => p.id === `ms-${query}`), 'the model-number fixture has no exact catalog ID');
+    const result = findOwnedCatalog(query, safeProducts, { limit: 1000 });
+    assert.equal(result.status, 'match', query);
+    assert.ok(result.items.some((p) => p.brand === expectedBrand && p.name.includes(query)), query);
+    assert.deepEqual(result.items, safeProducts.filter((p) => `${p.brand} ${p.name}`.includes(query)), query);
+    assert.equal(findOwnedCatalog(`ms-${query}`, safeProducts).status, 'no-match', 'explicit IDs stay exact');
+    assert.equal(findOwnedCatalog(`https://www.musinsa.com/products/${query}`, safeProducts).status, 'no-match', 'product URLs stay exact');
+  }
 });
 
 test('무신사 HTTPS의 지원 호스트·경로·443 포트는 정확한 상품 번호로 찾는다', () => {
