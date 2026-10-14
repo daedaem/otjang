@@ -778,8 +778,13 @@ test('product sheet renders exact item, honest basis and owning it preserves exi
   assert.match(page.nodes.get('sheet-root').innerHTML, /무신사/);
   await page.click({ action: 'own-product', id: 'ms-728000' });
   await page.click({ action: 'own-product', id: 'ms-728000' });
+  assert.equal(page.state().garments.length, 1, 'opening or repeating a product selection does not confirm ownership');
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="owned-catalog-confirm"/);
+  await page.click({ action: 'owned-catalog-confirm', id: 'ms-728000' });
+  await page.click({ action: 'owned-catalog-confirm', id: 'ms-728000' });
   assert.equal(page.state().garments.length, 2);
   assert.equal(page.state().garments[0].label, '원래 셔츠');
+  assert.equal(page.state().garments[1].color, null, 'catalog color is not the owned color without an explicit choice');
 });
 
 test('Claude v2 migration preserves photo bytes, duplicate kinds, styles, brands and the original databases', async () => {
@@ -1108,6 +1113,9 @@ test('owning an opposite-gender product switches the visible wardrobe while reta
   const originalId = page.state().garments[0].id;
   await page.click({ action: 'open-item', id: 'ms-1115031' });
   await page.click({ action: 'own-product', id: 'ms-1115031' });
+  assert.equal(page.state().garments.length, 1, 'selecting an opposite-gender product does not write yet');
+  await page.click({ action: 'owned-catalog-color', color: 'white' });
+  await page.click({ action: 'owned-catalog-confirm', id: 'ms-1115031' });
   const owned = page.state().garments.find((item) => item.productId === 'ms-1115031');
   assert.ok(owned);
   assert.equal(owned.gender, 'F');
@@ -1119,9 +1127,11 @@ test('owning an opposite-gender product switches the visible wardrobe while reta
   assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${owned.id}"`));
   assert.ok(!page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${originalId}"`));
   await page.click({ action: 'open-item', id: 'ms-1115031' });
-  assert.match(page.nodes.get('sheet-root').innerHTML, /옷장에 있는 상품이에요/);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /보유 옷 확인·추가/);
   await page.click({ action: 'own-product', id: 'ms-1115031' });
   assert.equal(page.state().garments.length, 2);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /같은 상품 한 벌 더 저장/);
+  await page.click({ action: 'close-sheet' });
   const again = await boot(page.storage, page.indexedDB);
   await again.click({ action: 'tab', tab: 'closet' });
   assert.equal(again.state().gender, 'F');

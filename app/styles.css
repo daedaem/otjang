@@ -335,6 +335,19 @@ img { display: block; max-width: 100%; }
 .photo-product span { min-width: 0; overflow-wrap: anywhere; }
 .photo-product b, .photo-product small { display: block; }
 .photo-product small { margin-top: 6px; color: var(--ink-3); }
+.owned-catalog > fieldset > input { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.owned-catalog-list { display: grid; gap: 8px; margin: 14px 0; }
+.owned-catalog-item { display: grid; grid-template-columns: 64px minmax(0, 1fr) 20px; align-items: center; gap: 12px; width: 100%; min-height: 88px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; }
+.owned-catalog-item .thumb { width: 64px; height: 76px; }
+.owned-catalog-item > span { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.owned-catalog-item b, .owned-catalog-item small { font-size: 12px; }
+.owned-catalog-item small { color: var(--ink-3); }
+.owned-catalog-item > svg { width: 20px; height: 20px; }
+.owned-catalog .hero { max-height: 220px; }
+.owned-catalog .opts { flex-wrap: wrap; }
+.owned-catalog-own-photo { margin: 12px 0; text-align: center; }
+.owned-catalog-own-photo img { display: block; width: 100%; height: 160px; object-fit: contain; }
+.owned-catalog-own-photo span { font-size: 12px; color: var(--ink-3); }
 .garment-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .garment-editor legend { font-weight: 700; margin-bottom: 12px; }
 .kind-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
@@ -415,3 +428,5 @@ img { display: block; max-width: 100%; }
 .garment-differences label { display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 6px 10px; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
 .garment-differences input { width: 20px; height: 20px; accent-color: var(--accent); }
 .garment-differences span { grid-column: 2; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.photo-error .opts { margin-top: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

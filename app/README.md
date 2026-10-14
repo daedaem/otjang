@@ -93,3 +93,5 @@ node make-products.mjs                                   # src/data/products.js 
 
 
 등록·옷장 화면 순서와 사진 확인 부담의 보정은 [비교·선택 이유](../docs/wardrobe-first-comparison-20261014.md)에 남겼습니다. 검토용 링크의 view=closet은 화면 탭만 선택하며 저장 데이터를 바꾸지 않습니다.
+
+보유 등록의 상품 조회는 `src/owned-catalog.js`를 사용합니다. 구매 추천과 달리 예산·계절·취향 조건을 적용하지 않고, 현재 목록의 정확한 상품 주소 또는 브랜드·품명으로 찾습니다. 조회·선택은 초안에만 남으며 실제 보유 확인 후 기존 schema 5 원자 저장으로 이어집니다. 사진·입력 보존과 색 확인, Claude 오류·접근성 통합 근거는 [등록 개선·개발 재개](../docs/registration-resume-20261015.md)를 참조하세요.

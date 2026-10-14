@@ -552,6 +552,10 @@ test('regression: registering a catalog product again creates a new active ID an
   page.app.itemSheet(product.id);
   assert.ok(page.nodes.get('sheet-root').innerHTML.includes(`data-action="own-product" data-id="${product.id}"`));
   await page.click({ action: 'own-product', id: product.id });
+  assert.equal(page.state().garments.filter((g) => g.productId === product.id).length, 1, 're-registration selection does not create a new active garment');
+  assert.ok(page.nodes.get('sheet-root').innerHTML.includes(`data-action="owned-catalog-confirm" data-id="${product.id}"`));
+  await page.click({ action: 'owned-catalog-color', color: product.color });
+  await page.click({ action: 'owned-catalog-confirm', id: product.id });
   const sameProduct = page.state().garments.filter((g) => g.productId === product.id);
   assert.equal(sameProduct.length, 2);
   const newRecord = sameProduct.find((g) => g.id !== oldId);

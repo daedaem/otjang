@@ -327,3 +327,101 @@ test('example wardrobes retain the example distinction and do not acquire invent
   assert.doesNotMatch(markup, /등록일|<time\b|\b20\d{2}\.\s*\d{1,2}\.\s*\d{1,2}/);
   assert.doesNotMatch(markup, /계정 연결 완료|이메일에서 가져오기|온라인 스토어에서 자동/);
 });
+
+// Claude review of 98de4cc: registration recovery and the own-photo / reference / example distinction.
+async function seededPage(garments, assets = []) {
+  const indexedDB = new IDBFactory();
+  const store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments }, first.revision, assets, first.epoch);
+  store.close();
+  return boot({ indexedDB });
+}
+const tiles = (markup) => markup.split('class="citem"').slice(1);
+
+test('migrated garments say they were moved instead of showing the placeholder migration date', async (t) => {
+  const asset = await photoAsset(jpeg(51));
+  const page = await seededPage([
+    makeGarment({ id: 'legacy_m-tee-white', kind: 'tee', slot: 'm-tee', gender: 'M', color: 'white', source: 'legacy', createdAt: '2026-10-14T00:00:00.000Z' }),
+    makeGarment({ id: 'own-shirt', kind: 'shirt', slot: 'm-oxford', gender: 'M', color: 'white', photoId: asset.id, createdAt: '2026-10-10T00:00:00.000Z' }),
+  ], [asset]);
+  t.after(() => page.close());
+  await page.click({ action: 'tab', tab: 'closet' });
+  const markup = page.nodes.get('app').innerHTML;
+  const legacy = tiles(markup).find((tile) => tile.includes('legacy_m-tee-white'));
+  const own = tiles(markup).find((tile) => tile.includes('own-shirt'));
+  assert.match(legacy, /이전 버전에서 옮김/);
+  assert.doesNotMatch(legacy, /등록 2026\. 10\. 14\./, 'a migration placeholder is not a registration date');
+  assert.match(own, /등록 2026\. 10\. 10\./);
+});
+
+test('the wardrobe grid keeps the stand-in caption on borrowed product photos and never on the person’s own photo', async (t) => {
+  const asset = await photoAsset(jpeg(52));
+  const page = await seededPage([
+    makeGarment({ id: 'no-photo-tee', kind: 'tee', slot: 'm-tee', gender: 'M', color: 'white', createdAt: '2026-10-11T00:00:00.000Z' }),
+    makeGarment({ id: 'own-photo-shirt', kind: 'shirt', slot: 'm-oxford', gender: 'M', color: 'white', photoId: asset.id, createdAt: '2026-10-12T00:00:00.000Z' }),
+  ], [asset]);
+  t.after(() => page.close());
+  await page.click({ action: 'tab', tab: 'closet' });
+  const markup = page.nodes.get('app').innerHTML;
+  const standIn = tiles(markup).find((tile) => tile.includes('no-photo-tee'));
+  const own = tiles(markup).find((tile) => tile.includes('own-photo-shirt'));
+  assert.match(standIn, /borrowed-photo[\s\S]*비슷한 상품 사진/);
+  assert.doesNotMatch(own, /비슷한 상품 사진|borrowed-photo/);
+  assert.match(own, /data-own-photo="own-photo-shirt"/);
+});
+
+test('with analysis off, a chosen photograph shows the kind grid open instead of a collapsed "other kind" fallback', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  await page.click({ action: 'add-start' });
+  await page.app.chooseGarmentPhoto(jpeg(53));
+  assert.equal(page.app.draft().entryMode, 'photo');
+  assert.match(page.sheet(), /data-action="draft-kind"/);
+  assert.equal(openingDetailsFor(page.sheet(), '다른 종류로 등록'), null, 'no suggestion exists, so the grid is the primary choice');
+  await page.click({ action: 'draft-kind', kind: 'shirt' });
+  assert.ok(openingDetailsFor(page.sheet(), '다른 종류로 바꾸기'), 'after choosing, the grid folds behind a change option');
+});
+
+test('an unsupported photo offers photo recovery, not a wardrobe reload, and keeps the draft', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  await page.click({ action: 'add-start' });
+  await page.app.chooseGarmentPhoto(new Blob([new Uint8Array([0, 0, 0, 24])], { type: 'image/heic' }));
+  const sheet = page.sheet();
+  assert.match(sheet, /HEIC/);
+  assert.match(sheet, /class="photo-error"[\s\S]*data-action="add-photo"[\s\S]*data-action="add-camera"[\s\S]*data-action="draft-manual"/);
+  assert.doesNotMatch(sheet, /data-action="reload-wardrobe"/);
+  assert.equal(page.app.draft().error, '');
+  assert.ok(page.app.draft(), 'the draft stays open for another choice');
+});
+
+test('album and label pickers ask the browser for JPEG, PNG or WebP so phones can convert HEIC before upload', () => {
+  for (const id of ['photo-input', 'label-photo-input', 'camera-photo-input']) {
+    const tag = html.match(new RegExp(`<input\\b[^>]*id="${id}"[^>]*>`))?.[0];
+    assert.ok(tag, id);
+    assert.match(tag, /accept="image\/jpeg,image\/png,image\/webp"/);
+  }
+});
+
+test('every bottom sheet is a named dialog so screen readers say which window opened', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  await page.click({ action: 'add-start' });
+  const sheet = page.sheet();
+  assert.match(sheet, /role="dialog"[^>]*aria-labelledby="sheet-title"/);
+  assert.match(sheet, /<h2 id="sheet-title" class="detail-title">옷 한 벌 추가<\/h2>/);
+  assert.equal(sheet.match(/id="sheet-title"/g).length, 1, 'only the first heading names the dialog');
+});
+
+test('storage and example notices live inside the main landmark under one page heading', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  const markup = page.nodes.get('app').innerHTML;
+  assert.match(markup, /^<main><h1 class="sr-only">어울 추천<\/h1>/);
+  assert.ok(markup.indexOf('demo-notice') > markup.indexOf('<main>'), 'the example notice is inside main');
+  assert.ok(markup.indexOf('demo-notice') < markup.indexOf('</main>'));
+  assert.equal(markup.match(/<h1\b/g).length, 1);
+  await page.click({ action: 'tab', tab: 'closet' });
+  assert.match(page.nodes.get('app').innerHTML, /^<main><h1 class="sr-only">어울 내 옷장<\/h1>/);
+});

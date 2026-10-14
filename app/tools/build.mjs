@@ -27,6 +27,7 @@ const order = [
   'src/garment-photo.js',
   'src/photo-recognition.js',
   'src/photo-identity.js',
+  'src/owned-catalog.js',
   'src/legacy-photos.js',
   'src/query.js',
   'src/engine.js',

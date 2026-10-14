@@ -41,6 +41,7 @@ import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.
 import { prepareGarmentPhoto } from './garment-photo.js';
 import { createPhotoRecognizer } from './photo-recognition.js';
 import { suggestPhotoIdentity } from './photo-identity.js';
+import { findOwnedCatalog } from './owned-catalog.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
@@ -526,8 +527,10 @@ function renderCloset() {
   </section>`;
   // Registration time is not a purchase or photo capture date. Demo clothes
   // have no real registration date, and old missing dates keep their order.
+  // Only garments registered in this app carry a real registration time. Migrated
+  // records received a placeholder date and are shown as moved, not dated.
   const shown = items
-    .map((item, index) => ({ item, index, registered: Date.parse(item.createdAt) }))
+    .map((item, index) => ({ item, index, registered: item.source === 'user' ? Date.parse(item.createdAt) : NaN }))
     .filter(({ item }) => closetFilter === 'all' || slotForItem(item).cat === closetFilter)
     .sort((a, b) => {
       const aValid = Number.isFinite(a.registered), bValid = Number.isFinite(b.registered);
@@ -543,7 +546,7 @@ function renderCloset() {
       const date = Number.isFinite(registered) ? new Date(registered) : null;
       const registration = !demo && date
         ? `등록 ${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, '0')}. ${String(date.getDate()).padStart(2, '0')}.`
-        : '';
+        : !demo && i.source === 'legacy' ? '이전 버전에서 옮김' : '';
       return `<button class="citem" data-action="open-own" data-id="${esc(i.id)}">${itemPicture(i)}<span class="cbrand">${esc(brand)}</span><span class="cname">${esc(garmentLabel(i))}</span>${demo ? '<span class="closet-tag">예시 옷</span>' : registration ? `<span class="cdate">${registration}</span>` : ''}</button>`;
     }).join('')}<button class="closet-add-tile" data-action="add-start"><span class="closet-add-stage">${ICON.plus}</span><span>옷 추가</span></button></div>
   </section>`;
@@ -881,14 +884,16 @@ function nav() {
   return `<nav class="nav" aria-label="주요 메뉴"><div class="nav-inner">${tabs.map(([k, label, icon, n]) => `<button data-action="tab" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">${icon}${label}${n ? `<span class="count">${n}</span>` : ''}</button>`).join('')}</div></nav>`;
 }
 
+const TAB_TITLE = { home: '추천', closet: '내 옷장', saved: '구매 여정' };
 function render() {
   if (tastePicking || !state.onboarded || !state.gender || !myStyles().length) {
-    $app.innerHTML = storageNotice() + renderOnboarding();
+    $app.innerHTML = `<main><h1 class="sr-only">어울 시작하기</h1>${storageNotice()}${renderOnboarding()}</main>`;
     return;
   }
   const body = state.tab === 'closet' ? renderCloset() : state.tab === 'saved' ? renderSaved() : renderHome();
+  // 저장·예시 안내도 본문 구역 안에 둔다(화면 낭독기로 본문에 바로 가도 안내와 복구 버튼을 지나치지 않게). 보이는 순서는 그대로다.
   $app.innerHTML =
-    storageNotice() + demoNotice() + (state.tab === 'home' ? topBar() : '') + `<main>${body}</main>` + nav();
+    `<main><h1 class="sr-only">어울 ${TAB_TITLE[state.tab] || ''}</h1>${storageNotice()}${demoNotice()}${state.tab === 'home' ? topBar() : ''}${body}</main>` + nav();
 }
 
 // ── 시트
@@ -911,7 +916,9 @@ function openSheet(html, { key = null } = {}) {
         .map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}="${CSS.escape(v)}"]`)
         .join('')
     : null;
-  $sheet.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div><button class="sheet-close" data-action="close-sheet" aria-label="닫기">${ICON.close}</button>${html}</div>`;
+  // 시트는 대화상자라서 첫 제목으로 이름을 붙인다(화면 낭독기가 무슨 창이 열렸는지 읽는다)
+  const titled = html.replace(/<h2(?![^>]*\sid=)/, '<h2 id="sheet-title"');
+  $sheet.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"${titled === html ? '' : ' aria-labelledby="sheet-title"'}><div class="grabber"></div><button class="sheet-close" data-action="close-sheet" aria-label="닫기">${ICON.close}</button>${titled}</div>`;
   sheetKey = key;
   const sheet = $sheet.querySelector('.sheet');
   if (same && sheet && scroll) sheet.scrollTop = scroll;
@@ -1012,7 +1019,7 @@ function itemSheet(id) {
     </div>
     <button class="btn secondary candidate-compare" data-action="candidate-product" data-id="${p.id}">내 옷과 비교 · 구매 여정에 넣기</button>
     <div class="sheet-links">
-      <button class="link" data-action="own-product" data-id="${p.id}" ${owned ? 'disabled' : ''}>${owned ? '옷장에 있는 상품이에요' : '이 상품 있어요'}</button>
+      <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
       <button class="link" data-action="add-slot" data-slot="${slot.id}">비슷한 옷이 있어요</button>
     </div>
   `);
@@ -1095,8 +1102,61 @@ function beginDraft(item = null, slot = null, { confirmDetails = false, returnLo
     recognitionProgress: null,
     recognizer: null,
     photoReview: null,
+    catalogQuery: '',
+    catalogProductId: null,
+    catalogColor: null,
+    catalogReturnMode: null,
+    catalogOrigin: false,
   };
   addSheet();
+}
+
+// Owned-item lookup never uses shopping budget, season or style filters.
+// Search and selection are transient; only the final confirmation writes.
+function ownedCatalogProduct() {
+  return draft?.entryMode === 'catalog' && SAFE_PRODUCTS.find((p) => p.id === draft.catalogProductId);
+}
+function ownedCatalogColorConflict(p) {
+  return !!(p?.color && p.colorSource !== 'image' && draft.catalogColor && p.color !== draft.catalogColor);
+}
+function ownedCatalogResults() {
+  const result = findOwnedCatalog(draft.catalogQuery, SAFE_PRODUCTS);
+  if (result.status === 'empty') return '<p class="sub">브랜드·상품명 또는 무신사 상품 주소로 찾아보세요. 취향·예산에 관계없이 저장된 상품 목록에서 찾아요.</p>';
+  if (!result.total) return `<p class="notice">${result.status === 'unsupported-link' ? '이 주소로 찾을 수 없어요. 브랜드·상품명을 입력하거나 사진으로 추가해 주세요.' : '저장된 상품 목록에 없어요. 사진이나 종류로 추가할 수 있어요.'}</p><button class="chip" data-action="owned-catalog-back">사진·종류로 추가</button>`;
+  return `<p class="fine" role="status">${result.total}개${result.total > result.items.length ? ` · 먼저 ${result.items.length}개 표시, 상품명을 더 적으면 좁힐 수 있어요` : ''}</p><div class="owned-catalog-list">${result.items.map((p) => `<button class="owned-catalog-item" data-action="owned-catalog-select" data-id="${esc(p.id)}">${picture(p, SLOT_BY_ID[p.slot], 'thumb')}<span><b>${esc(p.brand)}</b><span>${esc(p.name)}</span><small>${esc(SLOT_BY_ID[p.slot].name)}</small></span>${ICON.chevron}</button>`).join('')}</div>`;
+}
+function ownedCatalogSheet() {
+  if (!draft) return;
+  const p = ownedCatalogProduct();
+  const ownPhoto = draft.preview || photos.get(draft.photoId);
+  const knownColor = p?.color && p.colorSource !== 'image' && COLORS[p.color];
+  const previous = p ? (state.demo ? [] : myCloset()).filter((i) => i.productId === p.id && i.id !== draft.id) : [];
+  const conflict = p && ownedCatalogColorConflict(p);
+  openSheet(`<div class="garment-editor owned-catalog"><h2 class="detail-title">${p ? '이 상품을 가지고 있나요?' : '내 옷을 상품 목록에서 찾기'}</h2><fieldset${draft.saving ? ' disabled' : ''}>
+  <button class="link" data-action="${p ? 'owned-catalog-search' : 'owned-catalog-back'}">${p ? '다른 상품 찾기' : '사진·종류로 돌아가기'}</button>
+  ${p ? `${ownPhoto ? `<div class="owned-catalog-own-photo"><img src="${esc(ownPhoto)}" alt="직접 선택한 내 옷 사진"><span>내 사진 · 그대로 보관해요</span></div>` : ''}
+  ${picture(p, SLOT_BY_ID[p.slot], 'hero')}<p class="fine">판매처 상품 사진${ownPhoto ? ' · 내 사진을 바꾸지 않아요' : ' · 직접 찍은 사진은 아니에요'}</p>
+  <p class="brand-name">${esc(p.brand)}</p><h3>${esc(p.name)}</h3><p class="sub">${esc(SLOT_BY_ID[p.slot].name)} · 같은 상품인지 이름과 모양을 확인해 주세요.</p>
+  ${draft.color ? `<p class="fine">내가 확인한 색: ${esc(COLORS[draft.color]?.label || '모름')}</p>` : ''}
+  ${knownColor ? `<p class="sub">상품에 표시된 색: ${esc(COLORS[p.color].label)}</p><div class="opts"><button class="chip" data-action="owned-catalog-color" data-color="${esc(p.color)}" aria-pressed="${draft.catalogColor === p.color}">내 옷도 이 색이에요</button><button class="chip" data-action="owned-catalog-color" data-color="" aria-pressed="${!draft.catalogColor}">색은 아직 모름</button></div>` : '<p class="sub">상품 사진에서 색을 추정해 채우지 않아요. 확인한 내 옷 색만 유지해요.</p>'}
+  ${conflict ? '<p class="notice">확인한 내 옷 색과 상품에 표시된 색이 달라요. 다른 색·비슷한 옷으로 등록하면 상품을 연결하지 않아요.</p>' : ''}
+  ${previous.length ? `<p class="notice">이 상품을 연결한 옷이 이미 ${previous.length}벌 있어요. 추가로 가진 한 벌이라면 아래에서 저장하세요.</p>` : ''}
+  <div class="cta registration-save"><button class="btn" data-action="owned-catalog-confirm" data-id="${esc(p.id)}"${conflict || draft.processing || draft.saving ? ' disabled' : ''}>${draft.saving ? '저장 중…' : previous.length ? '같은 상품 한 벌 더 저장' : '가지고 있는 상품 · 옷장에 저장'}</button></div>
+  <button class="link" data-action="owned-catalog-similar" data-id="${esc(p.id)}">다른 색·비슷한 옷으로 등록</button>` : `<label for="owned-catalog-query">브랜드·상품명·상품 주소</label><input id="owned-catalog-query" type="search" maxlength="500" autocomplete="off" value="${esc(draft.catalogQuery)}" placeholder="예: 폴로 셔츠 또는 상품 주소"><div id="owned-catalog-results">${ownedCatalogResults()}</div>`}
+  ${draft.error ? `<p class="editor-error" role="alert">${esc(draft.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 최신 옷장 불러오기</button>` : ''}
+  </fieldset></div>`, { key: `garment:${draft.id}:catalog:${p ? p.id : 'search'}` });
+}
+function startOwnedCatalog(productId = null) {
+  if (!draft) beginDraft();
+  if (draft.saving || draft.processing) return;
+  releaseDraftPhotoAnalysis(draft);
+  if (draft.entryMode !== 'catalog') draft.catalogReturnMode = draft.entryMode;
+  draft.entryMode = 'catalog';
+  draft.catalogOrigin = true;
+  draft.catalogProductId = SAFE_PRODUCTS.some((p) => p.id === productId) ? productId : null;
+  draft.catalogColor = draft.color || null;
+  draft.error = '';
+  ownedCatalogSheet();
 }
 
 // Inference is transient. Only a human-confirmed value reaches makeGarment.
@@ -1219,25 +1279,28 @@ async function analyzeDraftPhoto({ mode = 'garment', file = null } = {}) {
 }
 function addSheet() {
   if (!draft) return;
+  if (draft.entryMode === 'catalog') { ownedCatalogSheet(); return; }
   const selected = slotForItem(draft);
-  const kinds = GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === state.gender && s.shape === k.id));
-  const kindButton = (k) => `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === state.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
+  const kinds = GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === draft.gender && s.shape === k.id));
+  const kindButton = (k) => `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === draft.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
   const photo = draft.preview || photos.get(draft.photoId);
   const entry = !draft.before && draft.entryMode === 'choice' && !photo && !draft.kind;
-  const manual = draft.entryMode === 'manual' || draft.entryMode === 'edit';
+  // The kind grid stays open unless a visual suggestion or a chosen kind is shown above it.
+  const suggested = (draft.photoRecognition?.kinds || []).some((x) => SLOTS.some((s) => s.g === draft.gender && s.shape === x.kind));
+  const manual = draft.entryMode === 'manual' || draft.entryMode === 'edit' || (!suggested && !draft.kind);
   const specificKinds = SLOTS.filter((s) => s.g === draft.gender && s.shape === draft.kind);
   const manualKinds = `<fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>옷 사진 한 장</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p><fieldset${draft.saving ? ' disabled' : ''}>
-  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="tab" data-tab="home">상품 목록에서 찾아 추가</button></div>` : `<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions"><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>
+  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions"><button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div><button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
   ${draft.photoMissing ? '<p class="notice">이전 버전에서 저장되지 않은 사진이에요. 다시 고를 수 있어요.</p>' : ''}
   ${photoAnalysisPanel()}
   ${draft.kind ? `<div class="confirmed-kind"><span>확인한 종류</span><b>${esc(garmentKindName(draft.kind))}</b>${draft.brand ? `<small>${esc(draft.brand)}</small>` : ''}</div>` : photo ? '<p class="sub registration-kind-hint">종류를 확인해 주세요. 모르면 아래에서 직접 고를 수 있어요.</p>' : ''}
-  ${manual ? manualKinds : `<details class="manual-kinds"><summary>다른 종류로 등록</summary>${manualKinds}</details>`}
+  ${manual ? manualKinds : `<details class="manual-kinds"><summary>${draft.kind ? '다른 종류로 바꾸기' : '다른 종류로 등록'}</summary>${manualKinds}</details>`}
   ${specificKinds.length ? `<details class="garment-name"${draft.confirmDetails ? ' open' : ''}><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
   <details class="garment-name"><summary>색·브랜드·이름 수정 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">모르는 정보는 비워 둬도 돼요.</p><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(COLORS).map(([id, c]) => `<button class="sw" data-action="draft-color" data-color="${id}" aria-label="${c.label}" aria-pressed="${draft.color === id}"><i style="background:${c.hex}"></i></button>`).join('')}</div></details>
   <div class="cta registration-save"><button class="btn" data-action="draft-save"${!draft.kind || draft.processing || draft.saving ? ' disabled' : ''}>${draft.saving ? '저장 중…' : '옷장에 저장'}</button></div>`}
-  ${draft.processing ? '<p role="status">사진 준비 중…</p>' : ''}${draft.error ? `<p class="editor-error" role="alert">${esc(draft.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 최신 옷장 불러오기</button>` : ''}
+  ${draft.processing ? '<p role="status">사진 준비 중…</p>' : ''}${draft.photoError ? `<div class="photo-error"><p class="editor-error" role="alert">${esc(draft.photoError)}</p><div class="opts"><button class="chip" data-action="add-photo">다른 사진 고르기</button><button class="chip" data-action="add-camera">카메라로 촬영</button>${draft.kind ? '' : '<button class="chip" data-action="draft-manual">사진 없이 종류로</button>'}</div></div>` : ''}${draft.error ? `<p class="editor-error" role="alert">${esc(draft.error)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 최신 옷장 불러오기</button>` : ''}
   </fieldset></div>`, { key: `garment:${draft.id}` });
 }
 async function chooseGarmentPhoto(file) {
@@ -1248,6 +1311,7 @@ async function chooseGarmentPhoto(file) {
     token = ++current.token;
   current.processing = true;
   current.error = '';
+  current.photoError = '';
   addSheet();
   try {
     const asset = await prepareGarmentPhoto(file);
@@ -1259,19 +1323,21 @@ async function chooseGarmentPhoto(file) {
     current.photoMissing = false;
     current.preview = URL.createObjectURL(asset.blob);
   } catch (error) {
-    if (draft === current && current.token === token) current.error = storageMessage(error);
+    if (draft === current && current.token === token) current.photoError = error?.message || '사진을 읽지 못했어요.';
   } finally {
     if (draft === current && current.token === token) {
       current.processing = false;
       addSheet();
     }
   }
-  if (photoCanAutoAnalyze() && draft === current && current.token === token && current.asset && !current.error)
+  if (photoCanAutoAnalyze() && draft === current && current.token === token && current.asset && !current.error && !current.photoError)
     await analyzeDraftPhoto();
 }
 async function saveGarmentDraft() {
   const current = draft;
-  if (!current || !current.kind || current.processing || current.saving) return;
+  const catalogProduct = ownedCatalogProduct();
+  if (!current || (!current.kind && !catalogProduct) || current.processing || current.saving) return;
+  if (current.entryMode === 'catalog' && (!catalogProduct || ownedCatalogColorConflict(catalogProduct))) return;
   releaseDraftPhotoAnalysis(current);
   current.saving = true;
   current.error = '';
@@ -1282,7 +1348,12 @@ async function saveGarmentDraft() {
     const existing = actual.find((i) => i.id === current.id);
     if (current.before && JSON.stringify(existing) !== current.before)
       throw new Error('이 옷이 다른 화면에서 바뀌었어요. 최신 옷 정보를 다시 열어 확인해 주세요.');
-    const item = makeGarment(current);
+    const catalogSlot = catalogProduct && SLOT_BY_ID[catalogProduct.slot];
+    const item = makeGarment({ ...current, ...(catalogProduct ? {
+      kind: catalogSlot.shape, slot: catalogSlot.id, gender: catalogSlot.g,
+      brand: catalogProduct.brand, productId: catalogProduct.id,
+      color: current.catalogColor, label: current.label || catalogProduct.name,
+    } : {}) });
     item.photoMissing = !!current.photoMissing;
     let journeys = state.journeys;
     if (current.returnJourneyId) {
@@ -1296,7 +1367,8 @@ async function saveGarmentDraft() {
       journeys = journeys.map((j) => j.id === journey.id ? updated : j);
     }
     await set(
-      { demo: false, demoSelected: [], garments: [...actual.filter((i) => i.id !== item.id), item], journeys, tab: 'closet' },
+      { demo: false, demoSelected: [], garments: [...actual.filter((i) => i.id !== item.id), item], journeys,
+        ...(current.catalogOrigin ? { gender: item.gender, styles: state.styles.filter((k) => STYLES[k]?.g.includes(item.gender)).length ? state.styles.filter((k) => STYLES[k]?.g.includes(item.gender)) : stylesFor(item.gender).slice(0, 1) } : {}), tab: 'closet' },
       { assets: current.asset ? [current.asset] : [] },
     );
     current.saving = false;
@@ -1949,32 +2021,59 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'own-product': {
-        const wasDemo = state.demo;
         const p = PRODUCT_BY_ID[el.dataset.id];
-        if (!p) break;
-        if (!state.demo && state.closet.some((i) => i.productId === p.id)) {
-          toast('이미 등록한 상품이에요');
-          break;
+        if (!p || !SAFE_PRODUCTS.some((x) => x.id === p.id)) break;
+        beginDraft();
+        startOwnedCatalog(p.id);
+        break;
+      }
+      case 'owned-catalog-start':
+        startOwnedCatalog();
+        break;
+      case 'owned-catalog-select':
+        if (draft?.entryMode === 'catalog' && findOwnedCatalog(draft.catalogQuery, SAFE_PRODUCTS).items.some((p) => p.id === el.dataset.id)) {
+          draft.catalogProductId = el.dataset.id;
+          draft.catalogColor = draft.color || null;
+          ownedCatalogSheet();
         }
-        const item = makeGarment({
-          slot: p.slot,
-          color: p.colorSource === 'image' ? null : p.color,
-          brand: p.brand,
-          productId: p.id,
-          gender: SLOT_BY_ID[p.slot].g,
-        });
-        await set({
-          demo: false,
-          demoSelected: [],
-          garments: [...state.garments, item],
-          gender: item.gender,
-          styles: state.styles.filter((k) => STYLES[k]?.g.includes(item.gender)).length
-            ? state.styles.filter((k) => STYLES[k]?.g.includes(item.gender))
-            : stylesFor(item.gender).slice(0, 1),
-          tab: 'closet',
-        });
-        closeSheet();
-        toast(wasDemo ? '내 옷장에 저장했어요. 이제 예시를 빼고 등록한 내 옷만 반영해요' : '내 옷장에 저장했어요');
+        break;
+      case 'owned-catalog-color': {
+        const p = ownedCatalogProduct();
+        if (!p || (el.dataset.color && (p.colorSource === 'image' || p.color !== el.dataset.color))) break;
+        draft.catalogColor = el.dataset.color || null;
+        ownedCatalogSheet();
+        break;
+      }
+      case 'owned-catalog-confirm': {
+        const p = ownedCatalogProduct();
+        if (p && p.id === el.dataset.id && !ownedCatalogColorConflict(p)) await saveGarmentDraft();
+        break;
+      }
+      case 'owned-catalog-search':
+        if (draft?.entryMode === 'catalog') { draft.catalogProductId = null; draft.error = ''; ownedCatalogSheet(); }
+        break;
+      case 'owned-catalog-back':
+        if (draft?.entryMode === 'catalog') {
+          draft.entryMode = draft.catalogReturnMode || (draft.photoId ? 'photo' : 'choice');
+          draft.catalogProductId = null;
+          draft.catalogOrigin = false;
+          draft.error = '';
+          addSheet();
+        }
+        break;
+      case 'owned-catalog-similar': {
+        const p = ownedCatalogProduct();
+        if (!p || p.id !== el.dataset.id) break;
+        const slot = SLOT_BY_ID[p.slot];
+        draft.kind = slot.shape;
+        draft.gender = slot.g;
+        draft.slot = null;
+        draft.productId = null;
+        draft.color = draft.catalogColor;
+        draft.catalogProductId = null;
+        draft.entryMode = draft.photoId ? 'photo' : 'manual';
+        draft.error = '';
+        addSheet();
         break;
       }
       case 'clear-anchor':
@@ -2290,6 +2389,13 @@ document.addEventListener('input', (e) => {
   }
   if (!draft) return;
   if (draft.saving) return;
+  if (id === 'owned-catalog-query' && draft.entryMode === 'catalog' && !draft.catalogProductId) {
+    draft.catalogQuery = value.slice(0, 500);
+    const results = $sheet.querySelector('#owned-catalog-results');
+    // Replacing only results preserves the actual input focus and caret.
+    if (results) results.innerHTML = ownedCatalogResults();
+    else ownedCatalogSheet();
+  }
   if (e.target.id === 'photo-label-text') {
     draft.labelTextRevision++;
     draft.labelText = e.target.value.slice(0, 1200);
