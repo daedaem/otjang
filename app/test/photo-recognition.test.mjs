@@ -21,7 +21,7 @@ const candidateResult = {
   kinds: [{ kind: 'shirt', label: 'untrusted label', score: 0.61 }, { kind: 'knit', score: 0.2 }],
   colors: [{ color: 'white', score: 0.7 }, { color: 'ivory', score: 0.2 }],
 };
-function harness({ ocrCreate, ocrResult = { data: { text: 'PATAGONIA\nL' } }, timeoutMs = 5000 } = {}) {
+function harness({ ocrCreate, ocrResult = { data: { text: 'PATAGONIA\nL' } }, timeoutMs = 5000, preparationTimeoutMs = timeoutMs } = {}) {
   const workers = [], ocrWorkers = [];
   const workerFactory = ({ source, type }) => {
     const worker = {
@@ -44,12 +44,47 @@ function harness({ ocrCreate, ocrResult = { data: { text: 'PATAGONIA\nL' } }, ti
     options.onCreated(worker);
     return worker;
   };
-  const recognizer = createPhotoRecognizer({ workerFactory, ocrFactory, timeoutMs });
+  const recognizer = createPhotoRecognizer({ workerFactory, ocrFactory, timeoutMs, preparationTimeoutMs });
   const completeVision = (index = workers.length - 1, result = candidateResult) => {
     const worker = workers[index];
     worker.emit({ type: 'result', id: worker.messages.at(-1).id, result });
   };
   return { recognizer, workers, ocrWorkers, completeVision };
+}
+
+function testClock() {
+  let now = 0, sequence = 0;
+  const timers = new Map();
+  return {
+    timers,
+    setTimeout(callback, delay) { const id = ++sequence; timers.set(id, { callback, at: now + delay }); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    advance(elapsed) {
+      const end = now + elapsed;
+      for (;;) {
+        const next = [...timers.entries()].filter(([, timer]) => timer.at <= end).sort((a, b) => a[1].at - b[1].at)[0];
+        if (!next) break;
+        now = next[1].at; timers.delete(next[0]); next[1].callback();
+      }
+      now = end;
+    },
+  };
+}
+
+function clockHarness({ ocrFactory, timeoutMs = 10, preparationTimeoutMs = 100 } = {}) {
+  const clock = testClock(), workers = [];
+  const workerFactory = () => {
+    const worker = { messages: [], terminated: 0, postMessage(data) { this.messages.push(data); }, terminate() { this.terminated++; },
+      emit(type, values = {}) { this.onmessage({ data: { type, id: this.messages.at(-1).id, ...values } }); } };
+    workers.push(worker); return worker;
+  };
+  const context = vm.createContext({ Blob, setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout });
+  const source = fs.readFileSync(new URL('../src/photo-recognition.js', import.meta.url), 'utf8').replace(/^export\s+/gm, '');
+  vm.runInContext(`${source}\nglobalThis.testCreate = createPhotoRecognizer;`, context);
+  const recognizer = context.testCreate({ workerFactory,
+    ocrFactory: ocrFactory || (async () => ({ async recognize() { return { data: { text: 'LOCAL' } }; }, async terminate() {} })),
+    timeoutMs, preparationTimeoutMs });
+  return { clock, workers, recognizer };
 }
 
 test('supported kind/color suggestions cover current registration choices without concrete product slots', () => {
@@ -250,14 +285,14 @@ test('cached OCR worker progress belongs to the current photo and throwing obser
   h.recognizer.dispose();
 });
 
-test('deadline retains a completed subtask, terminates stalled resources and allows retry', async () => {
+test('preparation deadline retains the other completed subtask and its cached worker, and allows retry', async () => {
   const h = harness({ timeoutMs: 15 });
   const partial = await h.recognizer.analyze(image());
   assert.equal(partial.text, 'PATAGONIA\nL');
   assert.deepEqual(partial.kinds, []);
   assert.match(partial.warnings.join(' '), /옷 종류.*시간.*초과/);
   assert.equal(h.workers[0].terminated, 1);
-  assert.equal(h.ocrWorkers[0].terminated, 1);
+  assert.equal(h.ocrWorkers[0].terminated, 0);
   const retry = h.recognizer.analyze(image());
   h.completeVision();
   assert.equal((await retry).kinds[0].kind, 'shirt');
@@ -411,4 +446,169 @@ test('default OCR bootstrap cancelled before library readiness does not create a
   await turn();
   assert.equal(calls.length, 0);
   context.testRecognizer.dispose();
+});
+
+test('default cold library/model preparation may exceed inference limit before both ready workers start their clocks', async () => {
+  const moduleSource = fs.readFileSync(new URL('../src/photo-recognition.js', import.meta.url), 'utf8').replace(/^export\s+/gm, '');
+  const clock = testClock(), creating = deferred(), recognizing = deferred(), scripts = [], workers = [], settled = [];
+  class LocalWorker {
+    constructor() { this.messages = []; workers.push(this); }
+    postMessage(data) { this.messages.push(data); }
+    terminate() {}
+  }
+  const context = vm.createContext({
+    Blob, URL: { createObjectURL() { return 'blob:cold'; }, revokeObjectURL() {} }, Worker: LocalWorker,
+    setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout,
+    document: { createElement() { return { remove() {} }; }, head: { appendChild(script) { scripts.push(script); } } },
+    Tesseract: { PSM: { SPARSE_TEXT: '11' }, async createWorker() { return creating.promise; } },
+  });
+  vm.runInContext(`${moduleSource}\nglobalThis.testRecognizer = createPhotoRecognizer({ timeoutMs: 10, preparationTimeoutMs: 100 });`, context);
+  const promise = context.testRecognizer.analyze(image());
+  promise.then(() => settled.push('success'), () => settled.push('failure'));
+  clock.advance(25);
+  assert.deepEqual(settled, []);
+  scripts[0].onload();
+  await turn();
+  clock.advance(15);
+  assert.deepEqual(settled, [], 'both workers can still be preparing after forty milliseconds with ten millisecond inference limits');
+  creating.resolve({ async setParameters() {}, async recognize() { return recognizing.promise; }, async terminate() {} });
+  await turn();
+  const worker = workers[0], id = worker.messages[0].id;
+  worker.onmessage({ data: { type: 'progress', id, stage: 'kind-analysis', progress: 0 } });
+  clock.advance(9);
+  assert.deepEqual(settled, []);
+  worker.onmessage({ data: { type: 'result', id, result: candidateResult } });
+  recognizing.resolve({ data: { text: 'COLD LOAD COMPLETE' } });
+  assert.equal((await promise).text, 'COLD LOAD COMPLETE');
+  assert.deepEqual(settled, ['success']);
+  assert.equal(clock.timers.size, 0);
+  context.testRecognizer.dispose();
+});
+
+test('vision inference times out only after readiness while independent OCR preparation can still complete', async () => {
+  const creating = deferred(), h = clockHarness({ ocrFactory: async () => creating.promise });
+  const promise = h.recognizer.analyze(image());
+  h.workers[0].emit('progress', { stage: 'kind-analysis', progress: 0 });
+  h.clock.advance(10);
+  assert.equal(h.workers[0].terminated, 1);
+  h.clock.advance(40);
+  creating.resolve({ async recognize() { return { data: { text: 'LATER OCR' } }; }, async terminate() {} });
+  const result = await promise;
+  assert.equal(result.text, 'LATER OCR');
+  assert.deepEqual(Array.from(result.kinds), []);
+  assert.match(result.warnings.join(' '), /옷 종류 분석 시간이 초과/);
+  assert.doesNotMatch(result.warnings.join(' '), /준비하는 시간/);
+  h.recognizer.dispose();
+});
+
+test('OCR inference can time out while independent model download is still preparing', async () => {
+  const recognizing = deferred(), ocr = { terminated: 0, async recognize() { return recognizing.promise; }, async terminate() { this.terminated++; } };
+  const h = clockHarness({ ocrFactory: async () => ocr });
+  const promise = h.recognizer.analyze(image());
+  await turn();
+  h.clock.advance(10);
+  assert.equal(ocr.terminated, 1);
+  assert.equal(h.workers[0].terminated, 0);
+  h.clock.advance(40);
+  h.workers[0].emit('progress', { stage: 'kind-analysis' });
+  h.workers[0].emit('result', { result: candidateResult });
+  const result = await promise;
+  assert.equal(result.kinds[0].kind, 'shirt');
+  assert.equal(result.text, '');
+  assert.match(result.warnings.join(' '), /라벨 문자 분석 시간이 초과/);
+  recognizing.resolve({ data: { text: 'TOO LATE' } });
+  await turn();
+  assert.equal(result.text, '');
+  h.recognizer.dispose();
+});
+
+test('OCR preparation deadline invalidates a late handle even while the same job is still inferring vision', async () => {
+  const creating = deferred();
+  const late = { terminated: 0, calls: 0, async recognize() { this.calls++; return { data: { text: 'LATE' } }; }, async terminate() { this.terminated++; } };
+  const h = clockHarness({ timeoutMs: 50, preparationTimeoutMs: 10, ocrFactory: async (options) => {
+    await creating.promise; options.onCreated(late); return late;
+  } });
+  const promise = h.recognizer.analyze(image());
+  h.workers[0].emit('progress', { stage: 'kind-analysis' });
+  h.clock.advance(10);
+  creating.resolve();
+  await turn();
+  assert.equal(late.terminated, 1);
+  assert.equal(late.calls, 0);
+  h.workers[0].emit('result', { result: candidateResult });
+  const result = await promise;
+  assert.equal(result.kinds[0].kind, 'shirt');
+  assert.equal(result.text, '');
+  assert.match(result.warnings.join(' '), /라벨 문자 분석 도구를 준비하는 시간이 초과/);
+  h.recognizer.dispose();
+});
+
+test('repeated progress and late model-loading events do not extend the inference deadline', async () => {
+  const h = clockHarness(), promise = h.recognizer.analyze(image());
+  await turn();
+  h.clock.advance(30);
+  h.workers[0].emit('progress', { stage: 'kind-analysis' });
+  h.clock.advance(5);
+  h.workers[0].emit('progress', { stage: 'kind-analysis' });
+  h.workers[0].emit('progress', { stage: 'model-loading', progress: 0.9 });
+  h.clock.advance(5);
+  const result = await promise;
+  assert.equal(result.text, 'LOCAL');
+  assert.match(result.warnings.join(' '), /옷 종류 분석 시간이 초과/);
+  assert.equal(h.workers[0].terminated, 1);
+  assert.equal(h.clock.timers.size, 0);
+  h.recognizer.dispose();
+});
+
+test('preparation timeout is bounded and cancel clears every phase deadline', async () => {
+  const loading = deferred(), h = clockHarness({ ocrFactory: async () => loading.promise });
+  const first = h.recognizer.analyze(image()), rejected = assert.rejects(first, { name: 'TimeoutError' });
+  h.clock.advance(100);
+  await rejected;
+  assert.equal(h.clock.timers.size, 0);
+  const next = h.recognizer.analyze(image()), cancelled = assert.rejects(next, { name: 'AbortError' });
+  h.workers[1].emit('progress', { stage: 'kind-analysis' });
+  h.recognizer.cancel();
+  await cancelled;
+  assert.equal(h.clock.timers.size, 0);
+  h.clock.advance(1000);
+  loading.resolve({ async recognize() { return { data: { text: 'STALE' } }; }, async terminate() {} });
+  await turn();
+  h.recognizer.dispose();
+});
+
+test('cancel immediately terminates a created OCR handle even while parameter initialization is still pending', async () => {
+  const initialization = deferred();
+  const worker = { terminated: 0, async recognize() { throw new Error('must not recognize'); }, async terminate() { this.terminated++; } };
+  const h = clockHarness({ ocrFactory: async (options) => {
+    options.onCreated(worker); await initialization.promise; return worker;
+  } });
+  const promise = h.recognizer.analyze(image()), cancelled = assert.rejects(promise, { name: 'AbortError' });
+  h.recognizer.cancel();
+  await cancelled;
+  assert.equal(worker.terminated, 1);
+  initialization.resolve();
+  await turn();
+  assert.equal(worker.terminated, 1);
+  assert.equal(h.clock.timers.size, 0);
+  h.recognizer.dispose();
+});
+
+test('preparation timeout terminates an existing OCR handle before its factory finally returns', async () => {
+  const initialization = deferred();
+  const worker = { terminated: 0, async recognize() { throw new Error('must not recognize'); }, async terminate() { this.terminated++; } };
+  const h = clockHarness({ timeoutMs: 50, preparationTimeoutMs: 10, ocrFactory: async (options) => {
+    options.onCreated(worker); await initialization.promise; return worker;
+  } });
+  const promise = h.recognizer.analyze(image());
+  h.workers[0].emit('progress', { stage: 'kind-analysis' });
+  h.clock.advance(10);
+  assert.equal(worker.terminated, 1);
+  initialization.resolve();
+  await turn();
+  h.workers[0].emit('result', { result: candidateResult });
+  const result = await promise;
+  assert.equal(result.kinds[0].kind, 'shirt');
+  assert.equal(worker.terminated, 1);
+  h.recognizer.dispose();
 });

@@ -20,13 +20,13 @@ execFileSync(process.execPath, [path.join(photoFlowRoot, 'tools/build.mjs'), '--
 const photoFlowHTML = fs.readFileSync(photoFlowOutput, 'utf8');
 const photoFlowScript = photoFlowHTML.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(
   /\n\}\)\(\);\s*$/,
-  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore, draft: () => draft, beginDraft, chooseGarmentPhoto, analyzeDraftPhoto, saveGarmentDraft, closeSheet, setPhotoRecognizerFactory: (factory) => { photoRecognizerFactory = factory; } };\n})();',
+  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore, draft: () => draft, beginDraft, chooseGarmentPhoto, analyzeDraftPhoto, saveGarmentDraft, closeSheet, setPhotoRecognizerFactory: (factory) => { photoRecognizerFactory = factory; }, setPhotoAnalysisAllowed: (allowed) => { photoAnalysisAllowed = allowed; } };\n})();',
 );
 
 // These tests execute the actual bundled UI callbacks and IndexedDB transaction
 // path. Synthetic decoding and inference doubles verify lifecycle/data safety;
 // they do not measure recognition quality, browser layout or camera performance.
-async function bootPhotoFlow({ indexedDB = new IDBFactory(), factory } = {}) {
+async function bootPhotoFlow({ indexedDB = new IDBFactory(), factory, allowAnalysis = true, navigator: photoNavigator } = {}) {
   const urls = new Map();
   let nextURL = 0;
   class PhotoTestURL extends URL {
@@ -61,11 +61,15 @@ async function bootPhotoFlow({ indexedDB = new IDBFactory(), factory } = {}) {
       },
     },
     window: { scrollTo() {} }, CSS: { escape: (value) => value },
+    ...(photoNavigator ? { navigator: photoNavigator } : {}),
     setTimeout: () => 1, clearTimeout() {}, requestAnimationFrame: (fn) => fn(),
   });
   vm.runInContext(photoFlowScript, context);
   await context.testApp.ready;
-  if (factory) context.testApp.setPhotoRecognizerFactory(factory);
+  if (factory) {
+    context.testApp.setPhotoRecognizerFactory(factory);
+    context.testApp.setPhotoAnalysisAllowed(allowAnalysis);
+  }
   return {
     app: context.testApp, indexedDB, storage, nodes, urls,
     state: () => JSON.parse(JSON.stringify(context.testApp.state())),
@@ -218,6 +222,7 @@ test('catalog candidate review needs confirmation and keeps the user photo when 
   assert.equal(page.app.draft().productId, null);
   assert.equal((await photoFlowStored(page)).revision, before.revision);
   assert.match(page.nodes.get('sheet-root').innerHTML, /확인|적용/);
+  await page.click({ action: 'photo-product-color', id: product.id });
   await page.click({ action: 'photo-candidate-confirm', id: product.id });
   const draft = page.app.draft();
   assert.equal(draft.productId, product.id);
@@ -580,4 +585,191 @@ test('an unknown label brand can be selected from an observed OCR line without i
   assert.equal(saved.state.garments[0].productId, null);
   assert.equal(saved.photos.size, 1);
   await assertPhotoFlowBytes(saved.photos.get(assetId), source);
+});
+
+test('the first photo is prepared without starting the optional model or making a durable write', async (t) => {
+  const fake = deferredRecognizer();
+  let factoryCalls = 0;
+  const page = await bootPhotoFlow({ factory: () => { factoryCalls++; return fake.recognizer; }, allowAnalysis: false });
+  t.after(() => page.close());
+  const before = await photoFlowStored(page);
+  page.app.beginDraft();
+  const source = photoFlowJPEG(39);
+  await page.app.chooseGarmentPhoto(source);
+  assert.equal(factoryCalls, 0, 'selecting a picture alone must not initialize the large optional model');
+  assert.equal(fake.jobs.length, 0);
+  assert.equal(page.app.draft().recognizing, false);
+  assert.equal(page.app.draft().photoRecognition, null);
+  assert.equal(page.app.draft().photoIdentity, null);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="photo-start"/);
+  await assertPhotoFlowBytes(page.app.draft().asset.blob, source);
+  const waiting = await photoFlowStored(page);
+  assert.equal(waiting.revision, before.revision);
+  assert.equal(waiting.photos.size, 0);
+});
+
+test('an explicit analysis choice starts one job and enables analysis of subsequent photos only in that session', async (t) => {
+  const fake = deferredRecognizer();
+  let factoryCalls = 0;
+  const factory = () => { factoryCalls++; return fake.recognizer; };
+  const page = await bootPhotoFlow({ factory, allowAnalysis: false });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(photoFlowJPEG(40));
+  assert.equal(factoryCalls, 0);
+  const explicitlyStarted = page.click({ action: 'photo-start' });
+  const first = await waitForPhotoJob(fake, 1);
+  assert.equal(factoryCalls, 1);
+  first.resolve(photoFlowResult());
+  await explicitlyStarted;
+  assert.equal(page.app.draft().photoRecognition.kinds[0].kind, 'shirt');
+  const secondPhoto = photoFlowJPEG(41);
+  await chooseAnalyzedPhoto(page, fake, secondPhoto, photoFlowResult({ text: 'NIKE' }));
+  assert.equal(factoryCalls, 1, 'a completed recognizer should be reused for the next photo in the same draft');
+  assert.equal(fake.jobs.length, 2);
+  await assertPhotoFlowBytes(page.app.draft().asset.blob, secondPhoto);
+  page.app.closeSheet();
+  const newSession = await bootPhotoFlow({ indexedDB: page.indexedDB, factory, allowAnalysis: false });
+  t.after(() => newSession.close());
+  newSession.app.beginDraft();
+  await newSession.app.chooseGarmentPhoto(photoFlowJPEG(42));
+  assert.equal(factoryCalls, 1, 'an opt-in in another page session must not silently start a new model job');
+  assert.equal(fake.jobs.length, 2);
+  assert.equal(newSession.app.draft().photoRecognition, null);
+});
+
+test('declining optional analysis still permits manual garment entry and atomic photo saving', async (t) => {
+  const fake = deferredRecognizer();
+  let factoryCalls = 0;
+  const page = await bootPhotoFlow({ factory: () => { factoryCalls++; return fake.recognizer; }, allowAnalysis: false });
+  t.after(() => page.close());
+  const before = await photoFlowStored(page);
+  page.app.beginDraft();
+  const source = photoFlowJPEG(43);
+  await page.app.chooseGarmentPhoto(source);
+  await page.click({ action: 'draft-kind', kind: 'jacket' });
+  await page.click({ action: 'draft-color', color: 'beige' });
+  page.input('garment-brand', '직접 라벨을 확인한 브랜드');
+  page.input('garment-label', '분석 없이 등록한 재킷');
+  await page.app.saveGarmentDraft();
+  const saved = await photoFlowStored(page);
+  assert.equal(factoryCalls, 0);
+  assert.equal(fake.jobs.length, 0);
+  assert.equal(saved.revision, before.revision + 1);
+  assert.equal(saved.state.garments[0].kind, 'jacket');
+  assert.equal(saved.state.garments[0].color, 'beige');
+  assert.equal(saved.state.garments[0].brand, '직접 라벨을 확인한 브랜드');
+  assert.equal(saved.state.garments[0].productId, null);
+  assert.equal(saved.photos.size, 1);
+  await assertPhotoFlowBytes(saved.photos.get(saved.state.garments[0].photoId), source);
+});
+
+test('brand-and-kind reference products cannot become an owned product ID even through a forged confirmation action', async (t) => {
+  const fake = deferredRecognizer();
+  const page = await bootPhotoFlow({ factory: fake.factory });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  const source = await chooseAnalyzedPhoto(page, fake, photoFlowJPEG(44), photoFlowResult({
+    kinds: [{ kind: 'jacket', label: '재킷', score: 0.82 }], text: 'PATAGONIA',
+  }));
+  await page.click({ action: 'photo-kind', kind: 'jacket' });
+  await page.click({ action: 'photo-text-match' });
+  await page.click({ action: 'photo-brand', brand: '파타고니아' });
+  const candidate = page.app.draft().photoIdentity.candidates[0];
+  assert.ok(candidate, 'the observed brand and confirmed kind should yield reference products');
+  assert.equal(candidate.exact, false);
+  assert.equal(candidate.match, 'brand-and-kind');
+  await page.click({ action: 'photo-candidate-review', id: candidate.productId });
+  assert.match(page.nodes.get('sheet-root').innerHTML, /같은 브랜드의 참고 상품/);
+  assert.doesNotMatch(page.nodes.get('sheet-root').innerHTML, /data-action="photo-candidate-confirm"/);
+  await page.click({ action: 'photo-product-color', id: candidate.productId });
+  await page.click({ action: 'photo-candidate-confirm', id: candidate.productId });
+  assert.equal(page.app.draft().productId, null);
+  assert.equal(page.app.draft().slot, null);
+  assert.equal(page.app.draft().kind, 'jacket');
+  assert.equal(page.app.draft().brand, '파타고니아');
+  await page.app.saveGarmentDraft();
+  const saved = await photoFlowStored(page);
+  assert.equal(saved.state.garments[0].productId, null);
+  assert.equal(saved.state.garments[0].slot, null);
+  await assertPhotoFlowBytes(saved.photos.get(saved.state.garments[0].photoId), source);
+});
+
+test('a strong product URL requires an independent unknown-color confirmation before applying exact catalog metadata', async (t) => {
+  const fake = deferredRecognizer();
+  const page = await bootPhotoFlow({ factory: fake.factory });
+  t.after(() => page.close());
+  const product = PRODUCTS.find((item) => item.id === 'ms-728000');
+  page.app.beginDraft();
+  const source = await chooseAnalyzedPhoto(page, fake, photoFlowJPEG(45), photoFlowResult({ text: product.url }));
+  await page.click({ action: 'photo-text-match' });
+  await page.click({ action: 'photo-candidate-review', id: product.id });
+  assert.equal(page.app.draft().photoIdentity.candidates[0].exact, true);
+  assert.equal(page.app.draft().color, null);
+  assert.equal(page.app.draft().productId, null);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="photo-product-color"/);
+  const confirmTag = page.nodes.get('sheet-root').innerHTML.match(/<button[^>]*data-action="photo-candidate-confirm"[^>]*>/)?.[0];
+  assert.ok(confirmTag?.includes('disabled'));
+  await page.click({ action: 'photo-candidate-confirm', id: product.id });
+  assert.equal(page.app.draft().productId, null, 'confirming the product alone cannot fill its unverified color');
+  await page.click({ action: 'photo-product-color', id: 'ms-854339' });
+  assert.equal(page.app.draft().photoReview.colorConfirmed, false);
+  await page.click({ action: 'photo-product-color', id: product.id });
+  assert.equal(page.app.draft().photoReview.colorConfirmed, true);
+  assert.equal(page.app.draft().color, null, 'the separate choice remains pending until the product metadata is applied');
+  await page.click({ action: 'photo-candidate-confirm', id: product.id });
+  assert.equal(page.app.draft().productId, product.id);
+  assert.equal(page.app.draft().color, product.color);
+  assert.equal(page.app.draft().brand, product.brand);
+  await assertPhotoFlowBytes(page.app.draft().asset.blob, source);
+  assert.equal((await photoFlowStored(page)).photos.size, 0);
+});
+
+test('retrying completed analysis reuses one recognizer and closing the draft disposes it', async (t) => {
+  const fake = deferredRecognizer();
+  let factoryCalls = 0;
+  const page = await bootPhotoFlow({ factory: () => { factoryCalls++; return fake.recognizer; } });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await chooseAnalyzedPhoto(page, fake, photoFlowJPEG(46));
+  assert.equal(factoryCalls, 1);
+  assert.equal(fake.disposals, 0);
+  const retried = page.click({ action: 'photo-retry' });
+  const job = await waitForPhotoJob(fake, 2);
+  assert.equal(factoryCalls, 1);
+  assert.equal(fake.disposals, 0);
+  job.resolve(photoFlowResult({ text: 'NIKE' }));
+  await retried;
+  assert.equal(page.app.draft().photoIdentity.brands[0].brand, '나이키');
+  assert.equal(factoryCalls, 1);
+  await page.click({ action: 'close-sheet' });
+  assert.equal(page.app.draft(), null);
+  assert.equal(fake.disposals, 1);
+});
+
+test('data saving mode requires an explicit analysis choice for each new photo despite session opt-in', async (t) => {
+  const fake = deferredRecognizer();
+  let factoryCalls = 0;
+  const page = await bootPhotoFlow({
+    factory: () => { factoryCalls++; return fake.recognizer; },
+    allowAnalysis: true, navigator: { connection: { saveData: true } },
+  });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(photoFlowJPEG(47));
+  assert.equal(factoryCalls, 0);
+  assert.equal(fake.jobs.length, 0);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="photo-start"/);
+  const explicit = page.click({ action: 'photo-start' });
+  const job = await waitForPhotoJob(fake, 1);
+  job.resolve(photoFlowResult());
+  await explicit;
+  assert.equal(factoryCalls, 1);
+  assert.equal(fake.jobs.length, 1);
+  await page.app.chooseGarmentPhoto(photoFlowJPEG(48));
+  assert.equal(factoryCalls, 1);
+  assert.equal(fake.jobs.length, 1);
+  assert.equal(page.app.draft().photoRecognition, null);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="photo-start"/);
+  assert.equal((await photoFlowStored(page)).photos.size, 0);
 });

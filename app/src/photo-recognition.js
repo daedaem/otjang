@@ -33,6 +33,7 @@ const PHOTO_RECOGNITION_OCR_WORKER = 'https://cdn.jsdelivr.net/npm/tesseract.js@
 const PHOTO_RECOGNITION_OCR_CORE = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0';
 const PHOTO_RECOGNITION_OCR_LANG = 'https://tessdata.projectnaptha.com/4.0.0';
 const PHOTO_RECOGNITION_TIMEOUT = 90000;
+const PHOTO_RECOGNITION_PREPARATION_TIMEOUT = 600000;
 let photoRecognitionOcrLibrary = null;
 
 function photoRecognitionError(message, name = 'Error') {
@@ -175,16 +176,21 @@ function photoRecognitionCandidates(value, type, choices) {
 /**
  * Suggestions stay outside wardrobe state until the caller confirms them.
  * Only image Blobs are accepted: URLs/base64/paths cannot cause remote reads.
- * Factories and a shorter deadline are injectable for protocol/lifecycle tests.
+ * Runtime/model preparation has a separate ten-minute limit. Each subtask's
+ * ninety-second inference limit starts only when its worker is ready.
+ * Factories and shorter phase deadlines are injectable for lifecycle tests.
  * Cancelling during Tesseract initialization invalidates the job immediately;
  * its handle is terminated as soon as the library returns it.
  */
 export function createPhotoRecognizer({
   workerFactory = photoRecognitionDefaultWorker, ocrFactory = photoRecognitionDefaultOcr,
   timeoutMs = PHOTO_RECOGNITION_TIMEOUT,
+  preparationTimeoutMs = PHOTO_RECOGNITION_PREPARATION_TIMEOUT,
 } = {}) {
   if (typeof workerFactory !== 'function' || typeof ocrFactory !== 'function' ||
-      !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > PHOTO_RECOGNITION_TIMEOUT) {
+      !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > PHOTO_RECOGNITION_TIMEOUT ||
+      !Number.isFinite(preparationTimeoutMs) || preparationTimeoutMs < 1 ||
+      preparationTimeoutMs > PHOTO_RECOGNITION_PREPARATION_TIMEOUT) {
     throw new Error('사진 분석 설정이 올바르지 않습니다.');
   }
   let disposed = false, current = null, sequence = 0, vision = null, ocr = null;
@@ -198,29 +204,30 @@ export function createPhotoRecognizer({
     if (vision) { try { vision.dispose(); } catch {} vision = null; }
     if (ocr) { terminateOcr(ocr); ocr = null; }
   };
+  const clearTaskTimer = (job, task) => {
+    clearTimeout(job[`${task}Timer`]);
+    job[`${task}Timer`] = null;
+  };
+  const clearJobTimers = (job) => { clearTaskTimer(job, 'vision'); clearTaskTimer(job, 'ocr'); };
   const abort = (message = '사진 분석을 취소했습니다.', name = 'AbortError') => {
     const job = current;
     current = null;
+    if (job?.ocrCreated) { terminateOcr(job.ocrCreated); job.ocrCreated = null; }
     stopResources();
-    if (job) { clearTimeout(job.timer); job.reject(photoRecognitionError(message, name)); }
+    if (job) { clearJobTimers(job); job.reject(photoRecognitionError(message, name)); }
   };
   const emit = (job, value) => {
-    if (current !== job) return;
+    if (current !== job || (value.task === 'ocr' && job.ocrDone) || (value.task === 'vision' && job.visionDone)) return;
     const progress = Number.isFinite(value?.progress) ? Math.max(0, Math.min(1, value.progress)) : null;
     try { job.onProgress({ task: value.task, stage: String(value.stage || '').slice(0, 120), progress }); } catch {}
   };
-  const finish = (job, timedOut = false) => {
-    if (current !== job || (!timedOut && (!job.visionDone || !job.ocrDone))) return;
-    clearTimeout(job.timer);
+  const finish = (job) => {
+    if (current !== job || !job.visionDone || !job.ocrDone) return;
+    clearJobTimers(job);
     current = null;
-    if (timedOut) {
-      if (!job.visionDone) job.warnings.push('옷 종류 분석 시간이 초과되었습니다. 다시 시도하거나 직접 골라 주세요.');
-      if (!job.ocrDone) job.warnings.push('라벨 문자 분석 시간이 초과되었습니다. 다시 시도하거나 라벨 글자를 직접 적어 주세요.');
-      stopResources();
-    }
     if (!job.visionOK && !job.ocrOK) {
       job.reject(photoRecognitionError(job.warnings.join(' ') || '사진 분석을 완료하지 못했습니다. 다시 시도해 주세요.',
-        timedOut ? 'TimeoutError' : 'NotSupportedError'));
+        job.timedOut ? 'TimeoutError' : 'NotSupportedError'));
       return;
     }
     job.resolve({
@@ -232,9 +239,33 @@ export function createPhotoRecognizer({
       elapsedMs: Math.max(0, Date.now() - job.started),
     });
   };
+  const expireTask = (job, task, phase) => {
+    if (current !== job || job[`${task}Done`]) return;
+    clearTaskTimer(job, task);
+    job[`${task}Done`] = true;
+    job.timedOut = true;
+    const subject = task === 'vision' ? '옷 종류' : '라벨 문자';
+    job.warnings.push(phase === 'preparation'
+      ? `${subject} 분석 도구를 준비하는 시간이 초과되었습니다. 연결을 확인하고 다시 시도하거나 직접 입력해 주세요.`
+      : `${subject} 분석 시간이 초과되었습니다. 다시 시도하거나 직접 입력해 주세요.`);
+    if (task === 'vision' && vision) { try { vision.dispose(); } catch {} vision = null; }
+    if (task === 'ocr' && ocr) { terminateOcr(ocr); ocr = null; }
+    if (task === 'ocr' && job.ocrCreated) { terminateOcr(job.ocrCreated); job.ocrCreated = null; }
+    finish(job);
+  };
+  const startPhase = (job, task, phase) => {
+    if (current !== job || job[`${task}Done`] || job[`${task}Phase`] === phase) return;
+    // A late download progress event must never reset an inference deadline.
+    if (phase === 'preparation' && job[`${task}Phase`] === 'inference') return;
+    clearTaskTimer(job, task);
+    job[`${task}Phase`] = phase;
+    job[`${task}Timer`] = setTimeout(() => expireTask(job, task, phase),
+      phase === 'preparation' ? preparationTimeoutMs : timeoutMs);
+  };
   const failVision = (job, message) => {
     if (current !== job || job.visionDone) return;
     job.visionDone = true;
+    clearTaskTimer(job, 'vision');
     job.warnings.push(message || '옷 종류 분석을 완료하지 못했습니다. 직접 골라 주세요.');
     if (vision) { try { vision.dispose(); } catch {} vision = null; }
     finish(job);
@@ -252,10 +283,14 @@ export function createPhotoRecognizer({
         worker.onmessage = ({ data }) => {
           const active = current;
           if (!active || data?.id !== active.id || active.visionDone) return;
-          if (data.type === 'progress') emit(active, { task: 'vision', stage: data.stage, progress: data.progress });
+          if (data.type === 'progress') {
+            if (data.stage === 'kind-analysis') startPhase(active, 'vision', 'inference');
+            emit(active, { task: 'vision', stage: data.stage, progress: data.progress });
+          }
           else if (data.type === 'error') failVision(active, typeof data.message === 'string' ? data.message.slice(0, 500) : '사진 종류 분석을 완료하지 못했습니다.');
           else if (data.type === 'result') {
             active.visionDone = active.visionOK = true;
+            clearTaskTimer(active, 'vision');
             active.requiresCrop = data.result?.requiresCrop === true;
             active.kinds = active.requiresCrop ? [] : photoRecognitionCandidates(data.result?.kinds, 'kind', PHOTO_RECOGNITION_KIND_LABELS);
             active.colors = active.requiresCrop ? [] : photoRecognitionCandidates(data.result?.colors, 'color', PHOTO_RECOGNITION_COLOR_LABELS);
@@ -278,31 +313,35 @@ export function createPhotoRecognizer({
     try {
       if (!ocr) {
         const onCreated = (worker) => {
-          created = worker;
-          if (current !== job) terminateOcr(worker);
+          created = job.ocrCreated = worker;
+          if (current !== job || job.ocrDone) terminateOcr(worker);
         };
         const worker = await ocrFactory({
-          onCreated, isCurrent: () => current === job,
+          onCreated, isCurrent: () => current === job && !job.ocrDone,
           onProgress: (event) => {
             const active = current;
             if (active && (active === job || ocr === created)) emit(active, { task: 'ocr', stage: event?.status || 'label-analysis', progress: event?.progress });
           },
         });
-        if (current !== job) { if (worker !== created) terminateOcr(worker); return; }
+        if (current !== job || job.ocrDone) { if (worker !== created) terminateOcr(worker); return; }
         if (!worker || typeof worker.recognize !== 'function' || typeof worker.terminate !== 'function') {
           throw new Error('라벨 분석 Worker를 시작하지 못했습니다.');
         }
         created = ocr = worker;
+        job.ocrCreated = null;
       }
+      startPhase(job, 'ocr', 'inference');
       emit(job, { task: 'ocr', stage: 'label-analysis', progress: 0 });
       const result = await ocr.recognize(blob);
-      if (current !== job) return;
+      if (current !== job || job.ocrDone) return;
       job.text = typeof result?.data?.text === 'string' ? result.data.text.slice(0, 1200) : '';
       job.ocrDone = job.ocrOK = true;
+      clearTaskTimer(job, 'ocr');
       finish(job);
     } catch (error) {
-      if (current !== job) { if (created) terminateOcr(created); return; }
+      if (current !== job || job.ocrDone) { if (created) terminateOcr(created); return; }
       job.ocrDone = true;
+      clearTaskTimer(job, 'ocr');
       job.warnings.push(error?.message || '라벨 문자를 읽지 못했습니다. 라벨 가까이에서 다시 찍어 주세요.');
       if (ocr) { terminateOcr(ocr); ocr = null; }
       else if (created) terminateOcr(created);
@@ -327,7 +366,8 @@ export function createPhotoRecognizer({
           visionDone: mode === 'label', visionOK: false, ocrDone: false, ocrOK: false,
         };
         current = job;
-        job.timer = setTimeout(() => finish(job, true), timeoutMs);
+        if (mode === 'garment') startPhase(job, 'vision', 'preparation');
+        startPhase(job, 'ocr', 'preparation');
         emit(job, { task: 'recognition', stage: 'starting', progress: 0 });
         if (mode === 'garment') startVision(job, blob);
         // Do not let factory/worker bootstrap rejections escape the job lifecycle.

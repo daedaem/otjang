@@ -62,7 +62,7 @@ function photoIdentityBrandMatches(rawText, normalized, products) {
       if (!alias) continue;
       // One Korean character and a short/common English label are too weak in
       // running text. A complete logo/brand line is still a visible-text hint.
-      const weak = alias.length <= 4 || ['lee', 'levis', 'coach', 'signature'].includes(alias);
+      const weak = alias.length <= 4 || ['lee', 'levis', 'coach', 'champion', 'signature'].includes(alias);
       if (weak && !lines.some((line) => line === alias || line === `brand ${alias}` || line === `브랜드 ${alias}`)) continue;
       const span = photoIdentityPhrase(normalized, alias);
       if (span) matches.push({ brand, evidence: alias, source: 'ocr-text', ...span });

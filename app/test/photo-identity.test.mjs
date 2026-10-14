@@ -1,4 +1,13 @@
 import { test } from 'node:test';
+
+test('WORLD CHAMPION print is not a Champion label, while a full brand line remains a candidate', () => {
+  const graphic = suggestPhotoIdentity('WORLD CHAMPION 1998', { gender: 'M', kind: 'tee' });
+  assert.equal(graphic.brands.length, 0);
+  assert.equal(graphic.candidates.length, 0);
+  const label = suggestPhotoIdentity('CHAMPION\n100% COTTON', { gender: 'M', kind: 'tee' });
+  assert.ok(label.brands.some((row) => row.brand === '챔피온'));
+  assert.equal(label.identityConfirmed, false);
+});
 import assert from 'node:assert/strict';
 import { suggestPhotoIdentity } from '../src/photo-identity.js';
 import { PRODUCTS } from '../src/data/products.js';

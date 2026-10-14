@@ -82,6 +82,9 @@ let claudeLatestPresent = false;
 let returnFocus = null;
 let candidateDraft = null;
 let photoRecognizerFactory = () => createPhotoRecognizer();
+// A deliberate first action precedes large public model downloads. This is
+// session-only; it does not alter wardrobe state or claim the cache exists.
+let photoAnalysisAllowed = false;
 const journeyForms = new Map();
 let pendingOptionChange = null, candidateGarmentReview = null;
 let eraseReviewStep = 0,
@@ -1098,13 +1101,15 @@ function beginDraft(item = null, slot = null, { confirmDetails = false, returnLo
 }
 
 // Inference is transient. Only a human-confirmed value reaches makeGarment.
-function releaseDraftPhotoAnalysis(current, { clearResults = false } = {}) {
+function releaseDraftPhotoAnalysis(current, { clearResults = false, keepRecognizer = false } = {}) {
   if (!current) return;
   current.analysisToken++;
   current.labelToken = (current.labelToken || 0) + 1;
-  try { current.recognizer?.cancel?.(); } catch {}
-  try { current.recognizer?.dispose?.(); } catch {}
-  current.recognizer = null;
+  if (!keepRecognizer || current.recognizing) {
+    try { current.recognizer?.cancel?.(); } catch {}
+    try { current.recognizer?.dispose?.(); } catch {}
+    current.recognizer = null;
+  }
   current.recognizing = false;
   current.photoReview = null;
   if (current.labelPreview) URL.revokeObjectURL(current.labelPreview);
@@ -1130,6 +1135,9 @@ function photoLabelLines() {
   return [...new Set((draft?.labelText || '').split(/\r?\n/).map((line) => line.trim()))]
     .filter((line) => line && line.length <= 120 && !/https?:\/\//i.test(line)).slice(0, 8);
 }
+function photoCanAutoAnalyze() {
+  return photoAnalysisAllowed && (typeof navigator === 'undefined' || !navigator.connection?.saveData);
+}
 function photoAnalysisPanel() {
   if (!draft || (!draft.photoId && !draft.photoRecognition && !draft.recognitionError)) return '';
   const r = draft.photoRecognition, identity = draft.photoIdentity;
@@ -1140,7 +1148,8 @@ function photoAnalysisPanel() {
     progress?.stage === 'color-analysis' ? '색 후보 분석 중' : '분석 도구 준비 중';
   const kinds = (r?.kinds || []).filter((x) => SLOTS.some((s) => s.g === draft.gender && s.shape === x.kind));
   const candidates = confirmedText ? identity?.candidates || [] : [];
-  return `<section class="photo-analysis" aria-label="사진 분석 후보"><h3>사진에서 찾았어요</h3>
+  return `<section class="photo-analysis" aria-label="사진 분석 후보"><h3>${r ? '사진에서 찾았어요' : draft.recognizing ? '사진 분석 중' : '사진에서 정보 찾기'}</h3>
+    ${!photoCanAutoAnalyze() && !draft.photoRecognition ? '<p class="sub">사진에서 종류와 라벨 글자를 찾아볼까요? 처음에는 약154MB의 모델과 문자 도구를 다운로드해요. 사진은 이 기기에서 처리해요. 데이터 절약 모드에서는 사진마다 분석을 선택해요.</p><button class="chip" data-action="photo-start">이 기기에서 사진 분석하기</button><p class="sub">아래에서 종류만 골라 바로 저장해도 돼요.</p>' : ''}
     ${draft.recognizing ? `<p role="status" data-photo-progress>${stage}…</p><p class="sub">첫 분석은 큰 분석 도구(약 154MB와 문자 도구)를 내려받아 시간이 걸려요. 사진은 이 기기에서 처리해요.</p><button class="chip" data-action="photo-cancel">분석 취소하고 직접 고르기</button>` : ''}
     ${kinds.length ? `<p class="sub">어떤 옷을 넣나요? 맞는 종류를 눌러 주세요.</p><div class="opts">${kinds.map((x) => `<button class="chip" data-action="photo-kind" data-kind="${x.kind}" aria-pressed="${draft.kind === x.kind}">${esc(x.label)}</button>`).join('')}</div>` : ''}
     ${r?.colors?.length ? `<p class="sub">맞는 색이 있나요?</p><div class="opts">${r.colors.map((x) => `<button class="chip" data-action="photo-color" data-color="${x.color}" aria-pressed="${draft.color === x.color}">${esc(x.label)}</button>`).join('')}<button class="chip" data-action="draft-color" data-color="">색 모름</button></div>` : ''}
@@ -1155,21 +1164,27 @@ function photoAnalysisPanel() {
     ${candidates.length ? `<p class="sub">같은 상품인지 사진과 이름을 확인해 주세요. 닮았다는 이유만으로 연결하지 않아요.</p><div class="photo-products">${candidates.map((x) => `<button class="photo-product" data-action="photo-candidate-review" data-id="${esc(x.productId)}">${x.product.img ? `<img src="${esc(x.product.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<span><b>${esc(x.brand)}</b>${esc(x.name)}<small>${x.conflicts.length ? '종류·색 등 확인한 정보와 다름' : x.exact ? '상품 글자·주소와 일치하는 후보' : '브랜드가 같은 상품 후보'}</small></span></button>`).join('')}</div>` : confirmedText ? '<p class="sub">확정할 상품을 찾지 못했어요. 브랜드가 없어도 종류·색으로 코디를 추천할 수 있어요.</p>' : ''}
     ${confirmedText && identity?.unresolvedProductLinks?.length ? `<p class="sub">읽힌 상품 주소가 현재 목록에 없어서 연결하지 않았어요. ${identity.unresolvedProductLinks.map((url) => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">원래 상품 보기</a>`).join(' · ')}</p>` : ''}
     ${draft.photoReview ? photoCandidateReviewPanel() : ''}
-    <div class="opts"><button class="chip" data-action="photo-label-picker">라벨·로고를 크게 찍어 추가</button>${!draft.recognizing && draft.photoId ? '<button class="link" data-action="photo-retry">사진 다시 분석</button>' : ''}</div><p class="sub">한 벌이 크게 보이는 사진이 좋아요. 모델 후보는 확인 전까지 저장하지 않아요.</p>
+    ${photoAnalysisAllowed ? `<div class="opts"><button class="chip" data-action="photo-label-picker">라벨·로고를 크게 찍어 추가</button>${!draft.recognizing && draft.photoId ? '<button class="link" data-action="photo-retry">사진 다시 분석</button>' : ''}</div>` : ''}<p class="sub">한 벌이 크게 보이는 사진이 좋아요. 모델 후보는 확인 전까지 저장하지 않아요.</p>
   </section>`;
+}
+function photoCandidateCanLink(candidate) {
+  return !!candidate?.exact && ['product-link', 'brand-and-name'].includes(candidate.match);
 }
 function photoCandidateReviewPanel() {
   const p = PRODUCT_BY_ID[draft.photoReview.id];
   if (!p) return '';
+  const candidate = draft.photoIdentity?.candidates.find((x) => x.productId === p.id);
+  if (!photoCandidateCanLink(candidate)) return `<div class="notice"><h4>같은 브랜드의 참고 상품</h4><p>${esc(p.brand)} · ${esc(p.name)}</p><p class="sub">브랜드·종류만 같아서 내 옷과 같은 상품으로 연결하지 않았어요. 구매한 상품 주소나 고유한 상품명 글자를 위 글자 칸에 넣으면 다시 대조할 수 있어요.</p><a class="link" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">참고 상품 보기</a></div>`;
   const slot = SLOT_BY_ID[p.slot];
-  return `<div class="notice"><h4>이 상품이 내 옷과 같은가요?</h4><p>${esc(p.brand)} · ${esc(p.name)}</p><p>종류: ${esc(garmentKindName(draft.kind))} → ${esc(garmentKindName(slot.shape))}<br>세부 종류: ${esc(SLOT_BY_ID[draft.slot]?.name || '모름')} → ${esc(slot.name)}<br>브랜드: ${esc(draft.brand || '모름')} → ${esc(p.brand)}<br>이름: ${esc(draft.label || '없음')} → ${esc(draft.label || p.name)}${!draft.color && p.color && p.colorSource !== 'image' ? `<br>색: 모름 → ${esc(COLORS[p.color]?.label || p.color)}` : ''}</p><p class="sub">같은 색·옵션인지 확인해 주세요. 내 사진과 직접 적은 이름은 유지해요.</p><button class="chip" data-action="photo-candidate-confirm" data-id="${esc(p.id)}">같은 상품 확인하고 적용</button></div>`;
+  const needsColor = !draft.color && p.color && p.colorSource !== 'image';
+  return `<div class="notice"><h4>이 상품이 내 옷과 같은가요?</h4><p>${esc(p.brand)} · ${esc(p.name)}</p><p>종류: ${esc(garmentKindName(draft.kind))} → ${esc(garmentKindName(slot.shape))}<br>세부 종류: ${esc(SLOT_BY_ID[draft.slot]?.name || '모름')} → ${esc(slot.name)}<br>브랜드: ${esc(draft.brand || '모름')} → ${esc(p.brand)}<br>이름: ${esc(draft.label || '없음')} → ${esc(draft.label || p.name)}</p>${needsColor ? `<p>내 옷도 ${esc(COLORS[p.color]?.label || p.color)}인가요?</p><button class="chip" data-action="photo-product-color" data-id="${esc(p.id)}" aria-pressed="${!!draft.photoReview.colorConfirmed}">이 색이 맞아요</button>` : ''}<p class="sub">같은 색·옵션인지 확인해 주세요. 내 사진과 직접 적은 이름은 유지해요.</p><button class="chip" data-action="photo-candidate-confirm" data-id="${esc(p.id)}"${needsColor && !draft.photoReview.colorConfirmed ? ' disabled' : ''}>같은 상품 확인하고 적용</button></div>`;
 }
 async function analyzeDraftPhoto({ mode = 'garment', file = null } = {}) {
   const current = draft;
   if (!current || current.saving || !['garment', 'label'].includes(mode)) return;
   const blob = file || current.asset?.blob || photoBlobs.get(current.photoId);
   if (!(blob instanceof Blob)) return;
-  releaseDraftPhotoAnalysis(current);
+  releaseDraftPhotoAnalysis(current, { keepRecognizer: !current.recognizing });
   const token = current.analysisToken;
   const textRevision = current.labelTextRevision;
   current.recognizing = true;
@@ -1178,7 +1193,7 @@ async function analyzeDraftPhoto({ mode = 'garment', file = null } = {}) {
   if (mode === 'label') current.labelPreview = URL.createObjectURL(blob);
   addSheet();
   try {
-    const recognizer = photoRecognizerFactory();
+    const recognizer = current.recognizer || photoRecognizerFactory();
     if (typeof recognizer?.analyze !== 'function') throw new Error('사진 분석 도구를 시작하지 못했어요. 종류는 직접 골라 저장할 수 있어요.');
     current.recognizer = recognizer;
     const result = await recognizer.analyze(blob, { mode, onProgress(value) {
@@ -1230,7 +1245,7 @@ function addSheet() {
 async function chooseGarmentPhoto(file) {
   if (!draft) beginDraft();
   if (draft.saving) return;
-  releaseDraftPhotoAnalysis(draft, { clearResults: true });
+  releaseDraftPhotoAnalysis(draft, { clearResults: true, keepRecognizer: !draft.recognizing });
   const current = draft,
     token = ++current.token;
   current.processing = true;
@@ -1252,7 +1267,7 @@ async function chooseGarmentPhoto(file) {
       addSheet();
     }
   }
-  if (draft === current && current.token === token && current.asset && !current.error)
+  if (photoCanAutoAnalyze() && draft === current && current.token === token && current.asset && !current.error)
     await analyzeDraftPhoto();
 }
 async function saveGarmentDraft() {
@@ -2074,9 +2089,18 @@ document.addEventListener('click', async (e) => {
           draft.photoReview = null;
         } else {
           draft.recognitionError = '';
-          draft.photoReview = { id: candidate.productId, analysisToken: draft.analysisToken,
+          draft.photoReview = { id: candidate.productId, analysisToken: draft.analysisToken, colorConfirmed: false,
     values: JSON.stringify([draft.kind, draft.color, draft.brand, draft.label, draft.photoId, draft.slot, draft.productId]) };
         }
+        addSheet();
+        break;
+      }
+      case 'photo-product-color': {
+        const review = draft?.photoReview;
+        const candidate = draft?.photoIdentity?.candidates.find((x) => x.productId === el.dataset.id);
+        if (!review || review.id !== el.dataset.id || review.analysisToken !== draft.analysisToken ||
+            !photoCandidateCanLink(candidate)) break;
+        review.colorConfirmed = true;
         addSheet();
         break;
       }
@@ -2086,20 +2110,27 @@ document.addEventListener('click', async (e) => {
             review.values !== JSON.stringify([draft.kind, draft.color, draft.brand, draft.label, draft.photoId, draft.slot, draft.productId])) break;
         const candidate = draft.photoIdentity?.candidates.find((x) => x.productId === review.id);
         const p = PRODUCT_BY_ID[review.id], slot = SLOT_BY_ID[p?.slot];
-        if (!candidate || candidate.conflicts.length || !p || !slot || slot.g !== draft.gender ||
+        if (!photoCandidateCanLink(candidate) || candidate.conflicts.length || !p || !slot || slot.g !== draft.gender ||
             (draft.brand && draft.brand !== p.brand)) break;
+        if (!draft.color && p.color && p.colorSource !== 'image' && !review.colorConfirmed) break;
         draft.productId = p.id;
         draft.slot = slot.id;
         draft.kind = slot.shape;
         draft.brand = p.brand;
         if (!draft.label) draft.label = p.name.slice(0, 80);
-        if (!draft.color && p.colorSource !== 'image') draft.color = p.color || null;
+        if (!draft.color && review.colorConfirmed && p.colorSource !== 'image') draft.color = p.color || null;
         draft.photoReview = null;
         addSheet();
         break;
       }
       case 'photo-label-picker':
         if (draft && !draft.saving) document.getElementById('label-photo-input')?.click();
+        break;
+      case 'photo-start':
+        if (draft && !draft.saving && !draft.processing) {
+          photoAnalysisAllowed = true;
+          await analyzeDraftPhoto();
+        }
         break;
       case 'photo-cancel':
         if (draft) { releaseDraftPhotoAnalysis(draft); addSheet(); }
