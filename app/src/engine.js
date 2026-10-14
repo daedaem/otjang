@@ -7,6 +7,7 @@ import { PRODUCTS } from './data/products.js';
 import { parseQuery } from './query.js';
 import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus } from './wardrobe.js';
 import { productEligible, evidenceColor } from './catalog-policy.js';
+import { inactivePurchaseGarmentIds } from './purchase-journey.js';
 export const SAFE_PRODUCTS = PRODUCTS.filter(productEligible);
 
 export const SEASON_LABEL = { spring: '봄', summer: '여름', fall: '가을', winter: '겨울' };
@@ -79,12 +80,39 @@ export function harmony(entries, { tonal = false } = {}) {
 
 function ctx(state) {
   const gender = state.gender || 'M';
+  const inactivePurchaseItems = inactivePurchaseGarmentIds(state);
   const styles = (state.styles?.length ? state.styles : [state.style || 'classic']).filter((s) =>
     STYLES[s]?.g.includes(gender),
   );
   const closet = (state.closet || [])
     .map((i) => ({ ...i, gender: i.gender || SLOT_BY_ID[i.slot]?.g }))
-    .filter((i) => i.gender === gender);
+    .filter((i) => i.gender === gender && !inactivePurchaseItems.has(i.id));
+  // An order/receipt is a reason to pause another purchase of the same type,
+  // not proof of an owned garment. It never enters closet or fills a look.
+  const pendingSlots = new Set((state.journeys || [])
+    .filter((journey) => ['ordered', 'received'].includes(journey.stage) &&
+      journey.candidate?.gender?.toUpperCase() === gender)
+    .flatMap((journey) => {
+      const candidate = journey.candidate;
+      const confirmedSlot = candidate.classificationConfirmed && SLOT_BY_ID[candidate.slot];
+      const knownColor = evidenceColor(candidate);
+      return SLOTS.filter((slot) => slot.g === gender &&
+        (confirmedSlot ? slot.id === confirmedSlot.id : slot.shape === candidate.kind) &&
+        (!slot.requiredColors || slot.requiredColors.includes(knownColor)))
+        .map((slot) => slot.id);
+    }));
+  // "I have something similar" is useful purchase knowledge even before a
+  // garment is registered. Pause that kind, but never manufacture a subtype,
+  // photo, owned role or ready outfit from the answer.
+  const ownershipCheckSlots = new Set((state.journeys || [])
+    .filter((journey) => journey.absence === 'present' && journey.candidate?.gender?.toUpperCase() === gender)
+    .flatMap((journey) => {
+      const candidate = journey.candidate;
+      const knownColor = evidenceColor(candidate);
+      return SLOTS.filter((slot) => slot.g === gender && slot.shape === candidate.kind &&
+        (!slot.requiredColors || slot.requiredColors.includes(knownColor)) &&
+        wardrobeSlotStatus(closet, slot) !== 'confirmed').map((slot) => slot.id);
+    }));
   return {
     gender,
     styles: styles.length ? styles : [gender === 'F' ? 'classic' : 'classic'],
@@ -95,6 +123,8 @@ function ctx(state) {
     minPriceExclusive: !!state.minPriceExclusive,
     maxPriceExclusive: !!state.maxPriceExclusive,
     closet,
+    pendingSlots,
+    ownershipCheckSlots,
     ownedSlots: new Set([
       ...SLOTS.filter((s) => wardrobeSlotStatus(closet, s) === 'confirmed').map((s) => s.id),
       ...(state.owned || []),
@@ -256,7 +286,8 @@ const CAT_LIMIT = { acc: 1 };
 export function recommendItems(state, { limit = 8 } = {}) {
   const c = ctx(state);
   const looks = matchingLooks(c);
-  const ranked = SLOTS.filter((s) => s.g === c.gender && !c.ownedSlots.has(s.id))
+  const purchaseExcludedSlots = new Set([...c.ownedSlots, ...c.pendingSlots, ...c.ownershipCheckSlots]);
+  const ranked = SLOTS.filter((s) => s.g === c.gender && !purchaseExcludedSlots.has(s.id))
     .map((slot) => ({ slot, ...scoreSlot(slot, c, looks) }))
     .filter((r) => r.inSeason && r.score > 3)
     .sort((a, b) => b.score - a.score);
@@ -495,7 +526,9 @@ export function essentials(state) {
   return SLOTS.filter((s) => s.g === c.gender && styleScore(s, c.styles) >= 3 && s.cat !== 'acc').map((slot) => ({
     slot,
     owned: wardrobeSlotStatus(c.closet, slot) === 'confirmed',
-    needsCheck: wardrobeSlotStatus(c.closet, slot) === 'uncertain',
+    needsCheck: wardrobeSlotStatus(c.closet, slot) === 'uncertain' || c.pendingSlots.has(slot.id) || c.ownershipCheckSlots.has(slot.id),
+    pending: c.pendingSlots.has(slot.id),
+    ownershipCheck: c.ownershipCheckSlots.has(slot.id),
   }));
 }
 

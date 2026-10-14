@@ -1,5 +1,6 @@
 import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, COLORS } from './data/slots.js';
 import { legacyWardrobeV2 } from './legacy-wardrobe.js';
+import { validatePurchaseJourney, returnedGarmentIds, MAX_PURCHASE_JOURNEYS, MAX_WARDROBE_STATE_BYTES } from './purchase-journey.js';
 
 export const LEGACY_SLOT_MAP = {
   'm-oxford-white': ['m-oxford', 'white'],
@@ -119,7 +120,7 @@ export function demoGarments(gender = 'M') {
 }
 export function newWardrobeState() {
   return {
-    schema: 3,
+    schema: 4,
     onboarded: true,
     gender: 'M',
     styles: ['classic'],
@@ -130,6 +131,7 @@ export function newWardrobeState() {
     demo: true,
     demoSelected: demoGarments(),
     garments: [],
+    journeys: [],
     saved: [],
     hidden: [],
     legacyFingerprint: null,
@@ -168,7 +170,8 @@ export function makeGarment({
 }
 export function wardrobeView(record, tab = 'home') {
   const state = upgradeWardrobe(record);
-  return { ...state, closet: state.demo ? state.demoSelected : state.garments, tab };
+  const returned = returnedGarmentIds(state);
+  return { ...state, closet: state.demo ? state.demoSelected : state.garments.filter((garment) => !returned.has(garment.id)), tab };
 }
 export function storedWardrobe(state) {
   const { closet, tab, ...rest } = state;
@@ -241,9 +244,10 @@ export function validateWardrobe(record) {
     'legacyFingerprint',
     'legacyBaseline',
     'legacyDismissed',
+    ...(record?.schema === 4 ? ['journeys'] : []),
   ]);
   if (
-    record.schema !== 3 ||
+    ![3, 4].includes(record.schema) ||
     typeof record.onboarded !== 'boolean' ||
     !['M', 'F', null].includes(record.gender) ||
     typeof record.demo !== 'boolean' ||
@@ -297,11 +301,25 @@ export function validateWardrobe(record) {
     }
   }
   if (record.demo && record.garments.length) throw new Error('예시와 개인 옷을 섞을 수 없습니다.');
+  if (record.schema === 4) {
+    if (!Array.isArray(record.journeys) || record.journeys.length > MAX_PURCHASE_JOURNEYS)
+      throw new Error('구매 기록은 최대 200개까지 보관할 수 있어요.');
+    const ids = new Set();
+    for (const journey of record.journeys) {
+      validatePurchaseJourney(journey);
+      if (ids.has(journey.id)) throw new Error('구매 기록 ID가 중복됩니다.');
+      ids.add(journey.id);
+    }
+    if (new TextEncoder().encode(JSON.stringify(record)).length > MAX_WARDROBE_STATE_BYTES)
+      throw new Error('기록 정보가 너무 큽니다. 백업 후 필요 없는 기록을 정리해 주세요. 원본을 보존했습니다.');
+  }
   return record;
 }
 export function upgradeWardrobe(record) {
   validateWardrobe(record);
-  if (record.schema === 3) return structuredClone(record);
+  if (record.schema === 4) return structuredClone(record);
+  if (record.schema === 3)
+    return validateWardrobe({ ...structuredClone(record), schema: 4, journeys: [] });
   const mapItem = (g) => {
     const [slot, color] = g.slotId ? LEGACY_SLOT_MAP[g.slotId] || [g.slotId, null] : [null, null];
     return makeGarment({

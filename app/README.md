@@ -8,11 +8,13 @@
 |---|---|
 | `index.html`, `styles.css` | 화면 뼈대와 디자인(밝은·어두운 화면 모두 지원, 휴대폰 폭 기준) |
 | `src/main.js` | 3개 탭, 예시 체험, 옷 편집 초안, 저장 완료 후 화면 변경, 백업 확인 |
-| `src/wardrobe.js` | schema 3 옷 모델, 예시 분리, 구형 schema 2/Claude v2 변환 |
+| `src/wardrobe.js` | schema 4 옷·구매 여정 모델, 예시 분리, 구형 schema 2/3 엄격 승급 |
 | `src/wardrobe-store.js` | IndexedDB의 사진·기록 원자 저장, revision 충돌 검사, `.eoul` 백업/복원 |
 | `src/legacy-wardrobe.js`, `src/legacy-photos.js` | 이전 스키마의 고정된 읽기 규칙과 Claude 사진 DB 읽기 전용 어댑터 |
 | `src/garment-photo.js` | JPG·PNG·WebP를 로컬에서 1024px 이하 JPEG로 축소 |
 | `src/catalog-policy.js` | 수집 분류·카탈로그 생성·추천에서 공유하는 제외 규칙, 색의 근거 구분 |
+| `src/purchase-candidate.js` | 정확한 상품 링크·원주소, 실제 옷 ID 기반 코디 공식·중복·확인 필요 비교 |
+| `src/purchase-journey.js` | 후보 검증, 결정/주문/수령/보유/반품 전이, 비활성 원문 보존 정책 |
 | `src/engine.js` | 추천 계산: 아이템 점수, 코디 채우기, 한 줄 검색 결과 |
 | `src/query.js` | 한 줄 요청 해석: 아이템·상황·계절·색·예산·"X에 어울리는 Y" |
 | `src/data/slots.js` | 스타일 8가지, 색 17가지, 세부 종류 68가지: 스타일별 점수, 상황, 계절, 추천 이유, 입는 법 |
@@ -70,3 +72,13 @@ node make-products.mjs                                   # src/data/products.js 
 프로필에서 `.eoul` 사진 포함 백업, 내용을 확인한 뒤 교체 복원, 현재 옷장 비우기를 제공합니다. 누락된 구형 사진은 사용자 확인 후 `photoMissing:true`로 가져옵니다. `.eoul-recovery`는 새 DB의 원문·사진 및 구형 localStorage 문자열을 보관하는 개발 지원 파일이며, 예전 Claude 사진 DB 전체의 백업은 아닙니다. 자세한 형식과 장애 절차는 [인수인계](../docs/instant-garments-handoff-20261014.md)를 따릅니다.
 
 외부 요청은 상품 이미지와 사용자가 여는 판매 링크입니다. 개인 사진을 업로드하지 않으며 상품 이미지에는 `referrerpolicy="no-referrer"`를 붙입니다. 브라우저 저장은 기기·브라우저·origin 단위입니다. GitHub Pages의 서로 다른 경로는 보안 격리가 아니며 정식 서비스의 전용 origin은 미완료 과제입니다.
+
+## 구매 여정과 지원 범위
+
+3탭은 추천/내 옷장/구매 여정입니다. 기존 찜은 구매 여정 안에 유지합니다. `journeys`는 상품·옵션 한 개, 수량 1의 사용자 직접 기록이며 다른 옵션은 `forkedFrom`으로 같은 첫 후보에 연결한 새 기록입니다. 결정 buy/hold/skip와 실제 기록 단계 candidate/ordered/received/kept/returned는 분리합니다.
+
+수령은 잠정 상태입니다. 받은 옷과 여정을 원자 저장하지만 `kept`를 누르기 전에는 보유 코디에서 제외합니다. 주문/수령 중이거나 비슷한 옷이 있다고 확인한 종류는 추가 구매 후보를 잠시 멈추며 실제 보유로 만들지는 않습니다. 반품·처분한 이전 옷은 추천에서 제외하고 raw garments/사진은 보관합니다. 자료를 직접 삭제했다면 자동 부활 대신 명시적으로 다시 등록하도록 합니다.
+
+사진 Blob은 기존 garments만 참조합니다. 후보는 HTTPS 링크·메타데이터만 보관하고 자동으로 외부 페이지를 읽지 않습니다. 원주소는 로컬 비공개, 공유용 주소는 별도 규칙이 필요한 데이터입니다. 현재가·최저가·핏·가상 착용·확인된 주문/반품을 검증하지 않습니다. 현재 최대 200여정, 여정당 512이벤트, v4 상태 JSON 850KB이며 초과 저장은 원문을 유지하고 오류를 표시합니다.
+
+검증은 Node 22의 194개 자동 검사와 단일 HTML 빌드입니다. 실제 번들 콜백/fake IndexedDB를 포함하지만 DOM·사진 디코딩은 대역입니다. 실제 브라우저 렌더링·휴대폰 카메라·실거래 검증은 별도입니다. 자세한 선택 이유와 전체 완료 기준은 [원스톱 계약](../docs/onestop-product-contract-20261014.md)을 봅니다.
