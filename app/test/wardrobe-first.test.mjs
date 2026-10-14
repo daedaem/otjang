@@ -403,3 +403,13 @@ test('album and label pickers ask the browser for JPEG, PNG or WebP so phones ca
     assert.match(tag, /accept="image\/jpeg,image\/png,image\/webp"/);
   }
 });
+
+test('every bottom sheet is a named dialog so screen readers say which window opened', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  await page.click({ action: 'add-start' });
+  const sheet = page.sheet();
+  assert.match(sheet, /role="dialog"[^>]*aria-labelledby="sheet-title"/);
+  assert.match(sheet, /<h2 id="sheet-title" class="detail-title">옷 한 벌 추가<\/h2>/);
+  assert.equal(sheet.match(/id="sheet-title"/g).length, 1, 'only the first heading names the dialog');
+});

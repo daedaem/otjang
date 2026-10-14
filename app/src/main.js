@@ -913,7 +913,9 @@ function openSheet(html, { key = null } = {}) {
         .map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}="${CSS.escape(v)}"]`)
         .join('')
     : null;
-  $sheet.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grabber"></div><button class="sheet-close" data-action="close-sheet" aria-label="닫기">${ICON.close}</button>${html}</div>`;
+  // 시트는 대화상자라서 첫 제목으로 이름을 붙인다(화면 낭독기가 무슨 창이 열렸는지 읽는다)
+  const titled = html.replace(/<h2(?![^>]*\sid=)/, '<h2 id="sheet-title"');
+  $sheet.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"${titled === html ? '' : ' aria-labelledby="sheet-title"'}><div class="grabber"></div><button class="sheet-close" data-action="close-sheet" aria-label="닫기">${ICON.close}</button>${titled}</div>`;
   sheetKey = key;
   const sheet = $sheet.querySelector('.sheet');
   if (same && sheet && scroll) sheet.scrollTop = scroll;
