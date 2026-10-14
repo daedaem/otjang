@@ -1,16 +1,16 @@
 {
-  "sourceCommit": "125d71ba49c83a2554eedc14ff752eaa09bb5b8a",
+  "sourceCommit": "e51f1187af1dd3a71f953e336cc1850e475200ab",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
   "claudeMergeCommit": "438500b",
-  "upstreamObservedCommit": "438500b52493e01ff1bf3bde89aaa0792aa943e4",
-  "upstreamLatestIntegrated": true,
+  "upstreamObservedCommit": "9ec002ed09bc40bebc0b4c5daa9b2e524d53f4ef",
+  "upstreamLatestIntegrated": false,
   "legacyEoulV2Imported": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T01:12:25.981978+00:00",
+  "builtAt": "2026-10-14T03:27:48.962527+00:00",
   "files": {
     "index.html": {
-      "bytes": 673071,
-      "sha256": "b758bf7acd49218e1101721c2c97308a4823233012478e61424411318a6fe958"
+      "bytes": 729420,
+      "sha256": "a6ac4294518dba6653c626b4f2c0b30d9c8021ae1db8aa2acf6f8dd896ff5acb"
     }
   },
   "catalog": {
@@ -20,10 +20,10 @@
     "styles": 8,
     "looks": 35
   },
-  "storageSchema": 3,
+  "storageSchema": 4,
   "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 147,
+    "passed": 194,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
@@ -42,6 +42,37 @@
     "dedicated-origin-and-operations",
     "legacy-eoul-v2-data-and-backup-migration",
     "purchase-decision-pilot",
-    "recovery-archive-export-capacity"
-  ]
+    "recovery-archive-export-capacity",
+    "community-and-account-sync",
+    "vton-quality-rights-and-photo-consent",
+    "live-same-option-price-comparison",
+    "verified-order-checkout-and-return-integration"
+  ],
+  "upstreamSelectedUxIntegrated": [
+    "same-sheet-scroll-and-focus",
+    "search-product-link-entry"
+  ],
+  "onestop": {
+    "candidateComparison": true,
+    "selfReportedJourney": [
+      "candidate",
+      "ordered",
+      "received",
+      "kept",
+      "returned"
+    ],
+    "variantForking": true,
+    "commercialServiceComplete": false,
+    "community": false,
+    "vton": false,
+    "liveMultiSellerPriceComparison": false,
+    "verifiedOrdersAndCheckout": false
+  },
+  "claudeOnestopReview": {
+    "model": "Opus 5.5",
+    "conversation": "https://claude.ai/chat/edb94e33-80fa-4c8f-9175-a74a92c2e917",
+    "initialAndCrossCompleted": true,
+    "reviewType": "design-description-only",
+    "directRuntimeVerified": false
+  }
 }
