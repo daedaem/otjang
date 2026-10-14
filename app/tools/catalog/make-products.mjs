@@ -130,6 +130,7 @@ export function buildProducts({
       slot,
       color,
       colorSource: fix.color ? 'correction' : p.color ? 'name' : 'image',
+      corrected: !!fix.slot,
       name: cleanName(fix.name || p.name),
     });
   }
@@ -140,7 +141,7 @@ export function buildProducts({
         slot: p.slot,
         color: p.color,
         colorSource: p.colorSource,
-        classification: 'name-rules',
+        classification: p.corrected ? 'correction' : 'name-rules',
         brand: p.brand,
         name: p.name,
         price: p.price,
