@@ -1,38 +1,47 @@
 {
-  "sourceCommit": "c44784136d7424ea59d44ec44c22ff90b09ccd73",
+  "sourceCommit": "125d71ba49c83a2554eedc14ff752eaa09bb5b8a",
   "claudeBaseCommit": "580a5430283ebc5524ff434b13673f7da4bd7ec5",
-  "upstreamObservedCommit": "b0f258960ed0b9284cbdead7f0209aaf27aa17d1",
-  "upstreamLatestIntegrated": false,
+  "claudeMergeCommit": "438500b",
+  "upstreamObservedCommit": "438500b52493e01ff1bf3bde89aaa0792aa943e4",
+  "upstreamLatestIntegrated": true,
+  "legacyEoulV2Imported": false,
   "branch": "feat/instant-wardrobe-demo-20261014",
-  "builtAt": "2026-10-14T00:11:04.062Z",
+  "builtAt": "2026-10-14T01:12:25.981978+00:00",
   "files": {
     "index.html": {
-      "bytes": 644793,
-      "sha256": "5f00aa267ce98c905a801eb21675c479e2640caacb81cafdc0facf5d0d3d1ca6"
+      "bytes": 673071,
+      "sha256": "b758bf7acd49218e1101721c2c97308a4823233012478e61424411318a6fe958"
     }
   },
   "catalog": {
-    "products": 910,
+    "products": 891,
     "brands": 115,
     "slots": 68,
     "styles": 8,
-    "looks": 32
+    "looks": 35
   },
   "storageSchema": 3,
   "storageEnvelopeEpoch": true,
   "tests": {
-    "passed": 103,
+    "passed": 147,
     "failed": 0,
     "nodeVersion": "v22.23.2",
     "browserRenderingVerified": false,
     "realCameraVerified": false
+  },
+  "independentReview": {
+    "codexReviewers": 5,
+    "claudeConversations": 5,
+    "initialAndCrossCompleted": true,
+    "reviewedSource": "c44784136d7424ea59d44ec44c22ff90b09ccd73"
   },
   "releaseStatus": "preview-only",
   "unresolvedReleaseGates": [
     "product-data-permissions",
     "real-mobile-device-qa",
     "dedicated-origin-and-operations",
-    "latest-upstream-storage-integration",
-    "purchase-decision-pilot"
+    "legacy-eoul-v2-data-and-backup-migration",
+    "purchase-decision-pilot",
+    "recovery-archive-export-capacity"
   ]
 }
