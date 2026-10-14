@@ -88,20 +88,23 @@ export function buildProducts({
   // 1) 편집자가 고른 상품에도 같은 분류 충돌 검증을 적용한다.
   for (const [id, [slot0, color0, displayName]] of Object.entries(curation)) {
     const s = snapshot[id];
+    const fix = fixes[id] || {};
+    if (fix.slot === null) continue;
     if (excluded.has(id) || !s?.name || !s.price) {
       missing.push(id);
       continue;
     }
-    const slot = LEGACY[slot0] || slot0;
-    const color = JEANS.has(slot) && color0 === 'navy' ? 'indigo' : color0;
+    const slot = fix.slot || LEGACY[slot0] || slot0;
+    const sourceColor = fix.color || color0;
+    const color = JEANS.has(slot) && sourceColor === 'navy' ? 'indigo' : sourceColor;
     const product = {
       id: `ms-${id}`,
       slot,
       color,
-      colorSource: 'curation',
+      colorSource: fix.color ? 'correction' : 'curation',
       classification: 'curated',
       brand: s.brand,
-      name: displayName || cleanName(s.name),
+      name: cleanName(fix.name || displayName || s.name),
       price: Math.round(Number(s.price)),
       img: s.image,
       url: `https://www.musinsa.com/products/${id}`,
@@ -112,7 +115,9 @@ export function buildProducts({
       checkedAt: s.checkedAt,
       picked: true,
     };
-    if (productEligible(product)) products.set(id, product);
+    // A shortened display title must not hide a conflict in the saved source title.
+    if (productEligible(product) && productEligible({ ...product, name: cleanName(fix.name || s.name) }))
+      products.set(id, product);
   }
 
   // 2) 브랜드·종류별로 충돌 없는 후보의 인기 순위를 계산한다.
@@ -129,7 +134,8 @@ export function buildProducts({
       ...p,
       slot,
       color,
-      colorSource: fix.color ? 'correction' : p.color ? 'name' : 'image',
+      colorSource: fix.color ? 'correction' : p.colorSource || (p.color ? 'name' : 'image'),
+      classification: fix.slot ? 'correction' : p.classification || 'name-rules',
       name: cleanName(fix.name || p.name),
     });
   }
@@ -140,7 +146,7 @@ export function buildProducts({
         slot: p.slot,
         color: p.color,
         colorSource: p.colorSource,
-        classification: 'name-rules',
+        classification: p.classification,
         brand: p.brand,
         name: p.name,
         price: p.price,

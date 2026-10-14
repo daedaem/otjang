@@ -1,4 +1,4 @@
-// 상품 사진이 없거나 내 옷(사진 없음)을 보여 줄 때 쓰는 단순한 옷 그림.
+// 옷 모양 그림: 사진을 쓸 수 없을 때의 색 카드 실루엣과 예전 그림.
 
 const SHAPES = {
   shirt: 'M30 18 L42 12 L50 20 L58 12 L70 18 L86 30 L78 44 L70 40 L70 88 L30 88 L30 40 L22 44 L14 30 Z M50 20 L50 88',
@@ -35,6 +35,12 @@ function shade(hex, amount) {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
+// 사진을 쓸 수 없을 때의 색 카드에 얹는 옅은 실루엣 (색은 CSS currentColor)
+export function silhouetteSvg(slot) {
+  const d = (SHAPES[slot.shape] || SHAPES.tee).split(' M')[0];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${d}" fill="currentColor"/></svg>`;
+}
+
 export function garmentSvg(slot, { size = '100%', color = null } = {}) {
   const d = SHAPES[slot.shape] || SHAPES.tee;
   const fill = color || slot.color || '#cccccc';
@@ -61,6 +67,7 @@ export const ICON = {
   heart: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
   heartFill: '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   hanger: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a2 2 0 1 1 2-2c0 1.2-2 1.6-2 3v1"/><path d="M12 9L3 16.5c-.6.5-.3 1.5.5 1.5h17c.8 0 1.1-1 .5-1.5z"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',

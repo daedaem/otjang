@@ -92,22 +92,24 @@ export function wardrobeSlotStatus(items, slot) {
   if (items.some((item) => garmentSlotStatus(item, slot) === 'confirmed')) return 'confirmed';
   return items.some((item) => garmentSlotStatus(item, slot) === 'uncertain') ? 'uncertain' : 'missing';
 }
+// 기본 예시(클래식)는 engine.exampleCloset 결과를 고정한 것이다. 이 옷만으로 "오늘 뭐 입지?" 코디가 나온다.
+// 스타일·성별을 바꾸면 main.js에서 exampleCloset으로 다시 만든다.
 export const DEMO_SLOTS = {
   M: [
-    ['m-oxford', 'white'],
-    ['m-oxford', 'blue'],
-    ['m-tee', 'white'],
-    ['m-denim-raw', 'indigo'],
+    ['m-rugby', 'navy'],
     ['m-chino', 'beige'],
-    ['m-white-sneaker', 'white'],
+    ['m-canvas', 'ivory'],
+    ['m-vest', 'black'],
+    ['m-oxford', 'white'],
+    ['m-runner', 'grey'],
   ],
   F: [
-    ['f-shirt', 'white'],
+    ['f-cardigan', 'grey'],
     ['f-tee', 'white'],
-    ['f-knit', 'ivory'],
     ['f-denim', 'indigo'],
-    ['f-slacks', 'black'],
-    ['f-sneaker', 'white'],
+    ['f-loafer', 'black'],
+    ['f-trench', 'beige'],
+    ['f-stripe', 'blue'],
   ],
 };
 export function demoGarments(gender = 'M') {

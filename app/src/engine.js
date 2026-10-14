@@ -638,3 +638,43 @@ export function search(state, text, { anchorItemId = null } = {}) {
     gender: c.gender,
   };
 }
+
+// 사진이 없는 옷을 보여 줄 같은 종류의 상품 사진. 같은 색, 없으면 아주 가까운 색까지만 쓴다.
+// 상품명·편집으로 확인한 색을 사진 추정 색보다 먼저, 고른 브랜드 → 사계절 상품 → 인기 순서로 고른다.
+const NEAR_COLORS = {
+  white: ['ivory'], ivory: ['white', 'beige'], beige: ['ivory'], navy: ['indigo'], indigo: ['navy'], blue: ['indigo'],
+  charcoal: ['grey', 'black'], grey: ['charcoal'], black: ['charcoal'], olive: ['green'], green: ['olive'], red: ['pink'], pink: ['red'],
+};
+export function lookalike(slotId, color, { brand = null } = {}) {
+  if (!color) return null;
+  const list = (PRODUCTS_BY_SLOT[slotId] || []).filter((p) => p.img);
+  const key = (p) => [p.brand === brand ? 1 : 0, p.colorSource === 'image' ? 0 : 1, p.summer ? 0 : 1, quality(p)];
+  const better = (a, b) => {
+    const x = key(a), y = key(b);
+    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2] || x[3] - y[3];
+  };
+  for (const c of [color, ...(NEAR_COLORS[color] || [])]) {
+    const same = list.filter((p) => p.color === c);
+    if (same.length) return same.reduce((best, p) => (better(p, best) > 0 ? p : best));
+  }
+  return null;
+}
+
+// 예시 옷장: 고른 스타일의 대표 코디에서 겹치지 않게 몇 벌을 고른다. 그 옷만으로 "오늘 뭐 입지?" 코디가 나오도록
+// 첫 코디를 통째로 넣는다. 색은 그 종류의 대표 색으로 둔다(코디에 뽑힌 상품이 튀는 색일 수 있다).
+export function exampleCloset(state, { size = 6 } = {}) {
+  const looks = recommendLooks(
+    { ...state, closet: [], demo: false, demoSelected: [], occasion: null, budget: null, brandOnly: false },
+    { limit: 3, occasion: null },
+  );
+  const out = [];
+  for (const r of looks) {
+    for (const i of r.items) {
+      if (i.role === 'acc' || out.length >= size || out.some((x) => x.slot === i.slot.id)) continue;
+      const shown = (c) => c && lookalike(i.slot.id, c);
+      const color = (i.slot.colors.includes(i.color) && shown(i.color) && i.color) || i.slot.colors.find(shown) || i.color || i.slot.colors[0];
+      out.push({ slot: i.slot.id, color });
+    }
+  }
+  return out;
+}

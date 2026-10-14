@@ -59,7 +59,8 @@ test('가격과 브랜드와 계절은 관련 없는 단어 일부에서 추측�
     assert.equal(query.brand, null, request);
     assert.deepEqual(matchingIds(query), ['m-polo'], request);
   }
-  assert.equal(parseQuery('폴로 니트', { brands }).brand, '폴로 랄프 로렌');
+  for (const request of ['폴로 니트', '폴로랄프로렌 니트', '폴로 랄프로렌 니트', 'polo ralph lauren knit'])
+    assert.equal(parseQuery(request, { brands }).brand, '폴로 랄프 로렌', request);
   assert.equal(parseQuery('폴로 랄프 로렌 폴로셔츠', { brands }).brand, '폴로 랄프 로렌');
   assert.equal(parseQuery('아크릴 니트', { brands }).brand, null);
   assert.ok(matchingIds(parseQuery('진')).every((id) => SLOTS.find((slot) => slot.id === id).shape === 'jeans'));

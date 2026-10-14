@@ -39,8 +39,8 @@ const RULES = [
   [/크롭|crop/i, null, 'M'],
 
   // 부츠컷 청바지는 신발이 아니다
-  [/부츠\s*컷|boot\s*cut|부츠컷/i, 'm-denim', 'M'],
-  [/부츠\s*컷|boot\s*cut|부츠컷/i, 'f-denim', 'F'],
+  [/부츠\s*(?:컷|진)|boot\s*(?:cut|jeans?)/i, 'm-denim', 'M'],
+  [/부츠\s*(?:컷|진)|boot\s*(?:cut|jeans?)/i, 'f-denim', 'F'],
 
   // 신발
   [
@@ -59,7 +59,7 @@ const RULES = [
   [/첼시|chelsea|사이드\s*고어/i, 'm-chelsea', 'M'],
   [/부츠|boots?\b|워커/i, 'f-boots', 'F'],
   [
-    /더비|derby|옥스퍼드\s*슈즈|oxford\s*shoe|구두|드레스\s*슈즈|플레인\s*토|윙팁|wingtip|브로그|brogue|단테|1461/i,
+    /더비|derby|위켄더\s*옥스(?:포|퍼)드|weekender\s*oxford|옥스퍼드\s*슈즈|oxford\s*shoe|구두|드레스\s*슈즈|플레인\s*토|윙팁|wingtip|브로그|brogue|단테|1461/i,
     'm-derby',
     'M',
   ],
@@ -339,7 +339,8 @@ const APPAREL =
 export function classify(name, g) {
   if (productExclusionReason({ name, price: 1 })) return null;
   const n = normalize(name);
-  const shoe = SHOE_HINT.test(n) && !APPAREL.test(n);
+  const apparelName = n.replace(/코트(?=\s*스니커즈)|\bcoat(?=\s*sneakers?\b)/gi, ' ');
+  const shoe = SHOE_HINT.test(n) && !APPAREL.test(apparelName);
   for (const [re, slot, only] of RULES) {
     if (only && only !== g) continue;
     if (slot && SHOE_SLOTS.has(slot) && !shoe) continue;

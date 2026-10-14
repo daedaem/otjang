@@ -26,6 +26,7 @@ const order = [
   'src/query.js',
   'src/engine.js',
   'src/icons.js',
+  'src/zip-store.js',
   'src/main.js',
 ];
 let js = order

@@ -1281,3 +1281,80 @@ test('unregistered recommendations are candidates and keep the similar-owned reg
   assert.match(page.nodes.get('sheet-root').innerHTML, /구매 후보예요|인지 확인한 뒤 추가 구매를 판단/);
   assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="add-slot"/);
 });
+
+test('taste save failure retains selections for retry while durable preferences stay unchanged', async (context) => {
+  const page = await boot();
+  const before = await page.app.store.read();
+  await page.click({ action: 'taste-start' });
+  await page.click({ action: 'ob-gender', g: 'F' });
+  await page.click({ action: 'toggle-style', style: 'french' });
+  await page.click({ action: 'ob-next' });
+  await page.click({ action: 'toggle-brand', brand: '로라로라' });
+  const put = IDBObjectStore.prototype.put;
+  context.mock.method(IDBObjectStore.prototype, 'put', function () {
+    if (this.name === 'records') throw new DOMException('Synthetic quota', 'QuotaExceededError');
+    return put.apply(this, arguments);
+  });
+  await page.click({ action: 'ob-done' });
+  assert.equal(page.state().gender, 'F');
+  assert.deepEqual(page.state().styles, ['french']);
+  assert.deepEqual(page.state().brands, ['로라로라']);
+  assert.match(page.nodes.get('app').innerHTML, /3|브랜드|저장 공간이 부족/);
+  assert.deepEqual((await page.app.store.read()).state, before.state);
+  context.mock.restoreAll();
+  await page.click({ action: 'ob-done' });
+  const saved = await page.app.store.read();
+  assert.equal(saved.state.gender, 'F');
+  assert.deepEqual([...saved.state.styles], ['french']);
+  assert.deepEqual([...saved.state.brands], ['로라로라']);
+  assert.match(page.nodes.get('app').innerHTML, /내 스타일·브랜드 고르기/);
+});
+
+test('reloading during taste selection preserves newly loaded real garments on cancel and subsequent save', async () => {
+  const page = await boot();
+  await page.click({ action: 'taste-start' });
+  await page.click({ action: 'ob-gender', g: 'F' });
+  await page.click({ action: 'toggle-style', style: 'french' });
+  const latest = await page.app.store.read();
+  const incoming = makeGarment({
+    id: 'g_loaded-during-taste',
+    kind: 'shirt',
+    gender: 'M',
+    label: '새로 읽은 실제 셔츠',
+  });
+  await page.app.store.commit(
+    { ...latest.state, demo: false, demoSelected: [], garments: [incoming] },
+    latest.revision,
+    [],
+    latest.epoch,
+  );
+  await page.click({ action: 'reload-wardrobe' });
+  assert.equal(page.state().gender, 'F');
+  await page.click({ action: 'taste-cancel' });
+  assert.equal(page.state().gender, 'M');
+  assert.equal(page.state().demo, false);
+  assert.equal(page.state().garments[0].id, incoming.id);
+  await add(page, 'pants', '취향 취소 뒤 새 바지');
+  const saved = await page.app.store.read();
+  assert.equal(saved.state.garments.length, 2);
+  assert.ok(saved.state.garments.some((i) => i.id === incoming.id));
+});
+
+test('borrowed product photos are labeled in own details and outfit tiles rather than presented as personal photographs', async () => {
+  const page = await boot();
+  await add(page, 'pants', '내 베이지 바지');
+  const item = page.state().garments[0];
+  await page.click({ action: 'edit-own', id: item.id });
+  await page.click({ action: 'draft-slot', slot: 'm-chino' });
+  await page.click({ action: 'draft-color', color: 'beige' });
+  await page.click({ action: 'draft-save' });
+  await page.click({ action: 'open-own', id: item.id });
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(sheet, /photo-caption">비슷한 상품 사진/);
+  assert.match(sheet, /실제 내 옷과 다를 수 있어요/);
+  assert.match(sheet, /data-color="beige"/);
+  assert.doesNotMatch(sheet, /data-own-photo/);
+  const look = page.app.recommendLooks(page.app.state(), { limit: 1, anchorItem: page.state().garments[0] })[0];
+  assert.ok(look);
+  assert.match(page.app.lookCard(look), /photo-caption">비슷한 상품 사진/);
+});

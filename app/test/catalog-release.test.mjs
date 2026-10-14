@@ -125,7 +125,11 @@ test('화이트 운동화 자리는 실제 화이트 색 근거가 있는 상품
   assert.equal(red.color, 'red');
   assert.equal(productExclusionReason(red), 'required-color-unverified');
   const result = buildProducts(source);
-  assert.ok(!result.list.some((p) => p.id === 'ms-6192515'));
+  const remapped = result.list.find((p) => p.id === 'ms-6192515');
+  assert.equal(remapped?.slot, 'm-runner', '유효한 Red 운동화는 일반 운동화 자리로 교정한다');
+  assert.equal(remapped.color, 'red');
+  assert.equal(remapped.colorSource, 'name');
+  assert.equal(remapped.classification, 'correction');
   const white = result.list.filter((p) => p.slot === 'm-white-sneaker');
   assert.ok(white.length);
   assert.ok(white.every((p) => p.color === 'white' && p.colorSource !== 'image'));
@@ -133,4 +137,70 @@ test('화이트 운동화 자리는 실제 화이트 색 근거가 있는 상품
     assert.equal(productEligible({ name: '레더 스니커즈', slot: 'm-white-sneaker', color, colorSource, price: 70000 }), eligible);
   }
   assert.equal(productEligible({ name: '러닝 스니커즈 Red', slot: 'm-runner', color: 'red', colorSource: 'name', price: 70000 }), true);
+});
+
+test('원문에 명확한 신발·수영복·장갑·반바지는 의류 종류에 들어가지 않는다', () => {
+  for (const [name, slot, reason] of [
+    ['위켄더 옥스포드 3606 - 초콜렛 뮬스키너', 'm-oxford', 'category-conflict'],
+    ['STRIPE ONEPIECE SWIMSUIT BLACK', 'f-dress', 'swimwear'],
+    ['Grand Mama Hand Knit Gloves (Khaki)', 'f-knit', 'not-garment'],
+    ['코튼 치노 드로스트링 쇼트-블랙', 'm-chino', 'shorts'],
+    ['숏 팬츠', 'm-chino', 'shorts'],
+    ['코튼 하프 팬츠', 'm-chino', 'shorts'],
+  ]) {
+    assert.equal(productExclusionReason({ name, slot, price: 10000 }), reason, name);
+    assert.equal(classify(name, slot.startsWith('f-') ? 'F' : 'M'), name.includes('위켄더') ? 'm-derby' : null, name);
+  }
+  const weekender = PRODUCTS.filter((p) => /위켄더/.test(p.name));
+  assert.equal(weekender.length, 2);
+  assert.ok(weekender.every((p) => p.slot === 'm-derby' && p.classification === 'correction'));
+  assert.equal(weekender.find((p) => p.id === 'ms-5449884').colorSource, 'image');
+  assert.equal(weekender.find((p) => p.id === 'ms-6379376').colorSource, 'name');
+  const bootJeans = PRODUCTS.find((p) => p.id === 'ms-5995098');
+  assert.equal(bootJeans?.slot, 'f-denim', '부츠 진은 부츠컷 청바지이며 신발이 아니다');
+  assert.equal(classify('루즈 부츠 진', 'F'), 'f-denim');
+  assert.equal(productExclusionReason({ name: '루즈 부츠 진', slot: 'f-boots', price: 100000 }), 'category-conflict');
+});
+
+test('분류 충돌과 별개인 캐릭터 의류·커버업·기능성 카고는 일괄 배제하지 않는다', () => {
+  for (const [name, slot] of [
+    ['폴로 랄프 로렌 양키스 티셔츠-블루', 'm-tee'],
+    ['루니툰즈 스웨트셔츠', 'm-sweat'],
+    ['케어베어 코튼 티셔츠', 'f-tee'],
+    ['니트 커버업 카디건', 'f-cardigan'],
+    ['하이킹 카고 팬츠', 'm-cargo'],
+    ['코트 스니커즈 White', 'm-white-sneaker'],
+  ])
+    assert.equal(productEligible({ name, slot, color: 'white', colorSource: 'name', price: 10000 }), true, name);
+  assert.equal(classify('폴로 랄프 로렌 양키스 티셔츠-블루', 'M'), 'm-tee');
+  assert.equal(classify('코트 스니커즈 White', 'M'), 'm-white-sneaker');
+  assert.equal(productExclusionReason({ name: '감마 AR 팬츠', slot: 'm-chino', price: 10000 }), 'shape-conflict');
+  assert.equal(productExclusionReason({ name: '아톰 SL 후디', slot: 'm-hoodie', price: 10000 }), 'shape-conflict');
+});
+
+test('편집 상품에도 원문 충돌 검증·수동 교정을 적용하고 출처를 보존한다', () => {
+  const snapshot = {
+    shoe: { name: '위켄더 옥스포드 - 샌드스톤', price: 100000 },
+    red: { name: '트레이너 스니커즈 Red', price: 70000 },
+    hidden: { name: '위켄더 옥스포드', price: 100000 },
+    removed: { name: '니트 스웨터', price: 50000 },
+    licensed: { name: '폴로 랄프 로렌 양키스 티셔츠', price: 50000 },
+  };
+  const curation = {
+    shoe: ['m-oxford', 'beige'], red: ['m-white-sneaker', 'red'],
+    hidden: ['m-oxford', 'beige', '베이직 셔츠'], removed: ['m-knit', 'white'],
+    licensed: ['m-tee', 'blue'],
+  };
+  const { list } = buildProducts({ curation, snapshot, fixes: { shoe: { slot: 'm-derby' }, red: { slot: 'm-runner' }, removed: { slot: null } } });
+  assert.deepEqual(list.map((p) => [p.id, p.slot, p.colorSource, p.classification]), [
+    ['ms-shoe', 'm-derby', 'curation', 'curated'],
+    ['ms-red', 'm-runner', 'curation', 'curated'],
+    ['ms-licensed', 'm-tee', 'curation', 'curated'],
+  ]);
+  const { list: corrected } = buildProducts({ curation: { shoe: curation.shoe }, snapshot, fixes: { shoe: { slot: 'm-derby', color: 'brown' } } });
+  assert.equal(corrected[0].colorSource, 'correction');
+  assert.equal(corrected[0].classification, 'curated');
+  const { list: withEvidence } = buildProducts({ brandProducts: [{ id: 'image', name: '스니커즈', slot: 'm-runner', color: 'white', colorSource: 'image', classification: 'reviewed', price: 10000 }] });
+  assert.equal(withEvidence[0].colorSource, 'image');
+  assert.equal(withEvidence[0].classification, 'reviewed');
 });

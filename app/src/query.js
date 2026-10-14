@@ -105,7 +105,16 @@ const ITEM_WORDS = [
 
 // 브랜드 이름의 다른 표기
 const BRAND_ALIASES = {
-  '폴로 랄프 로렌': ['폴로', '랄프로렌', '랄프 로렌', 'polo', 'ralph'],
+  '폴로 랄프 로렌': [
+    '폴로',
+    '폴로랄프로렌',
+    '폴로 랄프로렌',
+    '랄프로렌',
+    '랄프 로렌',
+    'polo',
+    'polo ralph lauren',
+    'ralph',
+  ],
   리바이스: ['levis', "levi's", '리바이스'],
   칼하트: ['carhartt', '칼하트'],
   오어슬로우: ['orslow', '오어슬로우'],
