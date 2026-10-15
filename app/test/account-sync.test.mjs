@@ -32,9 +32,11 @@ async function startServer() {
   const server = http.createServer((req, res) => app.handle(req, res));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
-  const control = { offline: false, requests: [] };
+  const control = { offline: false, requests: [], hook: null };
   const fetchVia = async (url, init) => {
-    control.requests.push(`${init?.method || 'GET'} ${String(url).replace(base, '')}`);
+    const request = `${init?.method || 'GET'} ${String(url).replace(base, '')}`;
+    control.requests.push(request);
+    if (control.hook) await control.hook(request);
     if (control.offline) throw new TypeError('Failed to fetch');
     return fetch(url, init);
   };
@@ -397,4 +399,31 @@ test('logging out or erasing this browser never deletes the account copy', async
   assert.equal(page.app.account(), null);
   assert.equal(page.state().garments.length, 0);
   assert.deepEqual(serverWardrobe('erase@example.com').state.garments.map((g) => g.label), ['scarf']);
+});
+
+test('switching accounts while a pull is running never applies the old account’s wardrobe to the new one', async (t) => {
+  const a = await deviceWith(['blazer']);
+  t.after(() => a.close());
+  await a.signup('switch-from@example.com');
+  await a.app.kickSync();
+  const b = await boot();
+  t.after(() => { server.control.hook = null; b.close(); });
+  let switching = null;
+  // While B downloads the first account's photo, the user logs out and signs up for another account.
+  server.control.hook = async (request) => {
+    if (switching || !request.startsWith('GET /v1/photos/')) return;
+    switching = (async () => {
+      await b.click({ action: 'account-logout' });
+      await b.signup('switch-to@example.com');
+    })();
+    while (b.app.account()?.email !== 'switch-to@example.com') await new Promise((resolve) => setImmediate(resolve));
+  };
+  await b.login('switch-from@example.com');
+  await switching;
+  await b.app.kickSync();
+  assert.deepEqual(labels(b), [], 'the first account’s clothes were not written into this device');
+  assert.equal(b.app.account().email, 'switch-to@example.com');
+  assert.equal(b.app.syncState().phase, 'idle');
+  assert.equal(serverWardrobe('switch-to@example.com').state.garments.length, 0);
+  assert.deepEqual(serverWardrobe('switch-from@example.com').state.garments.map((g) => g.label), ['blazer'], 'the first account is unchanged');
 });

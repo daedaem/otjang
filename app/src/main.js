@@ -1721,6 +1721,8 @@ let syncState = { phase: account?.token ? 'idle' : 'signed-out', message: '', pr
 let syncChoice = null;
 let syncRunning = null, syncQueued = false, syncRetryTimer = null, syncRetryDelay = 5000;
 const signedIn = () => !!(accountBase && account?.token);
+// 동기화 도중 로그아웃하거나 다른 계정으로 로그인하면, 이전 계정에서 받은 결과를 이 기기와 새 계정 기록에 쓰지 않는다.
+const sameSession = (token) => signedIn() && account.token === token;
 const accountApi = () => createAccountApi({ base: accountBase, token: account?.token || null });
 function saveAccount(next) {
   account = next;
@@ -1758,10 +1760,18 @@ function kickSync() {
   syncRunning = (async () => {
     try {
       let rounds = 0;
-      do {
+      while (signedIn() && rounds++ < 5) {
         syncQueued = false;
-        await syncOnce();
-      } while (syncQueued && signedIn() && ++rounds < 5);
+        const token = account.token;
+        try {
+          await syncOnce();
+        } catch (error) {
+          // 이전 계정에서 난 실패(로그아웃으로 만료된 토큰 등)는 새로 로그인한 계정에 적용하지 않는다.
+          if (sameSession(token)) throw error;
+          syncQueued = signedIn();
+        }
+        if (!syncQueued) break;
+      }
       syncRetryDelay = 5000;
     } catch (error) {
       syncFailed(error);
@@ -1786,7 +1796,13 @@ function syncFailed(error) {
   setSyncState({ phase: 'error', message: error?.message || '계정에 저장하지 못했어요. 이 기기에는 저장돼 있어요.' });
 }
 async function syncOnce() {
+  const token = account.token;
   const api = accountApi();
+  const moved = () => {
+    if (sameSession(token)) return false;
+    syncQueued = signedIn();
+    return true;
+  };
   if (syncState.phase !== 'choose') setSyncState({ phase: 'syncing' });
   // 이전 버전에서 만든 기록에는 저장소 구분값(epoch)이 없을 수 있다. 한 번 저장해 붙인 뒤 비교한다.
   if (!storageEpoch) {
@@ -1794,6 +1810,7 @@ async function syncOnce() {
     await set(storedWardrobe(state), { rerender: false });
   }
   const remote = await api.wardrobeMeta();
+  if (moved()) return;
   const decision = syncDecision({
     synced: account.synced || null,
     local: { revision: storageRevision, epoch: storageEpoch, empty: isEmptyWardrobe(state) },
@@ -1804,13 +1821,17 @@ async function syncOnce() {
     setSyncState({ phase: 'idle' });
     return;
   }
-  if (decision === 'push') return pushLocalWardrobe(api, remote.revision);
+  if (decision === 'push') return pushLocalWardrobe(api, remote.revision, token);
   if (decision === 'pull') {
     const known = !!account.synced;
-    if (await replaceWithAccountWardrobe(api, null)) toast(known ? '다른 기기에서 바뀐 옷장을 받았어요' : '계정에 저장된 옷장을 받았어요');
+    if (await replaceWithAccountWardrobe(api, null, token)) toast(known ? '다른 기기에서 바뀐 옷장을 받았어요' : '계정에 저장된 옷장을 받았어요');
     return;
   }
-  if (syncChoice?.remote.revision !== remote.revision) syncChoice = { remote: await api.wardrobe() };
+  if (syncChoice?.remote.revision !== remote.revision) {
+    const full = await api.wardrobe();
+    if (moved()) return;
+    syncChoice = { remote: full };
+  }
   // 두 쪽 내용이 같으면(다시 로그인, 같은 백업으로 복원) 고를 것이 없다. 지금을 동기화 지점으로 삼는다.
   if (sameWardrobe(syncChoice.remote.state, storedWardrobe(state)) && syncChoice.remote.revision === remote.revision) {
     saveAccount({
@@ -1824,7 +1845,7 @@ async function syncOnce() {
   }
   setSyncState({ phase: 'choose' });
 }
-async function pushLocalWardrobe(api, baseRevision) {
+async function pushLocalWardrobe(api, baseRevision, token = account?.token) {
   const snapshot = await wardrobeStore.read();
   if (!snapshot) return;
   let pushed;
@@ -1841,6 +1862,10 @@ async function pushLocalWardrobe(api, baseRevision) {
     }
     throw error;
   }
+  if (!sameSession(token)) {
+    syncQueued = signedIn();
+    return;
+  }
   saveAccount({
     ...account,
     synced: { remoteRevision: pushed.revision, localEpoch: snapshot.epoch || null, localRevision: snapshot.revision },
@@ -1851,20 +1876,24 @@ async function pushLocalWardrobe(api, baseRevision) {
   setSyncState({ phase: 'idle' });
 }
 // 계정 옷장으로 이 기기 옷장을 바꾼다. 이 기기의 이전 버전 가져오기 표시는 유지한다.
-async function replaceWithAccountWardrobe(api, remote) {
+async function replaceWithAccountWardrobe(api, remote, token = account?.token) {
   const before = { revision: storageRevision, epoch: storageEpoch };
   setSyncState({ phase: 'syncing', progress: '계정 옷장 받는 중' });
   const pulled = await pullWardrobe({
     api, remote, verify: photoAsset,
     onPhoto: (done, total) => setSyncState({ phase: 'syncing', progress: `사진 ${done}/${total}` }),
   });
-  // 받는 동안 이 기기에서 저장한 내용이 있으면 덮어쓰지 않고 다시 비교한다.
-  if (storageRevision !== before.revision || storageEpoch !== before.epoch) {
+  // 받는 동안 이 기기에서 저장했거나 계정이 바뀌었으면 덮어쓰지 않고 다시 비교한다.
+  if (storageRevision !== before.revision || storageEpoch !== before.epoch || !sameSession(token)) {
     syncQueued = true;
     return false;
   }
   if (writeBusy) throw Object.assign(new Error('busy'), { code: 'busy' });
   await set(withDeviceFields(pulled.state, storedWardrobe(state)), { assets: pulled.assets });
+  if (!sameSession(token)) {
+    syncQueued = signedIn();
+    return false;
+  }
   saveAccount({
     ...account,
     synced: { remoteRevision: pulled.revision, localEpoch: storageEpoch, localRevision: storageRevision },
@@ -1929,10 +1958,17 @@ async function openAccountSheet(mode = 'signup') {
   if (!accountHealth) {
     try {
       accountHealth = await createAccountApi({ base: accountBase }).health();
-      // 다시 그리면 입력 중인 비밀번호가 지워지므로, 초대 코드 칸을 더해야 할 때만 다시 그린다.
-      if (accountForm?.mode === 'signup' && !accountForm.busy && accountHealth?.signup?.inviteRequired) accountSheet();
+      // 폼을 다시 그리면 입력 중인 비밀번호가 지워지므로, 초대 코드 칸만 자리에 끼워 넣는다.
+      if (accountForm?.mode === 'signup' && !accountForm.busy && accountHealth?.signup?.inviteRequired) {
+        const slot = $sheet.querySelector?.('#account-invite-slot');
+        if (slot) slot.innerHTML = inviteFieldHTML();
+        else accountSheet();
+      }
     } catch {}
   }
+}
+function inviteFieldHTML() {
+  return `<label for="account-invite">초대 코드</label><input id="account-invite" name="invite" autocomplete="off" value="${esc(accountForm?.invite || '')}" required>`;
 }
 function accountSheet() {
   const f = accountForm;
@@ -1948,8 +1984,7 @@ function accountSheet() {
   }
   const signup = f.mode === 'signup';
   const garments = state.demo ? 0 : state.garments.length;
-  const invite = signup && accountHealth?.signup?.inviteRequired
-    ? '<label for="account-invite">초대 코드</label><input id="account-invite" name="invite" autocomplete="off" required>' : '';
+  const invite = `<div id="account-invite-slot" class="account-invite">${signup && accountHealth?.signup?.inviteRequired ? inviteFieldHTML() : ''}</div>`;
   const check = (field, label) => `<label class="toggle"><input type="checkbox" data-action="account-check" data-field="${field}"${f[field] ? ' checked' : ''}> ${label}</label>`;
   openSheet(`<h2>${signup ? '계정에 저장' : '로그인'}</h2>
     <p class="sub">${signup ? `이메일로 가입하면 지금 옷장(${garments ? `옷 ${garments}벌` : '취향·찜'}${photoBlobs.size ? `·사진 ${photoBlobs.size}장` : ''})을 계정에 저장해요. 저장은 뒤에서 하니 바로 계속 쓰면 돼요.` : '로그인하면 계정에 저장된 옷장과 이 기기 옷장을 맞춰요. 둘 다 내용이 있으면 어느 쪽을 쓸지 물어요.'}</p>
@@ -2999,13 +3034,15 @@ document.addEventListener('click', async (e) => {
           toast('계정과 맞추는 중이에요. 잠시 후 다시 눌러 주세요');
           break;
         }
+        const token = account.token;
         const pending = (async () => {
           try {
-            if (await replaceWithAccountWardrobe(accountApi(), syncChoice.remote)) {
+            if (await replaceWithAccountWardrobe(accountApi(), syncChoice.remote, token)) {
               closeSheet();
               toast('계정 옷장으로 바꿨어요');
             } else syncChoiceSheet();
           } catch (error) {
+            if (!sameSession(token)) return;
             syncFailed(error);
             toast(syncState.message || '계정 옷장을 받지 못했어요. 이 기기 옷장은 그대로예요');
           }
@@ -3026,15 +3063,17 @@ document.addEventListener('click', async (e) => {
           el.textContent = '한 번 더 누르면 계정 옷장을 이 기기 옷장으로 바꿔요';
           break;
         }
+        const token = account.token;
         const pending = (async () => {
           try {
-            await pushLocalWardrobe(accountApi(), syncChoice.remote.revision);
+            await pushLocalWardrobe(accountApi(), syncChoice.remote.revision, token);
             if (syncQueued) toast('그 사이 계정 옷장이 또 바뀌었어요. 다시 확인해 주세요');
             else {
               closeSheet();
               toast('이 기기 옷장을 계정에 저장했어요');
             }
           } catch (error) {
+            if (!sameSession(token)) return;
             syncFailed(error);
             toast(syncState.message || '계정에 저장하지 못했어요. 이 기기 옷장은 그대로예요');
           }

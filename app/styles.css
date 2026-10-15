@@ -464,3 +464,5 @@ img { display: block; max-width: 100%; }
 .sync-choice { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
 .sync-choice h3 { margin: 0 0 6px; }
 .sync-choice .btn { width: 100%; margin-top: 8px; }
+.account-form .account-invite { display: grid; gap: 6px; }
+.account-form .account-invite:empty { display: none; }
