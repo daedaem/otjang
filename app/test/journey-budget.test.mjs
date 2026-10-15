@@ -95,8 +95,10 @@ function legacyJourney(id, full = true) {
 function legacyAboveBudget(photoId) {
   const full = legacyJourney('j_full_0');
   for (let count = 1; count <= 30; count++) {
+    // A schema 4 record never had the schema 6 wear diary.
+    const { wears, ...current } = personal([], [garment('g_unit', photoId)]);
     const original = {
-      ...personal([], [garment('g_unit', photoId)]), schema: 4,
+      ...current, schema: 4,
       journeys: [...Array.from({ length: count }, (_, i) => ({ ...structuredClone(full), id: `j_full_${i}` })),
         legacyJourney('j_wear', false)],
     };

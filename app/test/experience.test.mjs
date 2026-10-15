@@ -432,7 +432,7 @@ test('future-schema startup explicitly confirms replacement and preserves its ra
   const raw = await manifest(await broken.app.store.recoveryBackup());
   const preserved = raw.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
   assert.deepEqual(preserved.value.source.row, future);
-  assert.equal((await broken.app.store.read()).state.schema, 5);
+  assert.equal((await broken.app.store.read()).state.schema, 6);
 });
 test('a ready tab with a later failed read confirms preserved recovery before replacing a future record or missing photo', async () => {
   for (const failure of ['future', 'missing-photo']) {
@@ -874,7 +874,7 @@ test('schema two photo database and backup upgrade without dropping generic garm
   const backup = await store.backup();
   store.close();
   const page = await boot(new Map(), indexedDB);
-  assert.equal(page.state().schema, 5);
+  assert.equal(page.state().schema, 6);
   assert.deepEqual(page.state().styles, ['cityboy']);
   assert.deepEqual(page.state().legacyDismissed.owned, ['legacy_m-blazer']);
   const item = page.state().garments[0];
@@ -890,7 +890,7 @@ test('schema two photo database and backup upgrade without dropping generic garm
   await add(page, 'pants', '추가');
   await page.app.chooseWardrobeBackup(backup);
   await page.click({ action: 'restore-backup' });
-  assert.equal(page.state().schema, 5);
+  assert.equal(page.state().schema, 6);
   assert.equal(page.state().garments.length, 1);
   const restored = await page.app.store.read();
   assert.deepEqual(

@@ -7,6 +7,7 @@
 // are offered: comparisons (stage candidate) and orders not yet received.
 import { MAX_PURCHASE_JOURNEYS } from './purchase-journey.js';
 import { wardrobeStateStorageUsage, journeyStorageUsage } from './wardrobe-store.js';
+import { MAX_WEAR_ENTRIES } from './wear-log.js';
 
 export const MAX_GARMENTS = 200;
 const NEAR = 0.9;
@@ -14,16 +15,20 @@ const NEAR = 0.9;
 export function storageLimits(state) {
   const garments = (state.garments || []).length;
   const journeys = (state.journeys || []).length;
+  const wears = (state.wears || []).length;
   const bytes = wardrobeStateStorageUsage(state);
   const journeyBytes = journeyStorageUsage(state);
-  const ratios = [garments / MAX_GARMENTS, journeys / MAX_PURCHASE_JOURNEYS, bytes.bytes / bytes.limitBytes, journeyBytes.bytes / journeyBytes.limitBytes];
+  const ratios = [garments / MAX_GARMENTS, journeys / MAX_PURCHASE_JOURNEYS, wears / MAX_WEAR_ENTRIES, bytes.bytes / bytes.limitBytes, journeyBytes.bytes / journeyBytes.limitBytes];
   return {
     garments: { count: garments, max: MAX_GARMENTS },
     journeys: { count: journeys, max: MAX_PURCHASE_JOURNEYS },
+    wears: { count: wears, max: MAX_WEAR_ENTRIES },
     bytes,
     journeyBytes,
     fullest: Math.max(...ratios),
     near: ratios.some((ratio) => ratio >= NEAR),
+    // A full wear diary only stops new wear entries; other records still save.
+    wearsFull: wears >= MAX_WEAR_ENTRIES,
     full: garments >= MAX_GARMENTS || journeys >= MAX_PURCHASE_JOURNEYS || bytes.overBudget || journeyBytes.overBudget,
   };
 }
