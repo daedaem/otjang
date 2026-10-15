@@ -172,8 +172,9 @@ test('the API address comes only from the page marker, and an account belongs to
 });
 
 test('pulling keeps this device’s migration markers; pushing uploads only the photos the server lacks', async () => {
-  const remote = { ...newWardrobeState(), legacyFingerprint: 'a'.repeat(64) };
-  const local = { ...newWardrobeState(), legacyFingerprint: null, legacyDismissed: { owned: ['x'], saved: [] } };
+  const base = newWardrobeState();
+  const remote = { ...structuredClone(base), legacyFingerprint: 'a'.repeat(64) };
+  const local = { ...structuredClone(base), legacyFingerprint: null, legacyDismissed: { owned: ['x'], saved: [] } };
   const merged = withDeviceFields(remote, local);
   assert.equal(merged.legacyFingerprint, null);
   assert.deepEqual(merged.legacyDismissed, { owned: ['x'], saved: [] });

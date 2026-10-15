@@ -2960,7 +2960,11 @@ document.addEventListener('click', async (e) => {
         if (syncChoice) syncChoiceSheet();
         break;
       case 'sync-use-account': {
-        if (!signedIn() || !syncChoice || syncRunning) break;
+        if (!signedIn() || !syncChoice) break;
+        if (syncRunning) {
+          toast('계정과 맞추는 중이에요. 잠시 후 다시 눌러 주세요');
+          break;
+        }
         const pending = (async () => {
           try {
             if (await replaceWithAccountWardrobe(accountApi(), syncChoice.remote)) {
@@ -2978,7 +2982,11 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'sync-use-device': {
-        if (!signedIn() || !syncChoice || syncRunning) break;
+        if (!signedIn() || !syncChoice) break;
+        if (syncRunning) {
+          toast('계정과 맞추는 중이에요. 잠시 후 다시 눌러 주세요');
+          break;
+        }
         if (el.dataset.armed !== '1') {
           el.dataset.armed = '1';
           el.textContent = '한 번 더 누르면 계정 옷장을 이 기기 옷장으로 바꿔요';
