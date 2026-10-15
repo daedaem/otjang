@@ -284,6 +284,7 @@ img { display: block; max-width: 100%; }
 
 .toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px); transform: translate(-50%, 20px); z-index: 60; background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; opacity: 0; pointer-events: none; transition: .2s; max-width: calc(100% - 32px); width: max-content; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#sheet-root:has(.purchase-decisions) + .toast { top: calc(12px + env(safe-area-inset-top)); bottom: auto; }
 .toast button { min-height: 44px; color: var(--bg); font-weight: 700; text-decoration: underline; }
 
 .footer { padding: 32px var(--gutter) 16px; font-size: 11px; color: var(--ink-3); line-height: 1.8; max-width: 80ch; }
