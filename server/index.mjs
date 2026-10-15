@@ -5,6 +5,7 @@ import { openDatabase } from './src/db.js';
 import { createApp } from './src/app.js';
 import { createMaskService } from './src/photo-mask.js';
 import { createSupply } from './src/supply.js';
+import { createMailer } from './src/mailer.js';
 
 const config = loadConfig();
 const db = openDatabase(config.database);
@@ -22,7 +23,9 @@ try {
 }
 const supply = createSupply({ env: process.env, log: (kind, detail) => log(`${kind}: ${detail}`) });
 for (const source of supply.sources()) log(`가격 출처 ${source.name}: ${source.status === 'not-connected' ? `미연동 (${source.needs.join(', ')})` : source.status}`);
-const app = createApp({ db, config, maskService, supply, log });
+const mailer = createMailer(process.env, { log: (message) => log(message) });
+log(mailer.enabled ? `메일 발송: ${mailer.kind}${mailer.kind === 'console' ? ' (링크를 이 로그에 출력해요. 실제 사용자에게는 쓰지 마세요)' : ''}` : `메일 발송 꺼짐: ${mailer.reason} 이메일 확인·비밀번호 재설정을 쓸 수 없어요.`);
+const app = createApp({ db, config, maskService, supply, mailer, log });
 const server = http.createServer((req, res) => app.handle(req, res));
 server.requestTimeout = 120000;
 server.listen(config.port, config.host, () => {

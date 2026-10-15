@@ -2169,7 +2169,8 @@ function accountStatusHTML() {
     s.phase === 'offline' || s.phase === 'error' ? s.message :
     account.syncedAt ? `계정에 저장됨 · ${syncTime(account.syncedAt)}` : '아직 계정에 저장하지 않았어요';
   const mask = account.photoMaskConsent === true ? '<p class="fine">배경 지우기: 서버에서 처리 <button class="link" data-action="photo-mask-off">끄기</button></p>' : '';
-  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${mask}
+  const verify = account.emailVerified === false ? `<p class="fine">이메일 미확인 · 비밀번호를 잊었을 때 재설정 메일을 받으려면 확인해 주세요. <button class="link" data-action="verify-send">확인 메일 보내기</button></p>` : '';
+  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${verify}${mask}
     <div class="opts">${s.phase === 'choose' ? '<button class="btn small" data-action="sync-choose">어느 옷장을 쓸지 고르기</button>' : '<button class="chip" data-action="sync-now">지금 저장·확인</button>'}<button class="chip" data-action="account-logout">로그아웃</button><button class="link" data-action="account-delete-open">계정 삭제</button></div>`;
 }
 function accountSection() {
@@ -2232,6 +2233,20 @@ function accountSheet() {
   if (!f) return;
   const busy = f.busy ? ' disabled' : '';
   const error = f.error ? `<p class="notice" role="alert">${esc(f.error)}</p>` : '';
+  if (f.mode === 'forgot') {
+    openSheet(`<h2>비밀번호 찾기</h2><p class="sub">가입한 이메일로 재설정 링크를 보내요. 링크는 30분 동안 한 번만 쓸 수 있어요.</p>
+      ${accountHealth && !accountHealth.features?.email ? '<p class="notice">이 서버는 메일 발송이 아직 설정되지 않았어요. 비밀번호를 바꾸려면 운영자에게 문의해 주세요.</p>' : ''}
+      <form data-action="account" class="account-form"><label for="account-email">이메일</label><input id="account-email" name="email" type="email" inputmode="email" autocomplete="username" value="${esc(f.email)}" required>
+      ${error}${f.notice ? `<p class="notice" role="status">${esc(f.notice)}</p>` : ''}<button class="btn" type="submit"${busy}>${f.busy ? '보내는 중…' : '재설정 링크 보내기'}</button></form>
+      <button class="link" data-action="account-mode" data-mode="login">로그인으로 돌아가기</button>`, { key: 'account' });
+    return;
+  }
+  if (f.mode === 'reset') {
+    openSheet(`<h2>새 비밀번호 정하기</h2><p class="sub">바꾸면 이 계정에 로그인한 모든 기기에서 다시 로그인해야 해요.</p>
+      <form data-action="account" class="account-form"><label for="account-password">새 비밀번호 (8자 이상)</label><input id="account-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+      ${error}<button class="btn" type="submit"${busy}>${f.busy ? '바꾸는 중…' : '비밀번호 바꾸기'}</button></form>`, { key: 'account' });
+    return;
+  }
   if (f.mode === 'delete') {
     openSheet(`<h2>계정 삭제</h2><p>${esc(account?.email || '')} 계정과 서버에 저장된 옷장·사진·구매 기록을 영구 삭제해요. 이 기기에 저장된 옷장은 지우지 않아요.</p>
       <form data-action="account" class="account-form"><label for="account-delete-password">비밀번호 확인</label><input id="account-delete-password" name="password" type="password" autocomplete="current-password" required>
@@ -2253,7 +2268,8 @@ function accountSheet() {
       ${error}
       <button class="btn" type="submit"${busy}>${f.busy ? '확인하는 중…' : signup ? '가입하고 계정에 저장' : '로그인'}</button>
     </form>
-    <button class="link" data-action="account-mode" data-mode="${signup ? 'login' : 'signup'}">${signup ? '이미 계정이 있어요 · 로그인' : '계정이 없어요 · 가입하기'}</button>`, { key: 'account' });
+    <button class="link" data-action="account-mode" data-mode="${signup ? 'login' : 'signup'}">${signup ? '이미 계정이 있어요 · 로그인' : '계정이 없어요 · 가입하기'}</button>
+    ${signup ? '' : '<button class="link" data-action="account-mode" data-mode="forgot">비밀번호를 잊었어요</button>'}`, { key: 'account' });
 }
 async function submitAccountForm(form) {
   const f = accountForm;
@@ -2261,6 +2277,33 @@ async function submitAccountForm(form) {
   // 비밀번호 관리자가 채운 값은 input 이벤트 없이 들어올 수 있어 제출할 때 폼에서 다시 읽는다.
   for (const field of ['email', 'password', 'invite']) if (typeof form?.[field]?.value === 'string') f[field] = form[field].value;
   f.email = f.email.trim();
+  if (f.mode === 'forgot' || f.mode === 'reset') {
+    f.busy = true;
+    f.error = '';
+    accountSheet();
+    try {
+      const api = createAccountApi({ base: accountBase });
+      if (f.mode === 'forgot') {
+        const result = await api.forgotPassword(f.email.trim());
+        f.notice = result?.message || '가입한 이메일이면 재설정 링크를 보냈어요.';
+      } else {
+        await api.resetPassword(f.token, f.password);
+        accountForm = null;
+        // The server ended every session of that account; this device signs in again.
+        if (account?.token) saveAccount({ ...account, token: null });
+        setSyncState({ phase: 'signed-out', message: '비밀번호를 바꿨어요. 새 비밀번호로 로그인하면 이어서 저장해요.' }, { notice: true });
+        toast('비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요');
+        await openAccountSheet('login');
+        return;
+      }
+    } catch (error) {
+      f.error = error.message;
+    }
+    f.busy = false;
+    f.password = '';
+    if (accountForm === f) accountSheet();
+    return;
+  }
   if (f.mode === 'signup' && !(f.age14 && f.privacy && f.terms)) {
     f.error = '필수 항목 세 가지에 동의해야 가입할 수 있어요. 동의하지 않아도 이 기기에서는 계속 쓸 수 있어요.';
     accountSheet();
@@ -2290,6 +2333,7 @@ async function submitAccountForm(form) {
       email: result.user.email, userId: result.user.id, token: result.token,
       synced: same ? account.synced || null : null, syncedAt: same ? account.syncedAt || null : null,
       photoMaskConsent: same ? account.photoMaskConsent === true : false,
+      emailVerified: result.emailVerified === true,
     });
     syncChoice = null;
     if (accountForm === f) accountForm = null;
@@ -3324,7 +3368,7 @@ document.addEventListener('click', async (e) => {
         break;
       case 'account-mode':
         if (accountForm && !accountForm.busy) {
-          accountForm = { ...accountForm, mode: el.dataset.mode === 'login' ? 'login' : 'signup', password: '', error: '' };
+          accountForm = { ...accountForm, mode: ['login', 'forgot'].includes(el.dataset.mode) ? el.dataset.mode : 'signup', password: '', error: '', notice: '' };
           accountSheet();
         }
         break;
@@ -3332,6 +3376,18 @@ document.addEventListener('click', async (e) => {
         accountNudgeDismissed = true;
         render();
         break;
+      case 'verify-send': {
+        if (!signedIn()) break;
+        try {
+          const result = await accountApi().verifyRequest();
+          if (result?.emailVerified) { saveAccount({ ...account, emailVerified: true }); refreshAccountViews(); toast('이미 확인한 이메일이에요'); }
+          else toast('확인 메일을 보냈어요. 24시간 안에 메일의 링크를 열어 주세요');
+        } catch (error) {
+          if (error?.status === 401) syncFailed(error);
+          toast(error?.message || '확인 메일을 보내지 못했어요');
+        }
+        break;
+      }
       case 'account-delete-open':
         if (!signedIn()) break;
         accountForm = { mode: 'delete', email: account.email, password: '', busy: false, error: '' };
@@ -3711,6 +3767,27 @@ document.addEventListener(
 
 render();
 const appReady = bootWardrobe();
+// 메일의 확인·재설정 링크(#verify=…, #reset=…). 토큰은 주소의 # 뒤라 서버 로그·Referer에 남지 않는다.
+async function handleAccountLink() {
+  const hash = typeof location !== 'undefined' ? String(location.hash || '') : '';
+  const match = /^#(verify|reset)=([A-Za-z0-9_-]{20,100})$/.exec(hash);
+  if (!match || !accountBase) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+  const [, purpose, token] = match;
+  if (purpose === 'verify') {
+    try {
+      await createAccountApi({ base: accountBase }).verifyConfirm(token);
+      if (account) saveAccount({ ...account, emailVerified: true });
+      toast('이메일을 확인했어요');
+    } catch (error) {
+      toast(error?.message || '이메일을 확인하지 못했어요');
+    }
+    return;
+  }
+  accountForm = { mode: 'reset', token, email: account?.email || '', password: '', busy: false, error: '' };
+  accountSheet();
+}
+const accountLinkHandled = appReady.then(handleAccountLink);
 // 다른 기기에서 바꾼 옷장은 이 화면으로 돌아올 때나 연결이 돌아올 때 확인한다.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') kickSync();
