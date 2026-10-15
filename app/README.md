@@ -8,7 +8,12 @@
 |---|---|
 | `index.html`, `styles.css` | 화면 뼈대와 디자인(밝은·어두운 화면 모두 지원, 휴대폰 폭 기준) |
 | `src/main.js` | 3개 탭, 예시 체험, 옷 편집 초안, 저장 완료 후 화면 변경, 백업 확인 |
-| `src/wardrobe.js` | schema 5 옷·구매 여정 모델, 예시 분리, 구형 schema 2/3/4 엄격 승급 |
+| `src/wardrobe.js` | schema 6 옷·구매 여정·착용 기록 모델, 예시 분리, 구형 schema 2/3/4/5 엄격 승급 |
+| `src/wear-log.js` | 착용 기록: 같은 날 중복 방지, 오늘 입었어요 토글, 일수 통계, 최근 입은 코디 뒤로 보내기 |
+| `src/wardrobe-plan.js` | 내 옷 → 확인 필요·겹침 → 부족한 종류 → 실제 상품·수집가·링크, 같은 상품의 지난 기록 |
+| `src/offers.js`, `src/offer-store.js` | 같은 상품·색·사이즈 판매처의 배송비 포함 총액 비교, 품절·오래된 가격·옵션 불일치 처리 |
+| `src/record-cleanup.js`, `src/draft-keeper.js` | 한도 도달 시 지워도 되는 기록만 정리, 탭이 다시 로드돼도 쓰던 내용 복원 |
+| `src/community-post.js` | 회원 코디에 올리는 내용(코디 모양만)과 규칙. 앱과 서버가 같은 검증을 씀 |
 | `src/wardrobe-store.js` | IndexedDB의 사진·기록 원자 저장, revision 충돌 검사, `.eoul` 백업/복원 |
 | `src/legacy-wardrobe.js`, `src/legacy-photos.js` | 이전 스키마의 고정된 읽기 규칙과 Claude 사진 DB 읽기 전용 어댑터 |
 | `src/garment-photo.js` | JPG·PNG·WebP를 로컬에서 1024px 이하 JPEG로 축소 |
@@ -70,7 +75,7 @@ node make-products.mjs                                   # src/data/products.js 
 
 ## 개인정보
 
-가입·서버 API·분석 도구가 없습니다. 취향·옷·찜과 사진은 `eoul-wardrobe-v2` IndexedDB의 같은 트랜잭션으로 저장합니다. 사진 입력은 25MB 이하, 변환본은 긴 변 1024px·JPEG 800KB 이하입니다. HEIC 직접 입력은 지원하지 않습니다. 예전 `eoul:v1` localStorage와 `eoul` 사진 DB는 읽기 전용으로 보존하며 자동으로 지우지 않습니다.
+계정에 저장하지 않으면 서버로 아무것도 보내지 않습니다. 계정·동기화·배경 지우기·회원 코디는 운영자가 직접 운영하는 서버(`server/`)만 쓰며, 외부 분석·광고 서비스는 쓰지 않습니다. 취향·옷·찜과 사진은 `eoul-wardrobe-v2` IndexedDB의 같은 트랜잭션으로 저장합니다. 사진 입력은 25MB 이하, 변환본은 긴 변 1024px·JPEG 800KB 이하입니다. HEIC 직접 입력은 지원하지 않습니다. 예전 `eoul:v1` localStorage와 `eoul` 사진 DB는 읽기 전용으로 보존하며 자동으로 지우지 않습니다.
 
 프로필에서 `.eoul` 사진 포함 백업, 내용을 확인한 뒤 교체 복원, 현재 옷장 비우기를 제공합니다. 누락된 구형 사진은 사용자 확인 후 `photoMissing:true`로 가져옵니다. `.eoul-recovery`는 새 DB의 원문·사진 및 구형 localStorage 문자열을 보관하는 개발 지원 파일이며, 예전 Claude 사진 DB 전체의 백업은 아닙니다. 자세한 형식과 장애 절차는 [인수인계](../docs/instant-garments-handoff-20261014.md)를 따릅니다.
 
