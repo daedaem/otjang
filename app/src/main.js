@@ -1898,7 +1898,8 @@ async function openAccountSheet(mode = 'signup') {
   if (!accountHealth) {
     try {
       accountHealth = await createAccountApi({ base: accountBase }).health();
-      if (accountForm?.mode === mode) accountSheet();
+      // 다시 그리면 입력 중인 비밀번호가 지워지므로, 초대 코드 칸을 더해야 할 때만 다시 그린다.
+      if (accountForm?.mode === 'signup' && !accountForm.busy && accountHealth?.signup?.inviteRequired) accountSheet();
     } catch {}
   }
 }
