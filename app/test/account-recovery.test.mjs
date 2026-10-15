@@ -82,7 +82,7 @@ test('a new account is told the email is unconfirmed; the mailed link confirms i
   const page = await boot();
   await page.signup('verify@example.com');
   assert.equal(page.app.account().emailVerified, false);
-  await page.click({ action: 'open-profile' });
+  await page.click({ action: 'open-settings' });
   assert.match(page.sheet(), /이메일 미확인[\s\S]*data-action="verify-send"/);
   await new Promise((resolve) => setImmediate(resolve));
   const token = linkToken(outbox.findLast((m) => m.to === 'verify@example.com'), 'verify');

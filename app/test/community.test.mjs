@@ -239,7 +239,7 @@ test('when the operator turns the community off, a member is told what is left a
   const storage = new Map([...member.storage].map(([key, value]) => [key, key === 'eoul:account' ? value.replace(JSON.stringify(base), JSON.stringify(offBase)) : value]));
   const later = await boot({ storage, at: offBase });
   assert.doesNotMatch(later.body(), /회원 코디 보기/, 'no community entry while it is off');
-  await later.click({ action: 'open-profile' });
+  await later.click({ action: 'open-settings' });
   assert.match(later.sheet(), /회원 코디에 남긴 글 1개가 서버에 있어요/);
   await later.click({ action: 'community-open' });
   assert.match(later.sheet(), /지금 회원 코디를 꺼 두었어요. 내가 남긴 글 1개와 그 사진이 서버에 남아 있어요/);

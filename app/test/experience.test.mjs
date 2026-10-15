@@ -515,7 +515,7 @@ test('recovery confirmation cannot replace a source changed by another tab', asy
 test('current-wardrobe reset labels its scope and retains legacy source material', async () => {
   const raw = JSON.stringify(oldState),
     page = await boot(new Map([['eoul:v1', raw]]));
-  await page.click({ action: 'open-profile' });
+  await page.click({ action: 'open-settings' });
   assert.match(page.nodes.get('sheet-root').innerHTML, /현재 옷장 비우기/);
   assert.match(page.nodes.get('sheet-root').innerHTML, /이전 버전의 자료와 복구용 사본은 유지/);
   assert.doesNotMatch(page.nodes.get('sheet-root').innerHTML, /모두 지우고 처음부터/);
@@ -922,7 +922,8 @@ test('full erase requires scope and final confirmation, clears all wardrobe sour
     tx.objectStore('photos').put(jpeg(22), 'recovery-photo:synthetic');
   });
   const before = await syntheticDBRows(indexedDB, 'eoul-wardrobe-v2');
-  await page.click({ action: 'open-profile' });
+  await page.click({ action: 'open-settings' });
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="erase-review"/);
   await page.click({ action: 'erase-review' });
   const scope = page.nodes.get('sheet-root').innerHTML;
   assert.match(scope, /현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 판매처 가격 기록, 취향, 복구용 사본/);
@@ -1160,7 +1161,7 @@ test('price-sorted search labels collected-date prices and displays the catalogu
   assert.match(view, /수집일 가격이 낮은 순서/);
   assert.match(view, /옵션과 배송비는 판매 페이지에서 확인/);
   assert.ok(view.includes(CATALOG.checkedLabel));
-  assert.match(view, /할인·쿠폰·재고에 따라 달라질 수/);
+  assert.match(view, /가격·쿠폰·재고는 구매 전에 판매처에서 확인/);
   assert.doesNotMatch(view, /실시간 최저가|최저가 보장/);
 });
 

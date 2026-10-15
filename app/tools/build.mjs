@@ -24,6 +24,7 @@ const order = [
   'src/purchase-journey.js',
   'src/wear-log.js',
   'src/wardrobe.js',
+  'src/closet-view.js',
   'src/wardrobe-store.js',
   'src/wardrobe-erase.js',
   'src/garment-photo.js',

@@ -78,31 +78,43 @@ const script = fs.readFileSync(output, 'utf8').match(/<script type="module">([\s
 async function boot({ indexedDB = new IDBFactory(), storage = memory(), session = memory(), base = null } = {}) {
   const nodes = new Map(['app', 'sheet-root', 'toast'].map((id) => [id, { innerHTML: '', classList: { add() {}, remove() {} }, querySelector() { return null; }, querySelectorAll() { return []; } }]));
   const listeners = new Map(), windowListeners = new Map();
+  const focusTargets = new Map();
+  const documentDouble = {
+    activeElement: null,
+    getElementById: (id) => nodes.get(id) ?? null,
+    addEventListener(type, fn) { listeners.set(type, [...(listeners.get(type) || []), fn]); },
+    querySelector: (selector) => (base && selector === 'meta[name="eoul-api"]' ? { content: 'same-origin' } : focusTargets.get(selector) ?? null),
+    querySelectorAll: () => [], visibilityState: 'visible', body: { style: {}, append() {} }, createElement: () => ({ click() {}, remove() {} }),
+  };
   const context = vm.createContext({
     indexedDB, Blob, crypto: globalThis.crypto, structuredClone, btoa, atob, Uint8Array, DataView, TextEncoder, TextDecoder,
     URL: class extends URL { static createObjectURL() { return 'blob:x'; } static revokeObjectURL() {} }, URLSearchParams,
     Image: class { decode() { return Promise.resolve(); } }, fetch: (url, init) => fetch(url, init),
     localStorage: storage, sessionStorage: session, navigator: {},
     ...(base ? { location: { origin: base, search: '', pathname: '/', hash: '' } } : {}),
-    document: {
-      getElementById: (id) => nodes.get(id) ?? null,
-      addEventListener(type, fn) { listeners.set(type, [...(listeners.get(type) || []), fn]); },
-      querySelector: (selector) => (base && selector === 'meta[name="eoul-api"]' ? { content: 'same-origin' } : null), querySelectorAll: () => [],
-      visibilityState: 'visible', body: { style: {}, append() {} }, createElement: () => ({ click() {}, remove() {} }),
-    },
+    document: documentDouble,
     window: { scrollTo() {}, matchMedia: () => ({ matches: false }), addEventListener(type, fn) { windowListeners.set(type, [...(windowListeners.get(type) || []), fn]); } },
     CSS: { escape: (v) => v }, setTimeout: () => 1, clearTimeout() {}, requestAnimationFrame: (fn) => fn(),
   });
   vm.runInContext(script, context);
   await context.testApp.ready;
   const page = {
-    app: context.testApp, storage, session, indexedDB,
+    app: context.testApp, storage, session, indexedDB, nodes, document: documentDouble, focusTargets,
     body: () => nodes.get('app').innerHTML,
     sheet: () => nodes.get('sheet-root').innerHTML,
     state: () => JSON.parse(JSON.stringify(context.testApp.state())),
     async click(dataset) { for (const fn of listeners.get('click') || []) await fn({ target: { closest: () => ({ dataset }) }, preventDefault() {}, stopPropagation() {} }); },
     async input(id, value, dataset = {}) { for (const fn of listeners.get('input') || []) await fn({ target: { id, value, dataset } }); },
     async change(target) { for (const fn of listeners.get('change') || []) await fn({ target: { id: '', dataset: {}, ...target } }); },
+    async submit(action, fields) {
+      let prevented = false;
+      const form = { elements: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { value }])) };
+      for (const fn of listeners.get('submit') || []) await fn({
+        target: { closest: (selector) => selector === `form[data-action="${action}"]` ? form : null },
+        preventDefault() { prevented = true; },
+      });
+      assert.ok(prevented, 'the in-app form prevents page navigation');
+    },
     storageEvent(key) { for (const fn of windowListeners.get('storage') || []) fn({ key }); },
     async signup(email) {
       await page.click({ action: 'account-open', mode: 'signup' });
@@ -129,9 +141,107 @@ async function seeded(state) {
   return indexedDB;
 }
 
+const shownGarmentIds = (markup) => [...markup.matchAll(/<button\b[^>]*data-action="open-own"[^>]*data-id="([^"]+)"/g)].map((match) => match[1]);
+
+test('wardrobe search, sorting, review and clear are view operations that retain all active clothes and preferences', async (t) => {
+  const initial = { ...newWardrobeState(), demo: false, demoSelected: [], styles: ['cityboy', 'dandy'], brands: ['리바이스'], budget: 1,
+    garments: [
+      makeGarment({ id: 'g_new', slot: 'm-oxford', color: 'white', gender: 'M', brand: '폴로 랄프 로렌', label: '가 출근 셔츠', createdAt: '2026-10-15T00:00:00.000Z' }),
+      makeGarment({ id: 'g_old', kind: 'coat', color: 'navy', gender: 'M', label: '나 여행 코트', createdAt: '2026-10-01T00:00:00.000Z' }),
+      makeGarment({ id: 'g_other', slot: 'f-cardigan', color: null, gender: 'F', label: '다 카디건', createdAt: '2026-10-10T00:00:00.000Z' }),
+    ] };
+  const page = await boot({ indexedDB: await seeded(initial) });
+  t.after(() => page.app.store.close());
+  const committed = await page.app.store.read();
+  let searchFocus = 0, sortFocus = 0;
+  page.nodes.set('closet-search', { focus() { searchFocus++; } });
+  page.nodes.set('closet-sort', { focus() { sortFocus++; } });
+  await page.click({ action: 'tab', tab: 'closet' });
+  assert.deepEqual(shownGarmentIds(page.body()), ['g_new', 'g_other', 'g_old']);
+
+  await page.submit('closet-search', { closetQuery: '  폴로랄프로렌 화이트  ' });
+  assert.deepEqual(shownGarmentIds(page.body()), ['g_new']);
+  assert.match(page.body(), /id="closet-search"[^>]*value="폴로랄프로렌 화이트"/);
+  assert.equal(searchFocus, 1, 'search focus is restored after the view rerenders');
+  await page.click({ action: 'closet-clear' });
+  await page.change({ id: 'closet-sort', value: 'oldest' });
+  assert.deepEqual(shownGarmentIds(page.body()), ['g_old', 'g_other', 'g_new']);
+  assert.equal(sortFocus, 1);
+  await page.change({ id: 'closet-sort', value: 'name' });
+  assert.deepEqual(shownGarmentIds(page.body()), ['g_new', 'g_old', 'g_other']);
+
+  await page.click({ action: 'closet-review' });
+  assert.deepEqual(shownGarmentIds(page.body()), ['g_old', 'g_other']);
+  assert.match(page.body(), /data-action="closet-review" aria-pressed="true"/);
+  await page.click({ action: 'closet-review' });
+  assert.equal(shownGarmentIds(page.body()).length, 3, 'the same review control toggles back to every active garment');
+  await page.submit('closet-search', { closetQuery: '없는 상품 이름' });
+  assert.deepEqual(shownGarmentIds(page.body()), []);
+  assert.match(page.body(), /조건에 맞는 옷이 없어요[\s\S]*data-action="closet-clear"/);
+  await page.click({ action: 'closet-clear' });
+  assert.equal(shownGarmentIds(page.body()).length, 3);
+
+  await page.click({ action: 'tab', tab: 'home' });
+  await page.click({ action: 'closet-review' });
+  assert.equal(page.state().tab, 'closet', 'a review shortcut from another tab opens the wardrobe');
+  assert.deepEqual(shownGarmentIds(page.body()), ['g_old', 'g_other']);
+  assert.deepEqual(await page.app.store.read(), committed, 'search, sorting, clearing and navigation never save or change recommendation preferences');
+});
+
+test('every main tab opens settings while taste controls and storage actions have distinct destinations', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  const committed = await page.app.store.read();
+  for (const tab of ['home', 'closet', 'saved']) {
+    await page.click({ action: 'tab', tab });
+    assert.match(page.body(), /<header\b[\s\S]*data-action="open-settings"/);
+    await page.click({ action: 'open-settings' });
+    assert.match(page.sheet(), /<h2[^>]*>내 설정<\/h2>/);
+    assert.match(page.sheet(), /data-action="backup"/);
+    assert.match(page.sheet(), /data-action="cleanup-open"/);
+    assert.match(page.sheet(), /data-action="open-profile"/);
+    await page.click({ action: 'open-profile' });
+    assert.match(page.sheet(), /<h2[^>]*>내 취향<\/h2>/);
+    assert.match(page.sheet(), /data-action="profile-style"/);
+    assert.doesNotMatch(page.sheet(), /data-action="(?:backup|choose-backup|erase-review|reset)"/);
+    await page.click({ action: 'open-settings' });
+    assert.match(page.sheet(), /data-action="backup"/);
+    await page.click({ action: 'close-sheet' });
+  }
+  assert.deepEqual(await page.app.store.read(), committed, 'opening settings and taste does not alter the wardrobe');
+});
+
+test('closing a dialog focuses its connected trigger, a rerendered replacement, or the current navigation fallback', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  const focused = [];
+  const button = (name, extra = {}) => ({ ...extra, focus(options) { focused.push({ name, options: JSON.parse(JSON.stringify(options)) }); } });
+  const trigger = button('original', { id: 'original-trigger', dataset: { action: 'add-start' }, isConnected: true });
+  page.document.activeElement = trigger;
+  await page.click({ action: 'add-start' });
+  await page.click({ action: 'close-sheet' });
+  assert.deepEqual(focused.pop(), { name: 'original', options: { preventScroll: true } });
+
+  const detached = button('removed', { dataset: { action: 'add-start' }, isConnected: false });
+  const replacement = button('replacement', { isConnected: true });
+  page.document.activeElement = detached;
+  page.focusTargets.set('[data-action="add-start"]', replacement);
+  await page.click({ action: 'add-start' });
+  await page.click({ action: 'close-sheet' });
+  assert.deepEqual(focused.pop(), { name: 'replacement', options: { preventScroll: true } });
+
+  page.document.activeElement = button('gone', { id: 'no-longer-present', dataset: {}, isConnected: false });
+  page.focusTargets.set('.nav [aria-current="page"]', button('active-tab'));
+  await page.click({ action: 'open-settings' });
+  await page.click({ action: 'close-sheet' });
+  assert.deepEqual(focused.pop(), { name: 'active-tab', options: { preventScroll: true } });
+  assert.equal(page.nodes.get('app').inert, false);
+  assert.equal(page.sheet(), '');
+});
+
 test('the cleanup sheet removes only chosen unlinked records after a second tap', async () => {
   const page = await boot({ indexedDB: await seeded(wardrobeWithJourneys()) });
-  await page.click({ action: 'open-profile' });
+  await page.click({ action: 'open-settings' });
   assert.match(page.sheet(), /옷 2\/200벌 · 구매 기록 3\/200개/);
   await page.click({ action: 'cleanup-open' });
   assert.match(page.sheet(), /받은·계속 입는·반품한 기록은[\s\S]*\(1개\)/);

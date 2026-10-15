@@ -189,7 +189,7 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   await page.click({ action: 'open-plan' });
   const sheet = page.sheet();
   assert.match(sheet, /등록한 내 옷 5벌 중 종류·색을 확인한 4벌로 계산했어요/);
-  assert.match(sheet, /① 계산에 넣은 내 옷[\s\S]*② 겹치는 옷[\s\S]*③ 부족한 종류와 실제 상품/);
+  assert.match(sheet, /부족한 종류와 실제 상품[\s\S]*<summary>계산 기준 · 내 옷과 겹치는 종류<\/summary>[\s\S]*계산에 넣은 내 옷[\s\S]*겹치는 옷/);
   assert.match(sheet, /데님 · 색 미확인 <button class="link" data-action="open-own" data-id="g_jeans">/);
   assert.match(sheet, /<b>화이트 [^<]*옥스퍼드[^<]* 2벌<\/b>/);
   const plan = wardrobePlan(JSON.parse(JSON.stringify(page.app.state())));
@@ -203,7 +203,9 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   assert.match(sheet, /가격은 현재 최저가가 아니에요/);
   assert.doesNotMatch(sheet.replace('가격은 현재 최저가가 아니에요', ''), /최저가/);
   await page.click({ action: 'candidate-product', id: p.id });
-  assert.equal(page.app.candidateDraft().candidate.productId, p.id);
+  assert.equal(page.app.state().journeys.at(-1).candidate.productId, p.id);
+  assert.equal(page.app.candidateDraft(), null, 'one comparison tap no longer asks for catalog metadata again');
+  assert.match(page.sheet(), /내 옷을 기준으로 비교/);
 });
 
 test('the plan sheet shows a product I decided not to buy as my record, with a way back to it', async () => {
@@ -233,7 +235,7 @@ test('the example closet says it is an example on home and in the sheet', async 
   assert.match(page.body(), /예시 옷이라 실제로 가진 옷과 다를 수 있어요/);
   await page.click({ action: 'open-plan' });
   assert.match(page.sheet(), /예시 옷 6벌로 보는 진단이에요. 실제 내 옷이 아니에요./);
-  assert.match(page.sheet(), /① 계산에 넣은 예시 옷/);
+  assert.match(page.sheet(), /계산에 넣은 예시 옷/);
 });
 
 test('pasting the unlisted Musinsa link opens a comparison for that link only', async () => {
