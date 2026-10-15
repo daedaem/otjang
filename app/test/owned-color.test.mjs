@@ -143,7 +143,7 @@ test('saving without a color says how to fix it, flags the tile and offers a one
   assert.match(toastText(page), /색을 확인하면 구매 비교에도 쓰여요/);
   const item = page.state().garments.find((g) => g.productId === white.id);
   assert.equal(item.color, null);
-  assert.match(page.nodes.get('app').innerHTML, new RegExp(`data-id="${item.id}"[\\s\\S]*?색 미확인`));
+  assert.match(page.nodes.get('app').innerHTML, new RegExp(`data-id="${item.id}">(?:(?!</button>)[\\s\\S])*<span class="closet-status">색 확인</span>`), 'the tile itself shows what to confirm, under the photo');
 
   await page.click({ action: 'open-own', id: item.id });
   assert.match(page.sheet(), /색 미확인<\/b> · 색을 확인하지 않은 옷은 구매 후보와 비교할 때 조합 수에 들어가지 않아요/);

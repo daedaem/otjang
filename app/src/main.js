@@ -1017,7 +1017,7 @@ function renderCloset() {
   // Only garments registered in this app carry a real registration time. Migrated
   // records received a placeholder date and are shown as moved, not dated.
   const shown = closetItems(items, { category: closetFilter, query: closetQuery, reviewOnly: closetReviewOnly, sort: closetSort });
-  const grid = `<section class="section" style="padding-top:0">
+  const grid = `<section class="section u-pt-0">
     ${!items.length ? '<p class="sub">사진이나 상품 목록에서 첫 옷을 추가해 보세요.</p>' : ''}
     ${items.length && !shown.length ? '<div class="empty"><b>조건에 맞는 옷이 없어요</b><button class="chip" data-action="closet-clear">검색·필터 초기화</button></div>' : ''}
     <div class="closet-items">${shown.map(({ item: i, registered }) => {
@@ -1029,7 +1029,7 @@ function renderCloset() {
         ? `등록 ${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, '0')}. ${String(date.getDate()).padStart(2, '0')}.`
         : !demo && i.source === 'legacy' ? '이전 버전에서 옮김' : '';
       const missing = missingGarmentDetails(i);
-      return `<button class="citem" data-action="open-own" data-id="${esc(i.id)}"><span class="closet-photo-stage">${itemPicture(i)}${!demo && missing.length ? `<span class="closet-status">${esc(missing.join('·'))} 확인</span>` : ''}</span>${brand ? `<span class="cbrand">${esc(brand)}</span>` : ''}<span class="cname">${esc(garmentLabel(i))}</span>${demo ? '<span class="closet-tag">예시 옷</span>' : registration ? `<span class="cdate">${registration}</span>` : ''}${!demo && !i.color ? '<span class="sr-only">색 미확인</span>' : ''}</button>`;
+      return `<button class="citem" data-action="open-own" data-id="${esc(i.id)}"><span class="closet-photo-stage">${itemPicture(i)}</span>${brand ? `<span class="cbrand">${esc(brand)}</span>` : ''}<span class="cname">${esc(garmentLabel(i))}</span>${!demo && missing.length ? `<span class="closet-status">${esc(missing.join('·'))} 확인</span>` : ''}${demo ? '<span class="closet-tag">예시 옷</span>' : registration ? `<span class="cdate">${registration}</span>` : ''}</button>`;
     }).join('')}<button class="closet-add-tile" data-action="add-start"><span class="closet-add-stage">${ICON.plus}</span><span>옷 추가</span></button></div>
   </section>`;
 
@@ -1090,7 +1090,7 @@ function renderWishlist() {
   const total = list.reduce((s, p) => s + p.price, 0);
   return `<section class="section">
     <h2>찜</h2><div class="sub">구매는 각 상품의 판매 페이지에서 해요.</div>${retained}
-    <div class="list" style="margin-top:14px">${list.map((p) => itemCard({ slot: SLOT_BY_ID[p.slot], product: p, reasons: [SLOT_BY_ID[p.slot].why] })).join('')}</div>
+    <div class="list u-mt-4">${list.map((p) => itemCard({ slot: SLOT_BY_ID[p.slot], product: p, reasons: [SLOT_BY_ID[p.slot].why] })).join('')}</div>
     <div class="total"><span>찜한 ${list.length}개</span><b>${formatPrice(total)}</b></div>
   </section>`;
 }
@@ -1627,7 +1627,7 @@ function itemSheet(id) {
   lastLooks = look ? [look] : [];
   openSheet(`
     ${picture(p, slot, 'hero')}
-    <div style="margin-top:14px">${brandTag(p)}</div>
+    <div class="u-mt-4">${brandTag(p)}</div>
     <h2 class="detail-title">${esc(p.name)}</h2>
     <div class="detail-price">${formatPrice(p.price)}${stars(p)}</div>
     <div class="fine">${esc(p.store)} 판매가 · ${esc(p.checkedAt)} 확인${p.color ? ` · ${COLORS[p.color]?.label || ''} (${p.colorSource === 'image' ? '상품 사진 추정' : '상품명·편집 분류'})` : ''}</div>
@@ -1694,8 +1694,8 @@ function ownSheet(id) {
   lastLooks = [];
   openSheet(`
     ${itemPicture(item, 'hero')}
-    ${similarPhoto(item) ? `<p class="fine" style="margin-top:8px">${state.demo ? '예시 옷이라' : '사진이 없어'} 같은 종류·색의 상품 사진으로 보여 줘요. 실제 옷의 모양·핏과 다를 수 있어요.</p>` : ''}
-    <div class="brand-name" style="margin-top:14px">${esc(p?.brand || item.brand || '브랜드 미입력')}</div>
+    ${similarPhoto(item) ? `<p class="fine u-mt-2">${state.demo ? '예시 옷이라' : '사진이 없어'} 같은 종류·색의 상품 사진으로 보여 줘요. 실제 옷의 모양·핏과 다를 수 있어요.</p>` : ''}
+    <div class="brand-name u-mt-4">${esc(p?.brand || item.brand || '브랜드 미입력')}</div>
     <h2 class="detail-title">${esc(item.label || p?.name || garmentLabel(item))}</h2>
     ${!active ? '<p class="notice">보유 추천에서 제외 중인 옷이에요. 사진과 기록은 보관 중이며 구매 여정에서 수령·보유·반품 상태를 확인할 수 있어요.</p>' : ''}
     ${item.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 사진을 다시 골라 주세요.</p>' : ''}<div class="fine">${esc(garmentLabel(item))} · ${esc(COLORS[item.color]?.label || '색 미확인')}</div>
@@ -2493,14 +2493,14 @@ function optionSheet(kind) {
   ).join('');
   if (kind === 'budget') {
     openSheet(
-      `<h2 class="detail-title">한 벌 예산</h2><p class="sub" style="margin-top:4px">이 가격 이하 상품만 추천해요.</p><div class="opts" style="margin-top:16px">${budgetOpts}</div>`,
+      `<h2 class="detail-title">한 벌 예산</h2><p class="sub u-mt-1">이 가격 이하 상품만 추천해요.</p><div class="opts u-mt-4">${budgetOpts}</div>`,
     );
     return;
   }
   if (kind === 'brands') {
-    openSheet(`<h2 class="detail-title">자주 사는 브랜드</h2><p class="sub" style="margin-top:4px">고른 브랜드를 먼저 추천해요. 고른 스타일과 가까운 순서예요.</p>
-      <div class="opts" style="margin-top:16px">${brandChips({ action: 'toggle-brand-sheet', limit: 80 })}</div>
-      <p class="sub" style="margin-top:16px">찾는 브랜드가 없으면 알려 주세요. 상품을 더 모아 넣을게요.</p>`);
+    openSheet(`<h2 class="detail-title">자주 사는 브랜드</h2><p class="sub u-mt-1">고른 브랜드를 먼저 추천해요. 고른 스타일과 가까운 순서예요.</p>
+      <div class="opts u-mt-4">${brandChips({ action: 'toggle-brand-sheet', limit: 80 })}</div>
+      <p class="sub u-mt-4">찾는 브랜드가 없으면 알려 주세요. 상품을 더 모아 넣을게요.</p>`);
     return;
   }
   openSheet(`
