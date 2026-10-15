@@ -1,0 +1,6 @@
+{
+  "brand": { "id": "ttak-bojagi", "name": "딱", "tagline": "옷장에 잇는 한 조각", "heroTitle": "내 옷장에 딱 맞는<br>한 조각.", "wardrobe": true, "stamps": { "buy": "딱", "hold": "잠깐", "skip": "패스" }, "deck": true, "daypart": false, "haptic": false },
+  "include": ["stamp-base"],
+  "themeColor": "#EFECE6",
+  "fonts": "https://fonts.googleapis.com/css2?family=Song+Myung&family=Gowun+Dodum&display=swap"
+}

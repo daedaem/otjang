@@ -1,0 +1,22 @@
+{
+  "brand": {
+    "id": "ttak",
+    "name": "딱",
+    "tagline": "내 옷장에 딱 맞는 한 벌",
+    "heroTitle": "살까? 말까?<br>내 옷장에 딱이면.",
+    "wardrobe": true,
+    "stamps": {
+      "buy": "딱!",
+      "hold": "잠깐",
+      "skip": "패스"
+    },
+    "deck": true,
+    "daypart": false,
+    "haptic": false
+  },
+  "include": [
+    "stamp-base"
+  ],
+  "themeColor": "#0E0E0E",
+  "fonts": "https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+}
