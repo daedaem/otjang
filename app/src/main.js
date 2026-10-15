@@ -42,7 +42,7 @@ import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSourc
 import { createPhotoRecognizer } from './photo-recognition.js';
 import { suggestPhotoIdentity } from './photo-identity.js';
 import { findOwnedCatalog } from './owned-catalog.js';
-import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
+import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, clearBackupRecord, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
@@ -1640,6 +1640,10 @@ async function eraseAllWardrobe() {
   let failureResult = null;
   try {
     await eraseWardrobeData();
+    // 백업 파일을 받은 날짜 기록은 옷장 자료가 아니라 이 기기의 메모라서 이전 자료
+    // 범위(eoul:v1 등)와 따로, 전체 삭제가 끝난 뒤 지운다. 새 옷장은 다시 백업 알림을 받는다.
+    clearBackupRecord();
+    backupNudgeDismissed = false;
     for (const url of photos.values()) URL.revokeObjectURL(url);
     releaseDraftPhotoURLs(draft);
     photoBlobs = new Map();

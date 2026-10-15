@@ -74,6 +74,14 @@ export function markBackup(storage = globalThis.localStorage, now = new Date()) 
   } catch {}
 }
 
+// A full erase removes this device note too (see main.js eraseAllWardrobe), so a new
+// wardrobe is reminded again instead of inheriting the old backup date.
+export function clearBackupRecord(storage = globalThis.localStorage) {
+  try {
+    storage?.removeItem(LAST_BACKUP_KEY);
+  } catch {}
+}
+
 /** A real wardrobe with no recent backup file gets a gentle reminder. */
 export function backupDue({ garmentCount, last, now = new Date() }) {
   if (garmentCount < 3) return false;

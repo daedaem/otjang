@@ -179,3 +179,16 @@ test('the first real save asks the browser once to keep the data', async (t) => 
   }
   assert.equal(asked, 1);
 });
+
+test('a completed full erase also removes the last-backup note, so a new wardrobe is reminded again', async (t) => {
+  const storage = new Map([['eoul:last-backup-at', '2026-10-14T00:00:00.000Z']]);
+  const page = await seeded(3, { storage });
+  t.after(() => page.close());
+  await page.click({ action: 'tab', tab: 'closet' });
+  assert.doesNotMatch(page.nodes.get('app').innerHTML, /backup-nudge/, 'a recent backup suppresses the reminder');
+  await page.click({ action: 'erase-review' });
+  await page.click({ action: 'erase-confirm' });
+  await page.click({ action: 'erase-execute' });
+  assert.doesNotMatch(page.sheet(), /전체 삭제 미완료/, 'the erase itself completed');
+  assert.equal(storage.has('eoul:last-backup-at'), false);
+});
