@@ -26,6 +26,7 @@ const order = [
   'src/wardrobe-erase.js',
   'src/garment-photo.js',
   'src/photo-recognition.js',
+  'src/background-removal.js',
   'src/photo-identity.js',
   'src/owned-catalog.js',
   'src/storage-health.js',
