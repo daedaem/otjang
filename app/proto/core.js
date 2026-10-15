@@ -6,6 +6,16 @@ const Proto = (() => {
   const meta = PROTO_META;
   const KEY = `eoul-proto:${meta.id}`;
   const blank = () => ({ v: 1, gender: null, styles: [], garments: [], decisions: [], started: false });
+  // A new generation (meta.gen) or a link ending in #reset starts this prototype
+  // fresh, as on first use. An artifact page has its own origin, so clearing its
+  // storage clears only this prototype's records.
+  try {
+    const gen = String(meta.gen || '1');
+    if ((typeof location !== 'undefined' && location.hash === '#reset') || localStorage.getItem('eoul-proto:gen') !== gen) {
+      localStorage.clear();
+      localStorage.setItem('eoul-proto:gen', gen);
+    }
+  } catch {}
   let record = load();
 
   function load() {
