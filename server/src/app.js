@@ -106,6 +106,8 @@ export function createApp({ db, config, maskService = null, supply = null, maile
     insertEmailToken: db.prepare('INSERT INTO email_tokens (token_hash, user_id, purpose, email, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)'),
     emailToken: db.prepare('SELECT user_id, purpose, email, expires_at, used_at FROM email_tokens WHERE token_hash = ?'),
     useEmailTokens: db.prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND purpose = ? AND used_at IS NULL'),
+    useOtherEmailTokens: db.prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND purpose = ? AND used_at IS NULL AND token_hash != ?'),
+    deleteEmailToken: db.prepare('DELETE FROM email_tokens WHERE token_hash = ?'),
     setVerified: db.prepare("UPDATE identities SET verified_at = ? WHERE provider = 'email' AND user_id = ? AND email = ?"),
     setPassword: db.prepare("UPDATE identities SET password_hash = ? WHERE provider = 'email' AND user_id = ?"),
     deleteUserSessions: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
@@ -139,13 +141,9 @@ export function createApp({ db, config, maskService = null, supply = null, maile
 
   const VERIFY_MINUTES = 24 * 60, RESET_MINUTES = 30;
   async function sendEmailLink(userId, email, purpose) {
-    const token = newSessionToken(), t = now();
+    const token = newSessionToken(), t = now(), hash = tokenHash(token);
     const minutes = purpose === 'verify' ? VERIFY_MINUTES : RESET_MINUTES;
-    transaction(db, () => {
-      // A new link replaces earlier unused ones of the same purpose.
-      q.useEmailTokens.run(t, userId, purpose);
-      q.insertEmailToken.run(tokenHash(token), userId, purpose, email, t, t + minutes * 60000);
-    });
+    q.insertEmailToken.run(hash, userId, purpose, email, t, t + minutes * 60000);
     const link = `${mail.publicUrl}/#${purpose}=${token}`;
     const text = purpose === 'verify'
       ? `어울 계정의 이메일을 확인하려면 아래 링크를 열어 주세요. 24시간 동안 한 번만 쓸 수 있어요.
@@ -158,7 +156,15 @@ ${link}
 ${link}
 
 요청하지 않았다면 이 메일은 무시해 주세요. 비밀번호는 바뀌지 않아요.`;
-    await mail.send({ to: email, subject: purpose === 'verify' ? '어울 이메일 확인' : '어울 비밀번호 재설정', text });
+    try {
+      await mail.send({ to: email, subject: purpose === 'verify' ? '어울 이메일 확인' : '어울 비밀번호 재설정', text });
+    } catch (error) {
+      // The earlier link stays usable when the new one never left this server.
+      q.deleteEmailToken.run(hash);
+      throw error;
+    }
+    // Delivered: the new link replaces earlier unused ones of the same purpose.
+    q.useOtherEmailTokens.run(now(), userId, purpose, hash);
   }
   // Marks a one-time link used and returns its row, or refuses it.
   function takeToken(token, purpose) {
@@ -279,7 +285,8 @@ ${link}
       const body = await readJson(req, MAX_AUTH_BODY);
       const row = takeToken(body.token, 'verify');
       q.setVerified.run(now(), row.user_id, row.email);
-      return { emailVerified: true };
+      // Which account was verified, so a device signed in to another account does not mark itself.
+      return { emailVerified: true, userId: row.user_id };
     },
     // Always the same answer, whether or not the email has an account.
     'POST /v1/auth/password/forgot': async (req) => {
@@ -290,8 +297,9 @@ ${link}
       if (!email) throw new HttpError(400, 'invalid-email', '이메일 주소를 확인해 주세요.');
       if (!mail.enabled) throw new HttpError(503, 'mail-off', '메일 발송이 아직 설정되지 않아 비밀번호를 재설정할 수 없어요. 운영자에게 문의해 주세요.');
       const identity = q.identity.get(email);
+      // The mail goes out after the answer, so a registered address takes no longer to answer than an unknown one.
       if (identity && limiter.take(`forgot-email:${email}`, 3, HOUR))
-        await sendEmailLink(identity.user_id, email, 'reset').catch((error) => log('mail-failed', error.message));
+        setImmediate(() => sendEmailLink(identity.user_id, email, 'reset').catch((error) => log('mail-failed', error.message)));
       return [202, { message: `가입한 이메일이면 재설정 링크를 보냈어요. ${RESET_MINUTES}분 안에 한 번만 쓸 수 있어요.` }];
     },
     'POST /v1/auth/password/reset': async (req) => {

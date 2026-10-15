@@ -645,7 +645,7 @@ function offerSheet() {
     <p class="sub">${esc([v.brand, v.name].filter(Boolean).join(' ') || '가져온 상품')}</p>
     <h3 class="block">사려는 옵션</h3>
     <div class="candidate-fields"><label>색<select id="offer-requested-color" data-action="offer-requested"><option value="">아직 모름</option>${Object.entries(COLORS).map(([id, c]) => `<option value="${id}"${requested.color === id ? ' selected' : ''}>${c.label}</option>`).join('')}</select></label><label>사이즈<input id="offer-requested-size" data-action="offer-requested" maxlength="20" value="${esc(requested.size || '')}" placeholder="예: M"></label></div>
-    ${!result.requestedComplete ? '<p class="fine">색과 사이즈를 정하면 같은 옵션의 판매처만 비교해요.</p>' : ''}
+    ${!result.requestedComplete ? '<p class="fine">원하는 색과 사이즈를 정해야 총액을 비교해요. 사이즈가 없는 상품은 ‘FREE’라고 적어 주세요.</p>' : ''}
     ${best}
     <ul class="offer-list">${rows.map(row).join('')}</ul>
     ${refreshInfo}
@@ -4361,8 +4361,9 @@ async function handleAccountLink() {
   const [, purpose, token] = match;
   if (purpose === 'verify') {
     try {
-      await createAccountApi({ base: accountBase }).verifyConfirm(token);
-      if (account) saveAccount({ ...account, emailVerified: true });
+      const result = await createAccountApi({ base: accountBase }).verifyConfirm(token);
+      // Only the account the link was for; this device may be signed in to another one.
+      if (account && result?.userId && account.userId === result.userId) saveAccount({ ...account, emailVerified: true });
       toast('이메일을 확인했어요');
     } catch (error) {
       toast(error?.message || '이메일을 확인하지 못했어요');
@@ -4387,11 +4388,23 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener?.('online', () => kickSync());
 // Sign-in or sign-out in another tab of this browser.
+// Another tab of this browser saved the wardrobe: load it here (no server call, no account write).
+async function refreshFromStore() {
+  if (!storageReady || writeBusy || bootBusy) return;
+  const latest = await wardrobeStore.peek();
+  if (!latest || (latest.revision === storageRevision && latest.epoch === storageEpoch)) return;
+  const snapshot = await wardrobeStore.read();
+  if (!snapshot || writeBusy) return;
+  applySnapshot(snapshot);
+  render();
+}
 window.addEventListener?.('storage', (e) => {
   if (!accountBase || (e.key !== ACCOUNT_KEY && e.key !== null)) return;
   const fresh = readAccount(localStorage, accountBase);
   if (fresh?.token === account?.token && fresh?.email === account?.email) {
+    // The same account synced in another tab: show what it saved in this browser.
     account = fresh;
+    refreshFromStore().catch(() => {});
     return;
   }
   account = fresh;
