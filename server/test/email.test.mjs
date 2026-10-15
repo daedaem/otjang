@@ -96,6 +96,39 @@ test('password reset: the same answer for any email, a 30-minute single link, ev
   assert.ok(s.logs.every((entry) => !/me@example\.com/.test(JSON.stringify(entry))), 'no email in the log');
 });
 
+test('a failed delivery keeps the earlier reset link usable; the answer never waits for the mail', async (t) => {
+  const outbox = [];
+  let mode = 'ok';
+  let release;
+  const mailer = { enabled: true, kind: 'memory', publicUrl: 'https://eoul.example', send: async (m) => {
+    if (mode === 'fail') throw new Error('smtp down');
+    if (mode === 'hang') await new Promise((resolve) => { release = resolve; });
+    outbox.push(m);
+  } };
+  const s = await start({ mailer });
+  t.after(s.close);
+  await s.signup();
+  await s.tick();
+  await s.call('POST', '/v1/auth/password/forgot', { json: { email: 'me@example.com' } });
+  await s.tick();
+  const first = s.linkToken(outbox.at(-1), 'reset');
+  mode = 'fail';
+  assert.equal((await s.call('POST', '/v1/auth/password/forgot', { json: { email: 'me@example.com' } })).status, 202);
+  await s.tick();
+  assert.equal(s.db.prepare("SELECT COUNT(*) AS n FROM email_tokens WHERE purpose = 'reset'").get().n, 1, 'the undelivered token is removed');
+  assert.equal((await s.call('POST', '/v1/auth/password/reset', { json: { token: first, password: 'still my horse' } })).status, 200,
+    'the link the user already has still works');
+
+  // A slow mail provider: the registered address answers as fast as an unknown one.
+  mode = 'hang';
+  const known = await Promise.race([
+    s.call('POST', '/v1/auth/password/forgot', { json: { email: 'me@example.com' } }),
+    new Promise((resolve) => setTimeout(() => resolve('waited for the mail'), 1000)),
+  ]);
+  assert.equal(known.status, 202);
+  release?.();
+});
+
 test('with mail off, verification and reset say so plainly and nothing is created', async (t) => {
   const s = await start({ mailer: createMailer({}) });
   t.after(s.close);
@@ -141,5 +174,14 @@ test('the SMTP client speaks the protocol: EHLO, AUTH PLAIN, MAIL, RCPT, DATA wi
   const payload = body.split('\n\n')[1].replace(/\n/g, '');
   assert.equal(Buffer.from(payload, 'base64').toString('utf8'), '링크\n.한 줄');
   await assert.rejects(sendSmtp({ host: 'smtp.example', port: 25, secure: 'none', from: 'a@b.co', to: 'c@d.co', subject: 's', text: 't' }), /이 컴퓨터의 중계 서버에만/);
+  // A relay that hangs up without an error: the send fails at once instead of waiting forever.
+  for (const hangUp of [(socket) => socket.end(), (socket) => { socket.write('220 hi\r\n'); socket.once('data', () => socket.end()); }]) {
+    const quitter = net.createServer(hangUp);
+    await new Promise((resolve) => quitter.listen(0, '127.0.0.1', resolve));
+    const started = Date.now();
+    await assert.rejects(sendSmtp({ host: '127.0.0.1', port: quitter.address().port, secure: 'none', from: 'a@b.co', to: 'c@d.co', subject: 's', text: 't', timeoutMs: 10000 }), /연결을 끊었어요/);
+    assert.ok(Date.now() - started < 5000, 'not left to the timeout');
+    quitter.close();
+  }
   await assert.rejects(sendSmtp({ host: '127.0.0.1', port: server.address().port, secure: 'none', from: 'a@b.co', to: 'x@y.co\r\nRCPT TO:<z@z.co>', subject: 's', text: 't' }), /메일 주소/);
 });

@@ -202,6 +202,22 @@ test('two tabs of one browser: a sign-in and a save in one tab never conflict in
   assert.equal(tabA.app.account(), null, 'signing out in one tab signs out the other');
 });
 
+test('the same account in two tabs: a save and sync in one tab shows up in the other without a conflict', async () => {
+  const indexedDB = await seeded({ ...newWardrobeState(), demo: false, demoSelected: [], garments: [makeGarment({ id: 'g_a', slot: 'm-oxford', color: 'white', gender: 'M' })] });
+  const storage = memory();
+  const tabA = await boot({ indexedDB, storage, base });
+  await tabA.signup('same@example.com');
+  const tabB = await boot({ indexedDB, storage, base });
+  await tabB.app.kickSync();
+  await tabA.app.set({ garments: [...tabA.state().garments, makeGarment({ id: 'g_c', slot: 'm-chino', color: 'beige', gender: 'M' })] });
+  await tabA.app.kickSync();
+  tabB.storageEvent('eoul:account');
+  for (let i = 0; i < 50 && !tabB.state().garments.some((g) => g.id === 'g_c'); i++) await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(tabB.state().garments.map((g) => g.id).sort(), ['g_a', 'g_c'], 'the other tab shows the new garment');
+  await tabB.app.set({ garments: [...tabB.state().garments, makeGarment({ id: 'g_d', slot: 'm-loafer', color: 'brown', gender: 'M' })] });
+  assert.equal(tabB.app.storageError(), '', 'its next save does not hit a stale-revision conflict');
+});
+
 test('an old-version wardrobe on this browser is moved into the account and reaches another address', async () => {
   const oldState = { onboarded: true, gender: 'M', style: 'classic', owned: ['m-tee-white', 'm-chino'], saved: ['ms-404474'] };
   const oldBrowser = await boot({ storage: memory(new Map([['eoul:v1', JSON.stringify(oldState)]])), base });

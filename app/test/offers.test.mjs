@@ -42,7 +42,12 @@ test('only the same product, same option, in stock, recent and with known shippi
   assert.deepEqual(flags({ color: null }), ['option-unknown']);
   assert.deepEqual(flags({ shipping: null }), ['shipping-unknown']);
   assert.deepEqual(flags({ sameProduct: 'unconfirmed' }), ['product-unconfirmed']);
+  assert.deepEqual(flags({ stock: 'unknown' }), ['stock-unknown'], 'stock must be confirmed, not just "not sold out"');
   assert.equal(offerStatus(offer({}), { requested, now }).total, 33000);
+  for (const partial of [{}, { color: 'navy' }, { size: 'M' }]) {
+    assert.deepEqual(offerStatus(offer({}), { requested: partial, now }).flags, ['request-incomplete'], JSON.stringify(partial));
+    assert.equal(compareOffers([offer({})], { requested: partial, now }).best, null, 'no lowest total before the option is chosen');
+  }
 });
 
 test('the lowest total among checked sellers is found; the rest keep their reasons', () => {
@@ -67,6 +72,12 @@ test('a refresh replaces that source’s offers but keeps the user’s confirmat
   assert.equal(merged[1].price, 28000, 'the new price is used');
   assert.deepEqual([merged[1].sameProduct, merged[1].shipping, merged[1].size], ['confirmed', 2500, 'M'], 'the user’s confirmation of that link survives');
   assert.equal(merged[2].sameProduct, 'unconfirmed');
+
+  const manual = Array.from({ length: 12 }, (_, i) => offer({ id: `u${i}`, seller: `직접${i}` }));
+  const fetched = Array.from({ length: 5 }, (_, i) => offer({ id: `n${i}`, source: 'naver-shopping', url: `https://shop.example/n/${i}` }));
+  assert.deepEqual(mergeRefreshed(manual, fetched, 'naver-shopping').map((o) => o.id), manual.map((o) => o.id), 'the cap never removes the user’s own records');
+  const some = mergeRefreshed(manual.slice(0, 9), fetched, 'naver-shopping');
+  assert.deepEqual(some.map((o) => o.id), [...manual.slice(0, 9).map((o) => o.id), 'n2', 'n3', 'n4'], 'fetched results fill only the room left');
 });
 
 test('price records live per product on this device, capped, and broken entries are dropped', () => {
