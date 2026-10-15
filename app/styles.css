@@ -447,3 +447,6 @@ img { display: block; max-width: 100%; }
 .citem .color-unknown { color: var(--accent); }
 .color-impact { margin-top: 10px; }
 .color-impact .swatches, .color-impact .opts { margin-top: 8px; }
+.backup-nudge .opts { margin-top: 8px; align-items: center; }
+.plain-list { margin: 6px 0 10px; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
+.plain-list li { margin: 4px 0; }

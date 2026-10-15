@@ -42,6 +42,7 @@ import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSourc
 import { createPhotoRecognizer } from './photo-recognition.js';
 import { suggestPhotoIdentity } from './photo-identity.js';
 import { findOwnedCatalog } from './owned-catalog.js';
+import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
@@ -81,6 +82,8 @@ let photoBlobs = new Map(),
   pendingLegacy = null,
   legacyChanged = false;
 let claudeLatestPresent = false;
+// 보관 상태: 브라우저가 알려 주는 값만 보여 준다(보관을 보장하지 않는다)
+let storageHealth = null, persistenceAsked = false, backupNudgeDismissed = false;
 let returnFocus = null;
 let candidateDraft = null;
 let photoRecognizerFactory = () => createPhotoRecognizer();
@@ -553,7 +556,8 @@ function renderCloset() {
     }).join('')}<button class="closet-add-tile" data-action="add-start"><span class="closet-add-stage">${ICON.plus}</span><span>옷 추가</span></button></div>
   </section>`;
 
-  if (!items.length) return head + grid + essentialSection(ess);
+  const nudge = backupNudge(items);
+  if (!items.length) return head + nudge + grid + essentialSection(ess);
 
   const { ready, almost } = closetLooks(state, { limit: 3 });
   const today = `<section class="section">
@@ -562,7 +566,13 @@ function renderCloset() {
     ${almost.length ? `<h3 class="block">등록한 옷에 후보 한 벌 더하기</h3><div class="looks">${almost.map((r) => lookCard(r)).join('')}</div>` : ''}
   </section>`;
 
-  return head + grid + today + essentialSection(ess);
+  return head + nudge + grid + today + essentialSection(ess);
+}
+// 실제 옷이 3벌 이상인데 백업 파일을 받은 적이 없거나 오래됐으면 한 번 알려 준다.
+function backupNudge(items) {
+  if (state.demo || backupNudgeDismissed || !backupDue({ garmentCount: items.length, last: lastBackupAt() })) return '';
+  const safari = isAppleTouchBrowser() && !isStandaloneApp();
+  return `<div class="notice backup-nudge" role="status"><b>옷장이 이 기기 브라우저에만 있어요</b><p>${safari ? 'iPhone Safari는 7일 동안 열지 않은 사이트의 저장 자료를 지울 수 있어요. ' : ''}기기 변경·브라우저 정리에 대비해 사진 포함 백업 파일을 받아 두세요.</p><div class="opts"><button class="chip" data-action="backup">사진 포함 백업</button><button class="link" data-action="storage-help">보관 안내</button><button class="link" data-action="backup-nudge-dismiss">나중에</button></div></div>`;
 }
 
 function essentialSection(ess) {
@@ -1470,6 +1480,7 @@ async function saveGarmentDraft() {
     );
     current.saving = false;
     closeSheet();
+    askPersistenceOnce();
     if (current.returnJourneyId) {
       journeyForms.delete(current.returnJourneyId);
       journeySheet(current.returnJourneyId);
@@ -1536,9 +1547,48 @@ function optionSheet(kind) {
     </div>
     ${state.brands.length ? `<label class="toggle"><input type="checkbox" id="brand-only" data-action="toggle-brand-only-box" ${state.brandOnly ? 'checked' : ''}> 내 브랜드 상품만 추천</label>` : ''}</div>
     <div class="opt-group"><h3>한 벌 예산</h3><div class="opts">${budgetOpts}</div></div>
-    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 이 브라우저에 저장돼요. 다른 기기에서는 백업 파일로 옮길 수 있습니다.</p>
+    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 이 브라우저에 저장돼요. 다른 기기에서는 백업 파일로 옮길 수 있습니다.</p><div id="storage-health">${storageHealthHTML()}</div><button class="link" data-action="storage-help">보관 안내 보기</button>
       <button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><p class="sub">현재 옷장을 비워도 이전 버전의 자료와 복구용 사본은 유지됩니다.</p><button class="chip" data-action="reset" style="margin-top:10px">현재 옷장 비우기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button></div>
   `);
+  refreshStorageHealth();
+}
+
+// ── 이 기기 보관 상태
+function storageHealthHTML() {
+  const last = lastBackupAt();
+  const h = storageHealth;
+  const kept = h?.persisted === true ? '브라우저가 이 사이트 자료를 ‘오래 보관’으로 표시했어요.' :
+    h?.persisted === false ? '브라우저가 아직 ‘오래 보관’으로 표시하지 않았어요.' : '보관 표시 여부를 확인할 수 없는 브라우저예요.';
+  const usage = Number.isFinite(h?.usage) ? ` · 사용 중 약 ${formatBytes(h.usage)}` : '';
+  return `<p class="fine">${kept}${usage}</p><p class="fine">마지막 백업 파일: ${last ? `${last.getFullYear()}. ${String(last.getMonth() + 1).padStart(2, '0')}. ${String(last.getDate()).padStart(2, '0')}. (이 기기에서 받은 기록)` : '받은 기록 없음'}</p>`;
+}
+async function refreshStorageHealth() {
+  storageHealth = await readStorageHealth();
+  const box = $sheet.querySelector?.('#storage-health');
+  if (box) box.innerHTML = storageHealthHTML();
+}
+// 첫 실제 저장 뒤 한 번 요청한다. Safari·Chromium은 묻지 않고 스스로 정하며, 거절은 흔한 일이다.
+function askPersistenceOnce() {
+  if (persistenceAsked) return;
+  persistenceAsked = true;
+  requestPersistence().then((persisted) => { if (storageHealth && persisted !== null) storageHealth = { ...storageHealth, persisted }; });
+}
+function storageHelpSheet() {
+  const safari = isAppleTouchBrowser();
+  openSheet(`<h2>이 기기 보관 안내</h2>
+    <p>옷장·사진·구매 기록은 지금 이 브라우저 안에만 저장돼요. 서버 백업과 계정은 아직 없어서, 사이트 데이터 삭제·브라우저 삭제·기기 변경에서 자료를 되살릴 방법은 <b>사진 포함 백업 파일</b>뿐이에요.</p>
+    <div id="storage-health">${storageHealthHTML()}</div>
+    <div class="opts"><button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="request-persist">오래 보관 요청</button></div>
+    <h3 class="block">브라우저가 지울 수 있는 경우</h3>
+    <ul class="plain-list">
+      <li>${safari ? '<b>iPhone·iPad Safari</b>: ' : 'Safari: '}Safari를 쓰는 7일 동안 이 사이트와 상호작용이 없으면, 사이트가 저장한 자료(이 옷장 포함)가 지워질 수 있어요.</li>
+      <li>홈 화면에 추가한 웹 앱은 Safari와 따로 사용 일수를 세고, Safari 17부터는 홈 화면 앱 여부 등을 보고 ‘오래 보관’ 요청을 받아 줘요. 그래도 보관이 보장되지는 않아요.</li>
+      <li>홈 화면 앱은 Safari와 저장 공간이 따로일 수 있어요. 옮길 때는 Safari에서 백업 파일을 받아 홈 화면 앱에서 ‘백업 가져오기’로 불러오세요.</li>
+      <li>저장 공간이 부족하면 어떤 브라우저든 사이트 자료를 정리할 수 있어요. ‘오래 보관’으로 표시된 사이트는 이 정리에서 빠지지만, 사용자가 직접 지우면 지워져요.</li>
+    </ul>
+    ${safari && !isStandaloneApp() ? '<p class="sub">홈 화면에 추가: Safari 아래쪽 공유 버튼 → ‘홈 화면에 추가’.</p>' : ''}
+    <p class="fine">근거: <a href="https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/" target="_blank" rel="noopener noreferrer">WebKit 2020-03-24</a> · <a href="https://webkit.org/blog/14403/updates-to-storage-policy/" target="_blank" rel="noopener noreferrer">WebKit 2023-08-10</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria" target="_blank" rel="noopener noreferrer">MDN</a> (2026-10-15 확인)</p>`, { key: 'storage-help' });
+  refreshStorageHealth();
 }
 
 // ── 알림
@@ -1668,6 +1718,7 @@ async function downloadWardrobe(blob, name) {
   if (downloads) {
     try {
       await downloads.save({ filename: `${name}.zip`, data: await zipStore(name, blob) });
+      if (name === 'eoul-wardrobe.eoul') { markBackup(); render(); }
       toast('백업 파일을 저장했어요. 불러올 때 이 .zip 파일을 그대로 고르면 돼요');
     } catch (error) {
       toast(
@@ -1686,6 +1737,8 @@ async function downloadWardrobe(blob, name) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
+  // 브라우저가 파일을 실제로 보관했는지는 알 수 없어 ‘받은 기록’으로만 남긴다.
+  if (name === 'eoul-wardrobe.eoul') { markBackup(); render(); }
 }
 async function chooseWardrobeBackup(file) {
   if (localStorage.getItem(WARDROBE_ERASE_PENDING_KEY) !== null) {
@@ -2411,7 +2464,20 @@ document.addEventListener('click', async (e) => {
         else if (candidateDraft) candidateSheet();
         break;
       case 'backup':
-        downloadWardrobe(await wardrobeStore.backup(), 'eoul-wardrobe.eoul');
+        await downloadWardrobe(await wardrobeStore.backup(), 'eoul-wardrobe.eoul');
+        break;
+      case 'storage-help':
+        storageHelpSheet();
+        break;
+      case 'request-persist': {
+        const persisted = await requestPersistence();
+        await refreshStorageHealth();
+        toast(persisted ? '브라우저가 오래 보관으로 표시했어요. 그래도 백업 파일은 받아 두세요' : persisted === false ? '브라우저가 지금은 받아 주지 않았어요. 백업 파일을 받아 두세요' : '이 브라우저는 오래 보관 요청을 지원하지 않아요');
+        break;
+      }
+      case 'backup-nudge-dismiss':
+        backupNudgeDismissed = true;
+        render();
         break;
       case 'recovery-backup':
         downloadWardrobe(await wardrobeStore.recoveryBackup(localStorage.getItem(KEY)), 'eoul-wardrobe.eoul-recovery');
