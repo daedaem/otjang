@@ -37,6 +37,8 @@ import {
   wardrobeSlotStatus,
   WARDROBE_SCHEMA,
 } from './wardrobe.js';
+import { stripJpegMetadata } from './jpeg-clean.js';
+import { COMMUNITY_RULES, COMMUNITY_RULES_VERSION, COMMUNITY_REPORT_REASONS, MAX_POST_PHOTOS, MAX_CAPTION, communityLookFrom, nameProblem } from './community-post.js';
 import { addWear, toggleWornOn, deleteWear, wearStats, orderByRecentWear, localDate, wearDateOK, wearMonths, MAX_WEAR_GARMENTS, WEAR_RECENT_DAYS } from './wear-log.js';
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, photoAsset } from './wardrobe-store.js';
 import { AGREEMENT_VERSION, ACCOUNT_KEY, accountServer, readAccount, writeAccount, clearAccount, createAccountApi, isEmptyWardrobe, syncDecision, pushWardrobe, pullWardrobe, withDeviceFields, sameWardrobe, wardrobeSummary } from './account.js';
@@ -496,6 +498,7 @@ function renderHome() {
   const ownedCount = myCloset().length;
   return `
     ${planSection()}
+    ${communitySection()}
     <section class="section purchase-entry"><h2>살까 고민 중인 옷이 있나요?</h2><p class="sub">상품을 가져와 내 옷과 비교하고, 구매 후에도 이어서 관리해요.</p><button class="btn" data-action="candidate-start">상품 링크로 비교하기 ${ICON.arrow}</button></section>
     <section class="section">
       <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${esc(ctxLine)}${ownedCount ? ` · ${state.demo ? '예시 옷' : '내 옷'} ${ownedCount}벌 반영` : ''}</div></div></div>
@@ -1315,6 +1318,9 @@ function closeSheet() {
   candidateGarmentReview = null;
   if (!accountForm?.busy) accountForm = null;
   offerView = null;
+  releaseCommunityPhotos();
+  communityView = null;
+  shareDraft = null;
   sheetKey = null;
   // Closing on purpose (or after saving) ends the kept draft.
   dropDraft(tabStorage);
@@ -1413,6 +1419,7 @@ function lookSheet(index) {
     <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `구매 후보 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
     ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">후보 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
     ${wearableLook(r) ? `<button class="btn secondary candidate-compare" data-action="wear-look" data-index="${index}">오늘 이렇게 입었어요</button>${r.lastWorn ? `<p class="fine">이 옷들을 함께 입은 마지막 기록: ${esc(r.lastWorn)}</p>` : ''}` : ''}
+    ${wearableLook(r) && communityOn() ? `<button class="link" data-action="community-share-open" data-index="${index}">이 코디를 회원들과 나누기</button>` : ''}
   `);
 }
 // Only an outfit made entirely of my own active garments can be recorded as worn.
@@ -1460,6 +1467,164 @@ function ownWearBox(item) {
   const today = localDate();
   const wornToday = (state.wears || []).some((entry) => entry.date === today && entry.garmentIds.includes(item.id));
   return `<div class="wear-box"><p class="fine">${stat ? `착용 기록 ${stat.count}일 · 최근 ${esc(stat.last)}` : '아직 남긴 착용 기록이 없어요'} · 직접 남긴 기록</p><div class="opts"><button class="chip" data-action="wear-toggle" data-id="${esc(item.id)}" aria-pressed="${wornToday}">${wornToday ? '오늘 기록에서 빼기' : '오늘 입었어요'}</button><button class="link" data-action="wear-open">착용 기록 보기</button></div></div>`;
+}
+
+// ── 회원 코디: 이 서버에 가입한 회원끼리 나누는 코디. 운영자가 켜야 보인다.
+// 보내는 것은 코디의 모양(역할·종류·색·브랜드·목록 상품 번호)뿐이고, 사진은 글마다 고르고 동의할 때만 보낸다.
+let communityView = null;
+let shareDraft = null;
+// Posts left on the server after the operator turned the feature off.
+let communityLeftovers = null;
+const communityOn = () => signedIn() && !!accountHealth?.features?.community;
+function communitySection() {
+  if (!communityOn()) return '';
+  return `<section class="section community-entry"><h2>회원 코디</h2><p class="sub">이 서버 회원이 올린 코디예요. 상품이 있으면 내 옷과 바로 비교할 수 있어요.</p><button class="btn secondary" data-action="community-open">회원 코디 보기 ${ICON.arrow}</button></section>`;
+}
+function releaseCommunityPhotos() {
+  for (const url of communityView?.photos?.values() || []) URL.revokeObjectURL(url);
+}
+function communityItemLine(item) {
+  const slot = item.slot ? SLOT_BY_ID[item.slot] : null;
+  const kind = slot ? shortName(slot) : garmentKindName(item.kind);
+  return [ROLE_LABEL[item.role] || '', COLORS[item.color]?.label, item.brand, kind].filter(Boolean).join(' ');
+}
+function communityJoinHTML() {
+  const v = communityView;
+  return `<div class="notice"><b>회원 코디 규칙</b><ul class="plain-list">${COMMUNITY_RULES.map((rule) => `<li>${esc(rule)}</li>`).join('')}</ul></div>
+    <label class="field"><span>커뮤니티에서 쓸 이름 (이메일은 보이지 않아요)</span><input id="community-name" maxlength="20" value="${esc(v.joinName)}" autocomplete="nickname"></label>
+    <label class="toggle"><input type="checkbox" data-action="community-agree"${v.agree ? ' checked' : ''}> 위 규칙에 동의해요</label>
+    ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
+    <button class="btn" data-action="community-join"${v.agree ? '' : ' disabled'}>규칙에 동의하고 시작</button>
+    <p class="fine">규칙 버전 ${esc(COMMUNITY_RULES_VERSION)}</p>`;
+}
+function communityPostHTML(post) {
+  const v = communityView;
+  const date = post.createdAt.slice(0, 10);
+  const photos = post.photoCount
+    ? v.photos.has(`${post.id}:0`)
+      ? `<div class="community-photos">${Array.from({ length: post.photoCount }, (_, i) => v.photos.get(`${post.id}:${i}`)).filter(Boolean).map((url) => `<img src="${url}" alt="회원이 올린 옷 사진">`).join('')}</div>`
+      : `<button class="chip" data-action="community-photos" data-id="${esc(post.id)}">사진 ${post.photoCount}장 보기</button>`
+    : '';
+  const items = post.look.items.map((item) => {
+    const product = item.productId ? PRODUCT_BY_ID[item.productId] : null;
+    return `<li>${esc(communityItemLine(item))}${product ? ` <button class="link" data-action="open-item" data-id="${esc(product.id)}">${esc(product.name)} 보기</button>` : ''}</li>`;
+  }).join('');
+  const report = v.reportFor === post.id
+    ? `<div class="opts">${Object.entries(COMMUNITY_REPORT_REASONS).map(([reason, label]) => `<button class="chip" data-action="community-report" data-id="${esc(post.id)}" data-reason="${reason}">${esc(label)}</button>`).join('')}</div>`
+    : '';
+  return `<article class="community-post">
+    <p class="fine">${esc(post.author)}${post.mine ? ' (나)' : ''} · ${esc(date)}</p>
+    <h4>${esc(post.look.title)}</h4>
+    ${post.hidden ? `<p class="notice">${esc(post.hidden)} 나에게만 보여요.</p>` : ''}
+    ${post.caption ? `<p>${esc(post.caption)}</p>` : ''}
+    <ul class="plain-list">${items}</ul>
+    ${photos}
+    <div class="opts">${post.mine
+      ? `<button class="link danger" data-action="community-delete" data-id="${esc(post.id)}">${v.deleteArmed === post.id ? '한 번 더 누르면 지워요' : '내 글 지우기'}</button>`
+      : `<button class="link" data-action="community-report-open" data-id="${esc(post.id)}">신고</button>`}</div>
+    ${report}
+  </article>`;
+}
+function communitySheet() {
+  const v = communityView;
+  if (!v) return;
+  let body;
+  if (v.loading) body = '<p class="sub">불러오는 중이에요…</p>';
+  else if (!v.status) body = `<p class="notice" role="alert">${esc(v.error || '회원 코디를 불러오지 못했어요.')}</p>`;
+  else if (!v.status.enabled) body = v.status.member
+    ? `<p class="notice">이 서버는 지금 회원 코디를 꺼 두었어요. 내가 남긴 글 ${v.status.member.posts}개와 그 사진이 서버에 남아 있어요.</p><button class="btn secondary" data-action="community-leave">${v.leaveArmed ? '한 번 더 누르면 내 글과 사진을 모두 지워요' : '내 글과 사진 모두 지우기'}</button>`
+    : '<p class="notice">이 서버는 회원 코디를 켜지 않았어요. 운영자가 규칙과 신고 연락처를 정한 뒤 켤 수 있어요.</p>';
+  else if (!v.status.member?.current) body = communityJoinHTML();
+  else body = `<div class="opts" role="group" aria-label="글 보기"><button class="chip" data-action="community-filter" data-mine="0" aria-pressed="${!v.mine}">전체</button><button class="chip" data-action="community-filter" data-mine="1" aria-pressed="${v.mine}">내 글</button></div>
+    ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
+    ${v.posts.length ? v.posts.map(communityPostHTML).join('') : `<p class="sub">${v.mine ? '아직 올린 코디가 없어요. 가진 옷으로 완성한 코디에서 나눌 수 있어요.' : '아직 올라온 코디가 없어요.'}</p>`}
+    ${v.next ? '<button class="btn secondary" data-action="community-more">더 보기</button>' : ''}
+    <p class="fine">${esc(v.status.member.name)}(으)로 참여 중 · <button class="link danger" data-action="community-leave">${v.leaveArmed ? '한 번 더 누르면 내 글과 사진을 모두 지우고 나가요' : '커뮤니티 나가기'}</button></p>`;
+  openSheet(`<h2>회원 코디</h2><p class="sub">이 서버 회원이 올린 코디예요. 편집자가 만든 코디 공식과는 다른, 회원의 실제 코디예요.</p>${body}`, { key: 'community' });
+}
+async function openCommunity({ mine = false, then = null } = {}) {
+  if (!signedIn()) return openAccountSheet('login');
+  releaseCommunityPhotos();
+  communityView = { loading: true, mine, posts: [], next: null, status: null, photos: new Map(), joinName: '', agree: false, reportFor: null, deleteArmed: null, leaveArmed: false, error: '', then };
+  communitySheet();
+  const view = communityView;
+  try {
+    view.status = await accountApi().community();
+    if (view.status.enabled && view.status.member?.current) await loadCommunityPage(view);
+  } catch (error) {
+    view.error = error.message;
+  }
+  if (communityView !== view) return;
+  view.loading = false;
+  communitySheet();
+}
+async function loadCommunityPage(view, before = '') {
+  const page = await accountApi().communityPosts({ before, mine: view.mine });
+  view.posts = [...(before ? view.posts : []), ...page.posts];
+  view.next = page.next;
+}
+function shareSheet() {
+  const d = shareDraft;
+  if (!d) return;
+  const { look, photoIds } = communityLookFrom(d.result, { photoPicks: d.picks });
+  const owned = d.result.items.filter((row) => row.owned && row.item);
+  const withPhoto = owned.filter((row) => row.item.photoId && photos.has(row.item.photoId));
+  openSheet(`<h2>코디 나누기</h2>
+    <p class="sub">이 서버 회원에게 아래 내용만 보여요.</p>
+    <div class="community-post"><h4>${esc(look.title)}</h4><ul class="plain-list">${look.items.map((item) => `<li>${esc(communityItemLine(item))}${item.productId && PRODUCT_BY_ID[item.productId] ? ` · ${esc(PRODUCT_BY_ID[item.productId].name)}` : ''}</li>`).join('')}</ul></div>
+    <p class="fine">보내지 않는 것: 구매 링크, 메모, 옷장 기록, 고르지 않은 사진.</p>
+    <label class="field"><span>한마디 (선택, ${MAX_CAPTION}자)</span><input id="community-caption" maxlength="${MAX_CAPTION}" value="${esc(d.caption)}" placeholder="예: 출근 첫날 입었어요"></label>
+    ${withPhoto.length ? `<details class="garment-name"${d.picks.size ? ' open' : ''}><summary>내 옷 사진도 함께 올리기 (선택)</summary>
+      <ul class="plain-list wear-pick">${withPhoto.map((row) => `<li><label class="toggle"><input type="checkbox" data-action="community-photo-pick" data-id="${esc(row.item.id)}"${d.picks.has(row.item.id) ? ' checked' : ''}${!d.picks.has(row.item.id) && d.picks.size >= MAX_POST_PHOTOS ? ' disabled' : ''}> ${itemPicture(row.item, 'mini')}<span>${esc(describeGarment(row.item))}</span></label></li>`).join('')}</ul>
+      ${photoIds.length ? `<label class="toggle"><input type="checkbox" data-action="community-photo-consent"${d.consent ? ' checked' : ''}> 고른 사진 ${photoIds.length}장을 이 서버 회원이 볼 수 있어요. 얼굴·집 안처럼 나를 알아볼 수 있는 부분이 없는지 확인했어요.</label><p class="fine">글을 지우면 사진도 함께 지워져요.</p>` : ''}
+    </details>` : ''}
+    ${d.error ? `<p class="notice" role="alert">${esc(d.error)}</p>` : ''}
+    <button class="btn" data-action="community-share"${d.busy || (photoIds.length && !d.consent) ? ' disabled' : ''}>${d.busy ? '올리는 중…' : '회원 코디에 올리기'}</button>`, { key: 'share' });
+}
+async function blobBase64(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let text = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(text);
+}
+async function submitShare() {
+  const d = shareDraft;
+  if (!d || d.busy) return;
+  const { look, photoIds } = communityLookFrom(d.result, { photoPicks: d.picks });
+  if (photoIds.length && !d.consent) return;
+  d.busy = true;
+  d.error = '';
+  shareSheet();
+  try {
+    const photos = [];
+    for (const id of photoIds) {
+      const blob = photoBlobs.get(id);
+      if (!blob || blob.type !== 'image/jpeg') throw new Error('고른 사진 중 올릴 수 없는 사진이 있어요. 그 사진을 빼고 다시 올려 주세요.');
+      // No location, time or device metadata leaves this device with a shared photo.
+      let clean;
+      try {
+        clean = stripJpegMetadata(new Uint8Array(await blob.arrayBuffer())).bytes;
+      } catch {
+        throw new Error('고른 사진 중 정보를 지우지 못한 사진이 있어요. 그 사진을 빼고 다시 올려 주세요.');
+      }
+      photos.push({ mime: 'image/jpeg', data: await blobBase64(new Blob([clean], { type: 'image/jpeg' })) });
+    }
+    await accountApi().communityPost({ look, caption: d.caption.trim(), photos, photoConsent: photos.length ? true : false });
+    shareDraft = null;
+    toast('회원 코디에 올렸어요');
+    await openCommunity({ mine: true });
+  } catch (error) {
+    if (shareDraft !== d) return;
+    d.busy = false;
+    if (error.code === 'join-required') {
+      // First time: agree to the rules, then come back to this share.
+      await openCommunity({ then: 'share' });
+      shareDraft = d;
+      return;
+    }
+    d.error = error.message;
+    shareSheet();
+  }
 }
 
 // ── 착용 기록: 직접 남긴 날짜별 기록. 기록이 없는 날을 안 입은 날로 판단하지 않는다.
@@ -2368,8 +2533,9 @@ function accountStatusHTML() {
     s.phase === 'offline' || s.phase === 'error' ? s.message :
     account.syncedAt ? `계정에 저장됨 · ${syncTime(account.syncedAt)}` : '아직 계정에 저장하지 않았어요';
   const mask = account.photoMaskConsent === true ? '<p class="fine">배경 지우기: 서버에서 처리 <button class="link" data-action="photo-mask-off">끄기</button></p>' : '';
+  const leftovers = communityLeftovers && !communityOn() ? `<p class="fine">회원 코디에 남긴 글 ${communityLeftovers.posts}개가 서버에 있어요. <button class="link" data-action="community-open">확인·지우기</button></p>` : '';
   const verify = account.emailVerified === false ? `<p class="fine">이메일 미확인 · 비밀번호를 잊었을 때 재설정 메일을 받으려면 확인해 주세요. <button class="link" data-action="verify-send">확인 메일 보내기</button></p>` : '';
-  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${verify}${mask}
+  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${verify}${mask}${leftovers}
     <div class="opts">${s.phase === 'choose' ? '<button class="btn small" data-action="sync-choose">어느 옷장을 쓸지 고르기</button>' : '<button class="chip" data-action="sync-now">지금 저장·확인</button>'}<button class="chip" data-action="account-logout">로그아웃</button><button class="link" data-action="account-delete-open">계정 삭제</button></div>`;
 }
 function accountSection() {
@@ -3139,6 +3305,91 @@ document.addEventListener('click', async (e) => {
         toast(`착용 기록 ${drop.size}개를 지웠어요`);
         break;
       }
+      case 'community-open':
+        await openCommunity();
+        break;
+      case 'community-filter':
+        await openCommunity({ mine: el.dataset.mine === '1' });
+        break;
+      case 'community-join': {
+        const v = communityView;
+        if (!v || v.busy) break;
+        const problem = nameProblem(v.joinName);
+        if (problem || !v.agree) { v.error = problem || '규칙에 동의해 주세요.'; communitySheet(); break; }
+        v.busy = true;
+        try {
+          const joined = await accountApi().communityJoin(v.joinName.trim(), COMMUNITY_RULES_VERSION);
+          v.status = { ...v.status, member: joined.member };
+          v.error = '';
+          if (v.then === 'share' && shareDraft) { communityView = null; shareSheet(); break; }
+          await loadCommunityPage(v);
+        } catch (error) {
+          v.error = error.message;
+        } finally {
+          v.busy = false;
+        }
+        if (communityView === v) communitySheet();
+        break;
+      }
+      case 'community-more':
+        if (communityView?.next) { await loadCommunityPage(communityView, communityView.next); communitySheet(); }
+        break;
+      case 'community-photos': {
+        const v = communityView;
+        const post = v?.posts.find((row) => row.id === el.dataset.id);
+        if (!post) break;
+        for (let i = 0; i < post.photoCount; i++) {
+          const blob = await accountApi().communityPhoto(post.id, i);
+          if (communityView !== v) return;
+          v.photos.set(`${post.id}:${i}`, URL.createObjectURL(blob));
+        }
+        communitySheet();
+        break;
+      }
+      case 'community-report-open':
+        if (communityView) { communityView.reportFor = el.dataset.id; communitySheet(); }
+        break;
+      case 'community-report': {
+        const v = communityView;
+        if (!v) break;
+        await accountApi().communityReport(el.dataset.id, el.dataset.reason);
+        v.posts = v.posts.filter((post) => post.id !== el.dataset.id);
+        v.reportFor = null;
+        communitySheet();
+        toast('신고했어요. 이 글은 더 보이지 않아요');
+        break;
+      }
+      case 'community-delete': {
+        const v = communityView;
+        if (!v) break;
+        if (v.deleteArmed !== el.dataset.id) { v.deleteArmed = el.dataset.id; communitySheet(); break; }
+        await accountApi().communityDelete(el.dataset.id);
+        v.posts = v.posts.filter((post) => post.id !== el.dataset.id);
+        v.deleteArmed = null;
+        communitySheet();
+        toast('내 글과 사진을 지웠어요');
+        break;
+      }
+      case 'community-leave': {
+        const v = communityView;
+        if (!v) break;
+        if (!v.leaveArmed) { v.leaveArmed = true; communitySheet(); break; }
+        await accountApi().communityLeave();
+        communityLeftovers = null;
+        closeSheet();
+        toast('커뮤니티에서 나갔어요. 내 글과 사진을 지웠어요');
+        break;
+      }
+      case 'community-share-open': {
+        const look = lastLooks[Number(el.dataset.index)];
+        if (!look || !wearableLook(look) || !communityOn()) break;
+        shareDraft = { result: look, caption: '', picks: new Set(), consent: false, busy: false, error: '' };
+        shareSheet();
+        break;
+      }
+      case 'community-share':
+        await submitShare();
+        break;
       case 'wear-open':
         wearForm = null;
         wearDeleteArmed = null;
@@ -3875,6 +4126,8 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('input', (e) => {
   const id = e.target.id, value = e.target.value;
+  if (communityView && id === 'community-name') communityView.joinName = value;
+  if (shareDraft && id === 'community-caption') shareDraft.caption = value.slice(0, MAX_CAPTION);
   if (wearForm && (id === 'wear-date' || id === 'wear-note')) {
     wearForm.touched = true;
     if (id === 'wear-date') wearForm.date = value;
@@ -3934,6 +4187,20 @@ document.addEventListener('change', async (e) => {
       if (e.target.checked) cleanupWearPick.add(e.target.dataset.month);
       else cleanupWearPick.delete(e.target.dataset.month);
       cleanupSheet();
+    }
+    if (e.target.dataset?.action === 'community-agree' && communityView) {
+      communityView.agree = !!e.target.checked;
+      communitySheet();
+    }
+    if (e.target.dataset?.action === 'community-photo-pick' && shareDraft) {
+      if (e.target.checked) shareDraft.picks.add(e.target.dataset.id);
+      else shareDraft.picks.delete(e.target.dataset.id);
+      if (!shareDraft.picks.size) shareDraft.consent = false;
+      shareSheet();
+    }
+    if (e.target.dataset?.action === 'community-photo-consent' && shareDraft) {
+      shareDraft.consent = !!e.target.checked;
+      shareSheet();
     }
     if (e.target.dataset?.action === 'wear-pick' && wearForm) {
       wearForm.touched = true;
@@ -4125,6 +4392,18 @@ async function handleAccountLink() {
   accountSheet();
 }
 const accountLinkHandled = appReady.then(handleAccountLink);
+// Which optional features this server has on (community, background, prices).
+const accountFeatures = appReady.then(async () => {
+  if (!signedIn() || accountHealth) return;
+  try {
+    accountHealth = await createAccountApi({ base: accountBase }).health();
+    if (accountHealth?.features?.community) render();
+    else {
+      const status = await accountApi().community().catch(() => null);
+      if (status?.member?.posts) communityLeftovers = status.member;
+    }
+  } catch {}
+});
 // 다른 기기에서 바꾼 옷장은 이 화면으로 돌아올 때나 연결이 돌아올 때 확인한다.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') kickSync();

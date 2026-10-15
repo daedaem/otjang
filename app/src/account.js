@@ -108,6 +108,15 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
     getPhoto: (id) => request('GET', `/v1/photos/${encodeURIComponent(id)}`, { raw: true }),
     // A 320×320 RGB copy in, a 320×320 mask out; the server keeps neither.
     photoMask: async (rgb) => new Uint8Array(await (await request('POST', '/v1/photo-mask', { body: rgb, type: 'application/octet-stream', raw: true })).arrayBuffer()),
+    // Outfit sharing among this server's members (off unless the operator turns it on).
+    community: () => request('GET', '/v1/community'),
+    communityJoin: (name, rulesVersion) => request('POST', '/v1/community/join', { json: { name, rulesVersion, agree: true } }),
+    communityLeave: () => request('DELETE', '/v1/community/me'),
+    communityPosts: ({ before = '', mine = false } = {}) => request('GET', `/v1/community/posts?${new URLSearchParams({ ...(before ? { before } : {}), ...(mine ? { mine: '1' } : {}) })}`),
+    communityPost: (fields) => request('POST', '/v1/community/posts', { json: fields }),
+    communityDelete: (id) => request('DELETE', `/v1/community/posts/${encodeURIComponent(id)}`),
+    communityReport: (id, reason) => request('POST', `/v1/community/posts/${encodeURIComponent(id)}/report`, { json: { reason } }),
+    communityPhoto: (id, idx) => request('GET', `/v1/community/posts/${encodeURIComponent(id)}/photos/${idx}`, { raw: true }),
   };
 }
 
