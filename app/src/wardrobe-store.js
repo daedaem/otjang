@@ -510,9 +510,21 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
     );
   }
 
+  // Revision and epoch only (no photos): a cheap check that this tab is not stale.
+  async function peek() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['records'], 'readonly');
+      const request = tx.objectStore('records').get('current');
+      tx.oncomplete = () => resolve(request.result ? { revision: request.result.revision, epoch: request.result.epoch || null } : null);
+      tx.onabort = () => reject(tx.error || new Error('옷장을 읽지 못했습니다.'));
+    });
+  }
+
   return {
     load,
     read,
+    peek,
     commit,
     backup,
     recoveryState,

@@ -40,6 +40,8 @@ const order = [
   'src/wardrobe-plan.js',
   'src/offers.js',
   'src/offer-store.js',
+  'src/record-cleanup.js',
+  'src/draft-keeper.js',
   'src/icons.js',
   'src/zip-store.js',
   'src/main.js',
