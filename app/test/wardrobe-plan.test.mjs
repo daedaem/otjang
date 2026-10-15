@@ -189,7 +189,7 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   await page.click({ action: 'open-plan' });
   const sheet = page.sheet();
   assert.match(sheet, /등록한 내 옷 5벌 중 종류·색을 확인한 4벌로 계산했어요/);
-  assert.match(sheet, /부족한 종류와 실제 상품[\s\S]*<summary>계산 기준 · 내 옷과 겹치는 종류<\/summary>[\s\S]*계산에 넣은 내 옷[\s\S]*겹치는 옷/);
+  assert.match(sheet, /부족한 종류와 실제 상품[\s\S]*<summary>계산 기준 · 겹치는 옷 · 한계<\/summary>[\s\S]*계산에 넣은 내 옷[\s\S]*겹치는 옷[\s\S]*계산 방법과 한계/);
   assert.match(sheet, /데님 · 색 미확인 <button class="link" data-action="open-own" data-id="g_jeans">/);
   assert.match(sheet, /<b>화이트 [^<]*옥스퍼드[^<]* 2벌<\/b>/);
   const plan = wardrobePlan(JSON.parse(JSON.stringify(page.app.state())));
@@ -202,6 +202,10 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   assert.ok(sheet.includes(`data-action="candidate-product" data-id="${p.id}"`), 'one tap to compare with my clothes and keep a journey');
   assert.match(sheet, /가격은 현재 최저가가 아니에요/);
   assert.doesNotMatch(sheet.replace('가격은 현재 최저가가 아니에요', ''), /최저가/);
+  const firstGap = sheet.slice(sheet.indexOf('<section class="plan-gap">'));
+  const shownFirst = firstGap.slice(0, firstGap.indexOf('<details class="plan-more">') >= 0 ? firstGap.indexOf('<details class="plan-more">') : firstGap.indexOf('</section>'));
+  assert.equal((shownFirst.match(/<article class="plan-product">/g) || []).length, 1, 'each recommendation leads with one product; other candidates are folded');
+  assert.match(shownFirst, /class="plan-owned-strip"/, 'the clothes it goes with are shown as photos');
   await page.click({ action: 'candidate-product', id: p.id });
   assert.equal(page.app.state().journeys.at(-1).candidate.productId, p.id);
   assert.equal(page.app.candidateDraft(), null, 'one comparison tap no longer asks for catalog metadata again');

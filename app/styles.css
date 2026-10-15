@@ -807,3 +807,14 @@ img { display: block; max-width: 100%; }
 h1, h2, h3, h4, .detail-title { text-wrap: balance; }
 /* Inside a sheet a notice spans the content width like the other panels. */
 .sheet .notice { margin-inline: 0; }
+/* Wardrobe analysis: one product per recommendation, the clothes it goes with
+   as small photos, other candidates folded. */
+.plan-owned-strip { display: flex; align-items: center; gap: var(--space-1); margin: var(--space-2) 0; }
+.plan-owned-strip .fine { margin: 0 0 0 var(--space-1); min-width: 0; }
+.plan-more { margin-top: var(--space-1); }
+.plan-more > summary { font-size: var(--text-label); font-weight: var(--weight-medium); color: var(--ink-2); }
+.notice.plan-example { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-left: 0; }
+/* In the small strip the borrowed-photo note moves into the caption line. */
+.plan-owned-strip .photo-caption { display: none; }
+.plan-owned-strip .garment-mini.borrowed-photo { grid-template-rows: 1fr; aspect-ratio: var(--photo-ratio); }
+.notice.plan-example .btn { flex: none; white-space: nowrap; }

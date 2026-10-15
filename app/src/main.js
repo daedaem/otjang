@@ -941,31 +941,38 @@ function planSheet() {
     ? `${plan.duplicates.map((d) => `<div class="plan-dup">${d.items.slice(0, 3).map((item) => itemPicture(item, 'garment-mini')).join('')}<p><b>${esc(COLORS[d.color]?.label || '')} ${esc(d.slot.name)} ${d.items.length}벌</b><br>같은 종류·색이 이미 있어요. 또 사기 전에 이 옷들을 먼저 활용해 보세요.${example ? '' : `<br><span class="fine">${d.items.map((item) => { const stat = wears.get(item.id); return `${esc(describeGarment(item))}: ${stat ? `착용 기록 ${stat.count}일` : '착용 기록 없음'}`; }).join(' · ')}</span>`}</p></div>`).join('')}
        ${plan.paused.map((p) => `<p class="fine">${esc(p.slot.name)}: ${p.reason === 'ordered' ? '주문·수령 기록이 있어 후보에서 뺐어요.' : '비슷한 옷이 있다고 답해 후보에서 뺐어요.'}</p>`).join('')}`
     : `<p class="sub">같은 종류·색으로 겹치는 ${ownLabel}은 없어요.</p>`;
+  // Each recommendation leads with one product and the clothes it goes with
+  // (photos); the other candidates and outfit formulas stay one tap away.
+  const ownedStrip = (items) => items.length ? `<div class="plan-owned-strip" aria-label="함께 입는 ${ownLabel} ${items.length}벌">${items.slice(0, 4).map((item) => itemPicture(item, 'garment-mini')).join('')}<span class="fine">함께 입는 ${ownLabel} ${items.length}벌 · ${esc(items.slice(0, 2).map(describeGarment).join(', '))}${items.length > 2 ? ' 외' : ''}${items.slice(0, 4).some(similarPhoto) ? ' · 사진 일부는 비슷한 상품' : ''}</span></div>` : '';
+  const moreCandidates = (rows, looks = []) => rows.length || looks.length
+    ? `<details class="plan-more"><summary>${rows.length ? `다른 후보 ${rows.length}개` : '코디 공식'}${rows.length && looks.length ? ' · 코디 공식' : ''}</summary>${looks.length ? `<ul class="plain-list plan-looks">${looks.map(planLookLine).join('')}</ul>` : ''}<div class="plan-products">${rows.map(planProductRow).join('')}</div></details>`
+    : '';
   const gaps = plan.gaps.length
     ? plan.gaps.map((gap) => `<section class="plan-gap">
         <h4>${esc(gap.slot.name)} <span class="plan-count">+코디 ${gap.newFormulaCount}개</span></h4>
-        <p class="sub">함께 입는 ${ownLabel}: ${gap.usesOwned.map((item) => esc(describeGarment(item))).join(', ')}</p>
-        <ul class="plain-list plan-looks">${gap.looks.map(planLookLine).join('')}</ul>
-        <div class="plan-products">${gap.products.map(planProductRow).join('')}</div>
+        ${ownedStrip(gap.usesOwned)}
+        <div class="plan-products">${gap.products.slice(0, 1).map(planProductRow).join('')}</div>
+        ${moreCandidates(gap.products.slice(1), gap.looks)}
         ${gap.moreProducts ? `<button class="link" data-action="example" data-q="${esc(gap.slot.name)}">${esc(gap.slot.name)} 후보 ${gap.moreProducts}개 더 보기</button>` : ''}
       </section>`).join('')
     : '';
   const pairs = plan.pairs?.length
     ? `<h3 class="block">두 벌을 더하면 완성되는 코디</h3>${plan.pairs.map((pair) => `<section class="plan-gap">
         <h4>${esc(pair.look.title)}</h4>
-        <ul class="plain-list plan-looks">${planLookLine(pair.look)}</ul>
-        ${pair.slots.map((slot) => `<p class="sub"><b>${esc(slot.name)}</b> 후보</p><div class="plan-products">${(pair.products[slot.id] || []).map(planProductRow).join('') || '<p class="fine">조건에 맞는 상품이 목록에 없어요.</p>'}</div>`).join('')}
+        ${ownedStrip(pair.usesOwned || [])}
+        ${pair.slots.map((slot) => `<p class="sub"><b>${esc(slot.name)}</b></p><div class="plan-products">${(pair.products[slot.id] || []).slice(0, 1).map(planProductRow).join('') || '<p class="fine">조건에 맞는 상품이 목록에 없어요.</p>'}</div>`).join('')}
+        ${moreCandidates(pair.slots.flatMap((slot) => (pair.products[slot.id] || []).slice(1)), [pair.look])}
       </section>`).join('')}`
     : '';
   openSheet(`<h2>${example ? '예시 옷장으로 보는 다음 한 벌' : '내 옷장 기준 다음 한 벌'}</h2>
     <p class="sub">${esc(planBasisLine(plan))}</p>
-    ${example ? '<div class="notice"><b>예시 옷장이에요</b><p>흐름을 보여 주는 예시 옷이라 실제로 가진 옷과 섞지 않아요.</p><button class="btn small" data-action="add-start">내 옷으로 바꾸기</button></div>' : ''}
+    ${example ? '<div class="notice plan-example"><span>예시 옷이라 실제로 가진 옷과 섞지 않아요.</span><button class="btn small" data-action="add-start">내 옷으로 바꾸기</button></div>' : ''}
     <h3 class="block">부족한 종류와 실제 상품</h3>
     ${gaps || (plan.pairs?.length ? '<p class="sub">한 벌만 더해 완성되는 코디는 없어요.</p>' : '<p class="notice">지금 옷으로는 한두 벌만 더해 완성되는 코디 공식을 찾지 못했어요. 옷을 더 등록하거나 스타일을 바꿔 보세요.</p>')}
     ${plan.moreGaps ? `<p class="fine">이 밖에 코디를 완성하는 종류가 ${plan.moreGaps}개 더 있어요.</p>` : ''}
     ${pairs}
-    <details class="journey-controls"><summary>계산 기준 · 내 옷과 겹치는 종류</summary><h3 class="block">계산에 넣은 ${ownLabel}</h3>${analysed}${needsCheck}${extra.map((line) => `<p class="fine">${esc(line)}</p>`).join('')}<h3 class="block">겹치는 옷</h3>${duplicates}</details>
-    <div class="why"><h3>계산 방법과 한계</h3><ul>${plan.limitations.map((line) => `<li>${esc(line)}</li>`).join('')}<li>가격은 현재 최저가가 아니에요. 같은 상품의 다른 판매처와 배송비는 아직 비교하지 않았어요.</li></ul></div>`, { key: 'plan' });
+    <details class="journey-controls"><summary>계산 기준 · 겹치는 옷 · 한계</summary><h3 class="block">계산에 넣은 ${ownLabel}</h3>${analysed}${needsCheck}${extra.map((line) => `<p class="fine">${esc(line)}</p>`).join('')}<h3 class="block">겹치는 옷</h3>${duplicates}
+    <div class="why"><h3>계산 방법과 한계</h3><ul>${plan.limitations.map((line) => `<li>${esc(line)}</li>`).join('')}<li>가격은 현재 최저가가 아니에요. 같은 상품의 다른 판매처와 배송비는 아직 비교하지 않았어요.</li></ul></div></details>`, { key: 'plan' });
 }
 
 function renderSearch() {
