@@ -299,3 +299,32 @@ test('comparison shows the supported formula and asks ownership once before disc
   assert.doesNotMatch(page.sheet(), /구매가 필요한지는 가진 옷을 한 번 더 확인/);
   page.app.store.close();
 });
+
+test('both candidates in a two-item plan retain the same combination context without inventing single-item value', async () => {
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const { season, ...record } = wardrobe([g('m-oxford', 'white'), g('m-chino', 'beige'), g('m-white-sneaker', 'white')]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const plan = wardrobePlan(JSON.parse(JSON.stringify(page.app.state())));
+  const pair = plan.pairs.find((entry) => entry.slots.every((slot) => entry.products[slot.id]?.length));
+  assert.ok(pair);
+  for (const slot of pair.slots) {
+    const selected = pair.products[slot.id][0].product;
+    const companionSlot = pair.slots.find((other) => other.id !== slot.id);
+    const companion = pair.products[companionSlot.id][0].product;
+    await page.click({ action: 'candidate-product', id: selected.id });
+    const journey = page.app.state().journeys.find((item) => item.candidate.productId === selected.id);
+    assert.ok(page.sheet().includes(pair.look.title));
+    assert.match(page.sheet(), /두 벌 중 한 벌/);
+    assert.ok(page.sheet().includes(`data-action="candidate-product" data-id="${companion.id}"`));
+    await page.click({ action: 'journey-field', id: journey.id, field: 'absence', value: 'absent' });
+    assert.ok(page.sheet().includes(pair.look.title), 'answering ownership must not erase the two-item plan');
+    assert.doesNotMatch(page.sheet(), /현재 등록한 옷에서는 이 상품만 더해 새로 완성되는/);
+    assert.match(page.sheet(), /이 상품 하나만으로 완성되는 조합은 아니에요/);
+    const comparison = compareCandidate(page.app.state(), journey.candidate, { absence: 'absent' });
+    assert.equal(comparison.newFormulaCount, 0);
+    assert.equal(comparison.decision.kind, 'hold', 'pair context never upgrades a single-item purchase verdict');
+  }
+  page.app.store.close();
+});

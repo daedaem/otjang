@@ -538,8 +538,9 @@ img { display: block; max-width: 100%; }
 .purchase-own .thumb { width: 100%; height: 130px; }
 .purchase-decisions { position: sticky; bottom: calc(-24px - env(safe-area-inset-bottom)); z-index: 4; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 8px; margin: 18px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
 .purchase-decisions .btn { min-width: 0; min-height: 48px; padding: 10px 5px; font-size: 13px; line-height: 1.4; }
+.purchase-decisions .btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
 .purchase-decisions > .fine { grid-column: 1 / -1; margin: 0; font-size: 11px; line-height: 1.5; }
-.sheet:has(.journey-overview) { scroll-padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+.sheet:has(.journey-overview) { scroll-padding-bottom: calc(170px + env(safe-area-inset-bottom)); }
 /* Optional details stay compact; confirmed changes remain readable on narrow sheets. */
 .sheet > input { width: 100%; min-height: 44px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; font-size: 16px; }
 .journey-history { padding-left: 20px; margin: 14px 0 0; }
@@ -740,3 +741,10 @@ img { display: block; max-width: 100%; }
   :root { --line: var(--ink-3); }
   .thumb, .look-grid, .closet-add-stage { outline: 1px solid var(--line); }
 }
+
+/* A two-item plan remains visible when comparing either individual candidate. */
+.journey-pair { display: grid; grid-template-columns: 72px minmax(0,1fr); align-items: start; gap: 12px; margin: 12px 0; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.journey-pair .thumb { width: 72px; height: 90px; }
+.journey-pair .brand-name, .journey-pair .fine { margin: 4px 0; }
+.journey-pair b { display: block; font-size: 13px; line-height: 1.5; }
+.journey-pair .link { font-size: 12px; padding: 8px 0; }

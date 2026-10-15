@@ -40,6 +40,7 @@ const order = [
   'src/engine.js',
   'src/purchase-candidate.js',
   'src/wardrobe-plan.js',
+  'src/purchase-plan-context.js',
   'src/offers.js',
   'src/offer-store.js',
   'src/record-cleanup.js',

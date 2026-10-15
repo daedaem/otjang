@@ -398,6 +398,101 @@ test('hold, skip and buy intentions preserve the wardrobe and never infer an ord
   await assertOriginalPhoto(page, asset);
 });
 
+test('buy and hold clicks show the durably saved decision and never show a rejected change as saved', async (t) => {
+  const { page, owned } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  const button = (view, action) => {
+    const tag = view.nodes.get('sheet-root').innerHTML.match(new RegExp(`<button\\b[^>]*data-action="journey-action"[^>]*data-step="${action}"[^>]*>[^<]*<\\/button>`))?.[0];
+    assert.ok(tag, `${action} must remain available as a decision`);
+    return tag;
+  };
+  const assertDecision = (view, action, label) => {
+    for (const step of ['buy', 'hold', 'skip']) {
+      const tag = button(view, step);
+      assert.match(tag, new RegExp(`aria-pressed="${step === action}"`));
+      assert.match(tag, /class="[^"]*\bsecondary\b/, 'saved decisions leave the primary action to the seller link');
+      if (step === action) {
+        assert.match(tag, new RegExp(`>${label} ✓<`));
+      }
+    }
+    const footer = view.nodes.get('sheet-root').innerHTML.split('<div class="purchase-decisions"')[1];
+    assert.match(footer, new RegExp(`<p class="fine" role="status"><strong>현재 기록: ${label} · 저장됨</strong>`));
+    assert.match(footer, /주문·결제는 실행하지 않아요/);
+    if (action === 'buy') {
+      assert.match(footer, /<a class="btn"[^>]*target="_blank"[^>]*>원래 판매처에서 확인/);
+      assert.ok(footer.includes(product.url));
+    } else assert.doesNotMatch(footer, /<a\b/);
+  };
+  for (const step of ['buy', 'hold', 'skip']) assert.match(button(page, step), /aria-pressed="false"/);
+  assert.doesNotMatch(button(page, 'buy'), /class="[^"]*\bsecondary\b/, 'buy remains the initial primary action without claiming it is selected');
+  assert.doesNotMatch(page.nodes.get('sheet-root').innerHTML, /현재 기록:.*저장됨/);
+
+  await page.click({ action: 'journey-action', id: journey.id, step: 'buy' });
+  const bought = await stored(page);
+  assert.equal(bought.state.journeys.find((row) => row.id === journey.id).decision, 'buy');
+  assertDecision(page, 'buy', '사기로 함');
+  const sellerLinks = (page.nodes.get('sheet-root').innerHTML.match(/<a\b[^>]*>원래 판매처에서 확인/g) || []);
+  assert.equal(sellerLinks.length, 2);
+  assert.match(sellerLinks[0], /class="btn secondary candidate-compare"/, 'the body seller link yields priority to the sticky footer after choosing buy');
+  assert.match(sellerLinks[1], /class="btn"/);
+
+  await withMetadataQuota(() => page.click({ action: 'journey-action', id: journey.id, step: 'hold' }));
+  const rejected = await stored(page);
+  assert.equal(rejected.revision, bought.revision);
+  assert.deepEqual(rejected.state, bought.state);
+  assertDecision(page, 'buy', '사기로 함');
+
+  await page.click({ action: 'journey-action', id: journey.id, step: 'hold' });
+  const held = await stored(page);
+  const record = held.state.journeys.find((row) => row.id === journey.id);
+  assert.equal(held.revision, bought.revision + 1);
+  assert.equal(record.decision, 'hold');
+  assert.equal(record.stage, 'candidate');
+  assert.deepEqual(held.state.garments, [owned]);
+  assertDecision(page, 'hold', '보류');
+
+  const reloaded = await boot(page.indexedDB);
+  t.after(() => reloaded.close());
+  reloaded.app.journeySheet(journey.id);
+  assertDecision(reloaded, 'hold', '보류');
+});
+
+test('repeating a saved decision is idempotent and pending option or reason edits create only one note', async (t) => {
+  const { page } = await personalPage();
+  t.after(() => page.close());
+  const journey = await saveCatalogCandidate(page);
+  const click = (step) => page.click({ action: 'journey-action', id: journey.id, step });
+  for (const decision of ['buy', 'hold', 'skip']) {
+    await click(decision);
+    const saved = await stored(page);
+    const record = saved.state.journeys.find((row) => row.id === journey.id);
+    assert.equal(record.decision, decision);
+    assert.equal(record.history.at(-1).action, decision);
+    await click(decision);
+    const repeated = await stored(page);
+    assert.equal(repeated.revision, saved.revision, `${decision} must not write another identical decision`);
+    assert.deepEqual(repeated.state, saved.state);
+
+    page.input('journey-option', `직접 확인한 ${decision} 옵션`, journey.id);
+    page.input('journey-reason', `${decision} 판단을 유지하고 이유만 보완`, journey.id);
+    await click(decision);
+    const noted = await stored(page);
+    const updated = noted.state.journeys.find((row) => row.id === journey.id);
+    assert.equal(noted.revision, saved.revision + 1);
+    assert.equal(updated.decision, decision);
+    assert.equal(updated.stage, 'candidate');
+    assert.equal(updated.option, `직접 확인한 ${decision} 옵션`);
+    assert.equal(updated.reason, `${decision} 판단을 유지하고 이유만 보완`);
+    assert.equal(updated.history.length, record.history.length + 1);
+    assert.equal(updated.history.at(-1).action, 'note', 'edited inputs are notes, not duplicate decision events');
+    await click(decision);
+    const unchanged = await stored(page);
+    assert.equal(unchanged.revision, noted.revision);
+    assert.deepEqual(unchanged.state, noted.state);
+  }
+});
+
 test('receipt creates one provisional garment atomically; keeping, wear and return control active ownership without deleting records', async (t) => {
   const { page, owned, asset } = await personalPage();
   t.after(() => page.close());
