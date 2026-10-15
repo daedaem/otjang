@@ -450,3 +450,17 @@ img { display: block; max-width: 100%; }
 .backup-nudge .opts { margin-top: 8px; align-items: center; }
 .plain-list { margin: 6px 0 10px; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
 .plain-list li { margin: 4px 0; }
+
+/* 계정: 가입·로그인·삭제 폼과 동기화 상태 */
+.account-form { display: grid; gap: 6px; margin-top: 16px; }
+.account-form label:not(.toggle) { font-weight: 700; font-size: 14px; margin-top: 8px; }
+.account-form input:not([type=checkbox]) { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.account-form .agreement { margin: 14px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.account-form .agreement summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.account-form .toggle { margin-top: 6px; }
+.account-form .btn { margin-top: 14px; width: 100%; }
+.account-box { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.account-box p { margin: 0 0 6px; }
+.sync-choice { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.sync-choice h3 { margin: 0 0 6px; }
+.sync-choice .btn { width: 100%; margin-top: 8px; }

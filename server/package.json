@@ -1,0 +1,13 @@
+{
+  "name": "eoul-server",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node ../app/tools/build.mjs && node index.mjs",
+    "test": "node --test",
+    "backup": "node cli.mjs backup"
+  }
+}

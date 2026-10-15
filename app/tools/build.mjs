@@ -4,6 +4,7 @@
 //       node app/tools/build.mjs --images thumbs.json   →  상품 이미지 주소를 thumbs.json의 data: URI로 바꿔 넣는다
 //                                                          (외부 이미지를 막는 환경에서 미리보기할 때)
 //       node app/tools/build.mjs --fragment             →  <html>·<head>·<body> 없이 본문만 (페이지 뼈대를 씌워 주는 호스팅용)
+//       node app/tools/build.mjs --server https://…     →  그 주소의 어울 서버로 계정·동기화를 켠다
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +31,7 @@ const order = [
   'src/photo-identity.js',
   'src/owned-catalog.js',
   'src/storage-health.js',
+  'src/account.js',
   'src/legacy-photos.js',
   'src/query.js',
   'src/engine.js',
@@ -74,6 +76,16 @@ if (flag('--fragment')) {
     .readFileSync(path.join(root, 'index.html'), 'utf8')
     .replace('<link rel="stylesheet" href="./styles.css">', () => `<style>\n${css}</style>`)
     .replace('<script type="module" src="./src/main.js"></script>', () => script);
+}
+
+// --server https://… : 다른 곳(예: GitHub Pages)에 올린 앱이 이 주소의 어울 서버를 쓰게 한다.
+// 서버가 직접 앱을 내보낼 때는 서버가 같은 주소 표시를 넣으므로 필요 없다.
+const serverURL = option('--server');
+if (serverURL) {
+  const url = new URL(serverURL);
+  if (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('--server는 https 주소여야 해요.');
+  if (flag('--fragment')) html = `<meta name="eoul-api" content="${url.origin}">\n${html}`;
+  else html = html.replace(/<head>/, () => `<head>\n  <meta name="eoul-api" content="${url.origin}">`);
 }
 
 const out = option('--out') || path.join(root, 'dist/index.html');
