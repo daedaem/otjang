@@ -4,15 +4,17 @@
 //   node cli.mjs metrics [--exclude a@b.c,...] [--show-small] [--json]
 //                                pilot metrics by sign-up week (counts only; see src/metrics.js)
 //   node cli.mjs fetch-model [file]  download (or take a local copy of) the pinned U-2-Net model
-//   node cli.mjs community review            reported or hidden posts (no emails)
-//   node cli.mjs community hide|restore|delete <post id>
+//   node cli.mjs community review            reported or hidden posts, waiting ones first (no emails)
+//   node cli.mjs community hide|delete <post id> [reason]   reason: privacy|rights|spam|abuse|other
+//   node cli.mjs community restore <post id>
+//   node cli.mjs community log               what was decided, and how long after the first report
 import { loadConfig } from './src/config.js';
 import { openDatabase, backupDatabase } from './src/db.js';
 import { installMaskModel, MASK_MODEL } from './src/photo-mask.js';
 import { communityAdmin } from './src/community.js';
 import { pilotMetrics, formatMetrics } from './src/metrics.js';
 
-const [command, target, postId] = process.argv.slice(2);
+const [command, target, postId, reason] = process.argv.slice(2);
 const config = loadConfig();
 if (command === 'fetch-model') {
   console.log(`U-2-Net 모델(약 ${Math.round(MASK_MODEL.bytes / 1e6)}MB)을 ${target ? target + '에서 복사' : '내려받기'}하고 해시를 확인해요…`);
@@ -44,16 +46,32 @@ try {
     const metrics = pilotMetrics(db, { exclude: value('--exclude').split(',').filter(Boolean), showSmall: args.includes('--show-small') });
     console.log(args.includes('--json') ? JSON.stringify(metrics, null, 2) : formatMetrics(metrics));
   } else if (command === 'community' && target === 'review') {
-    const rows = communityAdmin(db).review();
+    const admin = communityAdmin(db, Date.now, { reviewDays: config.communityReviewDays });
+    const rows = admin.review();
+    console.log(`신고 확인 기한: 첫 신고 뒤 ${admin.reviewDays}일 (EOUL_COMMUNITY_REVIEW_DAYS)`);
     if (!rows.length) console.log('신고되거나 숨겨진 글이 없어요.');
+    const overdue = rows.filter((row) => row.overdue).length;
+    if (overdue) console.log(`기한이 지난 신고 ${overdue}건이 있어요. 먼저 확인해 주세요.`);
+    for (const row of rows) console.log(row);
+  } else if (command === 'community' && target === 'log') {
+    const rows = communityAdmin(db).log();
+    if (!rows.length) console.log('처리 기록이 없어요.');
     for (const row of rows) console.log(row);
   } else if (command === 'community' && ['hide', 'restore', 'delete'].includes(target) && postId) {
     const admin = communityAdmin(db);
-    const done = target === 'hide' ? admin.hide(postId) : target === 'restore' ? admin.restore(postId) : admin.remove(postId);
-    console.log(done ? { hide: '숨겼어요.', restore: '다시 보이게 했어요. 그 신고 기록은 정리했어요.', delete: '글과 사진을 지웠어요.' }[target] : '그 번호의 글이 없어요.');
-    if (!done) process.exitCode = 1;
+    let done;
+    try {
+      done = target === 'hide' ? admin.hide(postId, reason || 'other') : target === 'restore' ? admin.restore(postId) : admin.remove(postId, reason || null);
+    } catch (error) {
+      console.log(error.message);
+      process.exitCode = 1;
+    }
+    if (done !== undefined) {
+      console.log(done ? { hide: '숨겼어요. 작성자에게는 사유가 보여요.', restore: '다시 보이게 했어요. 그 신고 기록은 정리했어요.', delete: '글과 사진을 지웠어요.' }[target] : '그 번호의 글이 없어요.');
+      if (!done) process.exitCode = 1;
+    }
   } else {
-    console.log('사용: node cli.mjs backup <파일> | stats | metrics [--exclude 이메일,…] [--show-small] [--json] | fetch-model [받아 둔 파일] | community review | community hide|restore|delete <글 번호>');
+    console.log('사용: node cli.mjs backup <파일> | stats | metrics [--exclude 이메일,…] [--show-small] [--json] | fetch-model [받아 둔 파일] | community review | community log | community hide|delete <글 번호> [사유] | community restore <글 번호>');
     process.exitCode = 1;
   }
 } finally {

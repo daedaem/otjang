@@ -558,7 +558,8 @@ ${link}
     res.end(body);
   }
 
-  const community = createCommunity({ db, enabled: !!config.community, maxBytes: config.communityMaxBytes ?? undefined, now, log, authenticate, limit, readJson });
+  const community = createCommunity({ db, enabled: !!config.community, maxBytes: config.communityMaxBytes ?? undefined,
+    contact: config.communityContact ?? null, reviewDays: config.communityReviewDays ?? 7, now, log, authenticate, limit, readJson });
 
   let lastSweep = 0;
   async function handle(req, res) {

@@ -117,6 +117,9 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
     communityDelete: (id) => request('DELETE', `/v1/community/posts/${encodeURIComponent(id)}`),
     communityReport: (id, reason) => request('POST', `/v1/community/posts/${encodeURIComponent(id)}/report`, { json: { reason } }),
     communityPhoto: (id, idx) => request('GET', `/v1/community/posts/${encodeURIComponent(id)}/photos/${idx}`, { raw: true }),
+    communityBlock: (id) => request('POST', `/v1/community/posts/${encodeURIComponent(id)}/block`),
+    communityBlocks: () => request('GET', '/v1/community/blocks'),
+    communityUnblock: (id) => request('DELETE', `/v1/community/blocks/${encodeURIComponent(id)}`),
   };
 }
 

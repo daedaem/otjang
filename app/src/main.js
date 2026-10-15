@@ -1758,9 +1758,15 @@ function communityItemLine(item) {
   const kind = slot ? shortName(slot) : garmentKindName(item.kind);
   return [ROLE_LABEL[item.role] || '', COLORS[item.color]?.label, item.brand, kind].filter(Boolean).join(' ');
 }
+// What the operator promised about reports (EOUL_COMMUNITY_REVIEW_DAYS, EOUL_COMMUNITY_CONTACT).
+function communityPromise() {
+  const operator = communityView?.status?.operator;
+  if (!operator) return '';
+  return `신고는 운영자가 ${operator.reviewDays}일 안에 확인해요.${operator.contact ? ` 초상권·저작권 같은 권리 침해는 ${esc(operator.contact)}로도 알려 주세요.` : ''}`;
+}
 function communityJoinHTML() {
   const v = communityView;
-  return `<div class="notice"><b>회원 코디 규칙</b><ul class="plain-list">${COMMUNITY_RULES.map((rule) => `<li>${esc(rule)}</li>`).join('')}</ul></div>
+  return `<div class="notice"><b>회원 코디 규칙</b><ul class="plain-list">${COMMUNITY_RULES.map((rule) => `<li>${esc(rule)}</li>`).join('')}</ul>${communityPromise() ? `<p class="fine">${communityPromise()}</p>` : ''}</div>
     <label class="field"><span>커뮤니티에서 쓸 이름 (이메일은 보이지 않아요)</span><input id="community-name" maxlength="20" value="${esc(v.joinName)}" autocomplete="nickname"></label>
     <label class="toggle"><input type="checkbox" data-action="community-agree"${v.agree ? ' checked' : ''}> 위 규칙에 동의해요</label>
     ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
@@ -1780,7 +1786,7 @@ function communityPostHTML(post) {
     return `<li>${esc(communityItemLine(item))}${product ? ` <button class="link" data-action="open-item" data-id="${esc(product.id)}">${esc(product.name)} 보기</button>` : ''}</li>`;
   }).join('');
   const report = v.reportFor === post.id
-    ? `<div class="opts">${Object.entries(COMMUNITY_REPORT_REASONS).map(([reason, label]) => `<button class="chip" data-action="community-report" data-id="${esc(post.id)}" data-reason="${reason}">${esc(label)}</button>`).join('')}</div>`
+    ? `<div class="opts">${Object.entries(COMMUNITY_REPORT_REASONS).map(([reason, label]) => `<button class="chip" data-action="community-report" data-id="${esc(post.id)}" data-reason="${reason}">${esc(label)}</button>`).join('')}</div>${communityPromise() ? `<p class="fine">${communityPromise()}</p>` : ''}`
     : '';
   return `<article class="community-post">
     <p class="fine">${esc(post.author)}${post.mine ? ' (나)' : ''} · ${esc(date)}</p>
@@ -1791,9 +1797,19 @@ function communityPostHTML(post) {
     ${photos}
     <div class="opts">${post.mine
       ? `<button class="link danger" data-action="community-delete" data-id="${esc(post.id)}">${v.deleteArmed === post.id ? '한 번 더 누르면 지워요' : '내 글 지우기'}</button>`
-      : `<button class="link" data-action="community-report-open" data-id="${esc(post.id)}">신고</button>`}</div>
+      : `<button class="link" data-action="community-report-open" data-id="${esc(post.id)}">신고</button>
+        <button class="link" data-action="community-block" data-id="${esc(post.id)}">${v.blockArmed === post.id ? `한 번 더 누르면 ${esc(post.author)}님과 서로 글이 안 보여요` : '이 회원 차단'}</button>`}</div>
     ${report}
   </article>`;
+}
+function communityBlocksHTML() {
+  const v = communityView;
+  const count = v.blocks ? v.blocks.length : v.status.member?.blocks || 0;
+  if (!count && !v.blocks) return '';
+  if (!v.blocks) return `<p class="fine"><button class="link" data-action="community-blocks">차단한 회원 ${count}명 보기</button></p>`;
+  if (!v.blocks.length) return '<p class="fine">차단한 회원이 없어요.</p>';
+  return `<div class="notice"><b>차단한 회원</b><p class="fine">서로의 글이 보이지 않아요. 상대에게는 알리지 않아요.</p><ul class="plain-list">${v.blocks.map((block) =>
+    `<li>${esc(block.name || '커뮤니티를 나간 회원')} · <button class="link" data-action="community-unblock" data-id="${esc(block.id)}">차단 풀기</button></li>`).join('')}</ul></div>`;
 }
 function communitySheet() {
   const v = communityView;
@@ -1809,13 +1825,14 @@ function communitySheet() {
     ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
     ${v.posts.length ? v.posts.map(communityPostHTML).join('') : `<p class="sub">${v.mine ? '아직 올린 코디가 없어요. 가진 옷으로 완성한 코디에서 나눌 수 있어요.' : '아직 올라온 코디가 없어요.'}</p>`}
     ${v.next ? '<button class="btn secondary" data-action="community-more">더 보기</button>' : ''}
+    ${communityBlocksHTML()}
     <p class="fine">${esc(v.status.member.name)}(으)로 참여 중 · <button class="link danger" data-action="community-leave">${v.leaveArmed ? '한 번 더 누르면 내 글과 사진을 모두 지우고 나가요' : '커뮤니티 나가기'}</button></p>`;
   openSheet(`<h2>회원 코디</h2><p class="sub">이 서버 회원이 올린 코디예요. 편집자가 만든 코디 공식과는 다른, 회원의 실제 코디예요.</p>${body}`, { key: 'community' });
 }
 async function openCommunity({ mine = false, then = null } = {}) {
   if (!signedIn()) return openAccountSheet('login');
   releaseCommunityPhotos();
-  communityView = { loading: true, mine, posts: [], next: null, status: null, photos: new Map(), joinName: '', agree: false, reportFor: null, deleteArmed: null, leaveArmed: false, error: '', then };
+  communityView = { loading: true, mine, posts: [], next: null, status: null, photos: new Map(), joinName: '', agree: false, reportFor: null, deleteArmed: null, blockArmed: null, blocks: null, leaveArmed: false, error: '', then };
   communitySheet();
   const view = communityView;
   try {
@@ -3724,11 +3741,48 @@ document.addEventListener('click', async (e) => {
       case 'community-report': {
         const v = communityView;
         if (!v) break;
-        await accountApi().communityReport(el.dataset.id, el.dataset.reason);
+        const reported = await accountApi().communityReport(el.dataset.id, el.dataset.reason);
         v.posts = v.posts.filter((post) => post.id !== el.dataset.id);
         v.reportFor = null;
         communitySheet();
-        toast('신고했어요. 이 글은 더 보이지 않아요');
+        toast(reported?.reviewDays ? `신고했어요. 운영자가 ${reported.reviewDays}일 안에 확인해요` : '신고했어요. 이 글은 더 보이지 않아요');
+        break;
+      }
+      case 'community-block': {
+        const v = communityView;
+        const post = v?.posts.find((row) => row.id === el.dataset.id);
+        if (!post || post.mine) break;
+        if (v.blockArmed !== post.id) { v.blockArmed = post.id; communitySheet(); break; }
+        await accountApi().communityBlock(post.id);
+        if (communityView !== v) break;
+        v.posts = v.posts.filter((row) => row.author !== post.author);
+        v.blockArmed = null;
+        v.blocks = null;
+        if (v.status.member) v.status.member.blocks = (v.status.member.blocks || 0) + 1;
+        communitySheet();
+        toast(`${post.author}님을 차단했어요. 아래 "차단한 회원"에서 풀 수 있어요`);
+        break;
+      }
+      case 'community-blocks': {
+        const v = communityView;
+        if (!v) break;
+        const { blocks } = await accountApi().communityBlocks();
+        if (communityView !== v) break;
+        v.blocks = blocks;
+        communitySheet();
+        break;
+      }
+      case 'community-unblock': {
+        const v = communityView;
+        if (!v?.blocks) break;
+        await accountApi().communityUnblock(el.dataset.id);
+        if (communityView !== v) break;
+        v.blocks = v.blocks.filter((block) => block.id !== el.dataset.id);
+        if (v.status.member) v.status.member.blocks = v.blocks.length;
+        await loadCommunityPage(v);
+        if (communityView !== v) break;
+        communitySheet();
+        toast('차단을 풀었어요');
         break;
       }
       case 'community-delete': {

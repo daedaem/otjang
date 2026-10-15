@@ -117,12 +117,12 @@ test('sign-up weeks start on Monday in Korean time', () => {
 test('an older database learns each account\'s last use from its sessions', () => {
   const file = path.join(temp, 'v3.db');
   let db = openDatabase(file);
-  db.exec('ALTER TABLE users DROP COLUMN last_seen_at; PRAGMA user_version = 3;');
+  db.exec('DROP TABLE community_blocks; DROP TABLE moderation_log; ALTER TABLE users DROP COLUMN last_seen_at; PRAGMA user_version = 3;');
   db.prepare("INSERT INTO users (id, created_at, agreement_version, agreed_at) VALUES ('a', 100, 'v', 100), ('b', 200, 'v', 200)").run();
   db.prepare("INSERT INTO sessions (token_hash, user_id, created_at, last_used_at, expires_at) VALUES ('t1', 'a', 100, 500, 9999), ('t2', 'a', 100, 700, 9999)").run();
   db.close();
   db = openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 5);
   assert.deepEqual(db.prepare('SELECT id, last_seen_at FROM users ORDER BY id').all().map((r) => ({ ...r })),
     [{ id: 'a', last_seen_at: 700 }, { id: 'b', last_seen_at: 200 }]);
   db.close();

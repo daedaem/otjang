@@ -145,7 +145,7 @@ EOUL_NAVER_CLIENT_ID=... EOUL_NAVER_CLIENT_SECRET=... npm start
 - 이 서버에 가입한 회원끼리 코디를 나누는 기능입니다. `EOUL_COMMUNITY=on`일 때만 켜집니다.
 - **켜기 전에 운영자가 정해야 할 것**
   - 커뮤니티 규칙: 앱에 보이는 규칙은 `app/src/community-post.js`의 `COMMUNITY_RULES`입니다. 바꾸면 `COMMUNITY_RULES_VERSION`도 올려야 회원이 다시 동의합니다.
-  - 신고를 받는 연락처와 처리 기간.
+  - 신고를 받는 연락처 `EOUL_COMMUNITY_CONTACT`(필수, 없으면 서버가 켜지지 않음)와 확인 기한 `EOUL_COMMUNITY_REVIEW_DAYS`(기본 7일). 둘 다 앱의 규칙과 신고 화면에 보입니다.
   - 처리방침의 "회원 코디" 항목을 채우는 것.
 - **올라가는 것**
   - 코디의 모양: 역할, 종류, 색, 회원이 적은 브랜드, 목록에 있는 상품 번호.
@@ -155,6 +155,12 @@ EOUL_NAVER_CLIENT_ID=... EOUL_NAVER_CLIENT_SECRET=... npm start
 - **신고와 숨김**
   - 신고하면 신고한 회원에게는 바로 안 보입니다.
   - 서로 다른 회원 3명이 신고하면 운영자가 확인할 때까지 모두에게 숨겨집니다. 작성자에게는 숨겨진 이유가 보입니다.
+  - 신고한 회원에게 "운영자가 N일 안에 확인해요"를 보여 줍니다. 운영자 화면(`community review`)은 기다리는 신고를 오래된 순서로 먼저 보여 주고, 기한이 지나면 표시합니다.
+  - 운영자가 숨기거나 지울 때 사유(privacy·rights·spam·abuse·other)를 고르면 작성자에게 그 사유가 보입니다.
+  - 숨김·복구·삭제와 신고 수에 따른 자동 숨김은 `community log`에 남습니다. 글 번호, 처리, 사유, 신고 수, 첫 신고와 처리 시각만 남고 작성자·글·사진은 남기지 않습니다.
+- **차단**
+  - 회원은 글에서 "이 회원 차단"을 두 번 눌러 차단합니다. 그러면 서로의 글이 보이지 않고, 사진·신고도 막힙니다. 상대에게는 알리지 않습니다.
+  - "차단한 회원"에서 언제든 풀 수 있습니다. 한 회원은 500명까지 차단할 수 있고, 커뮤니티를 나가면 내 차단도 지워집니다.
 - **지우기**
   - 작성자는 언제든 지울 수 있습니다. 커뮤니티를 나가거나 계정을 지우면 그 회원의 글과 사진이 모두 지워집니다.
   - 운영자가 `EOUL_COMMUNITY`를 꺼도 회원은 남긴 글을 지울 수 있습니다.
@@ -164,10 +170,11 @@ EOUL_NAVER_CLIENT_ID=... EOUL_NAVER_CLIENT_SECRET=... npm start
   - 서버 전체는 `EOUL_COMMUNITY_MAX_MB`(기본 2048)입니다.
 
 ```bash
-node cli.mjs community review              # 신고되거나 숨겨진 글 (이메일 없이 이름·사유·한마디 앞부분)
-node cli.mjs community hide <글 번호>       # 운영자가 숨김
-node cli.mjs community restore <글 번호>    # 다시 보이게 함 (그 신고 기록은 정리)
-node cli.mjs community delete <글 번호>     # 글과 사진 삭제
+node cli.mjs community review                  # 신고되거나 숨겨진 글. 기다리는 신고가 먼저, 기한 지난 것 표시 (이메일 없음)
+node cli.mjs community hide <글 번호> [사유]     # 운영자가 숨김. 사유: privacy|rights|spam|abuse|other (작성자에게 보임)
+node cli.mjs community restore <글 번호>        # 다시 보이게 함 (그 신고 기록은 정리)
+node cli.mjs community delete <글 번호> [사유]   # 글과 사진 삭제
+node cli.mjs community log                     # 처리 기록과 첫 신고부터 처리까지 걸린 날수
 ```
 
 - 서버 로그에는 글 내용, 이름, 이메일을 남기지 않습니다.

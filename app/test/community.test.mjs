@@ -202,10 +202,28 @@ test('share an outfit with members: rules first, no photo unless chosen and agre
   const first = b.app.communityView().posts.at(-1).id;
   await b.click({ action: 'community-report-open', id: first });
   assert.match(b.sheet(), /개인정보가 보여요/);
+  assert.match(b.sheet(), /신고는 운영자가 7일 안에 확인해요\./, 'the operator’s promise is shown before reporting');
   await b.click({ action: 'community-report', id: first, reason: 'privacy' });
-  assert.match(b.toasts.at(-1), /신고했어요/);
+  assert.match(b.toasts.at(-1), /신고했어요\. 운영자가 7일 안에 확인해요/);
   assert.ok(!b.app.communityView().posts.some((post) => post.id === first));
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM post_reports').get().n, 1);
+
+  // Blocking the author takes a second tap, hides their posts and can be undone from the list.
+  const left = b.app.communityView().posts[0].id;
+  await b.click({ action: 'community-block', id: left });
+  assert.match(b.sheet(), /한 번 더 누르면 민지님과 서로 글이 안 보여요/);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_blocks').get().n, 0, 'nothing before the second tap');
+  await b.click({ action: 'community-block', id: left });
+  assert.match(b.toasts.at(-1), /민지님을 차단했어요/);
+  assert.equal(b.app.communityView().posts.length, 0);
+  assert.match(b.sheet(), /차단한 회원 1명 보기/);
+  await b.click({ action: 'community-blocks' });
+  assert.match(b.sheet(), /<li>민지 · <button class="link" data-action="community-unblock"/);
+  assert.match(b.sheet(), /상대에게는 알리지 않아요/);
+  const blockId = /data-action="community-unblock" data-id="([^"]+)"/.exec(b.sheet())[1];
+  await b.click({ action: 'community-unblock', id: blockId });
+  assert.match(b.toasts.at(-1), /차단을 풀었어요/);
+  assert.deepEqual([...b.app.communityView().posts.map((post) => post.id)], [left], 'their post is back');
 
   // The author deletes the remaining posts with a second tap each.
   await a.click({ action: 'community-open' });

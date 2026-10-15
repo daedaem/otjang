@@ -21,7 +21,15 @@ function addresses(value) {
   return list;
 }
 
+function contactText(value) {
+  const text = (value || '').trim();
+  if (text.length > 120 || /[\u0000-\u001f\u007f<>]/.test(text)) throw new Error('EOUL_COMMUNITY_CONTACT는 120자 이하의 이메일이나 주소로 적어 주세요.');
+  return text || null;
+}
+
 export function loadConfig(env = process.env) {
+  if (env.EOUL_COMMUNITY === 'on' && !(env.EOUL_COMMUNITY_CONTACT || '').trim())
+    throw new Error('EOUL_COMMUNITY=on이면 신고를 받을 연락처 EOUL_COMMUNITY_CONTACT가 필요해요(예: 이메일 주소).');
   const dataDir = path.resolve(env.EOUL_DATA_DIR || path.join(serverRoot, 'data'));
   return {
     host: env.EOUL_HOST || '127.0.0.1',
@@ -53,6 +61,10 @@ export function loadConfig(env = process.env) {
     // Members' outfit sharing. Off until the operator has published the rules
     // and the contact for reports (see README "커뮤니티").
     community: env.EOUL_COMMUNITY === 'on',
+    // Where members send rights complaints (portrait, copyright) and how many
+    // days the operator takes to look at a report. Both are shown in the app.
+    communityContact: contactText(env.EOUL_COMMUNITY_CONTACT),
+    communityReviewDays: integer(env.EOUL_COMMUNITY_REVIEW_DAYS, 7, { min: 1, max: 30 }),
     // Room for all members' shared photos together (MB). Each member also has their own limit.
     communityMaxBytes: integer(env.EOUL_COMMUNITY_MAX_MB, 2048, { min: 1, max: 1024 * 1024 }) * 1024 * 1024,
   };
