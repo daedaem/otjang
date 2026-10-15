@@ -136,11 +136,16 @@ export function createBackgroundRemover({ createWorker = null, timeoutMs = BACKG
       else reject(backgroundError(data.message || '배경을 지우지 못했어요.'));
     };
     worker.onerror = () => {
-      if (!pending) return;
-      const { reject, timer } = pending;
+      // A worker that failed is not reused: the next try starts a fresh one at
+      // once instead of posting to it and waiting for the timeout.
+      const failed = pending;
       pending = null;
-      clearTimeout(timer);
-      reject(backgroundError('배경 지우기 도구를 시작하지 못했어요.'));
+      try { worker?.terminate?.(); } catch {}
+      if (url) URL.revokeObjectURL(url);
+      worker = null; url = null;
+      if (!failed) return;
+      clearTimeout(failed.timer);
+      failed.reject(backgroundError('배경 지우기 도구를 시작하지 못했어요. 다시 누르면 처음부터 시작해요.'));
     };
   };
   const remover = {

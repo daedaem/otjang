@@ -213,6 +213,48 @@ test('the remover runs one photo at a time, times out cleanly and rejects after 
   await assert.rejects(remover.segment(photo()), { name: 'InvalidStateError' });
 });
 
+test('saving waits while the background is being removed', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  let finish;
+  page.app.setBackgroundRemoverFactory(() => ({ segment: () => new Promise((resolve) => { finish = resolve; }), dispose() {} }));
+  await page.click({ action: 'add-start' });
+  await page.app.chooseGarmentPhoto(photo(7));
+  await page.click({ action: 'draft-kind', kind: 'shirt' });
+  await page.click({ action: 'bg-remove' });
+  const running = page.click({ action: 'bg-allow' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(page.app.draft().bgRunning, true);
+  assert.match(page.sheet(), /data-action="draft-save" disabled>배경 지우는 중…/);
+  await page.app.saveGarmentDraft();
+  assert.equal((await stored(page)).state.garments.length, 0, 'nothing is saved with the old photo');
+  finish({ mask: boxMask(80, 40, 240, 300), size: SIZE });
+  await running;
+  await page.click({ action: 'draft-save' });
+  const saved = await stored(page);
+  assert.match(await text(saved.photos.get(saved.state.garments.at(-1).photoId)), /^bg:/, 'the photo saved is the one with the background removed');
+});
+
+test('a worker that fails to start is replaced on the next try instead of waiting for the timeout', async () => {
+  const workers = [];
+  const remover = createBackgroundRemover({
+    timeoutMs: 60000,
+    createWorker: () => {
+      const worker = { posted: [], postMessage(m) { this.posted.push(m); }, terminate() { this.terminated = true; } };
+      workers.push(worker);
+      return worker;
+    },
+  });
+  const first = remover.segment(photo());
+  workers[0].onerror(new Event('error'));
+  await assert.rejects(first, /시작하지 못했어요/);
+  assert.equal(workers[0].terminated, true);
+  const second = remover.segment(photo());
+  assert.equal(workers.length, 2, 'a fresh worker is created');
+  workers[1].onmessage({ data: { type: 'result', id: workers[1].posted[0].id, mask: new Uint8Array(SIZE * SIZE), size: SIZE } });
+  assert.equal((await second).size, SIZE);
+});
+
 test('the worker refuses files whose SHA-384 differs and runs the model from the verified bytes', async () => {
   let source;
   const remover = createBackgroundRemover({ createWorker: (s) => { source = s; return { postMessage() {}, terminate() {} }; } });
