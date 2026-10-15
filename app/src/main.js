@@ -640,7 +640,7 @@ function offerSheet() {
     <p class="sub">${esc([v.brand, v.name].filter(Boolean).join(' ') || '가져온 상품')}</p>
     <h3 class="block">사려는 옵션</h3>
     <div class="candidate-fields"><label>색<select id="offer-requested-color" data-action="offer-requested"><option value="">아직 모름</option>${Object.entries(COLORS).map(([id, c]) => `<option value="${id}"${requested.color === id ? ' selected' : ''}>${c.label}</option>`).join('')}</select></label><label>사이즈<input id="offer-requested-size" data-action="offer-requested" maxlength="20" value="${esc(requested.size || '')}" placeholder="예: M"></label></div>
-    ${!result.requestedComplete ? '<p class="fine">색과 사이즈를 정하면 같은 옵션의 판매처만 비교해요.</p>' : ''}
+    ${!result.requestedComplete ? '<p class="fine">원하는 색과 사이즈를 정해야 총액을 비교해요. 사이즈가 없는 상품은 ‘FREE’라고 적어 주세요.</p>' : ''}
     ${best}
     <ul class="offer-list">${rows.map(row).join('')}</ul>
     ${refreshInfo}
