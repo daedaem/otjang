@@ -103,3 +103,8 @@ const out = option('--out') || path.join(root, 'dist/index.html');
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, html);
 console.log(`${path.relative(process.cwd(), out)} ${(html.length / 1024).toFixed(0)} KB`);
+
+// The installable-app files (manifest, service worker, icons) sit next to the
+// page. The server sends only these named files; a page hosted elsewhere
+// simply has no install support.
+if (!flag('--fragment')) fs.cpSync(path.join(root, 'public'), path.dirname(out), { recursive: true });

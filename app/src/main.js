@@ -2526,10 +2526,33 @@ function optionSheet(kind) {
     <button class="link" data-action="open-settings">계정·저장 관리로</button>
   `, { key: 'profile' });
 }
+// ── 설치형 앱(홈 화면에 추가)
+// The service worker only keeps the app page and icons for opening offline.
+// It is registered only when this page is served by the 어울 server (which
+// also serves sw.js); a page hosted elsewhere stays an ordinary web page.
+let installPrompt = null;
+globalThis.window?.addEventListener?.('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; });
+globalThis.window?.addEventListener?.('appinstalled', () => { installPrompt = null; toast('홈 화면에 어울을 추가했어요'); });
+function registerServiceWorker() {
+  try {
+    if (!navigator.serviceWorker || !document.querySelector('meta[name="eoul-api"][content="same-origin"]')) return;
+    if (location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname)) return;
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  } catch {
+    // Installing is optional; the app works the same without it.
+  }
+}
+function installSection() {
+  if (isStandaloneApp()) return '<div class="opt-group"><h3>앱으로 쓰기</h3><p class="sub">홈 화면 앱으로 열려 있어요.</p></div>';
+  if (installPrompt) return '<div class="opt-group"><h3>앱으로 쓰기</h3><p class="sub">홈 화면에서 바로 열고, 연결이 없을 때도 앱을 열 수 있어요. 옷장은 이 브라우저와 같은 곳에 저장돼요.</p><button class="chip" data-action="install-app">홈 화면에 앱으로 설치</button></div>';
+  if (isAppleTouchBrowser()) return '<div class="opt-group"><h3>앱으로 쓰기</h3><p class="sub">Safari 아래쪽 공유 버튼 → ‘홈 화면에 추가’를 누르면 앱처럼 열려요. 홈 화면 앱은 Safari와 저장 공간이 따로일 수 있으니, 먼저 ‘사진 포함 백업’을 받아 두고 앱에서 ‘백업 가져오기’로 옮기세요.</p><button class="link" data-action="storage-help">보관 안내 보기</button></div>';
+  return '';
+}
 function settingsSheet() {
   openSheet(`<h2 class="detail-title">내 설정</h2><p class="sub">취향과 옷장 보관을 한곳에서 관리해요.</p>
     <div class="opt-group"><h3>추천 취향</h3><p class="sub">${state.gender === 'F' ? '여성' : '남성'} · ${esc(styleLine())}</p><button class="chip" data-action="open-profile">스타일·브랜드·예산</button></div>
     ${accountSection()}
+    ${installSection()}
     <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 먼저 이 브라우저에 저장돼요. ${signedIn() ? '로그인한 동안에는 계정에도 저장해요.' : '다른 기기에서는 백업 파일로 옮길 수 있습니다.'}</p><div id="storage-health">${storageHealthHTML()}</div>${usageLine()}<button class="link" data-action="storage-help">보관 안내 보기</button> <button class="link" data-action="cleanup-open">기록 정리</button>
       <button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><p class="sub">현재 옷장을 비워도 이전 버전의 자료와 복구용 사본은 유지됩니다.</p><button class="chip" data-action="reset" style="margin-top:10px">현재 옷장 비우기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button></div>
   `, { key: 'settings' });
@@ -3523,6 +3546,16 @@ document.addEventListener('click', async (e) => {
       case 'open-settings':
         settingsSheet();
         break;
+      case 'install-app': {
+        const prompt = installPrompt;
+        installPrompt = null;
+        if (!prompt) { settingsSheet(); break; }
+        await prompt.prompt();
+        const choice = await prompt.userChoice.catch(() => null);
+        if (choice?.outcome !== 'accepted') toast('나중에 설정에서 다시 설치할 수 있어요');
+        settingsSheet();
+        break;
+      }
       case 'open-brands':
         optionSheet('brands');
         break;
@@ -4767,6 +4800,7 @@ document.addEventListener(
 
 render();
 const appReady = bootWardrobe();
+appReady.then(registerServiceWorker, () => {});
 document.addEventListener('input', () => rememberDraft());
 document.addEventListener('change', () => rememberDraft());
 // 메일의 확인·재설정 링크(#verify=…, #reset=…). 토큰은 주소의 # 뒤라 서버 로그·Referer에 남지 않는다.

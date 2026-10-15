@@ -320,6 +320,35 @@ test('the app page is sent compressed with an ETag, and an unchanged build answe
   assert.match(rebuilt.body.toString('utf8'), /새 옷장/);
 });
 
+test('the installable-app files next to the page are served by name, and nothing else in that folder is', async (t) => {
+  const folder = fs.mkdtempSync(path.join(temp, 'pwa-'));
+  fs.mkdirSync(path.join(folder, 'icons'));
+  const appFile = path.join(folder, 'index.html');
+  fs.writeFileSync(appFile, '<!doctype html><html><head></head><body></body></html>');
+  fs.writeFileSync(path.join(folder, 'manifest.webmanifest'), '{"name":"어울"}');
+  fs.writeFileSync(path.join(folder, 'sw.js'), 'self.addEventListener("fetch", () => {});');
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+  fs.writeFileSync(path.join(folder, 'icons', 'icon-192.png'), png);
+  fs.writeFileSync(path.join(folder, 'icons', 'maskable.svg'), '<svg/>');
+  fs.writeFileSync(path.join(folder, 'secret.txt'), 'not public');
+  const s = await start({ appFile });
+  t.after(s.close);
+  const manifest = await s.call('GET', '/manifest.webmanifest');
+  assert.equal(manifest.status, 200);
+  assert.match(manifest.headers.get('content-type'), /^application\/manifest\+json/);
+  assert.equal(manifest.headers.get('cache-control'), 'no-cache');
+  const worker = await s.call('GET', '/sw.js');
+  assert.match(worker.headers.get('content-type'), /^text\/javascript/);
+  assert.equal(worker.data.toString('utf8'), 'self.addEventListener("fetch", () => {});');
+  const icon = await s.call('GET', '/icons/icon-192.png');
+  assert.equal(icon.headers.get('content-type'), 'image/png');
+  assert.deepEqual(icon.data, png);
+  assert.deepEqual((await s.call('GET', '/favicon.ico')).data, png, 'the browser default favicon request gets the app icon');
+  assert.equal((await s.call('GET', '/icons/icon-512.png')).status, 404, 'a listed file that was not built is a plain 404');
+  for (const hidden of ['/secret.txt', '/icons/maskable.svg', '/icons/../secret.txt', '/index.html/../secret.txt'])
+    assert.equal((await s.call('GET', hidden)).status, 404, `${hidden} is not served`);
+});
+
 test('a backup copy of the live database holds the same accounts and photos', async (t) => {
   const database = path.join(temp, 'live.db');
   const s = await start({ database });

@@ -6,6 +6,7 @@
 // every snapshot with the app's own validateWardrobe, so it never stores a
 // record the app could not read back.
 import fs from 'node:fs';
+import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { validateWardrobe, WARDROBE_SCHEMA } from '../../app/src/wardrobe.js';
@@ -493,6 +494,30 @@ ${link}
     }
     return accepted;
   }
+  // Installable-app files that the build puts next to the page. Only these
+  // names are served; nothing else in that folder (or outside it) is exposed.
+  const APP_FILES = new Map([
+    ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json; charset=utf-8', 'no-cache']],
+    ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8', 'no-cache']],
+    ['/icons/icon.svg', ['icons/icon.svg', 'image/svg+xml', 'public, max-age=86400']],
+    ['/icons/icon-192.png', ['icons/icon-192.png', 'image/png', 'public, max-age=86400']],
+    ['/icons/icon-512.png', ['icons/icon-512.png', 'image/png', 'public, max-age=86400']],
+    ['/icons/maskable-512.png', ['icons/maskable-512.png', 'image/png', 'public, max-age=86400']],
+    ['/icons/apple-touch-icon.png', ['icons/apple-touch-icon.png', 'image/png', 'public, max-age=86400']],
+    ['/favicon.ico', ['icons/icon-192.png', 'image/png', 'public, max-age=86400']],
+  ]);
+  function serveAppFile(res, pathname) {
+    const [name, type, cache] = APP_FILES.get(pathname);
+    let body;
+    try {
+      body = fs.readFileSync(path.join(path.dirname(config.appFile), name));
+    } catch {
+      send(res, 404, { error: { code: 'not-found', message: '찾는 파일이 없어요.' } });
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': cache, 'X-Content-Type-Options': 'nosniff' });
+    res.end(body);
+  }
   function serveApp(req, res) {
     let page;
     try {
@@ -546,6 +571,7 @@ ${link}
       if (method === 'OPTIONS') return send(res, 204);
       if (url.pathname.startsWith('/v1/')) res.setHeader('Cache-Control', 'no-store');
       if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(req, res);
+      if (method === 'GET' && APP_FILES.has(url.pathname)) return serveAppFile(res, url.pathname);
       if (method === 'POST' && url.pathname === '/v1/photo-mask') return await photoMaskRoute(req, res);
       const photo = /^\/v1\/photos\/([^/]+)$/.exec(url.pathname);
       if (photo) {
