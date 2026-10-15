@@ -38,7 +38,8 @@ import {
 } from './wardrobe.js';
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage } from './wardrobe-store.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
-import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, normalizeCrop, dragCrop } from './garment-photo.js';
+import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, photoAssetWithoutBackground, normalizeCrop, dragCrop } from './garment-photo.js';
+import { createBackgroundRemover, maskCoverage, BACKGROUND_DOWNLOAD_LABEL } from './background-removal.js';
 import { createPhotoRecognizer } from './photo-recognition.js';
 import { suggestPhotoIdentity } from './photo-identity.js';
 import { findOwnedCatalog } from './owned-catalog.js';
@@ -90,6 +91,10 @@ let photoRecognizerFactory = () => createPhotoRecognizer();
 // A deliberate first action precedes large public model downloads. This is
 // session-only; it does not alter wardrobe state or claim the cache exists.
 let photoAnalysisAllowed = false;
+// 배경 지우기: 처음 쓸 때 내려받기 동의를 받고(이 세션 동안 유지), 도구는 세션 동안 하나만 쓴다.
+let backgroundRemoverFactory = () => createBackgroundRemover();
+let backgroundRemover = null;
+let backgroundAllowed = false;
 const journeyForms = new Map();
 let pendingOptionChange = null, candidateGarmentReview = null;
 let eraseReviewStep = 0,
@@ -1134,6 +1139,11 @@ function beginDraft(item = null, slot = null, { confirmDetails = false, returnLo
     sourcePreview: null,
     crop: null,
     cropEdit: null,
+    bgBefore: null,
+    bgRunning: false,
+    bgConsent: false,
+    bgError: '',
+    bgToken: 0,
   };
   addSheet();
 }
@@ -1141,6 +1151,16 @@ function releaseDraftPhotoURLs(current) {
   if (!current) return;
   if (current.preview) URL.revokeObjectURL(current.preview);
   if (current.sourcePreview) URL.revokeObjectURL(current.sourcePreview);
+  if (current.bgBefore?.preview) URL.revokeObjectURL(current.bgBefore.preview);
+}
+// 사진이 바뀌면(새 사진·자르기·빼기) 배경을 지운 결과와 되돌릴 이전 사진은 더 이상 맞지 않는다.
+function resetDraftBackground(current) {
+  if (current.bgBefore?.preview) URL.revokeObjectURL(current.bgBefore.preview);
+  current.bgBefore = null;
+  current.bgError = '';
+  current.bgConsent = false;
+  current.bgRunning = false;
+  current.bgToken = (current.bgToken || 0) + 1;
 }
 
 // Owned-item lookup never uses shopping budget, season or style filters.
@@ -1360,6 +1380,7 @@ async function applyDraftCrop(crop) {
     const asset = await photoAssetFromSource(current.photoSource, area);
     if (draft !== current || current.token !== token) return;
     if (current.preview) URL.revokeObjectURL(current.preview);
+    resetDraftBackground(current);
     current.asset = asset;
     current.photoId = asset.id;
     current.photoMissing = false;
@@ -1381,6 +1402,55 @@ async function applyDraftCrop(crop) {
   if (photoCanAutoAnalyze() && draft === current && current.token === token && current.asset && !current.photoError)
     await analyzeDraftPhoto();
 }
+// ── 배경 지우기: 이 기기에서 옷과 배경을 나눠 흰 배경으로 바꾼다. 결과를 보고 되돌릴 수 있다.
+function backgroundPanel() {
+  if (!draft) return '';
+  if (draft.bgConsent) return `<div class="notice bg-consent"><p>배경 지우기 도구(${BACKGROUND_DOWNLOAD_LABEL})를 처음 한 번 내려받아요. 사진은 이 기기에서만 처리하고 밖으로 보내지 않아요. 옷과 배경 색이 비슷하면 잘 안 될 수 있어요.</p><div class="opts"><button class="btn small" data-action="bg-allow">내려받고 배경 지우기</button><button class="link" data-action="bg-consent-cancel">취소</button></div></div>`;
+  if (draft.bgRunning) return '<p role="status" class="sub">배경을 지우는 중이에요… 처음에는 도구를 내려받아 조금 더 걸려요.</p>';
+  if (draft.bgError) return `<div class="photo-error"><p class="editor-error" role="alert">${esc(draft.bgError)}</p></div>`;
+  if (draft.bgBefore) return '<p class="fine">배경을 흰색으로 바꿨어요. 옷 가장자리가 잘렸으면 ‘원래 배경으로’를 눌러 주세요.</p>';
+  return '';
+}
+async function removeDraftBackground() {
+  const current = draft;
+  if (!current || current.saving || current.processing || current.bgRunning) return;
+  let blob = current.asset?.blob || null;
+  if (!blob) {
+    try { if (await ensureDraftPhotoSource(current)) blob = current.photoSource.blob; } catch {}
+  }
+  if (!blob || draft !== current) return;
+  const token = current.token, bgToken = ++current.bgToken;
+  current.bgRunning = true;
+  current.bgError = '';
+  addSheet();
+  const live = () => draft === current && current.token === token && current.bgToken === bgToken;
+  try {
+    backgroundRemover ||= backgroundRemoverFactory();
+    const { mask, size } = await backgroundRemover.segment(blob);
+    if (!live()) return;
+    const cover = maskCoverage(mask);
+    if (cover < 0.03 || cover > 0.97) throw new Error('옷을 배경과 구분하지 못했어요. 원래 사진을 그대로 쓸게요.');
+    const asset = await photoAssetWithoutBackground(blob, mask, size);
+    if (!live()) return;
+    current.bgBefore = { asset: current.asset, photoId: current.photoId, preview: current.preview };
+    current.asset = asset;
+    current.photoId = asset.id;
+    current.photoMissing = false;
+    current.preview = URL.createObjectURL(asset.blob);
+    current.photoRecognition = null;
+    current.recognitionError = '';
+    current.recognitionProgress = null;
+  } catch (error) {
+    if (['TimeoutError', 'InvalidStateError'].includes(error?.name)) backgroundRemover = null;
+    if (live()) current.bgError = error?.message || '배경을 지우지 못했어요. 원래 사진은 그대로예요.';
+  } finally {
+    if (live()) {
+      current.bgRunning = false;
+      addSheet();
+    }
+  }
+  if (photoCanAutoAnalyze() && live() && current.bgBefore && current.asset) await analyzeDraftPhoto();
+}
 function addSheet() {
   if (!draft) return;
   if (draft.entryMode === 'catalog') { ownedCatalogSheet(); return; }
@@ -1401,8 +1471,9 @@ function addSheet() {
   const manualKinds = `<fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>옷 사진 한 장</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p><fieldset${draft.saving ? ' disabled' : ''}>
-  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `${`<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진${draft.crop ? ' (자른 영역)' : ''}">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions">${photo ? `<button class="chip" data-action="crop-start"${draft.processing ? ' disabled' : ''}>${draft.crop ? '자른 영역 다시 조정' : '옷만 자르기'}</button>` : ''}<button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>`}<button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
+  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `${`<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진${draft.crop ? ' (자른 영역)' : ''}">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions">${photo ? `<button class="chip" data-action="crop-start"${draft.processing || draft.bgRunning ? ' disabled' : ''}>${draft.crop ? '자른 영역 다시 조정' : '옷만 자르기'}</button>${draft.bgBefore ? '<button class="chip" data-action="bg-restore">원래 배경으로</button>' : `<button class="chip" data-action="bg-remove"${draft.processing || draft.bgRunning ? ' disabled' : ''}>${draft.bgRunning ? '배경 지우는 중…' : '배경 지우기'}</button>`}` : ''}<button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>`}<button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
   ${draft.photoMissing ? '<p class="notice">이전 버전에서 저장되지 않은 사진이에요. 다시 고를 수 있어요.</p>' : ''}
+  ${backgroundPanel()}
   ${photoAnalysisPanel()}
   ${draft.kind ? `<div class="confirmed-kind"><span>확인한 종류</span><b>${esc(garmentKindName(draft.kind))}</b>${draft.brand ? `<small>${esc(draft.brand)}</small>` : ''}</div>` : photo ? '<p class="sub registration-kind-hint">종류를 확인해 주세요. 모르면 아래에서 직접 고를 수 있어요.</p>' : ''}
   ${manual ? manualKinds : `<details class="manual-kinds"><summary>${draft.kind ? '다른 종류로 바꾸기' : '다른 종류로 등록'}</summary>${manualKinds}</details>`}
@@ -1426,6 +1497,7 @@ async function chooseGarmentPhoto(file) {
     const { asset, source } = await prepareGarmentPhotoWithSource(file);
     if (draft !== current || current.token !== token) return;
     releaseDraftPhotoURLs(current);
+    resetDraftBackground(current);
     current.photoSource = source;
     current.sourcePreview = URL.createObjectURL(source.blob);
     current.crop = null;
@@ -2435,6 +2507,32 @@ document.addEventListener('click', async (e) => {
         addSheet();
         break;
       }
+      case 'bg-remove':
+        if (!draft || draft.saving) break;
+        if (!backgroundAllowed) { draft.bgConsent = true; draft.bgError = ''; addSheet(); break; }
+        await removeDraftBackground();
+        break;
+      case 'bg-allow':
+        if (!draft) break;
+        backgroundAllowed = true;
+        draft.bgConsent = false;
+        await removeDraftBackground();
+        break;
+      case 'bg-consent-cancel':
+        if (draft) { draft.bgConsent = false; addSheet(); }
+        break;
+      case 'bg-restore':
+        if (draft?.bgBefore && !draft.bgRunning && !draft.saving) {
+          const before = draft.bgBefore;
+          if (draft.preview) URL.revokeObjectURL(draft.preview);
+          draft.asset = before.asset;
+          draft.photoId = before.photoId;
+          draft.preview = before.preview;
+          draft.bgBefore = null;
+          draft.photoRecognition = null;
+          addSheet();
+        }
+        break;
       case 'crop-start':
         await startDraftCrop();
         break;
@@ -2453,6 +2551,7 @@ document.addEventListener('click', async (e) => {
           draft.token++;
           draft.processing = false;
           releaseDraftPhotoURLs(draft);
+          resetDraftBackground(draft);
           draft.preview = null;
           draft.sourcePreview = null;
           draft.photoSource = null;

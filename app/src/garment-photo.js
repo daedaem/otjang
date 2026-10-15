@@ -140,3 +140,62 @@ export function dragCrop(from, handle, dx, dy, min = 0.08) {
   if (handle.includes('s')) bottom = clamp(bottom + dy, top + min, 1);
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
+
+/**
+ * Put the garment on a plain white background using a square foreground mask
+ * (0–255, `size`×`size`, stretched over the photo) and crop to the garment
+ * with a small margin. Returns a stored-photo asset (JPEG).
+ */
+export async function photoAssetWithoutBackground(blob, mask, size, { margin = 0.06 } = {}) {
+  const decoded = await decodePhoto(blob);
+  try {
+    const W = decoded.width, H = decoded.height;
+    let minX = size, minY = size, maxX = -1, maxY = -1;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (mask[y * size + x] < 128) continue;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    if (maxX < 0) throw new Error('옷을 배경과 구분하지 못했어요. 원래 사진을 그대로 쓸게요.');
+    const pad = margin * Math.max(maxX - minX + 1, maxY - minY + 1);
+    const left = Math.max(0, Math.floor(((minX - pad) / size) * W));
+    const top = Math.max(0, Math.floor(((minY - pad) / size) * H));
+    const right = Math.min(W, Math.ceil(((maxX + 1 + pad) / size) * W));
+    const bottom = Math.min(H, Math.ceil(((maxY + 1 + pad) / size) * H));
+    const sw = Math.max(1, right - left), sh = Math.max(1, bottom - top);
+    const scale = Math.min(1, MAX_SAVED_EDGE / Math.max(sw, sh));
+    const w = Math.max(1, Math.round(sw * scale)), h = Math.max(1, Math.round(sh * scale));
+    // The mask becomes the alpha channel of a small canvas, stretched with
+    // smoothing over the photo so the garment edge stays soft.
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = size;
+    maskCanvas.height = size;
+    const mctx = maskCanvas.getContext('2d');
+    if (!mctx) throw new Error('사진을 준비하지 못했습니다.');
+    const alpha = mctx.createImageData(size, size);
+    for (let p = 0; p < mask.length; p++) { alpha.data[p * 4 + 3] = mask[p]; }
+    mctx.putImageData(alpha, 0, 0);
+    const layer = document.createElement('canvas');
+    layer.width = w;
+    layer.height = h;
+    const lctx = layer.getContext('2d');
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!lctx || !ctx) throw new Error('사진을 준비하지 못했습니다.');
+    lctx.drawImage(decoded.image, left, top, sw, sh, 0, 0, w, h);
+    lctx.globalCompositeOperation = 'destination-in';
+    lctx.drawImage(maskCanvas, (left / W) * size, (top / H) * size, (sw / W) * size, (sh / H) * size, 0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(layer, 0, 0);
+    for (const quality of [0.82, 0.7, 0.6]) {
+      const out = await encode(canvas, quality);
+      if (out && out.size <= MAX_GARMENT_PHOTO_BYTES) return photoAsset(out);
+    }
+    throw new Error('사진 용량을 줄여 다시 골라 주세요.');
+  } finally {
+    URL.revokeObjectURL(decoded.url);
+  }
+}
