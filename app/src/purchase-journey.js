@@ -9,7 +9,9 @@ export const JOURNEY_FITS = ['small', 'right', 'large'];
 export const JOURNEY_RETURN_REASONS = ['size', 'color', 'quality', 'change-of-mind', 'other'];
 export const MAX_PURCHASE_JOURNEYS = 200;
 export const MAX_JOURNEY_HISTORY = 512;
-export const MAX_WARDROBE_STATE_BYTES = 850000;
+// Schema 7's empty seller-note field adds exactly 18 UTF-8 JSON bytes. Reserve
+// only that metadata overhead so a valid full schema 6 snapshot still upgrades.
+export const MAX_WARDROBE_STATE_BYTES = 850018;
 
 const purchaseKinds = new Set(SLOTS.map((slot) => slot.shape));
 const purchaseCandidateKeys = [

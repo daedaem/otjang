@@ -340,7 +340,7 @@ test('default worker loads pinned public assets, analyzes local garment kinds, o
     };
   } };
   const self = { OffscreenCanvas() {}, createImageBitmap() {}, postMessage: (data) => posted.push(data) };
-  vm.runInNewContext(source.replace('import(config.runtime)', 'Promise.resolve(testRuntime)'), { self, Blob, testRuntime: runtime });
+  vm.runInNewContext(source.replace('verified(config.runtime, config.runtimeIntegrity)', 'Promise.resolve()').replace('import(config.runtime)', 'Promise.resolve(testRuntime)'), { self, Blob, testRuntime: runtime });
   const localBlob = image();
   await self.onmessage({ data: { type: 'analyze', id: 'real-protocol', blob: localBlob } });
   assert.equal(env.allowLocalModels, false);
@@ -389,6 +389,8 @@ test('default browser OCR uses documented separate worker with fixed library/cor
   assert.equal(result.text, 'NIKE');
   assert.equal(scripts.length, 1);
   assert.equal(scripts[0].src, 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js');
+  assert.match(scripts[0].integrity, /^sha384-[A-Za-z0-9+/]{64}$/, 'the OCR library is loaded with subresource integrity');
+  assert.equal(scripts[0].crossOrigin, 'anonymous');
   assert.equal(localWorkers.length, 1, 'the model worker is created by the app; OCR creates its own worker via the library');
   assert.equal(worker.options.type, 'module');
   const [langs, oem, options] = ocrCalls[0];
@@ -417,7 +419,7 @@ test('worker maps tested jacket/hoodie aliases to existing kinds and offers dist
     ] : [{ label: labels[0], score: 0.6 }];
   } };
   const self = { OffscreenCanvas() {}, createImageBitmap() {}, postMessage: (data) => posted.push(data) };
-  vm.runInNewContext(h.workers[0].source.replace('import(config.runtime)', 'Promise.resolve(testRuntime)'), { self, Blob, testRuntime: runtime });
+  vm.runInNewContext(h.workers[0].source.replace('verified(config.runtime, config.runtimeIntegrity)', 'Promise.resolve()').replace('import(config.runtime)', 'Promise.resolve(testRuntime)'), { self, Blob, testRuntime: runtime });
   await self.onmessage({ data: { type: 'analyze', id: 'aliases', blob: image() } });
   const result = posted.find((data) => data.type === 'result').result;
   assert.deepEqual(Array.from(result.kinds, (row) => row.kind), ['jacket', 'sweat', 'coat']);
@@ -610,5 +612,38 @@ test('preparation timeout terminates an existing OCR handle before its factory f
   const result = await promise;
   assert.equal(result.kinds[0].kind, 'shirt');
   assert.equal(worker.terminated, 1);
+  h.recognizer.dispose();
+});
+
+test('the analysis runtime is refused when its bytes differ from the pinned SHA-384, and used when they match', async () => {
+  const h = harness(), captured = h.recognizer.analyze(image());
+  h.completeVision();
+  await captured;
+  const source = h.workers[0].source;
+  assert.match(source, /"runtimeIntegrity":"sha384-[A-Za-z0-9+/]{64}"/);
+  const bytes = new TextEncoder().encode('export const pipeline = null;');
+  const fetches = [];
+  const fakeFetch = async (url, options) => { fetches.push({ url, options }); return { ok: true, arrayBuffer: async () => bytes.buffer.slice(0) }; };
+  const runWorker = (workerSource) => {
+    const posted = [];
+    const env = { backends: { onnx: { wasm: {} } } };
+    const runtime = { env, async pipeline() { return async (blob, labels) => [{ label: labels[0], score: 0.7 }]; } };
+    const self = { OffscreenCanvas() {}, createImageBitmap() {}, postMessage: (data) => posted.push(data) };
+    vm.runInNewContext(workerSource.replace('import(config.runtime)', 'Promise.resolve(testRuntime)'), { self, Blob, testRuntime: runtime, fetch: fakeFetch, crypto: globalThis.crypto, btoa, Uint8Array, TextEncoder });
+    return { self, posted };
+  };
+  const mismatch = runWorker(source);
+  await mismatch.self.onmessage({ data: { type: 'analyze', id: 'tampered', blob: image() } });
+  const error = mismatch.posted.find((data) => data.type === 'error');
+  assert.match(error.message, /고정한 버전과 달라 사용하지 않았어요/);
+  assert.ok(!mismatch.posted.some((data) => data.type === 'result'));
+  assert.equal(fetches[0].url, 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js');
+  assert.equal(fetches[0].options.credentials, 'omit');
+
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-384', bytes));
+  const expected = `sha384-${Buffer.from(digest).toString('base64')}`;
+  const matching = runWorker(source.replace(/"runtimeIntegrity":"sha384-[A-Za-z0-9+/=]+"/, `"runtimeIntegrity":"${expected}"`));
+  await matching.self.onmessage({ data: { type: 'analyze', id: 'pinned', blob: image() } });
+  assert.ok(matching.posted.some((data) => data.type === 'result'), 'matching bytes proceed to analysis');
   h.recognizer.dispose();
 });

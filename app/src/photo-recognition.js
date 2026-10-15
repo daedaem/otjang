@@ -7,6 +7,7 @@ export const PHOTO_RECOGNITION_DTYPE = 'q8';
 export const PHOTO_RECOGNITION_KIND_LABELS = [
   ['shirt', '셔츠', 'button-up shirt'], ['tee', '티셔츠', 't-shirt'],
   ['knit', '니트', 'knitted sweater'], ['pants', '바지', 'trousers'],
+  ['vest', '베스트·조끼', 'sleeveless vest'],
   ['jeans', '청바지', 'jeans'], ['jacket', '재킷', 'jacket'],
   ['sneaker', '운동화', 'sneakers'], ['cardigan', '카디건', 'cardigan'],
   ['longtee', '긴팔 티', 'long sleeve t-shirt'], ['sweat', '맨투맨', 'sweatshirt'],
@@ -32,6 +33,13 @@ const PHOTO_RECOGNITION_OCR_SCRIPT = 'https://cdn.jsdelivr.net/npm/tesseract.js@
 const PHOTO_RECOGNITION_OCR_WORKER = 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js';
 const PHOTO_RECOGNITION_OCR_CORE = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0';
 const PHOTO_RECOGNITION_OCR_LANG = 'https://tessdata.projectnaptha.com/4.0.0';
+// SHA-384 of the pinned files, computed 2026-10-15 from the URLs above. A CDN
+// that serves different bytes is refused and the user registers manually.
+// Files these libraries fetch themselves (ONNX/Tesseract WASM, OCR worker,
+// language data, model weights) are pinned by version/revision but not hashed
+// here; see docs/registration-photo-20261015.md.
+export const PHOTO_RECOGNITION_RUNTIME_INTEGRITY = 'sha384-sOua6i337lNLWtuIG44PBf5JXIvhoicFClCcI4XHDe/eHW3dwhQ3Y6t6wQjfRrkT';
+export const PHOTO_RECOGNITION_OCR_SCRIPT_INTEGRITY = 'sha384-r1ru3tcf6FhnCFR4B7pIFG+BhFF9LlFtz/P1y4pblWn3AGs9y3lBx5SKLNf4+rED';
 const PHOTO_RECOGNITION_TIMEOUT = 90000;
 const PHOTO_RECOGNITION_PREPARATION_TIMEOUT = 600000;
 let photoRecognitionOcrLibrary = null;
@@ -48,9 +56,20 @@ function photoRecognitionWorkerMain(config) {
   let pipelinePromise = null;
   let activeId = null;
   const progress = (id, stage, value = null) => self.postMessage({ type: 'progress', id, stage, progress: value });
+  // Refuse a runtime whose bytes differ from the pinned SHA-384. The import that
+  // follows normally comes from the HTTP cache this fetch filled; a CDN that
+  // answers the two requests differently is not covered (see the photo doc).
+  const verified = async (url, integrity) => {
+    const response = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'force-cache' });
+    if (!response.ok) throw new Error('사진 분석 도구를 내려받지 못했습니다. 인터넷 연결을 확인하거나 종류를 직접 골라 주세요.');
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-384', await response.arrayBuffer()));
+    let binary = '';
+    for (const byte of digest) binary += String.fromCharCode(byte);
+    if (`sha384-${btoa(binary)}` !== integrity) throw new Error('사진 분석 도구 파일이 고정한 버전과 달라 사용하지 않았어요. 종류를 직접 골라 주세요.');
+  };
   const classifier = () => {
     if (!pipelinePromise) {
-      pipelinePromise = import(config.runtime).then(({ env, pipeline }) => {
+      pipelinePromise = verified(config.runtime, config.runtimeIntegrity).then(() => import(config.runtime)).then(({ env, pipeline }) => {
         env.allowLocalModels = false;
         env.backends.onnx.wasm.numThreads = 1;
         env.backends.onnx.wasm.proxy = false;
@@ -104,7 +123,7 @@ function photoRecognitionWorkerMain(config) {
 
 function photoRecognitionWorkerSource() {
   return `(${photoRecognitionWorkerMain.toString()})(${JSON.stringify({
-    runtime: PHOTO_RECOGNITION_RUNTIME, model: PHOTO_RECOGNITION_MODEL, revision: PHOTO_RECOGNITION_REVISION, dtype: PHOTO_RECOGNITION_DTYPE,
+    runtime: PHOTO_RECOGNITION_RUNTIME, runtimeIntegrity: PHOTO_RECOGNITION_RUNTIME_INTEGRITY, model: PHOTO_RECOGNITION_MODEL, revision: PHOTO_RECOGNITION_REVISION, dtype: PHOTO_RECOGNITION_DTYPE,
     kinds: PHOTO_RECOGNITION_KIND_LABELS, aliases: PHOTO_RECOGNITION_KIND_ALIASES,
     distractors: PHOTO_RECOGNITION_DISTRACTORS,
   })});`;
@@ -130,6 +149,7 @@ function photoRecognitionLoadOcrLibrary() {
       }
       const script = document.createElement('script');
       script.src = PHOTO_RECOGNITION_OCR_SCRIPT;
+      script.integrity = PHOTO_RECOGNITION_OCR_SCRIPT_INTEGRITY;
       script.async = true;
       script.crossOrigin = 'anonymous';
       const timer = setTimeout(() => finish(photoRecognitionError('라벨 분석 도구 다운로드 시간이 초과되었습니다.', 'TimeoutError')), 30000);
@@ -141,7 +161,7 @@ function photoRecognitionLoadOcrLibrary() {
         else reject(photoRecognitionError('라벨 분석 도구를 시작하지 못했습니다. 다시 시도해 주세요.'));
       };
       script.onload = () => finish();
-      script.onerror = () => finish(photoRecognitionError('라벨 분석 도구를 내려받지 못했습니다. 인터넷 연결을 확인해 주세요.'));
+      script.onerror = () => finish(photoRecognitionError('라벨 분석 도구를 내려받지 못했거나 파일이 고정한 버전과 달라 사용하지 않았어요. 인터넷 연결을 확인하거나 라벨 글자를 직접 적어 주세요.'));
       document.head.appendChild(script);
     }).catch((error) => { photoRecognitionOcrLibrary = null; throw error; });
   }

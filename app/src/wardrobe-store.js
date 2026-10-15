@@ -29,11 +29,42 @@ export function wardrobeStateStorageUsage(state) {
   };
 }
 
+/** The shared price/diary allowance after reserving future ownership and clothes. */
+export function noteStorageUsage(state) {
+  const encodedBytes = (value) => new TextEncoder().encode(JSON.stringify(value)).length;
+  const offerBytes = encodedBytes(state?.offerRecords ?? []);
+  const wearBytes = encodedBytes(state?.wears ?? []);
+  const bytes = offerBytes + wearBytes;
+  const futureJourneyBytes = Math.max(0, MAX_OWNERSHIP_JOURNEY_STATE_BYTES - journeyStorageUsage(state).bytes);
+  const clothingHeadroomBytes = 64 * 1024;
+  const otherBytes = wardrobeStateStorageUsage(state).bytes - bytes;
+  const limitBytes = Math.max(0, MAX_WARDROBE_STATE_BYTES - otherBytes - futureJourneyBytes - clothingHeadroomBytes);
+  const warningBytes = Math.ceil(limitBytes * 0.9);
+  return {
+    bytes, offerBytes, wearBytes, limitBytes,
+    remainingBytes: Math.max(0, limitBytes - bytes),
+    warningBytes, warning: bytes >= warningBytes, overBudget: bytes > limitBytes,
+    futureJourneyBytes, clothingHeadroomBytes,
+  };
+}
+
+// Notes must not consume space that ownership transitions may still need.
+// Reserve the unused portion of the journey allowance, plus clothing headroom,
+// when prices/wear notes grow. Existing imports and shrink-only cleanup stay
+// readable even when they predate this reserve.
+export function validateNoteGrowth(previous, next) {
+  if (!previous) return;
+  const usage = noteStorageUsage(next);
+  if (usage.bytes <= noteStorageUsage(previous).bytes) return;
+  if (usage.overBudget)
+    throw Object.assign(new Error('옷과 반품·수령 기록을 위한 공간을 남겨 두었어요. 백업한 뒤 필요 없는 가격·착용 기록을 정리해 주세요. 기존 기록은 유지했습니다.'), { code: 'offer-budget' });
+}
+
 // This is a small metadata reserve, not separate storage partitions. Old records
 // and confirmed backup replacements keep the full wardrobe validation contract.
 // Only exact lossless journey conversion may grow past the new reserve at boot.
 function losslessJourneyV5Upgrade(previous, next) {
-  if (previous?.schema !== 4 || next.schema !== 5 || previous.journeys.length !== next.journeys.length)
+  if (previous?.schema !== 4 || ![5, 6, 7].includes(next.schema) || previous.journeys.length !== next.journeys.length)
     return false;
   const expected = previous.journeys.map((journey, index) => {
     const converted = {
@@ -51,7 +82,7 @@ function losslessJourneyV5Upgrade(previous, next) {
 }
 
 function essentialOwnershipJourneyChange(previous, next) {
-  if (previous?.schema !== 5 || next.schema !== 5 || previous.journeys.length !== next.journeys.length)
+  if (![5, 6, 7].includes(previous?.schema) || ![5, 6, 7].includes(next.schema) || previous.journeys.length !== next.journeys.length)
     return false;
   let changed = false;
   for (let index = 0; index < previous.journeys.length; index++) {
@@ -80,8 +111,8 @@ function essentialOwnershipJourneyChange(previous, next) {
 
 function validateJourneyGrowth(previous, next) {
   // Schema 2/3/4 are supported legacy read/write formats. The reserve applies to
-  // new schema 5 changes, not a retroactive rejection of those original bytes.
-  if (next.schema !== 5) return;
+  // new schema 5+ changes, not a retroactive rejection of those original bytes.
+  if (next.schema < 5) return;
   const currentBytes = journeyStorageUsage(previous).bytes;
   const nextBytes = journeyStorageUsage(next).bytes;
   if (nextBytes <= MAX_JOURNEY_STATE_BYTES || nextBytes <= currentBytes || losslessJourneyV5Upgrade(previous, next))
@@ -280,7 +311,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
     return snapshot;
   }
 
-  async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch) {
+  async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch, { replacingNotes = false } = {}) {
     validateWardrobe(state);
     const next = structuredClone(state);
     const verified = [];
@@ -309,6 +340,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
           // Compare with the CAS-checked persisted state inside the same
           // transaction, before any metadata or photo write can take place.
           validateJourneyGrowth(old?.state, next);
+          if (!replacingNotes) validateNoteGrowth(old?.state, next);
           revision = (old?.revision || 0) + 1;
           epoch = old?.epoch || crypto.randomUUID();
           const needed = new Set(next.garments.map((garment) => garment.photoId).filter(Boolean));
@@ -510,9 +542,21 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
     );
   }
 
+  // Revision and epoch only (no photos): a cheap check that this tab is not stale.
+  async function peek() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['records'], 'readonly');
+      const request = tx.objectStore('records').get('current');
+      tx.oncomplete = () => resolve(request.result ? { revision: request.result.revision, epoch: request.result.epoch || null } : null);
+      tx.onabort = () => reject(tx.error || new Error('옷장을 읽지 못했습니다.'));
+    });
+  }
+
   return {
     load,
     read,
+    peek,
     commit,
     backup,
     recoveryState,

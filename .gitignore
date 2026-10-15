@@ -27,3 +27,10 @@ shots/
 /docs/*PRD*v0.3.md
 /prototypes/
 /app/dist/
+
+# Self-hosted server data (accounts, wardrobes, photos)
+/server/data/
+*.db
+*.db-shm
+*.db-wal
+/server/models/

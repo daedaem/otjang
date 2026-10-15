@@ -3,7 +3,9 @@
 // Transactions are atomic within one database; this entire operation is not.
 export const WARDROBE_ERASE_SCOPE = Object.freeze({
   databases: Object.freeze(['eoul-wardrobe-v2', 'eoul']),
-  localStorageKeys: Object.freeze(['eoul:v1', 'eoul:v2', 'eoul:v2:unreadable']),
+  // The schema 7 migration keeps its old seller-note source for recovery. It
+  // must be inspected and removed before the erase-pending guard can clear.
+  localStorageKeys: Object.freeze(['eoul:v1', 'eoul:v2', 'eoul:v2:unreadable', 'eoul:offers:v1']),
 });
 // This guard stores only deletion state, never a record or migration source.
 export const WARDROBE_ERASE_PENDING_KEY = 'eoul:erase-pending';

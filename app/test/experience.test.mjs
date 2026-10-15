@@ -10,7 +10,7 @@ import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { legacyWardrobeV2 } from '../src/legacy-wardrobe.js';
 import { createWardrobeStore, photoAsset } from '../src/wardrobe-store.js';
 import { readLegacyPhotos } from '../src/legacy-photos.js';
-import { newWardrobeState, makeGarment } from '../src/wardrobe.js';
+import { newWardrobeState, makeGarment, WARDROBE_SCHEMA } from '../src/wardrobe.js';
 import { CATALOG } from '../src/data/products.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -432,7 +432,7 @@ test('future-schema startup explicitly confirms replacement and preserves its ra
   const raw = await manifest(await broken.app.store.recoveryBackup());
   const preserved = raw.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
   assert.deepEqual(preserved.value.source.row, future);
-  assert.equal((await broken.app.store.read()).state.schema, 5);
+  assert.equal((await broken.app.store.read()).state.schema, WARDROBE_SCHEMA);
 });
 test('a ready tab with a later failed read confirms preserved recovery before replacing a future record or missing photo', async () => {
   for (const failure of ['future', 'missing-photo']) {
@@ -515,7 +515,7 @@ test('recovery confirmation cannot replace a source changed by another tab', asy
 test('current-wardrobe reset labels its scope and retains legacy source material', async () => {
   const raw = JSON.stringify(oldState),
     page = await boot(new Map([['eoul:v1', raw]]));
-  await page.click({ action: 'open-profile' });
+  await page.click({ action: 'open-settings' });
   assert.match(page.nodes.get('sheet-root').innerHTML, /현재 옷장 비우기/);
   assert.match(page.nodes.get('sheet-root').innerHTML, /이전 버전의 자료와 복구용 사본은 유지/);
   assert.doesNotMatch(page.nodes.get('sheet-root').innerHTML, /모두 지우고 처음부터/);
@@ -778,8 +778,13 @@ test('product sheet renders exact item, honest basis and owning it preserves exi
   assert.match(page.nodes.get('sheet-root').innerHTML, /무신사/);
   await page.click({ action: 'own-product', id: 'ms-728000' });
   await page.click({ action: 'own-product', id: 'ms-728000' });
+  assert.equal(page.state().garments.length, 1, 'opening or repeating a product selection does not confirm ownership');
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="owned-catalog-confirm"/);
+  await page.click({ action: 'owned-catalog-confirm', id: 'ms-728000' });
+  await page.click({ action: 'owned-catalog-confirm', id: 'ms-728000' });
   assert.equal(page.state().garments.length, 2);
   assert.equal(page.state().garments[0].label, '원래 셔츠');
+  assert.equal(page.state().garments[1].color, null, 'catalog color is not the owned color without an explicit choice');
 });
 
 test('Claude v2 migration preserves photo bytes, duplicate kinds, styles, brands and the original databases', async () => {
@@ -869,7 +874,7 @@ test('schema two photo database and backup upgrade without dropping generic garm
   const backup = await store.backup();
   store.close();
   const page = await boot(new Map(), indexedDB);
-  assert.equal(page.state().schema, 5);
+  assert.equal(page.state().schema, WARDROBE_SCHEMA);
   assert.deepEqual(page.state().styles, ['cityboy']);
   assert.deepEqual(page.state().legacyDismissed.owned, ['legacy_m-blazer']);
   const item = page.state().garments[0];
@@ -885,7 +890,7 @@ test('schema two photo database and backup upgrade without dropping generic garm
   await add(page, 'pants', '추가');
   await page.app.chooseWardrobeBackup(backup);
   await page.click({ action: 'restore-backup' });
-  assert.equal(page.state().schema, 5);
+  assert.equal(page.state().schema, WARDROBE_SCHEMA);
   assert.equal(page.state().garments.length, 1);
   const restored = await page.app.store.read();
   assert.deepEqual(
@@ -917,10 +922,11 @@ test('full erase requires scope and final confirmation, clears all wardrobe sour
     tx.objectStore('photos').put(jpeg(22), 'recovery-photo:synthetic');
   });
   const before = await syntheticDBRows(indexedDB, 'eoul-wardrobe-v2');
-  await page.click({ action: 'open-profile' });
+  await page.click({ action: 'open-settings' });
+  assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="erase-review"/);
   await page.click({ action: 'erase-review' });
   const scope = page.nodes.get('sheet-root').innerHTML;
-  assert.match(scope, /현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 취향, 복구용 사본/);
+  assert.match(scope, /현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 판매처 가격 기록, 취향, 복구용 사본/);
   assert.match(scope, /다른 앱의 자료는 유지/);
   assert.match(scope, /다른 옷장 탭을 모두 닫아/);
   assert.match(scope, /내려받은 백업 파일은 별도로/);
@@ -1102,29 +1108,39 @@ test('generic owned clothes display uncertainty in cards and detail instead of a
   assert.doesNotMatch(page.nodes.get('app').innerHTML, /하나만 사면 완성/);
 });
 
-test('owning an opposite-gender product switches the visible wardrobe while retaining existing garments across reload', async () => {
+test('owning an opposite-gender product shows both classifications while retaining preferences and garments across reload', async () => {
   const page = await boot();
   await add(page, 'shirt', '기존 남성 셔츠');
+  await page.click({ action: 'profile-style', style: 'cityboy' });
+  await page.click({ action: 'profile-style', style: 'dandy' });
+  await page.click({ action: 'profile-style', style: 'classic' });
+  const preferences = Object.fromEntries(['gender', 'styles', 'brands', 'brandOnly', 'budget', 'occasion'].map((key) => [key, page.state()[key]]));
+  assert.deepEqual(preferences.styles, ['cityboy', 'dandy']);
   const originalId = page.state().garments[0].id;
   await page.click({ action: 'open-item', id: 'ms-1115031' });
   await page.click({ action: 'own-product', id: 'ms-1115031' });
+  assert.equal(page.state().garments.length, 1, 'selecting an opposite-gender product does not write yet');
+  await page.click({ action: 'owned-catalog-color', color: 'white' });
+  await page.click({ action: 'owned-catalog-confirm', id: 'ms-1115031' });
   const owned = page.state().garments.find((item) => item.productId === 'ms-1115031');
   assert.ok(owned);
   assert.equal(owned.gender, 'F');
-  assert.equal(page.state().gender, 'F');
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(page.state()[key], value, key);
   assert.equal(page.state().tab, 'closet');
   assert.equal(page.state().garments.length, 2);
   assert.equal(page.state().garments.find((item) => item.id === originalId).gender, 'M');
   assert.match(page.nodes.get('app').innerHTML, /단테 - 화이트/);
   assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${owned.id}"`));
-  assert.ok(!page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${originalId}"`));
+  assert.ok(page.nodes.get('app').innerHTML.includes(`data-action="open-own" data-id="${originalId}"`));
   await page.click({ action: 'open-item', id: 'ms-1115031' });
-  assert.match(page.nodes.get('sheet-root').innerHTML, /옷장에 있는 상품이에요/);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /보유 옷 확인·추가/);
   await page.click({ action: 'own-product', id: 'ms-1115031' });
   assert.equal(page.state().garments.length, 2);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /같은 상품 한 벌 더 저장/);
+  await page.click({ action: 'close-sheet' });
   const again = await boot(page.storage, page.indexedDB);
   await again.click({ action: 'tab', tab: 'closet' });
-  assert.equal(again.state().gender, 'F');
+  for (const [key, value] of Object.entries(preferences)) assert.deepEqual(again.state()[key], value, `reloaded ${key}`);
   assert.equal(again.state().garments.length, 2);
   assert.match(again.nodes.get('app').innerHTML, /단테 - 화이트/);
 });
@@ -1145,7 +1161,7 @@ test('price-sorted search labels collected-date prices and displays the catalogu
   assert.match(view, /수집일 가격이 낮은 순서/);
   assert.match(view, /옵션과 배송비는 판매 페이지에서 확인/);
   assert.ok(view.includes(CATALOG.checkedLabel));
-  assert.match(view, /할인·쿠폰·재고에 따라 달라질 수/);
+  assert.match(view, /가격·쿠폰·재고는 구매 전에 판매처에서 확인/);
   assert.doesNotMatch(view, /실시간 최저가|최저가 보장/);
 });
 

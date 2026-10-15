@@ -2,6 +2,13 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, COLORS } from './data/slots.js';
 import { legacyWardrobeV2 } from './legacy-wardrobe.js';
 import { legacyPurchaseV4 } from './legacy-purchase-v4.js';
 import { validatePurchaseJourney, upgradePurchaseJourneyV4, returnedGarmentIds, MAX_PURCHASE_JOURNEYS, MAX_WARDROBE_STATE_BYTES } from './purchase-journey.js';
+import { validateWears } from './wear-log.js';
+import { validateOfferRecords } from './offer-store.js';
+
+// Schema 7 puts seller notes in the same snapshot as the wardrobe. Older
+// snapshots upgrade with an empty list; older apps refuse the new schema so
+// they cannot silently discard notes when saving or replacing an account.
+export const WARDROBE_SCHEMA = 7;
 
 export const LEGACY_SLOT_MAP = {
   'm-oxford-white': ['m-oxford', 'white'],
@@ -26,6 +33,7 @@ export const GARMENT_KINDS = [
   ['shirt', '셔츠'],
   ['tee', '티셔츠'],
   ['knit', '니트'],
+  ['vest', '베스트·조끼'],
   ['pants', '바지'],
   ['jeans', '청바지'],
   ['jacket', '재킷'],
@@ -121,7 +129,7 @@ export function demoGarments(gender = 'M') {
 }
 export function newWardrobeState() {
   return {
-    schema: 5,
+    schema: WARDROBE_SCHEMA,
     onboarded: true,
     gender: 'M',
     styles: ['classic'],
@@ -133,6 +141,8 @@ export function newWardrobeState() {
     demoSelected: demoGarments(),
     garments: [],
     journeys: [],
+    wears: [],
+    offerRecords: [],
     saved: [],
     hidden: [],
     legacyFingerprint: null,
@@ -245,10 +255,12 @@ export function validateWardrobe(record) {
     'legacyFingerprint',
     'legacyBaseline',
     'legacyDismissed',
-    ...([4, 5].includes(record?.schema) ? ['journeys'] : []),
+    ...([4, 5, 6, 7].includes(record?.schema) ? ['journeys'] : []),
+    ...([6, 7].includes(record?.schema) ? ['wears'] : []),
+    ...(record?.schema === 7 ? ['offerRecords'] : []),
   ]);
   if (
-    ![3, 4, 5].includes(record.schema) ||
+    ![3, 4, 5, 6, 7].includes(record.schema) ||
     typeof record.onboarded !== 'boolean' ||
     !['M', 'F', null].includes(record.gender) ||
     typeof record.demo !== 'boolean' ||
@@ -302,7 +314,12 @@ export function validateWardrobe(record) {
     }
   }
   if (record.demo && record.garments.length) throw new Error('예시와 개인 옷을 섞을 수 없습니다.');
-  if ([4, 5].includes(record.schema)) {
+  if ([6, 7].includes(record.schema)) {
+    validateWears(record.wears);
+    if (record.demo && record.wears.length) throw new Error('예시 옷에는 착용 기록을 남기지 않아요.');
+  }
+  if (record.schema === 7) validateOfferRecords(record.offerRecords);
+  if ([4, 5, 6, 7].includes(record.schema)) {
     if (!Array.isArray(record.journeys) || record.journeys.length > MAX_PURCHASE_JOURNEYS)
       throw new Error('구매 기록은 최대 200개까지 보관할 수 있어요.');
     const ids = new Set();
@@ -312,19 +329,24 @@ export function validateWardrobe(record) {
       if (ids.has(journey.id)) throw new Error('구매 기록 ID가 중복됩니다.');
       ids.add(journey.id);
     }
-    if (new TextEncoder().encode(JSON.stringify(record)).length > MAX_WARDROBE_STATE_BYTES)
+    // Older formats retain their published limit; the extra 18 bytes are only
+    // for schema 7's required empty seller-note list during a lossless upgrade.
+    const byteLimit = record.schema < 7 ? 850000 : MAX_WARDROBE_STATE_BYTES;
+    if (new TextEncoder().encode(JSON.stringify(record)).length > byteLimit)
       throw new Error('기록 정보가 너무 큽니다. 백업 후 필요 없는 기록을 정리해 주세요. 원본을 보존했습니다.');
   }
   return record;
 }
 export function upgradeWardrobe(record, { at = new Date().toISOString() } = {}) {
   validateWardrobe(record);
-  if (record.schema === 5) return structuredClone(record);
+  if (record.schema === 7) return structuredClone(record);
+  if (record.schema === 6) return validateWardrobe({ ...structuredClone(record), schema: 7, offerRecords: [] });
+  if (record.schema === 5) return validateWardrobe({ ...structuredClone(record), schema: 7, wears: [], offerRecords: [] });
   if (record.schema === 4)
-    return validateWardrobe({ ...structuredClone(record), schema: 5,
-      journeys: record.journeys.map((journey) => upgradePurchaseJourneyV4(journey, { at })) });
+    return validateWardrobe({ ...structuredClone(record), schema: 7,
+      journeys: record.journeys.map((journey) => upgradePurchaseJourneyV4(journey, { at })), wears: [], offerRecords: [] });
   if (record.schema === 3)
-    return validateWardrobe({ ...structuredClone(record), schema: 5, journeys: [] });
+    return validateWardrobe({ ...structuredClone(record), schema: 7, journeys: [], wears: [], offerRecords: [] });
   const mapItem = (g) => {
     const [slot, color] = g.slotId ? LEGACY_SLOT_MAP[g.slotId] || [g.slotId, null] : [null, null];
     return makeGarment({
