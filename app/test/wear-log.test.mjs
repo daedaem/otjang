@@ -12,10 +12,11 @@ import {
   addWear, toggleWornOn, deleteWear, wearStats, lastWornTogether, orderByRecentWear, wearMonths, localDate,
   validateWears, MAX_WEAR_ENTRIES,
 } from '../src/wear-log.js';
-import { makeGarment, newWardrobeState, validateWardrobe, upgradeWardrobe, WARDROBE_SCHEMA } from '../src/wardrobe.js';
+import { makeGarment, newWardrobeState, validateWardrobe, upgradeWardrobe, wardrobeView, WARDROBE_SCHEMA } from '../src/wardrobe.js';
 import { createWardrobeStore } from '../src/wardrobe-store.js';
 import { storageLimits } from '../src/record-cleanup.js';
-import { SAFE_PRODUCTS } from '../src/engine.js';
+import { SAFE_PRODUCTS, closetLooks } from '../src/engine.js';
+import { LOOKS } from '../src/data/looks.js';
 import { candidateFromProduct } from '../src/purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney } from '../src/purchase-journey.js';
 import { openDatabase } from '../../server/src/db.js';
@@ -101,7 +102,7 @@ const output = path.join(temp, 'index.html');
 execFileSync(process.execPath, [path.join(root, 'tools/build.mjs'), '--out', output]);
 const script = fs.readFileSync(output, 'utf8').match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(
   /\n\}\)\(\);\s*$/,
-  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore };\n})();',
+  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore, chooseWardrobeBackup };\n})();',
 );
 async function boot(indexedDB) {
   const nodes = new Map(['app', 'sheet-root', 'toast'].map((id) => [id, { innerHTML: '', classList: { add() {}, remove() {} }, querySelector() { return null; }, querySelectorAll() { return []; } }]));
@@ -258,6 +259,50 @@ test('"wore it today" on a kept purchase also lands in the diary, once per day',
   const state = page.app.state();
   assert.equal(state.journeys[0].wearCount, 2, 'the purchase record counts each tap as before');
   assert.deepEqual(state.wears.map((e) => [e.date, e.garmentIds]), [[localDate(), ['g_oxford']]], 'the diary keeps one day');
+});
+
+test('a fresh outfit ranked below six recently worn ones still comes first; the notice follows the real reordering', async () => {
+  // One garment for the first type and colour of every men's outfit formula: many ready outfits.
+  const seen = new Map();
+  for (const look of LOOKS.filter((l) => l.g === 'M'))
+    for (const role of Object.values(look.roles)) {
+      const key = `${role.s[0]}|${role.c[0]}`;
+      if (!seen.has(key)) seen.set(key, g(role.s[0], role.c[0], `g_${seen.size}`));
+    }
+  const extra = { garments: [...seen.values()], styles: ['classic', 'amekaji', 'minimal'] };
+  const all = closetLooks(wardrobeView({ ...personal(), ...extra }), { limit: 100 }).ready;
+  assert.ok(all.length >= 7, `at least seven ready outfits this season (${all.length})`);
+  const owned = (r) => r.items.filter((x) => x.owned).map((x) => x.item.id);
+
+  const quiet = await boot(await seeded({ ...extra, wears: [entry('w_old', '2025-01-01', owned(all[0]))] }));
+  await quiet.click({ action: 'tab', tab: 'closet' });
+  assert.equal(/<div class="look-title">([^<]+)</.exec(quiet.body())[1], all[0].look.title, 'worn long ago: order unchanged');
+  assert.doesNotMatch(quiet.body(), /뒤로 보냈어요/, 'and no notice claims otherwise');
+
+  const today = localDate();
+  const busy = await boot(await seeded({ ...extra, wears: all.slice(0, 6).map((r, i) => entry(`w_${i}`, today, owned(r))) }));
+  await busy.click({ action: 'tab', tab: 'closet' });
+  assert.equal(/<div class="look-title">([^<]+)</.exec(busy.body())[1], all[6].look.title, 'the seventh, not worn this week, comes first');
+  assert.match(busy.body(), /뒤로 보냈어요/);
+});
+
+test('a backup made by the previous version (schema 5) restores over a schema 6 wardrobe with an empty diary', async () => {
+  const oldStore = createWardrobeStore({ indexedDB: new IDBFactory() });
+  const first = await oldStore.load();
+  const { wears, ...v5 } = { ...personal(), schema: 5, garments: [g('m-rugby', 'navy', 'g_from_backup')] };
+  await oldStore.commit(v5, first.revision, [], first.epoch);
+  const backup = await oldStore.backup();
+  oldStore.close();
+  const page = await boot(await seeded({ wears: [entry('w_now', '2026-10-14', ['g_oxford'])] }));
+  await page.app.chooseWardrobeBackup(backup);
+  assert.match(page.sheet(), /백업으로 바꿀까요/);
+  await page.click({ action: 'restore-backup' });
+  assert.match(page.toasts.at(-1), /옷장과 사진을 복원했어요/);
+  const state = page.app.state();
+  assert.equal(state.schema, 6);
+  assert.deepEqual(state.garments.map((x) => x.id), ['g_from_backup']);
+  assert.deepEqual(state.wears, [], 'the backup had no diary, so the restored wardrobe has none');
+  assert.equal((await page.app.store.read()).state.schema, 6);
 });
 
 test('the server stores the wear diary only from the current app version', async () => {

@@ -895,10 +895,14 @@ function renderCloset() {
   const nudge = backupNudge(items);
   if (!items.length) return head + nudge + grid + essentialSection(ess);
 
-  const looks = closetLooks(state, { limit: 6 });
-  const ready = (state.demo ? looks.ready : orderByRecentWear(looks.ready, state.wears || [], localDate())).slice(0, 3);
+  // Every ready outfit is ordered by recent wear before the display limit, so a
+  // fresh outfit ranked lower is not cut off behind recently worn ones.
+  const looks = closetLooks(state, { limit: 100 });
+  const ordered = state.demo ? looks.ready : orderByRecentWear(looks.ready, state.wears || [], localDate());
+  const ready = ordered.slice(0, 3);
   const almost = looks.almost.slice(0, 3);
-  const reordered = ready.some((r) => r.lastWorn);
+  // The notice appears only when recent wear actually changed the order.
+  const reordered = ordered.some((r, i) => r.look.id !== looks.ready[i].look.id);
   const today = `<section class="section">
     <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.demo ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div>${reordered ? `<p class="fine">최근 ${WEAR_RECENT_DAYS}일 안에 같은 옷끼리 입었다고 기록한 코디는 뒤로 보냈어요.</p>` : ''}</div>${!state.demo && state.garments.length ? '<button class="link" data-action="wear-open">착용 기록</button>' : ''}</div>
     ${ready.length ? `<div class="looks">${ready.map((r) => lookCard(r)).join('')}</div>` : ''}
