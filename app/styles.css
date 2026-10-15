@@ -444,3 +444,6 @@ img { display: block; max-width: 100%; }
 .crop-handle.se { right: -13px; bottom: -13px; cursor: nwse-resize; }
 .crop-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .crop-actions .btn { flex: 1 1 auto; }
+.citem .color-unknown { color: var(--accent); }
+.color-impact { margin-top: 10px; }
+.color-impact .swatches, .color-impact .opts { margin-top: 8px; }

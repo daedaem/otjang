@@ -549,7 +549,7 @@ function renderCloset() {
       const registration = !demo && date
         ? `등록 ${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, '0')}. ${String(date.getDate()).padStart(2, '0')}.`
         : !demo && i.source === 'legacy' ? '이전 버전에서 옮김' : '';
-      return `<button class="citem" data-action="open-own" data-id="${esc(i.id)}">${itemPicture(i)}<span class="cbrand">${esc(brand)}</span><span class="cname">${esc(garmentLabel(i))}</span>${demo ? '<span class="closet-tag">예시 옷</span>' : registration ? `<span class="cdate">${registration}</span>` : ''}</button>`;
+      return `<button class="citem" data-action="open-own" data-id="${esc(i.id)}">${itemPicture(i)}<span class="cbrand">${esc(brand)}</span><span class="cname">${esc(garmentLabel(i))}</span>${demo ? '<span class="closet-tag">예시 옷</span>' : registration ? `<span class="cdate">${registration}</span>` : ''}${!demo && !i.color ? '<span class="cdate color-unknown">색 미확인</span>' : ''}</button>`;
     }).join('')}<button class="closet-add-tile" data-action="add-start"><span class="closet-add-stage">${ICON.plus}</span><span>옷 추가</span></button></div>
   </section>`;
 
@@ -1060,6 +1060,7 @@ function ownSheet(id) {
     <h2 class="detail-title">${esc(item.label || p?.name || garmentLabel(item))}</h2>
     ${!active ? '<p class="notice">보유 추천에서 제외 중인 옷이에요. 사진과 기록은 보관 중이며 구매 여정에서 수령·보유·반품 상태를 확인할 수 있어요.</p>' : ''}
     ${item.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 사진을 다시 골라 주세요.</p>' : ''}<div class="fine">${esc(garmentLabel(item))} · ${esc(COLORS[item.color]?.label || '색 미확인')}</div>
+    ${active && !state.demo && !item.color ? ownColorCheck(item, p) : ''}
     <div class="why"><h3>이렇게 입어요</h3><ul><li>${esc(slot.tip)}</li></ul></div>
     ${looks.length ? `<h3 class="block">이 옷으로 만든 코디</h3><div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : active ? '<p class="sub">이 옷이 들어가는 코디 공식이 아직 없어요.</p>' : ''}
     <div class="sheet-links">
@@ -1069,6 +1070,15 @@ function ownSheet(id) {
       <button class="link danger" data-action="remove-own" data-id="${item.id}">옷장에서 빼기</button>
     </div>
   `);
+}
+
+// 색을 모르는 실제 옷은 구매 비교의 조합 수에서 빠진다. 한 번 눌러 확인할 수 있게 한다.
+// 판매처가 표시한 상품 색이 있으면 그 색만 확인할 수 있고, 다른 색이면 옷 정보 수정으로 간다.
+function ownColorCheck(item, p) {
+  const known = p?.color && p.colorSource !== 'image' && COLORS[p.color];
+  return `<div class="notice color-impact"><p><b>색 미확인</b> · 색을 확인하지 않은 옷은 구매 후보와 비교할 때 조합 수에 들어가지 않아요.</p>${known
+    ? `<div class="opts"><button class="chip" data-action="own-color" data-id="${esc(item.id)}" data-color="${esc(p.color)}">상품 색(${esc(COLORS[p.color].label)})과 같아요</button><button class="chip" data-action="edit-own" data-id="${esc(item.id)}">다른 색이에요</button></div>`
+    : `<div class="swatches">${Object.entries(COLORS).map(([id, c]) => `<button class="sw" data-action="own-color" data-id="${esc(item.id)}" data-color="${id}" aria-label="${c.label}"><i style="background:${c.hex}"></i></button>`).join('')}</div>`}</div>`;
 }
 
 // Required: kind. Color, brand, photo and name remain optional.
@@ -1150,7 +1160,8 @@ function ownedCatalogSheet() {
   ${picture(p, SLOT_BY_ID[p.slot], 'hero')}<p class="fine">판매처 상품 사진${ownPhoto ? ' · 내 사진을 바꾸지 않아요' : ' · 직접 찍은 사진은 아니에요'}</p>
   <p class="brand-name">${esc(p.brand)}</p><h3>${esc(p.name)}</h3><p class="sub">${esc(SLOT_BY_ID[p.slot].name)} · 같은 상품인지 이름과 모양을 확인해 주세요.</p>
   ${draft.color ? `<p class="fine">내가 확인한 색: ${esc(COLORS[draft.color]?.label || '모름')}</p>` : ''}
-  ${knownColor ? `<p class="sub">상품에 표시된 색: ${esc(COLORS[p.color].label)}</p><div class="opts"><button class="chip" data-action="owned-catalog-color" data-color="${esc(p.color)}" aria-pressed="${draft.catalogColor === p.color}">내 옷도 이 색이에요</button><button class="chip" data-action="owned-catalog-color" data-color="" aria-pressed="${!draft.catalogColor}">색은 아직 모름</button></div>` : '<p class="sub">상품 사진에서 색을 추정해 채우지 않아요. 확인한 내 옷 색만 유지해요.</p>'}
+  <h4 class="block">내 옷 색</h4>${knownColor ? `<p class="sub">상품에 표시된 색: <b>${esc(COLORS[p.color].label)}</b></p><div class="opts"><button class="chip" data-action="owned-catalog-color" data-color="${esc(p.color)}" aria-pressed="${draft.catalogColor === p.color}">내 옷도 이 색이에요</button><button class="chip" data-action="owned-catalog-color" data-color="" aria-pressed="${!draft.catalogColor}">색은 아직 모름</button></div>` : `<p class="sub">상품 정보에 확인된 색이 없어요. 상품 사진에서 색을 추정하지 않으니 내 옷 색을 골라 주세요.</p><div class="swatches"><button class="chip" data-action="owned-catalog-color" data-color="" aria-pressed="${!draft.catalogColor}">색 모름</button>${Object.entries(COLORS).map(([id, c]) => `<button class="sw" data-action="owned-catalog-color" data-color="${id}" aria-label="${c.label}" aria-pressed="${draft.catalogColor === id}"><i style="background:${c.hex}"></i></button>`).join('')}</div>`}
+  ${draft.catalogColor ? `<p class="fine color-impact">확인한 색: ${esc(COLORS[draft.catalogColor]?.label || '')} · 구매 후보와 비교할 때 이 옷을 조합 수에 넣어요.</p>` : '<p class="notice color-impact">색을 확인하지 않으면 이 옷은 구매 비교의 조합 수에 들어가지 않고, 비교할 때 색을 다시 물어봐요. 옷장에는 그대로 보여요.</p>'}
   ${conflict ? '<p class="notice">확인한 내 옷 색과 상품에 표시된 색이 달라요. 다른 색·비슷한 옷으로 등록하면 상품을 연결하지 않아요.</p>' : ''}
   ${previous.length ? `<p class="notice">이 상품을 연결한 옷이 이미 ${previous.length}벌 있어요. 추가로 가진 한 벌이라면 아래에서 저장하세요.</p>` : ''}
   <div class="cta registration-save"><button class="btn" data-action="owned-catalog-confirm" data-id="${esc(p.id)}"${conflict || draft.processing || draft.saving ? ' disabled' : ''}>${draft.saving ? '저장 중…' : previous.length ? '같은 상품 한 벌 더 저장' : '가지고 있는 상품 · 옷장에 저장'}</button></div>
@@ -1478,7 +1489,8 @@ async function saveGarmentDraft() {
         return;
       }
     }
-    toast(wasDemo ? '내 옷을 저장했어요. 이제 예시를 빼고 등록한 내 옷만 반영해요' : '내 옷을 저장했어요');
+    const colorHint = item.color ? '' : ' · 색을 확인하면 구매 비교에도 쓰여요';
+    toast((wasDemo ? '내 옷을 저장했어요. 이제 예시를 빼고 등록한 내 옷만 반영해요' : '내 옷을 저장했어요') + colorHint);
   } catch (error) {
     current.error = storageMessage(error);
     current.saving = false;
@@ -2113,6 +2125,21 @@ document.addEventListener('click', async (e) => {
         startOwnedCatalog(p.id);
         break;
       }
+      case 'own-color': {
+        const item = state.garments.find((g) => g.id === el.dataset.id);
+        const color = el.dataset.color;
+        const p = item?.productId ? PRODUCT_BY_ID[item.productId] : null;
+        if (state.demo || !item || item.color || !Object.hasOwn(COLORS, color)) break;
+        if (p?.color && p.colorSource !== 'image' && p.color !== color) break;
+        try {
+          await set({ garments: state.garments.map((g) => (g.id === item.id ? { ...g, color } : g)) });
+          ownSheet(item.id);
+          toast('색을 저장했어요 · 이제 구매 비교에도 쓰여요');
+        } catch (error) {
+          toast(storageMessage(error));
+        }
+        break;
+      }
       case 'owned-catalog-start':
         startOwnedCatalog();
         break;
@@ -2125,8 +2152,12 @@ document.addEventListener('click', async (e) => {
         break;
       case 'owned-catalog-color': {
         const p = ownedCatalogProduct();
-        if (!p || (el.dataset.color && (p.colorSource === 'image' || p.color !== el.dataset.color))) break;
-        draft.catalogColor = el.dataset.color || null;
+        const color = el.dataset.color || null;
+        // A product color shown by the seller can only be confirmed, not replaced:
+        // a different color is a "similar" garment without the product link.
+        const known = p?.color && p.colorSource !== 'image';
+        if (!p || (color && (!Object.hasOwn(COLORS, color) || (known && p.color !== color)))) break;
+        draft.catalogColor = color;
         ownedCatalogSheet();
         break;
       }
