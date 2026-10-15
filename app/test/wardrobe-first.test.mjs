@@ -31,10 +31,15 @@ async function boot({ indexedDB = new IDBFactory(), factory, allowAnalysis = fal
     static createObjectURL(blob) { const id = `blob:wardrobe-first/${++nextURL}`; urls.set(id, blob); return id; }
     static revokeObjectURL(id) { urls.delete(id); }
   }
+  // Like a browser without a HEIF decoder: a HEIC blob fails to decode unless
+  // a test marks it decodable (Safari 17+ decodes HEIC natively).
   class TestImage {
     naturalWidth = 768;
     naturalHeight = 1024;
-    decode() { return Promise.resolve(); }
+    decode() {
+      const blob = urls.get(this.src);
+      return /^image\/hei[cf]/.test(blob?.type || '') && !blob.decodable ? Promise.reject(new Error('undecodable')) : Promise.resolve();
+    }
   }
   const nodes = new Map(['app', 'sheet-root', 'toast'].map((id) => [id, {
     innerHTML: '', classList: { add() {}, remove() {} },
@@ -389,7 +394,8 @@ test('an unsupported photo offers photo recovery, not a wardrobe reload, and kee
   await page.click({ action: 'add-start' });
   await page.app.chooseGarmentPhoto(new Blob([new Uint8Array([0, 0, 0, 24])], { type: 'image/heic' }));
   const sheet = page.sheet();
-  assert.match(sheet, /HEIC/);
+  assert.match(sheet, /HEIC 사진을 열지 못했어요/);
+  assert.match(sheet, /높은 호환성/, 'the iPhone camera setting is named as the way out');
   assert.match(sheet, /class="photo-error"[\s\S]*data-action="add-photo"[\s\S]*data-action="add-camera"[\s\S]*data-action="draft-manual"/);
   assert.doesNotMatch(sheet, /data-action="reload-wardrobe"/);
   assert.equal(page.app.draft().error, '');
