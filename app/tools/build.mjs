@@ -37,6 +37,7 @@ const order = [
   'src/query.js',
   'src/engine.js',
   'src/purchase-candidate.js',
+  'src/wardrobe-plan.js',
   'src/icons.js',
   'src/zip-store.js',
   'src/main.js',

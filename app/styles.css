@@ -466,3 +466,28 @@ img { display: block; max-width: 100%; }
 .sync-choice .btn { width: 100%; margin-top: 8px; }
 .account-form .account-invite { display: grid; gap: 6px; }
 .account-form .account-invite:empty { display: none; }
+
+/* 내 옷장 기준 다음 한 벌 */
+.plan-entry .btn { margin-top: 12px; }
+.plan-preview { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.plan-preview p { margin: 0; }
+.plan-preview p + p { margin-top: 4px; }
+.plan-owned { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.plan-owned-item { display: grid; gap: 4px; text-align: left; font-size: 12px; color: var(--ink-2); }
+.plan-dup { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 8px; }
+.plan-dup > p { margin: 0; font-size: 13.5px; }
+.mini { width: 44px; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; background: var(--sunk); display: inline-grid; place-items: center; margin-right: 4px; }
+.mini img { width: 100%; height: 100%; object-fit: cover; }
+.mini .swatch span, .mini .photo-caption { display: none; }
+.plan-gap { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.plan-gap h4 { margin: 0 0 4px; font-size: 16px; }
+.plan-count { font-size: 13px; color: var(--accent); margin-left: 6px; }
+.plan-looks { margin: 6px 0 8px; font-size: 13px; }
+.plan-looks em { font-style: normal; color: var(--accent); }
+.plan-products { display: grid; gap: 10px; }
+.plan-product { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: start; }
+.plan-product .price { display: grid; gap: 2px; }
+.plan-product-body { min-width: 0; display: grid; gap: 2px; }
+.plan-product-body .name { text-align: left; font-weight: 600; }
+.plan-product-actions { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-product-actions .chip { margin: 0; }

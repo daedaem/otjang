@@ -207,6 +207,13 @@ function roleOf(look, role) {
 function slotsInLook(look) {
   return ROLE_ORDER.flatMap((r) => roleOf(look, r)?.s || []);
 }
+// The wardrobe plan reuses the same formula slots and purchase exclusions as recommendations.
+export function formulaSlots(look) {
+  return slotsInLook(look);
+}
+export function recommendationContext(state) {
+  return ctx(state);
+}
 
 export function matchingLooks(c, { occasion = c.occasion, anySeason = false } = {}) {
   return LOOKS.filter(

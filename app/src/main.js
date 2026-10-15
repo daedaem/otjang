@@ -48,6 +48,7 @@ import { findOwnedCatalog } from './owned-catalog.js';
 import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, clearBackupRecord, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
+import { wardrobePlan, describeGarment } from './wardrobe-plan.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
 
 const KEY = 'eoul:v1';
@@ -486,6 +487,7 @@ function renderHome() {
     .join(' · ');
   const ownedCount = myCloset().length;
   return `
+    ${planSection()}
     <section class="section purchase-entry"><h2>살까 고민 중인 옷이 있나요?</h2><p class="sub">상품을 가져와 내 옷과 비교하고, 구매 후에도 이어서 관리해요.</p><button class="btn" data-action="candidate-start">상품 링크로 비교하기 ${ICON.arrow}</button></section>
     <section class="section">
       <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${esc(ctxLine)}${ownedCount ? ` · ${state.demo ? '예시 옷' : '내 옷'} ${ownedCount}벌 반영` : ''}</div></div></div>
@@ -499,6 +501,101 @@ function renderHome() {
       ${items.length ? `<div class="list">${items.map(itemCard).join('')}</div>` : `<div class="empty"><b>추천할 아이템이 없어요</b>예산을 넓히거나 "내 브랜드만"을 꺼 보세요.</div>`}
     </section>
     ${footer()}`;
+}
+
+// ── 내 옷장 기준 다음 한 벌: 실제 옷 → 확인 필요·겹침 → 부족한 종류 → 실제 상품·가격 출처·링크
+const ROLE_NAME = { outer: '아우터', top: '상의', inner: '이너', bottom: '하의', shoes: '신발', acc: '소품' };
+function planBasisLine(plan) {
+  if (plan.basis.kind === 'example') return `예시 옷 ${plan.basis.garmentCount}벌로 보는 진단이에요. 실제 내 옷이 아니에요.`;
+  if (plan.basis.kind === 'empty') return '등록한 내 옷이 없어요.';
+  return `등록한 내 옷 ${plan.basis.garmentCount}벌 중 종류·색을 확인한 ${plan.analysed.length}벌로 계산했어요.`;
+}
+function collectedPrice(entry) {
+  const p = entry.product;
+  return `<b>${formatPrice(entry.price.amount)}</b><span class="fine">${esc(entry.price.store)} 표시가 · ${esc(entry.price.collectedOn)} 수집</span>`;
+}
+function planProductRow(entry) {
+  const p = entry.product, slot = SLOT_BY_ID[p.slot];
+  return `<article class="plan-product">
+    <button class="plan-product-pic" data-action="open-item" data-id="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)} 자세히">${picture(p, slot)}</button>
+    <div class="plan-product-body">
+      <div class="brand-name">${esc(p.brand)}${mine(p) ? ' <span class="mine">내 브랜드</span>' : ''}</div>
+      <button class="name" data-action="open-item" data-id="${p.id}">${esc(p.name)}</button>
+      <div class="price">${collectedPrice(entry)}</div>
+      <div class="fine">${entry.colorConfirmed ? `색 ${esc(COLORS[p.color]?.label || '')}` : '색: 상품 사진으로 추정 · 판매처에서 확인 필요'}</div>
+      <div class="opts plan-product-actions"><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a><button class="chip" data-action="candidate-product" data-id="${p.id}">내 옷과 비교</button></div>
+    </div>
+  </article>`;
+}
+function planLookLine(look) {
+  return `<li><b>${esc(look.title)}</b> · ${look.items.map((row) => row.owned ? `${esc(ROLE_NAME[row.role] || '')} ${esc(row.label)}` : `${esc(ROLE_NAME[row.role] || '')} <em>후보 ${esc(shortName(row.slot))}</em>`).join(' + ')}</li>`;
+}
+function planSection() {
+  const plan = wardrobePlan(state);
+  if (plan.basis.kind === 'empty')
+    return `<section class="section plan-entry"><h2>내 옷장 기준 다음 한 벌</h2><p class="sub">가진 옷을 등록하면, 그 옷과 함께 입을 수 있는 실제 상품을 골라 드려요.</p><button class="btn" data-action="add-start">${ICON.plus}내 옷 추가</button></section>`;
+  const top = plan.gaps[0];
+  const preview = top
+    ? `<div class="plan-preview"><p><b>${esc(top.slot.name)}</b>${josa(top.slot.name, '을', '를')} 더하면 ${plan.basis.kind === 'example' ? '예시 옷' : '내 옷'}과 코디 공식 ${top.newFormulaCount}개가 완성돼요.</p>${top.products[0] ? `<p class="fine">예: ${esc(top.products[0].product.brand)} ${esc(top.products[0].product.name)} · ${formatPrice(top.products[0].price.amount)} (${esc(top.products[0].price.store)} 표시가, ${esc(top.products[0].price.collectedOn)} 수집)</p>` : ''}</div>`
+    : plan.pairs?.[0]
+      ? `<div class="plan-preview"><p>두 벌을 더하면 <b>${esc(plan.pairs[0].look.title)}</b> 코디가 완성돼요: ${plan.pairs[0].slots.map((slot) => esc(shortName(slot))).join(' + ')}</p></div>`
+      : '<div class="plan-preview"><p>지금 옷으로는 한두 벌만 더해 완성되는 코디 공식을 찾지 못했어요.</p></div>';
+  const counts = [
+    `분석 ${plan.analysed.length}벌`,
+    plan.needsCheck.length ? `확인 필요 ${plan.needsCheck.length}벌` : null,
+    plan.duplicates.length ? `겹치는 옷 ${plan.duplicates.length}묶음` : null,
+  ].filter(Boolean).join(' · ');
+  return `<section class="section plan-entry">
+    <div class="section-head"><div><h2>${plan.basis.kind === 'example' ? '예시 옷장으로 보는 다음 한 벌' : '내 옷장 기준 다음 한 벌'}</h2><div class="sub">${esc(counts)}</div></div></div>
+    ${plan.basis.kind === 'example' ? '<p class="fine">예시 옷이라 실제로 가진 옷과 다를 수 있어요. 내 옷을 넣으면 내 옷 기준으로 바뀌어요.</p>' : ''}
+    ${preview}
+    <button class="btn" data-action="open-plan">부족한 옷과 실제 후보 보기 ${ICON.arrow}</button>
+  </section>`;
+}
+function planSheet() {
+  const plan = wardrobePlan(state);
+  const example = plan.basis.kind === 'example';
+  const ownLabel = example ? '예시 옷' : '내 옷';
+  const analysed = plan.analysed.length
+    ? `<div class="plan-owned">${plan.analysed.map((item) => `<button class="plan-owned-item" data-action="${example ? 'tab' : 'open-own'}" ${example ? 'data-tab="closet"' : `data-id="${esc(item.id)}"`}>${itemPicture(item)}<span>${esc(describeGarment(item))}</span></button>`).join('')}</div>`
+    : `<p class="notice">종류와 색을 확인한 ${ownLabel}이 아직 없어요. 아래 옷을 확인하면 계산할 수 있어요.</p>`;
+  const needsCheck = plan.needsCheck.length
+    ? `<div class="notice"><b>확인하면 계산에 넣을 수 있어요</b><ul class="plain-list">${plan.needsCheck.map(({ item, reason }) => `<li>${esc(garmentLabel(item))} · ${reason === 'color' ? '색 미확인' : reason === 'type' ? '세부 종류 미확인' : '세부 종류·색 미확인'} <button class="link" data-action="open-own" data-id="${esc(item.id)}">확인하기</button></li>`).join('')}</ul></div>`
+    : '';
+  const extra = [
+    plan.basis.otherGender ? `다른 분류(${state.gender === 'F' ? '남성' : '여성'}) 옷 ${plan.basis.otherGender}벌은 이번 계산에서 뺐어요.` : null,
+    plan.basis.retired ? `반품·교체로 보유 추천에서 뺀 옷 ${plan.basis.retired}벌은 세지 않았어요.` : null,
+  ].filter(Boolean);
+  const duplicates = plan.duplicates.length || plan.paused.length
+    ? `${plan.duplicates.map((d) => `<div class="plan-dup">${d.items.slice(0, 3).map((item) => itemPicture(item, 'mini')).join('')}<p><b>${esc(COLORS[d.color]?.label || '')} ${esc(d.slot.name)} ${d.items.length}벌</b><br>같은 종류·색이 이미 있어요. 또 사기 전에 이 옷들을 먼저 활용해 보세요.</p></div>`).join('')}
+       ${plan.paused.map((p) => `<p class="fine">${esc(p.slot.name)}: ${p.reason === 'ordered' ? '주문·수령 기록이 있어 후보에서 뺐어요.' : '비슷한 옷이 있다고 답해 후보에서 뺐어요.'}</p>`).join('')}`
+    : `<p class="sub">같은 종류·색으로 겹치는 ${ownLabel}은 없어요.</p>`;
+  const gaps = plan.gaps.length
+    ? plan.gaps.map((gap) => `<section class="plan-gap">
+        <h4>${esc(gap.slot.name)} <span class="plan-count">+코디 ${gap.newFormulaCount}개</span></h4>
+        <p class="sub">함께 입는 ${ownLabel}: ${gap.usesOwned.map((item) => esc(describeGarment(item))).join(', ')}</p>
+        <ul class="plain-list plan-looks">${gap.looks.map(planLookLine).join('')}</ul>
+        <div class="plan-products">${gap.products.map(planProductRow).join('')}</div>
+        ${gap.moreProducts ? `<button class="link" data-action="example" data-q="${esc(gap.slot.name)}">${esc(gap.slot.name)} 후보 ${gap.moreProducts}개 더 보기</button>` : ''}
+      </section>`).join('')
+    : '';
+  const pairs = plan.pairs?.length
+    ? `<h3 class="block">두 벌을 더하면 완성되는 코디</h3>${plan.pairs.map((pair) => `<section class="plan-gap">
+        <h4>${esc(pair.look.title)}</h4>
+        <ul class="plain-list plan-looks">${planLookLine(pair.look)}</ul>
+        ${pair.slots.map((slot) => `<p class="sub"><b>${esc(slot.name)}</b> 후보</p><div class="plan-products">${(pair.products[slot.id] || []).map(planProductRow).join('') || '<p class="fine">조건에 맞는 상품이 목록에 없어요.</p>'}</div>`).join('')}
+      </section>`).join('')}`
+    : '';
+  openSheet(`<h2>${example ? '예시 옷장으로 보는 다음 한 벌' : '내 옷장 기준 다음 한 벌'}</h2>
+    <p class="sub">${esc(planBasisLine(plan))}</p>
+    ${example ? '<div class="notice"><b>예시 옷장이에요</b><p>흐름을 보여 주는 예시 옷이라 실제로 가진 옷과 섞지 않아요.</p><button class="btn small" data-action="add-start">내 옷으로 바꾸기</button></div>' : ''}
+    <h3 class="block">① 계산에 넣은 ${ownLabel}</h3>${analysed}${needsCheck}${extra.map((line) => `<p class="fine">${esc(line)}</p>`).join('')}
+    <h3 class="block">② 겹치는 옷</h3>${duplicates}
+    <h3 class="block">③ 부족한 종류와 실제 상품</h3>
+    ${gaps || (plan.pairs?.length ? '<p class="sub">한 벌만 더해 완성되는 코디는 없어요.</p>' : '<p class="notice">지금 옷으로는 한두 벌만 더해 완성되는 코디 공식을 찾지 못했어요. 옷을 더 등록하거나 스타일을 바꿔 보세요.</p>')}
+    ${plan.moreGaps ? `<p class="fine">이 밖에 코디를 완성하는 종류가 ${plan.moreGaps}개 더 있어요.</p>` : ''}
+    ${pairs}
+    <div class="why"><h3>계산 방법과 한계</h3><ul>${plan.limitations.map((line) => `<li>${esc(line)}</li>`).join('')}<li>가격은 현재 최저가가 아니에요. 같은 상품의 다른 판매처와 배송비는 아직 비교하지 않았어요.</li></ul></div>`, { key: 'plan' });
 }
 
 function renderSearch() {
@@ -2625,6 +2722,9 @@ document.addEventListener('click', async (e) => {
       case 'open-item':
         e.preventDefault();
         itemSheet(el.dataset.id);
+        break;
+      case 'open-plan':
+        planSheet();
         break;
       case 'open-look':
         lookSheet(Number(el.dataset.index));
