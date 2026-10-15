@@ -122,7 +122,7 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
 
 /** Nothing personal yet: the example closet, no purchases, no saved products. */
 export function isEmptyWardrobe(state) {
-  return !!state && state.demo === true && !state.garments?.length && !state.journeys?.length && !state.saved?.length;
+  return !!state && state.demo === true && !state.garments?.length && !state.journeys?.length && !state.saved?.length && !state.offerRecords?.length;
 }
 
 /**
@@ -228,6 +228,7 @@ export function wardrobeSummary(state, photoCount = null) {
   if (photoCount) parts.push(`사진 ${photoCount}장`);
   if (state.journeys?.length) parts.push(`구매 기록 ${state.journeys.length}개`);
   if (state.wears?.length) parts.push(`착용 기록 ${state.wears.length}개`);
+  if (state.offerRecords?.length) parts.push(`가격 비교 ${state.offerRecords.length}개 상품`);
   if (state.saved?.length) parts.push(`찜 ${state.saved.length}개`);
   return parts.join(' · ');
 }

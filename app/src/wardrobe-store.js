@@ -29,11 +29,20 @@ export function wardrobeStateStorageUsage(state) {
   };
 }
 
+// New price notes leave room for clothing/ownership changes. Existing large
+// snapshots and explicit cleanup are still readable and can shrink normally.
+export function validateOfferGrowth(previous, next) {
+  const bytes = (state) => new TextEncoder().encode(JSON.stringify(state?.offerRecords || [])).length;
+  if (bytes(next) <= bytes(previous)) return;
+  if (wardrobeStateStorageUsage(next).bytes > MAX_WARDROBE_STATE_BYTES - 64 * 1024)
+    throw Object.assign(new Error('옷과 구매 기록을 위한 공간을 남겨 두었어요. 가격 기록을 백업한 뒤 필요 없는 상품 기록을 정리해 주세요. 기존 기록은 유지했습니다.'), { code: 'offer-budget' });
+}
+
 // This is a small metadata reserve, not separate storage partitions. Old records
 // and confirmed backup replacements keep the full wardrobe validation contract.
 // Only exact lossless journey conversion may grow past the new reserve at boot.
 function losslessJourneyV5Upgrade(previous, next) {
-  if (previous?.schema !== 4 || ![5, 6].includes(next.schema) || previous.journeys.length !== next.journeys.length)
+  if (previous?.schema !== 4 || ![5, 6, 7].includes(next.schema) || previous.journeys.length !== next.journeys.length)
     return false;
   const expected = previous.journeys.map((journey, index) => {
     const converted = {
@@ -51,7 +60,7 @@ function losslessJourneyV5Upgrade(previous, next) {
 }
 
 function essentialOwnershipJourneyChange(previous, next) {
-  if (![5, 6].includes(previous?.schema) || ![5, 6].includes(next.schema) || previous.journeys.length !== next.journeys.length)
+  if (![5, 6, 7].includes(previous?.schema) || ![5, 6, 7].includes(next.schema) || previous.journeys.length !== next.journeys.length)
     return false;
   let changed = false;
   for (let index = 0; index < previous.journeys.length; index++) {
@@ -280,7 +289,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
     return snapshot;
   }
 
-  async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch) {
+  async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch, { replacingOffers = false } = {}) {
     validateWardrobe(state);
     const next = structuredClone(state);
     const verified = [];
@@ -309,6 +318,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
           // Compare with the CAS-checked persisted state inside the same
           // transaction, before any metadata or photo write can take place.
           validateJourneyGrowth(old?.state, next);
+          if (!replacingOffers) validateOfferGrowth(old?.state, next);
           revision = (old?.revision || 0) + 1;
           epoch = old?.epoch || crypto.randomUUID();
           const needed = new Set(next.garments.map((garment) => garment.photoId).filter(Boolean));

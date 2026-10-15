@@ -40,7 +40,7 @@ import {
 import { stripJpegMetadata } from './jpeg-clean.js';
 import { COMMUNITY_RULES, COMMUNITY_RULES_VERSION, COMMUNITY_REPORT_REASONS, MAX_POST_PHOTOS, MAX_CAPTION, communityLookFrom, nameProblem } from './community-post.js';
 import { addWear, toggleWornOn, deleteWear, wearStats, orderByRecentWear, localDate, wearDateOK, wearMonths, MAX_WEAR_GARMENTS, WEAR_RECENT_DAYS } from './wear-log.js';
-import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, photoAsset } from './wardrobe-store.js';
+import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, validateOfferGrowth, photoAsset } from './wardrobe-store.js';
 import { AGREEMENT_VERSION, ACCOUNT_KEY, accountServer, readAccount, writeAccount, clearAccount, createAccountApi, isEmptyWardrobe, syncDecision, pushWardrobe, pullWardrobe, withDeviceFields, sameWardrobe, wardrobeSummary } from './account.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
 import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, photoAssetWithoutBackground, photoPixels, normalizeCrop, dragCrop } from './garment-photo.js';
@@ -54,7 +54,7 @@ import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
 import { wardrobePlan, describeGarment, productRecord } from './wardrobe-plan.js';
 import { validateOffer, compareOffers, mergeRefreshed, OFFER_FLAG_LABEL, OFFER_SOURCE_LABEL, OFFER_STALE_DAYS } from './offers.js';
-import { readOffers, writeOffers, offerRef, clearOffers } from './offer-store.js';
+import { readOfferRecord, setOfferRecord, removeOfferRecord, legacyOfferRecords, OFFER_STORE_KEY, offerRef } from './offer-store.js';
 import { storageLimits, removableJourneys, journeysWithout } from './record-cleanup.js';
 import { keepDraft, loadDraft, dropDraft } from './draft-keeper.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
@@ -87,6 +87,8 @@ let storageRevision = 0,
   storageError = '',
   storageConflict = false,
   writeBusy = false;
+let wardrobeContext = 0;
+let legacyPriceNotice = '';
 let photoBlobs = new Map(),
   photos = new Map(),
   sheetRevision = 0,
@@ -113,7 +115,8 @@ let pendingOptionChange = null, candidateGarmentReview = null;
 let eraseReviewStep = 0,
   erasingAll = false,
   bootBusy = false;
-function applySnapshot(snapshot) {
+function applySnapshot(snapshot, { localWrite = false } = {}) {
+  if (!localWrite) wardrobeContext++;
   const tasteDraft = tastePicking ? { gender: state.gender, styles: state.styles, brands: state.brands } : null;
   for (const url of photos.values()) URL.revokeObjectURL(url);
   photoBlobs = snapshot.photos;
@@ -134,6 +137,23 @@ function storageMessage(error) {
       ? '저장 공간이 부족해요. 입력은 그대로 두었습니다. 백업 후 필요 없는 옷을 정리해 주세요.'
       : '원문과 복구 사본을 함께 보관할 저장 공간이 부족해요. 기존 자료는 유지했습니다. 저장 원문 파일을 받은 뒤 저장 공간을 확보해 주세요.'
     : error?.message || '저장하지 못했어요. 입력을 유지했습니다.';
+}
+function withLegacyPrices(record) {
+  const upgraded = upgradeWardrobe(record);
+  const raw = localStorage.getItem(OFFER_STORE_KEY);
+  try {
+    const migrated = storedWardrobe({ ...upgraded, offerRecords: legacyOfferRecords(raw) });
+    validateOfferGrowth(upgraded, migrated);
+    if (localStorage.getItem(OFFER_STORE_KEY) !== raw)
+      throw new Error('이전 가격 기록이 바뀌었어요. 다시 시도해 주세요.');
+    legacyPriceNotice = '';
+    return migrated;
+  } catch (error) {
+    // A corrupt/overfull price cache must not make a valid wardrobe unusable.
+    // Keep its exact source; migration is retried only by an explicit action.
+    legacyPriceNotice = `이전 가격 기록은 아직 옮기지 못했어요. ${error.message}`;
+    return upgraded;
+  }
 }
 async function bootWardrobe() {
   if (bootBusy || erasingAll) throw new Error('저장소 작업을 마무리하고 있어요. 잠시 후 다시 눌러 주세요.');
@@ -156,10 +176,14 @@ async function bootWardrobe() {
         pendingLegacy = { ...prepared, raw, initial: true };
         throw new Error('이전 사진 일부가 저장되지 않았습니다. 목록을 확인한 뒤 옷 기록을 가져올 수 있어요.');
       }
+      // Import the former device-only price notes in the same durable commit.
+      // Keep the source key untouched: failed writes remain retryable, and a
+      // later backup/account replacement must never re-import these old notes.
+      prepared.state = withLegacyPrices(prepared.state);
       await wardrobeStore.commit(prepared.state, 0, prepared.assets);
       current = await wardrobeStore.read();
     } else if (current.state.schema < WARDROBE_SCHEMA) {
-      const upgraded = upgradeWardrobe(current.state);
+      const upgraded = withLegacyPrices(current.state);
       await wardrobeStore.commit(upgraded, current.revision, [], current.epoch || null);
       current = { ...current, state: upgraded, revision: current.revision + 1, epoch: wardrobeStore.currentEpoch() };
     }
@@ -168,6 +192,7 @@ async function bootWardrobe() {
     storageError = '';
     storageConflict = false;
     legacyChanged = (await legacyWardrobeFingerprint(localStorage.getItem(KEY))) !== state.legacyFingerprint;
+    if (legacyPriceNotice) toast('이전 가격 기록은 원문으로 보관했어요. 기록 정리에서 확인할 수 있어요.');
     kickSync();
   } catch (error) {
     storageReady = false;
@@ -178,7 +203,7 @@ async function bootWardrobe() {
   }
   render();
 }
-async function set(patch, { rerender = true, assets = [] } = {}) {
+async function set(patch, { rerender = true, assets = [], replacingOffers = false } = {}) {
   if (Object.keys(patch).every((k) => k === 'tab')) {
     state = { ...state, ...patch };
     if (rerender) render();
@@ -190,10 +215,10 @@ async function set(patch, { rerender = true, assets = [] } = {}) {
   const next = storedWardrobe({ ...state, ...changes, ...(closet ? { garments: closet } : {}) });
   writeBusy = true;
   try {
-    const revision = await wardrobeStore.commit(next, storageRevision, assets, storageEpoch);
+    const revision = await wardrobeStore.commit(next, storageRevision, assets, storageEpoch, { replacingOffers });
     const needed = new Set(next.garments.map((i) => i.photoId).filter(Boolean));
     const rows = new Map([...photoBlobs, ...assets.map((a) => [a.id, a.blob])].filter(([id]) => needed.has(id)));
-    applySnapshot({ state: next, revision, epoch: wardrobeStore.currentEpoch(), photos: rows });
+    applySnapshot({ state: next, revision, epoch: wardrobeStore.currentEpoch(), photos: rows }, { localWrite: true });
     if (tab) state.tab = tab;
     storageError = '';
     storageConflict = false;
@@ -565,6 +590,7 @@ function resumeDraft() {
 
 // ── 판매처·총액 비교: 같은 상품·옵션·재고·배송비가 확인된 판매처만 총액을 비교한다
 let offerView = null;
+let offerDeleteReview = null;
 function beginOffers({ productId = null, journeyId = null }) {
   const product = productId ? PRODUCT_BY_ID[productId] : null;
   const journey = journeyId ? state.journeys.find((j) => j.id === journeyId) : null;
@@ -574,6 +600,10 @@ function beginOffers({ productId = null, journeyId = null }) {
   const productFromJourney = c?.productId ? PRODUCT_BY_ID[c.productId] : null;
   offerView = {
     ref,
+    accountToken: account?.token || null,
+    epoch: storageEpoch,
+    context: wardrobeContext,
+    recordToken: JSON.stringify(readOfferRecord(state.offerRecords, ref)),
     journeyId: journeyId || null,
     productId: product?.id || c?.productId || null,
     catalog: product || productFromJourney || null,
@@ -603,8 +633,8 @@ function offerTime(iso) {
 function offerSheet() {
   const v = offerView;
   if (!v) return;
-  const data = readOffers(localStorage, v.ref);
-  const requested = { color: data.requested.color ?? v.defaultColor, size: data.requested.size };
+  const data = readOfferRecord(state.offerRecords, v.ref);
+  const requested = v.requestedDraft || { color: data.requested.color ?? v.defaultColor, size: data.requested.size };
   const fromCatalog = v.catalog ? catalogOffer(v.catalog) : null;
   const all = [...(fromCatalog ? [fromCatalog] : []), ...data.offers.filter((offer) => offer.source !== 'catalog')];
   const result = compareOffers(all, { requested, now: new Date() });
@@ -639,28 +669,32 @@ function offerSheet() {
       <label for="offer-stock">재고</label><select id="offer-stock" name="stock">${[['unknown', '모름'], ['in-stock', '재고 있음'], ['sold-out', '품절']].map(([id, label]) => `<option value="${id}"${f.stock === id ? ' selected' : ''}>${label}</option>`).join('')}</select>
       <label class="toggle"><input type="checkbox" name="sameProduct"${f.sameProduct === 'confirmed' ? ' checked' : ''}> 이 상품과 같은 상품이에요(모델·품번 확인)</label>
       ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
-      <button class="btn" type="submit">기록하기</button><button class="link" type="button" data-action="offer-form-cancel">취소</button>
-      <p class="fine">기록한 시각을 함께 남겨요. 이 기기에만 저장되고, 아직 옷장 백업·계정 동기화에는 들어가지 않아요.</p>
+      <button class="btn" type="submit"${v.saving ? ' disabled' : ''}>${v.saving ? '저장하는 중…' : '기록하기'}</button><button class="link" type="button" data-action="offer-form-cancel"${v.saving ? ' disabled' : ''}>취소</button>
+      <p class="fine">기록한 시각을 함께 남겨요. 옷장 백업에 함께 담기고, 로그인하면 계정에도 동기화돼요.</p>
     </form>` : `<div class="opts"><button class="chip" data-action="offer-add">판매처 가격 직접 기록</button>${canRefresh ? `<button class="chip" data-action="offer-refresh"${v.refreshing ? ' disabled' : ''}>${v.refreshing ? '확인하는 중…' : '연결된 출처에서 다시 확인'}</button>` : ''}</div>`;
   openSheet(`<h2>판매처·총액 비교</h2>
     <p class="sub">${esc([v.brand, v.name].filter(Boolean).join(' ') || '가져온 상품')}</p>
     <h3 class="block">사려는 옵션</h3>
-    <div class="candidate-fields"><label>색<select id="offer-requested-color" data-action="offer-requested"><option value="">아직 모름</option>${Object.entries(COLORS).map(([id, c]) => `<option value="${id}"${requested.color === id ? ' selected' : ''}>${c.label}</option>`).join('')}</select></label><label>사이즈<input id="offer-requested-size" data-action="offer-requested" maxlength="20" value="${esc(requested.size || '')}" placeholder="예: M"></label></div>
+    <div class="candidate-fields"><label>색<select id="offer-requested-color" data-action="offer-requested"${v.saving ? ' disabled' : ''}><option value="">아직 모름</option>${Object.entries(COLORS).map(([id, c]) => `<option value="${id}"${requested.color === id ? ' selected' : ''}>${c.label}</option>`).join('')}</select></label><label>사이즈<input id="offer-requested-size" data-action="offer-requested"${v.saving ? ' disabled' : ''} maxlength="20" value="${esc(requested.size || '')}" placeholder="예: M"></label></div>
     ${!result.requestedComplete ? '<p class="fine">원하는 색과 사이즈를 정해야 총액을 비교해요. 사이즈가 없는 상품은 ‘FREE’라고 적어 주세요.</p>' : ''}
     ${best}
     <ul class="offer-list">${rows.map(row).join('')}</ul>
     ${refreshInfo}
+    ${v.error && !f ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
+    ${v.requestedDraft ? `<button class="chip" data-action="offer-requested-save"${v.saving ? ' disabled' : ''}>옵션 다시 저장</button>` : ''}
     ${form}
+    <p class="fine">이 기기에 먼저 저장하고, 로그인하면 계정에도 동기화해요. 옷장 백업에도 가격 기록을 함께 담아요.</p>
+    <button class="link" data-action="offer-records">저장한 가격 기록 ${state.offerRecords.length}개 상품 관리</button>
     ${sources}
     <p class="fine">쿠폰·카드 할인·적립금은 판매처마다 달라 넣지 않았어요. 결제 전에 판매처에서 최종 금액을 확인해 주세요.</p>`, { key: `offers:${v.ref}` });
 }
 function offerFormFrom(offer) {
   return { id: offer.id, seller: offer.seller, url: offer.url, price: offer.price, shipping: offer.shipping, color: offer.color, size: offer.size, stock: offer.stock, sameProduct: offer.sameProduct, source: offer.source, title: offer.title };
 }
-function saveOfferForm(fields) {
+async function saveOfferForm(fields) {
   const v = offerView;
-  if (!v?.form) return false;
-  const data = readOffers(localStorage, v.ref);
+  if (!v?.form || v.saving) return false;
+  const data = readOfferRecord(state.offerRecords, v.ref);
   const numberOrNull = (value) => (value === '' || value === null || value === undefined ? null : Number(String(value).replace(/[,\s원]/g, '')));
   const editingCatalog = v.form.source === 'catalog';
   try {
@@ -673,42 +707,107 @@ function saveOfferForm(fields) {
       source: 'user', checkedAt: new Date().toISOString(), title: v.form.title || null,
     });
     const offers = data.offers.filter((o) => o.id !== v.form.id);
-    if (!writeOffers(localStorage, v.ref, { ...data, offers: [...offers, offer] })) throw new Error('이 기기에 저장하지 못했어요. 입력은 그대로 두었어요.');
+    v.form = { ...v.form, ...fields, sameProduct: fields.sameProduct ? 'confirmed' : 'unconfirmed' };
+    v.saving = true;
+    offerSheet();
+    await saveOfferRecord(v.ref, { ...data, offers: [...offers, offer] });
     v.form = null;
     v.error = '';
-    offerSheet();
     return true;
   } catch (error) {
     v.form = { ...v.form, ...fields, sameProduct: fields.sameProduct ? 'confirmed' : 'unconfirmed' };
-    v.error = error.message;
-    offerSheet();
+    v.error = storageMessage(error);
     return false;
+  } finally {
+    v.saving = false;
+    if (offerView === v && sheetKey === `offers:${v.ref}`) offerSheet();
   }
+}
+function assertOfferContext(v) {
+  if (offerView !== v || (account?.token || null) !== v.accountToken ||
+      (readAccount(localStorage, accountBase)?.token || null) !== v.accountToken ||
+      wardrobeContext !== v.context || storageEpoch !== v.epoch ||
+      JSON.stringify(readOfferRecord(state.offerRecords, v.ref)) !== v.recordToken)
+    throw new Error('옷장이나 로그인 상태가 바뀌었어요. 입력은 그대로 두었어요. 비교 화면을 다시 열어 최신 기록을 확인해 주세요.');
+}
+async function saveOfferRecord(ref, data) {
+  const v = offerView?.ref === ref ? offerView : null;
+  if (v) assertOfferContext(v);
+  await set({ offerRecords: setOfferRecord(state.offerRecords, ref, data) }, { rerender: false });
+  if (v && offerView === v) v.recordToken = JSON.stringify(readOfferRecord(state.offerRecords, ref));
+}
+async function saveRequestedOffer() {
+  const v = offerView;
+  if (!v?.requestedDraft || v.saving) return;
+  v.saving = true;
+  const requested = v.requestedDraft;
+  let saved = false;
+  try {
+    await saveOfferRecord(v.ref, { ...readOfferRecord(state.offerRecords, v.ref), requested });
+    if (v.requestedDraft === requested) v.requestedDraft = null;
+    saved = true;
+    v.error = '';
+  } catch (error) {
+    v.error = storageMessage(error);
+  } finally {
+    v.saving = false;
+    if (offerView === v && sheetKey === `offers:${v.ref}`) offerSheet();
+  }
+  if (saved && v.requestedDraft && offerView === v) await saveRequestedOffer();
 }
 async function refreshOffers() {
   const v = offerView;
-  if (!v || v.refreshing || !signedIn()) return;
+  if (!v || v.refreshing || v.saving || !signedIn()) return;
+  const token = account.token;
+  const before = JSON.stringify(readOfferRecord(state.offerRecords, v.ref));
   v.refreshing = true;
+  v.error = '';
   offerSheet();
-  const data = readOffers(localStorage, v.ref);
   const at = new Date().toISOString();
+  // Network results from a closed sheet, switched account, or superseded
+  // record are discarded. They must not resurrect a deleted seller note.
+  const current = () => offerView === v && sheetKey === `offers:${v.ref}` && sameSession(token) &&
+    readAccount(localStorage, accountBase)?.token === token && wardrobeContext === v.context && storageEpoch === v.epoch &&
+    JSON.stringify(readOfferRecord(state.offerRecords, v.ref)) === before;
   try {
     const result = await accountApi().offers({ productId: v.productId, q: [v.brand, v.name].filter(Boolean).join(' ') });
+    if (!current()) {
+      if (offerView === v) v.error = '가격 기록이나 로그인 상태가 바뀌었어요. 다시 확인해 주세요.';
+      return;
+    }
+    const data = readOfferRecord(state.offerRecords, v.ref);
     let offers = data.offers;
     for (const source of result.sources)
       if (source.status === 'connected')
         offers = mergeRefreshed(offers, result.offers.filter((offer) => offer.source === source.id && offer.source !== 'catalog'), source.id);
     const failed = result.sources.filter((source) => source.status === 'failed');
-    writeOffers(localStorage, v.ref, { ...data, offers, refresh: { at, ok: !failed.length, message: failed.map((source) => `${source.name}: ${source.message}`).join(' · ') } });
+    await saveOfferRecord(v.ref, { ...data, offers, refresh: { at, ok: !failed.length, message: failed.map((source) => `${source.name}: ${source.message}`).join(' · ') } });
   } catch (error) {
+    if (!current()) return;
     if (error?.status === 401) syncFailed(error);
-    writeOffers(localStorage, v.ref, { ...data, refresh: { at, ok: false, message: error?.message || '가격을 확인하지 못했어요.' } });
-  } finally {
-    if (offerView === v) {
-      v.refreshing = false;
-      offerSheet();
+    v.error = storageMessage(error);
+    // Only a retrieval failure gets a persisted attempt stamp. A refused
+    // local commit leaves the prior committed record byte-for-byte intact.
+    if (!storageError) {
+      try {
+        await saveOfferRecord(v.ref, { ...readOfferRecord(state.offerRecords, v.ref), refresh: { at, ok: false, message: v.error } });
+      } catch (writeError) { v.error = storageMessage(writeError); }
     }
+  } finally {
+    v.refreshing = false;
+    if (offerView === v && sheetKey === `offers:${v.ref}`) offerSheet();
   }
+}
+function offerRecordsSheet() {
+  const rows = state.offerRecords;
+  const legacy = localStorage.getItem(OFFER_STORE_KEY) !== null;
+  openSheet(`<h2>저장한 가격 기록</h2><p class="sub">상품 ${rows.length}/100개. 지우기 전에 옷장 백업을 받아 두면 가격 기록도 함께 보관할 수 있어요.</p>
+    <button class="chip" data-action="backup">옷장 백업 받기</button>
+    ${legacy ? `<details class="garment-name"${legacyPriceNotice ? ' open' : ''}><summary>이전 버전 가격 원문 보관 중</summary><p class="fine">${esc(legacyPriceNotice || '이전에 이 기기에 저장한 원문을 따로 보관하고 있어요. 옷장 복원·계정 변경 뒤에는 자동으로 다시 가져오지 않아요.')}</p><button class="chip" data-action="offer-legacy-export">이전 가격 원문 파일 받기</button>${!rows.length ? '<button class="chip" data-action="offer-legacy-import">이전 가격 기록 가져오기</button>' : '<p class="fine">현재 가격 기록과 자동으로 합치지 않아요. 이전 원문 파일을 받아 확인할 수 있어요.</p>'}</details>` : ''}
+    ${rows.length ? `<ul class="plain-list">${rows.map((entry) => {
+      const title = PRODUCT_BY_ID[entry.ref]?.name || entry.offers.find((offer) => offer.title)?.title || entry.ref;
+      return `<li><b>${esc(title)}</b><p class="fine">판매처 ${entry.offers.length}곳 · ${offerTime(entry.touchedAt)} 저장</p><button class="link" data-action="offer-record-delete" data-ref="${esc(entry.ref)}">이 상품의 가격 기록 지우기</button></li>`;
+    }).join('')}</ul>` : '<p>저장한 가격 기록이 없어요.</p>'}`, { key: 'offer-records' });
 }
 
 // ── 내 옷장 기준 다음 한 벌: 실제 옷 → 확인 필요·겹침 → 부족한 종류 → 실제 상품·가격 출처·링크
@@ -1272,6 +1371,7 @@ function render() {
 // key가 같은 시트를 다시 그리면(고르기 등) 보던 위치와 누른 버튼의 포커스를 유지한다
 let sheetKey = null;
 function openSheet(html, { key = null } = {}) {
+  if (key !== 'offer-record-delete') offerDeleteReview = null;
   sheetRevision++;
   restoreDraft = null;
   eraseReviewStep = 0;
@@ -2260,7 +2360,7 @@ function cleanupSheet() {
     <ul class="plain-list"><li>옷 ${l.garments.count}/${l.garments.max}벌 (${pct(l.garments.count, l.garments.max)}%)</li><li>구매 기록 ${l.journeys.count}/${l.journeys.max}개 (${pct(l.journeys.count, l.journeys.max)}%)</li><li>착용 기록 ${l.wears.count}/${l.wears.max}개 (${pct(l.wears.count, l.wears.max)}%)</li><li>기록 크기 ${formatBytes(l.bytes.bytes)} / ${formatBytes(l.bytes.limitBytes)} (${pct(l.bytes.bytes, l.bytes.limitBytes)}%)</li><li>구매 기록 크기 ${formatBytes(l.journeyBytes.bytes)} / ${formatBytes(l.journeyBytes.limitBytes)} (${pct(l.journeyBytes.bytes, l.journeyBytes.limitBytes)}%)</li></ul>
     ${l.full ? '<p class="notice" role="alert">한도에 닿아 새 기록을 저장할 수 없어요. 아래에서 정리하거나, 옷장에서 쓰지 않는 옷을 빼 주세요.</p>' : ''}
     <p class="sub">옷과 연결되지 않은 구매 기록(비교만 한 것, 받지 않은 주문)만 지울 수 있어요. 받은·계속 입는·반품한 기록은 옷의 보유 상태를 정하므로 여기서 지우지 않아요${kept ? ` (${kept}개)` : ''}.</p>
-    <div class="opts"><button class="chip" data-action="backup">먼저 사진 포함 백업 받기</button></div>
+    <div class="opts"><button class="chip" data-action="backup">먼저 사진 포함 백업 받기</button><button class="chip" data-action="offer-records">가격 기록 ${state.offerRecords.length}개 상품 관리</button></div>
     ${rows.length ? `<ul class="plain-list cleanup-list">${rows.map(({ journey, kind, lastAt, bytes }) => `<li><label class="toggle"><input type="checkbox" data-action="cleanup-toggle" data-id="${esc(journey.id)}"${cleanupPick.has(journey.id) ? ' checked' : ''}> <span><b>${esc(journey.candidate.name || journey.candidate.brand || '가져온 상품')}</b> · ${kind === 'ordered' ? '받지 않은 주문 기록' : '비교만 한 기록'}${journey.decision ? ` · ${{ buy: '사기로 함', hold: '보류', skip: '안 사기로 함' }[journey.decision]}` : ''} · ${esc(lastAt.slice(0, 10))} · ${formatBytes(bytes)}</span></label></li>`).join('')}</ul>
       <button class="btn" data-action="cleanup-delete"${cleanupPick.size ? '' : ' disabled'}>선택한 ${cleanupPick.size}개 지우기</button>
       <p class="fine">받지 않은 주문 기록을 지우면 그 종류를 다시 추천할 수 있어요. 지운 기록은 되돌릴 수 없으니 먼저 백업해 주세요.</p>`
@@ -2509,7 +2609,10 @@ async function replaceWithAccountWardrobe(api, remote, token = account?.token) {
   }
   if (writeBusy) throw Object.assign(new Error('busy'), { code: 'busy' });
   // An account wardrobe saved by an older version is upgraded first (an empty wear diary).
-  await set(withDeviceFields(upgradeWardrobe(pulled.state), storedWardrobe(state)), { assets: pulled.assets });
+  await set(withDeviceFields(upgradeWardrobe(pulled.state), storedWardrobe(state)), { assets: pulled.assets, replacingOffers: true });
+  offerView = null;
+  offerDeleteReview = null;
+  if (sheetKey?.startsWith('offers:') || sheetKey?.startsWith('offer-record')) closeSheet();
   if (!sameSession(token)) {
     syncQueued = signedIn();
     return false;
@@ -2734,7 +2837,7 @@ function syncChoiceSheet() {
 // ── 알림
 function showEraseReview(step = 1) {
   openSheet(
-    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다. Claude 최신 버전의 기록·원문 사본도 포함됩니다.${signedIn() ? ' 이 브라우저는 로그아웃되고, 계정에 저장된 옷장은 지우지 않아요(계정 자료는 프로필의 계정 삭제로 지워요).' : ''} 이 앱에서는 해당 자료를 열거나 백업할 수 없으니 최신 버전에서 먼저 백업해 주세요.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
+    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 판매처 가격 기록, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다. Claude 최신 버전의 기록·원문 사본도 포함됩니다.${signedIn() ? ' 이 브라우저는 로그아웃되고, 계정에 저장된 옷장은 지우지 않아요(계정 자료는 프로필의 계정 삭제로 지워요).' : ''} 이 앱에서는 해당 자료를 열거나 백업할 수 없으니 최신 버전에서 먼저 백업해 주세요.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
   );
   eraseReviewStep = step;
 }
@@ -2778,7 +2881,6 @@ async function eraseAllWardrobe() {
     // 백업 파일을 받은 날짜 기록은 옷장 자료가 아니라 이 기기의 메모라서 이전 자료
     // 범위(eoul:v1 등)와 따로, 전체 삭제가 끝난 뒤 지운다. 새 옷장은 다시 백업 알림을 받는다.
     clearBackupRecord();
-    clearOffers(localStorage);
     backupNudgeDismissed = false;
     // 이 브라우저의 로그인도 이 기기 자료라서 함께 끝낸다. 계정에 저장된 옷장은 지우지 않는다.
     if (account) {
@@ -3490,18 +3592,22 @@ document.addEventListener('click', async (e) => {
       case 'open-offers':
         beginOffers({ productId: el.dataset.id || null, journeyId: el.dataset.journey || null });
         if (accountBase && !accountHealth) {
-          createAccountApi({ base: accountBase }).health().then((health) => { accountHealth = health; if (offerView) offerSheet(); }).catch(() => {});
+          const view = offerView;
+          createAccountApi({ base: accountBase }).health().then((health) => {
+            accountHealth = health;
+            if (offerView === view && view && sheetKey === `offers:${view.ref}`) offerSheet();
+          }).catch(() => {});
         }
         break;
       case 'offer-add':
         if (!offerView) break;
-        offerView.form = { seller: '', url: offerView.url || '', price: '', shipping: '', color: readOffers(localStorage, offerView.ref).requested.color ?? offerView.defaultColor, size: readOffers(localStorage, offerView.ref).requested.size || '', stock: 'unknown', sameProduct: 'unconfirmed' };
+        offerView.form = { seller: '', url: offerView.url || '', price: '', shipping: '', color: readOfferRecord(state.offerRecords, offerView.ref).requested.color ?? offerView.defaultColor, size: readOfferRecord(state.offerRecords, offerView.ref).requested.size || '', stock: 'unknown', sameProduct: 'unconfirmed' };
         offerView.error = '';
         offerSheet();
         break;
       case 'offer-edit': {
         if (!offerView) break;
-        const data = readOffers(localStorage, offerView.ref);
+        const data = readOfferRecord(state.offerRecords, offerView.ref);
         const offer = el.dataset.id === `catalog:${offerView.productId}` && offerView.catalog ? catalogOffer(offerView.catalog) : data.offers.find((o) => o.id === el.dataset.id);
         if (!offer) break;
         offerView.form = offerFormFrom(offer);
@@ -3512,11 +3618,52 @@ document.addEventListener('click', async (e) => {
       }
       case 'offer-delete': {
         if (!offerView) break;
-        const data = readOffers(localStorage, offerView.ref);
-        writeOffers(localStorage, offerView.ref, { ...data, offers: data.offers.filter((o) => o.id !== el.dataset.id) });
+        const data = readOfferRecord(state.offerRecords, offerView.ref);
+        await saveOfferRecord(offerView.ref, { ...data, offers: data.offers.filter((o) => o.id !== el.dataset.id) });
         offerSheet();
         break;
       }
+      case 'offer-legacy-export': {
+        const raw = localStorage.getItem(OFFER_STORE_KEY);
+        if (raw !== null) downloadWardrobe(new Blob([raw], { type: 'application/json' }), 'eoul-previous-price-records.json');
+        break;
+      }
+      case 'offer-legacy-import':
+        try {
+          if (state.offerRecords.length) throw new Error('현재 가격 기록과 자동으로 합치지 않아요. 먼저 원문 파일을 받아 확인해 주세요.');
+          const raw = localStorage.getItem(OFFER_STORE_KEY);
+          const records = legacyOfferRecords(raw);
+          if (localStorage.getItem(OFFER_STORE_KEY) !== raw) throw new Error('이전 기록이 바뀌었어요. 다시 시도해 주세요.');
+          await set({ offerRecords: records });
+          legacyPriceNotice = '';
+          offerView = null;
+        } catch (error) { legacyPriceNotice = storageMessage(error); }
+        offerRecordsSheet();
+        break;
+      case 'offer-records':
+        offerRecordsSheet();
+        break;
+      case 'offer-record-delete':
+        offerDeleteReview = { ref: el.dataset.ref, accountToken: account?.token || null, epoch: storageEpoch, context: wardrobeContext, recordToken: JSON.stringify(readOfferRecord(state.offerRecords, el.dataset.ref)) };
+        openSheet(`<h2>이 상품의 가격 기록을 지울까요?</h2><p>판매처 가격과 사려는 옵션이 백업·계정에 저장되는 옷장에서도 빠져요. 필요하면 먼저 백업해 주세요.</p><button class="chip" data-action="backup">옷장 백업 받기</button><button class="btn" data-action="offer-record-delete-confirm" data-ref="${esc(el.dataset.ref)}">가격 기록 지우기</button><button class="link" data-action="offer-records">취소</button>`, { key: 'offer-record-delete' });
+        break;
+      case 'offer-record-delete-confirm':
+        if (!offerDeleteReview || offerDeleteReview.ref !== el.dataset.ref ||
+            offerDeleteReview.accountToken !== (account?.token || null) ||
+            offerDeleteReview.accountToken !== (readAccount(localStorage, accountBase)?.token || null) ||
+            offerDeleteReview.epoch !== storageEpoch || offerDeleteReview.context !== wardrobeContext ||
+            offerDeleteReview.recordToken !== JSON.stringify(readOfferRecord(state.offerRecords, el.dataset.ref))) {
+          offerDeleteReview = null;
+          throw new Error('가격 기록이나 계정이 바뀌었어요. 다시 확인한 뒤 지워 주세요.');
+        }
+        await set({ offerRecords: removeOfferRecord(state.offerRecords, el.dataset.ref) });
+        offerView = null;
+        offerDeleteReview = null;
+        offerRecordsSheet();
+        break;
+      case 'offer-requested-save':
+        await saveRequestedOffer();
+        break;
       case 'offer-form-cancel':
         if (offerView) { offerView.form = null; offerView.error = ''; offerSheet(); }
         break;
@@ -4063,7 +4210,7 @@ document.addEventListener('click', async (e) => {
           } finally {
             writeBusy = false;
           }
-        } else await set(saved.state, { assets: saved.assets });
+        } else await set(saved.state, { assets: saved.assets, replacingOffers: true });
         closeSheet();
         toast('옷장과 사진을 복원했어요');
         break;
@@ -4083,7 +4230,8 @@ document.addEventListener('click', async (e) => {
           if (writeBusy || bootBusy) throw new Error('저장소 작업을 마무리하고 있어요. 완료 후 다시 눌러 주세요.');
           writeBusy = true;
           try {
-            await wardrobeStore.commit(pending.state, 0, pending.assets);
+            const imported = withLegacyPrices(pending.state);
+            await wardrobeStore.commit(imported, 0, pending.assets);
             pendingLegacy = null;
             await bootWardrobe();
           } finally {
@@ -4209,11 +4357,11 @@ document.addEventListener('change', async (e) => {
       wearSheet();
     }
     if (e.target.dataset?.action === 'offer-requested' && offerView) {
-      const data = readOffers(localStorage, offerView.ref);
-      const requested = { ...data.requested, ...(e.target.id === 'offer-requested-color' ? { color: e.target.value || null } : { size: e.target.value.trim() || null }) };
+      const data = readOfferRecord(state.offerRecords, offerView.ref);
+      const requested = { ...(offerView.requestedDraft || data.requested), ...(e.target.id === 'offer-requested-color' ? { color: e.target.value || null } : { size: e.target.value.trim() || null }) };
       if (requested.color === null && e.target.id !== 'offer-requested-color') requested.color = data.requested.color ?? offerView.defaultColor;
-      writeOffers(localStorage, offerView.ref, { ...data, requested });
-      offerSheet();
+      offerView.requestedDraft = requested;
+      await saveRequestedOffer();
     }
     if (e.target.dataset?.action === 'account-check' && accountForm && !accountForm.busy && ['age14', 'privacy', 'terms'].includes(e.target.dataset.field))
       accountForm[e.target.dataset.field] = !!e.target.checked;

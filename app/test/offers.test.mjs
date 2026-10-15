@@ -8,9 +8,11 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { IDBFactory } from 'fake-indexeddb';
 import { validateOffer, offerStatus, compareOffers, mergeRefreshed, OFFER_STALE_DAYS } from '../src/offers.js';
-import { readOffers, writeOffers, offerRef, OFFER_STORE_KEY } from '../src/offer-store.js';
+import { readOffers, writeOffers, readOfferRecord, setOfferRecord, offerRef, OFFER_STORE_KEY } from '../src/offer-store.js';
 import { createSupply } from '../../server/src/supply.js';
 import { PRODUCT_BY_ID } from '../src/engine.js';
+import { newWardrobeState } from '../src/wardrobe.js';
+import { createWardrobeStore, parseWardrobeBackup } from '../src/wardrobe-store.js';
 
 const now = new Date('2026-10-15T12:00:00.000Z');
 const offer = (fields) => validateOffer({
@@ -139,20 +141,21 @@ const output = path.join(temp, 'index.html');
 execFileSync(process.execPath, [path.join(root, 'tools/build.mjs'), '--out', output]);
 const script = fs.readFileSync(output, 'utf8').match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(
   /\n\}\)\(\);\s*$/,
-  '\nglobalThis.testApp = { ready: appReady, saveOfferForm, offerView: () => offerView };\n})();',
+  '\nglobalThis.testApp = { ready: appReady, saveOfferForm, refreshOffers, saveAccount, chooseWardrobeBackup, state: () => state, store: wardrobeStore, set, applySnapshot, pauseSync: () => { kickSync = async () => {}; }, offerView: () => offerView };\n})();',
 );
-async function boot() {
-  const storage = memory();
+async function boot({ indexedDB = new IDBFactory(), storage = memory(), meta = null, fetchImpl = null } = {}) {
   const nodes = new Map(['app', 'sheet-root', 'toast'].map((id) => [id, { innerHTML: '', classList: { add() {}, remove() {} }, querySelector() { return null; }, querySelectorAll() { return []; } }]));
   const listeners = new Map();
   const context = vm.createContext({
-    indexedDB: new IDBFactory(), Blob, crypto: globalThis.crypto, structuredClone, btoa, atob, Uint8Array, DataView, TextEncoder, TextDecoder,
+    indexedDB, Blob, crypto: globalThis.crypto, structuredClone, btoa, atob, Uint8Array, DataView, TextEncoder, TextDecoder,
     URL: class extends URL { static createObjectURL() { return 'blob:x'; } static revokeObjectURL() {} }, URLSearchParams,
     Image: class { decode() { return Promise.resolve(); } }, localStorage: storage, navigator: {},
+    location: { origin: 'https://operator.example', search: '' },
+    fetch: fetchImpl || (async () => ({ ok: true, status: 200, json: async () => ({ features: {} }) })),
     document: {
       getElementById: (id) => nodes.get(id) ?? null,
       addEventListener(type, fn) { listeners.set(type, [...(listeners.get(type) || []), fn]); },
-      querySelector: () => null, querySelectorAll: () => [], body: { style: {}, append() {} }, createElement: () => ({ click() {}, remove() {} }),
+      querySelector: (selector) => selector === 'meta[name="eoul-api"]' && meta ? { content: meta } : null, querySelectorAll: () => [], body: { style: {}, append() {} }, createElement: () => ({ click() {}, remove() {} }),
     },
     window: { scrollTo() {}, matchMedia: () => ({ matches: false }) }, CSS: { escape: (v) => v },
     setTimeout: () => 1, clearTimeout() {}, requestAnimationFrame: (fn) => fn(),
@@ -182,7 +185,7 @@ test('the comparison screen: collected price as is, my records, option and stock
   assert.doesNotMatch(sheet, /data-action="offer-refresh"/, 'no refresh button without a connected source');
 
   await page.change('offer-requested-size', 'M');
-  assert.equal(JSON.parse(page.storage.getItem('eoul:offers:v1')).products['ms-3323583'].requested.size, 'M');
+  assert.equal(readOfferRecord(page.app.state().offerRecords, product.id).requested.size, 'M');
 
   const record = async (fields) => {
     await page.click({ action: 'offer-add' });
@@ -202,5 +205,205 @@ test('the comparison screen: collected price as is, my records, option and stock
   assert.match(sheet, /현재 최저가라는 뜻은 아니에요/);
   assert.match(sheet, /품절/);
   assert.match(sheet, /옵션 다름/);
-  assert.equal(JSON.parse(page.storage.getItem('eoul:offers:v1')).products['ms-3323583'].offers.length, 4);
+  assert.equal(readOfferRecord(page.app.state().offerRecords, product.id).offers.length, 4);
+});
+
+const serial = (value) => JSON.parse(JSON.stringify(value));
+const ref = 'ms-3323583';
+const noteData = () => ({ requested: { color: 'navy', size: 'M' }, offers: [offer({ id: 'o_saved', title: '확인한 상품' })], refresh: null });
+async function legacyDevice(storage = memory()) {
+  const indexedDB = new IDBFactory();
+  const store = createWardrobeStore({ indexedDB });
+  const { offerRecords, ...record } = newWardrobeState();
+  await store.commit({ ...record, schema: 6 }, 0);
+  store.close();
+  writeOffers(storage, ref, noteData(), now);
+  return { indexedDB, storage };
+}
+
+test('the bundled app imports device-only prices once, includes them in backup, and never replays them after restoring an older wardrobe', async (t) => {
+  const device = await legacyDevice();
+  const raw = device.storage.getItem(OFFER_STORE_KEY);
+  const page = await boot(device);
+  t.after(() => page.app.store.close());
+  const migrated = await page.app.store.read();
+  assert.equal(migrated.state.schema, 7);
+  assert.equal(migrated.revision, 2, 'one CAS commit upgrades the wardrobe and imports its prices');
+  assert.deepEqual(migrated.state.offerRecords[0].offers, noteData().offers);
+  assert.equal(device.storage.getItem(OFFER_STORE_KEY), raw, 'the legacy source is kept verbatim');
+  const backup = await parseWardrobeBackup(await page.app.store.backup());
+  assert.deepEqual(backup.state.offerRecords, migrated.state.offerRecords);
+
+  const old = createWardrobeStore({ indexedDB: new IDBFactory() });
+  t.after(() => old.close());
+  const { offerRecords, ...v6 } = newWardrobeState();
+  await old.commit({ ...v6, schema: 6 }, 0);
+  await page.app.chooseWardrobeBackup(await old.backup());
+  await page.click({ action: 'restore-backup' });
+  assert.deepEqual(serial(page.app.state().offerRecords), [], 'a schema6 backup replaces the price history with empty, not the source key');
+  page.app.store.close();
+  const reopened = await boot(device);
+  t.after(() => reopened.app.store.close());
+  assert.deepEqual(serial(reopened.app.state().offerRecords), [], 'leftover legacy notes do not resurrect on restart');
+  assert.equal((await reopened.app.store.read()).revision, 3);
+});
+
+test('a refused price save keeps the input and the entire committed snapshot, then retry commits it', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  await page.click({ action: 'open-offers', id: ref });
+  await page.click({ action: 'offer-add' });
+  const before = await page.app.store.read();
+  const commit = page.app.store.commit;
+  page.app.store.commit = async () => { throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' }); };
+  const fields = { seller: '다시 저장할 판매처', url: 'https://shop.example/retry', price: '30000', shipping: '0', color: 'navy', size: 'M', stock: 'in-stock', sameProduct: true };
+  assert.equal(await page.app.saveOfferForm(fields), false);
+  assert.match(page.sheet(), /value="다시 저장할 판매처"/);
+  assert.match(page.sheet(), /저장 공간이 부족/);
+  assert.deepEqual(await page.app.store.read(), before);
+  assert.deepEqual(serial(page.app.state().offerRecords), []);
+  page.app.store.commit = commit;
+  assert.equal(await page.app.saveOfferForm(fields), true);
+  const saved = await page.app.store.read();
+  assert.equal(saved.revision, before.revision + 1);
+  assert.equal(saved.state.offerRecords[0].offers[0].seller, fields.seller);
+  assert.equal(page.storage.getItem(OFFER_STORE_KEY), null, 'new writes never update the old global price cache');
+});
+
+test('a rapid second requested option survives an in-flight first durable save', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  await page.click({ action: 'open-offers', id: ref });
+  const commit = page.app.store.commit;
+  let release, entered;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const started = new Promise((resolve) => { entered = resolve; });
+  let first = true;
+  page.app.store.commit = async (...args) => {
+    if (first) { first = false; entered(); await gate; }
+    return commit(...args);
+  };
+  const saveM = page.change('offer-requested-size', 'M');
+  await started;
+  await page.change('offer-requested-size', 'L');
+  release();
+  await saveM;
+  assert.equal(readOfferRecord(page.app.state().offerRecords, ref).requested.size, 'L');
+  assert.equal((await page.app.store.read()).state.offerRecords[0].requested.size, 'L');
+});
+
+test('an editor from before a snapshot replacement cannot write even when the new product record is also empty', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  await page.click({ action: 'open-offers', id: ref });
+  await page.click({ action: 'offer-add' });
+  page.app.applySnapshot(await page.app.store.read());
+  assert.equal(await page.app.saveOfferForm({ seller: '이전 화면', url: 'https://shop.example/stale', price: '30000', shipping: '0', color: 'navy', size: 'M', stock: 'in-stock', sameProduct: true }), false);
+  assert.match(page.sheet(), /옷장이나 로그인 상태가 바뀌었어요/);
+  assert.match(page.sheet(), /value="이전 화면"/);
+  assert.deepEqual(serial(page.app.state().offerRecords), []);
+});
+
+for (const scenario of ['sheet', 'account', 'snapshot']) {
+  test(`a delayed price refresh is discarded after changing ${scenario}`, async (t) => {
+    let release;
+    const deferred = new Promise((resolve) => { release = resolve; });
+    const page = await boot({ meta: 'same-origin', fetchImpl: async (url) => {
+      if (String(url).includes('/v1/offers?')) { await deferred; return { ok: true, status: 200, json: async () => ({ sources: [{ id: 'naver-shopping', status: 'connected' }], offers: [offer({ source: 'naver-shopping' })] }) }; }
+      return { ok: true, status: 200, json: async () => ({ features: {}, revision: 0 }) };
+    } });
+    t.after(() => page.app.store.close());
+    page.app.pauseSync();
+    page.app.saveAccount({ email: 'one@example.com', token: 'one' });
+    await page.click({ action: 'open-offers', id: ref });
+    const task = page.app.refreshOffers();
+    if (scenario === 'sheet') await page.click({ action: 'offer-records' });
+    if (scenario === 'account') page.app.saveAccount({ email: 'two@example.com', token: 'two' });
+    if (scenario === 'snapshot') page.app.applySnapshot(await page.app.store.read());
+    release();
+    await task;
+    assert.deepEqual(serial(page.app.state().offerRecords), []);
+    if (scenario === 'sheet') assert.match(page.sheet(), /<h2[^>]*>저장한 가격 기록/);
+  });
+}
+
+test('at the price-record limit a new seller is refused without loss; explicit confirmed cleanup frees space', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  let records = [];
+  for (let i = 0; i < 100; i++) records = setOfferRecord(records, `ms-${i}`, { requested: {}, offers: [], refresh: null }, now);
+  await page.app.set({ offerRecords: records });
+  await page.click({ action: 'open-offers', id: ref });
+  await page.click({ action: 'offer-add' });
+  const fields = { seller: '새 판매처', url: 'https://shop.example/full', price: '30000', shipping: '0', color: 'navy', size: 'M', stock: 'in-stock', sameProduct: true };
+  assert.equal(await page.app.saveOfferForm(fields), false);
+  assert.equal(page.app.state().offerRecords.length, 100);
+  await page.click({ action: 'offer-records' });
+  await page.click({ action: 'offer-record-delete', ref: 'ms-0' });
+  assert.equal(page.app.state().offerRecords.length, 100, 'the first tap only asks');
+  await page.click({ action: 'offer-record-delete-confirm', ref: 'ms-0' });
+  assert.equal(page.app.state().offerRecords.length, 99);
+  await page.click({ action: 'open-offers', id: ref });
+  await page.click({ action: 'offer-add' });
+  assert.equal(await page.app.saveOfferForm(fields), true);
+  assert.equal(page.app.state().offerRecords.length, 100);
+});
+
+test('a corrupt legacy price cache stays downloadable without blocking the valid wardrobe or future writes', async (t) => {
+  const device = await legacyDevice();
+  const raw = '{keep this exact broken source';
+  device.storage.setItem(OFFER_STORE_KEY, raw);
+  const page = await boot(device);
+  t.after(() => page.app.store.close());
+  assert.equal((await page.app.store.read()).state.schema, 7);
+  assert.deepEqual(serial(page.app.state().offerRecords), []);
+  assert.equal(device.storage.getItem(OFFER_STORE_KEY), raw);
+  await page.click({ action: 'offer-records' });
+  assert.match(page.sheet(), /아직 옮기지 못했어요/);
+  assert.match(page.sheet(), /data-action="offer-legacy-export"/);
+  await page.app.set({ budget: 100000 });
+  assert.equal((await page.app.store.read()).state.budget, 100000);
+  await page.click({ action: 'offer-legacy-import' });
+  assert.equal(device.storage.getItem(OFFER_STORE_KEY), raw);
+  assert.deepEqual(serial(page.app.state().offerRecords), []);
+});
+
+test('confirming a wardrobe with missing legacy photos also imports its price notes', async (t) => {
+  const storage = memory();
+  storage.setItem('eoul:v1', JSON.stringify({ v: 2, onboarded: true, gender: 'M', styles: ['classic'], brands: [], brandOnly: false,
+    occasion: null, budget: null, closet: [{ id: 'old_photo', slot: 'm-oxford', color: 'white', brand: null, productId: null, photo: true }],
+    saved: [], hidden: [], tab: 'closet', demo: false }));
+  writeOffers(storage, ref, noteData(), now);
+  const page = await boot({ storage });
+  t.after(() => page.app.store.close());
+  assert.equal(await page.app.store.read(), null, 'missing photos require the existing explicit confirmation');
+  await page.click({ action: 'import-legacy' });
+  const snapshot = await page.app.store.read();
+  assert.equal(snapshot.state.garments[0].photoMissing, true);
+  assert.deepEqual(snapshot.state.offerRecords[0].offers, noteData().offers);
+});
+
+test('an old price-deletion confirmation cannot delete a record from a replaced snapshot', async (t) => {
+  const page = await boot();
+  t.after(() => page.app.store.close());
+  const records = setOfferRecord([], ref, noteData(), now);
+  await page.app.set({ offerRecords: records });
+  await page.click({ action: 'offer-records' });
+  await page.click({ action: 'offer-record-delete', ref });
+  page.app.applySnapshot(await page.app.store.read());
+  await page.click({ action: 'offer-record-delete-confirm', ref });
+  assert.deepEqual(serial(page.app.state().offerRecords), records);
+  assert.deepEqual((await page.app.store.read()).state.offerRecords, records);
+});
+
+
+test('long product addresses keep their exact identities rather than sharing a truncated price key', () => {
+  const prefix = `https://shop.example/product?context=${'x'.repeat(350)}`;
+  const a = offerRef({ url: `${prefix}&id=one` }), b = offerRef({ url: `${prefix}&id=two` });
+  assert.notEqual(a, b);
+  assert.equal(a, `${prefix}&id=one`);
+  assert.equal(offerRef({ url: 'https://user:password@shop.example/product' }), null);
+  const records = setOfferRecord(setOfferRecord([], a, noteData(), now), b, { ...noteData(), offers: [offer({ id: 'o_two', price: 90000 })] }, now);
+  assert.equal(readOfferRecord(records, a).offers[0].price, 30000);
+  assert.equal(readOfferRecord(records, b).offers[0].price, 90000);
 });

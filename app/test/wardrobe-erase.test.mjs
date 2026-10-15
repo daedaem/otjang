@@ -5,7 +5,7 @@ import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY, WARDROBE_ERASE_SCOPE } f
 
 const currentName = 'eoul-wardrobe-v2',
   legacyName = 'eoul';
-const storageKeys = ['eoul:v1', 'eoul:v2', 'eoul:v2:unreadable'];
+const storageKeys = ['eoul:v1', 'eoul:v2', 'eoul:v2:unreadable', 'eoul:offers:v1'];
 const photograph = new Blob([new Uint8Array([255, 216, 255, 7])], { type: 'image/jpeg' });
 
 function storage(
@@ -13,6 +13,7 @@ function storage(
     ['eoul:v1', 'synthetic legacy text'],
     ['eoul:v2', 'synthetic newer text'],
     ['eoul:v2:unreadable', 'synthetic unreadable source'],
+    ['eoul:offers:v1', 'synthetic seller-note source'],
     ['other-app', 'keep me'],
     ['eoul:v1:unrelated', 'also keep'],
     ['eoul:probe', 'untouched probe'],
@@ -312,6 +313,65 @@ test('a localStorage removal that does not take effect is never acknowledged as 
   });
 });
 
+test('a retained seller-note source prevents erase completion until a verified retry and preserves nearby unrelated keys', async () => {
+  const indexedDB = new IDBFactory(), localStorage = storage();
+  await seed(indexedDB, currentName);
+  await seed(indexedDB, legacyName, 1, ['photos']);
+  localStorage.rows.set('eoul:offers:v1:unrelated', 'keep this separate note');
+  const removeItem = localStorage.removeItem;
+  let denySellerNotes = true;
+  localStorage.removeItem = (key) => {
+    if (key === 'eoul:offers:v1' && denySellerNotes)
+      throw new DOMException('synthetic seller-note removal denial', 'SecurityError');
+    removeItem(key);
+  };
+  await assert.rejects(eraseWardrobeData({ indexedDB, localStorage }), (error) => {
+    assert.equal(error.code, 'storage-failed');
+    assert.equal(error.result.ok, false);
+    assert.deepEqual(error.result.databases.map((entry) => entry.status), ['cleared', 'cleared']);
+    assert.deepEqual(error.result.localStorageEntries.map((entry) => entry.status), ['removed', 'removed', 'removed', 'retained']);
+    assert.deepEqual(error.result.mayRemain, ['eoul:offers:v1']);
+    assert.match(error.message, /eoul:offers:v1/);
+    assert.equal(error.result.pendingMarker.status, 'pending');
+    return true;
+  });
+  assert.equal(localStorage.rows.get('eoul:offers:v1'), 'synthetic seller-note source');
+  assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1', 'reload must not import the retained source into the cleared database');
+  assert.equal(localStorage.rows.get('other-app'), 'keep me');
+  assert.equal(localStorage.rows.get('eoul:offers:v1:unrelated'), 'keep this separate note');
+  denySellerNotes = false;
+  const result = await eraseWardrobeData({ indexedDB, localStorage });
+  assert.equal(result.ok, true);
+  assert.equal(result.localStorageEntries.at(-1).status, 'removed');
+  assert.equal(localStorage.rows.has('eoul:offers:v1'), false);
+  assert.equal(localStorage.rows.has(WARDROBE_ERASE_PENDING_KEY), false);
+  assert.equal(localStorage.calls.filter(([action]) => action === 'remove').at(-1)[1], WARDROBE_ERASE_PENDING_KEY);
+  assert.equal(localStorage.rows.get('eoul:offers:v1:unrelated'), 'keep this separate note');
+  assert.equal(localStorage.rows.get('other-app'), 'keep me');
+});
+
+test('unreadable seller-note migration source fails preflight before any database is cleared', async () => {
+  const indexedDB = new IDBFactory(), localStorage = storage();
+  await seed(indexedDB, currentName);
+  await seed(indexedDB, legacyName, 1, ['photos']);
+  const getItem = localStorage.getItem;
+  localStorage.getItem = (key) => {
+    if (key === 'eoul:offers:v1') throw new DOMException('synthetic seller-note read denial', 'SecurityError');
+    return getItem(key);
+  };
+  await assert.rejects(eraseWardrobeData({ indexedDB, localStorage }), (error) => {
+    assert.equal(error.result.ok, false);
+    assert.deepEqual(error.result.databases.map((entry) => entry.status), ['not-started', 'not-started']);
+    assert.deepEqual(error.result.uncertain, ['eoul:offers:v1']);
+    return true;
+  });
+  assert.deepEqual(await counts(indexedDB, currentName), { photos: 1, records: 1, recovery: 1 });
+  assert.deepEqual(await counts(indexedDB, legacyName), { photos: 1 });
+  assert.equal(localStorage.rows.get('eoul:offers:v1'), 'synthetic seller-note source');
+  assert.equal(localStorage.calls.some(([action]) => action === 'remove'), false);
+  assert.equal(localStorage.rows.get('other-app'), 'keep me');
+});
+
 test('localStorage failure reports already-cleared databases and the retained legacy key', async () => {
   const indexedDB = new IDBFactory(),
     localStorage = storage();
@@ -333,13 +393,13 @@ test('localStorage failure reports already-cleared databases and the retained le
   assert.ok(localStorage.rows.has('eoul:v1'));
 });
 
-test('all three source keys are inspected before the first database operation', async () => {
+test('all source keys including seller notes are inspected before the first database operation', async () => {
   const factory = new IDBFactory(),
     localStorage = storage();
   const indexedDB = {
     open(name, version) {
       assert.deepEqual(
-        localStorage.calls.filter(([action]) => action === 'get').slice(0, 3),
+        localStorage.calls.filter(([action]) => action === 'get').slice(0, storageKeys.length),
         storageKeys.map((key) => ['get', key]),
       );
       assert.equal(localStorage.rows.get(WARDROBE_ERASE_PENDING_KEY), '1');
@@ -369,7 +429,7 @@ test('an unreadable source key fails before database mutation and reports that e
     );
     assert.deepEqual(
       error.result.localStorageEntries.map((entry) => entry.status),
-      ['retained', 'uncertain', 'not-started'],
+      ['retained', 'uncertain', 'not-started', 'not-started'],
     );
     assert.deepEqual(error.result.uncertain, ['eoul:v2']);
     assert.deepEqual(error.result.mayRemain, [currentName, legacyName, ...storageKeys]);
@@ -382,7 +442,7 @@ test('an unreadable source key fails before database mutation and reports that e
   assert.equal(localStorage.calls.filter(([action]) => action === 'remove').length, 0);
 });
 
-test('failure while removing v2 reports v1 completed and the two later sources retained', async () => {
+test('failure while removing v2 reports v1 completed and later sources retained', async () => {
   const indexedDB = new IDBFactory(),
     localStorage = storage();
   await seed(indexedDB, currentName);
@@ -399,10 +459,10 @@ test('failure while removing v2 reports v1 completed and the two later sources r
     );
     assert.deepEqual(
       error.result.localStorageEntries.map((entry) => entry.status),
-      ['removed', 'retained', 'retained'],
+      ['removed', 'retained', 'retained', 'retained'],
     );
     assert.equal(error.result.localStorage.status, 'removed');
-    assert.deepEqual(error.result.mayRemain, ['eoul:v2', 'eoul:v2:unreadable']);
+    assert.deepEqual(error.result.mayRemain, ['eoul:v2', 'eoul:v2:unreadable', 'eoul:offers:v1']);
     assert.doesNotMatch(error.message, /eoul:probe|other-app/);
     return true;
   });
@@ -425,9 +485,9 @@ test('post-removal access failure keeps only that source uncertain and does not 
     assert.equal(error.result.ok, false);
     assert.deepEqual(
       error.result.localStorageEntries.map((entry) => entry.status),
-      ['removed', 'uncertain', 'retained'],
+      ['removed', 'uncertain', 'retained', 'retained'],
     );
-    assert.deepEqual(error.result.mayRemain, ['eoul:v2', 'eoul:v2:unreadable']);
+    assert.deepEqual(error.result.mayRemain, ['eoul:v2', 'eoul:v2:unreadable', 'eoul:offers:v1']);
     assert.deepEqual(error.result.uncertain, ['eoul:v2']);
     return true;
   });

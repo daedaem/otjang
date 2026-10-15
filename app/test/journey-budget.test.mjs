@@ -95,8 +95,8 @@ function legacyJourney(id, full = true) {
 function legacyAboveBudget(photoId) {
   const full = legacyJourney('j_full_0');
   for (let count = 1; count <= 30; count++) {
-    // A schema 4 record never had the schema 6 wear diary.
-    const { wears, ...current } = personal([], [garment('g_unit', photoId)]);
+    // Schema 4 predates both the wear diary and seller notes.
+    const { wears, offerRecords, ...current } = personal([], [garment('g_unit', photoId)]);
     const original = {
       ...current, schema: 4,
       journeys: [...Array.from({ length: count }, (_, i) => ({ ...structuredClone(full), id: `j_full_${i}` })),
@@ -157,7 +157,7 @@ test('last allowed wear event succeeds; over-budget event preserves revision, we
   } finally { store.close(); }
 });
 
-test('a fresh schema 5 record above the reserve refuses its first write without storing metadata or photos', async () => {
+test('a fresh current-schema record above the reserve refuses its first write without storing metadata or photos', async () => {
   const asset = await photoAsset(jpeg(21));
   const value = personal([transitionPurchaseJourney(nearBudget(), 'worn', { at: at() })], [garment('g_unit', asset.id)]);
   const pending = structuredClone(value);
@@ -264,7 +264,7 @@ test('CAS conflict takes precedence over budget and leaves the winning garment u
   } finally { first.close(); second.close(); }
 });
 
-test('the journey reserve keeps the global 850000-byte limit and cannot guarantee space for unlimited other metadata', async () => {
+test('the journey reserve keeps the global state limit and cannot guarantee space for unlimited other metadata', async () => {
   const store = createWardrobeStore({ indexedDB: new IDBFactory() });
   const original = personal([nearBudget()]);
   try {
@@ -439,15 +439,46 @@ test('wardrobe state usage excludes screen view fields and photos and warns inde
   assert.equal(validateWardrobe(state), state);
   assert.equal(journeyStorageUsage(state).warning, false, 'the whole-state notice must detect an independent shortage');
   const usage = wardrobeStateStorageUsage(state);
-  assert.equal(WARDROBE_STATE_WARNING_BYTES, 850000 - 64 * 1024);
-  assert.deepEqual(usage, { bytes: bytes(state), limitBytes: 850000,
-    warningBytes: 784464, warning: true, overBudget: false });
+  assert.equal(WARDROBE_STATE_WARNING_BYTES, MAX_WARDROBE_STATE_BYTES - 64 * 1024);
+  assert.deepEqual(usage, { bytes: bytes(state), limitBytes: MAX_WARDROBE_STATE_BYTES,
+    warningBytes: WARDROBE_STATE_WARNING_BYTES, warning: true, overBudget: false });
   assert.ok(usage.bytes + asset.blob.size > MAX_WARDROBE_STATE_BYTES,
     'separate photo Blob bytes are not part of the JSON state limit');
   const view = { ...state, closet: [...Array.from({ length: 1000 }, () => garment('g_screen_only')),
     { ...state.garments[0], preview: asset.blob }], tab: 'saved' };
   assert.deepEqual(wardrobeStateStorageUsage(view), usage);
   assert.deepEqual(wardrobeStateStorageUsage(newWardrobeState()), {
-    bytes: bytes(newWardrobeState()), limitBytes: 850000, warningBytes: 784464, warning: false, overBudget: false,
+    bytes: bytes(newWardrobeState()), limitBytes: MAX_WARDROBE_STATE_BYTES, warningBytes: WARDROBE_STATE_WARNING_BYTES, warning: false, overBudget: false,
   });
+});
+
+test('price growth leaves clothing headroom while full validated backup replacement and price cleanup remain possible', async () => {
+  const { setOfferRecord } = await import('../src/offer-store.js');
+  const { validateOffer } = await import('../src/offers.js');
+  const { original, upgraded } = legacyAboveBudget(null);
+  let next;
+  for (let length = 1000; length < 195000; length += 1000) {
+    const entry = validateOffer({ id: 'o_big', seller: '판매처', url: `https://shop.example/?x=${'x'.repeat(length)}`, price: 30000, shipping: 0,
+      color: 'navy', size: 'M', stock: 'in-stock', sameProduct: 'confirmed', source: 'user', checkedAt: at() });
+    next = { ...upgraded, offerRecords: setOfferRecord([], 'ms-123', { requested: { color: 'navy', size: 'M' }, offers: [entry], refresh: null }) };
+    if (bytes(next) > WARDROBE_STATE_WARNING_BYTES) break;
+  }
+  validateWardrobe(next);
+  assert.ok(bytes(next) > WARDROBE_STATE_WARNING_BYTES && bytes(next) < MAX_WARDROBE_STATE_BYTES);
+  const store = createWardrobeStore({ indexedDB: new IDBFactory() });
+  try {
+    await store.commit(original, 0);
+    let snapshot = await store.read();
+    await store.commit(upgraded, snapshot.revision, [], snapshot.epoch);
+    snapshot = await store.read();
+    await assert.rejects(store.commit(next, snapshot.revision, [], snapshot.epoch), (error) => error.code === 'offer-budget');
+    assert.deepEqual((await store.read()).state, upgraded, 'refused price growth leaves every existing record unchanged');
+    await store.commit(next, snapshot.revision, [], snapshot.epoch, { replacingOffers: true });
+    snapshot = await store.read();
+    const changed = { ...snapshot.state, garments: [...snapshot.state.garments, garment('g_headroom')] };
+    await store.commit(changed, snapshot.revision, [], snapshot.epoch);
+    snapshot = await store.read();
+    await store.commit({ ...snapshot.state, offerRecords: [] }, snapshot.revision, [], snapshot.epoch);
+    assert.deepEqual((await store.read()).state.offerRecords, []);
+  } finally { store.close(); }
 });
