@@ -7,7 +7,8 @@
 // or this device's storage was replaced (eviction, recovery), the user chooses.
 
 // Bump with the sign-up notice below; the server refuses an outdated version.
-export const AGREEMENT_VERSION = '2026-10-15';
+// 2026-10-15.2: purposes now include background removal on the operator's server.
+export const AGREEMENT_VERSION = '2026-10-15.2';
 export const ACCOUNT_KEY = 'eoul:account';
 const DEVICE_LOCAL_FIELDS = ['legacyFingerprint', 'legacyBaseline', 'legacyDismissed'];
 

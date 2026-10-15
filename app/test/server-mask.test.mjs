@@ -123,13 +123,44 @@ test('signed in: the server removes the background without the 7MB download, fro
   await page.app.chooseGarmentPhoto(photo(9));
   const before = page.app.draft().asset.id;
   await page.click({ action: 'bg-remove' });
-  assert.equal(mask.calls.length, 1, 'no download consent first; the server was asked');
+  assert.equal(mask.calls.length, 0, 'nothing is sent before the user chooses the server');
+  assert.match(page.sheet(), /어디서 배경을 지울까요\?[\s\S]*320×320으로 줄여 서버로 보내고, 서버는 사진과 결과를 저장하지 않아요/);
+  assert.doesNotMatch(page.sheet(), /data-action="bg-allow"/, 'no 7MB download question on this path');
+  await page.click({ action: 'bg-server-allow' });
+  assert.equal(mask.calls.length, 1, 'the server was asked once');
   assert.equal(mask.calls[0].length, SIZE * SIZE * 3, 'only a small RGB copy is sent');
   assert.equal(device.calls.length, 0);
   assert.notEqual(page.app.draft().asset.id, before);
   assert.match(await text(page.app.draft().asset.blob), /^bg:/);
   assert.match(page.sheet(), /운영자 서버에서 처리했고, 서버에 사진을 남기지 않아요/);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM photos').get().n, 0, 'the mask request stores nothing');
+  // The choice is remembered for this account on this device: the next photo goes straight to the server.
+  await page.click({ action: 'bg-restore' });
+  await page.click({ action: 'bg-remove' });
+  assert.equal(mask.calls.length, 2);
+  // Turning it off from the profile asks again next time.
+  await page.click({ action: 'photo-mask-off' });
+  await page.click({ action: 'bg-restore' });
+  await page.click({ action: 'bg-remove' });
+  assert.equal(mask.calls.length, 2);
+  assert.match(page.sheet(), /어디서 배경을 지울까요/);
+});
+
+test('choosing this device instead never sends the photo and keeps the download question', async (t) => {
+  mask.calls.length = 0;
+  const page = await boot();
+  t.after(() => page.close());
+  await page.signup('device-choice@example.com');
+  const device = deviceRemover(boxMask(60, 60, 260, 300));
+  page.app.setBackgroundRemoverFactory(device.factory);
+  await page.click({ action: 'add-start' });
+  await page.app.chooseGarmentPhoto(photo(12));
+  await page.click({ action: 'bg-remove' });
+  await page.click({ action: 'bg-device-instead' });
+  assert.match(page.sheet(), /배경 지우기 도구\(약 7MB\)를 처음 한 번 내려받아요/);
+  await page.click({ action: 'bg-allow' });
+  assert.equal(device.calls.length, 1);
+  assert.equal(mask.calls.length, 0, 'the server never received the photo');
 });
 
 test('when the server cannot do it, the photo stays and the next try uses this device', async (t) => {
@@ -144,6 +175,7 @@ test('when the server cannot do it, the photo stays and the next try uses this d
   await page.app.chooseGarmentPhoto(photo(10));
   const before = page.app.draft().asset.id;
   await page.click({ action: 'bg-remove' });
+  await page.click({ action: 'bg-server-allow' });
   assert.equal(page.app.draft().asset.id, before, 'the photo is unchanged');
   assert.match(page.sheet(), /서버에서 배경을 지우지 못했어요. 다시 누르면 이 기기에서 지워요/);
   await page.click({ action: 'bg-remove' });

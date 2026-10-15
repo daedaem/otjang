@@ -1154,6 +1154,7 @@ function beginDraft(item = null, slot = null, { confirmDetails = false, returnLo
     bgBefore: null,
     bgRunning: false,
     bgConsent: false,
+    bgServerConsent: false,
     bgError: '',
     bgToken: 0,
   };
@@ -1171,6 +1172,7 @@ function resetDraftBackground(current) {
   current.bgBefore = null;
   current.bgError = '';
   current.bgConsent = false;
+  current.bgServerConsent = false;
   current.bgRunning = false;
   current.bgToken = (current.bgToken || 0) + 1;
 }
@@ -1417,11 +1419,16 @@ async function applyDraftCrop(crop) {
 // ── 배경 지우기: 이 기기에서 옷과 배경을 나눠 흰 배경으로 바꾼다. 결과를 보고 되돌릴 수 있다.
 function backgroundPanel() {
   if (!draft) return '';
+  if (draft.bgServerConsent) return `<div class="notice bg-consent"><p><b>어디서 배경을 지울까요?</b></p><p>로그인한 동안에는 운영자 서버의 큰 모델로 더 정확하고 빠르게 지울 수 있어요. 이 사진을 320×320으로 줄여 서버로 보내고, 서버는 사진과 결과를 저장하지 않아요. 고른 방법은 이 기기에서 기억하고, 프로필의 계정 칸에서 바꿀 수 있어요.</p><div class="opts"><button class="btn small" data-action="bg-server-allow">서버에서 지우기</button><button class="chip" data-action="bg-device-instead">이 기기에서 지우기(도구 ${BACKGROUND_DOWNLOAD_LABEL})</button><button class="link" data-action="bg-server-cancel">취소</button></div></div>`;
   if (draft.bgConsent) return `<div class="notice bg-consent"><p>배경 지우기 도구(${BACKGROUND_DOWNLOAD_LABEL})를 처음 한 번 내려받아요. 사진은 이 기기에서만 처리하고 밖으로 보내지 않아요. 옷과 배경 색이 비슷하면 잘 안 될 수 있어요.</p><div class="opts"><button class="btn small" data-action="bg-allow">내려받고 배경 지우기</button><button class="link" data-action="bg-consent-cancel">취소</button></div></div>`;
   if (draft.bgRunning) return `<p role="status" class="sub">${draft.bgVia === 'server' ? '배경을 지우는 중이에요…' : '배경을 지우는 중이에요… 처음에는 도구를 내려받아 조금 더 걸려요.'}</p>`;
   if (draft.bgError) return `<div class="photo-error"><p class="editor-error" role="alert">${esc(draft.bgError)}</p></div>`;
   if (draft.bgBefore) return `<p class="fine">배경을 흰색으로 바꿨어요${draft.bgVia === 'server' ? '(운영자 서버에서 처리했고, 서버에 사진을 남기지 않아요)' : ''}. 옷 가장자리가 잘렸으면 ‘원래 배경으로’를 눌러 주세요.</p>`;
   return '';
+}
+// 질문이 아래 저장 버튼 뒤에 가려지지 않게 화면 가운데로 옮긴다.
+function showBackgroundQuestion() {
+  $sheet.querySelector?.('.bg-consent')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
 }
 async function serverBackgroundReady() {
   if (!signedIn() || backgroundServerOff) return false;
@@ -1912,7 +1919,8 @@ function accountStatusHTML() {
     s.phase === 'choose' ? '계정 옷장과 이 기기 옷장이 서로 다르게 바뀌었어요. 어느 쪽을 쓸지 골라 주세요.' :
     s.phase === 'offline' || s.phase === 'error' ? s.message :
     account.syncedAt ? `계정에 저장됨 · ${syncTime(account.syncedAt)}` : '아직 계정에 저장하지 않았어요';
-  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>
+  const mask = account.photoMaskConsent === true ? '<p class="fine">배경 지우기: 서버에서 처리 <button class="link" data-action="photo-mask-off">끄기</button></p>' : '';
+  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${mask}
     <div class="opts">${s.phase === 'choose' ? '<button class="btn small" data-action="sync-choose">어느 옷장을 쓸지 고르기</button>' : '<button class="chip" data-action="sync-now">지금 저장·확인</button>'}<button class="chip" data-action="account-logout">로그아웃</button><button class="link" data-action="account-delete-open">계정 삭제</button></div>`;
 }
 function accountSection() {
@@ -2029,7 +2037,11 @@ async function submitAccountForm(form) {
       : await api.login({ email: f.email, password: f.password });
     // 같은 계정으로 다시 로그인하면 마지막 동기화 지점을 이어 쓴다.
     const same = account?.userId === result.user.id;
-    saveAccount({ email: result.user.email, userId: result.user.id, token: result.token, synced: same ? account.synced || null : null, syncedAt: same ? account.syncedAt || null : null });
+    saveAccount({
+      email: result.user.email, userId: result.user.id, token: result.token,
+      synced: same ? account.synced || null : null, syncedAt: same ? account.syncedAt || null : null,
+      photoMaskConsent: same ? account.photoMaskConsent === true : false,
+    });
     syncChoice = null;
     if (accountForm === f) accountForm = null;
     setSyncState({ phase: 'idle' }, { notice: true });
@@ -2909,9 +2921,15 @@ document.addEventListener('click', async (e) => {
       }
       case 'bg-remove':
         if (!draft || draft.saving) break;
-        if (await serverBackgroundReady()) { await removeDraftBackground({ via: 'server' }); break; }
+        if (await serverBackgroundReady()) {
+          if (!draft) break;
+          // 사진을 서버로 보내기 전에 한 번 고르게 한다(이 기기·이 계정에서 기억한다).
+          if (account.photoMaskConsent !== true) { draft.bgServerConsent = true; draft.bgError = ''; addSheet(); showBackgroundQuestion(); break; }
+          await removeDraftBackground({ via: 'server' });
+          break;
+        }
         if (!draft) break;
-        if (!backgroundAllowed) { draft.bgConsent = true; draft.bgError = ''; addSheet(); break; }
+        if (!backgroundAllowed) { draft.bgConsent = true; draft.bgError = ''; addSheet(); showBackgroundQuestion(); break; }
         await removeDraftBackground();
         break;
       case 'bg-allow':
@@ -2922,6 +2940,29 @@ document.addEventListener('click', async (e) => {
         break;
       case 'bg-consent-cancel':
         if (draft) { draft.bgConsent = false; addSheet(); }
+        break;
+      case 'bg-server-allow':
+        if (!draft || !signedIn()) break;
+        saveAccount({ ...account, photoMaskConsent: true });
+        draft.bgServerConsent = false;
+        await removeDraftBackground({ via: 'server' });
+        break;
+      case 'bg-device-instead':
+        if (!draft) break;
+        // 이 세션은 기기 도구로 지운다. 서버 처리는 다시 묻지 않는다.
+        backgroundServerOff = true;
+        draft.bgServerConsent = false;
+        if (!backgroundAllowed) { draft.bgConsent = true; addSheet(); showBackgroundQuestion(); break; }
+        await removeDraftBackground();
+        break;
+      case 'bg-server-cancel':
+        if (draft) { draft.bgServerConsent = false; addSheet(); }
+        break;
+      case 'photo-mask-off':
+        if (!signedIn()) break;
+        saveAccount({ ...account, photoMaskConsent: false });
+        refreshAccountViews();
+        toast('배경 지우기를 서버로 보내지 않아요. 다음부터 이 기기에서 지울지 물어요');
         break;
       case 'bg-restore':
         if (draft?.bgBefore && !draft.bgRunning && !draft.saving) {
