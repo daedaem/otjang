@@ -14,6 +14,7 @@ import { MAX_GARMENT_PHOTO_BYTES } from '../../app/src/wardrobe-store.js';
 import { transaction } from './db.js';
 import { HttpError } from './http-error.js';
 import { createCommunity } from './community.js';
+import { policyPage, policyDocument } from './policy.js';
 import {
   normalizeEmail, passwordProblem, hashPassword, verifyPassword, burnPasswordTime,
   newSessionToken, tokenHash, newUserId,
@@ -235,6 +236,9 @@ ${link}
       providers: { email: true, kakao: false, google: false },
       features: { photoMask: !!maskService, offers: !!supply, email: !!mail.enabled, community: !!config.community },
       supply: supply ? supply.sources().map(({ id, name, status, needs = [] }) => ({ id, name, status, needs })) : [],
+      operator: operatorInfo(),
+      policy: { privacy: '/privacy', terms: '/terms', draft: policyDraft() },
+      affiliateHosts: config.affiliateHosts || [],
     }),
 
     'POST /v1/auth/signup': async (req) => {
@@ -530,6 +534,36 @@ ${link}
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': cache, 'X-Content-Type-Options': 'nosniff' });
     res.end(body);
   }
+  const operator = config.operator || {};
+  const operatorInfo = () => (operator.name || operator.email
+    ? { name: operator.name || null, email: operator.email || null, businessNumber: operator.businessNumber || null } : null);
+  const policyOptions = () => ({
+    dir: config.policyDir || null,
+    values: {
+      OPERATOR_NAME: operator.name, OPERATOR_EMAIL: operator.email, PRIVACY_OFFICER: operator.privacyOfficer || operator.name,
+      BUSINESS_NUMBER: operator.businessNumber, EFFECTIVE_DATE: operator.policyDate, AGREEMENT_VERSION,
+      COMMUNITY_CONTACT: config.communityContact, REVIEW_DAYS: config.communityReviewDays ?? 7,
+    },
+  });
+  function policyDraft() {
+    try {
+      return ['privacy', 'terms'].some((name) => policyDocument(name, policyOptions()).draft);
+    } catch {
+      return true;
+    }
+  }
+  function servePolicy(res, name) {
+    const page = policyPage(name, policyOptions());
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    });
+    res.end(page.html);
+  }
+
   function serveApp(req, res) {
     let page;
     try {
@@ -585,6 +619,7 @@ ${link}
       if (url.pathname.startsWith('/v1/')) res.setHeader('Cache-Control', 'no-store');
       if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(req, res);
       if (method === 'GET' && APP_FILES.has(url.pathname)) return serveAppFile(res, url.pathname);
+      if (method === 'GET' && (url.pathname === '/privacy' || url.pathname === '/terms')) return servePolicy(res, url.pathname.slice(1));
       if (method === 'POST' && url.pathname === '/v1/photo-mask') return await photoMaskRoute(req, res);
       const photo = /^\/v1\/photos\/([^/]+)$/.exec(url.pathname);
       if (photo) {

@@ -36,6 +36,8 @@ services:
       # locking is reliable only on the Docker VM's own disk.
       - eoul-data:/data
       - eoul-models:/srv/eoul/server/models
+      # The operator's own privacy.md and terms.md (see README "약관과 처리방침"). Read-only.
+      - ./policy:/srv/eoul/server/policy:ro
     ports:
       # For checking on this computer only (http://localhost:8787). Visitors come through the tunnel.
       - "127.0.0.1:${EOUL_LOCAL_PORT:-8787}:8787"

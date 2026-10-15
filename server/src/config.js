@@ -21,6 +21,18 @@ function addresses(value) {
   return list;
 }
 
+function plainText(value, name) {
+  const text = (value || '').trim();
+  if (text.length > 120 || /[\u0000-\u001f\u007f<>{}[\]]/.test(text)) throw new Error(`${name}는 120자 이하로, 꺾쇠·중괄호·대괄호 없이 적어 주세요.`);
+  return text || null;
+}
+
+function hosts(value) {
+  const list = (value || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  for (const host of list) if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) throw new Error(`EOUL_AFFILIATE_HOSTS에 호스트 이름만 적어 주세요: ${host}`);
+  return list;
+}
+
 function contactText(value) {
   const text = (value || '').trim();
   if (text.length > 120 || /[\u0000-\u001f\u007f<>]/.test(text)) throw new Error('EOUL_COMMUNITY_CONTACT는 120자 이하의 이메일이나 주소로 적어 주세요.');
@@ -65,6 +77,18 @@ export function loadConfig(env = process.env) {
     // days the operator takes to look at a report. Both are shown in the app.
     communityContact: contactText(env.EOUL_COMMUNITY_CONTACT),
     communityReviewDays: integer(env.EOUL_COMMUNITY_REVIEW_DAYS, 7, { min: 1, max: 30 }),
+    // Who runs this service, shown in the app and filled into /privacy and /terms.
+    operator: {
+      name: plainText(env.EOUL_OPERATOR_NAME, 'EOUL_OPERATOR_NAME'),
+      email: plainText(env.EOUL_OPERATOR_EMAIL, 'EOUL_OPERATOR_EMAIL'),
+      privacyOfficer: plainText(env.EOUL_PRIVACY_OFFICER, 'EOUL_PRIVACY_OFFICER'),
+      businessNumber: plainText(env.EOUL_BUSINESS_NUMBER, 'EOUL_BUSINESS_NUMBER'),
+      policyDate: plainText(env.EOUL_POLICY_DATE, 'EOUL_POLICY_DATE'),
+    },
+    // The operator's own privacy.md and terms.md; without them the templates show as drafts.
+    policyDir: path.resolve(env.EOUL_POLICY_DIR || path.join(serverRoot, 'policy')),
+    // Seller hosts whose links pay the operator a commission; the app labels those links.
+    affiliateHosts: hosts(env.EOUL_AFFILIATE_HOSTS),
     // Room for all members' shared photos together (MB). Each member also has their own limit.
     communityMaxBytes: integer(env.EOUL_COMMUNITY_MAX_MB, 2048, { min: 1, max: 1024 * 1024 }) * 1024 * 1024,
   };

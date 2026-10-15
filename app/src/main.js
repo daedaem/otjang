@@ -684,7 +684,7 @@ function offerSheet() {
     <div>${formatPrice(offer.price)} + 배송비 ${offer.shipping === null ? '미확인' : formatPrice(offer.shipping)}${total === null ? '' : ` = <b>${formatPrice(total)}</b>`}</div>
     <div class="fine">${esc(optionText(offer))} · ${offer.stock === 'sold-out' ? '품절' : offer.stock === 'in-stock' ? '재고 있음' : '재고 미확인'} · ${offer.source === 'catalog' ? `${esc(v.catalog.checkedAt)} 수집` : `${offerTime(offer.checkedAt)} 확인`}</div>
     ${flags.length ? `<div class="offer-flags">${flags.map((flag) => `<span class="offer-flag">${esc(OFFER_FLAG_LABEL[flag])}</span>`).join('')}</div>` : '<div class="offer-flags"><span class="offer-flag ok">총액 비교에 포함</span></div>'}
-    <div class="opts"><a class="chip" href="${esc(offer.url)}" target="_blank" rel="noopener noreferrer">판매처에서 보기</a><button class="chip" data-action="offer-edit" data-id="${esc(offer.id)}">${offer.source === 'catalog' ? '오늘 가격 기록' : '확인·수정'}</button>${offer.source !== 'catalog' ? `<button class="link" data-action="offer-delete" data-id="${esc(offer.id)}">삭제</button>` : ''}</div>
+    <div class="opts"><a class="chip" href="${esc(offer.url)}" target="_blank" rel="noopener noreferrer">판매처에서 보기</a>${affiliateNote(offer.url)}<button class="chip" data-action="offer-edit" data-id="${esc(offer.id)}">${offer.source === 'catalog' ? '오늘 가격 기록' : '확인·수정'}</button>${offer.source !== 'catalog' ? `<button class="link" data-action="offer-delete" data-id="${esc(offer.id)}">삭제</button>` : ''}</div>
   </li>`;
   const best = result.best
     ? `<div class="notice offer-best"><b>확인한 판매처 ${result.comparable.length}곳 중 총액이 가장 낮은 곳: ${esc(result.best.offer.seller)} ${formatPrice(result.best.total)}</b><p>상품 ${formatPrice(result.best.offer.price)} + 배송비 ${formatPrice(result.best.offer.shipping)} · ${offerTime(result.best.offer.checkedAt)} 확인. 지금 이 가격이거나 현재 최저가라는 뜻은 아니에요.</p></div>`
@@ -893,7 +893,7 @@ function planProductRow(entry) {
       <div class="price">${collectedPrice(entry)}</div>
       <div class="fine">${entry.colorConfirmed ? `색 ${esc(COLORS[p.color]?.label || '')}` : '색: 상품 사진으로 추정 · 판매처에서 확인 필요'}</div>
       ${productRecordLine(entry.record)}
-      <div class="opts plan-product-actions"><button class="btn small" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교' : '내 옷과 비교'}</button><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a></div>
+      <div class="opts plan-product-actions"><button class="btn small" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교' : '내 옷과 비교'}</button><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a>${affiliateNote(p.url)}</div>
     </div>
   </article>`;
 }
@@ -1423,7 +1423,7 @@ function journeySheet(id) {
     <label for="journey-reason">판단·착용·반품 이유 (선택)</label><input id="journey-reason" data-journey="${esc(id)}" maxlength="500" value="${esc(form.reason)}" placeholder="예: 같은 용도의 재킷이 있어 보류">
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
 
-    <a class="btn${j.decision === 'buy' ? ' secondary' : ''} candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>
+    <a class="btn${j.decision === 'buy' ? ' secondary' : ''} candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}
     <button class="btn secondary candidate-compare" data-action="open-offers" data-journey="${esc(id)}">판매처·배송비 포함 총액 비교</button>
     <p class="fine">판매처 방문은 구매로 기록하지 않아요. 실제 결제·배송·반품은 판매처에서 처리해요.</p>
     ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="ordered">직접 주문했다고 기록</button>` : ''}
@@ -1440,7 +1440,7 @@ function journeySheet(id) {
     ${c.productId ? `<button class="link candidate-compare" data-action="journey-hide-product" data-id="${esc(id)}">${state.hidden.includes(c.productId) ? '이 상품 다시 추천받기' : '이 상품 다시 추천하지 않기'}</button>` : ''}
     <button class="chip candidate-compare" data-action="journey-fork" data-id="${esc(id)}">다른 사이즈·옵션 하나 더 기록</button>${j.forkedFrom && state.journeys.some((row) => row.id === j.forkedFrom) ? `<button class="link candidate-compare" data-action="open-journey" data-id="${esc(j.forkedFrom)}">처음 비교한 상품 기록으로 돌아가기</button>` : ''}
     <p class="fine">이 여정은 상품·옵션 한 개의 기록이에요. 여러 사이즈를 샀다면 각각 가져와 기록해 주세요. 구매와 반품은 판매처가 확인한 주문 데이터가 아닌 사용자 기록이에요.</p></details>
-    ${j.stage === 'candidate' ? `<div class="purchase-decisions" aria-label="내 구매 판단 기록">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${!j.decision && action === 'buy' ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}" aria-pressed="${j.decision === action}">${j.decision === action ? `${decisionLabels[action]} ✓` : label}</button>`).join('')}${j.decision === 'buy' ? `<div class="fine"><a class="btn" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a></div>` : ''}<p class="fine" role="status">${j.decision ? `<strong>현재 기록: ${decisionLabels[j.decision]} · 저장됨</strong><br>` : untouchedComparisons.has(id) ? '고르면 구매 여정에 남아요. 그냥 닫으면 기록하지 않아요. ' : '판단만 기록해요. '}주문·결제는 실행하지 않아요.</p></div>` : ''}`, { key: `journey:${id}` });
+    ${j.stage === 'candidate' ? `<div class="purchase-decisions" aria-label="내 구매 판단 기록">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${!j.decision && action === 'buy' ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}" aria-pressed="${j.decision === action}">${j.decision === action ? `${decisionLabels[action]} ✓` : label}</button>`).join('')}${j.decision === 'buy' ? `<div class="fine"><a class="btn" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}</div>` : ''}<p class="fine" role="status">${j.decision ? `<strong>현재 기록: ${decisionLabels[j.decision]} · 저장됨</strong><br>` : untouchedComparisons.has(id) ? '고르면 구매 여정에 남아요. 그냥 닫으면 기록하지 않아요. ' : '판단만 기록해요. '}주문·결제는 실행하지 않아요.</p></div>` : ''}`, { key: `journey:${id}` });
 }
 function pendingJourneyForm(id, journey) {
   const form = journeyForms.get(id);
@@ -1668,7 +1668,7 @@ function itemSheet(id) {
       <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
       <button class="btn" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교하기' : '내 옷과 비교하기'}</button>
     </div>
-    <a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>
+    <a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>${affiliateNote(p.url)}
     <button class="btn secondary candidate-compare" data-action="open-offers" data-id="${p.id}">판매처·배송비 포함 총액 비교</button>
     <div class="sheet-links">
       <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
@@ -2599,6 +2599,7 @@ function settingsSheet() {
     <div class="opt-group"><h3>추천 취향</h3><p class="sub">${state.gender === 'F' ? '여성' : '남성'} · ${esc(styleLine())}</p><button class="chip" data-action="open-profile">스타일·브랜드·예산</button></div>
     ${accountSection()}
     ${installSection()}
+    ${operatorSection()}
     <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 먼저 이 브라우저에 저장돼요. ${signedIn() ? '로그인한 동안에는 계정에도 저장해요.' : '다른 기기에서는 백업 파일로 옮길 수 있습니다.'}</p><div id="storage-health">${storageHealthHTML()}</div>${usageLine()}<button class="link" data-action="storage-help">보관 안내 보기</button> <button class="link" data-action="cleanup-open">기록 정리</button>
       <button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><p class="sub">현재 옷장을 비워도 이전 버전의 자료와 복구용 사본은 유지됩니다.</p><button class="chip" data-action="reset" style="margin-top:10px">현재 옷장 비우기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button></div>
   `, { key: 'settings' });
@@ -2947,10 +2948,34 @@ const AGREEMENT_HTML = `<details class="agreement"><summary>개인정보 수집�
   <ul class="plain-list">
     <li>시험 중인 서비스예요. 예고 없이 멈추거나 자료가 초기화될 수 있으니 중요한 옷장은 사진 포함 백업 파일도 받아 두세요.</li>
     <li>사진에는 옷만 나오게 찍어 주세요. 얼굴이나 다른 사람이 나온 사진은 올리지 마세요.</li>
-    <li>이메일 확인과 비밀번호 찾기는 아직 없어요. 비밀번호를 잊으면 운영자에게 직접 문의해야 해요.</li>
+    <li>비밀번호를 잊으면 로그인 화면의 "비밀번호를 잊었어요"로 재설정 메일을 받을 수 있어요. 운영자가 메일 발송을 켜지 않았다면 운영자에게 문의해 주세요.</li>
   </ul>
   <p class="fine">안내 버전 ${AGREEMENT_VERSION}</p>
 </details>`;
+// The full documents are public pages of the operator's server (server/src/policy.js).
+function policyLinks(label = '') {
+  if (!accountBase) return '';
+  const draft = accountHealth?.policy?.draft ? ' · 운영자가 아직 확정하지 않은 초안이에요' : '';
+  return `<p class="fine policy-links">${label ? `${label} ` : ''}<a href="${esc(accountBase)}/privacy" target="_blank" rel="noopener">개인정보 처리방침</a> · <a href="${esc(accountBase)}/terms" target="_blank" rel="noopener">이용약관</a>${draft}</p>`;
+}
+function operatorSection() {
+  if (!accountBase) return '';
+  const o = accountHealth?.operator;
+  const who = o ? [o.name, o.email, o.businessNumber ? `사업자등록번호 ${o.businessNumber}` : ''].filter(Boolean).map(esc).join(' · ') : '';
+  return `<div class="opt-group"><h3>약관과 운영자</h3>${who ? `<p class="sub">${who}</p>` : ''}${policyLinks()}</div>`;
+}
+// Links that pay the operator a commission (EOUL_AFFILIATE_HOSTS) say so beside the link.
+function affiliateNote(url) {
+  const hosts = accountHealth?.affiliateHosts;
+  if (!Array.isArray(hosts) || !hosts.length) return '';
+  let host;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+  return hosts.some((h) => host === h || host.endsWith(`.${h}`)) ? '<span class="affiliate-note">제휴 링크 · 이 링크로 사면 어울이 수수료를 받을 수 있어요. 가격은 같아요.</span>' : '';
+}
 async function openAccountSheet(mode = 'signup') {
   if (!accountBase) return;
   accountForm = { mode, email: accountForm?.email || account?.email || '', password: '', invite: '', age14: false, terms: false, privacy: false, busy: false, error: '' };
@@ -3006,7 +3031,7 @@ function accountSheet() {
       <label for="account-email">이메일</label><input id="account-email" name="email" type="email" inputmode="email" autocomplete="${signup ? 'email' : 'username'}" value="${esc(f.email)}" required>
       <label for="account-password">비밀번호${signup ? ' (8자 이상)' : ''}</label><input id="account-password" name="password" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" minlength="${signup ? 8 : 1}" required>
       ${invite}
-      ${signup ? `${AGREEMENT_HTML}${check('age14', '만 14세 이상이에요 (필수)')}${check('privacy', '개인정보 수집·이용에 동의해요 (필수)')}${check('terms', '이용 조건에 동의해요 (필수)')}` : ''}
+      ${signup ? `${AGREEMENT_HTML}${policyLinks('전문:')}${check('age14', '만 14세 이상이에요 (필수)')}${check('privacy', '개인정보 수집·이용에 동의해요 (필수)')}${check('terms', '이용 조건에 동의해요 (필수)')}` : ''}
       ${error}
       <button class="btn" type="submit"${busy}>${f.busy ? '확인하는 중…' : signup ? '가입하고 계정에 저장' : '로그인'}</button>
     </form>
@@ -4914,9 +4939,14 @@ async function handleAccountLink() {
 const accountLinkHandled = appReady.then(handleAccountLink);
 // Which optional features this server has on (community, background, prices).
 const accountFeatures = appReady.then(async () => {
-  if (!signedIn() || accountHealth) return;
+  if (!accountBase || accountHealth) return;
   try {
     accountHealth = await createAccountApi({ base: accountBase }).health();
+    // Signed out, only the affiliate labels and the operator section depend on it.
+    if (!signedIn()) {
+      if (accountHealth?.affiliateHosts?.length) render();
+      return;
+    }
     if (accountHealth?.features?.community) render();
     else {
       const status = await accountApi().community().catch(() => null);

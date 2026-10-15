@@ -71,6 +71,22 @@ docker compose ps          # eoul이 "healthy", tunnel과 backup이 "Up"이면 �
 
 터널 없이 이 PC에서만 시험하려면 `docker compose up -d --build eoul backup`처럼 서버와 백업만 켭니다.
 
+## 약관과 처리방침 확정하기
+
+서버는 `https://내주소/privacy`와 `https://내주소/terms`를 누구나 열 수 있는 페이지로 보여 줍니다. 앱의 가입 화면과 "내 설정 → 약관과 운영자"가 이 페이지로 이어집니다. 앱 스토어에 낼 때도 이 주소를 씁니다.
+
+1. `.env`의 운영자 정보(`EOUL_OPERATOR_*`, `EOUL_BUSINESS_NUMBER`, `EOUL_POLICY_DATE`)를 채웁니다. 페이지의 같은 칸에 자동으로 들어갑니다.
+2. 저장소의 초안을 복사해 내 판으로 고칩니다.
+   ```bash
+   mkdir -p deploy/policy
+   cp server/policy-templates/privacy.md server/policy-templates/terms.md deploy/policy/
+   ```
+3. 노란 칸(`[[채울 칸: …]]`)을 모두 채우고, 내 서비스에 맞지 않는 줄은 고치거나 지웁니다. **전문가 검토를 받은 뒤 확정하세요.**
+4. `docker compose up -d`로 다시 켭니다. 노란 칸이 하나도 남지 않으면 "초안" 표시가 사라집니다.
+
+- `deploy/policy/`는 `.gitignore`에 들어 있어 저장소에 올라가지 않습니다.
+- 저장소의 초안이 바뀌어도 내 판은 그대로입니다. 바뀐 점은 직접 옮기세요.
+
 ## 4. 집 PC로 운영할 때 꼭 챙길 것
 
 집 PC 운영의 가장 큰 약점은 **PC가 꺼지거나 잠들면 서비스도 멈춘다**는 점입니다. 사용자가 늘기 전까지는 아래로 버티고, 늘면 6단계대로 클라우드로 옮기세요.

@@ -267,6 +267,8 @@ img { display: block; max-width: 100%; }
 .detail-title { font-size: var(--text-headline); font-weight: var(--weight-bold); letter-spacing: -.045em; line-height: 1.35; margin: 8px 0 0; }
 .detail-price { font-size: var(--text-headline); font-weight: var(--weight-bold); margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
 .fine { font-size: var(--text-body-s); color: var(--ink-3); margin-top: 4px; }
+.affiliate-note { display: block; flex-basis: 100%; font-size: var(--text-caption); color: var(--ink-3); margin-top: 4px; }
+.policy-links a { color: inherit; }
 .why { margin: 22px 0 0; padding: 16px 0; border-radius: 0; background: transparent; border: 0; border-top: 1px solid var(--line); }
 .why h3 { margin: 0 0 8px; font-size: var(--text-body); font-weight: var(--weight-bold); }
 .why ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: var(--text-body-s); }
