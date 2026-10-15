@@ -390,3 +390,22 @@ test('the client address comes from cloudflared only, on loopback or at a listed
   assert.deepEqual(loadConfig({}).trustedProxies, []);
   assert.throws(() => loadConfig({ EOUL_TRUSTED_PROXIES: 'cloudflared' }), /IP 주소가 아니에요/);
 });
+
+test('an account keeps its last use to the hour, for retention counts', async (t) => {
+  const s = await start();
+  t.after(s.close);
+  const signedUp = s.clock.t;
+  const { token } = (await s.signup()).data;
+  const lastSeen = () => s.db.prepare('SELECT last_seen_at FROM users').get().last_seen_at;
+  assert.equal(lastSeen(), signedUp);
+  s.clock.t += 30 * 60 * 1000;
+  await s.call('GET', '/v1/wardrobe', { token });
+  assert.equal(lastSeen(), signedUp, 'written at most once an hour');
+  s.clock.t += 9 * 24 * 3600 * 1000;
+  await s.call('GET', '/v1/wardrobe', { token });
+  assert.equal(lastSeen(), s.clock.t);
+  // Signing out deletes the session, but the account still remembers its last use.
+  await s.call('POST', '/v1/auth/logout', { token });
+  assert.equal(s.db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 0);
+  assert.equal(lastSeen(), s.clock.t);
+});

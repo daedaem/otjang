@@ -1,6 +1,8 @@
 // Maintenance commands that run beside (or without) the server.
 //   node cli.mjs backup <file>   consistent copy of the database, safe while the server runs
 //   node cli.mjs stats           number of accounts, wardrobes and photos (no personal data)
+//   node cli.mjs metrics [--exclude a@b.c,...] [--show-small] [--json]
+//                                pilot metrics by sign-up week (counts only; see src/metrics.js)
 //   node cli.mjs fetch-model [file]  download (or take a local copy of) the pinned U-2-Net model
 //   node cli.mjs community review            reported or hidden posts (no emails)
 //   node cli.mjs community hide|restore|delete <post id>
@@ -8,6 +10,7 @@ import { loadConfig } from './src/config.js';
 import { openDatabase, backupDatabase } from './src/db.js';
 import { installMaskModel, MASK_MODEL } from './src/photo-mask.js';
 import { communityAdmin } from './src/community.js';
+import { pilotMetrics, formatMetrics } from './src/metrics.js';
 
 const [command, target, postId] = process.argv.slice(2);
 const config = loadConfig();
@@ -35,6 +38,11 @@ try {
       posts: one('SELECT COUNT(*) FROM posts'),
       hiddenPosts: one('SELECT COUNT(*) FROM posts WHERE hidden_at IS NOT NULL'),
     });
+  } else if (command === 'metrics') {
+    const args = process.argv.slice(3);
+    const value = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] || '' : ''; };
+    const metrics = pilotMetrics(db, { exclude: value('--exclude').split(',').filter(Boolean), showSmall: args.includes('--show-small') });
+    console.log(args.includes('--json') ? JSON.stringify(metrics, null, 2) : formatMetrics(metrics));
   } else if (command === 'community' && target === 'review') {
     const rows = communityAdmin(db).review();
     if (!rows.length) console.log('신고되거나 숨겨진 글이 없어요.');
@@ -45,7 +53,7 @@ try {
     console.log(done ? { hide: '숨겼어요.', restore: '다시 보이게 했어요. 그 신고 기록은 정리했어요.', delete: '글과 사진을 지웠어요.' }[target] : '그 번호의 글이 없어요.');
     if (!done) process.exitCode = 1;
   } else {
-    console.log('사용: node cli.mjs backup <파일> | stats | fetch-model [받아 둔 파일] | community review | community hide|restore|delete <글 번호>');
+    console.log('사용: node cli.mjs backup <파일> | stats | metrics [--exclude 이메일,…] [--show-small] [--json] | fetch-model [받아 둔 파일] | community review | community hide|restore|delete <글 번호>');
     process.exitCode = 1;
   }
 } finally {

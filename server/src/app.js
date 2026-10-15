@@ -110,7 +110,8 @@ export function createApp({ db, config, maskService = null, supply = null, maile
   const limiter = createRateLimiter({ now });
   const q = {
     identity: db.prepare("SELECT user_id, email, password_hash FROM identities WHERE provider = 'email' AND subject = ?"),
-    insertUser: db.prepare('INSERT INTO users (id, created_at, agreement_version, agreed_at) VALUES (?, ?, ?, ?)'),
+    insertUser: db.prepare('INSERT INTO users (id, created_at, agreement_version, agreed_at, last_seen_at) VALUES (?, ?, ?, ?, ?)'),
+    touchUser: db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?'),
     insertIdentity: db.prepare("INSERT INTO identities (provider, subject, user_id, email, password_hash, created_at) VALUES ('email', ?, ?, ?, ?, ?)"),
     insertSession: db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, last_used_at, expires_at) VALUES (?, ?, ?, ?, ?)'),
     session: db.prepare('SELECT s.user_id, s.last_used_at, s.expires_at, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?'),
@@ -188,6 +189,7 @@ ${link}
   function startSession(userId) {
     const token = newSessionToken(), t = now();
     q.insertSession.run(tokenHash(token), userId, t, t, t + config.sessionDays * 24 * HOUR);
+    q.touchUser.run(t, userId);
     return token;
   }
 
@@ -203,7 +205,11 @@ ${link}
       throw new HttpError(401, 'signed-out', '로그인이 만료됐어요. 다시 로그인해 주세요.');
     }
     // Sliding expiry, written at most once an hour per session.
-    if (t - row.last_used_at > HOUR) q.touchSession.run(t, t + config.sessionDays * 24 * HOUR, hash);
+    // The account's last use (for retention counts) moves with it.
+    if (t - row.last_used_at > HOUR) {
+      q.touchSession.run(t, t + config.sessionDays * 24 * HOUR, hash);
+      q.touchUser.run(t, row.user_id);
+    }
     return { userId: row.user_id, tokenHash: hash, createdAt: row.created_at };
   }
 
@@ -249,7 +255,7 @@ ${link}
       const userId = newUserId(), t = now();
       const token = transaction(db, () => {
         if (q.identity.get(email)) throw new HttpError(409, 'email-taken', '이미 가입한 이메일이에요. 로그인해 주세요.');
-        q.insertUser.run(userId, t, AGREEMENT_VERSION, t);
+        q.insertUser.run(userId, t, AGREEMENT_VERSION, t, t);
         q.insertIdentity.run(email, userId, email, hash, t);
         return startSession(userId);
       });

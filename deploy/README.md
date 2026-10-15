@@ -67,6 +67,7 @@ docker compose ps          # eoul이 "healthy", tunnel과 backup이 "Up"이면 �
 - 이 PC에서 확인: 브라우저로 `http://localhost:8787`
 - 휴대폰에서 확인: `EOUL_PUBLIC_URL` 주소
 - 로그 보기: `docker compose logs -f eoul` (글 내용·이메일은 로그에 남기지 않습니다)
+- 파일럿 지표: `docker compose exec eoul node server/cli.mjs metrics --exclude 내이메일@example.com` (합계만, [서버 안내](../server/README.md#파일럿-지표))
 
 터널 없이 이 PC에서만 시험하려면 `docker compose up -d --build eoul backup`처럼 서버와 백업만 켭니다.
 
