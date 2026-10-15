@@ -480,7 +480,7 @@ ${link}
     res.end(html);
   }
 
-  const community = createCommunity({ db, enabled: !!config.community, now, log, authenticate, limit, readJson });
+  const community = createCommunity({ db, enabled: !!config.community, maxBytes: config.communityMaxBytes ?? undefined, now, log, authenticate, limit, readJson });
 
   let lastSweep = 0;
   async function handle(req, res) {

@@ -13,6 +13,7 @@ import { createApp } from '../../server/src/app.js';
 import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
 import { createWardrobeStore, photoAsset } from '../src/wardrobe-store.js';
 import { validateCommunityLook, communityLookFrom, nameProblem } from '../src/community-post.js';
+import { stripJpegMetadata } from '../src/jpeg-clean.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'eoul-community-'));
@@ -32,7 +33,11 @@ after(() => new Promise((resolve) => server.close(() => { db.close(); resolve();
 const base = `http://127.0.0.1:${server.address().port}`;
 
 const g = (slot, color, id, extra = {}) => makeGarment({ id, slot, color, gender: 'M', ...extra });
-const jpeg = new Blob([new Uint8Array([255, 216, 255, 0xe0, 1, 2, 3])], { type: 'image/jpeg' });
+const segment = (marker, text) => { const body = [...Buffer.from(text, 'latin1')]; return [0xff, marker, (body.length + 2) >> 8, (body.length + 2) & 255, ...body]; };
+// An old-version photo that still carries EXIF with a location and a comment.
+const exifPhoto = [0xff, 0xd8, ...segment(0xe0, 'JFIF\0\x01\x01\0\0\x01\0\x01\0\0'), ...segment(0xe1, 'Exif\0\0GPS 37.5665N 126.9780E'),
+  ...segment(0xfe, 'shot at home'), 0xff, 0xda, 0x00, 0x02, 0x41, 0x42, 0xff, 0xd9];
+const jpeg = new Blob([new Uint8Array(exifPhoto)], { type: 'image/jpeg' });
 async function seeded() {
   const asset = await photoAsset(jpeg);
   const indexedDB = new IDBFactory();
@@ -48,7 +53,7 @@ async function seeded() {
   return indexedDB;
 }
 
-async function boot({ indexedDB = new IDBFactory(), storage = new Map() } = {}) {
+async function boot({ indexedDB = new IDBFactory(), storage = new Map(), at = base } = {}) {
   const nodes = new Map(['app', 'sheet-root', 'toast'].map((id) => [id, { innerHTML: '', classList: { add() {}, remove() {} }, querySelector() { return null; }, querySelectorAll() { return []; } }]));
   const listeners = new Map();
   const toasts = [];
@@ -57,7 +62,7 @@ async function boot({ indexedDB = new IDBFactory(), storage = new Map() } = {}) 
     URL: class extends URL { static createObjectURL() { return 'blob:community/1'; } static revokeObjectURL() {} }, URLSearchParams,
     Image: class { decode() { return Promise.resolve(); } }, fetch: (url, init) => fetch(url, init),
     localStorage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, String(v)), removeItem: (k) => storage.delete(k) },
-    location: { origin: base, search: '', pathname: '/', hash: '' }, history: { replaceState() {} }, navigator: {},
+    location: { origin: at, search: '', pathname: '/', hash: '' }, history: { replaceState() {} }, navigator: {},
     document: {
       getElementById: (id) => nodes.get(id) ?? null,
       addEventListener(type, fn) { listeners.set(type, [...(listeners.get(type) || []), fn]); },
@@ -112,6 +117,22 @@ test('the shared look carries the outfit shape only, and the server-side check a
   assert.match(nameProblem('01012345678'), /전화번호/);
 });
 
+test('JPEG metadata is removed without touching the picture data; a broken file is refused', () => {
+  const xmp = segment(0xe1, 'http://ns.adobe.com/xap/1.0/\0<x:xmpmeta/>');
+  const icc = segment(0xe2, 'ICC_PROFILE\0\x01\x01sRGB');
+  const mpf = segment(0xe2, 'MPF\0second picture');
+  const adobe = segment(0xee, 'Adobe\0d\0\0\0\0\x01');
+  const dqt = [0xff, 0xdb, 0x00, 0x04, 0x00, 0x01];
+  const file = new Uint8Array([0xff, 0xd8, ...segment(0xe0, 'JFIF\0\x01\x01'), ...segment(0xe1, 'Exif\0\0GPS'), ...xmp, ...icc, ...mpf, ...adobe,
+    ...segment(0xed, 'Photoshop 3.0'), ...segment(0xe5, 'maker'), ...segment(0xfe, 'comment'), ...dqt, 0xff, 0xda, 0x00, 0x02, 0xff, 0x00, 0x7f, 0xff, 0xd9]);
+  const { bytes, removed } = stripJpegMetadata(file);
+  assert.equal(removed, 6);
+  assert.deepEqual([...bytes], [0xff, 0xd8, ...segment(0xe0, 'JFIF\0\x01\x01'), ...icc, ...adobe, ...dqt, 0xff, 0xda, 0x00, 0x02, 0xff, 0x00, 0x7f, 0xff, 0xd9]);
+  assert.deepEqual([...stripJpegMetadata(bytes).bytes], [...bytes], 'stripping twice changes nothing');
+  for (const broken of [[0xff, 0xd8], [0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff, 0xe1, 0x00, 0x40, 0x01], [0xff, 0xd8, 0x00, 0x00]])
+    assert.throws(() => stripJpegMetadata(new Uint8Array(broken)), /JPEG/);
+});
+
 test('share an outfit with members: rules first, no photo unless chosen and agreed; another member sees it, opens its product, reports it', async () => {
   const a = await boot({ indexedDB: await seeded() });
   await a.signup('sharer@example.com');
@@ -152,7 +173,9 @@ test('share an outfit with members: rules first, no photo unless chosen and agre
   await a.change({ action: 'community-photo-consent' }, true);
   await a.click({ action: 'community-share' });
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM post_photos').get().n, 1);
-  assert.deepEqual([...db.prepare('SELECT bytes FROM post_photos').get().bytes], [255, 216, 255, 0xe0, 1, 2, 3], 'the exact photo bytes');
+  const stored = Buffer.from(db.prepare('SELECT bytes FROM post_photos').get().bytes);
+  assert.deepEqual([...stored], [...stripJpegMetadata(new Uint8Array(exifPhoto)).bytes], 'the photo, minus its metadata');
+  assert.ok(!stored.includes('GPS') && !stored.includes('shot at home'), 'no location or comment reaches other members');
 
   const b = await boot();
   await b.signup('reader@example.com');
@@ -194,4 +217,35 @@ test('share an outfit with members: rules first, no photo unless chosen and agre
   }
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM posts').get().n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM post_photos').get().n, 0);
+});
+
+test('when the operator turns the community off, a member is told what is left and can remove it', async () => {
+  const offApp = createApp({ db, config: { allowedOrigins: [], trustProxy: null, inviteCode: null, scryptLog2N: 10, sessionDays: 60, appFile: '/none', community: false } });
+  const offServer = http.createServer((req, res) => offApp.handle(req, res));
+  await new Promise((resolve) => offServer.listen(0, '127.0.0.1', resolve));
+  after(() => new Promise((resolve) => offServer.close(resolve)));
+  const offBase = `http://127.0.0.1:${offServer.address().port}`;
+
+  const member = await boot();
+  await member.signup('leftover@example.com');
+  await member.click({ action: 'community-open' });
+  await member.input('community-name', '남은글');
+  await member.change({ action: 'community-agree' }, true);
+  await member.click({ action: 'community-join' });
+  const token = JSON.parse(member.storage.get('eoul:account')).token;
+  await fetch(`${base}/v1/community/posts`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ look: { v: 1, lookId: null, title: '남은 코디', items: [{ role: 'top', slot: 'm-oxford', kind: 'shirt', color: 'white', brand: '', productId: null, photo: null }] }, caption: '' }) });
+
+  const storage = new Map([...member.storage].map(([key, value]) => [key, key === 'eoul:account' ? value.replace(JSON.stringify(base), JSON.stringify(offBase)) : value]));
+  const later = await boot({ storage, at: offBase });
+  assert.doesNotMatch(later.body(), /회원 코디 보기/, 'no community entry while it is off');
+  await later.click({ action: 'open-profile' });
+  assert.match(later.sheet(), /회원 코디에 남긴 글 1개가 서버에 있어요/);
+  await later.click({ action: 'community-open' });
+  assert.match(later.sheet(), /지금 회원 코디를 꺼 두었어요. 내가 남긴 글 1개와 그 사진이 서버에 남아 있어요/);
+  await later.click({ action: 'community-leave' });
+  await later.click({ action: 'community-leave' });
+  assert.match(later.toasts.at(-1), /내 글과 사진을 지웠어요/);
+  const userId = db.prepare("SELECT user_id FROM identities WHERE email = 'leftover@example.com'").get().user_id;
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM posts WHERE user_id = ?').get(userId).n, 0);
 });

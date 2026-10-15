@@ -14,8 +14,14 @@ import {
   validateCommunityLook, validateCaption, nameProblem, COMMUNITY_RULES_VERSION, COMMUNITY_REPORT_REASONS,
   MAX_POST_PHOTOS, MAX_POST_PHOTO_BYTES,
 } from '../../app/src/community-post.js';
+import { stripJpegMetadata } from '../../app/src/jpeg-clean.js';
 
 export const REPORTS_TO_HIDE = 3;
+// Stored photos are bounded per member and for the whole server, so one member
+// cannot fill the disk; deleting old posts frees room.
+export const MAX_MEMBER_POSTS = 300;
+export const MAX_MEMBER_PHOTOS = 120;
+export const MAX_MEMBER_PHOTO_BYTES = 40 * 1024 * 1024;
 const POST_ID = /^c_[A-Za-z0-9_-]{24}$/;
 const PAGE = 20;
 const MAX_JOIN_BODY = 4 * 1024;
@@ -44,6 +50,10 @@ function statements(db) {
     report: db.prepare('INSERT OR IGNORE INTO post_reports (post_id, user_id, reason, created_at) VALUES (?, ?, ?, ?)'),
     reportCount: db.prepare('SELECT COUNT(*) AS n FROM post_reports WHERE post_id = ?'),
     hide: db.prepare('UPDATE posts SET hidden_at = ?, hidden_reason = ? WHERE id = ? AND hidden_at IS NULL'),
+    memberPosts: db.prepare('SELECT COUNT(*) AS n FROM posts WHERE user_id = ?'),
+    memberPhotos: db.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(length(f.bytes)), 0) AS bytes
+      FROM post_photos f JOIN posts p ON p.id = f.post_id WHERE p.user_id = ?`),
+    allPhotoBytes: db.prepare('SELECT COALESCE(SUM(length(bytes)), 0) AS bytes FROM post_photos'),
   };
 }
 
@@ -59,10 +69,15 @@ function decodePhoto(entry) {
   if (bytes.length > MAX_POST_PHOTO_BYTES) throw new HttpError(413, 'photo-too-large', '사진 한 장이 너무 커요.');
   if (bytes.length < 3 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255)
     throw new HttpError(400, 'bad-photo', 'JPEG 사진을 읽지 못했어요.');
-  return bytes;
+  // Whatever the client did, no location, time or device metadata is stored or shown.
+  try {
+    return Buffer.from(stripJpegMetadata(bytes).bytes);
+  } catch {
+    throw new HttpError(400, 'bad-photo', 'JPEG 사진을 읽지 못했어요.');
+  }
 }
 
-export function createCommunity({ db, enabled, now, log = () => {}, authenticate, limit, readJson }) {
+export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, log = () => {}, authenticate, limit, readJson }) {
   const q = statements(db);
 
   function signedIn(req) {
@@ -84,13 +99,14 @@ export function createCommunity({ db, enabled, now, log = () => {}, authenticate
   }
 
   const routes = {
+    // Also when the feature is off, so a member can still find and remove what they posted.
     'GET /v1/community': (req) => {
       const session = authenticate(req);
-      const row = enabled ? q.member.get(session.userId) : null;
+      const row = q.member.get(session.userId);
       return {
         enabled,
         rulesVersion: COMMUNITY_RULES_VERSION,
-        member: row ? { name: row.name, current: row.rules_version === COMMUNITY_RULES_VERSION } : null,
+        member: row ? { name: row.name, current: row.rules_version === COMMUNITY_RULES_VERSION, posts: q.memberPosts.get(session.userId).n } : null,
       };
     },
 
@@ -112,8 +128,9 @@ export function createCommunity({ db, enabled, now, log = () => {}, authenticate
     },
 
     // Leaving removes the display name and every post and photo of this member.
+    // Allowed when the feature is off too: removing one's own posts is always possible.
     'DELETE /v1/community/me': (req) => {
-      const session = signedIn(req);
+      const session = authenticate(req);
       transaction(db, () => {
         q.deleteUserPosts.run(session.userId);
         q.deleteMember.run(session.userId);
@@ -163,8 +180,18 @@ export function createCommunity({ db, enabled, now, log = () => {}, authenticate
         throw new HttpError(400, 'invalid-post', error.message);
       }
       const bytes = photos.map(decodePhoto);
+      const size = bytes.reduce((n, photo) => n + photo.length, 0);
       const id = `c_${crypto.randomBytes(18).toString('base64url')}`, t = now();
       transaction(db, () => {
+        if (q.memberPosts.get(session.userId).n >= MAX_MEMBER_POSTS)
+          throw new HttpError(413, 'community-quota', `글은 ${MAX_MEMBER_POSTS}개까지 남길 수 있어요. 예전 글을 지우면 다시 올릴 수 있어요.`);
+        if (bytes.length) {
+          const mine = q.memberPhotos.get(session.userId);
+          if (mine.n + bytes.length > MAX_MEMBER_PHOTOS || mine.bytes + size > MAX_MEMBER_PHOTO_BYTES)
+            throw new HttpError(413, 'community-quota', '올릴 수 있는 사진 용량을 다 썼어요. 예전 글을 지우면 다시 올릴 수 있어요. 사진 없이는 올릴 수 있어요.');
+          if (q.allPhotoBytes.get().bytes + size > maxBytes)
+            throw new HttpError(507, 'community-full', '이 서버의 회원 코디 사진 공간이 가득 찼어요. 사진 없이 올리거나 운영자에게 알려 주세요.');
+        }
         q.insertPost.run(id, session.userId, t, JSON.stringify(body.look), body.caption ?? '');
         bytes.forEach((photo, idx) => q.insertPhoto.run(id, idx, photo));
       });
@@ -175,7 +202,7 @@ export function createCommunity({ db, enabled, now, log = () => {}, authenticate
 
   const dynamic = [
     [/^\/v1\/community\/posts\/([^/]+)$/, 'DELETE', (req, match) => {
-      const session = signedIn(req);
+      const session = authenticate(req); // the author can delete while the feature is off
       const row = visiblePost(match[1], session.userId);
       if (row.user_id !== session.userId) throw new HttpError(403, 'not-yours', '내가 올린 글만 지울 수 있어요.');
       q.deletePost.run(row.id);

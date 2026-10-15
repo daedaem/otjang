@@ -37,6 +37,7 @@ import {
   wardrobeSlotStatus,
   WARDROBE_SCHEMA,
 } from './wardrobe.js';
+import { stripJpegMetadata } from './jpeg-clean.js';
 import { COMMUNITY_RULES, COMMUNITY_RULES_VERSION, COMMUNITY_REPORT_REASONS, MAX_POST_PHOTOS, MAX_CAPTION, communityLookFrom, nameProblem } from './community-post.js';
 import { addWear, toggleWornOn, deleteWear, wearStats, orderByRecentWear, localDate, wearDateOK, wearMonths, MAX_WEAR_GARMENTS, WEAR_RECENT_DAYS } from './wear-log.js';
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, photoAsset } from './wardrobe-store.js';
@@ -1472,6 +1473,8 @@ function ownWearBox(item) {
 // 보내는 것은 코디의 모양(역할·종류·색·브랜드·목록 상품 번호)뿐이고, 사진은 글마다 고르고 동의할 때만 보낸다.
 let communityView = null;
 let shareDraft = null;
+// Posts left on the server after the operator turned the feature off.
+let communityLeftovers = null;
 const communityOn = () => signedIn() && !!accountHealth?.features?.community;
 function communitySection() {
   if (!communityOn()) return '';
@@ -1528,7 +1531,9 @@ function communitySheet() {
   let body;
   if (v.loading) body = '<p class="sub">불러오는 중이에요…</p>';
   else if (!v.status) body = `<p class="notice" role="alert">${esc(v.error || '회원 코디를 불러오지 못했어요.')}</p>`;
-  else if (!v.status.enabled) body = '<p class="notice">이 서버는 회원 코디를 켜지 않았어요. 운영자가 규칙과 신고 연락처를 정한 뒤 켤 수 있어요.</p>';
+  else if (!v.status.enabled) body = v.status.member
+    ? `<p class="notice">이 서버는 지금 회원 코디를 꺼 두었어요. 내가 남긴 글 ${v.status.member.posts}개와 그 사진이 서버에 남아 있어요.</p><button class="btn secondary" data-action="community-leave">${v.leaveArmed ? '한 번 더 누르면 내 글과 사진을 모두 지워요' : '내 글과 사진 모두 지우기'}</button>`
+    : '<p class="notice">이 서버는 회원 코디를 켜지 않았어요. 운영자가 규칙과 신고 연락처를 정한 뒤 켤 수 있어요.</p>';
   else if (!v.status.member?.current) body = communityJoinHTML();
   else body = `<div class="opts" role="group" aria-label="글 보기"><button class="chip" data-action="community-filter" data-mine="0" aria-pressed="${!v.mine}">전체</button><button class="chip" data-action="community-filter" data-mine="1" aria-pressed="${v.mine}">내 글</button></div>
     ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
@@ -1595,7 +1600,14 @@ async function submitShare() {
     for (const id of photoIds) {
       const blob = photoBlobs.get(id);
       if (!blob || blob.type !== 'image/jpeg') throw new Error('고른 사진 중 올릴 수 없는 사진이 있어요. 그 사진을 빼고 다시 올려 주세요.');
-      photos.push({ mime: 'image/jpeg', data: await blobBase64(blob) });
+      // No location, time or device metadata leaves this device with a shared photo.
+      let clean;
+      try {
+        clean = stripJpegMetadata(new Uint8Array(await blob.arrayBuffer())).bytes;
+      } catch {
+        throw new Error('고른 사진 중 정보를 지우지 못한 사진이 있어요. 그 사진을 빼고 다시 올려 주세요.');
+      }
+      photos.push({ mime: 'image/jpeg', data: await blobBase64(new Blob([clean], { type: 'image/jpeg' })) });
     }
     await accountApi().communityPost({ look, caption: d.caption.trim(), photos, photoConsent: photos.length ? true : false });
     shareDraft = null;
@@ -2521,8 +2533,9 @@ function accountStatusHTML() {
     s.phase === 'offline' || s.phase === 'error' ? s.message :
     account.syncedAt ? `계정에 저장됨 · ${syncTime(account.syncedAt)}` : '아직 계정에 저장하지 않았어요';
   const mask = account.photoMaskConsent === true ? '<p class="fine">배경 지우기: 서버에서 처리 <button class="link" data-action="photo-mask-off">끄기</button></p>' : '';
+  const leftovers = communityLeftovers && !communityOn() ? `<p class="fine">회원 코디에 남긴 글 ${communityLeftovers.posts}개가 서버에 있어요. <button class="link" data-action="community-open">확인·지우기</button></p>` : '';
   const verify = account.emailVerified === false ? `<p class="fine">이메일 미확인 · 비밀번호를 잊었을 때 재설정 메일을 받으려면 확인해 주세요. <button class="link" data-action="verify-send">확인 메일 보내기</button></p>` : '';
-  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${verify}${mask}
+  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>${verify}${mask}${leftovers}
     <div class="opts">${s.phase === 'choose' ? '<button class="btn small" data-action="sync-choose">어느 옷장을 쓸지 고르기</button>' : '<button class="chip" data-action="sync-now">지금 저장·확인</button>'}<button class="chip" data-action="account-logout">로그아웃</button><button class="link" data-action="account-delete-open">계정 삭제</button></div>`;
 }
 function accountSection() {
@@ -3362,6 +3375,7 @@ document.addEventListener('click', async (e) => {
         if (!v) break;
         if (!v.leaveArmed) { v.leaveArmed = true; communitySheet(); break; }
         await accountApi().communityLeave();
+        communityLeftovers = null;
         closeSheet();
         toast('커뮤니티에서 나갔어요. 내 글과 사진을 지웠어요');
         break;
@@ -4384,6 +4398,10 @@ const accountFeatures = appReady.then(async () => {
   try {
     accountHealth = await createAccountApi({ base: accountBase }).health();
     if (accountHealth?.features?.community) render();
+    else {
+      const status = await accountApi().community().catch(() => null);
+      if (status?.member?.posts) communityLeftovers = status.member;
+    }
   } catch {}
 });
 // 다른 기기에서 바꾼 옷장은 이 화면으로 돌아올 때나 연결이 돌아올 때 확인한다.

@@ -43,5 +43,7 @@ export function loadConfig(env = process.env) {
     // Members' outfit sharing. Off until the operator has published the rules
     // and the contact for reports (see README "커뮤니티").
     community: env.EOUL_COMMUNITY === 'on',
+    // Room for all members' shared photos together (MB). Each member also has their own limit.
+    communityMaxBytes: integer(env.EOUL_COMMUNITY_MAX_MB, 2048, { min: 1, max: 1024 * 1024 }) * 1024 * 1024,
   };
 }
