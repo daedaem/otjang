@@ -96,7 +96,8 @@ function referencedPhotos(state) {
   return new Set((state?.garments || []).map((garment) => garment.photoId).filter(Boolean));
 }
 
-export function createApp({ db, config, maskService = null, supply = null, now = () => Date.now(), log = () => {} }) {
+export function createApp({ db, config, maskService = null, supply = null, mailer = null, now = () => Date.now(), log = () => {} }) {
+  const mail = mailer || { enabled: false, kind: 'off', reason: '메일 발송이 설정되지 않았어요.' };
   const limiter = createRateLimiter({ now });
   const q = {
     identity: db.prepare("SELECT user_id, email, password_hash FROM identities WHERE provider = 'email' AND subject = ?"),
@@ -107,7 +108,16 @@ export function createApp({ db, config, maskService = null, supply = null, now =
     touchSession: db.prepare('UPDATE sessions SET last_used_at = ?, expires_at = ? WHERE token_hash = ?'),
     deleteSession: db.prepare('DELETE FROM sessions WHERE token_hash = ?'),
     deleteExpired: db.prepare('DELETE FROM sessions WHERE expires_at <= ?'),
-    userEmail: db.prepare("SELECT email, password_hash FROM identities WHERE provider = 'email' AND user_id = ?"),
+    userEmail: db.prepare("SELECT email, password_hash, verified_at FROM identities WHERE provider = 'email' AND user_id = ?"),
+    insertEmailToken: db.prepare('INSERT INTO email_tokens (token_hash, user_id, purpose, email, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)'),
+    emailToken: db.prepare('SELECT user_id, purpose, email, expires_at, used_at FROM email_tokens WHERE token_hash = ?'),
+    useEmailTokens: db.prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND purpose = ? AND used_at IS NULL'),
+    useOtherEmailTokens: db.prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND purpose = ? AND used_at IS NULL AND token_hash != ?'),
+    deleteEmailToken: db.prepare('DELETE FROM email_tokens WHERE token_hash = ?'),
+    setVerified: db.prepare("UPDATE identities SET verified_at = ? WHERE provider = 'email' AND user_id = ? AND email = ?"),
+    setPassword: db.prepare("UPDATE identities SET password_hash = ? WHERE provider = 'email' AND user_id = ?"),
+    deleteUserSessions: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
+    pruneEmailTokens: db.prepare('DELETE FROM email_tokens WHERE expires_at <= ?'),
     deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
     wardrobe: db.prepare('SELECT revision, state, updated_at FROM wardrobes WHERE user_id = ?'),
     wardrobeMeta: db.prepare('SELECT revision, updated_at FROM wardrobes WHERE user_id = ?'),
@@ -133,6 +143,44 @@ export function createApp({ db, config, maskService = null, supply = null, now =
   function limit(key, count, windowMs) {
     if (!limiter.take(key, count, windowMs))
       throw new HttpError(429, 'rate-limited', '시도가 너무 많아요. 잠시 후 다시 해 주세요.');
+  }
+
+  const VERIFY_MINUTES = 24 * 60, RESET_MINUTES = 30;
+  async function sendEmailLink(userId, email, purpose) {
+    const token = newSessionToken(), t = now(), hash = tokenHash(token);
+    const minutes = purpose === 'verify' ? VERIFY_MINUTES : RESET_MINUTES;
+    q.insertEmailToken.run(hash, userId, purpose, email, t, t + minutes * 60000);
+    const link = `${mail.publicUrl}/#${purpose}=${token}`;
+    const text = purpose === 'verify'
+      ? `어울 계정의 이메일을 확인하려면 아래 링크를 열어 주세요. 24시간 동안 한 번만 쓸 수 있어요.
+
+${link}
+
+가입하지 않았다면 이 메일은 무시해 주세요.`
+      : `어울 비밀번호를 다시 정하려면 아래 링크를 열어 주세요. ${RESET_MINUTES}분 동안 한 번만 쓸 수 있어요.
+
+${link}
+
+요청하지 않았다면 이 메일은 무시해 주세요. 비밀번호는 바뀌지 않아요.`;
+    try {
+      await mail.send({ to: email, subject: purpose === 'verify' ? '어울 이메일 확인' : '어울 비밀번호 재설정', text });
+    } catch (error) {
+      // The earlier link stays usable when the new one never left this server.
+      q.deleteEmailToken.run(hash);
+      throw error;
+    }
+    // Delivered: the new link replaces earlier unused ones of the same purpose.
+    q.useOtherEmailTokens.run(now(), userId, purpose, hash);
+  }
+  // Marks a one-time link used and returns its row, or refuses it.
+  function takeToken(token, purpose) {
+    if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{20,100}$/.test(token))
+      throw new HttpError(400, 'bad-token', '링크가 올바르지 않아요.');
+    const row = q.emailToken.get(tokenHash(token));
+    if (!row || row.purpose !== purpose || row.used_at || row.expires_at <= now())
+      throw new HttpError(400, 'bad-token', purpose === 'verify' ? '확인 링크가 만료됐거나 이미 썼어요. 프로필에서 다시 보내 주세요.' : '링크가 만료됐거나 이미 썼어요. 비밀번호 찾기를 다시 해 주세요.');
+    q.useEmailTokens.run(now(), row.user_id, purpose);
+    return row;
   }
 
   function startSession(userId) {
@@ -164,6 +212,7 @@ export function createApp({ db, config, maskService = null, supply = null, now =
     return {
       user: { id: userId, email: identity?.email ?? null, createdAt: new Date(createdAt).toISOString() },
       providers: identity ? ['email'] : [],
+      emailVerified: !!identity?.verified_at,
       wardrobe: { revision: meta?.revision ?? 0, updatedAt: meta ? new Date(meta.updated_at).toISOString() : null },
       photos: { count: usage.count, bytes: usage.bytes },
     };
@@ -176,7 +225,7 @@ export function createApp({ db, config, maskService = null, supply = null, now =
       agreementVersion: AGREEMENT_VERSION,
       signup: { inviteRequired: !!config.inviteCode },
       providers: { email: true, kakao: false, google: false },
-      features: { photoMask: !!maskService, offers: !!supply },
+      features: { photoMask: !!maskService, offers: !!supply, email: !!mail.enabled },
       supply: supply ? supply.sources().map(({ id, name, status, needs = [] }) => ({ id, name, status, needs })) : [],
     }),
 
@@ -203,6 +252,8 @@ export function createApp({ db, config, maskService = null, supply = null, now =
         return startSession(userId);
       });
       log('signup');
+      // The first verification mail goes out in the background; sign-up never waits for it.
+      if (mail.enabled) sendEmailLink(userId, email, 'verify').catch((error) => log('mail-failed', error.message));
       return [201, { token, ...account(userId, t) }];
     },
 
@@ -222,6 +273,59 @@ export function createApp({ db, config, maskService = null, supply = null, now =
       const token = startSession(identity.user_id);
       const user = db.prepare('SELECT created_at FROM users WHERE id = ?').get(identity.user_id);
       return [200, { token, ...account(identity.user_id, user.created_at) }];
+    },
+
+    // ── Email verification and password reset with one-time, expiring links.
+    'POST /v1/auth/verify/request': async (req) => {
+      const session = authenticate(req);
+      if (!mail.enabled) throw new HttpError(503, 'mail-off', `메일 발송이 아직 설정되지 않았어요. 운영자에게 문의해 주세요. (${mail.reason})`);
+      limit(`verify:${session.userId}`, 3, HOUR);
+      const identity = q.userEmail.get(session.userId);
+      if (!identity) throw new HttpError(404, 'not-found', '이메일 계정이 아니에요.');
+      if (identity.verified_at) return { sent: false, emailVerified: true };
+      await sendEmailLink(session.userId, identity.email, 'verify');
+      return [202, { sent: true, expiresInMinutes: VERIFY_MINUTES }];
+    },
+    'POST /v1/auth/verify/confirm': async (req) => {
+      limit(`verify-confirm:${clientAddress(req)}`, 20, HOUR);
+      const body = await readJson(req, MAX_AUTH_BODY);
+      const row = takeToken(body.token, 'verify');
+      q.setVerified.run(now(), row.user_id, row.email);
+      // Which account was verified, so a device signed in to another account does not mark itself.
+      return { emailVerified: true, userId: row.user_id };
+    },
+    // Always the same answer, whether or not the email has an account.
+    'POST /v1/auth/password/forgot': async (req) => {
+      const ip = clientAddress(req);
+      limit(`forgot-ip:${ip}`, 5, HOUR);
+      const body = await readJson(req, MAX_AUTH_BODY);
+      const email = normalizeEmail(body.email);
+      if (!email) throw new HttpError(400, 'invalid-email', '이메일 주소를 확인해 주세요.');
+      if (!mail.enabled) throw new HttpError(503, 'mail-off', '메일 발송이 아직 설정되지 않아 비밀번호를 재설정할 수 없어요. 운영자에게 문의해 주세요.');
+      const identity = q.identity.get(email);
+      // The mail goes out after the answer, so a registered address takes no longer to answer than an unknown one.
+      if (identity && limiter.take(`forgot-email:${email}`, 3, HOUR))
+        setImmediate(() => sendEmailLink(identity.user_id, email, 'reset').catch((error) => log('mail-failed', error.message)));
+      return [202, { message: `가입한 이메일이면 재설정 링크를 보냈어요. ${RESET_MINUTES}분 안에 한 번만 쓸 수 있어요.` }];
+    },
+    'POST /v1/auth/password/reset': async (req) => {
+      limit(`reset:${clientAddress(req)}`, 10, HOUR);
+      const body = await readJson(req, MAX_AUTH_BODY);
+      const problem = passwordProblem(body.password);
+      if (problem) throw new HttpError(400, 'weak-password', problem);
+      const peek = q.emailToken.get(tokenHash(String(body.token || '')));
+      if (!peek || peek.purpose !== 'reset' || peek.used_at || peek.expires_at <= now())
+        throw new HttpError(400, 'bad-token', '링크가 만료됐거나 이미 썼어요. 비밀번호 찾기를 다시 해 주세요.');
+      const hash = await hashPassword(body.password, config.scryptLog2N);
+      transaction(db, () => {
+        const row = takeToken(body.token, 'reset');
+        q.setPassword.run(hash, row.user_id);
+        // Proving the mailbox also verifies it; every device signs in again.
+        q.setVerified.run(now(), row.user_id, row.email);
+        q.deleteUserSessions.run(row.user_id);
+      });
+      log('password-reset');
+      return { reset: true };
     },
 
     'POST /v1/auth/logout': (req) => {
@@ -399,6 +503,7 @@ export function createApp({ db, config, maskService = null, supply = null, now =
       if (started - lastSweep > HOUR) {
         lastSweep = started;
         q.deleteExpired.run(started);
+        q.pruneEmailTokens.run(started - 7 * 24 * HOUR);
       }
       if (method === 'OPTIONS') return send(res, 204);
       if (url.pathname.startsWith('/v1/')) res.setHeader('Cache-Control', 'no-store');

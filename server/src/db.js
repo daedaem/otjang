@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function openDatabase(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -64,6 +64,27 @@ export function openDatabase(file) {
           PRIMARY KEY (user_id, id)
         );
         PRAGMA user_version = 1;
+      `);
+    });
+  }
+  if (version < 2) {
+    transaction(db, () => {
+      db.exec(`
+        -- When the email of a sign-in was proven by a one-time link.
+        ALTER TABLE identities ADD COLUMN verified_at INTEGER;
+        -- One-time links for email verification and password reset. Only the
+        -- SHA-256 of the token is stored; each link works once and expires.
+        CREATE TABLE email_tokens (
+          token_hash TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          purpose TEXT NOT NULL CHECK (purpose IN ('verify', 'reset')),
+          email TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL,
+          used_at INTEGER
+        );
+        CREATE INDEX email_tokens_user ON email_tokens(user_id, purpose);
+        PRAGMA user_version = 2;
       `);
     });
   }
