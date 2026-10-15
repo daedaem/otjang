@@ -1,5 +1,5 @@
-// 있잖아 — "옷 사기 전에, 내 옷장을 아는 친구한테."
-// One continuous conversation with a friend who remembers your closet.
+// 살까 — "이거 살까?" 옷 사기 전에, 내 옷장을 기억하는 대화 상대에게 물어본다.
+// One continuous conversation that remembers your closet. Friendly, plain 해요체.
 (() => {
   const P = Proto;
   const esc = P.esc;
@@ -7,8 +7,8 @@
   const LOG_KEY = `eoul-proto:${P.meta.id}:log`;
   const EX_KEY = `eoul-proto:${P.meta.id}:example`;
   const KEEP = 60;
-  const DEC = { buy: '살래', hold: '좀 더 볼래', skip: '안 살래' };
-  const DEC_SHORT = { buy: '살래', hold: '볼래', skip: '안 살래' };
+  const DEC = { buy: '살래요', hold: '좀 더 볼게요', skip: '안 살래요' };
+  const DEC_SHORT = { buy: '살래요', hold: '볼게요', skip: '안 살래요' };
   const CAT_ORDER = ['top', 'outer', 'bottom', 'dress', 'shoes', 'acc'];
   const PAIR = { top: 'bottom', bottom: 'top', outer: 'top', shoes: 'bottom', acc: 'top', dress: 'shoes' };
   const ARROW = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>';
@@ -61,19 +61,19 @@
     <div class="shell">
       <header class="top" id="top">
         <div class="top-in">
-          <h1 class="mark"><span class="mark-w">있잖아</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></h1>
+          <h1 class="mark"><span class="mark-w">살까</span><span class="dot" aria-hidden="true"></span></h1>
           <span class="sr-only" id="typing-sr" aria-live="polite"></span>
           <button class="closet-btn" type="button" data-act="closet" aria-haspopup="dialog">${HANGER}<span>옷장</span><b id="cnt">0</b></button>
         </div>
       </header>
       <button class="hist" id="hist" type="button" data-act="history" hidden></button>
-      <main class="stream" id="stream" role="log" aria-live="polite" aria-relevant="additions" aria-label="있잖아와 나눈 대화"></main>
+      <main class="stream" id="stream" role="log" aria-live="polite" aria-relevant="additions" aria-label="살까와 나눈 대화"></main>
       <div class="dock" id="dock">
-        <div class="tray-wrap" id="tray-wrap"><section class="tray" id="tray" aria-label="내가 골라 본 옷" inert></section></div>
+        <div class="tray-wrap" id="tray-wrap"><section class="tray" id="tray" aria-label="골라 드린 옷" inert></section></div>
         <form class="composer" id="composer" autocomplete="off">
           <label class="sr-only" for="q">상품 링크 붙여넣기</label>
           <input id="q" name="q" type="text" inputmode="url" enterkeyhint="send" placeholder="상품 링크 붙여넣기" spellcheck="false" autocapitalize="off">
-          <button class="go" id="go" type="submit" aria-expanded="false" aria-controls="tray">골라 줘</button>
+          <button class="go" id="go" type="submit" aria-expanded="false" aria-controls="tray">골라 주세요</button>
         </form>
       </div>
       <div class="layer" id="layer" hidden></div>
@@ -103,7 +103,7 @@
       <div class="look-row">${l.items.map((it, i) => (it.c
         ? `<span class="pc is-cand" style="--i:${i}"><span class="ph">${tile(P.product(e.pid))}</span><span class="pc-l">이거</span></span>`
         : `<span class="pc" style="--i:${i}"><span class="ph">${tile(it.g)}</span><span class="pc-l">${esc(P.shortKind(it.g))}${it.g.ex ? '<span class="pc-ex">예시</span>' : ''}</span></span>`)).join('')}</div>
-      <figcaption><span class="cap-t">${esc(l.title)}</span>${l.isNew ? '' : '<span class="cap-s">이미 되는 코디에 하나 더</span>'}</figcaption>
+      <figcaption><span class="cap-t">${esc(l.title)}</span>${l.isNew ? '' : '<span class="cap-s">이미 있는 조합에 하나 더</span>'}</figcaption>
     </figure>`;
   }
   function productCard(p, cls = 'card') {
@@ -127,8 +127,8 @@
   function pickedCount(e) { return e.mode === 'more' ? Math.max(0, garments().length - (e.base || 0)) : garments().length; }
   function pickedLabel(e) {
     const n = pickedCount(e);
-    if (e.mode === 'more') return n ? `${n}벌 더 골랐어` : '하나씩 톡톡';
-    return n ? `${n}벌 골랐어` : '하나도 안 골랐어';
+    if (e.mode === 'more') return n ? `${n}벌 더 골랐어요` : '하나씩 눌러 주세요';
+    return n ? `${n}벌 골랐어요` : '아직 안 골랐어요';
   }
 
   function html(e) {
@@ -137,7 +137,7 @@
       case 's': return `<p class="m m-s" data-id="${e.id}">${esc(e.text)}</p>`;
       case 'note': {
         const p = P.product(e.pid);
-        return `<p class="m m-note" data-id="${e.id}">종류랑 색으로만 맞춰 봤어. 크기·옷감·지금 가격은 나도 몰라. 사기 전에 파는 곳에서 꼭 봐 줘. ${p?.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">파는 곳 가 보기${ARROW}</a>` : ''}</p>`;
+        return `<p class="m m-note" data-id="${e.id}">종류와 색으로만 맞춰 봤어요. 크기·옷감·지금 가격은 알 수 없어요. 사기 전에 파는 곳에서 꼭 확인해 주세요. ${p?.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">파는 곳 가 보기${ARROW}</a>` : ''}</p>`;
       }
       case 'u': return `<div class="m m-u" data-id="${e.id}"><span class="pill">${esc(e.text)}</span></div>`;
       case 'up': {
@@ -158,7 +158,7 @@
         const p = P.product(e.pid);
         return `<figure class="m att att-over" data-id="${e.id}">
           <div class="over-row">
-            <span class="pc is-own"><span class="ph">${tile(e.g)}</span><span class="pc-l">네 옷장${e.g.ex ? '<span class="pc-ex">예시</span>' : ''}</span></span>
+            <span class="pc is-own"><span class="ph">${tile(e.g)}</span><span class="pc-l">내 옷장${e.g.ex ? '<span class="pc-ex">예시</span>' : ''}</span></span>
             <span class="eq" aria-hidden="true"><i></i><i></i></span>
             <span class="pc is-cand"><span class="ph">${tile(p)}</span><span class="pc-l">이거</span></span>
           </div>
@@ -167,7 +167,7 @@
       }
       case 'closet': return `<figure class="m att att-closet" data-id="${e.id}">
           <div class="closet-row">${e.gs.map((g, i) => `<span class="cl" style="--i:${i}">${tile(g)}</span>`).join('')}</div>
-          <figcaption><span class="cap-t">${e.example ? '예시 옷장' : '네 옷장'}</span><span class="cap-s">${e.gs.length}벌${e.example ? ' · 언제든 네 옷으로 바꿔도 돼' : ''}</span></figcaption>
+          <figcaption><span class="cap-t">${e.example ? '예시 옷장' : '내 옷장'}</span><span class="cap-s">${e.gs.length}벌${e.example ? ' · 언제든 내 옷으로 바꿀 수 있어요' : ''}</span></figcaption>
         </figure>`;
       case 'found': {
         const items = e.pids.map((id) => P.product(id)).filter(Boolean);
@@ -292,9 +292,10 @@
   function firstRun() {
     anchor = null;
     return act(() => say([
-      '안녕.',
-      '옷 사기 전에 나한테 먼저 물어봐.',
-      '남자 옷 봐 줄까, 여자 옷 봐 줄까?',
+      '안녕하세요.',
+      '옷 사기 전에 먼저 물어보세요.',
+      { t: 's', text: '가진 옷과 잘 맞는지, 비슷한 옷이 이미 있는지 봐 드려요.' },
+      '어떤 옷을 볼까요?',
       { t: 'chips', opts: [{ label: '남성 옷', a: 'gender', v: 'M' }, { label: '여성 옷', a: 'gender', v: 'F' }] },
     ]));
   }
@@ -303,22 +304,22 @@
     exIds = new Set(); saveEx();
     updateCount();
     await say([
-      '네 옷장부터 알려 줘.',
-      '가진 거랑 비슷한 걸 톡톡 골라 줘.',
+      '먼저 옷장을 알려 주세요.',
+      { t: 's', text: '가진 옷과 비슷한 걸 눌러 주세요.' },
       { t: 'picker', mode: 'first', cat: 'top' },
-      { t: 'chips', opts: [{ label: '다 골랐어', a: 'pickDone', lead: true }, { label: '예시 옷장으로 해 볼래', a: 'example' }] },
+      { t: 'chips', opts: [{ label: '다 골랐어요', a: 'pickDone', lead: true }, { label: '예시 옷장으로 해 볼게요', a: 'example' }] },
     ]);
   }
-  const invite = '궁금한 옷 있으면 링크 붙여 줘. 아니면 내가 하나 골라 볼게.';
+  const invite = ['궁금한 옷 링크를 붙여 주세요.', { t: 's', text: '제가 골라 드릴 수도 있어요.' }];
   async function pickDone() {
     const n = garments().length;
     if (!n) {
-      await say(['아직 하나도 안 골랐어.', '한 벌만 골라도 돼. 아니면 예시 옷장으로 해 볼래?',
-        { t: 'chips', opts: [{ label: '다 골랐어', a: 'pickDone', lead: true }, { label: '예시 옷장으로 해 볼래', a: 'example' }] }]);
+      await say(['아직 고른 옷이 없어요.', { t: 's', text: '한 벌만 골라도 돼요. 예시 옷장으로 시작할 수도 있어요.' },
+        { t: 'chips', opts: [{ label: '다 골랐어요', a: 'pickDone', lead: true }, { label: '예시 옷장으로 해 볼게요', a: 'example' }] }]);
       return;
     }
     log.filter((e) => e.t === 'picker').forEach((e) => removeEntry(e.id));
-    await say([`좋아, ${n}벌 기억했어.`, { t: 'closet', gs: garments().map(snap), example: false }, invite]);
+    await say([`좋아요, ${n}벌 기억할게요.`, { t: 'closet', gs: garments().map(snap), example: false }, ...invite]);
     openTray();
   }
   async function useExample() {
@@ -326,17 +327,17 @@
     P.startExample(P.record.gender || 'M');
     exIds = new Set(garments().map((g) => g.id)); saveEx();
     updateCount();
-    await say([`좋아, 예시 옷장 ${garments().length}벌 기억했어.`, { t: 'closet', gs: garments().map(snap), example: true }, invite]);
+    await say([`예시 옷장 ${garments().length}벌로 시작할게요.`, { t: 'closet', gs: garments().map(snap), example: true }, ...invite]);
     openTray();
   }
 
   const decisionChips = (p, extra = []) => ({ t: 'chips', opts: [...extra,
-    { label: '살래', a: 'decide', v: 'buy', pid: p.id }, { label: '좀 더 볼래', a: 'decide', v: 'hold', pid: p.id }, { label: '안 살래', a: 'decide', v: 'skip', pid: p.id }] });
+    { label: '살래요', a: 'decide', v: 'buy', pid: p.id }, { label: '볼게요', a: 'decide', v: 'hold', pid: p.id }, { label: '안 살래요', a: 'decide', v: 'skip', pid: p.id }] });
 
   async function judgeTurn(p) {
     let j;
     try { j = P.judge(p); } catch {
-      await say(['이건 내가 비교를 못 하겠어.', { t: 's', text: '코디 비교에 쓰지 않는 상품이에요.' }, { t: 'note', pid: p.id }]);
+      await say(['이 옷은 비교하지 못해요.', { t: 's', text: '코디 비교에 쓰지 않는 상품이에요.' }, { t: 'note', pid: p.id }]);
       return;
     }
     const looks = j.looks.slice(0, 6).map((l) => ({
@@ -346,20 +347,20 @@
     const n = j.looks.length;
     const steps = [];
     if (j.verdict === 'yes') {
-      steps.push('있잖아,', '이거 네 옷장이랑 *잘 맞아.*', n > 1 ? `가진 옷이랑 ${n}가지로 바로 입을 수 있어.` : '가진 옷이랑 바로 입을 수 있어.', { t: 'looks', pid: p.id, looks });
+      steps.push('이거 내 옷장이랑', '*잘 맞아요.*', { t: 's', text: n > 1 ? `가진 옷과 ${n}가지로 바로 입을 수 있어요.` : '가진 옷과 바로 입을 수 있어요.' }, { t: 'looks', pid: p.id, looks });
     } else if (j.verdict === 'overlap') {
       const o = j.overlaps[0];
-      steps.push('있잖아,', '비슷한 거 이미 ~있잖아.~', { t: 'over', pid: p.id, g: snap(o), same: o.productId === p.id, more: j.overlaps.length - 1 });
-      if (n) steps.push('입을 데는 있는데, 겹치긴 해.', { t: 'looks', pid: p.id, looks });
+      steps.push('비슷한 옷이', '~이미 있어요.~', { t: 'over', pid: p.id, g: snap(o), same: o.productId === p.id, more: j.overlaps.length - 1 });
+      if (n) steps.push({ t: 's', text: '같이 입을 옷은 있지만, 겹쳐요.' }, { t: 'looks', pid: p.id, looks });
     } else if (j.empty) {
-      steps.push('음…', '네 옷장이 아직 비어 있어.', '가진 옷을 알려 주면 바로 봐 줄게.');
+      steps.push('옷장이 아직 비어 있어요.', { t: 's', text: '가진 옷을 알려 주시면 바로 봐 드릴게요.' });
     } else {
-      steps.push('음…', '같이 입을 옷을 네 옷장에서 아직 못 찾았어.', '비슷한 걸 가지고 있으면 알려 줘. 다시 봐 줄게.');
+      steps.push('아직 잘 모르겠어요.', { t: 's', text: '같이 입을 옷을 옷장에서 못 찾았어요. 비슷한 옷이 있으면 알려 주세요.' });
     }
     const prev = P.decisionOf(p);
-    if (prev) steps.push({ t: 's', text: `전에 '${DEC[prev]}'라고 했던 옷이야.` });
+    if (prev) steps.push({ t: 's', text: `전에 ‘${DEC[prev]}’를 고른 옷이에요.` });
     steps.push({ t: 'note', pid: p.id });
-    steps.push(decisionChips(p, j.verdict === 'unsure' ? [{ label: '옷장 더 알려 줄게', a: 'more', pid: p.id, lead: true }] : []));
+    steps.push(decisionChips(p, j.verdict === 'unsure' ? [{ label: '옷장 더 알려 줄게요', a: 'more', pid: p.id, lead: true }] : []));
     await say(steps);
   }
   function ask(p) {
@@ -379,23 +380,23 @@
     P.decide(p, v);
     updateCount();
     if (layerOpen) renderSheet();
-    const lines = v === 'buy' ? ['알았어, 기억해 둘게.', ...(P.meta.addOnBuy && !had ? ['옷장에 넣어 뒀어.'] : [])]
-      : v === 'hold' ? ['그래, 천천히 봐.'] : ['잘 참았어.'];
-    await say([...lines, { t: 'chips', opts: [{ label: '다른 것도 골라 줘', a: 'tray', lead: true }] }]);
+    const lines = v === 'buy' ? ['좋아요, 기억해 둘게요.', ...(P.meta.addOnBuy && !had ? [{ t: 's', text: '옷장에 넣어 뒀어요.' }] : [])]
+      : v === 'hold' ? ['네, 천천히 보세요.'] : ['알겠어요, 이번엔 넘길게요.'];
+    await say([...lines, { t: 'chips', opts: [{ label: '다른 옷도 골라 주세요', a: 'tray', lead: true }] }]);
   }
   async function tellMore(pid) {
     const p = P.product(pid);
     const cat = PAIR[P.category(p)] || 'top';
-    await say(['좋아. 비슷한 거 톡톡 골라 줘.', { t: 'picker', mode: 'more', pid, base: garments().length, cat },
-      { t: 'chips', opts: [{ label: '다 골랐어', a: 'moreDone', pid, lead: true }] }]);
+    await say(['비슷한 옷을 눌러 주세요.', { t: 'picker', mode: 'more', pid, base: garments().length, cat },
+      { t: 'chips', opts: [{ label: '다 골랐어요', a: 'moreDone', pid, lead: true }] }]);
   }
   async function moreDone(pid) {
     const picker = log.find((e) => e.t === 'picker');
     const added = picker ? pickedCount(picker) : 0;
     log.filter((e) => e.t === 'picker').forEach((e) => removeEntry(e.id));
     const p = P.product(pid);
-    if (!added) { await say(['알았어, 그대로 둘게.', ...(p ? [decisionChips(p)] : [])]); return; }
-    await say([`좋아, ${added}벌 더 기억했어.`, '다시 볼게.']);
+    if (!added) { await say(['그대로 둘게요.', ...(p ? [decisionChips(p)] : [])]); return; }
+    await say([`${added}벌 더 기억할게요.`, { t: 's', text: '다시 볼게요.' }]);
     if (p) await judgeTurn(p);
   }
 
@@ -432,8 +433,8 @@
       act(async () => {
         clearPending();
         userSays(text);
-        await say(['그 링크는 내가 못 읽어.', { t: 's', text: r.error || '상품 링크를 확인해 주세요.' }, '무신사 상품 링크면 돼. 아니면 내가 골라 줄게.',
-          { t: 'chips', opts: [{ label: '골라 줘', a: 'tray', lead: true }] }]);
+        await say(['이 링크는 읽지 못했어요.', { t: 's', text: r.error || '상품 링크를 확인해 주세요.' }, { t: 's', text: '무신사 상품 링크를 붙여 주세요.' },
+          { t: 'chips', opts: [{ label: '골라 주세요', a: 'tray', lead: true }] }]);
       });
       return;
     }
@@ -442,13 +443,13 @@
     act(async () => {
       clearPending();
       userSays(text);
-      if (found.length) await say([`‘${q}’ 찾아봤어.`, '이 중에 있어?', { t: 'found', pids: found.map((p) => p.id) }]);
-      else await say([`‘${q}’, 그건 못 찾았어.`, '상품 링크를 붙여 주면 바로 봐 줄게.', { t: 'chips', opts: [{ label: '골라 줘', a: 'tray' }] }]);
+      if (found.length) await say([`‘${q}’ 찾아봤어요.`, { t: 's', text: '이 중에 있나요?' }, { t: 'found', pids: found.map((p) => p.id) }]);
+      else await say([`‘${q}’는 못 찾았어요.`, { t: 's', text: '상품 링크를 붙여 주시면 바로 볼게요.' }, { t: 'chips', opts: [{ label: '골라 주세요', a: 'tray', lead: true }] }]);
     });
   }
   function syncGo() {
     const has = !!input.value.trim();
-    go.textContent = has ? '물어볼게' : '골라 줘';
+    go.textContent = has ? '물어보기' : '골라 주세요';
     go.classList.toggle('is-send', has);
     if (has) go.removeAttribute('aria-expanded'); else go.setAttribute('aria-expanded', String(trayOpen));
   }
@@ -466,10 +467,10 @@
     if (!P.record.started) return;
     const items = P.candidates({ limit: 10 });
     tray.innerHTML = `
-      <div class="tray-h"><p><b>내가 골라 봤어</b><span>네 옷장 기준으로 볼 만한 거</span></p>
+      <div class="tray-h"><p><b>이런 옷은 어때요?</b><span>내 옷장 기준으로 골랐어요</span></p>
         <button class="x" type="button" data-act="tray-close" aria-label="닫기">${CLOSE}</button></div>
       ${items.length ? `<div class="tray-row">${items.map((p, i) => productCard(p).replace('class="card"', `class="card" style="--i:${i}"`)).join('')}</div>`
-        : '<p class="tray-empty">지금은 골라 줄 게 없어. 링크를 붙여 줘.</p>'}`;
+        : '<p class="tray-empty">지금은 골라 드릴 옷이 없어요. 링크를 붙여 주세요.</p>'}`;
     trayOpen = true;
     tray.inert = false;
     trayWrap.classList.add('open');
@@ -484,7 +485,7 @@
     syncGo();
   }
 
-  // ── closet sheet: "네 옷장"
+  // ── closet sheet: "내 옷장"
   let layerOpen = false;
   let sheet = { cat: null, records: false, confirm: false };
   let lastFocus = null;
@@ -498,32 +499,32 @@
     const anyEx = gs.some((g) => exIds.has(g.id));
     return `
       <div class="sh-head">
-        <h2 id="sh-title" tabindex="-1">네 옷장 <span>${gs.length}벌</span></h2>
+        <h2 id="sh-title" tabindex="-1">내 옷장 <span>${gs.length}벌</span></h2>
         <button class="x" type="button" data-act="sheet-close" aria-label="닫기">${CLOSE}</button>
       </div>
       <button class="tally" type="button" data-act="records" aria-expanded="${sheet.records}" ${decs.length ? '' : 'disabled'}>
-        <span>살래 <b>${count('buy')}</b> · 볼래 <b>${count('hold')}</b> · 안 살래 <b>${count('skip')}</b></span>
+        <span>살래요 <b>${count('buy')}</b> · 볼게요 <b>${count('hold')}</b> · 안 살래요 <b>${count('skip')}</b></span>
         ${decs.length ? `<span class="tally-more">${sheet.records ? '접기' : '기록 보기'}</span>` : ''}
       </button>
       ${sheet.records && decs.length ? `<div class="recs">
         <ul>${decs.map((d) => { const p = P.product(d.productId); if (!p) return ''; return `<li><button type="button" class="rec" data-act="ask-from-sheet" data-pid="${esc(p.id)}">
           ${tile(p, 'xs')}<span class="rec-t"><span class="rec-n">${esc(p.name)}</span><span class="rec-p">${esc(P.price(d.price))}</span></span><span class="rec-d d-${d.decision}">${DEC_SHORT[d.decision]}</span></button></li>`; }).join('')}</ul>
-        ${count('skip') ? `<p class="recs-sum">안 살래 기록한 가격 합계 <b>${esc(P.price(skipSum))}</b></p>` : ''}
+        ${count('skip') ? `<p class="recs-sum">안 살래요 기록한 가격 합계 <b>${esc(P.price(skipSum))}</b></p>` : ''}
       </div>` : ''}
-      ${anyEx ? '<p class="sh-ex">‘예시’는 예시 옷장 옷이야. 빼고 네 옷으로 바꿔도 돼.</p>' : ''}
+      ${anyEx ? '<p class="sh-ex">‘예시’는 예시 옷장 옷이에요. 빼고 내 옷으로 바꿀 수 있어요.</p>' : ''}
       ${gs.length ? `<ul class="sh-grid">${gs.map((g) => `<li class="sh-g" data-gid="${esc(g.id)}">
           <span class="ph">${tile(g)}</span>
           <span class="sh-l">${esc(kc(g))}${exIds.has(g.id) ? '<span class="pc-ex">예시</span>' : ''}</span>
           <button class="rm" type="button" data-act="remove" data-gid="${esc(g.id)}" aria-label="${esc(kc(g))} 빼기">${CLOSE}</button>
-        </li>`).join('')}</ul>` : '<p class="sh-empty">아직 비어 있어. 아래에서 가진 거랑 비슷한 걸 골라 줘.</p>'}
+        </li>`).join('')}</ul>` : '<p class="sh-empty">아직 비어 있어요. 아래에서 가진 옷과 비슷한 걸 골라 주세요.</p>'}
       <section class="sh-add" aria-labelledby="sh-add-t">
-        <h3 id="sh-add-t">더 알려 줘 <span>가진 거랑 비슷한 걸 톡톡</span></h3>
+        <h3 id="sh-add-t">옷 더하기 <span>가진 옷과 비슷한 걸 눌러 주세요</span></h3>
         <div class="cats" role="group" aria-label="종류">${cats.map((c) => `<button class="cat${c === sheet.cat ? ' on' : ''}" type="button" data-act="sheet-cat" data-cat="${c}" aria-pressed="${c === sheet.cat}">${esc(P.cats[c])}</button>`).join('')}</div>
         <div class="pk-grid">${P.ownables(sheet.cat, { limit: 12 }).map((p) => { const on = P.owns(p); return `<button class="pk${on ? ' on' : ''}" type="button" data-act="sheet-own" data-pid="${esc(p.id)}" aria-pressed="${on}" aria-label="${esc(kc(p))} · ${esc(p.name)}">
           <span class="ph">${tile(p)}<span class="ck">${CHECK}</span></span><span class="pk-l">${esc(kc(p))}</span></button>`; }).join('')}</div>
       </section>
       <div class="sh-reset">${sheet.confirm
-        ? `<p>옷장이랑 대화를 다 지울까?</p><div><button type="button" class="chip danger" data-act="reset-yes">지울래</button><button type="button" class="chip" data-act="reset-no">아니</button></div>`
+        ? `<p>옷장과 대화를 모두 지울까요?</p><div><button type="button" class="chip danger" data-act="reset-yes">지울게요</button><button type="button" class="chip" data-act="reset-no">아니요</button></div>`
         : '<button type="button" class="reset-link" data-act="reset">처음부터 다시</button>'}</div>`;
   }
   function renderSheet() {
@@ -684,7 +685,7 @@
       act(async () => {
         if (log.length) add({ t: 'div', text: `${d.getMonth() + 1}월 ${d.getDate()}일` }, false);
         anchor = null;
-        await say(log.length > 1 ? ['또 왔네.', '궁금한 옷 있으면 링크 붙여 줘.'] : ['왔네.', invite]);
+        await say(log.length > 1 ? ['다시 오셨네요.', { t: 's', text: '궁금한 옷 링크를 붙여 주세요.' }] : ['다시 오셨네요.', ...invite]);
       });
     }
   }

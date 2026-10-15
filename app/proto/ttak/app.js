@@ -203,7 +203,8 @@
 
   // ── 판정: the stack ──────────────────────────────────
   const ensureQueue = () => { if (!ui.queue) ui.queue = P.candidates({ limit: 12 }); };
-  const leftHTML = () => `<span>남은 후보</span><b>${ui.queue.length}</b>${hasEx() ? '<em class="tt-exchip">예시 옷장 기준</em>' : ''}`;
+  const productsLeft = () => ui.queue.filter((x) => !x.summary).length;
+  const leftHTML = () => `<span>남은 후보</span><b>${productsLeft()}</b>${hasEx() ? '<em class="tt-exchip">예시 옷장 기준</em>' : ''}`;
   function judgeHTML() {
     ensureQueue();
     return `<header class="tt-jhead">
@@ -223,7 +224,29 @@
     card.style.transform = depthTf(d);
     card.style.setProperty('--dim', d === 0 ? 0 : d === 1 ? 0.45 : 0.72);
   }
+  const todayKey = () => new Date().toDateString();
+  function todayCounts() {
+    const c = { buy: 0, hold: 0, skip: 0, all: 0 };
+    P.record.decisions.forEach((d) => { if (new Date(d.at).toDateString() === todayKey()) { c[d.decision] += 1; c.all += 1; } });
+    return c;
+  }
+  // Every 5 judgments: a quiet pause card, swiped or tapped away without a decision.
+  function summaryHTML(item) {
+    const c = item.counts;
+    const line = `오늘 ${c.all}벌 판정 · 딱 ${c.buy} · 잠깐 ${c.hold} · 패스 ${c.skip}`;
+    return `<article class="tt-card tt-sum" data-pid="${esc(item.id)}" aria-label="${esc(line)}" aria-roledescription="요약 카드">
+      <div class="tt-shake"><div class="tt-card-in"><div class="tt-face tt-front tt-sum-front">
+        <span class="tt-sum-big" aria-hidden="true">${c.all}</span>
+        <p class="tt-sum-k">잠깐 쉬어 가기</p>
+        <p class="tt-sum-t">오늘 ${c.all}벌<br>판정</p>
+        <ul class="tt-sum-row" aria-hidden="true">${['buy', 'hold', 'skip'].map((d) => `<li><span class="tt-mstamp is-${d}">${WORD[d]}</span><b>${c[d]}</b></li>`).join('')}</ul>
+        <p class="tt-sum-s">남은 후보 ${productsLeft()}벌. 천천히 봐도 돼요.</p>
+        <button class="tt-sum-go" data-act="continue">계속 보기</button>
+      </div></div></div>
+    </article>`;
+  }
   function cardHTML(p, depth) {
+    if (p.summary) return summaryHTML(p);
     const j = judgeOf(p);
     const n = { looks: j.looks.length, used: j.used.length, over: j.overlaps.length };
     const label = `${p.brand} ${p.name}, ${P.price(p.price)}. 판정 ${STICKER_TXT[j.verdict]}. 코디 ${n.looks}, 어울리는 옷 ${n.used}, 겹침 ${n.over}`;
@@ -231,7 +254,7 @@
       <div class="tt-shake">
         <div class="tt-card-in">
           <div class="tt-face tt-front">
-            <div class="tt-photo">
+            <div class="tt-photo" data-cat="${P.category(p)}">
               <img src="${P.photo(p)}" alt="" draggable="false">
               <span class="tt-kc"><i style="background:${P.colorHex(p.color)}"></i>${esc(kc(p))}</span>
               <span class="tt-sticker is-${j.verdict}" aria-hidden="true">${STICKER[j.verdict]}</span>
@@ -317,6 +340,7 @@
     const top = $('.tt-card.is-top');
     if (!top) return;
     const p = ui.queue[0];
+    if (!p || p.summary) return;
     const fresh = document.createElement('div');
     fresh.innerHTML = cardHTML(p, 0);
     const nf = fresh.querySelector('.tt-info');
@@ -391,7 +415,7 @@
   // ── flip, drag, commit ───────────────────────────────
   function flip(force) {
     const card = $('.tt-card.is-top');
-    if (!card || ui.busy) return;
+    if (!card || ui.busy || ui.queue?.[0]?.summary) return;
     ui.flipped = typeof force === 'boolean' ? force : !ui.flipped;
     card.classList.toggle('is-flipped', ui.flipped);
     const back = card.querySelector('.tt-back');
@@ -511,6 +535,7 @@
     if (ui.busy || !ui.queue?.length) return;
     const card = $('.tt-card.is-top');
     if (!card) return;
+    if (ui.queue[0].summary) { dismissSummary(dir, rel); return; }
     ui.busy = true;
     cancelAnimationFrame(ui.raf);
     const hadFocus = card.contains(document.activeElement);
@@ -530,29 +555,33 @@
     shake.appendChild(stamp);
     card.classList.add('is-stamped');
     card.style.transform = `translate3d(${cur.x}px, ${cur.y}px, 0) rotate(${cur.r}deg)`;
+    // The first few stamps land with a shake and a ring; after that, just the stamp.
+    const calm = ui.session.length > 3;
     if (reduce) {
-      P.buzz(15);
-      await wait(260);
+      P.buzz(12);
+      await wait(220);
     } else {
       const slam = stamp.animate([
-        { transform: 'scale(1.6) rotate(-12deg)', opacity: 0, easing: 'cubic-bezier(.55,0,.9,.45)' },
-        { transform: 'scale(.95) rotate(-12deg)', opacity: 1, offset: 0.6, easing: 'cubic-bezier(.2,.8,.3,1)' },
-        { transform: 'scale(1.02) rotate(-12deg)', opacity: 1, offset: 0.82 },
+        { transform: 'scale(1.35) rotate(-12deg)', opacity: 0, easing: 'cubic-bezier(.55,0,.9,.45)' },
+        { transform: 'scale(.97) rotate(-12deg)', opacity: 1, offset: 0.6, easing: 'cubic-bezier(.2,.8,.3,1)' },
         { transform: 'scale(1) rotate(-12deg)', opacity: 1 },
-      ], { duration: 300, fill: 'both' });
-      await wait(178);
-      P.buzz(15);
-      shake.animate([
+      ], { duration: calm ? 190 : 230, fill: 'both' });
+      await wait(calm ? 115 : 140);
+      P.buzz(calm ? 8 : 15);
+      if (!calm) shake.animate([
         { transform: 'none' }, { transform: 'translate3d(-6px, 2px, 0) scale(.982)' }, { transform: 'translate3d(5px, -1px, 0) scale(.99)' },
         { transform: 'translate3d(-3px, 0, 0)' }, { transform: 'translate3d(1px, 0, 0)' }, { transform: 'none' },
-      ], { duration: 220, easing: 'linear' });
-      const ring = document.createElement('span');
-      ring.className = `tt-ring is-${dir}`;
-      shake.appendChild(ring);
-      ring.animate([{ opacity: 0.85, transform: 'scale(.85)' }, { opacity: 0, transform: 'scale(1.75)' }], { duration: 480, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+      ], { duration: 200, easing: 'linear' });
+      if (!calm) {
+        const ring = document.createElement('span');
+        ring.className = `tt-ring is-${dir}`;
+        shake.appendChild(ring);
+        ring.animate([{ opacity: 0.7, transform: 'scale(.85)' }, { opacity: 0, transform: 'scale(1.6)' }], { duration: 420, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+      }
       await slam.finished;
-      await wait(170);
+      await wait(calm ? 60 : 110);
     }
+    const needSum = ui.session.length % 5 === 0 && productsLeft() > 1;
     const s = card.parentElement;
     const next = s.querySelector('.tt-card[data-depth="1"]');
     const third = s.querySelector('.tt-card[data-depth="2"]');
@@ -566,7 +595,21 @@
     const toT = reduce ? fromT : `translate3d(${to.x}px, ${to.y}px, 0) rotate(${to.r}deg)`;
     card.classList.add('is-gone');
     const fly = card.animate([{ transform: fromT, opacity: 1 }, { transform: toT, opacity: reduce ? 0 : 1 }],
-      { duration: reduce ? 140 : 380, easing: rel ? 'cubic-bezier(.3,.45,.45,1)' : 'cubic-bezier(.6,0,.75,.35)', fill: 'forwards' });
+      { duration: reduce ? 140 : rel ? 260 : 290, easing: rel ? 'cubic-bezier(.3,.45,.45,1)' : 'cubic-bezier(.6,0,.75,.35)', fill: 'forwards' });
+    if (needSum) {
+      await fly.finished;
+      card.remove();
+      ui.queue.shift();
+      ui.queue.unshift({ summary: true, id: `sum-${ui.session.length}`, counts: todayCounts() });
+      ui.flipped = false;
+      renderStack();
+      const top = $('.tt-card.is-top');
+      if (top && !reduce) top.animate([{ opacity: 0, transform: 'translate3d(0, 24px, 0) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      if (dir === 'buy' && P.meta.addOnBuy && !wasOwned) toast('옷장에 걸었어요', { act: 'tab-closet', label: '보기' });
+      ui.busy = false;
+      if (hadFocus && top) top.focus({ preventScroll: true });
+      return;
+    }
     if (next) {
       next.style.transition = reduce ? 'none' : 'transform 520ms cubic-bezier(.3,1.4,.5,1)';
       requestAnimationFrame(() => setDepth(next, 0));
@@ -584,6 +627,30 @@
     if (hadFocus && top) top.focus({ preventScroll: true });
     if (next) setTimeout(() => { if (next.isConnected) next.style.transition = ''; }, 560);
     if (third) setTimeout(() => { if (third.isConnected) third.style.transition = ''; }, 600);
+  }
+
+  async function dismissSummary(dir = 'hold', rel = null) {
+    const card = $('.tt-card.is-top');
+    if (!card || ui.busy) return;
+    ui.busy = true;
+    cancelAnimationFrame(ui.raf);
+    const reduce = rm();
+    const cur = rel || (ui.spring ? { x: ui.spring.x, y: ui.spring.y, r: ui.spring.x * 0.055 * ui.spring.sign } : { x: 0, y: 0, r: 0 });
+    ui.spring = null;
+    const W = card.offsetWidth;
+    const H = card.offsetHeight;
+    const to = dir === 'buy' ? { x: W * 1.4, y: cur.y, r: 16 } : dir === 'skip' ? { x: -W * 1.4, y: cur.y, r: -16 } : { x: cur.x, y: -H * 1.15, r: 0 };
+    const fromT = `translate3d(${cur.x}px, ${cur.y}px, 0) rotate(${cur.r}deg)`;
+    const toT = reduce ? fromT : `translate3d(${to.x}px, ${to.y}px, 0) rotate(${to.r}deg)`;
+    card.classList.add('is-gone');
+    const next = card.parentElement.querySelector('.tt-card[data-depth="1"]');
+    if (next) { next.style.transition = reduce ? 'none' : 'transform 460ms cubic-bezier(.3,1.25,.5,1)'; requestAnimationFrame(() => setDepth(next, 0)); }
+    await card.animate([{ transform: fromT, opacity: 1 }, { transform: toT, opacity: 0 }], { duration: reduce ? 120 : 280, easing: 'cubic-bezier(.4,0,.7,.4)', fill: 'forwards' }).finished;
+    card.remove();
+    advanceStack();
+    ui.busy = false;
+    $('.tt-card.is-top')?.focus({ preventScroll: true });
+    if (next) setTimeout(() => { if (next.isConnected) next.style.transition = ''; }, 500);
   }
 
   // A product from a link or search goes on top of the stack.
@@ -853,6 +920,7 @@
       input.focus();
       $('.tt-sheet .tt-err').textContent = '';
     },
+    continue() { dismissSummary('hold'); },
     pushpid(el) { const p = P.product(el.dataset.pid); if (p) pushTop(p); },
     reload() {
       ui.queue = P.candidates({ limit: 12, includeDecided: false });
