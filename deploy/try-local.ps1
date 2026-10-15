@@ -65,7 +65,7 @@ try {
       -RedirectStandardOutput (Join-Path $data 'tunnel-out.log') -RedirectStandardError $tunnelLog
     for ($i = 0; $i -lt 60 -and -not $url; $i++) {
       Start-Sleep -Milliseconds 500
-      if (Test-Path $tunnelLog) { $url = (Select-String -Path $tunnelLog -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' | Select-Object -First 1).Matches.Value }
+      if (Test-Path $tunnelLog) { $url = (Select-String -Path $tunnelLog -Pattern 'https://(?!api\.)[a-z0-9-]+\.trycloudflare\.com' | Select-Object -First 1).Matches.Value }
     }
     if (-not $url) { Write-Host "주소를 만들지 못했어요. 기록: $tunnelLog"; exit 1 }
   }

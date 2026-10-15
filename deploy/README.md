@@ -30,6 +30,23 @@
 - 휴대폰 주소는 Cloudflare 임시 터널이라 켤 때마다 바뀌고, 주소를 아는 사람은 열 수 있습니다. 시험이 끝나면 꺼 주세요.
 - 이 PC에서 Claude 데스크톱 앱(또는 `claude remote-control`)을 켜고 "deploy/try-local로 어울 켜 줘"라고 하면, 설치와 실행을 Claude가 대신 진행합니다.
 
+## 운영과 같은 구성으로 시험하기 (스테이징, 도메인 없이)
+
+`try-local`은 앱을 써 보기에는 충분하지만 운영 구조(Docker 이미지, 데이터 볼륨, 자동 백업, 터널 컨테이너, 방문자 주소 처리)는 거치지 않습니다. 운영 전에 이 부분까지 확인하려면 Docker Desktop을 켜고 실행합니다.
+
+```bash
+bash deploy/staging-local.sh          # 켜기. 휴대폰 주소와 초대 코드를 보여 줌
+bash deploy/staging-local.sh url      # 주소 다시 보기
+bash deploy/staging-local.sh logs     # 서버 기록
+bash deploy/staging-local.sh down     # 끄기(데이터 남음)
+bash deploy/staging-local.sh reset    # 시험 데이터·백업까지 지우기
+```
+
+- 운영 파일(`docker-compose.yml`)을 그대로 쓰고, 터널만 `docker-compose.quick.yml`로 임시 주소로 바꿉니다.
+- 운영(`eoul`)과 이름(`eoul-staging`), 포트(8788), 내부 네트워크(172.31.88.0/24), 백업 폴더(`backups-staging`)를 따로 써서 같은 PC에서 함께 켜도 섞이지 않습니다.
+- 처음 실행하면 `deploy/.env.staging`(시험용 설정, 저장소에 올라가지 않음)을 만듭니다.
+- 이 위에서 6단계의 복구 훈련도 그대로 해 볼 수 있습니다(명령에 `-p eoul-staging --env-file .env.staging -f docker-compose.yml -f docker-compose.quick.yml`를 붙임).
+
 ## 준비물과 비용
 
 | 준비물 | 비용 | 메모 |

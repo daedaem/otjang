@@ -38,5 +38,6 @@ shots/
 
 # Deploy kit: local settings and database replicas
 /deploy/backups/
+/deploy/backups-staging/
 /deploy/policy/
 /server/policy/

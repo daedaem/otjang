@@ -72,7 +72,7 @@ if [ "$LOCAL" = 0 ]; then
   cloudflared tunnel --no-autoupdate --url "http://localhost:$PORT" >"$DATA/tunnel.log" 2>&1 &
   TUNNEL=$!
   for _ in $(seq 1 60); do
-    URL="$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$DATA/tunnel.log" | head -n 1 || true)"
+    URL="$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$DATA/tunnel.log" | grep -v '^https://api\.' | head -n 1 || true)"
     [ -n "$URL" ] && break
     sleep 0.5
   done

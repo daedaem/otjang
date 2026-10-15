@@ -1,0 +1,8 @@
+# 도메인 없이 운영과 같은 구성으로 시험하기(스테이징): 이름 있는 터널 대신 Cloudflare 임시 터널을 씁니다.
+# 이미지, 데이터 볼륨, 자동 백업, 방문자 주소 처리는 운영과 같습니다. 보통은 staging-local.sh가 이 파일을 씁니다.
+#   docker compose -p eoul-staging --env-file .env.staging -f docker-compose.yml -f docker-compose.quick.yml up -d --build
+services:
+  tunnel:
+    command: tunnel --no-autoupdate --url http://eoul:8787
+    environment:
+      TUNNEL_TOKEN: ""

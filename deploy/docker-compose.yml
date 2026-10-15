@@ -21,7 +21,7 @@ services:
         WITH_PHOTO_MASK: ${EOUL_WITH_PHOTO_MASK:-false}
     image: eoul:local
     restart: unless-stopped
-    env_file: .env
+    env_file: ${EOUL_ENV_FILE:-.env}
     environment:
       EOUL_HOST: 0.0.0.0
       EOUL_PORT: "8787"
@@ -77,7 +77,7 @@ services:
     # Same user as the server (node, 1000) so files beside the database stay writable by both.
     user: "1000:1000"
     command: replicate -config /etc/litestream.yml
-    env_file: .env
+    env_file: ${EOUL_ENV_FILE:-.env}
     environment:
       TUNNEL_TOKEN: ""
     volumes:
