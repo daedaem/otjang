@@ -39,8 +39,9 @@ import {
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, photoAsset } from './wardrobe-store.js';
 import { AGREEMENT_VERSION, accountServer, readAccount, writeAccount, clearAccount, createAccountApi, isEmptyWardrobe, syncDecision, pushWardrobe, pullWardrobe, withDeviceFields, sameWardrobe, wardrobeSummary } from './account.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
-import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, photoAssetWithoutBackground, normalizeCrop, dragCrop } from './garment-photo.js';
-import { createBackgroundRemover, maskCoverage, BACKGROUND_DOWNLOAD_LABEL } from './background-removal.js';
+import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, photoAssetWithoutBackground, photoPixels, normalizeCrop, dragCrop } from './garment-photo.js';
+import { createBackgroundRemover, maskCoverage, BACKGROUND_DOWNLOAD_LABEL, BACKGROUND_MASK_SIZE } from './background-removal.js';
+import { keepMainSubject } from './mask-cleanup.js';
 import { createPhotoRecognizer } from './photo-recognition.js';
 import { suggestPhotoIdentity } from './photo-identity.js';
 import { findOwnedCatalog } from './owned-catalog.js';
@@ -96,6 +97,8 @@ let photoAnalysisAllowed = false;
 let backgroundRemoverFactory = () => createBackgroundRemover();
 let backgroundRemover = null;
 let backgroundAllowed = false;
+// 로그인한 동안 서버가 배경 처리를 켰으면 서버의 큰 모델을 쓴다. 한 번 실패하면 이 세션은 기기 도구로 지운다.
+let backgroundServerOff = false;
 const journeyForms = new Map();
 let pendingOptionChange = null, candidateGarmentReview = null;
 let eraseReviewStep = 0,
@@ -1415,12 +1418,23 @@ async function applyDraftCrop(crop) {
 function backgroundPanel() {
   if (!draft) return '';
   if (draft.bgConsent) return `<div class="notice bg-consent"><p>배경 지우기 도구(${BACKGROUND_DOWNLOAD_LABEL})를 처음 한 번 내려받아요. 사진은 이 기기에서만 처리하고 밖으로 보내지 않아요. 옷과 배경 색이 비슷하면 잘 안 될 수 있어요.</p><div class="opts"><button class="btn small" data-action="bg-allow">내려받고 배경 지우기</button><button class="link" data-action="bg-consent-cancel">취소</button></div></div>`;
-  if (draft.bgRunning) return '<p role="status" class="sub">배경을 지우는 중이에요… 처음에는 도구를 내려받아 조금 더 걸려요.</p>';
+  if (draft.bgRunning) return `<p role="status" class="sub">${draft.bgVia === 'server' ? '배경을 지우는 중이에요…' : '배경을 지우는 중이에요… 처음에는 도구를 내려받아 조금 더 걸려요.'}</p>`;
   if (draft.bgError) return `<div class="photo-error"><p class="editor-error" role="alert">${esc(draft.bgError)}</p></div>`;
-  if (draft.bgBefore) return '<p class="fine">배경을 흰색으로 바꿨어요. 옷 가장자리가 잘렸으면 ‘원래 배경으로’를 눌러 주세요.</p>';
+  if (draft.bgBefore) return `<p class="fine">배경을 흰색으로 바꿨어요${draft.bgVia === 'server' ? '(운영자 서버에서 처리했고, 서버에 사진을 남기지 않아요)' : ''}. 옷 가장자리가 잘렸으면 ‘원래 배경으로’를 눌러 주세요.</p>`;
   return '';
 }
-async function removeDraftBackground() {
+async function serverBackgroundReady() {
+  if (!signedIn() || backgroundServerOff) return false;
+  if (!accountHealth) {
+    try {
+      accountHealth = await createAccountApi({ base: accountBase }).health();
+    } catch {
+      return false;
+    }
+  }
+  return !!accountHealth?.features?.photoMask;
+}
+async function removeDraftBackground({ via = 'device' } = {}) {
   const current = draft;
   if (!current || current.saving || current.processing || current.bgRunning) return;
   let blob = current.asset?.blob || null;
@@ -1430,13 +1444,29 @@ async function removeDraftBackground() {
   if (!blob || draft !== current) return;
   const token = current.token, bgToken = ++current.bgToken;
   current.bgRunning = true;
+  current.bgVia = via;
   current.bgError = '';
   addSheet();
   const live = () => draft === current && current.token === token && current.bgToken === bgToken;
   try {
-    backgroundRemover ||= backgroundRemoverFactory();
-    const { mask, size } = await backgroundRemover.segment(blob);
+    let result;
+    if (via === 'server') {
+      try {
+        result = { mask: await accountApi().photoMask(await photoPixels(blob, BACKGROUND_MASK_SIZE)), size: BACKGROUND_MASK_SIZE };
+      } catch (error) {
+        if (error?.name !== 'AccountError') throw error;
+        // 서버가 꺼졌거나 바쁘면 이번 세션은 이 기기 도구로 지운다. 로그인 만료는 계정 안내에도 보인다.
+        backgroundServerOff = true;
+        if (error.status === 401) syncFailed(error);
+        throw new Error('서버에서 배경을 지우지 못했어요. 다시 누르면 이 기기에서 지워요.');
+      }
+    } else {
+      backgroundRemover ||= backgroundRemoverFactory();
+      result = await backgroundRemover.segment(blob);
+    }
     if (!live()) return;
+    // 다른 물건까지 옷으로 잡힌 부분은 떼어 낸다(가장 큰 영역과 그 30% 이상인 영역만 남긴다).
+    const size = result.size, mask = keepMainSubject(result.mask, size);
     const cover = maskCoverage(mask);
     if (cover < 0.03 || cover > 0.97) throw new Error('옷을 배경과 구분하지 못했어요. 원래 사진을 그대로 쓸게요.');
     const asset = await photoAssetWithoutBackground(blob, mask, size);
@@ -1879,7 +1909,7 @@ const AGREEMENT_HTML = `<details class="agreement"><summary>개인정보 수집�
   <h3 class="block">개인정보 수집·이용</h3>
   <ul class="plain-list">
     <li><b>수집 항목</b>: 이메일, 비밀번호(되돌릴 수 없는 방식으로 바꿔 저장), 옷장 기록(옷 종류·색·브랜드·이름·구매 기록·찜·취향), 옷 사진</li>
-    <li><b>목적</b>: 본인 확인, 옷장을 서버에 보관하고 다른 기기와 맞추기</li>
+    <li><b>목적</b>: 본인 확인, 옷장을 서버에 보관하고 다른 기기와 맞추기, 로그인한 동안 누른 사진의 배경 지우기(줄인 사진을 서버에서 처리하고 저장하지 않아요)</li>
     <li><b>보관 기간</b>: 계정을 삭제할 때까지. 삭제하면 서버에서 바로 지워요. 운영자가 그 전에 만든 서버 백업 파일에는 백업 보관 기간 동안 남을 수 있어요.</li>
     <li><b>처리 장소</b>: 이 서비스 운영자가 직접 관리하는 서버. 사진과 기록을 외부 AI·분석·광고 서비스로 보내지 않아요.</li>
     <li>동의하지 않아도 이 기기에서는 지금처럼 쓸 수 있어요. 계정에 저장만 되지 않아요.</li>
@@ -2844,6 +2874,8 @@ document.addEventListener('click', async (e) => {
       }
       case 'bg-remove':
         if (!draft || draft.saving) break;
+        if (await serverBackgroundReady()) { await removeDraftBackground({ via: 'server' }); break; }
+        if (!draft) break;
         if (!backgroundAllowed) { draft.bgConsent = true; draft.bgError = ''; addSheet(); break; }
         await removeDraftBackground();
         break;

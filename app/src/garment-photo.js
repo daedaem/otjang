@@ -146,6 +146,29 @@ export function dragCrop(from, handle, dx, dy, min = 0.08) {
  * (0–255, `size`×`size`, stretched over the photo) and crop to the garment
  * with a small margin. Returns a stored-photo asset (JPEG).
  */
+/** The photo squeezed to size×size RGB bytes, the input the mask models expect (as the device worker draws it). */
+export async function photoPixels(blob, size) {
+  const decoded = await decodePhoto(blob);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('사진을 준비하지 못했습니다.');
+    ctx.drawImage(decoded.image, 0, 0, size, size);
+    const rgba = ctx.getImageData(0, 0, size, size).data;
+    const rgb = new Uint8Array(size * size * 3);
+    for (let p = 0; p < size * size; p++) {
+      rgb[p * 3] = rgba[p * 4];
+      rgb[p * 3 + 1] = rgba[p * 4 + 1];
+      rgb[p * 3 + 2] = rgba[p * 4 + 2];
+    }
+    return rgb;
+  } finally {
+    URL.revokeObjectURL(decoded.url);
+  }
+}
+
 export async function photoAssetWithoutBackground(blob, mask, size, { margin = 0.06 } = {}) {
   const decoded = await decodePhoto(blob);
   try {

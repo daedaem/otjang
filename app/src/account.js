@@ -100,6 +100,8 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
     putWardrobe: (baseRevision, state) => request('PUT', '/v1/wardrobe', { json: { baseRevision, state } }),
     putPhoto: (id, blob) => request('PUT', `/v1/photos/${encodeURIComponent(id)}`, { body: blob, type: 'image/jpeg' }),
     getPhoto: (id) => request('GET', `/v1/photos/${encodeURIComponent(id)}`, { raw: true }),
+    // A 320×320 RGB copy in, a 320×320 mask out; the server keeps neither.
+    photoMask: async (rgb) => new Uint8Array(await (await request('POST', '/v1/photo-mask', { body: rgb, type: 'application/octet-stream', raw: true })).arrayBuffer()),
   };
 }
 

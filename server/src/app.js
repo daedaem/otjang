@@ -15,6 +15,7 @@ import {
   newSessionToken, tokenHash, newUserId,
 } from './auth.js';
 import { createRateLimiter } from './rate-limit.js';
+import { MASK_INPUT_BYTES } from './photo-mask.js';
 // The sign-up notice the app shows and the version the server requires are one constant.
 import { AGREEMENT_VERSION } from '../../app/src/account.js';
 
@@ -95,7 +96,7 @@ function referencedPhotos(state) {
   return new Set((state?.garments || []).map((garment) => garment.photoId).filter(Boolean));
 }
 
-export function createApp({ db, config, now = () => Date.now(), log = () => {} }) {
+export function createApp({ db, config, maskService = null, now = () => Date.now(), log = () => {} }) {
   const limiter = createRateLimiter({ now });
   const q = {
     identity: db.prepare("SELECT user_id, email, password_hash FROM identities WHERE provider = 'email' AND subject = ?"),
@@ -175,6 +176,7 @@ export function createApp({ db, config, now = () => Date.now(), log = () => {} }
       agreementVersion: AGREEMENT_VERSION,
       signup: { inviteRequired: !!config.inviteCode },
       providers: { email: true, kakao: false, google: false },
+      features: { photoMask: !!maskService },
     }),
 
     'POST /v1/auth/signup': async (req) => {
@@ -296,6 +298,26 @@ export function createApp({ db, config, now = () => Date.now(), log = () => {} }
     },
   };
 
+  // A 320×320 RGB copy in, a 320×320 mask out. Held only in memory; not stored or logged.
+  async function photoMaskRoute(req, res) {
+    const session = authenticate(req);
+    if (!maskService) throw new HttpError(404, 'feature-off', '이 서버는 사진 배경 처리를 켜지 않았어요.');
+    limit(`mask:${session.userId}`, 60, 10 * 60 * 1000);
+    if ((req.headers['content-type'] || '').split(';')[0].trim().toLowerCase() !== 'application/octet-stream')
+      throw new HttpError(415, 'bytes-required', '사진 픽셀을 바이트로 보내 주세요.');
+    const rgb = await readBody(req, MASK_INPUT_BYTES);
+    if (rgb.length !== MASK_INPUT_BYTES) throw new HttpError(400, 'bad-size', '사진 크기가 맞지 않아요.');
+    let mask;
+    try {
+      mask = await maskService.mask(new Uint8Array(rgb.buffer, rgb.byteOffset, rgb.length));
+    } catch (error) {
+      if (error.code === 'busy') throw new HttpError(503, 'busy', '서버가 다른 사진을 처리하고 있어요.');
+      throw error;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': mask.length, 'Cache-Control': 'no-store' });
+    res.end(Buffer.from(mask.buffer, mask.byteOffset, mask.length));
+  }
+
   async function photoRoute(req, res, method, id) {
     const session = authenticate(req);
     if (method === 'GET') {
@@ -367,6 +389,7 @@ export function createApp({ db, config, now = () => Date.now(), log = () => {} }
       if (method === 'OPTIONS') return send(res, 204);
       if (url.pathname.startsWith('/v1/')) res.setHeader('Cache-Control', 'no-store');
       if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(res);
+      if (method === 'POST' && url.pathname === '/v1/photo-mask') return await photoMaskRoute(req, res);
       const photo = /^\/v1\/photos\/([^/]+)$/.exec(url.pathname);
       if (photo) {
         if (!PHOTO_ID.test(photo[1])) throw new HttpError(400, 'bad-photo-id', '사진 이름이 올바르지 않아요.');

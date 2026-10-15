@@ -3,18 +3,23 @@ import http from 'node:http';
 import { loadConfig } from './src/config.js';
 import { openDatabase } from './src/db.js';
 import { createApp } from './src/app.js';
+import { createMaskService } from './src/photo-mask.js';
 
 const config = loadConfig();
 const db = openDatabase(config.database);
-const app = createApp({
-  db,
-  config,
-  log: (kind, detail) => {
-    if (kind === 'error') console.error(new Date().toISOString(), detail);
-    else if (kind === 'request') console.log(new Date().toISOString(), detail);
-    else console.log(new Date().toISOString(), kind);
-  },
-});
+const log = (kind, detail) => {
+  if (kind === 'error') console.error(new Date().toISOString(), detail);
+  else if (kind === 'request') console.log(new Date().toISOString(), detail);
+  else console.log(new Date().toISOString(), kind);
+};
+let maskService = null;
+try {
+  maskService = await createMaskService({ modelFile: config.maskModel, threads: config.maskThreads, log: (message) => log(message) });
+} catch (error) {
+  log('error', error);
+  log('사진 배경 처리 꺼짐: 모델을 불러오지 못했어요.');
+}
+const app = createApp({ db, config, maskService, log });
 const server = http.createServer((req, res) => app.handle(req, res));
 server.requestTimeout = 120000;
 server.listen(config.port, config.host, () => {

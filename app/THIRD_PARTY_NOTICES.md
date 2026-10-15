@@ -15,6 +15,8 @@
 | 원 OpenAI CLIP 저장소 | 공식 `main/LICENSE` 조회 | MIT, Copyright (c) 2021 OpenAI |
 | `onnxruntime-web` (배경 지우기) | `1.22.0` | npm `package.json` 확인, MIT (Microsoft). CDN에서 내려받을 때 SHA-384를 확인 |
 | U-2-Netp 가중치 (배경 지우기) | HF `BritishWerewolf/U-2-Netp` revision `7112208dbac3a3642496c8d54e2f0f9bb3dc1dc8` | 원 U-2-Net 저장소 `LICENSE` Apache-2.0(xuebinqin/U-2-Net), ONNX 변환본 출처 rembg `LICENSE.txt` MIT (Copyright (c) 2020 Daniel Gatis), HF 모델 카드 Apache-2.0. 2026-10-15 확인. 원문 전문은 아직 이 파일에 옮기지 않았음 |
+| `onnxruntime-node` (서버 배경 처리, 선택 설치) | `1.22.0` | 설치 패키지 `package.json` 확인, MIT (Microsoft). `server/package.json`의 optionalDependencies, CPU 실행 파일만 사용(CUDA 내려받기 건너뜀) |
+| U-2-Net 가중치 (서버 배경 처리, 선택 설치) | rembg 릴리스 `v0.0.0`의 `u2net.onnx`, SHA-384 `pslaVs2e…77` 고정 | 원 U-2-Net 저장소 `LICENSE` Apache-2.0(xuebinqin/U-2-Net), ONNX 변환본 출처 rembg `LICENSE.txt` MIT (Copyright (c) 2020 Daniel Gatis). 2026-10-15 확인. 저장소에 넣지 않고 운영자가 `npm run fetch-model`로 받음 |
 
 앱이 사용하는 ONNX 모델은 `Xenova/clip-vit-base-patch32`, revision `d15189d7028b43f1d3e65039190477f6af591c2a`입니다. [모델 카드](https://huggingface.co/Xenova/clip-vit-base-patch32)는 OpenAI CLIP의 ONNX 변환임을 명시합니다. 원 CLIP MIT 원문을 아래에 보존하지만, 변환 저장소 전체에 별도 고지가 없다고 확인한 것으로 해석하지 않습니다. OCR 언어 서버, ONNX Runtime/WASM 및 번들 내부 의존성의 배포 고지는 자산을 추가·자체 호스팅할 때 해당 고정 릴리스에서 함께 확보해야 합니다.
 
