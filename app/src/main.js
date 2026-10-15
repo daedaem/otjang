@@ -36,7 +36,8 @@ import {
   slotForItem,
   wardrobeSlotStatus,
 } from './wardrobe.js';
-import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage } from './wardrobe-store.js';
+import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, photoAsset } from './wardrobe-store.js';
+import { AGREEMENT_VERSION, accountServer, readAccount, writeAccount, clearAccount, createAccountApi, isEmptyWardrobe, syncDecision, pushWardrobe, pullWardrobe, withDeviceFields, sameWardrobe, wardrobeSummary } from './account.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
 import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, photoAssetWithoutBackground, normalizeCrop, dragCrop } from './garment-photo.js';
 import { createBackgroundRemover, maskCoverage, BACKGROUND_DOWNLOAD_LABEL } from './background-removal.js';
@@ -155,6 +156,7 @@ async function bootWardrobe() {
     storageError = '';
     storageConflict = false;
     legacyChanged = (await legacyWardrobeFingerprint(localStorage.getItem(KEY))) !== state.legacyFingerprint;
+    kickSync();
   } catch (error) {
     storageReady = false;
     storageError = storageMessage(error);
@@ -184,6 +186,7 @@ async function set(patch, { rerender = true, assets = [] } = {}) {
     storageError = '';
     storageConflict = false;
     if (rerender) render();
+    kickSync();
   } catch (error) {
     storageError = storageMessage(error);
     storageConflict = error.code === 'conflict';
@@ -195,6 +198,7 @@ async function set(patch, { rerender = true, assets = [] } = {}) {
 function storageNotice() {
   const usage = journeyStorageUsage(state), wholeUsage = wardrobeStateStorageUsage(state);
   return (
+    accountNotice() +
     (usage.warning || wholeUsage.warning ? '<div class="notice"><b>기록이 많이 쌓였어요</b><p>저장 한도에 가까워졌어요. 사진 포함 백업을 받아 두세요. 기존 자료는 자동으로 지우지 않아요.</p><button class="link" data-action="backup">사진·전체 기록 백업 받기</button></div>' : '') +
     (storageError
       ? `<section class="storage-error" role="alert"><b>저장 확인이 필요해요</b><p>${esc(storageError)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button><button class="chip" data-action="choose-backup">정상 백업으로 복구</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button>${pendingLegacy?.initial ? '<button class="chip" data-action="review-legacy">누락 사진 확인하기</button>' : ''}</section>`
@@ -575,6 +579,10 @@ function renderCloset() {
 }
 // 실제 옷이 3벌 이상인데 백업 파일을 받은 적이 없거나 오래됐으면 한 번 알려 준다.
 function backupNudge(items) {
+  const nudge = accountNudge(items);
+  if (nudge) return nudge;
+  // 계정에 저장된 뒤에는 서버에도 사본이 있어 백업 파일 알림을 줄인다(파일 백업은 프로필에서 계속 받을 수 있다).
+  if (signedIn() && account.syncedAt) return '';
   if (state.demo || backupNudgeDismissed || !backupDue({ garmentCount: items.length, last: lastBackupAt() })) return '';
   const safari = isAppleTouchBrowser() && !isStandaloneApp();
   return `<div class="notice backup-nudge" role="status"><b>옷장이 이 기기 브라우저에만 있어요</b><p>${safari ? 'iPhone Safari는 7일 동안 열지 않은 사이트의 저장 자료를 지울 수 있어요. ' : ''}기기 변경·브라우저 정리에 대비해 사진 포함 백업 파일을 받아 두세요.</p><div class="opts"><button class="chip" data-action="backup">사진 포함 백업</button><button class="link" data-action="storage-help">보관 안내</button><button class="link" data-action="backup-nudge-dismiss">나중에</button></div></div>`;
@@ -960,6 +968,7 @@ function closeSheet() {
   candidateDraft = null;
   pendingOptionChange = null;
   candidateGarmentReview = null;
+  if (!accountForm?.busy) accountForm = null;
   sheetKey = null;
 }
 
@@ -1625,7 +1634,8 @@ function optionSheet(kind) {
     </div>
     ${state.brands.length ? `<label class="toggle"><input type="checkbox" id="brand-only" data-action="toggle-brand-only-box" ${state.brandOnly ? 'checked' : ''}> 내 브랜드 상품만 추천</label>` : ''}</div>
     <div class="opt-group"><h3>한 벌 예산</h3><div class="opts">${budgetOpts}</div></div>
-    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 이 브라우저에 저장돼요. 다른 기기에서는 백업 파일로 옮길 수 있습니다.</p><div id="storage-health">${storageHealthHTML()}</div><button class="link" data-action="storage-help">보관 안내 보기</button>
+    ${accountSection()}
+    <div class="opt-group"><h3>저장된 정보</h3><p class="sub">옷장·사진·찜·취향은 먼저 이 브라우저에 저장돼요. ${signedIn() ? '로그인한 동안에는 계정에도 저장해요.' : '다른 기기에서는 백업 파일로 옮길 수 있습니다.'}</p><div id="storage-health">${storageHealthHTML()}</div><button class="link" data-action="storage-help">보관 안내 보기</button>
       <button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><p class="sub">현재 옷장을 비워도 이전 버전의 자료와 복구용 사본은 유지됩니다.</p><button class="chip" data-action="reset" style="margin-top:10px">현재 옷장 비우기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button></div>
   `);
   refreshStorageHealth();
@@ -1654,7 +1664,7 @@ function askPersistenceOnce() {
 function storageHelpSheet() {
   const safari = isAppleTouchBrowser();
   openSheet(`<h2>이 기기 보관 안내</h2>
-    <p>옷장·사진·구매 기록은 지금 이 브라우저 안에만 저장돼요. 서버 백업과 계정은 아직 없어서, 사이트 데이터 삭제·브라우저 삭제·기기 변경에서 자료를 되살릴 방법은 <b>사진 포함 백업 파일</b>뿐이에요.</p>
+    ${accountBase ? `<p>옷장·사진·구매 기록은 먼저 이 브라우저 안에 저장돼요. ${signedIn() ? '로그인한 동안에는 계정에도 저장하므로, 브라우저 자료가 지워져도 다시 로그인해 받을 수 있어요.' : '<b>계정에 저장</b>하거나 <b>사진 포함 백업 파일</b>을 받아 두면 사이트 데이터 삭제·브라우저 삭제·기기 변경 뒤에도 되살릴 수 있어요.'}</p>${signedIn() ? '' : '<div class="opts"><button class="btn small" data-action="account-open" data-mode="signup">계정에 저장</button></div>'}` : '<p>옷장·사진·구매 기록은 지금 이 브라우저 안에만 저장돼요. 서버 백업과 계정은 아직 없어서, 사이트 데이터 삭제·브라우저 삭제·기기 변경에서 자료를 되살릴 방법은 <b>사진 포함 백업 파일</b>뿐이에요.</p>'}
     <div id="storage-health">${storageHealthHTML()}</div>
     <div class="opts"><button class="chip" data-action="backup">사진 포함 백업</button><button class="chip" data-action="choose-backup">백업 가져오기</button><button class="chip" data-action="request-persist">오래 보관 요청</button></div>
     <h3 class="block">브라우저가 지울 수 있는 경우</h3>
@@ -1669,10 +1679,362 @@ function storageHelpSheet() {
   refreshStorageHealth();
 }
 
+// ── 계정과 동기화
+// 저장은 언제나 이 기기에 먼저 한다(화면은 서버를 기다리지 않는다). 로그인한 기기는 저장이 끝난
+// 옷장을 뒤에서 운영자 서버로 옮긴다. 이 기기와 계정이 서로 다르게 바뀌었으면 자동으로 합치지 않고 묻는다.
+const accountBase = accountServer();
+let account = accountBase ? readAccount(localStorage, accountBase) : null;
+let accountHealth = null;
+let accountForm = null;
+let accountNudgeDismissed = false;
+let syncState = { phase: account?.token ? 'idle' : 'signed-out', message: '', progress: '' };
+let syncChoice = null;
+let syncRunning = null, syncQueued = false, syncRetryTimer = null, syncRetryDelay = 5000;
+const signedIn = () => !!(accountBase && account?.token);
+// 동기화 도중 로그아웃하거나 다른 계정으로 로그인하면, 이전 계정에서 받은 결과를 이 기기와 새 계정 기록에 쓰지 않는다.
+const sameSession = (token) => signedIn() && account.token === token;
+const accountApi = () => createAccountApi({ base: accountBase, token: account?.token || null });
+function saveAccount(next) {
+  account = next;
+  if (next) writeAccount(localStorage, { ...next, server: accountBase });
+  else clearAccount(localStorage);
+}
+function syncTime(iso) {
+  const at = new Date(iso);
+  if (!Number.isFinite(at.getTime())) return '';
+  const now = new Date();
+  if (now - at < 60000) return '방금';
+  const hm = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+  return at.toDateString() === now.toDateString() ? hm : `${at.getMonth() + 1}. ${at.getDate()}. ${hm}`;
+}
+// 시트의 계정 칸만 바꾼다(검색 입력 중인 본문을 다시 그리지 않는다)
+function refreshAccountViews({ notice = false } = {}) {
+  const box = $sheet.querySelector?.('#account-box');
+  if (box) box.innerHTML = accountStatusHTML();
+  if (notice) render();
+}
+function setSyncState(next, { notice = false } = {}) {
+  const changedNotice = notice || (next.phase !== syncState.phase && ['choose', 'signed-out'].includes(next.phase) !== ['choose', 'signed-out'].includes(syncState.phase));
+  syncState = { message: '', progress: '', ...next };
+  refreshAccountViews({ notice: changedNotice });
+}
+
+/** 지금 상태를 계정과 맞춘다. 이미 도는 중이면 끝난 뒤 한 번 더 확인한다. */
+function kickSync() {
+  if (!signedIn() || !storageReady || erasingAll) return Promise.resolve();
+  if (syncRunning) {
+    syncQueued = true;
+    return syncRunning;
+  }
+  clearTimeout(syncRetryTimer);
+  syncRunning = (async () => {
+    try {
+      let rounds = 0;
+      while (signedIn() && rounds++ < 5) {
+        syncQueued = false;
+        const token = account.token;
+        try {
+          await syncOnce();
+        } catch (error) {
+          // 이전 계정에서 난 실패(로그아웃으로 만료된 토큰 등)는 새로 로그인한 계정에 적용하지 않는다.
+          if (sameSession(token)) throw error;
+          syncQueued = signedIn();
+        }
+        if (!syncQueued) break;
+      }
+      syncRetryDelay = 5000;
+    } catch (error) {
+      syncFailed(error);
+    } finally {
+      syncRunning = null;
+    }
+  })();
+  return syncRunning;
+}
+function syncFailed(error) {
+  if (error?.status === 401) {
+    saveAccount({ ...account, token: null });
+    setSyncState({ phase: 'signed-out', message: '로그인이 만료됐어요. 다시 로그인하면 이어서 저장해요.' });
+    return;
+  }
+  if (error?.code === 'offline' || error?.code === 'busy' || error?.status === 429 || error?.status >= 500) {
+    setSyncState({ phase: 'offline', message: error.code === 'busy' ? '이 기기 저장이 끝나면 다시 올려요.' : '서버에 연결하지 못했어요. 이 기기에는 저장돼 있어요.' });
+    syncRetryTimer = setTimeout(kickSync, syncRetryDelay);
+    syncRetryDelay = Math.min(syncRetryDelay * 2, 5 * 60 * 1000);
+    return;
+  }
+  setSyncState({ phase: 'error', message: error?.message || '계정에 저장하지 못했어요. 이 기기에는 저장돼 있어요.' });
+}
+async function syncOnce() {
+  const token = account.token;
+  const api = accountApi();
+  const moved = () => {
+    if (sameSession(token)) return false;
+    syncQueued = signedIn();
+    return true;
+  };
+  if (syncState.phase !== 'choose') setSyncState({ phase: 'syncing' });
+  // 이전 버전에서 만든 기록에는 저장소 구분값(epoch)이 없을 수 있다. 한 번 저장해 붙인 뒤 비교한다.
+  if (!storageEpoch) {
+    if (writeBusy) throw Object.assign(new Error('busy'), { code: 'busy' });
+    await set(storedWardrobe(state), { rerender: false });
+  }
+  const remote = await api.wardrobeMeta();
+  if (moved()) return;
+  const decision = syncDecision({
+    synced: account.synced || null,
+    local: { revision: storageRevision, epoch: storageEpoch, empty: isEmptyWardrobe(state) },
+    remote,
+  });
+  if (decision === 'none') {
+    syncChoice = null;
+    setSyncState({ phase: 'idle' });
+    return;
+  }
+  if (decision === 'push') return pushLocalWardrobe(api, remote.revision, token);
+  if (decision === 'pull') {
+    const known = !!account.synced;
+    if (await replaceWithAccountWardrobe(api, null, token)) toast(known ? '다른 기기에서 바뀐 옷장을 받았어요' : '계정에 저장된 옷장을 받았어요');
+    return;
+  }
+  if (syncChoice?.remote.revision !== remote.revision) {
+    const full = await api.wardrobe();
+    if (moved()) return;
+    syncChoice = { remote: full };
+  }
+  // 두 쪽 내용이 같으면(다시 로그인, 같은 백업으로 복원) 고를 것이 없다. 지금을 동기화 지점으로 삼는다.
+  if (sameWardrobe(syncChoice.remote.state, storedWardrobe(state)) && syncChoice.remote.revision === remote.revision) {
+    saveAccount({
+      ...account,
+      synced: { remoteRevision: remote.revision, localEpoch: storageEpoch, localRevision: storageRevision },
+      syncedAt: syncChoice.remote.updatedAt,
+    });
+    syncChoice = null;
+    setSyncState({ phase: 'idle' });
+    return;
+  }
+  setSyncState({ phase: 'choose' });
+}
+async function pushLocalWardrobe(api, baseRevision, token = account?.token) {
+  const snapshot = await wardrobeStore.read();
+  if (!snapshot) return;
+  let pushed;
+  try {
+    pushed = await pushWardrobe({
+      api, snapshot, baseRevision,
+      onPhoto: (done, total) => setSyncState({ phase: 'syncing', progress: `사진 ${done}/${total}` }),
+    });
+  } catch (error) {
+    // 그 사이 다른 기기가 계정 옷장을 바꿨다. 다시 비교하면 고르기로 넘어간다.
+    if (error.code === 'conflict') {
+      syncQueued = true;
+      return;
+    }
+    throw error;
+  }
+  if (!sameSession(token)) {
+    syncQueued = signedIn();
+    return;
+  }
+  saveAccount({
+    ...account,
+    synced: { remoteRevision: pushed.revision, localEpoch: snapshot.epoch || null, localRevision: snapshot.revision },
+    syncedAt: pushed.updatedAt,
+  });
+  syncChoice = null;
+  if (snapshot.revision !== storageRevision || (snapshot.epoch || null) !== storageEpoch) syncQueued = true;
+  setSyncState({ phase: 'idle' });
+}
+// 계정 옷장으로 이 기기 옷장을 바꾼다. 이 기기의 이전 버전 가져오기 표시는 유지한다.
+async function replaceWithAccountWardrobe(api, remote, token = account?.token) {
+  const before = { revision: storageRevision, epoch: storageEpoch };
+  setSyncState({ phase: 'syncing', progress: '계정 옷장 받는 중' });
+  const pulled = await pullWardrobe({
+    api, remote, verify: photoAsset,
+    onPhoto: (done, total) => setSyncState({ phase: 'syncing', progress: `사진 ${done}/${total}` }),
+  });
+  // 받는 동안 이 기기에서 저장했거나 계정이 바뀌었으면 덮어쓰지 않고 다시 비교한다.
+  if (storageRevision !== before.revision || storageEpoch !== before.epoch || !sameSession(token)) {
+    syncQueued = true;
+    return false;
+  }
+  if (writeBusy) throw Object.assign(new Error('busy'), { code: 'busy' });
+  await set(withDeviceFields(pulled.state, storedWardrobe(state)), { assets: pulled.assets });
+  if (!sameSession(token)) {
+    syncQueued = signedIn();
+    return false;
+  }
+  saveAccount({
+    ...account,
+    synced: { remoteRevision: pulled.revision, localEpoch: storageEpoch, localRevision: storageRevision },
+    syncedAt: pulled.updatedAt,
+  });
+  syncChoice = null;
+  setSyncState({ phase: 'idle' }, { notice: true });
+  return true;
+}
+
+function accountStatusHTML() {
+  if (!signedIn()) return '';
+  const s = syncState;
+  const line =
+    s.phase === 'syncing' ? `계정에 저장하는 중${s.progress ? ` · ${s.progress}` : ''}` :
+    s.phase === 'choose' ? '계정 옷장과 이 기기 옷장이 서로 다르게 바뀌었어요. 어느 쪽을 쓸지 골라 주세요.' :
+    s.phase === 'offline' || s.phase === 'error' ? s.message :
+    account.syncedAt ? `계정에 저장됨 · ${syncTime(account.syncedAt)}` : '아직 계정에 저장하지 않았어요';
+  return `<p><b>${esc(account.email)}</b></p><p class="sub" role="status">${esc(line)}</p>
+    <div class="opts">${s.phase === 'choose' ? '<button class="btn small" data-action="sync-choose">어느 옷장을 쓸지 고르기</button>' : '<button class="chip" data-action="sync-now">지금 저장·확인</button>'}<button class="chip" data-action="account-logout">로그아웃</button><button class="link" data-action="account-delete-open">계정 삭제</button></div>`;
+}
+function accountSection() {
+  if (!accountBase) return '';
+  if (signedIn()) return `<div class="opt-group"><h3>계정</h3><div class="account-box" id="account-box">${accountStatusHTML()}</div></div>`;
+  return `<div class="opt-group"><h3>계정</h3><p class="sub">이메일로 가입하면 옷장·사진·구매 기록·취향을 운영자 서버에 저장해요. 휴대폰을 바꾸거나 브라우저 자료가 지워져도 로그인해서 다시 받을 수 있어요.</p>${account?.email ? `<p class="fine">${esc(account.email)} · ${esc(syncState.message || '로그인하면 이어서 저장해요.')}</p>` : ''}<div class="opts"><button class="btn small" data-action="account-open" data-mode="${account?.email ? 'login' : 'signup'}">${account?.email ? '다시 로그인' : '계정에 저장'}</button><button class="chip" data-action="account-open" data-mode="${account?.email ? 'signup' : 'login'}">${account?.email ? '새 계정 만들기' : '로그인'}</button></div></div>`;
+}
+function accountNotice() {
+  if (!accountBase) return '';
+  if (signedIn() && syncState.phase === 'choose')
+    return '<div class="notice account-notice" role="status"><b>계정 옷장과 이 기기 옷장이 달라요</b><p>자동으로 합치지 않았어요. 어느 쪽을 쓸지 골라 주세요. 그때까지 이 기기에는 계속 저장돼요.</p><button class="chip" data-action="sync-choose">확인하기</button></div>';
+  if (!signedIn() && account?.email && syncState.message)
+    return `<div class="notice account-notice" role="status"><b>계정에 저장하지 못하고 있어요</b><p>${esc(syncState.message)}</p><button class="chip" data-action="account-open" data-mode="login">로그인</button></div>`;
+  return '';
+}
+// 써 본 뒤 저장할 때: 개인 옷을 처음 넣은 뒤 옷장에서 한 번 권한다.
+function accountNudge(items) {
+  if (!accountBase || signedIn() || account?.email || accountNudgeDismissed || state.demo || !items.length) return '';
+  return '<div class="notice backup-nudge account-nudge" role="status"><b>계정에 저장해 둘까요?</b><p>지금은 이 기기 브라우저에만 있어요. 이메일로 가입하면 기기를 바꾸거나 브라우저 자료가 지워져도 다시 받을 수 있어요.</p><div class="opts"><button class="btn small" data-action="account-open" data-mode="signup">계정에 저장</button><button class="link" data-action="account-open" data-mode="login">로그인</button><button class="link" data-action="account-nudge-dismiss">나중에</button></div></div>';
+}
+
+const AGREEMENT_HTML = `<details class="agreement"><summary>개인정보 수집·이용 안내와 이용 조건 (필수)</summary>
+  <h3 class="block">개인정보 수집·이용</h3>
+  <ul class="plain-list">
+    <li><b>수집 항목</b>: 이메일, 비밀번호(되돌릴 수 없는 방식으로 바꿔 저장), 옷장 기록(옷 종류·색·브랜드·이름·구매 기록·찜·취향), 옷 사진</li>
+    <li><b>목적</b>: 본인 확인, 옷장을 서버에 보관하고 다른 기기와 맞추기</li>
+    <li><b>보관 기간</b>: 계정을 삭제할 때까지. 삭제하면 서버에서 바로 지워요. 운영자가 그 전에 만든 서버 백업 파일에는 백업 보관 기간 동안 남을 수 있어요.</li>
+    <li><b>처리 장소</b>: 이 서비스 운영자가 직접 관리하는 서버. 사진과 기록을 외부 AI·분석·광고 서비스로 보내지 않아요.</li>
+    <li>동의하지 않아도 이 기기에서는 지금처럼 쓸 수 있어요. 계정에 저장만 되지 않아요.</li>
+  </ul>
+  <h3 class="block">이용 조건</h3>
+  <ul class="plain-list">
+    <li>시험 중인 서비스예요. 예고 없이 멈추거나 자료가 초기화될 수 있으니 중요한 옷장은 사진 포함 백업 파일도 받아 두세요.</li>
+    <li>사진에는 옷만 나오게 찍어 주세요. 얼굴이나 다른 사람이 나온 사진은 올리지 마세요.</li>
+    <li>이메일 확인과 비밀번호 찾기는 아직 없어요. 비밀번호를 잊으면 운영자에게 직접 문의해야 해요.</li>
+  </ul>
+  <p class="fine">안내 버전 ${AGREEMENT_VERSION}</p>
+</details>`;
+async function openAccountSheet(mode = 'signup') {
+  if (!accountBase) return;
+  accountForm = { mode, email: accountForm?.email || account?.email || '', password: '', invite: '', age14: false, terms: false, privacy: false, busy: false, error: '' };
+  accountSheet();
+  if (!accountHealth) {
+    try {
+      accountHealth = await createAccountApi({ base: accountBase }).health();
+      // 폼을 다시 그리면 입력 중인 비밀번호가 지워지므로, 초대 코드 칸만 자리에 끼워 넣는다.
+      if (accountForm?.mode === 'signup' && !accountForm.busy && accountHealth?.signup?.inviteRequired) {
+        const slot = $sheet.querySelector?.('#account-invite-slot');
+        if (slot) slot.innerHTML = inviteFieldHTML();
+        else accountSheet();
+      }
+    } catch {}
+  }
+}
+function inviteFieldHTML() {
+  return `<label for="account-invite">초대 코드</label><input id="account-invite" name="invite" autocomplete="off" value="${esc(accountForm?.invite || '')}" required>`;
+}
+function accountSheet() {
+  const f = accountForm;
+  if (!f) return;
+  const busy = f.busy ? ' disabled' : '';
+  const error = f.error ? `<p class="notice" role="alert">${esc(f.error)}</p>` : '';
+  if (f.mode === 'delete') {
+    openSheet(`<h2>계정 삭제</h2><p>${esc(account?.email || '')} 계정과 서버에 저장된 옷장·사진·구매 기록을 영구 삭제해요. 이 기기에 저장된 옷장은 지우지 않아요.</p>
+      <form data-action="account" class="account-form"><label for="account-delete-password">비밀번호 확인</label><input id="account-delete-password" name="password" type="password" autocomplete="current-password" required>
+      ${error}<button class="btn" type="submit"${busy}>${f.busy ? '삭제하는 중…' : '계정과 서버 자료 영구 삭제'}</button></form>
+      <p class="fine">운영자가 이전에 만든 서버 백업 파일에는 백업 보관 기간 동안 남을 수 있어요.</p>`, { key: 'account' });
+    return;
+  }
+  const signup = f.mode === 'signup';
+  const garments = state.demo ? 0 : state.garments.length;
+  const invite = `<div id="account-invite-slot" class="account-invite">${signup && accountHealth?.signup?.inviteRequired ? inviteFieldHTML() : ''}</div>`;
+  const check = (field, label) => `<label class="toggle"><input type="checkbox" data-action="account-check" data-field="${field}"${f[field] ? ' checked' : ''}> ${label}</label>`;
+  openSheet(`<h2>${signup ? '계정에 저장' : '로그인'}</h2>
+    <p class="sub">${signup ? `이메일로 가입하면 지금 옷장(${garments ? `옷 ${garments}벌` : '취향·찜'}${photoBlobs.size ? `·사진 ${photoBlobs.size}장` : ''})을 계정에 저장해요. 저장은 뒤에서 하니 바로 계속 쓰면 돼요.` : '로그인하면 계정에 저장된 옷장과 이 기기 옷장을 맞춰요. 둘 다 내용이 있으면 어느 쪽을 쓸지 물어요.'}</p>
+    <form data-action="account" class="account-form">
+      <label for="account-email">이메일</label><input id="account-email" name="email" type="email" inputmode="email" autocomplete="${signup ? 'email' : 'username'}" value="${esc(f.email)}" required>
+      <label for="account-password">비밀번호${signup ? ' (8자 이상)' : ''}</label><input id="account-password" name="password" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" minlength="${signup ? 8 : 1}" required>
+      ${invite}
+      ${signup ? `${AGREEMENT_HTML}${check('age14', '만 14세 이상이에요 (필수)')}${check('privacy', '개인정보 수집·이용에 동의해요 (필수)')}${check('terms', '이용 조건에 동의해요 (필수)')}` : ''}
+      ${error}
+      <button class="btn" type="submit"${busy}>${f.busy ? '확인하는 중…' : signup ? '가입하고 계정에 저장' : '로그인'}</button>
+    </form>
+    <button class="link" data-action="account-mode" data-mode="${signup ? 'login' : 'signup'}">${signup ? '이미 계정이 있어요 · 로그인' : '계정이 없어요 · 가입하기'}</button>`, { key: 'account' });
+}
+async function submitAccountForm(form) {
+  const f = accountForm;
+  if (!f || f.busy) return;
+  // 비밀번호 관리자가 채운 값은 input 이벤트 없이 들어올 수 있어 제출할 때 폼에서 다시 읽는다.
+  for (const field of ['email', 'password', 'invite']) if (typeof form?.[field]?.value === 'string') f[field] = form[field].value;
+  f.email = f.email.trim();
+  if (f.mode === 'signup' && !(f.age14 && f.privacy && f.terms)) {
+    f.error = '필수 항목 세 가지에 동의해야 가입할 수 있어요. 동의하지 않아도 이 기기에서는 계속 쓸 수 있어요.';
+    accountSheet();
+    return;
+  }
+  f.busy = true;
+  f.error = '';
+  accountSheet();
+  try {
+    if (f.mode === 'delete') {
+      await accountApi().deleteAccount(f.password);
+      saveAccount(null);
+      syncChoice = null;
+      accountForm = null;
+      setSyncState({ phase: 'signed-out' }, { notice: true });
+      closeSheet();
+      toast('계정과 서버의 옷장을 삭제했어요. 이 기기의 옷장은 그대로예요');
+      return;
+    }
+    const api = createAccountApi({ base: accountBase });
+    const result = f.mode === 'signup'
+      ? await api.signup({ email: f.email, password: f.password, inviteCode: f.invite || undefined, agreements: { version: AGREEMENT_VERSION, age14: true, privacy: true, terms: true } })
+      : await api.login({ email: f.email, password: f.password });
+    // 같은 계정으로 다시 로그인하면 마지막 동기화 지점을 이어 쓴다.
+    const same = account?.userId === result.user.id;
+    saveAccount({ email: result.user.email, userId: result.user.id, token: result.token, synced: same ? account.synced || null : null, syncedAt: same ? account.syncedAt || null : null });
+    syncChoice = null;
+    if (accountForm === f) accountForm = null;
+    setSyncState({ phase: 'idle' }, { notice: true });
+    closeSheet();
+    toast(f.mode === 'signup' ? '가입했어요. 옷장을 뒤에서 계정에 저장해요' : '로그인했어요. 계정 옷장과 맞추고 있어요');
+    await kickSync();
+  } catch (error) {
+    f.busy = false;
+    f.password = '';
+    f.error = error.status === 401 && f.mode === 'delete' ? '비밀번호가 맞지 않아요.' : error.message;
+    if (error.status === 401 && f.mode === 'delete') {
+      // 로그인이 만료된 경우에도 같은 응답이 온다. 다시 로그인한 뒤 삭제하게 한다.
+      if (error.code === 'signed-out') { saveAccount({ ...account, token: null }); f.error = '로그인이 만료됐어요. 다시 로그인한 뒤 삭제해 주세요.'; }
+    }
+    if (accountForm === f) accountSheet();
+  }
+}
+function syncChoiceSheet() {
+  const c = syncChoice;
+  if (!c?.remote) return;
+  openSheet(`<h2>어느 옷장을 쓸까요?</h2>
+    <p>계정에 저장된 옷장과 이 기기 옷장이 서로 다르게 바뀌었어요. 자동으로 합치지 않아요.</p>
+    <section class="sync-choice"><h3>계정 옷장</h3><p>${esc(wardrobeSummary(c.remote.state, c.remote.photoIds?.length || 0))}${c.remote.updatedAt ? ` · 마지막 저장 ${esc(syncTime(c.remote.updatedAt))}` : ''}</p>
+      <button class="btn" data-action="sync-use-account">계정 옷장으로 바꾸기</button>
+      <p class="fine">이 기기 옷장이 계정 옷장으로 바뀌어요. 필요하면 먼저 이 기기 옷장을 백업 파일로 받아 두세요.</p><button class="chip" data-action="backup">이 기기 옷장 백업</button></section>
+    <section class="sync-choice"><h3>이 기기 옷장</h3><p>${esc(wardrobeSummary(storedWardrobe(state), photoBlobs.size))}</p>
+      <button class="btn secondary" data-action="sync-use-device">이 기기 옷장을 계정에 저장</button>
+      <p class="fine">계정에 있던 옷장이 이 기기 옷장으로 바뀌어요.</p></section>
+    <button class="link" data-action="close-sheet">나중에 정하기</button>`, { key: 'sync-choice' });
+}
+
 // ── 알림
 function showEraseReview(step = 1) {
   openSheet(
-    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다. Claude 최신 버전의 기록·원문 사본도 포함됩니다. 이 앱에서는 해당 자료를 열거나 백업할 수 없으니 최신 버전에서 먼저 백업해 주세요.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
+    `<h2>이전 자료까지 전체 삭제</h2><p>이 브라우저의 현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 취향, 복구용 사본을 삭제합니다. 다른 앱의 자료는 유지합니다. Claude 최신 버전의 기록·원문 사본도 포함됩니다.${signedIn() ? ' 이 브라우저는 로그아웃되고, 계정에 저장된 옷장은 지우지 않아요(계정 자료는 프로필의 계정 삭제로 지워요).' : ''} 이 앱에서는 해당 자료를 열거나 백업할 수 없으니 최신 버전에서 먼저 백업해 주세요.</p><p class="notice">되돌릴 수 없어요. 현재 옷장은 아래에서, 이전 버전 자료는 해당 버전에서 먼저 백업해 주세요. 다른 옷장 탭을 모두 닫아 주세요. 내려받은 백업 파일은 별도로 지워야 합니다.</p><button class="chip" data-action="backup">현재 옷장 사진 포함 백업</button><button class="chip" data-action="recovery-backup">현재 저장 원문 받기</button><p>${step === 2 ? '삭제 범위를 확인했습니다. 마지막 버튼을 누르면 삭제를 시작합니다.' : '범위를 확인한 뒤 한 번 더 확인합니다.'}</p><button class="btn" data-action="${step === 2 ? 'erase-execute' : 'erase-confirm'}">${step === 2 ? '확인한 옷장 자료 영구 삭제' : '삭제 범위 확인 후 계속'}</button>`,
   );
   eraseReviewStep = step;
 }
@@ -1717,6 +2079,13 @@ async function eraseAllWardrobe() {
     // 범위(eoul:v1 등)와 따로, 전체 삭제가 끝난 뒤 지운다. 새 옷장은 다시 백업 알림을 받는다.
     clearBackupRecord();
     backupNudgeDismissed = false;
+    // 이 브라우저의 로그인도 이 기기 자료라서 함께 끝낸다. 계정에 저장된 옷장은 지우지 않는다.
+    if (account) {
+      if (account.token) accountApi().logout().catch(() => {});
+      saveAccount(null);
+      syncChoice = null;
+      syncState = { phase: 'signed-out', message: '', progress: '' };
+    }
     for (const url of photos.values()) URL.revokeObjectURL(url);
     releaseDraftPhotoURLs(draft);
     photoBlobs = new Map();
@@ -2162,7 +2531,7 @@ document.addEventListener('click', async (e) => {
       case 'reset':
         if (el.dataset.armed !== '1') {
           el.dataset.armed = '1';
-          el.textContent = '한 번 더 누르면 현재 옷장·찜·구매 기록을 비워요';
+          el.textContent = signedIn() ? '한 번 더 누르면 현재 옷장·찜·구매 기록을 비워요(계정 옷장도 함께 비워져요)' : '한 번 더 누르면 현재 옷장·찜·구매 기록을 비워요';
           break;
         }
         await set({
@@ -2588,6 +2957,103 @@ document.addEventListener('click', async (e) => {
         backupNudgeDismissed = true;
         render();
         break;
+      case 'account-open':
+        await openAccountSheet(el.dataset.mode === 'login' ? 'login' : 'signup');
+        break;
+      case 'account-mode':
+        if (accountForm && !accountForm.busy) {
+          accountForm = { ...accountForm, mode: el.dataset.mode === 'login' ? 'login' : 'signup', password: '', error: '' };
+          accountSheet();
+        }
+        break;
+      case 'account-nudge-dismiss':
+        accountNudgeDismissed = true;
+        render();
+        break;
+      case 'account-delete-open':
+        if (!signedIn()) break;
+        accountForm = { mode: 'delete', email: account.email, password: '', busy: false, error: '' };
+        accountSheet();
+        break;
+      case 'account-logout': {
+        if (!account) break;
+        const api = accountApi();
+        saveAccount(null);
+        syncChoice = null;
+        setSyncState({ phase: 'signed-out' }, { notice: true });
+        api.logout().catch(() => {});
+        optionSheet('profile');
+        toast('로그아웃했어요. 이 기기의 옷장은 그대로예요');
+        break;
+      }
+      case 'sync-now':
+        await kickSync();
+        if (syncState.phase === 'idle') toast('계정과 맞춰져 있어요');
+        else if (syncState.phase === 'choose') syncChoiceSheet();
+        break;
+      case 'sync-choose':
+        if (!signedIn()) break;
+        if (!syncChoice) await kickSync();
+        if (syncChoice) syncChoiceSheet();
+        break;
+      case 'sync-use-account': {
+        if (!signedIn() || !syncChoice) break;
+        if (syncRunning) {
+          toast('계정과 맞추는 중이에요. 잠시 후 다시 눌러 주세요');
+          break;
+        }
+        const token = account.token;
+        const pending = (async () => {
+          try {
+            if (await replaceWithAccountWardrobe(accountApi(), syncChoice.remote, token)) {
+              closeSheet();
+              toast('계정 옷장으로 바꿨어요');
+            } else syncChoiceSheet();
+          } catch (error) {
+            if (!sameSession(token)) return;
+            syncFailed(error);
+            toast(syncState.message || '계정 옷장을 받지 못했어요. 이 기기 옷장은 그대로예요');
+          }
+        })();
+        syncRunning = pending.finally(() => { syncRunning = null; });
+        await syncRunning;
+        if (syncQueued) await kickSync();
+        break;
+      }
+      case 'sync-use-device': {
+        if (!signedIn() || !syncChoice) break;
+        if (syncRunning) {
+          toast('계정과 맞추는 중이에요. 잠시 후 다시 눌러 주세요');
+          break;
+        }
+        if (el.dataset.armed !== '1') {
+          el.dataset.armed = '1';
+          el.textContent = '한 번 더 누르면 계정 옷장을 이 기기 옷장으로 바꿔요';
+          break;
+        }
+        const token = account.token;
+        const pending = (async () => {
+          try {
+            await pushLocalWardrobe(accountApi(), syncChoice.remote.revision, token);
+            if (syncQueued) toast('그 사이 계정 옷장이 또 바뀌었어요. 다시 확인해 주세요');
+            else {
+              closeSheet();
+              toast('이 기기 옷장을 계정에 저장했어요');
+            }
+          } catch (error) {
+            if (!sameSession(token)) return;
+            syncFailed(error);
+            toast(syncState.message || '계정에 저장하지 못했어요. 이 기기 옷장은 그대로예요');
+          }
+        })();
+        syncRunning = pending.finally(() => { syncRunning = null; });
+        await syncRunning;
+        if (syncQueued) {
+          await kickSync();
+          if (syncChoice) syncChoiceSheet();
+        }
+        break;
+      }
       case 'recovery-backup':
         downloadWardrobe(await wardrobeStore.recoveryBackup(localStorage.getItem(KEY)), 'eoul-wardrobe.eoul-recovery');
         break;
@@ -2611,6 +3077,7 @@ document.addEventListener('click', async (e) => {
             pendingLegacy = null;
             legacyChanged = (await legacyWardrobeFingerprint(saved.legacyRaw)) !== state.legacyFingerprint;
             render();
+            kickSync();
           } finally {
             writeBusy = false;
           }
@@ -2677,6 +3144,11 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('input', (e) => {
   const id = e.target.id, value = e.target.value;
+  if (accountForm && !accountForm.busy) {
+    if (id === 'account-email') accountForm.email = value;
+    if (id === 'account-password' || id === 'account-delete-password') accountForm.password = value;
+    if (id === 'account-invite') accountForm.invite = value;
+  }
   if (candidateDraft && !candidateDraft.saving) {
     if (id === 'candidate-link') candidateDraft.link = value;
     if (candidateDraft.candidate) {
@@ -2717,6 +3189,8 @@ document.addEventListener('input', (e) => {
 });
 document.addEventListener('change', async (e) => {
   try {
+    if (e.target.dataset?.action === 'account-check' && accountForm && !accountForm.busy && ['age14', 'privacy', 'terms'].includes(e.target.dataset.field))
+      accountForm[e.target.dataset.field] = !!e.target.checked;
     if (candidateDraft?.candidate && !candidateDraft.saving) {
       const c = candidateDraft.candidate;
       if (e.target.id === 'candidate-kind') { c.kind = e.target.value || null; c.slot = null; c.classificationConfirmed = false; candidateSheet(); }
@@ -2771,6 +3245,12 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('submit', (e) => {
+  const accountFormEl = e.target.closest('form[data-action="account"]');
+  if (accountFormEl) {
+    e.preventDefault();
+    submitAccountForm(accountFormEl);
+    return;
+  }
   const candidateForm = e.target.closest('form[data-action="candidate-link"]');
   if (candidateForm) {
     e.preventDefault();
@@ -2852,6 +3332,11 @@ document.addEventListener(
 
 render();
 const appReady = bootWardrobe();
+// 다른 기기에서 바꾼 옷장은 이 화면으로 돌아올 때나 연결이 돌아올 때 확인한다.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') kickSync();
+});
+window.addEventListener?.('online', () => kickSync());
 
 // ── 사진 자르기 상자 끌기: 시트를 다시 그리지 않고 상자만 옮겨 손가락을 따라가게 한다
 let cropDrag = null;
