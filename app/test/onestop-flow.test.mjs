@@ -628,7 +628,10 @@ test('receipt ends demo mode while keeping the provisional garment inactive and 
   const page = await boot();
   t.after(() => page.close());
   assert.equal(page.state().demo, true);
-  const journey = await saveCatalogCandidate(page);
+  page.app.beginCandidate(product.id);
+  await page.app.saveCandidateDraft();
+  const journey = page.state().journeys.at(-1);
+  assert.ok(journey, 'an explicitly saved candidate remains available before owning clothes');
   await page.app.recordJourneyAction(journey.id, 'ordered');
   await page.app.recordJourneyAction(journey.id, 'received');
   const garmentId = page.state().journeys.find((j) => j.id === journey.id).garmentId;
@@ -1395,4 +1398,19 @@ test('option protection: a new candidate shows original return feedback separate
   assert.deepEqual(updatedOriginal.history.find((event) => event.action === 'returned'), originalReturn);
   assert.deepEqual(page.state().garments.find((g) => g.id === owned.id), owned);
   await assertOriginalPhoto(page, asset);
+});
+
+
+test('browsing a demo catalog comparison opens registration without creating a real purchase record', async (t) => {
+  const page = await boot();
+  t.after(() => page.close());
+  assert.equal(page.state().demo, true);
+  const before = await stored(page), beforeTab = page.state().tab;
+  await page.click({ action: 'candidate-product', id: product.id });
+  const after = await stored(page);
+  assert.equal(after.revision, before.revision);
+  assert.equal(after.state.journeys.length, 0);
+  assert.equal(page.state().tab, beforeTab);
+  assert.ok(page.app.draft(), 'the first useful next step is adding a real garment');
+  assert.equal(page.app.candidateDraft(), null);
 });

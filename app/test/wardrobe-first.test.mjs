@@ -7,9 +7,9 @@ import vm from 'node:vm';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
-import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
-import { createWardrobeStore, photoAsset } from '../src/wardrobe-store.js';
-import { SLOT_BY_ID } from '../src/data/slots.js';
+import { makeGarment, newWardrobeState, garmentKindName, slotForItem } from '../src/wardrobe.js';
+import { createWardrobeStore, photoAsset, parseWardrobeBackup } from '../src/wardrobe-store.js';
+import { SLOT_BY_ID, STYLES } from '../src/data/slots.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'eoul-wardrobe-first-'));
@@ -132,6 +132,27 @@ async function personalPage({ brand = null, color = 'blue' } = {}) {
   await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments: [owned] }, first.revision, [asset], first.epoch);
   store.close();
   return { page: await boot({ indexedDB }), owned, asset };
+}
+async function registrationPage(gender, style) {
+  const indexedDB = new IDBFactory();
+  const store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  await store.commit({ ...newWardrobeState(), gender, styles: [style], demo: false, demoSelected: [] }, first.revision, [], first.epoch);
+  store.close();
+  return boot({ indexedDB });
+}
+function quickRegistrationSlots(markup) {
+  return [...markup.matchAll(/data-action="draft-quick-slot" data-slot="([^"]+)"/g)]
+    .map((match) => SLOT_BY_ID[match[1]]);
+}
+function assertBalancedRegistrationChoices(slots, gender) {
+  assert.equal(slots.length, 12);
+  assert.equal(new Set(slots.map((slot) => slot.id)).size, 12, 'quick choices cannot repeat a detailed type');
+  assert.ok(slots.every((slot) => slot.g === gender), 'quick choices must match the garment gender');
+  assert.deepEqual(Object.fromEntries(['top', 'outer', 'bottom', 'shoes'].map((cat) => [cat, slots.filter((slot) => slot.cat === cat).length])),
+    { top: 4, outer: 2, bottom: 3, shoes: 3 }, 'a complete outfit must remain reachable without expanding more types');
+  for (const kind of ['tee', 'shirt', 'knit', 'jeans', 'sneaker', 'loafer', 'boot'])
+    assert.ok(slots.some((slot) => slot.shape === kind), `${kind} must not disappear behind a style filter`);
 }
 
 test('a new garment starts with album, camera and manual entry choices instead of the full metadata form', async (t) => {
@@ -271,6 +292,81 @@ test('photo quick-type selection confirms one detailed kind without inventing co
   assert.equal(item.brand, null);
   assert.equal(item.productId, null);
   await sameBytes(snapshot.photos.get(item.photoId), source);
+});
+
+test('men can quickly register tops, outerwear, trousers and shoes in every supported style', async (t) => {
+  const choices = new Map();
+  for (const [style, definition] of Object.entries(STYLES).filter(([, value]) => value.g.includes('M'))) {
+    const page = await registrationPage('M', style);
+    t.after(() => page.close());
+    page.app.beginDraft();
+    await page.app.chooseGarmentPhoto(jpeg(61));
+    const slots = quickRegistrationSlots(page.sheet());
+    assertBalancedRegistrationChoices(slots, 'M');
+    assert.ok(slots.some((slot) => slot.id === 'm-chino'), `${definition.label}: basic chinos stay available`);
+    assert.ok(slots.some((slot) => slot.id === 'm-vest'), `${definition.label}: a knit vest stays available`);
+    assert.equal(page.app.draft().color, null);
+    choices.set(style, slots.map((slot) => slot.id));
+  }
+  assert.ok(choices.get('classic').includes('m-harrington'));
+  assert.ok(choices.get('amekaji').includes('m-trucker'));
+  assert.ok(choices.get('gorp').includes('m-trail'));
+  assert.notDeepEqual(choices.get('classic'), choices.get('amekaji'), 'style changes the representatives without removing clothing categories');
+});
+
+test('women receive twelve gender-appropriate quick choices with bottoms and shoes in every supported style', async (t) => {
+  for (const [style] of Object.entries(STYLES).filter(([, value]) => value.g.includes('F'))) {
+    const page = await registrationPage('F', style);
+    t.after(() => page.close());
+    page.app.beginDraft();
+    await page.app.chooseGarmentPhoto(jpeg(62));
+    const slots = quickRegistrationSlots(page.sheet());
+    assertBalancedRegistrationChoices(slots, 'F');
+    assert.ok(slots.some((slot) => slot.shape === 'skirt'));
+    assert.match(page.sheet(), /data-action="draft-kind" data-kind="dress"/, 'other available kinds remain reachable');
+    assert.doesNotMatch(page.sheet(), /data-action="draft-kind" data-kind="vest"/, 'a male-only detailed type cannot be selected for a female garment');
+    assert.equal(page.app.draft().color, null);
+    assert.equal(page.app.draft().brand, null);
+  }
+});
+
+test('manual vests retain unknown details while padded vests remain distinct through storage and backup', async (t) => {
+  const page = await registrationPage('M', 'classic');
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await page.click({ action: 'draft-manual' });
+  assert.match(page.sheet(), /data-action="draft-kind" data-kind="vest"/);
+  await page.click({ action: 'draft-kind', kind: 'vest' });
+  assert.equal(page.app.draft().kind, 'vest');
+  assert.equal(page.app.draft().slot, null);
+  assert.match(page.sheet(), /data-action="draft-slot" data-slot="m-vest"/);
+  assert.match(page.sheet(), /data-action="draft-slot" data-slot="m-downvest"/);
+  const genericId = page.app.draft().id;
+  await page.app.saveGarmentDraft();
+
+  page.app.beginDraft();
+  await page.click({ action: 'draft-manual' });
+  await page.click({ action: 'draft-kind', kind: 'vest' });
+  await page.click({ action: 'draft-slot', slot: 'm-downvest' });
+  const paddedId = page.app.draft().id;
+  await page.app.saveGarmentDraft();
+
+  const saved = await stored(page);
+  const generic = saved.state.garments.find((item) => item.id === genericId);
+  const padded = saved.state.garments.find((item) => item.id === paddedId);
+  assert.equal(garmentKindName(generic.kind), '베스트·조끼');
+  assert.equal(generic.slot, null, 'a generic vest must not silently acquire knit or padding details');
+  assert.equal(generic.color, null);
+  assert.equal(padded.slot, 'm-downvest');
+  assert.equal(slotForItem(padded).cat, 'outer');
+  assert.equal(padded.color, null);
+  assert.equal(padded.brand, null);
+  assert.equal(padded.productId, null);
+  const parsed = await parseWardrobeBackup(await page.app.store.backup());
+  const restored = createWardrobeStore({ indexedDB: new IDBFactory() });
+  t.after(() => restored.close());
+  await restored.commit(parsed.state, 0, parsed.assets);
+  assert.deepEqual(plain((await restored.read()).state), saved.state, 'both vest classifications survive an actual backup restore');
 });
 
 test('photo suggestions appear once, with the manual kind grid collapsed and identity still unconfirmed', async (t) => {

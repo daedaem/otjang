@@ -33,6 +33,7 @@ export const GARMENT_KINDS = [
   ['shirt', '셔츠'],
   ['tee', '티셔츠'],
   ['knit', '니트'],
+  ['vest', '베스트·조끼'],
   ['pants', '바지'],
   ['jeans', '청바지'],
   ['jacket', '재킷'],

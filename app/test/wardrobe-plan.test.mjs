@@ -247,3 +247,55 @@ test('pasting the unlisted Musinsa link opens a comparison for that link only', 
   assert.equal(draft.candidate.source, 'user');
   assert.match(page.sheet(), /5755268/);
 });
+
+
+test('home surfaces the exact two-product plan when one new garment cannot complete a formula', async () => {
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const { season, ...record } = wardrobe([g('m-oxford', 'white'), g('m-chino', 'beige'), g('m-white-sneaker', 'white')]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const plan = wardrobePlan(JSON.parse(JSON.stringify(page.app.state())));
+  assert.equal(plan.gaps.length, 0);
+  const pair = plan.pairs.find((entry) => entry.slots.every((slot) => entry.products[slot.id]?.length));
+  assert.ok(pair);
+  const card = page.body().match(/<article class="next-pick next-pick-pair">([\s\S]*?)<\/article>/)[1];
+  assert.match(card, /두 벌 조합과 내 옷 보기/);
+  assert.match(card, /한 상품만으로 완성되는 조합은 아니에요/);
+  for (const slot of pair.slots) {
+    const p = pair.products[slot.id][0].product;
+    assert.ok(card.includes(p.brand) && card.includes(p.name.replace(/&/g, '&amp;')));
+  }
+  assert.doesNotMatch(card, /data-action="candidate-product"/, 'a two-item recommendation must not pretend a single-item comparison covers it');
+  await page.click({ action: 'open-plan' });
+  assert.match(page.sheet(), /두 벌을 더하면 완성되는 코디/);
+  assert.equal(page.app.state().journeys.length, 0);
+  page.app.store.close();
+});
+
+test('comparison shows the supported formula and asks ownership once before disclosing detailed evidence', async () => {
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const { season, ...record } = wardrobe(ivy());
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const plan = wardrobePlan(JSON.parse(JSON.stringify(page.app.state())));
+  const entry = plan.gaps.flatMap((gap) => gap.products).find((entry) => entry.colorConfirmed);
+  assert.ok(entry);
+  await page.click({ action: 'candidate-product', id: entry.product.id });
+  let sheet = page.sheet();
+  assert.match(sheet, /코디가 새로 연결돼요/);
+  assert.match(sheet, /journey-quick-check/);
+  assert.match(sheet, /<details class="journey-controls journey-details">/);
+  assert.equal((sheet.match(/data-field="absence" data-value="absent"/g) || []).length, 1);
+  assert.equal((sheet.match(/이 후보와 등록한 내 옷/g) || []).length, 1);
+  assert.ok(sheet.indexOf('journey-quick-check') < sheet.indexOf('journey-details'));
+  const journey = page.app.state().journeys[0];
+  assert.equal(compareCandidate(page.app.state(), journey.candidate).decision.kind, 'hold', 'UI must not infer the user owns no similar garment');
+  await page.click({ action: 'journey-field', id: journey.id, field: 'absence', value: 'absent' });
+  const updated = page.app.state().journeys[0];
+  assert.equal(updated.absence, 'absent');
+  assert.equal(compareCandidate(page.app.state(), updated.candidate, { absence: updated.absence }).decision.kind, 'consider');
+  assert.doesNotMatch(page.sheet(), /구매가 필요한지는 가진 옷을 한 번 더 확인/);
+  page.app.store.close();
+});
