@@ -1561,3 +1561,33 @@ test('a product page leads with comparing against my clothes; the seller link co
   assert.match(sheet, /<a class="btn secondary candidate-compare" href="[^"]+"[^>]*>[^<]*에서 보기/);
   assert.ok(sheet.indexOf('data-action="candidate-product"') < sheet.indexOf('에서 보기'));
 });
+
+test('hearted products and purchase journeys are one list: 관심 until compared, then a single journey row', async (t) => {
+  const { page } = await personalPage();
+  t.after(() => page.close());
+  const other = PRODUCTS.find((p) => p.id !== product.id && SLOT_BY_ID[p.slot]?.g === 'M' && productEligible(p));
+  await page.click({ action: 'save', id: product.id });
+  await page.click({ action: 'save', id: other.id });
+  assert.deepEqual(page.state().saved, [product.id, other.id]);
+  let saved = page.app.renderSaved();
+  assert.match(saved, /data-action="saved-filter" data-filter="all" aria-pressed="true">전체 <span>2<\/span>/);
+  assert.match(saved, /data-filter="liked"[^>]*>관심 <span>2<\/span>/);
+  assert.doesNotMatch(saved, /data-filter="deciding"/, 'an empty group is not offered');
+  assert.equal((saved.match(/class="journey-row liked-row"/g) || []).length, 2);
+  assert.match(saved, new RegExp(`data-action="candidate-product" data-id="${product.id}">내 옷과 비교`), 'a liked product starts a comparison in one tap');
+  assert.doesNotMatch(saved, /<h2>찜<\/h2>/, 'no separate 찜 section');
+
+  await page.click({ action: 'candidate-product', id: product.id });
+  await page.click({ action: 'journey-action', id: page.state().journeys[0].id, step: 'hold' });
+  await page.click({ action: 'close-sheet' });
+  saved = page.app.renderSaved();
+  assert.equal((saved.match(/data-action="open-journey"/g) || []).length, 1);
+  assert.equal((saved.match(/class="journey-row liked-row"/g) || []).length, 1, 'the compared product is no longer listed twice');
+  assert.match(saved, /비교 중 · 보류 · 관심/);
+  assert.match(saved, /전체 <span>2<\/span>/);
+  await page.click({ action: 'saved-filter', filter: 'deciding' });
+  saved = page.app.renderSaved();
+  assert.equal((saved.match(/class="journey-row liked-row"/g) || []).length, 0);
+  assert.equal((saved.match(/data-action="open-journey"/g) || []).length, 1);
+  assert.deepEqual(page.state().saved, [product.id, other.id], 'hearts are kept as they were');
+});

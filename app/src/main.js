@@ -1086,28 +1086,41 @@ function essentialSection(ess) {
   </details></section>`;
 }
 
-function renderWishlist() {
-  const list = state.saved.map((id) => PRODUCT_BY_ID[id]).filter(Boolean);
+// 찜(하트)과 구매 여정은 한 목록이다. 하트는 "관심"으로, 비교를 시작하면 같은 상품의
+// 구매 여정 한 줄로 이어진다. 저장 형식은 그대로(state.saved, state.journeys)이고 화면만 합친다.
+let savedFilter = 'all';
+const SAVED_FILTERS = [['all', '전체'], ['liked', '관심'], ['deciding', '고민 중'], ['owned', '구매·보유']];
+function likedProducts() {
+  const compared = new Set(state.journeys.map((j) => j.candidate.productId).filter(Boolean));
+  return state.saved.map((id) => PRODUCT_BY_ID[id]).filter((p) => p && !compared.has(p.id));
+}
+const savedTabCount = () => state.journeys.length + likedProducts().length;
+function renderSaved() {
+  const labels = { candidate: '비교 중', ordered: '주문 기록', received: '받음 · 보유 미확정', kept: '내 옷장', returned: '반품 기록' };
+  const decisions = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
+  const liked = likedProducts();
+  const journeys = [...state.journeys].reverse();
+  const inGroup = { liked: () => false, deciding: (j) => j.stage === 'candidate', owned: (j) => j.stage !== 'candidate', all: () => true };
+  const counts = { all: journeys.length + liked.length, liked: liked.length, deciding: journeys.filter(inGroup.deciding).length, owned: journeys.filter(inGroup.owned).length };
+  if (!counts[savedFilter]) savedFilter = 'all';
+  const shownLiked = savedFilter === 'all' || savedFilter === 'liked' ? liked : [];
+  const shownJourneys = journeys.filter(inGroup[savedFilter]);
   const unavailable = state.saved.filter((id) => !PRODUCT_BY_ID[id]);
   const retained = unavailable.length
     ? `<div class="notice"><b>현재 목록에 없는 찜 ${unavailable.length}개도 보관 중이에요</b><p>상품 정보가 없어 추천과 합계에서 제외했어요.</p><ul>${unavailable.map((id) => `<li><a href="https://www.musinsa.com/products/${id.slice(3)}" target="_blank" rel="noopener noreferrer">상품 ${id.slice(3)} 확인</a> <button class="link" data-action="save" data-id="${id}">찜 해제</button></li>`).join('')}</ul></div>`
     : '';
-  if (!list.length)
-    return `<section class="section"><h2>찜</h2>${retained || '<div class="empty"><b>아직 찜한 아이템이 없어요</b>마음에 드는 상품의 ♡를 눌러 모아 두세요.</div>'}</section>`;
-  const total = list.reduce((s, p) => s + p.price, 0);
-  return `<section class="section">
-    <h2>찜</h2><div class="sub">구매는 각 상품의 판매 페이지에서 해요.</div>${retained}
-    <div class="list u-mt-4">${list.map((p) => itemCard({ slot: SLOT_BY_ID[p.slot], product: p, reasons: [SLOT_BY_ID[p.slot].why] })).join('')}</div>
-    <div class="total"><span>찜한 ${list.length}개</span><b>${formatPrice(total)}</b></div>
+  const journeyRow = (j) => `<button class="journey-row" data-action="open-journey" data-id="${esc(j.id)}">${candidatePicture(j.candidate)}<span><b>${esc(j.candidate.name || '가져온 상품')}</b><span>${esc(j.candidate.brand || new URL(j.candidate.url).hostname)}</span><span>${labels[j.stage]}${j.decision ? ` · ${decisions[j.decision]}` : ''}${j.wearCount ? ` · 착용 기록 ${j.wearCount}회` : ''}${j.candidate.productId && state.saved.includes(j.candidate.productId) ? ' · 관심' : ''}</span></span>${ICON.arrow}</button>`;
+  const likedRow = (p) => `<div class="journey-row liked-row"><button class="liked-open" data-action="open-item" data-id="${p.id}">${picture(p, SLOT_BY_ID[p.slot])}<span><b>${esc(p.name)}</b><span>${esc(p.brand)}</span><span>관심 · ${formatPrice(p.price)}</span></span></button><button class="chip" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교' : '내 옷과 비교'}</button></div>`;
+  const empty = !counts.all
+    ? '<div class="empty"><b>관심 상품과 구매 고민을 모아 보세요</b>상품의 ♡를 누르거나, 상품 링크·추천 상품에서 비교를 시작할 수 있어요.</div>'
+    : '';
+  const likedTotal = savedFilter === 'liked' && liked.length > 1
+    ? `<div class="total"><span>관심 ${liked.length}개</span><b>${formatPrice(liked.reduce((sum, p) => sum + p.price, 0))}</b></div>` : '';
+  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
+    ${counts.all ? `<div class="closet-toolbar-tabs saved-filters" role="group" aria-label="구매 여정 보기">${SAVED_FILTERS.filter(([key]) => key === 'all' || counts[key]).map(([key, label]) => `<button data-action="saved-filter" data-filter="${key}" aria-pressed="${savedFilter === key}">${label} <span>${counts[key]}</span></button>`).join('')}</div>` : ''}
+    ${retained}${empty}
+    ${counts.all ? `<div class="journey-list">${shownLiked.map(likedRow).join('')}${shownJourneys.map(journeyRow).join('')}</div>${likedTotal}` : ''}
   </section>`;
-}
-
-function renderSaved() {
-  const labels = { candidate: '비교 중', ordered: '주문 기록', received: '받음 · 보유 미확정', kept: '내 옷장', returned: '반품 기록' };
-  const decisions = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
-  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">고민하던 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
-    ${state.journeys.length ? `<div class="journey-list">${[...state.journeys].reverse().map((j) => `<button class="journey-row" data-action="open-journey" data-id="${esc(j.id)}">${candidatePicture(j.candidate)}<span><b>${esc(j.candidate.name || '가져온 상품')}</b><span>${esc(j.candidate.brand || new URL(j.candidate.url).hostname)}</span><span>${labels[j.stage]}${j.decision ? ` · ${decisions[j.decision]}` : ''}${j.wearCount ? ` · 착용 기록 ${j.wearCount}회` : ''}</span></span>${ICON.arrow}</button>`).join('')}</div>` : '<div class="empty"><b>구매 고민부터 모아 보세요</b>상품 링크나 추천 상품에서 비교를 시작할 수 있어요.</div>'}
-  </section>${renderWishlist()}`;
 }
 
 // Purchase decisions are self-reports. Opening a seller page never advances a journey.
@@ -1501,7 +1514,7 @@ function nav() {
   const tabs = [
     ['home', '추천', ICON.sparkle, 0],
     ['closet', '내 옷장', ICON.hanger, state.closet.length],
-    ['saved', '구매 여정', ICON.heart, state.journeys.length || state.saved.length],
+    ['saved', '구매 여정', ICON.heart, savedTabCount()],
   ];
   return `<nav class="nav" aria-label="주요 메뉴"><div class="nav-inner">${tabs.map(([k, label, icon, n]) => `<button data-action="tab" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">${icon}${label}${n ? `<span class="count">${n}</span>` : ''}</button>`).join('')}</div></nav>`;
 }
@@ -3207,7 +3220,7 @@ function refreshHearts(id) {
   });
   const savedBtn = document.querySelector('.nav [data-tab="saved"]');
   if (savedBtn)
-    savedBtn.innerHTML = `${ICON.heart}구매 여정${state.journeys.length || state.saved.length ? `<span class="count">${state.journeys.length || state.saved.length}</span>` : ''}`;
+    savedBtn.innerHTML = `${ICON.heart}구매 여정${savedTabCount() ? `<span class="count">${savedTabCount()}</span>` : ''}`;
 }
 
 async function downloadWardrobe(blob, name) {
@@ -4096,6 +4109,10 @@ document.addEventListener('click', async (e) => {
         if (state.tab !== 'closet') await set({ tab: 'closet' });
         else render();
         window.scrollTo(0, 0);
+        break;
+      case 'saved-filter':
+        savedFilter = SAVED_FILTERS.some(([key]) => key === el.dataset.filter) ? el.dataset.filter : 'all';
+        render();
         break;
       case 'closet-clear':
         closetQuery = '';

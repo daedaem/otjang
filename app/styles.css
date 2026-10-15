@@ -818,3 +818,11 @@ h1, h2, h3, h4, .detail-title { text-wrap: balance; }
 .plan-owned-strip .photo-caption { display: none; }
 .plan-owned-strip .garment-mini.borrowed-photo { grid-template-rows: 1fr; aspect-ratio: var(--photo-ratio); }
 .notice.plan-example .btn { flex: none; white-space: nowrap; }
+/* 관심(찜) rows share the purchase-journey list: photo and name open the
+   product, the chip starts a comparison. */
+.liked-row { grid-template-columns: minmax(0, 1fr) auto; }
+.liked-open { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: 12px; text-align: left; min-width: 0; }
+.liked-open .thumb { width: 70px; height: 88px; }
+.liked-open > span { display: grid; gap: 3px; min-width: 0; }
+.liked-open > span > span { font-size: var(--text-label); color: var(--ink-2); }
+.saved-filters { margin-top: var(--space-4); }
