@@ -7,11 +7,12 @@ import {
 import { newWardrobeState, upgradeWardrobe, validateWardrobe, makeGarment } from '../src/wardrobe.js';
 import {
   createWardrobeStore, photoAsset, parseWardrobeBackup, journeyStorageUsage,
-  wardrobeStateStorageUsage, MAX_JOURNEY_STATE_BYTES, JOURNEY_STATE_WARNING_BYTES,
+  wardrobeStateStorageUsage, noteStorageUsage, MAX_JOURNEY_STATE_BYTES, JOURNEY_STATE_WARNING_BYTES,
   MAX_OWNERSHIP_JOURNEY_STATE_BYTES, WARDROBE_STATE_WARNING_BYTES,
 } from '../src/wardrobe-store.js';
 import { setOfferRecord } from '../src/offer-store.js';
 import { validateOffer } from '../src/offers.js';
+import { storageLimits } from '../src/record-cleanup.js';
 
 const at = (day = 14) => `2026-10-${day}T00:00:00.000Z`;
 const bytes = (value) => new TextEncoder().encode(JSON.stringify(value)).length;
@@ -580,4 +581,64 @@ test('budgeted mixed seller and diary notes keep 200 garments and a later return
     assert.deepEqual(saved.state.offerRecords, withNotes.offerRecords);
     assert.deepEqual(saved.state.wears, withNotes.wears);
   } finally { store.close(); }
+});
+
+test('storage limits warn at the shared-note boundary while total storage is low and match the exact enforced remaining bytes', async () => {
+  const base = personal([keptJourney()], [garment('g_unit')]);
+  const seed = { ...base, offerRecords: sellerNotes(0), wears: diaryNotes(3) };
+  const seedUsage = noteStorageUsage(seed);
+  const withNoteBytes = (target) => ({ ...seed, offerRecords: sellerNotes(target - seedUsage.bytes) });
+  const below = withNoteBytes(seedUsage.warningBytes - 1);
+  const warning = withNoteBytes(seedUsage.warningBytes);
+  const exact = withNoteBytes(seedUsage.limitBytes);
+  const over = withNoteBytes(seedUsage.limitBytes + 1);
+  for (const state of [below, warning, exact, over]) {
+    assert.equal(validateWardrobe(state), state);
+    const usage = noteStorageUsage(state);
+    assert.equal(usage.offerBytes, bytes(state.offerRecords));
+    assert.equal(usage.wearBytes, bytes(state.wears));
+    assert.equal(usage.bytes, usage.offerBytes + usage.wearBytes);
+    assert.equal(usage.limitBytes, seedUsage.limitBytes, 'the allowance is independent of the note content already stored');
+    assert.equal(usage.futureJourneyBytes, MAX_OWNERSHIP_JOURNEY_STATE_BYTES - bytes(state.journeys));
+    assert.equal(usage.clothingHeadroomBytes, 64 * 1024);
+    assert.ok(bytes(state) / MAX_WARDROBE_STATE_BYTES < 0.2, 'overall storage alone would miss this shortage');
+    assert.deepEqual(storageLimits(state).noteBytes, usage);
+  }
+  assert.equal(storageLimits(below).near, false);
+  assert.equal(storageLimits(below).noteBytes.warning, false);
+  assert.equal(storageLimits(warning).near, true);
+  assert.equal(storageLimits(warning).noteBytes.warning, true);
+  assert.equal(storageLimits(exact).fullest, 1);
+  assert.equal(storageLimits(exact).noteBytes.remainingBytes, 0);
+  assert.equal(storageLimits(exact).noteBytes.overBudget, false);
+  assert.equal(storageLimits(over).noteBytes.remainingBytes, 0, 'the display never shows a negative additional allowance');
+  assert.equal(storageLimits(over).noteBytes.overBudget, true);
+  assert.equal(storageLimits(over).full, false, 'a note limit does not claim that clothing or ownership can no longer save');
+  const store = createWardrobeStore({ indexedDB: new IDBFactory() });
+  try {
+    await store.commit(base, 0);
+    await store.commit(exact, 1);
+    const saved = await store.read();
+    await assert.rejects(store.commit(over, saved.revision, [], saved.epoch), noteBudgetError);
+    assert.deepEqual((await store.read()).state, exact);
+  } finally { store.close(); }
+});
+
+test('note allowance follows other metadata and future ownership reserve without counting screen fields or photos', () => {
+  const base = { ...personal([keptJourney()], [garment('g_unit')]), offerRecords: sellerNotes(1000), wears: diaryNotes(3) };
+  const before = noteStorageUsage(base);
+  const moreClothes = { ...base, garments: [...base.garments, garment('g_added')] };
+  assert.equal(noteStorageUsage(moreClothes).limitBytes, before.limitBytes - (bytes(moreClothes) - bytes(base)));
+  const longerHistory = { ...base, journeys: [transitionPurchaseJourney(base.journeys[0], 'returned', { at: at(15) })] };
+  const grown = noteStorageUsage(longerHistory);
+  assert.equal(grown.limitBytes, before.limitBytes, 'used journey space replaces the same amount of reserved future space');
+  assert.ok(grown.futureJourneyBytes < before.futureJourneyBytes);
+  const view = { ...base, closet: Array.from({ length: 1000 }, () => garment('g_screen_only')), tab: 'closet' };
+  assert.deepEqual(noteStorageUsage(view), before);
+  const hugeMetadata = { ...base, brands: Array.from({ length: 1000 }, () => '가'.repeat(120)) };
+  const exhausted = storageLimits(hugeMetadata);
+  assert.equal(exhausted.noteBytes.limitBytes, 0);
+  assert.equal(exhausted.noteBytes.remainingBytes, 0);
+  assert.equal(exhausted.near, true);
+  assert.ok(Number.isFinite(exhausted.fullest), 'a zero note budget never yields an infinite percentage');
 });

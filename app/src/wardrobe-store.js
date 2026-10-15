@@ -29,17 +29,34 @@ export function wardrobeStateStorageUsage(state) {
   };
 }
 
+/** The shared price/diary allowance after reserving future ownership and clothes. */
+export function noteStorageUsage(state) {
+  const encodedBytes = (value) => new TextEncoder().encode(JSON.stringify(value)).length;
+  const offerBytes = encodedBytes(state?.offerRecords ?? []);
+  const wearBytes = encodedBytes(state?.wears ?? []);
+  const bytes = offerBytes + wearBytes;
+  const futureJourneyBytes = Math.max(0, MAX_OWNERSHIP_JOURNEY_STATE_BYTES - journeyStorageUsage(state).bytes);
+  const clothingHeadroomBytes = 64 * 1024;
+  const otherBytes = wardrobeStateStorageUsage(state).bytes - bytes;
+  const limitBytes = Math.max(0, MAX_WARDROBE_STATE_BYTES - otherBytes - futureJourneyBytes - clothingHeadroomBytes);
+  const warningBytes = Math.ceil(limitBytes * 0.9);
+  return {
+    bytes, offerBytes, wearBytes, limitBytes,
+    remainingBytes: Math.max(0, limitBytes - bytes),
+    warningBytes, warning: bytes >= warningBytes, overBudget: bytes > limitBytes,
+    futureJourneyBytes, clothingHeadroomBytes,
+  };
+}
+
 // Notes must not consume space that ownership transitions may still need.
 // Reserve the unused portion of the journey allowance, plus clothing headroom,
 // when prices/wear notes grow. Existing imports and shrink-only cleanup stay
 // readable even when they predate this reserve.
 export function validateNoteGrowth(previous, next) {
   if (!previous) return;
-  const bytes = (state) => new TextEncoder().encode(JSON.stringify(state?.offerRecords || [])).length +
-    new TextEncoder().encode(JSON.stringify(state?.wears || [])).length;
-  if (bytes(next) <= bytes(previous)) return;
-  const futureJourneys = Math.max(0, MAX_OWNERSHIP_JOURNEY_STATE_BYTES - journeyStorageUsage(next).bytes);
-  if (wardrobeStateStorageUsage(next).bytes + futureJourneys > MAX_WARDROBE_STATE_BYTES - 64 * 1024)
+  const usage = noteStorageUsage(next);
+  if (usage.bytes <= noteStorageUsage(previous).bytes) return;
+  if (usage.overBudget)
     throw Object.assign(new Error('옷과 반품·수령 기록을 위한 공간을 남겨 두었어요. 백업한 뒤 필요 없는 가격·착용 기록을 정리해 주세요. 기존 기록은 유지했습니다.'), { code: 'offer-budget' });
 }
 

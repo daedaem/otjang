@@ -225,6 +225,9 @@ async function set(patch, { rerender = true, assets = [], replacingNotes = false
     if (rerender) render();
     kickSync();
   } catch (error) {
+    // An intentional note limit is recoverable by trimming notes. The
+    // committed wardrobe is healthy; do not present corruption recovery.
+    if (error.code === 'offer-budget') throw error;
     storageError = storageMessage(error);
     storageConflict = error.code === 'conflict';
     throw error;
@@ -236,7 +239,7 @@ function storageNotice() {
   const usage = journeyStorageUsage(state), wholeUsage = wardrobeStateStorageUsage(state);
   return (
     accountNotice() +
-    (usage.warning || wholeUsage.warning || storageLimits(state).near ? '<div class="notice"><b>기록이 많이 쌓였어요</b><p>저장 한도에 가까워졌어요. 사진 포함 백업을 받아 두고, 옷과 연결되지 않은 구매 기록을 정리할 수 있어요. 기존 자료는 자동으로 지우지 않아요.</p><button class="link" data-action="backup">사진·전체 기록 백업 받기</button> <button class="link" data-action="cleanup-open">기록 정리</button></div>' : '') +
+    (usage.warning || wholeUsage.warning || storageLimits(state).near ? '<div class="notice"><b>기록이 많이 쌓였어요</b><p>기록 한도에 가까워졌어요. 사진 포함 백업을 받아 두고, 필요 없는 가격·착용 기록이나 옷과 연결되지 않은 구매 기록을 골라 정리할 수 있어요. 기존 자료는 자동으로 지우지 않아요.</p><button class="link" data-action="backup">사진·전체 기록 백업 받기</button> <button class="link" data-action="cleanup-open">기록 정리</button></div>' : '') +
     draftNotice() +
     (storageError
       ? `<section class="storage-error" role="alert"><b>저장 확인이 필요해요</b><p>${esc(storageError)}</p><button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button><button class="chip" data-action="choose-backup">정상 백업으로 복구</button><button class="chip" data-action="recovery-backup">저장 원문 받기</button><button class="chip" data-action="erase-review">이전 자료까지 전체 삭제</button>${storageLimits(state).near ? '<button class="chip" data-action="cleanup-open">기록 정리</button>' : ''}${pendingLegacy?.initial ? '<button class="chip" data-action="review-legacy">누락 사진 확인하기</button>' : ''}</section>`
@@ -668,7 +671,7 @@ function offerSheet() {
       <label for="offer-size">사이즈</label><input id="offer-size" name="size" maxlength="20" value="${esc(f.size || '')}" placeholder="예: M, 270">
       <label for="offer-stock">재고</label><select id="offer-stock" name="stock">${[['unknown', '모름'], ['in-stock', '재고 있음'], ['sold-out', '품절']].map(([id, label]) => `<option value="${id}"${f.stock === id ? ' selected' : ''}>${label}</option>`).join('')}</select>
       <label class="toggle"><input type="checkbox" name="sameProduct"${f.sameProduct === 'confirmed' ? ' checked' : ''}> 이 상품과 같은 상품이에요(모델·품번 확인)</label>
-      ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
+      ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>${v.budgetLimited ? noteBudgetActions() : ''}` : ''}
       <button class="btn" type="submit"${v.saving ? ' disabled' : ''}>${v.saving ? '저장하는 중…' : '기록하기'}</button><button class="link" type="button" data-action="offer-form-cancel"${v.saving ? ' disabled' : ''}>취소</button>
       <p class="fine">기록한 시각을 함께 남겨요. 옷장 백업에 함께 담기고, 로그인하면 계정에도 동기화돼요.</p>
     </form>` : `<div class="opts"><button class="chip" data-action="offer-add">판매처 가격 직접 기록</button>${canRefresh ? `<button class="chip" data-action="offer-refresh"${v.refreshing ? ' disabled' : ''}>${v.refreshing ? '확인하는 중…' : '연결된 출처에서 다시 확인'}</button>` : ''}</div>`;
@@ -680,7 +683,7 @@ function offerSheet() {
     ${best}
     <ul class="offer-list">${rows.map(row).join('')}</ul>
     ${refreshInfo}
-    ${v.error && !f ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
+    ${v.error && !f ? `<p class="notice" role="alert">${esc(v.error)}</p>${v.budgetLimited ? noteBudgetActions() : ''}` : ''}
     ${v.requestedDraft ? `<button class="chip" data-action="offer-requested-save"${v.saving ? ' disabled' : ''}>옵션 다시 저장</button>` : ''}
     ${form}
     <p class="fine">이 기기에 먼저 저장하고, 로그인하면 계정에도 동기화해요. 옷장 백업에도 가격 기록을 함께 담아요.</p>
@@ -713,10 +716,12 @@ async function saveOfferForm(fields) {
     await saveOfferRecord(v.ref, { ...data, offers: [...offers, offer] });
     v.form = null;
     v.error = '';
+    v.budgetLimited = false;
     return true;
   } catch (error) {
     v.form = { ...v.form, ...fields, sameProduct: fields.sameProduct ? 'confirmed' : 'unconfirmed' };
     v.error = storageMessage(error);
+    v.budgetLimited = error.code === 'offer-budget';
     return false;
   } finally {
     v.saving = false;
@@ -747,8 +752,10 @@ async function saveRequestedOffer() {
     if (v.requestedDraft === requested) v.requestedDraft = null;
     saved = true;
     v.error = '';
+    v.budgetLimited = false;
   } catch (error) {
     v.error = storageMessage(error);
+    v.budgetLimited = error.code === 'offer-budget';
   } finally {
     v.saving = false;
     if (offerView === v && sheetKey === `offers:${v.ref}`) offerSheet();
@@ -762,6 +769,7 @@ async function refreshOffers() {
   const before = JSON.stringify(readOfferRecord(state.offerRecords, v.ref));
   v.refreshing = true;
   v.error = '';
+  v.budgetLimited = false;
   offerSheet();
   const at = new Date().toISOString();
   // Network results from a closed sheet, switched account, or superseded
@@ -786,12 +794,13 @@ async function refreshOffers() {
     if (!current()) return;
     if (error?.status === 401) syncFailed(error);
     v.error = storageMessage(error);
+    v.budgetLimited = error.code === 'offer-budget';
     // Only a retrieval failure gets a persisted attempt stamp. A refused
     // local commit leaves the prior committed record byte-for-byte intact.
-    if (!storageError) {
+    if (!storageError && !v.budgetLimited) {
       try {
         await saveOfferRecord(v.ref, { ...readOfferRecord(state.offerRecords, v.ref), refresh: { at, ok: false, message: v.error } });
-      } catch (writeError) { v.error = storageMessage(writeError); }
+      } catch (writeError) { v.error = storageMessage(writeError); v.budgetLimited = writeError.code === 'offer-budget'; }
     }
   } finally {
     v.refreshing = false;
@@ -2342,6 +2351,15 @@ function optionSheet(kind) {
 }
 
 // ── 저장 한도와 기록 정리
+function noteBudgetActions() {
+  return '<div class="opts"><button class="chip" data-action="cleanup-open">기록 정리</button><button class="chip" data-action="backup">먼저 사진 포함 백업 받기</button></div>';
+}
+function noteBudgetUsageHTML(l = storageLimits(state)) {
+  return `<p class="fine">가격·착용 기록 ${formatBytes(l.noteBytes.bytes)} / ${formatBytes(l.noteBytes.limitBytes)} · 지금 더 쓸 수 있는 공간 ${formatBytes(l.noteBytes.remainingBytes)}</p><p class="fine">반품·수령 기록과 옷을 저장할 몫을 미리 남겨 둔 공간이에요. 가격과 착용 기록이 함께 나눠 써요.</p>`;
+}
+function noteBudgetSheet(error) {
+  openSheet(`<h2>가격·착용 기록을 정리해 주세요</h2><p class="notice" role="alert">${esc(storageMessage(error))}</p>${noteBudgetUsageHTML()}${noteBudgetActions()}<p class="sub">기존 옷과 기록은 그대로예요. 백업한 뒤 필요 없는 가격 기록이나 오래된 달의 착용 기록만 골라 정리할 수 있어요.</p>`, { key: 'note-budget' });
+}
 function usageLine() {
   const l = storageLimits(state);
   return `<p class="fine">옷 ${l.garments.count}/${l.garments.max}벌 · 구매 기록 ${l.journeys.count}/${l.journeys.max}개${l.wears.count ? ` · 착용 기록 ${l.wears.count}/${l.wears.max}개` : ''} · 기록 크기 ${Math.round((l.bytes.bytes / l.bytes.limitBytes) * 100)}%</p>`;
@@ -2358,6 +2376,7 @@ function cleanupSheet() {
   const pct = (a, b) => Math.min(100, Math.round((a / b) * 100));
   openSheet(`<h2>기록 정리</h2>
     <ul class="plain-list"><li>옷 ${l.garments.count}/${l.garments.max}벌 (${pct(l.garments.count, l.garments.max)}%)</li><li>구매 기록 ${l.journeys.count}/${l.journeys.max}개 (${pct(l.journeys.count, l.journeys.max)}%)</li><li>착용 기록 ${l.wears.count}/${l.wears.max}개 (${pct(l.wears.count, l.wears.max)}%)</li><li>기록 크기 ${formatBytes(l.bytes.bytes)} / ${formatBytes(l.bytes.limitBytes)} (${pct(l.bytes.bytes, l.bytes.limitBytes)}%)</li><li>구매 기록 크기 ${formatBytes(l.journeyBytes.bytes)} / ${formatBytes(l.journeyBytes.limitBytes)} (${pct(l.journeyBytes.bytes, l.journeyBytes.limitBytes)}%)</li></ul>
+    ${noteBudgetUsageHTML(l)}
     ${l.full ? '<p class="notice" role="alert">한도에 닿아 새 기록을 저장할 수 없어요. 아래에서 정리하거나, 옷장에서 쓰지 않는 옷을 빼 주세요.</p>' : ''}
     <p class="sub">옷과 연결되지 않은 구매 기록(비교만 한 것, 받지 않은 주문)만 지울 수 있어요. 받은·계속 입는·반품한 기록은 옷의 보유 상태를 정하므로 여기서 지우지 않아요${kept ? ` (${kept}개)` : ''}.</p>
     <div class="opts"><button class="chip" data-action="backup">먼저 사진 포함 백업 받기</button><button class="chip" data-action="offer-records">가격 기록 ${state.offerRecords.length}개 상품 관리</button></div>
@@ -4261,6 +4280,11 @@ document.addEventListener('click', async (e) => {
       }
     }
   } catch (error) {
+    if (error.code === 'offer-budget') {
+      render();
+      noteBudgetSheet(error);
+      return;
+    }
     storageError = storageMessage(error);
     render();
     if (candidateDraft) {

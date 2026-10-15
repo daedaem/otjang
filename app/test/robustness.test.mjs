@@ -9,9 +9,13 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { IDBFactory } from 'fake-indexeddb';
 import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
-import { createWardrobeStore } from '../src/wardrobe-store.js';
+import { createWardrobeStore, noteStorageUsage, wardrobeStateStorageUsage } from '../src/wardrobe-store.js';
 import { candidateFromProduct } from '../src/purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney, inactivePurchaseGarmentIds } from '../src/purchase-journey.js';
+import { validateOffer } from '../src/offers.js';
+import { setOfferRecord } from '../src/offer-store.js';
+import { localDate } from '../src/wear-log.js';
+import { formatBytes } from '../src/storage-health.js';
 import { PRODUCT_BY_ID } from '../src/engine.js';
 import { storageLimits, removableJourneys, journeysWithout, journeyRemovable } from '../src/record-cleanup.js';
 import { keepDraft, loadDraft, dropDraft, DRAFT_KEY } from '../src/draft-keeper.js';
@@ -140,6 +144,67 @@ test('the cleanup sheet removes only chosen unlinked records after a second tap'
   await page.click({ ...button, armed: '1' });
   assert.deepEqual(page.state().journeys.map((j) => j.id), ['j_ordered', 'j_returned']);
   assert.ok(!page.state().closet.some((item) => item.id === 'g_returned'), 'the returned garment stays out');
+});
+
+test('a full shared price/wear allowance offers targeted cleanup without treating the intact wardrobe as corrupt', async (t) => {
+  const stamp = at(1);
+  const garments = Array.from({ length: 100 }, (_, i) => makeGarment({
+    id: `g_budget_${i}`, slot: 'm-oxford', color: 'white', gender: 'M', label: `옥스포드 셔츠 ${i + 1}`, createdAt: stamp,
+  }));
+  const seller = validateOffer({ id: 'o_budget', seller: '보관할 판매처', url: 'https://shop.example/p?x=',
+    price: 30000, shipping: 0, color: 'white', size: 'M', stock: 'in-stock', sameProduct: 'confirmed',
+    source: 'user', checkedAt: stamp, title: '남길 상품' });
+  const initial = { ...newWardrobeState(), demo: false, demoSelected: [], garments,
+    offerRecords: setOfferRecord([], 'ms-3323583', { requested: { color: 'white', size: 'M' }, offers: [seller], refresh: null }, new Date(stamp)),
+    wears: [{ id: 'w_budget_old', date: '2000-01-01', garmentIds: ['g_budget_0'], lookId: null,
+      note: '먼저 보관한 착용 기록 '.repeat(5), at: stamp }] };
+  // Only a valid seller URL grows: preserve one byte of the public shared
+  // allowance so today's new wear entry, rather than the global cap, refuses.
+  const room = noteStorageUsage(initial).remainingBytes;
+  assert.ok(room > 1000);
+  initial.offerRecords[0].offers[0].url += 'x'.repeat(room - 1);
+  const usage = noteStorageUsage(initial);
+  assert.equal(usage.remainingBytes, 1);
+  assert.ok(usage.offerBytes > 0 && usage.wearBytes > 0 && usage.warning);
+  const whole = wardrobeStateStorageUsage(initial);
+  assert.ok(whole.bytes / whole.limitBytes > 0.08 && whole.bytes / whole.limitBytes < 0.15,
+    'the snapshot is only about 10% full; the shared note allowance is the limit');
+
+  const page = await boot({ indexedDB: await seeded(initial) });
+  t.after(() => page.app.store.close());
+  const beforeState = page.state();
+  const beforeSnapshot = await page.app.store.read();
+  await page.click({ action: 'open-own', id: 'g_budget_0' });
+  assert.match(page.sheet(), /data-action="wear-toggle"/);
+  await page.click({ action: 'wear-toggle', id: 'g_budget_0' });
+
+  assert.deepEqual(page.state(), beforeState, 'a refused wear entry cannot change any garment, price or earlier diary note');
+  assert.deepEqual(await page.app.store.read(), beforeSnapshot, 'revision, epoch and all committed records stay unchanged');
+  assert.equal(page.app.storageError(), '', 'a policy limit is not a storage corruption error');
+  assert.match(page.sheet(), /가격·착용 기록을 정리/);
+  assert.match(page.sheet(), /data-action="cleanup-open"/);
+  assert.match(page.sheet(), /data-action="backup"/);
+  assert.doesNotMatch(page.body() + page.sheet(), /storage-error|저장 확인이 필요해요|data-action="(?:erase-review|choose-backup|recovery-backup)"/,
+    'the recovery offered is targeted cleanup, without whole-data deletion or backup replacement');
+
+  await page.click({ action: 'cleanup-open' });
+  assert.ok(page.sheet().includes(`가격·착용 기록 ${formatBytes(usage.bytes)} / ${formatBytes(usage.limitBytes)}`));
+  assert.ok(page.sheet().includes(`지금 더 쓸 수 있는 공간 ${formatBytes(usage.remainingBytes)}`));
+  assert.match(page.sheet(), /가격 기록 1개 상품 관리/);
+  assert.match(page.sheet(), /착용 기록 \(달별\)[\s\S]*2000-01/);
+  assert.deepEqual(await page.app.store.read(), beforeSnapshot, 'opening cleanup alone changes no records');
+
+  await page.change({ checked: true, dataset: { action: 'cleanup-wear-toggle', month: '2000-01' } });
+  await page.click({ action: 'cleanup-wear-delete' });
+  assert.deepEqual(await page.app.store.read(), beforeSnapshot, 'cleanup still requires its second confirmation');
+  await page.click({ action: 'cleanup-wear-delete', armed: '1' });
+  await page.click({ action: 'wear-toggle', id: 'g_budget_0' });
+  const recovered = await page.app.store.read();
+  assert.equal(recovered.state.wears.length, 1);
+  assert.equal(recovered.state.wears[0].date, localDate(), 'after targeted cleanup the intended wear entry can be recorded');
+  assert.deepEqual(recovered.state.garments, beforeSnapshot.state.garments);
+  assert.deepEqual(recovered.state.offerRecords, beforeSnapshot.state.offerRecords, 'recovery keeps every seller note');
+  assert.equal(page.app.storageError(), '');
 });
 
 test('after this tab reloads, the unsaved draft is offered back; closing on purpose drops it', async () => {
