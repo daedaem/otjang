@@ -7,7 +7,8 @@
 // or this device's storage was replaced (eviction, recovery), the user chooses.
 
 // Bump with the sign-up notice below; the server refuses an outdated version.
-export const AGREEMENT_VERSION = '2026-10-15';
+// 2026-10-15.2: purposes now include background removal on the operator's server.
+export const AGREEMENT_VERSION = '2026-10-15.2';
 export const ACCOUNT_KEY = 'eoul:account';
 const DEVICE_LOCAL_FIELDS = ['legacyFingerprint', 'legacyBaseline', 'legacyDismissed'];
 
@@ -100,6 +101,8 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
     putWardrobe: (baseRevision, state) => request('PUT', '/v1/wardrobe', { json: { baseRevision, state } }),
     putPhoto: (id, blob) => request('PUT', `/v1/photos/${encodeURIComponent(id)}`, { body: blob, type: 'image/jpeg' }),
     getPhoto: (id) => request('GET', `/v1/photos/${encodeURIComponent(id)}`, { raw: true }),
+    // A 320×320 RGB copy in, a 320×320 mask out; the server keeps neither.
+    photoMask: async (rgb) => new Uint8Array(await (await request('POST', '/v1/photo-mask', { body: rgb, type: 'application/octet-stream', raw: true })).arrayBuffer()),
   };
 }
 

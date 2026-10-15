@@ -1,6 +1,7 @@
 // Settings come from environment variables only. Nothing secret lives in the
 // repository: the server needs no signing key (session tokens are random and
 // only their SHA-256 is stored), and the optional invite code is an env value.
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,5 +37,8 @@ export function loadConfig(env = process.env) {
     scryptLog2N: integer(env.EOUL_SCRYPT_LOG2N, 17, { min: 10, max: 20 }),
     sessionDays: integer(env.EOUL_SESSION_DAYS, 60, { min: 1, max: 365 }),
     appFile: env.EOUL_APP_FILE || path.resolve(serverRoot, '../app/dist/index.html'),
+    // Optional server-side garment mask (see src/photo-mask.js). Off when the file is missing.
+    maskModel: env.EOUL_MASK_MODEL || path.join(serverRoot, 'models', 'u2net.onnx'),
+    maskThreads: integer(env.EOUL_MASK_THREADS, Math.min(4, os.availableParallelism?.() || 1), { min: 1, max: 64 }),
   };
 }

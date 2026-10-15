@@ -33,3 +33,4 @@ shots/
 *.db
 *.db-shm
 *.db-wal
+/server/models/

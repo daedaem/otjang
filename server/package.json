@@ -8,6 +8,10 @@
   "scripts": {
     "start": "node ../app/tools/build.mjs && node index.mjs",
     "test": "node --test",
-    "backup": "node cli.mjs backup"
+    "backup": "node cli.mjs backup",
+    "fetch-model": "node cli.mjs fetch-model"
+  },
+  "optionalDependencies": {
+    "onnxruntime-node": "1.22.0"
   }
 }
