@@ -3,7 +3,8 @@
 // An offer is one seller's price for one product page, with the option (colour,
 // size) it was seen for, the shipping fee if known, stock and when it was checked.
 // Offers are compared only when they are the same product (confirmed), the same
-// option the user wants, in stock, recent, and their shipping fee is known.
+// option the user wants (both colour and size chosen), confirmed in stock,
+// recent, and their shipping fee is known.
 // Everything else stays visible with the reason it is not compared. The result
 // is "the lowest total among the sellers checked", never "the current lowest price".
 import { COLORS } from './data/slots.js';
@@ -17,6 +18,8 @@ export const OFFER_SOURCE_LABEL = {
 };
 export const OFFER_FLAG_LABEL = {
   'sold-out': '품절',
+  'stock-unknown': '재고 미확인',
+  'request-incomplete': '원하는 색·사이즈 미정',
   stale: '오래된 가격',
   'option-mismatch': '옵션 다름',
   'option-unknown': '옵션 미확인',
@@ -73,10 +76,14 @@ export function validateOffer(raw) {
 /** Why an offer can or cannot be compared for the requested option. */
 export function offerStatus(offer, { requested = {}, now = new Date() } = {}) {
   const flags = [];
+  // Only confirmed stock takes part; "unknown" is the default for new and fetched offers.
   if (offer.stock === 'sold-out') flags.push('sold-out');
+  else if (offer.stock !== 'in-stock') flags.push('stock-unknown');
   if (now - new Date(offer.checkedAt) > OFFER_STALE_DAYS * 86400000) flags.push('stale');
   const wantColor = requested.color || null, wantSize = requested.size || null;
-  if ((wantColor && offer.color && offer.color !== wantColor) || (wantSize && offer.size && offer.size !== wantSize)) flags.push('option-mismatch');
+  // Without the option the user means to buy, no price is known to apply to it.
+  if (!wantColor || !wantSize) flags.push('request-incomplete');
+  else if ((wantColor && offer.color && offer.color !== wantColor) || (wantSize && offer.size && offer.size !== wantSize)) flags.push('option-mismatch');
   else if ((wantColor && !offer.color) || (wantSize && !offer.size)) flags.push('option-unknown');
   if (offer.shipping === null) flags.push('shipping-unknown');
   if (offer.sameProduct !== 'confirmed') flags.push('product-unconfirmed');
@@ -106,7 +113,10 @@ export function compareOffers(offers, { requested = {}, now = new Date() } = {})
   };
 }
 
-/** Offers from a refresh replace that source's earlier offers; user records stay. */
+/**
+ * Offers from a refresh replace that source's earlier offers. The user's own
+ * records always stay; when over the cap, the oldest other records go first.
+ */
 export function mergeRefreshed(existing, refreshed, source) {
   const kept = existing.filter((offer) => offer.source !== source);
   // A user's confirmation of a search result survives a refresh of the same link.
@@ -115,5 +125,10 @@ export function mergeRefreshed(existing, refreshed, source) {
     const before = confirmed.get(offer.url);
     return before ? { ...offer, sameProduct: before.sameProduct, color: offer.color ?? before.color, size: offer.size ?? before.size, shipping: offer.shipping ?? before.shipping } : offer;
   });
-  return [...kept, ...next].slice(-MAX_OFFERS_PER_PRODUCT);
+  const all = [...kept, ...next];
+  if (all.length <= MAX_OFFERS_PER_PRODUCT) return all;
+  const others = all.filter((offer) => offer.source !== 'user');
+  const room = Math.max(0, MAX_OFFERS_PER_PRODUCT - (all.length - others.length));
+  const keep = new Set(others.slice(others.length - room));
+  return all.filter((offer) => offer.source === 'user' || keep.has(offer));
 }
