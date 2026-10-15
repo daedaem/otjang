@@ -39,6 +39,8 @@ export async function sendSmtp({ host, port, secure = 'starttls', user = null, p
   let socket = secure === 'tls' ? tls.connect({ host, port, servername: host }) : net.connect({ host, port });
   let buffer = '';
   let waiting = null;
+  // Set when the peer closes; any reply still awaited then fails at once.
+  let closed = null;
   const onData = (chunk) => {
     buffer += chunk.toString('utf8');
     const lines = buffer.split('\r\n');
@@ -53,15 +55,24 @@ export async function sendSmtp({ host, port, secure = 'starttls', user = null, p
       resolve({ code: Number(last.slice(0, 3)), text: reply });
     }
   };
+  const fail = (error) => {
+    if (!waiting) return;
+    const reject = waiting.reject;
+    waiting = null;
+    reject(error);
+  };
   const attach = (s) => {
     s.on('data', onData);
-    s.on('error', (error) => { if (waiting) { const reject = waiting.reject; waiting = null; reject(error); } });
+    s.on('error', (error) => { closed ||= error; fail(error); });
+    // A relay that hangs up normally (no error event) must not leave the request waiting.
+    for (const event of ['end', 'close']) s.on(event, () => { closed ||= new Error('메일 서버가 연결을 끊었어요.'); fail(closed); });
   };
   attach(socket);
   const timer = setTimeout(() => socket.destroy(new Error('메일 서버가 응답하지 않아요.')), timeoutMs);
   const read = () => new Promise((resolve, reject) => {
     waiting = { resolve, reject };
     onData(Buffer.alloc(0));
+    if (waiting && closed) fail(closed);
   });
   const expect = async (codes, command = null) => {
     if (command !== null) socket.write(`${command}\r\n`);
@@ -77,7 +88,11 @@ export async function sendSmtp({ host, port, secure = 'starttls', user = null, p
       socket.removeListener('data', onData);
       socket = tls.connect({ socket, servername: host });
       attach(socket);
-      await new Promise((resolve, reject) => { socket.once('secureConnect', resolve); socket.once('error', reject); });
+      await new Promise((resolve, reject) => {
+        socket.once('secureConnect', resolve);
+        socket.once('error', reject);
+        socket.once('close', () => reject(new Error('메일 서버가 연결을 끊었어요.')));
+      });
       await expect([250], 'EHLO eoul');
     }
     if (user) await expect([235], `AUTH PLAIN ${Buffer.from(`\u0000${user}\u0000${pass ?? ''}`, 'utf8').toString('base64')}`);

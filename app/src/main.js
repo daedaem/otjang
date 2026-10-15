@@ -3908,8 +3908,9 @@ async function handleAccountLink() {
   const [, purpose, token] = match;
   if (purpose === 'verify') {
     try {
-      await createAccountApi({ base: accountBase }).verifyConfirm(token);
-      if (account) saveAccount({ ...account, emailVerified: true });
+      const result = await createAccountApi({ base: accountBase }).verifyConfirm(token);
+      // Only the account the link was for; this device may be signed in to another one.
+      if (account && result?.userId && account.userId === result.userId) saveAccount({ ...account, emailVerified: true });
       toast('이메일을 확인했어요');
     } catch (error) {
       toast(error?.message || '이메일을 확인하지 못했어요');
@@ -3926,11 +3927,23 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener?.('online', () => kickSync());
 // Sign-in or sign-out in another tab of this browser.
+// Another tab of this browser saved the wardrobe: load it here (no server call, no account write).
+async function refreshFromStore() {
+  if (!storageReady || writeBusy || bootBusy) return;
+  const latest = await wardrobeStore.peek();
+  if (!latest || (latest.revision === storageRevision && latest.epoch === storageEpoch)) return;
+  const snapshot = await wardrobeStore.read();
+  if (!snapshot || writeBusy) return;
+  applySnapshot(snapshot);
+  render();
+}
 window.addEventListener?.('storage', (e) => {
   if (!accountBase || (e.key !== ACCOUNT_KEY && e.key !== null)) return;
   const fresh = readAccount(localStorage, accountBase);
   if (fresh?.token === account?.token && fresh?.email === account?.email) {
+    // The same account synced in another tab: show what it saved in this browser.
     account = fresh;
+    refreshFromStore().catch(() => {});
     return;
   }
   account = fresh;

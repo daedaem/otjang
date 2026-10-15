@@ -96,6 +96,19 @@ test('a new account is told the email is unconfirmed; the mailed link confirms i
   assert.match(again.toasts.at(-1), /만료됐거나 이미 썼어요/);
 });
 
+test('a verification link for another account never marks the account signed in here', async () => {
+  const first = await boot();
+  await first.signup('owner-a@example.com');
+  await new Promise((resolve) => setImmediate(resolve));
+  const tokenA = linkToken(outbox.findLast((m) => m.to === 'owner-a@example.com'), 'verify');
+  const other = await boot();
+  await other.signup('owner-b@example.com');
+  const opened = await boot({ hash: `#verify=${tokenA}`, storage: other.storage });
+  assert.match(opened.toasts.at(-1), /이메일을 확인했어요/);
+  assert.equal(opened.app.account().email, 'owner-b@example.com');
+  assert.equal(opened.app.account().emailVerified, false, 'B is still unverified');
+});
+
 test('forgot password → mailed link → new password; this device signs in again with it', async () => {
   const page = await boot();
   await page.signup('reset@example.com');
@@ -105,6 +118,7 @@ test('forgot password → mailed link → new password; this device signs in aga
   await page.click({ action: 'account-mode', mode: 'forgot' });
   await page.app.submitAccountForm({ email: { value: 'reset@example.com' } });
   assert.match(page.sheet(), /가입한 이메일이면 재설정 링크를 보냈어요/);
+  await new Promise((resolve) => setImmediate(resolve));
   const token = linkToken(outbox.findLast((m) => m.to === 'reset@example.com' && /#reset=/.test(m.text)), 'reset');
   assert.ok(token);
 
