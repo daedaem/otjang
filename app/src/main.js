@@ -48,7 +48,7 @@ import { findOwnedCatalog } from './owned-catalog.js';
 import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, clearBackupRecord, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
-import { wardrobePlan, describeGarment } from './wardrobe-plan.js';
+import { wardrobePlan, describeGarment, productRecord } from './wardrobe-plan.js';
 import { validateOffer, compareOffers, mergeRefreshed, OFFER_FLAG_LABEL, OFFER_SOURCE_LABEL, OFFER_STALE_DAYS } from './offers.js';
 import { readOffers, writeOffers, offerRef, clearOffers } from './offer-store.js';
 import { storageLimits, removableJourneys, journeysWithout } from './record-cleanup.js';
@@ -716,6 +716,24 @@ function collectedPrice(entry) {
   const p = entry.product;
   return `<b>${formatPrice(entry.price.amount)}</b><span class="fine">${esc(entry.price.store)} 표시가 · ${esc(entry.price.collectedOn)} 수집</span>`;
 }
+// What happened last time with this exact product. Shown as the user's own
+// record; it never predicts fit or size and never reorders the list.
+function productRecordLine(record) {
+  if (!record) return '';
+  const date = record.at ? record.at.slice(0, 10) : '';
+  const fit = { small: '작게 맞음', right: '잘 맞음', large: '크게 맞음' }[record.fit];
+  const reason = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '변심', other: '기타' }[record.returnReason];
+  const what = record.stage === 'returned' ? `반품 기록${reason ? ` · 사유 ${reason}` : ''}`
+    : record.stage === 'kept' ? `계속 입기로 한 상품${record.wearCount ? ` · 착용 기록 ${record.wearCount}회` : ''}`
+    : record.stage === 'received' ? '받은 뒤 보유 확정 전'
+    : record.stage === 'ordered' ? '주문 기록 있음'
+    : record.decision === 'skip' ? '안 사기로 했던 상품'
+    : record.decision === 'hold' ? '보류해 둔 상품'
+    : record.decision === 'buy' ? '사기로 한 상품(주문 기록 전)'
+    : '비교해 본 상품';
+  const detail = [what, record.option ? `옵션 ${record.option}` : null, fit ? `핏 직접 기록: ${fit}` : null, date ? `${date} 기록` : null].filter(Boolean).join(' · ');
+  return `<p class="plan-record"><span>내 지난 기록 · ${esc(detail)}${record.count > 1 ? ` · 기록 ${record.count}개` : ''}</span><button class="link" data-action="open-journey" data-id="${esc(record.journeyId)}">기록 보기</button></p>`;
+}
 function planProductRow(entry) {
   const p = entry.product, slot = SLOT_BY_ID[p.slot];
   return `<article class="plan-product">
@@ -725,6 +743,7 @@ function planProductRow(entry) {
       <button class="name" data-action="open-item" data-id="${p.id}">${esc(p.name)}</button>
       <div class="price">${collectedPrice(entry)}</div>
       <div class="fine">${entry.colorConfirmed ? `색 ${esc(COLORS[p.color]?.label || '')}` : '색: 상품 사진으로 추정 · 판매처에서 확인 필요'}</div>
+      ${productRecordLine(entry.record)}
       <div class="opts plan-product-actions"><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a><button class="chip" data-action="candidate-product" data-id="${p.id}">내 옷과 비교</button></div>
     </div>
   </article>`;
@@ -1336,6 +1355,7 @@ function itemSheet(id) {
     <div class="fine">${esc(p.store)} 판매가 · ${esc(p.checkedAt)} 확인${p.color ? ` · ${COLORS[p.color]?.label || ''} (${p.colorSource === 'image' ? '상품 사진 추정' : '상품명·편집 분류'})` : ''}</div>
     ${!state.demo && !owned && !needsCheck ? '<p class="notice">등록한 옷 기준의 구매 후보예요. 실제로 없는 옷인지 먼저 확인해 주세요.</p>' : ''}
     ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
+    ${productRecordLine(productRecord(state, p.id))}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>
       ${[...new Set([slot.why, ...reasons])]
         .slice(0, 3)
