@@ -10,6 +10,8 @@ import {
   wardrobeStateStorageUsage, MAX_JOURNEY_STATE_BYTES, JOURNEY_STATE_WARNING_BYTES,
   MAX_OWNERSHIP_JOURNEY_STATE_BYTES, WARDROBE_STATE_WARNING_BYTES,
 } from '../src/wardrobe-store.js';
+import { setOfferRecord } from '../src/offer-store.js';
+import { validateOffer } from '../src/offers.js';
 
 const at = (day = 14) => `2026-10-${day}T00:00:00.000Z`;
 const bytes = (value) => new TextEncoder().encode(JSON.stringify(value)).length;
@@ -453,8 +455,6 @@ test('wardrobe state usage excludes screen view fields and photos and warns inde
 });
 
 test('price growth leaves clothing headroom while full validated backup replacement and price cleanup remain possible', async () => {
-  const { setOfferRecord } = await import('../src/offer-store.js');
-  const { validateOffer } = await import('../src/offers.js');
   const { original, upgraded } = legacyAboveBudget(null);
   let next;
   for (let length = 1000; length < 195000; length += 1000) {
@@ -471,14 +471,113 @@ test('price growth leaves clothing headroom while full validated backup replacem
     let snapshot = await store.read();
     await store.commit(upgraded, snapshot.revision, [], snapshot.epoch);
     snapshot = await store.read();
-    await assert.rejects(store.commit(next, snapshot.revision, [], snapshot.epoch), (error) => error.code === 'offer-budget');
+    await assert.rejects(store.commit(next, snapshot.revision, [], snapshot.epoch), (error) => ['offer-budget', 'notes-budget'].includes(error.code));
     assert.deepEqual((await store.read()).state, upgraded, 'refused price growth leaves every existing record unchanged');
-    await store.commit(next, snapshot.revision, [], snapshot.epoch, { replacingOffers: true });
+    await store.commit(next, snapshot.revision, [], snapshot.epoch, { replacingNotes: true });
     snapshot = await store.read();
     const changed = { ...snapshot.state, garments: [...snapshot.state.garments, garment('g_headroom')] };
     await store.commit(changed, snapshot.revision, [], snapshot.epoch);
     snapshot = await store.read();
     await store.commit({ ...snapshot.state, offerRecords: [] }, snapshot.revision, [], snapshot.epoch);
     assert.deepEqual((await store.read()).state.offerRecords, []);
+  } finally { store.close(); }
+});
+
+const noteBudgetError = (error) => ['offer-budget', 'notes-budget'].includes(error.code);
+function sellerNotes(urlLength) {
+  const entry = validateOffer({ id: 'o_space', seller: '직접 확인한 판매처', url: `https://shop.example/?x=${'x'.repeat(urlLength)}`,
+    price: 30000, shipping: 0, color: 'navy', size: 'M', stock: 'in-stock', sameProduct: 'confirmed', source: 'user', checkedAt: at() });
+  return setOfferRecord([], 'ms-123', { requested: { color: 'navy', size: 'M' }, offers: [entry], refresh: null }, new Date(at()));
+}
+function diaryNotes(count) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `w_history_${index}`, date: new Date(Date.UTC(2023, 0, index + 1)).toISOString().slice(0, 10),
+    garmentIds: ['g_unit'], lookId: null, note: '입었던 날의 메모 '.padEnd(200, 'x'), at: at(),
+  }));
+}
+const projectedWithOwnership = (state) => bytes(state) +
+  Math.max(0, MAX_OWNERSHIP_JOURNEY_STATE_BYTES - journeyStorageUsage(state).bytes) + 64 * 1024;
+
+test('early seller notes cannot spend the space needed for future ownership events even when the current snapshot is small', async () => {
+  const store = createWardrobeStore({ indexedDB: new IDBFactory() });
+  const initial = personal([keptJourney()], [garment('g_unit')]);
+  try {
+    await store.commit(initial, 0);
+    const before = await store.read();
+    const pending = { ...before.state, offerRecords: sellerNotes(190000) };
+    const originalInput = structuredClone(pending);
+    assert.equal(validateWardrobe(pending), pending);
+    assert.ok(bytes(pending) < WARDROBE_STATE_WARNING_BYTES, 'the previous current-size-only guard admitted this price growth');
+    assert.ok(projectedWithOwnership(pending) > MAX_WARDROBE_STATE_BYTES, 'the notes leave too little space for later 680 KiB ownership records');
+    await assert.rejects(store.commit(pending, before.revision, [], before.epoch), noteBudgetError);
+    const unchanged = await store.read();
+    assert.equal(unchanged.revision, before.revision);
+    assert.equal(unchanged.epoch, before.epoch);
+    assert.deepEqual(unchanged.state, initial);
+    assert.deepEqual(pending, originalInput);
+  } finally { store.close(); }
+});
+
+test('early diary notes cannot spend the future ownership reserve; explicit import and cleanup preserve existing records', async () => {
+  const store = createWardrobeStore({ indexedDB: new IDBFactory() });
+  const initial = personal([keptJourney()], [garment('g_unit')]);
+  try {
+    await store.commit(initial, 0);
+    const before = await store.read();
+    const pending = { ...before.state, wears: diaryNotes(1000) };
+    const originalInput = structuredClone(pending);
+    assert.equal(validateWardrobe(pending), pending);
+    assert.ok(bytes(pending) < WARDROBE_STATE_WARNING_BYTES, 'these valid diary entries fit the old global-size guard');
+    assert.ok(projectedWithOwnership(pending) > MAX_WARDROBE_STATE_BYTES);
+    await assert.rejects(store.commit(pending, before.revision, [], before.epoch), noteBudgetError);
+    assert.equal((await store.read()).revision, before.revision);
+    assert.deepEqual((await store.read()).state, initial);
+    assert.deepEqual(pending, originalInput);
+    // Explicit whole-snapshot replacement is not a new-note mutation. Existing
+    // valid history must remain restorable and removable above the new reserve.
+    await store.commit(pending, before.revision, [], before.epoch, { replacingNotes: true });
+    const imported = await store.read();
+    assert.deepEqual(imported.state.wears, pending.wears);
+    const reduced = { ...imported.state, wears: imported.state.wears.slice(1) };
+    assert.ok(projectedWithOwnership(reduced) > MAX_WARDROBE_STATE_BYTES, 'cleanup works before the snapshot falls below the reserve');
+    await store.commit(reduced, imported.revision, [], imported.epoch);
+    assert.deepEqual((await store.read()).state.wears, reduced.wears);
+  } finally { store.close(); }
+});
+
+test('budgeted mixed seller and diary notes keep 200 garments and a later return beyond 600 KiB writable', async () => {
+  const store = createWardrobeStore({ indexedDB: new IDBFactory() });
+  try {
+    await store.commit(personal([keptJourney()], [garment('g_unit')]), 0);
+    let snapshot = await store.read();
+    const withNotes = { ...snapshot.state, offerRecords: sellerNotes(20000), wears: diaryNotes(80) };
+    assert.ok(bytes(withNotes.offerRecords) + bytes(withNotes.wears) > 45 * 1024);
+    assert.ok(projectedWithOwnership(withNotes) <= MAX_WARDROBE_STATE_BYTES);
+    await store.commit(withNotes, snapshot.revision, [], snapshot.epoch);
+    snapshot = await store.read();
+    const examples = [['m-oxford', 'white', '옥스포드 셔츠'], ['m-chino', 'beige', '치노 팬츠'],
+      ['m-knit', 'navy', '크루넥 니트'], ['m-loafer', 'brown', '로퍼']];
+    const garments = [garment('g_unit'), garment('g_target'), ...Array.from({ length: 198 }, (_, index) => {
+      const [slot, color, label] = examples[index % examples.length];
+      return makeGarment({ id: `g_owned_${index}`, slot, color, gender: 'M', label: `${label} ${index + 1}`, createdAt: at() });
+    })];
+    assert.ok(bytes(garments) < 64 * 1024, 'the promised clothing reserve holds 200 normal garment records');
+    await store.commit({ ...snapshot.state, garments }, snapshot.revision, [], snapshot.epoch);
+    snapshot = await store.read();
+    const journeys = budgetPair('kept');
+    await store.commit({ ...snapshot.state, journeys }, snapshot.revision, [], snapshot.epoch);
+    snapshot = await store.read();
+    const returned = { ...snapshot.state, journeys: [snapshot.state.journeys[0],
+      transitionPurchaseJourney(snapshot.state.journeys[1], 'returned', { at: at(15) })] };
+    assert.ok(journeyStorageUsage(returned).bytes > MAX_JOURNEY_STATE_BYTES);
+    assert.ok(journeyStorageUsage(returned).bytes < MAX_OWNERSHIP_JOURNEY_STATE_BYTES);
+    assert.ok(bytes(returned) < MAX_WARDROBE_STATE_BYTES);
+    await store.commit(returned, snapshot.revision, [], snapshot.epoch);
+    const saved = await store.read();
+    assert.equal(saved.state.journeys[1].stage, 'returned');
+    assert.equal(saved.state.garments.length, 200);
+    assert.deepEqual(saved.state.garments, garments);
+    assert.deepEqual(saved.state.offerRecords, withNotes.offerRecords);
+    assert.deepEqual(saved.state.wears, withNotes.wears);
   } finally { store.close(); }
 });

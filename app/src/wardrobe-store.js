@@ -29,13 +29,18 @@ export function wardrobeStateStorageUsage(state) {
   };
 }
 
-// New price notes leave room for clothing/ownership changes. Existing large
-// snapshots and explicit cleanup are still readable and can shrink normally.
-export function validateOfferGrowth(previous, next) {
-  const bytes = (state) => new TextEncoder().encode(JSON.stringify(state?.offerRecords || [])).length;
+// Notes must not consume space that ownership transitions may still need.
+// Reserve the unused portion of the journey allowance, plus clothing headroom,
+// when prices/wear notes grow. Existing imports and shrink-only cleanup stay
+// readable even when they predate this reserve.
+export function validateNoteGrowth(previous, next) {
+  if (!previous) return;
+  const bytes = (state) => new TextEncoder().encode(JSON.stringify(state?.offerRecords || [])).length +
+    new TextEncoder().encode(JSON.stringify(state?.wears || [])).length;
   if (bytes(next) <= bytes(previous)) return;
-  if (wardrobeStateStorageUsage(next).bytes > MAX_WARDROBE_STATE_BYTES - 64 * 1024)
-    throw Object.assign(new Error('옷과 구매 기록을 위한 공간을 남겨 두었어요. 가격 기록을 백업한 뒤 필요 없는 상품 기록을 정리해 주세요. 기존 기록은 유지했습니다.'), { code: 'offer-budget' });
+  const futureJourneys = Math.max(0, MAX_OWNERSHIP_JOURNEY_STATE_BYTES - journeyStorageUsage(next).bytes);
+  if (wardrobeStateStorageUsage(next).bytes + futureJourneys > MAX_WARDROBE_STATE_BYTES - 64 * 1024)
+    throw Object.assign(new Error('옷과 반품·수령 기록을 위한 공간을 남겨 두었어요. 백업한 뒤 필요 없는 가격·착용 기록을 정리해 주세요. 기존 기록은 유지했습니다.'), { code: 'offer-budget' });
 }
 
 // This is a small metadata reserve, not separate storage partitions. Old records
@@ -289,7 +294,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
     return snapshot;
   }
 
-  async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch, { replacingOffers = false } = {}) {
+  async function commit(state, expectedRevision, assets = [], expectedEpoch = observedEpoch, { replacingNotes = false } = {}) {
     validateWardrobe(state);
     const next = structuredClone(state);
     const verified = [];
@@ -318,7 +323,7 @@ export function createWardrobeStore({ indexedDB = globalThis.indexedDB, name = '
           // Compare with the CAS-checked persisted state inside the same
           // transaction, before any metadata or photo write can take place.
           validateJourneyGrowth(old?.state, next);
-          if (!replacingOffers) validateOfferGrowth(old?.state, next);
+          if (!replacingNotes) validateNoteGrowth(old?.state, next);
           revision = (old?.revision || 0) + 1;
           epoch = old?.epoch || crypto.randomUUID();
           const needed = new Set(next.garments.map((garment) => garment.photoId).filter(Boolean));

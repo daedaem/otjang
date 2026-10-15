@@ -40,7 +40,7 @@ import {
 import { stripJpegMetadata } from './jpeg-clean.js';
 import { COMMUNITY_RULES, COMMUNITY_RULES_VERSION, COMMUNITY_REPORT_REASONS, MAX_POST_PHOTOS, MAX_CAPTION, communityLookFrom, nameProblem } from './community-post.js';
 import { addWear, toggleWornOn, deleteWear, wearStats, orderByRecentWear, localDate, wearDateOK, wearMonths, MAX_WEAR_GARMENTS, WEAR_RECENT_DAYS } from './wear-log.js';
-import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, validateOfferGrowth, photoAsset } from './wardrobe-store.js';
+import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, validateNoteGrowth, photoAsset } from './wardrobe-store.js';
 import { AGREEMENT_VERSION, ACCOUNT_KEY, accountServer, readAccount, writeAccount, clearAccount, createAccountApi, isEmptyWardrobe, syncDecision, pushWardrobe, pullWardrobe, withDeviceFields, sameWardrobe, wardrobeSummary } from './account.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
 import { prepareGarmentPhoto, prepareGarmentPhotoWithSource, photoAssetFromSource, photoAssetWithoutBackground, photoPixels, normalizeCrop, dragCrop } from './garment-photo.js';
@@ -143,7 +143,7 @@ function withLegacyPrices(record) {
   const raw = localStorage.getItem(OFFER_STORE_KEY);
   try {
     const migrated = storedWardrobe({ ...upgraded, offerRecords: legacyOfferRecords(raw) });
-    validateOfferGrowth(upgraded, migrated);
+    validateNoteGrowth(upgraded, migrated);
     if (localStorage.getItem(OFFER_STORE_KEY) !== raw)
       throw new Error('이전 가격 기록이 바뀌었어요. 다시 시도해 주세요.');
     legacyPriceNotice = '';
@@ -203,7 +203,7 @@ async function bootWardrobe() {
   }
   render();
 }
-async function set(patch, { rerender = true, assets = [], replacingOffers = false } = {}) {
+async function set(patch, { rerender = true, assets = [], replacingNotes = false } = {}) {
   if (Object.keys(patch).every((k) => k === 'tab')) {
     state = { ...state, ...patch };
     if (rerender) render();
@@ -215,7 +215,7 @@ async function set(patch, { rerender = true, assets = [], replacingOffers = fals
   const next = storedWardrobe({ ...state, ...changes, ...(closet ? { garments: closet } : {}) });
   writeBusy = true;
   try {
-    const revision = await wardrobeStore.commit(next, storageRevision, assets, storageEpoch, { replacingOffers });
+    const revision = await wardrobeStore.commit(next, storageRevision, assets, storageEpoch, { replacingNotes });
     const needed = new Set(next.garments.map((i) => i.photoId).filter(Boolean));
     const rows = new Map([...photoBlobs, ...assets.map((a) => [a.id, a.blob])].filter(([id]) => needed.has(id)));
     applySnapshot({ state: next, revision, epoch: wardrobeStore.currentEpoch(), photos: rows }, { localWrite: true });
@@ -2609,7 +2609,7 @@ async function replaceWithAccountWardrobe(api, remote, token = account?.token) {
   }
   if (writeBusy) throw Object.assign(new Error('busy'), { code: 'busy' });
   // An account wardrobe saved by an older version is upgraded first (an empty wear diary).
-  await set(withDeviceFields(upgradeWardrobe(pulled.state), storedWardrobe(state)), { assets: pulled.assets, replacingOffers: true });
+  await set(withDeviceFields(upgradeWardrobe(pulled.state), storedWardrobe(state)), { assets: pulled.assets, replacingNotes: true });
   offerView = null;
   offerDeleteReview = null;
   if (sheetKey?.startsWith('offers:') || sheetKey?.startsWith('offer-record')) closeSheet();
@@ -4210,7 +4210,7 @@ document.addEventListener('click', async (e) => {
           } finally {
             writeBusy = false;
           }
-        } else await set(saved.state, { assets: saved.assets, replacingOffers: true });
+        } else await set(saved.state, { assets: saved.assets, replacingNotes: true });
         closeSheet();
         toast('옷장과 사진을 복원했어요');
         break;
