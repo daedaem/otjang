@@ -43,6 +43,7 @@ const order = [
   'src/offer-store.js',
   'src/record-cleanup.js',
   'src/draft-keeper.js',
+  'src/community-post.js',
   'src/icons.js',
   'src/zip-store.js',
   'src/main.js',

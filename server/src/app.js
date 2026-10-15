@@ -10,6 +10,8 @@ import crypto from 'node:crypto';
 import { validateWardrobe, WARDROBE_SCHEMA } from '../../app/src/wardrobe.js';
 import { MAX_GARMENT_PHOTO_BYTES } from '../../app/src/wardrobe-store.js';
 import { transaction } from './db.js';
+import { HttpError } from './http-error.js';
+import { createCommunity } from './community.js';
 import {
   normalizeEmail, passwordProblem, hashPassword, verifyPassword, burnPasswordTime,
   newSessionToken, tokenHash, newUserId,
@@ -28,14 +30,6 @@ const UNREFERENCED_PHOTO_GRACE_MS = 24 * 3600 * 1000;
 const PHOTO_ID = /^p_[a-f0-9]{64}$/;
 const HOUR = 3600 * 1000;
 
-class HttpError extends Error {
-  constructor(status, code, message, extra = {}) {
-    super(message);
-    this.status = status;
-    this.code = code;
-    this.extra = extra;
-  }
-}
 
 function send(res, status, body, headers = {}) {
   if (body === undefined) {
@@ -219,7 +213,7 @@ ${link}
       agreementVersion: AGREEMENT_VERSION,
       signup: { inviteRequired: !!config.inviteCode },
       providers: { email: true, kakao: false, google: false },
-      features: { photoMask: !!maskService, offers: !!supply, email: !!mail.enabled },
+      features: { photoMask: !!maskService, offers: !!supply, email: !!mail.enabled, community: !!config.community },
       supply: supply ? supply.sources().map(({ id, name, status, needs = [] }) => ({ id, name, status, needs })) : [],
     }),
 
@@ -331,8 +325,9 @@ ${link}
       return account(session.userId, session.createdAt);
     },
 
-    // Deleting the account removes the user, every session, the wardrobe and
-    // every photo in one transaction. Backups taken earlier still hold copies.
+    // Deleting the account removes the user, every session, the wardrobe,
+    // every photo and every community post and its photos in one transaction
+    // (foreign keys cascade). Backups taken earlier still hold copies.
     'DELETE /v1/me': async (req) => {
       const session = authenticate(req);
       limit(`delete:${session.userId}`, 5, 15 * 60 * 1000);
@@ -477,6 +472,8 @@ ${link}
     res.end(html);
   }
 
+  const community = createCommunity({ db, enabled: !!config.community, now, log, authenticate, limit, readJson });
+
   let lastSweep = 0;
   async function handle(req, res) {
     const started = now();
@@ -507,10 +504,13 @@ ${link}
         await photoRoute(req, res, method, photo[1]);
         return;
       }
-      const route = routes[`${method} ${url.pathname}`];
+      const route = routes[`${method} ${url.pathname}`] || community.match(method, url.pathname);
       if (!route) throw new HttpError(404, 'not-found', '없는 주소예요.');
       const result = await route(req, url);
-      if (Array.isArray(result)) send(res, result[0], result[1]);
+      if (result?.raw) {
+        res.writeHead(200, { 'Content-Type': result.raw.type, 'Content-Length': result.raw.bytes.length, 'Cache-Control': 'no-store' });
+        res.end(result.raw.bytes);
+      } else if (Array.isArray(result)) send(res, result[0], result[1]);
       else send(res, 200, result);
     } catch (error) {
       if (error instanceof HttpError) {

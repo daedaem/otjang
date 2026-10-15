@@ -40,5 +40,8 @@ export function loadConfig(env = process.env) {
     // Optional server-side garment mask (see src/photo-mask.js). Off when the file is missing.
     maskModel: env.EOUL_MASK_MODEL || path.join(serverRoot, 'models', 'u2net.onnx'),
     maskThreads: integer(env.EOUL_MASK_THREADS, Math.min(4, os.availableParallelism?.() || 1), { min: 1, max: 64 }),
+    // Members' outfit sharing. Off until the operator has published the rules
+    // and the contact for reports (see README "커뮤니티").
+    community: env.EOUL_COMMUNITY === 'on',
   };
 }

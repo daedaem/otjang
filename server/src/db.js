@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export function openDatabase(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -85,6 +85,48 @@ export function openDatabase(file) {
         );
         CREATE INDEX email_tokens_user ON email_tokens(user_id, purpose);
         PRAGMA user_version = 2;
+      `);
+    });
+  }
+  if (version < 3) {
+    transaction(db, () => {
+      db.exec(`
+        -- Members of this server's community: a display name (never the email)
+        -- and the version of the community rules they agreed to.
+        CREATE TABLE community_members (
+          user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          name_key TEXT NOT NULL UNIQUE,
+          rules_version TEXT NOT NULL,
+          joined_at INTEGER NOT NULL
+        );
+        -- A shared outfit. look holds the outfit shape only (see app/src/community-post.js).
+        CREATE TABLE posts (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at INTEGER NOT NULL,
+          look TEXT NOT NULL,
+          caption TEXT NOT NULL,
+          hidden_at INTEGER,
+          hidden_reason TEXT
+        );
+        CREATE INDEX posts_feed ON posts(created_at);
+        CREATE INDEX posts_user ON posts(user_id);
+        -- Photos the member chose and agreed to share with this post. Removed with the post.
+        CREATE TABLE post_photos (
+          post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+          idx INTEGER NOT NULL,
+          bytes BLOB NOT NULL,
+          PRIMARY KEY (post_id, idx)
+        );
+        CREATE TABLE post_reports (
+          post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          reason TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (post_id, user_id)
+        );
+        PRAGMA user_version = 3;
       `);
     });
   }

@@ -499,6 +499,12 @@ img { display: block; max-width: 100%; }
 .wear-pick .toggle { display: grid; grid-template-columns: 22px 44px minmax(0, 1fr); gap: 10px; align-items: center; margin-top: 6px; font-weight: 500; }
 .wear-pick .toggle .mini { width: 44px; height: auto; margin: 0; }
 .wear-pick .toggle span { min-width: 0; overflow-wrap: anywhere; }
+.community-post { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0; background: var(--surface); overflow-wrap: anywhere; }
+.community-post h4 { margin: 4px 0; }
+.community-post .opts { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.community-photos { display: flex; gap: 6px; overflow-x: auto; margin: 8px 0; }
+.community-photos img { width: 96px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; background: var(--sunk); flex: none; }
+.community-entry .btn { margin-top: 6px; }
 .wear-list li { display: block; padding: 8px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .look-worn { margin-top: 4px; }
 .field { display: grid; gap: 4px; margin: 10px 0; font-size: 14px; font-weight: 600; }
