@@ -15,6 +15,21 @@
 | `backup` | Litestream. 데이터베이스 변경분을 몇 초 안에 백업 위치로 복제 |
 | `backup-dir` | 시작할 때 한 번 백업 폴더 권한을 맞추고 끝남 |
 
+## 먼저 혼자 써 보기 (도메인·Docker 없이)
+
+저장소를 받은 폴더에서 명령 한 줄로 서버를 켜고 휴대폰용 https 주소까지 만듭니다. 필요한 Node.js와 cloudflared가 없으면 설치할지 물어봅니다.
+
+| PC | 명령 |
+|---|---|
+| macOS·Linux | `bash deploy/try-local.sh` |
+| Windows | `powershell -ExecutionPolicy Bypass -File deploy\try-local.ps1` |
+
+- 화면에 나온 `https://…trycloudflare.com` 주소를 휴대폰에서 열고, 함께 나온 초대 코드로 가입합니다.
+- 이 PC에서만 보려면 끝에 `--local`(Windows는 `-Local`)을 붙입니다. 사진이 PC 밖으로 나가지 않습니다.
+- 시험 데이터는 `server/data-try/`에 따로 저장되고 저장소에 올라가지 않습니다. 끝내려면 Ctrl+C.
+- 휴대폰 주소는 Cloudflare 임시 터널이라 켤 때마다 바뀌고, 주소를 아는 사람은 열 수 있습니다. 시험이 끝나면 꺼 주세요.
+- 이 PC에서 Claude 데스크톱 앱(또는 `claude remote-control`)을 켜고 "deploy/try-local로 어울 켜 줘"라고 하면, 설치와 실행을 Claude가 대신 진행합니다.
+
 ## 준비물과 비용
 
 | 준비물 | 비용 | 메모 |
