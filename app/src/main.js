@@ -2321,7 +2321,16 @@ async function removeDraftBackground({ via = 'device' } = {}) {
 // essentials (whose catalog order can consist entirely of tops and outerwear).
 // Style picks a representative within each role; it never sets garment colour
 // or identity, and the remaining types stay available in the manual choices.
-function registrationQuickSlots(gender, styles) {
+// The last few kinds the person registered come first, so a second pair of the
+// same sneakers is one tap even when that kind is not in the default set.
+function registrationQuickSlots(gender, styles, garments = []) {
+  const recent = [];
+  for (const item of garments.filter((g) => g.source === 'user' && SLOT_BY_ID[g.slot]?.g === gender)
+    .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))) {
+    const slot = SLOT_BY_ID[item.slot];
+    if (!recent.includes(slot)) recent.push(slot);
+    if (recent.length === 4) break;
+  }
   const ranked = SLOTS.filter((slot) => slot.g === gender)
     .sort((a, b) => styleScore(b, styles) - styleScore(a, styles));
   const chosen = [];
@@ -2341,7 +2350,7 @@ function registrationQuickSlots(gender, styles) {
     for (const kind of ['pants', 'jeans', 'skirt']) take((slot) => slot.cat === 'bottom' && slot.shape === kind);
   }
   for (const kind of ['sneaker', 'loafer', 'boot']) take((slot) => slot.cat === 'shoes' && slot.shape === kind);
-  return chosen;
+  return [...recent, ...chosen.filter((slot) => !recent.includes(slot))].slice(0, 12);
 }
 function addSheet() {
   if (!draft) return;
@@ -2361,7 +2370,7 @@ function addSheet() {
   const manual = !draft.kind && !suggested;
   const specificKinds = SLOTS.filter((s) => s.g === draft.gender && s.shape === draft.kind);
   const manualKinds = `<fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>`;
-  const quickSlots = registrationQuickSlots(draft.gender, state.styles);
+  const quickSlots = registrationQuickSlots(draft.gender, state.styles, state.garments);
   const quickKinds = `<fieldset><legend>사진과 같은 종류를 골라주세요</legend><p class="sub">아래 사진은 종류를 고르는 참고용이에요.</p><div class="kind-grid quick-kinds">${quickSlots.map((slot) => `<button class="kind-pick" data-action="draft-quick-slot" data-slot="${slot.id}">${typePicture(slot)}<span>${esc(shortName(slot))}</span></button>`).join('')}</div><details class="manual-kinds"><summary>다른 종류 · 아직 잘 모르겠어요</summary>${manualKinds}</details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>옷 사진 한 장</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   const analysisActive = draft.recognizing || draft.photoRecognition || draft.recognitionError || draft.photoReview;

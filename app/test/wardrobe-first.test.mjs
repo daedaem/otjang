@@ -690,3 +690,28 @@ test('storage and example notices live inside the main landmark under one page h
   await page.click({ action: 'tab', tab: 'closet' });
   assert.match(page.nodes.get('app').innerHTML, /^<main\b[^>]*id="main-content"[^>]*><h1 class="sr-only">어울 내 옷장<\/h1>/);
 });
+
+test('kinds I registered recently come first among the quick photo types, still twelve distinct choices', async (t) => {
+  const page = await registrationPage('M', 'classic');
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(jpeg(91));
+  const defaults = quickRegistrationSlots(page.sheet()).map((slot) => slot.id);
+  assert.ok(!defaults.includes('m-runner'), 'the fixture kind starts outside the default set');
+  // Register running sneakers through "other kinds", then a chino through its tile.
+  await page.click({ action: 'draft-kind', kind: 'sneaker' });
+  await page.click({ action: 'draft-slot', slot: 'm-runner' });
+  await page.app.saveGarmentDraft();
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(jpeg(92));
+  await page.click({ action: 'draft-quick-slot', slot: 'm-chino' });
+  await page.app.saveGarmentDraft();
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(jpeg(93));
+  const slots = quickRegistrationSlots(page.sheet());
+  assert.deepEqual(slots.slice(0, 2).map((slot) => slot.id), ['m-chino', 'm-runner'], 'most recent first');
+  assert.equal(slots.length, 12);
+  assert.equal(new Set(slots.map((slot) => slot.id)).size, 12);
+  assert.ok(slots.every((slot) => slot.g === 'M'));
+  for (const kind of ['tee', 'shirt', 'knit']) assert.ok(slots.some((slot) => slot.shape === kind), `${kind} stays reachable`);
+});
