@@ -1317,7 +1317,7 @@ function cropEditor() {
   return `<div class="crop-editor"><p class="sub">상자를 끌어 등록할 옷 한 벌만 남기세요. 모서리를 끌면 크기가 바뀌어요. 원본 사진은 저장하지 않아요.</p>
   <div class="crop-stage" data-crop-stage style="width:min(100%, calc(56vh * ${(src.width / src.height).toFixed(4)}));aspect-ratio:${src.width} / ${src.height}"><img src="${esc(draft.sourcePreview)}" alt="자를 원본 사진" draggable="false">
   <div class="crop-box" data-crop-box tabindex="0" role="group" aria-label="자를 영역. 방향키로 옮기고, Shift와 방향키로 크기를 바꿔요." style="left:${pct(e.x)};top:${pct(e.y)};width:${pct(e.w)};height:${pct(e.h)}">${['nw', 'ne', 'sw', 'se'].map((h) => `<span class="crop-handle ${h}" data-handle="${h}" aria-hidden="true"></span>`).join('')}</div></div>
-  <div class="crop-actions"><button class="btn" data-action="crop-apply"${draft.processing ? ' disabled' : ''}>${draft.processing ? '자르는 중…' : '이 영역으로 자르기'}</button><button class="chip" data-action="crop-cancel">취소</button>${draft.crop ? '<button class="chip" data-action="crop-reset">자르기 전 사진으로</button>' : ''}</div></div>`;
+  <div class="crop-actions"><button class="chip" data-action="crop-cancel">취소</button>${draft.crop ? '<button class="chip" data-action="crop-reset">자르기 전 사진으로</button>' : ''}</div></div>`;
 }
 // 저장된 사진을 수정할 때는 저장된 JPEG를 원본으로 삼는다(처음 고른 원본 파일은 저장하지 않았다).
 async function ensureDraftPhotoSource(current) {
@@ -1384,6 +1384,11 @@ async function applyDraftCrop(crop) {
 function addSheet() {
   if (!draft) return;
   if (draft.entryMode === 'catalog') { ownedCatalogSheet(); return; }
+  // 자르는 동안에는 자르기만 보여 준다(아래 저장 버튼이 자르기 버튼을 가리지 않게).
+  if (draft.cropEdit && draft.photoSource) {
+    openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">옷 한 벌만 남기기</h2>${cropEditor()}${draft.photoError ? `<div class="photo-error"><p class="editor-error" role="alert">${esc(draft.photoError)}</p></div>` : ''}<div class="cta registration-save"><button class="btn" data-action="crop-apply"${draft.processing ? ' disabled' : ''}>${draft.processing ? '자르는 중…' : '이 영역으로 자르기'}</button></div></div>`, { key: `garment:${draft.id}:crop` });
+    return;
+  }
   const selected = slotForItem(draft);
   const kinds = GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === draft.gender && s.shape === k.id));
   const kindButton = (k) => `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === draft.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
@@ -1396,7 +1401,7 @@ function addSheet() {
   const manualKinds = `<fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>옷 사진 한 장</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2><p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p><fieldset${draft.saving ? ' disabled' : ''}>
-  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `${draft.cropEdit && draft.photoSource ? cropEditor() : `<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진${draft.crop ? ' (자른 영역)' : ''}">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions">${photo ? `<button class="chip" data-action="crop-start"${draft.processing ? ' disabled' : ''}>${draft.crop ? '자른 영역 다시 조정' : '옷만 자르기'}</button>` : ''}<button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>`}<button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
+  ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `${`<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진${draft.crop ? ' (자른 영역)' : ''}">` : '<div class="photo-empty">사진은 선택</div>'}<div class="photo-edit-actions">${photo ? `<button class="chip" data-action="crop-start"${draft.processing ? ' disabled' : ''}>${draft.crop ? '자른 영역 다시 조정' : '옷만 자르기'}</button>` : ''}<button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></div>`}<button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
   ${draft.photoMissing ? '<p class="notice">이전 버전에서 저장되지 않은 사진이에요. 다시 고를 수 있어요.</p>' : ''}
   ${photoAnalysisPanel()}
   ${draft.kind ? `<div class="confirmed-kind"><span>확인한 종류</span><b>${esc(garmentKindName(draft.kind))}</b>${draft.brand ? `<small>${esc(draft.brand)}</small>` : ''}</div>` : photo ? '<p class="sub registration-kind-hint">종류를 확인해 주세요. 모르면 아래에서 직접 고를 수 있어요.</p>' : ''}
