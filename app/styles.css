@@ -61,16 +61,16 @@ img { display: block; max-width: 100%; }
 .top { padding: calc(8px + env(safe-area-inset-top)) var(--gutter) 8px; border-bottom: 1px solid var(--line); }
 .top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .brand { min-height: 44px; text-align: left; font-size: 27px; font-weight: 800; letter-spacing: -.065em; line-height: 1.1; white-space: nowrap; }
-.brand small { font-size: 11px; font-weight: 600; color: var(--ink-3); letter-spacing: .01em; margin-left: 10px; vertical-align: middle; }
+.brand small { font-size: 12px; font-weight: 600; color: var(--ink-3); letter-spacing: .01em; margin-left: 10px; vertical-align: middle; }
 .profile-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; max-width: 60%; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .profile-btn svg { flex: none; }
 .skip-link { position: fixed; left: 16px; top: 12px; z-index: 100; transform: translateY(-180%); padding: 12px 18px; background: var(--ink); color: var(--bg); border-radius: 4px; font-weight: 700; }
 .skip-link:focus { transform: none; }
 
 /* 사진을 먼저 보고, 필요한 설명과 다음 행동을 이어서 읽는 추천 화면. */
-.eyebrow { display: block; font-size: 11px; font-weight: 750; letter-spacing: .08em; color: var(--ink-3); line-height: 1.5; }
+.eyebrow { display: block; font-size: 12px; font-weight: 750; letter-spacing: .08em; color: var(--ink-3); line-height: 1.5; }
 .section.page-intro { padding-top: 10px; }
-.section.page-intro .eyebrow { font-size: 10px; line-height: 1.2; }
+.section.page-intro .eyebrow { font-size: 12px; line-height: 1.2; }
 .section.page-intro h2 { font-size: 32px; line-height: 1.1; letter-spacing: -.055em; margin: 6px 0 0; }
 .section.page-intro .sub { max-width: 50ch; font-size: 12px; line-height: 1.5; margin: 4px 0 0; }
 .home-lead { display: grid; gap: 24px; padding: 16px var(--gutter) 0; min-width: 0; }
@@ -84,32 +84,32 @@ img { display: block; max-width: 100%; }
 .next-pick-image { display: block; width: 100%; min-width: 0; }
 .next-pick-image .thumb { width: 100%; }
 .next-owned { margin-top: 12px; }
-.next-owned > span { display: block; margin-bottom: 7px; color: var(--ink-3); font-size: 10px; line-height: 1.4; }
+.next-owned > span { display: block; margin-bottom: 7px; color: var(--ink-3); font-size: 12px; line-height: 1.4; }
 .next-owned > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .next-owned button { display: block; width: 100%; min-width: 0; text-align: left; }
 .next-owned-photo { display: grid; place-items: center; position: relative; width: 100%; height: 65px; min-width: 0; min-height: 0; overflow: hidden; background: var(--photo-surface); border-radius: 3px; }
 .next-owned-photo > img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .next-owned-photo .swatch { min-height: 0; }
-.next-owned-photo .photo-caption { padding: 1px 2px; font-size: 10px; line-height: 1.2; }
-.next-owned-photo .swatch span { left: 3px; right: 3px; bottom: 3px; font-size: 10px; }
+.next-owned-photo .photo-caption { padding: 1px 2px; font-size: 11px; line-height: 1.2; }
+.next-owned-photo .swatch span { left: 3px; right: 3px; bottom: 3px; font-size: 11px; }
 .next-pick-body { min-width: 0; }
 .next-pick-body .eyebrow { margin-bottom: 12px; color: var(--accent); }
 .next-pick h3 { font-size: 16px; line-height: 1.45; font-weight: 650; letter-spacing: -.025em; margin: 5px 0 0; }
 .next-pick .price { font-size: 20px; margin-top: 10px; }
 .next-pick .reason { margin: 10px 0 0; padding: 0; font-size: 12px; }
-.next-pick .fine { font-size: 11px; line-height: 1.6; }
+.next-pick .fine { font-size: 12px; line-height: 1.6; }
 .next-pick .btn { margin-top: 14px; min-height: 44px; padding: 10px; font-size: 13px; }
-.next-pick .link { width: 100%; font-size: 11px; }
+.next-pick .link { width: 100%; font-size: 12px; }
 .next-pick-empty { display: block; padding: 24px; background: var(--sunk); border: 0; border-radius: 4px; }
 .next-pick-empty h3 { font-size: 23px; margin-top: 12px; }
 .next-pick.next-pick-pair { display: block; }
 .home-pair-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; margin: 16px 0 4px; }
 .home-pair-products > div { display: grid; align-content: start; gap: 5px; min-width: 0; }
 .home-pair-products .thumb { width: 100%; aspect-ratio: 4 / 5; max-height: 210px; margin-bottom: 5px; }
-.home-pair-products .brand-name { font-size: 11px; }
+.home-pair-products .brand-name { font-size: 12px; }
 .home-pair-products b { font-size: 13px; line-height: 1.45; font-weight: 550; overflow-wrap: anywhere; }
 .home-pair-products > div > span { font-size: 14px; font-weight: 750; }
-.home-pair-products small { font-size: 10.5px; line-height: 1.5; color: var(--ink-3); }
+.home-pair-products small { font-size: 12px; line-height: 1.5; color: var(--ink-3); }
 .home-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .home-shortcuts > button { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; min-height: 96px; padding: 16px 12px; background: var(--sunk); border: 1px solid var(--line); border-radius: 5px; text-align: left; align-items: start; }
 .home-shortcuts > button > svg:last-child { display: none; }
@@ -118,14 +118,14 @@ img { display: block; max-width: 100%; }
 .home-shortcuts small { font-size: 12px; color: var(--ink-3); margin-top: 5px; line-height: 1.6; }
 .discovery-tools { margin: 30px var(--gutter) 0; padding-top: 24px; border-top: 1px solid var(--line); }
 .discovery-filters > summary, .home-diagnostics > summary, .journey-controls > summary { min-height: 48px; padding: 14px 0; font-size: 13px; font-weight: 650; }
-.discovery-filters > summary > span { margin-left: 8px; font-size: 11px; font-weight: 400; color: var(--ink-3); }
+.discovery-filters > summary > span { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--ink-3); }
 .discovery-filters .chips { flex-wrap: wrap; overflow: visible; }
 .home-diagnostics { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .home-diagnostics .section { padding: 18px 0; }
 
 .ask { display: flex; align-items: center; gap: 10px; min-height: 52px; margin-top: 0; padding: 0 8px 0 14px; border-radius: 6px; background: var(--sunk); border: 1px solid transparent; }
 .ask svg { color: var(--ink-3); flex: none; }
-.ask input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 16px; }
+.ask input { flex: 1; min-width: 0; align-self: stretch; min-height: 44px; border: 0; outline: 0; background: transparent; font-size: 16px; }
 .ask input::placeholder { color: var(--ink-3); }
 .ask .clear { width: 44px; height: 44px; display: grid; place-items: center; color: var(--ink-3); border-radius: 4px; }
 
@@ -159,7 +159,7 @@ img { display: block; max-width: 100%; }
 .tile img { width: 100%; height: 100%; min-width: 0; min-height: 0; max-height: 100%; object-fit: contain; }
 .tile .art { width: 62%; height: 62%; }
 .tile .badge { position: absolute; left: 8px; top: 8px; }
-.badge { display: inline-flex; align-items: center; gap: 3px; min-height: 24px; padding: 3px 7px; border-radius: 3px; font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.badge { display: inline-flex; align-items: center; gap: 3px; min-height: 24px; padding: 3px 7px; border-radius: 3px; font-size: 12px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
 .look-body { padding: 14px 0 0; }
 .look-title { font-size: 18px; font-weight: 750; letter-spacing: -.035em; }
 .look-note { font-size: 13.5px; color: var(--ink-2); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -221,9 +221,9 @@ img { display: block; max-width: 100%; }
 /* 하단 내비 */
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .nav-inner { max-width: var(--app-max); margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: var(--nav-h); }
-.nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 44px; font-size: 11px; font-weight: 600; color: var(--ink-3); position: relative; }
+.nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 44px; font-size: 12px; font-weight: 600; color: var(--ink-3); position: relative; }
 .nav button[aria-current="page"] { color: var(--ink); background: var(--sunk); }
-.nav .count { position: absolute; top: 8px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--ink); color: var(--bg); font-size: 10.5px; display: grid; place-items: center; }
+.nav .count { position: absolute; top: 8px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--ink); color: var(--bg); font-size: 11px; display: grid; place-items: center; }
 
 /* 버튼 */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 12px 18px; border-radius: 5px; font-weight: 700; font-size: 15px; line-height: 1.35; background: var(--ink); color: var(--bg); width: 100%; text-align: center; }
@@ -287,7 +287,7 @@ img { display: block; max-width: 100%; }
 #sheet-root:has(.purchase-decisions) + .toast { top: calc(12px + env(safe-area-inset-top)); bottom: auto; }
 .toast button { min-height: 44px; color: var(--bg); font-weight: 700; text-decoration: underline; }
 
-.footer { padding: 32px var(--gutter) 16px; font-size: 11px; color: var(--ink-3); line-height: 1.8; max-width: 80ch; }
+.footer { padding: 32px var(--gutter) 16px; font-size: 12px; color: var(--ink-3); line-height: 1.8; max-width: 80ch; }
 
 @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes fade { from { opacity: 0; } }
@@ -304,7 +304,7 @@ img { display: block; max-width: 100%; }
 .ob-cta { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 16px 0 calc(8px + env(safe-area-inset-bottom)); margin-top: 20px; background: var(--bg); }
 .ob-cta .btn.secondary { width: auto; flex: none; padding: 0 18px; height: 52px; }
 .btn[disabled] { opacity: .35; cursor: not-allowed; }
-.mine { display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 1px; }
+.mine { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 1px; }
 .ways { display: grid; gap: 10px; }
 .way { display: grid; grid-template-columns: 24px 1fr; gap: 2px 12px; align-items: center; text-align: left; padding: 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); }
 .way svg { grid-row: span 2; color: var(--accent); }
@@ -323,8 +323,8 @@ img { display: block; max-width: 100%; }
 .citem .thumb img { object-fit: contain; }
 .cname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--ink-2); margin-top: 3px; overflow: hidden; }
 .cbrand { display: block; font-size: 12px; font-weight: 750; color: var(--ink); margin-top: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.citem .cdate { display: block; margin-top: 5px; font-size: 11px; color: var(--ink-3); }
-.citem .closet-tag { display: inline-block; margin-top: 5px; padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-size: 10.5px; }
+.citem .cdate { display: block; margin-top: 5px; font-size: 12px; color: var(--ink-3); }
+.citem .closet-tag { display: inline-block; margin-top: 5px; padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
 .closet-controls { display: grid; grid-template-columns: minmax(0, 1fr) 148px; gap: 10px; margin: 20px 0 14px; }
 .closet-search-box, .closet-controls select { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); font-size: 16px; }
 .closet-controls select { appearance: auto; min-width: 148px; padding-inline: 12px 28px; font-size: 16px; line-height: 1.4; }
@@ -336,7 +336,7 @@ img { display: block; max-width: 100%; }
 .closet-review { margin-top: 12px; }
 .closet-photo-stage { position: relative; display: block; }
 .closet-photo-stage > .thumb { display: grid; }
-.closet-photo-stage .badge, .closet-photo-stage .closet-status { position: absolute; left: 7px; bottom: 7px; max-width: calc(100% - 14px); padding: 4px 7px; background: var(--surface); color: var(--ink-2); border-radius: 3px; font-size: 10px; font-weight: 650; }
+.closet-photo-stage .badge, .closet-photo-stage .closet-status { position: absolute; left: 7px; bottom: 7px; max-width: calc(100% - 14px); padding: 4px 7px; background: var(--surface); color: var(--ink-2); border-radius: 3px; font-size: 12px; font-weight: 650; }
 .wardrobe-ready { display: block; min-width: 0; padding: 12px 0; margin-top: 12px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 12px; }
 .wardrobe-ready b { color: var(--ink); }
 .wardrobe-ready > .sub { margin: 0 0 10px; }
@@ -350,7 +350,7 @@ img { display: block; max-width: 100%; }
 .color-confirm legend .sub { display: inline; margin-left: 8px; font-size: 12px; font-weight: 400; }
 .color-confirm .swatches { gap: 4px; }
 .color-confirm .sw i { width: 24px; height: 24px; }
-.registration-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; padding: 0; list-style: none; border-bottom: 1px solid var(--line); color: var(--ink-3); font-size: 11.5px; line-height: 1.5; }
+.registration-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; padding: 0; list-style: none; border-bottom: 1px solid var(--line); color: var(--ink-3); font-size: 12px; line-height: 1.5; }
 .registration-progress li { min-width: 0; padding: 6px 0; border-bottom: 2px solid transparent; }
 .registration-progress [aria-current="step"] { color: var(--accent); font-weight: 700; border-bottom-color: var(--accent); }
 .closet-add-tile { min-width: 0; align-self: start; text-align: center; color: var(--ink-3); font-size: 12px; }
@@ -385,7 +385,7 @@ img { display: block; max-width: 100%; }
 .garment-thumb { width: 100%; aspect-ratio: 3/4; display: grid; place-items: center; overflow: hidden; border-radius: 10px; background: var(--sunk); }
 .garment-thumb img { width: 100%; height: 100%; object-fit: contain; }
 .garment-thumb .art { width: 75%; height: 75%; margin: 0; }
-.garment-card small { display: block; margin-top: 4px; color: var(--ink-3); font-size: 11px; }
+.garment-card small { display: block; margin-top: 4px; color: var(--ink-3); font-size: 12px; }
 .tile img[data-own-photo], .thumb img[data-own-photo] { object-fit: contain; }
 .garment-editor .detail-title { padding-right: 44px; }
 .garment-editor > .sub { margin-top: 8px; }
@@ -429,7 +429,7 @@ img { display: block; max-width: 100%; }
 .manual-kinds > summary { color: var(--ink-2); }
 .manual-kinds > fieldset { padding: 8px 0; }
 .registration-save { position: sticky; bottom: -1px; z-index: 1; background: var(--bg); padding-top: 12px; padding-bottom: 8px; margin-top: 8px; }
-.photo-display-failed { min-height: 100%; display: grid; place-content: center; text-align: center; gap: 4px; padding: 8px; color: var(--ink-3); font-size: 11px; }
+.photo-display-failed { min-height: 100%; display: grid; place-content: center; text-align: center; gap: 4px; padding: 8px; color: var(--ink-3); font-size: 12px; }
 .photo-display-failed svg { width: 24px; height: 24px; margin: 0 auto; }
 .photo-analysis { margin: 20px 0; padding: 14px; background: var(--sunk); border-radius: 6px; }
 .photo-analysis h3 { margin: 0 0 12px; }
@@ -468,7 +468,7 @@ img { display: block; max-width: 100%; }
 .wardrobe-registration .quick-kinds .kind-pick { min-width: 0; min-height: 96px; padding: 6px 4px; gap: 4px; align-content: start; }
 .wardrobe-registration .quick-kinds .type-pic { width: 100%; height: 50px; aspect-ratio: auto; margin: 0; border-radius: 3px; }
 .wardrobe-registration .quick-kinds .type-pic img { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
-.wardrobe-registration .quick-kinds .kind-pick > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 40px; font-size: 11.5px; line-height: 1.45; }
+.wardrobe-registration .quick-kinds .kind-pick > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 40px; font-size: 12px; line-height: 1.45; }
 .more-kinds, .garment-name { margin-top: 12px; }
 .garment-editor summary { cursor: pointer; min-height: 44px; padding: 12px 0; font-size: 14px; }
 .garment-name label { display: block; }
@@ -486,7 +486,7 @@ img { display: block; max-width: 100%; }
 
 .demo-notice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 0 12px; margin: 6px var(--gutter) 0; padding: 9px 12px 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--sunk); }
 .demo-notice > b { grid-column: 1 / -1; font-size: 12px; line-height: 1.5; font-weight: 600; color: var(--ink-2); }
-.demo-notice > .link { min-width: 0; min-height: 44px; padding: 6px 0; gap: 4px; font-size: 11px; text-align: left; justify-content: flex-start; }
+.demo-notice > .link { min-width: 0; min-height: 44px; padding: 6px 0; gap: 4px; font-size: 12px; text-align: left; justify-content: flex-start; }
 .demo-notice > .link svg { flex: none; width: 16px; height: 16px; }
 .demo-notice > .demo-taste { color: var(--ink-3); justify-self: end; }
 .thumb img[data-own-photo], .hero img[data-own-photo] { object-fit: contain; }
@@ -500,7 +500,7 @@ img { display: block; max-width: 100%; }
 .swatch.dark { color: rgba(255, 255, 255, .1); }
 .swatch.none { color: var(--line); }
 .swatch svg { width: 58%; height: 58%; }
-.swatch span { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 11px; font-weight: 700; letter-spacing: -0.01em; color: rgba(20, 20, 19, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.swatch span { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 12px; font-weight: 700; letter-spacing: -0.01em; color: rgba(20, 20, 19, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 .swatch.dark span { color: rgba(255, 255, 255, .78); }
 .swatch.none span { color: var(--ink-3); }
 .garment-mini .swatch span, .look-row .swatch span { display: none; }
@@ -517,7 +517,7 @@ img { display: block; max-width: 100%; }
 
 .borrowed-photo { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
 .borrowed-photo > img { grid-row: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
-.photo-caption { position: static; grid-row: 2; display: block; justify-self: stretch; width: 100%; max-width: none; margin: 0; padding: 4px 5px; background: var(--surface); color: var(--ink-2); border-radius: 0; font-size: 11px; line-height: 1.35; text-align: left; }
+.photo-caption { position: static; grid-row: 2; display: block; justify-self: stretch; width: 100%; max-width: none; margin: 0; padding: 4px 5px; background: var(--surface); color: var(--ink-2); border-radius: 0; font-size: 12px; line-height: 1.35; text-align: left; }
 
 /* Purchase journey uses the existing type, spacing and color system. */
 .purchase-entry .btn { margin-top: 12px; width: 100%; }
@@ -540,7 +540,7 @@ img { display: block; max-width: 100%; }
 .purchase-decisions { position: sticky; bottom: calc(-24px - env(safe-area-inset-bottom)); z-index: 4; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 8px; margin: 18px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
 .purchase-decisions .btn { min-width: 0; min-height: 48px; padding: 10px 5px; font-size: 13px; line-height: 1.4; }
 .purchase-decisions .btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
-.purchase-decisions > .fine { grid-column: 1 / -1; margin: 0; font-size: 11px; line-height: 1.5; }
+.purchase-decisions > .fine { grid-column: 1 / -1; margin: 0; font-size: 12px; line-height: 1.5; }
 .sheet:has(.journey-overview) { scroll-padding-bottom: calc(170px + env(safe-area-inset-bottom)); }
 /* Optional details stay compact; confirmed changes remain readable on narrow sheets. */
 .sheet > input { width: 100%; min-height: 44px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; font-size: 16px; }
@@ -603,7 +603,7 @@ img { display: block; max-width: 100%; }
 .garment-mini img { width: 100%; height: 100%; object-fit: contain; }
 .garment-mini .swatch span { display: none; }
 .garment-mini.borrowed-photo { aspect-ratio: auto; grid-template-rows: 55px auto; }
-.garment-mini .photo-caption { font-size: 10px; line-height: 1.2; padding: 2px; }
+.garment-mini .photo-caption { font-size: 11px; line-height: 1.2; padding: 2px; }
 .plan-gap { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .plan-gap h4 { margin: 0 0 4px; font-size: 16px; }
 .plan-count { font-size: 13px; color: var(--accent); margin-left: 6px; }
@@ -651,11 +651,11 @@ img { display: block; max-width: 100%; }
 .journey-overview > div { min-width: 0; }
 .journey-product-photo { min-width: 0; }
 .journey-product-photo .hero { width: 100%; height: 130px; aspect-ratio: auto; max-height: 130px; }
-.journey-product-photo > .fine { margin: 7px 0 0; font-size: 10.5px; line-height: 1.6; }
+.journey-product-photo > .fine { margin: 7px 0 0; font-size: 12px; line-height: 1.6; }
 .journey-overview .detail-title { margin-top: 6px; font-size: 18px; line-height: 1.35; }
 .journey-overview .brand-name { margin: 12px 0 0; }
 .journey-overview .sub { margin: 8px 0; font-size: 12px; }
-.journey-overview .fine { font-size: 11px; line-height: 1.65; }
+.journey-overview .fine { font-size: 12px; line-height: 1.65; }
 .journey-overview b { color: var(--ink); }
 .journey-verdict { margin: 14px 0 0; padding: 12px; border-left: 2px solid var(--accent); border-radius: 3px; background: var(--sunk); }
 .journey-verdict h3 { margin: 0 0 7px; font-size: 16px; line-height: 1.4; }
@@ -727,7 +727,7 @@ img { display: block; max-width: 100%; }
   .row-scroll .card { width: 180px; }
 }
 @media (max-width: 389px) {
-  .brand small { display: block; margin: 5px 0 0; font-size: 10px; }
+  .brand small { display: block; margin: 5px 0 0; font-size: 12px; }
   .profile-btn { max-width: 44%; }
   .style-mini-group > div { width: 38px; height: 50px; }
   .section.page-intro h2 { font-size: 32px; }
@@ -749,3 +749,20 @@ img { display: block; max-width: 100%; }
 .journey-pair .brand-name, .journey-pair .fine { margin: 4px 0; }
 .journey-pair b { display: block; font-size: 13px; line-height: 1.5; }
 .journey-pair .link { font-size: 12px; padding: 8px 0; }
+
+/* Touch and reading minimums (PR: compare-first, smaller page).
+   Every disclosure row is at least 44px tall without losing its marker, and
+   every text field in a sheet is a full-width 44px field, including fields
+   inside a form or a details block. Specific rules above still win. */
+:where(details) > summary { min-height: 44px; padding-block: 11px; }
+.sheet :where(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea) { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+
+/* Registration colours carry their names, so navy, indigo and charcoal are not
+   guessed from a dot; nothing is preselected. */
+.color-confirm .named-swatches { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px 2px; }
+.sw.named { width: auto; height: auto; min-height: 60px; padding: 4px 0; border: 0; border-radius: 12px; display: grid; justify-items: center; align-content: start; gap: 5px; }
+.sw.named i { width: 28px; height: 28px; }
+.sw.named span { font-size: 12px; line-height: 1.25; color: var(--ink-2); text-align: center; word-break: keep-all; overflow-wrap: anywhere; }
+.sw.named[aria-pressed="true"] i { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+.sw.named[aria-pressed="true"] span { color: var(--ink); font-weight: 700; }
+.color-confirm .color-later { margin-top: 6px; }

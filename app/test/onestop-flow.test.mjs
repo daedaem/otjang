@@ -289,38 +289,78 @@ test('a delayed catalog comparison cannot reopen its result over a newer snapsho
   assert.equal(page.app.candidateDraft(), null, 'no stale editor can be saved into the replacement context');
 });
 
-for (const branch of ['reuse', 'new']) {
-  for (const interrupt of ['sheet', 'snapshot', 'account']) {
-    test(`the final tab await of ${branch} catalog comparison preserves a newer ${interrupt} context`, async (t) => {
-      const { page } = await personalPage();
-      t.after(() => page.close());
-      if (branch === 'reuse') await saveCatalogCandidate(page);
-      await page.click({ action: 'close-sheet' });
-      await page.click({ action: 'open-settings' });
-      const before = await page.app.store.read();
-      let expectedSheet = page.nodes.get('sheet-root').innerHTML;
-      let reacted = false;
-      page.afterNextBodyRender(() => {
-        reacted = true;
-        if (interrupt === 'sheet') {
-          page.click({ action: 'open-profile' });
-          expectedSheet = page.nodes.get('sheet-root').innerHTML;
-        } else if (interrupt === 'snapshot') page.app.applySnapshot(before);
-        else page.storage.set('eoul:account', JSON.stringify({ v: 1, server: null, email: 'another@example.com', token: 'changed-in-another-tab' }));
-      });
-      await page.click({ action: 'candidate-product', id: product.id });
-      assert.equal(reacted, true, 'the interruption occurs at the final tab render, rather than during durable saving');
-      assert.equal(page.nodes.get('sheet-root').innerHTML, expectedSheet, 'the old comparison never closes or replaces the current dialog');
-      assert.equal(page.app.candidateDraft(), null);
-      const committed = await stored(page);
-      assert.equal(committed.state.journeys.length, 1);
-      if (branch === 'reuse') {
-        assert.equal(committed.revision, before.revision);
-        assert.deepEqual(committed.state, plain(before.state), 'reusing a comparison remains a read-only action');
-      } else assert.equal(committed.revision, before.revision + 1, 'the successful durable save remains committed when only its late UI is discarded');
-    });
-  }
+for (const interrupt of ['sheet', 'snapshot', 'account']) {
+  test(`a catalog comparison still being saved yields to a newer ${interrupt} context`, async (t) => {
+    const { page } = await personalPage();
+    t.after(() => page.close());
+    await page.click({ action: 'open-settings' });
+    const before = await page.app.store.read();
+    const commit = page.app.store.commit;
+    let release, started;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const entered = new Promise((resolve) => { started = resolve; });
+    page.app.store.commit = async (...args) => { started(); await gate; return commit(...args); };
+    const saving = page.click({ action: 'candidate-product', id: product.id });
+    await entered;
+    if (interrupt === 'sheet') await page.click({ action: 'open-profile' });
+    else if (interrupt === 'snapshot') { page.app.applySnapshot(before); await page.click({ action: 'open-settings' }); }
+    else page.storage.set('eoul:account', JSON.stringify({ v: 1, server: null, email: 'another@example.com', token: 'changed-in-another-tab' }));
+    const expectedSheet = page.nodes.get('sheet-root').innerHTML;
+    release();
+    await saving;
+    page.app.store.commit = commit;
+    assert.equal(page.nodes.get('sheet-root').innerHTML, expectedSheet, 'the late comparison never closes or replaces the current dialog');
+    assert.equal(page.app.candidateDraft(), null);
+    const committed = await stored(page);
+    assert.equal(committed.state.journeys.length, 1, 'the durable save stays committed when only its late screen is dropped');
+    assert.equal(committed.revision, before.revision + 1);
+  });
 }
+
+test('comparing a catalog product keeps the current tab, and reopening an undecided one is read-only', async (t) => {
+  const { page } = await personalPage();
+  t.after(() => page.close());
+  const tab = page.state().tab;
+  const original = await saveCatalogCandidate(page);
+  assert.equal(page.state().tab, tab, 'one tap to compare does not move the person to 구매 여정');
+  await page.app.recordJourneyAction(original.id, 'hold');
+  await page.click({ action: 'close-sheet' });
+  const before = await page.app.store.read();
+  await page.click({ action: 'candidate-product', id: product.id });
+  const after = await page.app.store.read();
+  assert.equal(after.revision, before.revision, 'reopening writes nothing');
+  assert.deepEqual(plain(after.state), plain(before.state));
+  assert.equal(page.state().tab, tab);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /보류 ✓/);
+});
+
+test('closing an untouched one-tap comparison leaves no purchase record; an answer or a decision keeps it', async (t) => {
+  const { page, owned } = await personalPage();
+  t.after(() => page.close());
+  const before = await stored(page);
+  await page.click({ action: 'candidate-product', id: product.id });
+  assert.equal(page.state().journeys.length, 1, 'the comparison is saved at once so a seller visit cannot lose it');
+  assert.match(page.nodes.get('sheet-root').innerHTML, /그냥 닫으면 기록하지 않아요/);
+  await page.click({ action: 'close-sheet' });
+  const looked = await stored(page);
+  assert.deepEqual(looked.state.journeys, [], 'only looking leaves nothing in 구매 여정');
+  assert.deepEqual(looked.state.garments, [owned]);
+  assert.deepEqual(looked.state.wears, before.state.wears);
+
+  await page.click({ action: 'candidate-product', id: product.id });
+  const answered = page.state().journeys[0].id;
+  await page.click({ action: 'journey-field', id: answered, field: 'absence', value: 'absent' });
+  await page.click({ action: 'close-sheet' });
+  assert.deepEqual((await stored(page)).state.journeys.map((j) => [j.id, j.absence]), [[answered, 'absent']], 'an answer is kept');
+
+  const other = PRODUCTS.find((p) => p.id !== product.id && SLOT_BY_ID[p.slot]?.g === 'M' && productEligible(p));
+  await page.click({ action: 'candidate-product', id: other.id });
+  const decided = page.state().journeys.find((j) => j.candidate.productId === other.id).id;
+  await page.click({ action: 'journey-action', id: decided, step: 'skip' });
+  await page.click({ action: 'close-sheet' });
+  const kept = await stored(page);
+  assert.deepEqual(kept.state.journeys.map((j) => [j.id, j.decision]), [[answered, null], [decided, 'skip']], 'a decision is kept');
+});
 
 test('an exact catalog URL starts the matching candidate, preserving checked price and source instead of creating ownership', async (t) => {
   const { page, owned, asset } = await personalPage();
@@ -1508,4 +1548,16 @@ test('browsing a demo catalog comparison opens registration without creating a r
   assert.equal(page.state().tab, beforeTab);
   assert.ok(page.app.draft(), 'the first useful next step is adding a real garment');
   assert.equal(page.app.candidateDraft(), null);
+});
+
+test('a product page leads with comparing against my clothes; the seller link comes second', async (t) => {
+  const { page } = await personalPage();
+  t.after(() => page.close());
+  page.app.itemSheet(product.id);
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  const cta = sheet.match(/<div class="cta">([\s\S]*?)<\/div>/)[1];
+  assert.match(cta, /<button class="btn" data-action="candidate-product" data-id="[^"]+">내 옷과 비교하기<\/button>/, 'the filled button compares');
+  assert.doesNotMatch(cta, /href=/, 'the seller link is not the primary action');
+  assert.match(sheet, /<a class="btn secondary candidate-compare" href="[^"]+"[^>]*>[^<]*에서 보기/);
+  assert.ok(sheet.indexOf('data-action="candidate-product"') < sheet.indexOf('에서 보기'));
 });

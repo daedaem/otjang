@@ -893,7 +893,7 @@ function planProductRow(entry) {
       <div class="price">${collectedPrice(entry)}</div>
       <div class="fine">${entry.colorConfirmed ? `색 ${esc(COLORS[p.color]?.label || '')}` : '색: 상품 사진으로 추정 · 판매처에서 확인 필요'}</div>
       ${productRecordLine(entry.record)}
-      <div class="opts plan-product-actions"><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a><button class="chip" data-action="candidate-product" data-id="${p.id}">내 옷과 비교</button></div>
+      <div class="opts plan-product-actions"><button class="btn small" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교' : '내 옷과 비교'}</button><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a></div>
     </div>
   </article>`;
 }
@@ -1116,6 +1116,23 @@ function beginCandidate(productIdOrURL = null) {
   candidateDraft = { id: `j_${crypto.randomUUID()}`, candidate, link: candidate?.originalUrl || '', before: null, journeyId: null, error: '', saving: false };
   candidateSheet();
 }
+// A one-tap comparison is saved at once, so its answers survive a visit to the
+// seller and a reloaded tab. If the person closes it without deciding or
+// changing anything, it was only a look: remove that record again so browsing
+// products does not fill 구매 여정 (and its 200-record limit).
+const untouchedComparisons = new Map();
+async function closeComparison() {
+  if ($sheet.innerHTML) return;
+  const ids = [...untouchedComparisons].filter(([id, created]) =>
+    JSON.stringify(state.journeys.find((row) => row.id === id)) === created).map(([id]) => id);
+  untouchedComparisons.clear();
+  if (!ids.length || writeBusy || !storageReady) return;
+  try {
+    await set({ journeys: state.journeys.filter((row) => !ids.includes(row.id)) });
+  } catch {
+    // The record stays as an ordinary undecided comparison.
+  }
+}
 async function compareCatalogProduct(productId) {
   if (writeBusy || candidateDraft?.saving) return false;
   const product = PRODUCT_BY_ID[productId];
@@ -1134,9 +1151,9 @@ async function compareCatalogProduct(productId) {
   const existing = state.journeys.find((journey) => journey.stage === 'candidate' &&
     journey.candidate.productId === productId && journey.candidate.url === candidate.url &&
     !journey.option && !journey.forkedFrom);
+  // Comparing keeps the person on the screen they came from; the record is in
+  // 구매 여정 only once they decide or change something (see closeComparison).
   if (existing) {
-    await set({ tab: 'saved' });
-    if (!sameView()) return false;
     closeSheet();
     journeySheet(existing.id);
     return true;
@@ -1154,12 +1171,13 @@ async function compareCatalogProduct(productId) {
       if (candidateDraft === current) candidateDraft = null;
       return false;
     }
-    await set({ tab: 'saved' });
+    render();
     if (!sameView() || candidateDraft !== current) {
       if (candidateDraft === current) candidateDraft = null;
       return false;
     }
     closeSheet();
+    untouchedComparisons.set(journey.id, JSON.stringify(state.journeys.find((row) => row.id === journey.id)));
     journeySheet(journey.id);
     return true;
   } catch (error) {
@@ -1402,7 +1420,7 @@ function journeySheet(id) {
     ${c.productId ? `<button class="link candidate-compare" data-action="journey-hide-product" data-id="${esc(id)}">${state.hidden.includes(c.productId) ? '이 상품 다시 추천받기' : '이 상품 다시 추천하지 않기'}</button>` : ''}
     <button class="chip candidate-compare" data-action="journey-fork" data-id="${esc(id)}">다른 사이즈·옵션 하나 더 기록</button>${j.forkedFrom && state.journeys.some((row) => row.id === j.forkedFrom) ? `<button class="link candidate-compare" data-action="open-journey" data-id="${esc(j.forkedFrom)}">처음 비교한 상품 기록으로 돌아가기</button>` : ''}
     <p class="fine">이 여정은 상품·옵션 한 개의 기록이에요. 여러 사이즈를 샀다면 각각 가져와 기록해 주세요. 구매와 반품은 판매처가 확인한 주문 데이터가 아닌 사용자 기록이에요.</p></details>
-    ${j.stage === 'candidate' ? `<div class="purchase-decisions" aria-label="내 구매 판단 기록">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${!j.decision && action === 'buy' ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}" aria-pressed="${j.decision === action}">${j.decision === action ? `${decisionLabels[action]} ✓` : label}</button>`).join('')}${j.decision === 'buy' ? `<div class="fine"><a class="btn" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a></div>` : ''}<p class="fine" role="status">${j.decision ? `<strong>현재 기록: ${decisionLabels[j.decision]} · 저장됨</strong><br>` : '판단만 기록해요. '}주문·결제는 실행하지 않아요.</p></div>` : ''}`, { key: `journey:${id}` });
+    ${j.stage === 'candidate' ? `<div class="purchase-decisions" aria-label="내 구매 판단 기록">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${!j.decision && action === 'buy' ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}" aria-pressed="${j.decision === action}">${j.decision === action ? `${decisionLabels[action]} ✓` : label}</button>`).join('')}${j.decision === 'buy' ? `<div class="fine"><a class="btn" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a></div>` : ''}<p class="fine" role="status">${j.decision ? `<strong>현재 기록: ${decisionLabels[j.decision]} · 저장됨</strong><br>` : untouchedComparisons.has(id) ? '고르면 구매 여정에 남아요. 그냥 닫으면 기록하지 않아요. ' : '판단만 기록해요. '}주문·결제는 실행하지 않아요.</p></div>` : ''}`, { key: `journey:${id}` });
 }
 function pendingJourneyForm(id, journey) {
   const form = journeyForms.get(id);
@@ -1628,9 +1646,9 @@ function itemSheet(id) {
     ${sameBrand.length ? `<h3 class="block">${esc(p.brand)}의 다른 아이템</h3><div class="row-scroll">${sameBrand.map((a) => gridCard({ slot: SLOT_BY_ID[a.slot], product: a })).join('')}</div>` : ''}
     <div class="cta">
       <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
-      <a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>
+      <button class="btn" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교하기' : '내 옷과 비교하기'}</button>
     </div>
-    <button class="btn secondary candidate-compare" data-action="candidate-product" data-id="${p.id}">내 옷과 비교 · 구매 여정에 넣기</button>
+    <a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>
     <button class="btn secondary candidate-compare" data-action="open-offers" data-id="${p.id}">판매처·배송비 포함 총액 비교</button>
     <div class="sheet-links">
       <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
@@ -2347,9 +2365,9 @@ function addSheet() {
   ${analysisActive ? photoAnalysisPanel() : ''}
   ${draft.kind ? `<div class="confirmed-kind"><span>확인한 종류</span><b>${esc(garmentKindName(draft.kind))}</b>${draft.brand ? `<small>${esc(draft.brand)}</small>` : ''}</div>` : ''}
   ${manual ? (photo ? quickKinds : manualKinds) : `<details class="manual-kinds"><summary>${draft.kind ? '다른 종류로 바꾸기' : '다른 종류로 등록'}</summary>${manualKinds}</details>`}
-  ${draft.kind ? `<div class="wardrobe-ready"><p class="sub">종류와 색을 확인하면 코디·구매 비교에도 쓸 수 있어요. 지금은 모르는 채로 저장해도 괜찮아요.</p>
+  ${draft.kind ? `<div class="wardrobe-ready"><p class="sub">색까지 고르면 이 옷이 코디와 구매 비교에 바로 쓰여요.</p>
   ${specificKinds.length ? `<details class="garment-name"${!draft.slot || draft.confirmDetails ? ' open' : ''}><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
-  <fieldset class="color-confirm"><legend>색 <span class="sub">${esc(COLORS[draft.color]?.label || '아직 모름')}</span></legend><div class="swatches"><button class="chip" data-action="draft-color" data-color="" aria-pressed="${draft.color === null}">색 모름</button>${Object.entries(COLORS).map(([id, c]) => `<button class="sw" data-action="draft-color" data-color="${id}" aria-label="${c.label}" aria-pressed="${draft.color === id}"><i style="background:${c.hex}"></i></button>`).join('')}</div></fieldset></div>` : ''}
+  <fieldset class="color-confirm"><legend>색 <span class="sub">${esc(COLORS[draft.color]?.label || '아직 고르지 않았어요')}</span></legend><div class="swatches named-swatches">${Object.entries(COLORS).map(([id, c]) => `<button class="sw named" data-action="draft-color" data-color="${id}" aria-pressed="${draft.color === id}"><i style="background:${c.hex}"></i><span>${esc(c.label)}</span></button>`).join('')}</div>${draft.color ? '<button class="link color-later" data-action="draft-color" data-color="">색은 나중에 정하기</button>' : '<p class="fine">모르면 고르지 않고 저장해도 돼요. 옷장에 \'색 확인\'으로 표시돼요.</p>'}</fieldset></div>` : ''}
   <details class="garment-name"><summary>브랜드·이름 수정 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">모르는 정보는 비워 둬도 돼요.</p></details>
   ${!analysisActive && photo ? `<details class="garment-name"><summary>사진으로 종류·브랜드 찾기</summary>${photoAnalysisPanel()}</details>` : ''}
   <div class="cta registration-save"><button class="btn" data-action="draft-save"${!draft.kind || draft.processing || draft.saving || draft.bgRunning ? ' disabled' : ''}>${draft.saving ? '저장 중…' : draft.bgRunning ? '배경 지우는 중…' : '옷장에 저장'}</button></div>`}
@@ -3868,6 +3886,7 @@ document.addEventListener('click', async (e) => {
         break;
       case 'close-sheet':
         closeSheet();
+        await closeComparison();
         break;
       case 'save': {
         e.stopPropagation();
@@ -4709,7 +4728,7 @@ document.addEventListener('mousedown', (e) => {
   if (e.target.closest('#suggest')) e.preventDefault();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && $sheet.innerHTML) closeSheet();
+  if (e.key === 'Escape' && $sheet.innerHTML) { closeSheet(); closeComparison(); }
   if (e.key === 'Tab' && $sheet.innerHTML) {
     const elements = [
       ...$sheet.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'),

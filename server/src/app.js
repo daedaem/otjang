@@ -7,6 +7,7 @@
 // record the app could not read back.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { validateWardrobe, WARDROBE_SCHEMA } from '../../app/src/wardrobe.js';
 import { MAX_GARMENT_PHOTO_BYTES } from '../../app/src/wardrobe-store.js';
 import { transaction } from './db.js';
@@ -461,23 +462,63 @@ ${link}
     send(res, stored ? 201 : 200, { id });
   }
 
-  function serveApp(res) {
-    let html;
+  // The single-file app is about 1MB of text. It is compressed once per build
+  // (gzip and brotli) and carries an ETag, so a phone downloads roughly a
+  // quarter of it, and a revisit with an unchanged build gets 304 instead.
+  let appPage = null;
+  function preparedApp() {
+    const stat = fs.statSync(config.appFile);
+    const version = `${stat.mtimeMs}:${stat.size}`;
+    if (appPage?.version === version) return appPage;
+    let html = fs.readFileSync(config.appFile, 'utf8');
+    // The page learns that its API lives on this same origin.
+    const meta = '<meta name="eoul-api" content="same-origin">';
+    html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (head) => `${head}\n${meta}`) : `${meta}\n${html}`;
+    const body = Buffer.from(html, 'utf8');
+    appPage = {
+      version,
+      etag: `W/"${crypto.createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`,
+      identity: body,
+      gzip: zlib.gzipSync(body, { level: 9 }),
+      br: zlib.brotliCompressSync(body, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: body.length } }),
+    };
+    return appPage;
+  }
+  function acceptedEncodings(header) {
+    const accepted = new Set();
+    for (const part of String(header || '').split(',')) {
+      const [name, ...params] = part.trim().toLowerCase().split(';');
+      const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
+      if (name && !(q && Number(q.slice(2)) === 0)) accepted.add(name);
+    }
+    return accepted;
+  }
+  function serveApp(req, res) {
+    let page;
     try {
-      html = fs.readFileSync(config.appFile, 'utf8');
+      page = preparedApp();
     } catch {
       send(res, 404, { error: { code: 'app-not-built', message: '앱을 먼저 빌드해 주세요: node app/tools/build.mjs' } });
       return;
     }
-    // The page learns that its API lives on this same origin.
-    const meta = '<meta name="eoul-api" content="same-origin">';
-    html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (head) => `${head}\n${meta}`) : `${meta}\n${html}`;
-    res.writeHead(200, {
+    const headers = {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',
       'X-Frame-Options': 'DENY',
-    });
-    res.end(html);
+      ETag: page.etag,
+      Vary: 'Accept-Encoding',
+    };
+    const known = String(req.headers['if-none-match'] || '').split(',').map((tag) => tag.trim().replace(/^W\//, ''));
+    if (known.includes(page.etag.replace(/^W\//, '')) || known.includes('*')) {
+      res.writeHead(304, headers);
+      res.end();
+      return;
+    }
+    const accepted = acceptedEncodings(req.headers['accept-encoding']);
+    const encoding = accepted.has('br') ? 'br' : accepted.has('gzip') ? 'gzip' : null;
+    const body = encoding ? page[encoding] : page.identity;
+    res.writeHead(200, { ...headers, ...(encoding ? { 'Content-Encoding': encoding } : {}), 'Content-Length': body.length });
+    res.end(body);
   }
 
   const community = createCommunity({ db, enabled: !!config.community, maxBytes: config.communityMaxBytes ?? undefined, now, log, authenticate, limit, readJson });
@@ -504,7 +545,7 @@ ${link}
       }
       if (method === 'OPTIONS') return send(res, 204);
       if (url.pathname.startsWith('/v1/')) res.setHeader('Cache-Control', 'no-store');
-      if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(res);
+      if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(req, res);
       if (method === 'POST' && url.pathname === '/v1/photo-mask') return await photoMaskRoute(req, res);
       const photo = /^\/v1\/photos\/([^/]+)$/.exec(url.pathname);
       if (photo) {

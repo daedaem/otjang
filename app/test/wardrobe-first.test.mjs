@@ -250,7 +250,17 @@ test('after choosing a photographed garment kind, recipe detail and colour are v
   assert.doesNotMatch(openingDetailsFor(markup, '브랜드·이름 수정'), /\bopen(?:\s|=|>)/);
   assert.equal(page.app.draft().slot, null);
   assert.equal(page.app.draft().color, null, 'visibility does not silently infer type or colour');
+  const colour = markup.slice(markup.indexOf('<fieldset class="color-confirm">'));
+  assert.doesNotMatch(colour, /aria-pressed="true"/, 'no colour, not even "unknown", is preselected');
+  assert.match(colour, /data-color="navy" aria-pressed="false"><i [^>]*><\/i><span>네이비<\/span>/, 'each colour shows its name');
+  assert.match(colour, /data-color="indigo"[^>]*>[\s\S]*?<span>인디고<\/span>/);
+  assert.match(colour, /아직 고르지 않았어요/);
   await page.click({ action: 'draft-slot', slot: 'm-oxford' });
+  await page.click({ action: 'draft-color', color: 'navy' });
+  assert.match(page.sheet(), /data-color="navy" aria-pressed="true"/);
+  assert.match(page.sheet(), /data-action="draft-color" data-color="">색은 나중에 정하기/, 'a chosen colour can be cleared again');
+  await page.click({ action: 'draft-color', color: '' });
+  assert.equal(page.app.draft().color, null);
   await page.click({ action: 'draft-color', color: 'blue' });
   const id = page.app.draft().id;
   await page.app.saveGarmentDraft();

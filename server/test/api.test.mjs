@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { openDatabase, backupDatabase } from '../src/db.js';
 import { createApp, AGREEMENT_VERSION } from '../src/app.js';
 import { hashPassword, verifyPassword } from '../src/auth.js';
@@ -43,7 +44,7 @@ async function start(overrides = {}) {
     json: { email, password: 'correct horse', agreements: { version: AGREEMENT_VERSION, terms: true, privacy: true, age14: true }, ...extra },
   });
   return {
-    db, clock, call, signup, logs,
+    db, clock, call, signup, logs, port: server.address().port,
     close: () => new Promise((resolve) => server.close(() => { db.close(); resolve(); })),
   };
 }
@@ -266,6 +267,57 @@ test('the built app is served with a marker that its API is on the same origin',
   assert.equal(page.status, 200);
   assert.match(page.data.toString('utf8'), /<head>\n<meta name="eoul-api" content="same-origin">/);
   assert.equal(page.headers.get('x-frame-options'), 'DENY');
+});
+
+test('the app page is sent compressed with an ETag, and an unchanged build answers 304', async (t) => {
+  const appFile = path.join(temp, 'compressed.html');
+  const html = `<!doctype html><html><head><title>어울</title></head><body>${'<p>옷장</p>'.repeat(4000)}</body></html>`;
+  fs.writeFileSync(appFile, html);
+  const s = await start({ appFile });
+  t.after(s.close);
+  const raw = (headers) => new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port: s.port, path: '/', headers }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on('error', reject);
+  });
+  const expected = html.replace('<head>', '<head>\n<meta name="eoul-api" content="same-origin">');
+
+  const plain = await raw({});
+  assert.equal(plain.status, 200);
+  assert.equal(plain.headers['content-encoding'], undefined);
+  assert.equal(plain.body.toString('utf8'), expected);
+  assert.equal(plain.headers.vary, 'Accept-Encoding');
+  assert.match(plain.headers.etag, /^W\/"[A-Za-z0-9_-]+"$/);
+
+  const gz = await raw({ 'Accept-Encoding': 'gzip' });
+  assert.equal(gz.headers['content-encoding'], 'gzip');
+  assert.equal(zlib.gunzipSync(gz.body).toString('utf8'), expected);
+  assert.ok(gz.body.length < plain.body.length / 4, 'compressed page is much smaller');
+  assert.equal(Number(gz.headers['content-length']), gz.body.length);
+
+  const br = await raw({ 'Accept-Encoding': 'gzip, deflate, br' });
+  assert.equal(br.headers['content-encoding'], 'br');
+  assert.equal(zlib.brotliDecompressSync(br.body).toString('utf8'), expected);
+  const noBr = await raw({ 'Accept-Encoding': 'br;q=0, gzip' });
+  assert.equal(noBr.headers['content-encoding'], 'gzip');
+
+  const again = await raw({ 'Accept-Encoding': 'gzip', 'If-None-Match': plain.headers.etag });
+  assert.equal(again.status, 304);
+  assert.equal(again.body.length, 0);
+  assert.equal(again.headers.etag, plain.headers.etag);
+  assert.equal(again.headers['x-frame-options'], 'DENY');
+
+  // A new build gets a new ETag, so the stale copy is not reused.
+  fs.writeFileSync(appFile, html.replace('옷장', '새 옷장'));
+  const future = new Date(Date.now() + 5000);
+  fs.utimesSync(appFile, future, future);
+  const rebuilt = await raw({ 'If-None-Match': plain.headers.etag });
+  assert.equal(rebuilt.status, 200);
+  assert.notEqual(rebuilt.headers.etag, plain.headers.etag);
+  assert.match(rebuilt.body.toString('utf8'), /새 옷장/);
 });
 
 test('a backup copy of the live database holds the same accounts and photos', async (t) => {
