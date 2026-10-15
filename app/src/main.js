@@ -48,6 +48,9 @@ import { findOwnedCatalog } from './owned-catalog.js';
 import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, clearBackupRecord, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
+import { wardrobePlan, describeGarment } from './wardrobe-plan.js';
+import { validateOffer, compareOffers, mergeRefreshed, OFFER_FLAG_LABEL, OFFER_SOURCE_LABEL, OFFER_STALE_DAYS } from './offers.js';
+import { readOffers, writeOffers, offerRef, clearOffers } from './offer-store.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
 
 const KEY = 'eoul:v1';
@@ -486,6 +489,7 @@ function renderHome() {
     .join(' · ');
   const ownedCount = myCloset().length;
   return `
+    ${planSection()}
     <section class="section purchase-entry"><h2>살까 고민 중인 옷이 있나요?</h2><p class="sub">상품을 가져와 내 옷과 비교하고, 구매 후에도 이어서 관리해요.</p><button class="btn" data-action="candidate-start">상품 링크로 비교하기 ${ICON.arrow}</button></section>
     <section class="section">
       <div class="section-head"><div><h2>오늘의 코디</h2><div class="sub">${esc(ctxLine)}${ownedCount ? ` · ${state.demo ? '예시 옷' : '내 옷'} ${ownedCount}벌 반영` : ''}</div></div></div>
@@ -499,6 +503,248 @@ function renderHome() {
       ${items.length ? `<div class="list">${items.map(itemCard).join('')}</div>` : `<div class="empty"><b>추천할 아이템이 없어요</b>예산을 넓히거나 "내 브랜드만"을 꺼 보세요.</div>`}
     </section>
     ${footer()}`;
+}
+
+// ── 판매처·총액 비교: 같은 상품·옵션·재고·배송비가 확인된 판매처만 총액을 비교한다
+let offerView = null;
+function beginOffers({ productId = null, journeyId = null }) {
+  const product = productId ? PRODUCT_BY_ID[productId] : null;
+  const journey = journeyId ? state.journeys.find((j) => j.id === journeyId) : null;
+  const c = journey?.candidate;
+  const ref = offerRef(product ? { productId: product.id } : { productId: c?.productId, url: c?.url });
+  if (!ref) { toast('비교할 상품 주소를 확인해 주세요'); return; }
+  const productFromJourney = c?.productId ? PRODUCT_BY_ID[c.productId] : null;
+  offerView = {
+    ref,
+    productId: product?.id || c?.productId || null,
+    catalog: product || productFromJourney || null,
+    url: product?.url || c?.url,
+    name: product?.name || c?.name || '',
+    brand: product?.brand || c?.brand || '',
+    defaultColor: product ? (product.colorSource === 'image' ? null : product.color) : (c?.colorSource === 'image' ? null : c?.color) || null,
+    form: null,
+    error: '',
+    refreshing: false,
+  };
+  offerSheet();
+}
+function catalogOffer(product) {
+  try {
+    return validateOffer({ id: `catalog:${product.id}`, seller: product.store, url: product.url, price: product.price, shipping: null,
+      color: product.colorSource === 'image' ? null : product.color, stock: 'unknown', sameProduct: 'confirmed', source: 'catalog',
+      checkedAt: `${product.checkedAt}T00:00:00.000Z`, title: product.name });
+  } catch {
+    return null;
+  }
+}
+function offerTime(iso) {
+  const at = new Date(iso);
+  return `${at.getFullYear()}. ${at.getMonth() + 1}. ${at.getDate()}. ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+function offerSheet() {
+  const v = offerView;
+  if (!v) return;
+  const data = readOffers(localStorage, v.ref);
+  const requested = { color: data.requested.color ?? v.defaultColor, size: data.requested.size };
+  const fromCatalog = v.catalog ? catalogOffer(v.catalog) : null;
+  const all = [...(fromCatalog ? [fromCatalog] : []), ...data.offers.filter((offer) => offer.source !== 'catalog')];
+  const result = compareOffers(all, { requested, now: new Date() });
+  const rows = [...result.comparable, ...result.others];
+  const optionText = (offer) => [offer.color ? COLORS[offer.color]?.label : null, offer.size].filter(Boolean).join(' / ') || '옵션 미확인';
+  const row = ({ offer, flags, total }) => `<li class="offer-row${flags.length ? '' : ' comparable'}">
+    <div><b>${esc(offer.seller)}</b> <span class="fine">${esc(OFFER_SOURCE_LABEL[offer.source])}</span></div>
+    ${offer.title && offer.source !== 'catalog' ? `<div class="fine">${esc(offer.title)}</div>` : ''}
+    <div>${formatPrice(offer.price)} + 배송비 ${offer.shipping === null ? '미확인' : formatPrice(offer.shipping)}${total === null ? '' : ` = <b>${formatPrice(total)}</b>`}</div>
+    <div class="fine">${esc(optionText(offer))} · ${offer.stock === 'sold-out' ? '품절' : offer.stock === 'in-stock' ? '재고 있음' : '재고 미확인'} · ${offer.source === 'catalog' ? `${esc(v.catalog.checkedAt)} 수집` : `${offerTime(offer.checkedAt)} 확인`}</div>
+    ${flags.length ? `<div class="offer-flags">${flags.map((flag) => `<span class="offer-flag">${esc(OFFER_FLAG_LABEL[flag])}</span>`).join('')}</div>` : '<div class="offer-flags"><span class="offer-flag ok">총액 비교에 포함</span></div>'}
+    <div class="opts"><a class="chip" href="${esc(offer.url)}" target="_blank" rel="noopener noreferrer">판매처에서 보기</a><button class="chip" data-action="offer-edit" data-id="${esc(offer.id)}">${offer.source === 'catalog' ? '오늘 가격 기록' : '확인·수정'}</button>${offer.source !== 'catalog' ? `<button class="link" data-action="offer-delete" data-id="${esc(offer.id)}">삭제</button>` : ''}</div>
+  </li>`;
+  const best = result.best
+    ? `<div class="notice offer-best"><b>확인한 판매처 ${result.comparable.length}곳 중 총액이 가장 낮은 곳: ${esc(result.best.offer.seller)} ${formatPrice(result.best.total)}</b><p>상품 ${formatPrice(result.best.offer.price)} + 배송비 ${formatPrice(result.best.offer.shipping)} · ${offerTime(result.best.offer.checkedAt)} 확인. 지금 이 가격이거나 현재 최저가라는 뜻은 아니에요.</p></div>`
+    : `<div class="notice"><b>총액을 비교할 수 있는 판매처가 아직 없어요</b><p>같은 상품·같은 옵션·재고 있음·배송비 확인·${OFFER_STALE_DAYS}일 이내 확인이 모두 맞아야 비교해요.${Object.keys(result.reasons).length ? ` 지금 빠진 이유: ${Object.entries(result.reasons).map(([flag, count]) => `${OFFER_FLAG_LABEL[flag]} ${count}`).join(' · ')}` : ''}</p></div>`;
+  const supply = accountHealth?.supply || [];
+  const canRefresh = signedIn() && accountHealth?.features?.offers;
+  const refreshInfo = data.refresh ? `<p class="fine">마지막 갱신 ${offerTime(data.refresh.at)} · ${data.refresh.ok ? '성공' : `실패: ${esc(data.refresh.message || '')} (이전 기록은 그대로 두었어요)`}</p>` : '';
+  const sources = `<details class="garment-name"><summary>가격 출처 연결 상태</summary><ul class="plain-list">${supply.length
+    ? supply.map((source) => `<li><b>${esc(source.name)}</b>: ${source.status === 'connected' ? '연결됨' : source.status === 'collected' ? '수집가(현재 가격 아님)' : `미연동${source.needs?.length ? ` · 필요: ${esc(source.needs.join(', '))}` : ''}`}</li>`).join('')
+    : '<li>이 앱에는 아직 실시간 가격 연동이 없어요. 판매처 가격은 직접 기록하거나, 운영자 서버에 가격 출처를 연결하면 갱신할 수 있어요.</li>'}</ul></details>`;
+  const f = v.form;
+  const form = f ? `<form data-action="offer" class="account-form offer-form">
+      <h3 class="block">${f.id ? '판매처 가격 확인·수정' : '판매처 가격 직접 기록'}</h3>
+      <label for="offer-seller">판매처</label><input id="offer-seller" name="seller" maxlength="60" value="${esc(f.seller || '')}" required>
+      <label for="offer-url">판매처 상품 링크</label><input id="offer-url" name="url" type="url" value="${esc(f.url || '')}" required>
+      <label for="offer-price">상품 가격(원)</label><input id="offer-price" name="price" inputmode="numeric" value="${esc(f.price ?? '')}" required>
+      <label for="offer-shipping">배송비(원, 모르면 비워 두기)</label><input id="offer-shipping" name="shipping" inputmode="numeric" value="${esc(f.shipping ?? '')}">
+      <label for="offer-color">색</label><select id="offer-color" name="color"><option value="">모름</option>${Object.entries(COLORS).map(([id, c]) => `<option value="${id}"${f.color === id ? ' selected' : ''}>${c.label}</option>`).join('')}</select>
+      <label for="offer-size">사이즈</label><input id="offer-size" name="size" maxlength="20" value="${esc(f.size || '')}" placeholder="예: M, 270">
+      <label for="offer-stock">재고</label><select id="offer-stock" name="stock">${[['unknown', '모름'], ['in-stock', '재고 있음'], ['sold-out', '품절']].map(([id, label]) => `<option value="${id}"${f.stock === id ? ' selected' : ''}>${label}</option>`).join('')}</select>
+      <label class="toggle"><input type="checkbox" name="sameProduct"${f.sameProduct === 'confirmed' ? ' checked' : ''}> 이 상품과 같은 상품이에요(모델·품번 확인)</label>
+      ${v.error ? `<p class="notice" role="alert">${esc(v.error)}</p>` : ''}
+      <button class="btn" type="submit">기록하기</button><button class="link" type="button" data-action="offer-form-cancel">취소</button>
+      <p class="fine">기록한 시각을 함께 남겨요. 이 기기에만 저장되고, 아직 옷장 백업·계정 동기화에는 들어가지 않아요.</p>
+    </form>` : `<div class="opts"><button class="chip" data-action="offer-add">판매처 가격 직접 기록</button>${canRefresh ? `<button class="chip" data-action="offer-refresh"${v.refreshing ? ' disabled' : ''}>${v.refreshing ? '확인하는 중…' : '연결된 출처에서 다시 확인'}</button>` : ''}</div>`;
+  openSheet(`<h2>판매처·총액 비교</h2>
+    <p class="sub">${esc([v.brand, v.name].filter(Boolean).join(' ') || '가져온 상품')}</p>
+    <h3 class="block">사려는 옵션</h3>
+    <div class="candidate-fields"><label>색<select id="offer-requested-color" data-action="offer-requested"><option value="">아직 모름</option>${Object.entries(COLORS).map(([id, c]) => `<option value="${id}"${requested.color === id ? ' selected' : ''}>${c.label}</option>`).join('')}</select></label><label>사이즈<input id="offer-requested-size" data-action="offer-requested" maxlength="20" value="${esc(requested.size || '')}" placeholder="예: M"></label></div>
+    ${!result.requestedComplete ? '<p class="fine">원하는 색과 사이즈를 정해야 총액을 비교해요. 사이즈가 없는 상품은 ‘FREE’라고 적어 주세요.</p>' : ''}
+    ${best}
+    <ul class="offer-list">${rows.map(row).join('')}</ul>
+    ${refreshInfo}
+    ${form}
+    ${sources}
+    <p class="fine">쿠폰·카드 할인·적립금은 판매처마다 달라 넣지 않았어요. 결제 전에 판매처에서 최종 금액을 확인해 주세요.</p>`, { key: `offers:${v.ref}` });
+}
+function offerFormFrom(offer) {
+  return { id: offer.id, seller: offer.seller, url: offer.url, price: offer.price, shipping: offer.shipping, color: offer.color, size: offer.size, stock: offer.stock, sameProduct: offer.sameProduct, source: offer.source, title: offer.title };
+}
+function saveOfferForm(fields) {
+  const v = offerView;
+  if (!v?.form) return false;
+  const data = readOffers(localStorage, v.ref);
+  const numberOrNull = (value) => (value === '' || value === null || value === undefined ? null : Number(String(value).replace(/[,\s원]/g, '')));
+  const editingCatalog = v.form.source === 'catalog';
+  try {
+    const offer = validateOffer({
+      id: editingCatalog || !v.form.id ? undefined : v.form.id,
+      seller: fields.seller, url: fields.url, price: numberOrNull(fields.price), shipping: numberOrNull(fields.shipping),
+      color: fields.color || null, size: fields.size || null, stock: fields.stock || 'unknown',
+      sameProduct: fields.sameProduct ? 'confirmed' : 'unconfirmed',
+      // A search result the user corrects becomes the user's own record.
+      source: 'user', checkedAt: new Date().toISOString(), title: v.form.title || null,
+    });
+    const offers = data.offers.filter((o) => o.id !== v.form.id);
+    if (!writeOffers(localStorage, v.ref, { ...data, offers: [...offers, offer] })) throw new Error('이 기기에 저장하지 못했어요. 입력은 그대로 두었어요.');
+    v.form = null;
+    v.error = '';
+    offerSheet();
+    return true;
+  } catch (error) {
+    v.form = { ...v.form, ...fields, sameProduct: fields.sameProduct ? 'confirmed' : 'unconfirmed' };
+    v.error = error.message;
+    offerSheet();
+    return false;
+  }
+}
+async function refreshOffers() {
+  const v = offerView;
+  if (!v || v.refreshing || !signedIn()) return;
+  v.refreshing = true;
+  offerSheet();
+  const data = readOffers(localStorage, v.ref);
+  const at = new Date().toISOString();
+  try {
+    const result = await accountApi().offers({ productId: v.productId, q: [v.brand, v.name].filter(Boolean).join(' ') });
+    let offers = data.offers;
+    for (const source of result.sources)
+      if (source.status === 'connected')
+        offers = mergeRefreshed(offers, result.offers.filter((offer) => offer.source === source.id && offer.source !== 'catalog'), source.id);
+    const failed = result.sources.filter((source) => source.status === 'failed');
+    writeOffers(localStorage, v.ref, { ...data, offers, refresh: { at, ok: !failed.length, message: failed.map((source) => `${source.name}: ${source.message}`).join(' · ') } });
+  } catch (error) {
+    if (error?.status === 401) syncFailed(error);
+    writeOffers(localStorage, v.ref, { ...data, refresh: { at, ok: false, message: error?.message || '가격을 확인하지 못했어요.' } });
+  } finally {
+    if (offerView === v) {
+      v.refreshing = false;
+      offerSheet();
+    }
+  }
+}
+
+// ── 내 옷장 기준 다음 한 벌: 실제 옷 → 확인 필요·겹침 → 부족한 종류 → 실제 상품·가격 출처·링크
+const ROLE_NAME = { outer: '아우터', top: '상의', inner: '이너', bottom: '하의', shoes: '신발', acc: '소품' };
+function planBasisLine(plan) {
+  if (plan.basis.kind === 'example') return `예시 옷 ${plan.basis.garmentCount}벌로 보는 진단이에요. 실제 내 옷이 아니에요.`;
+  if (plan.basis.kind === 'empty') return '등록한 내 옷이 없어요.';
+  return `등록한 내 옷 ${plan.basis.garmentCount}벌 중 종류·색을 확인한 ${plan.analysed.length}벌로 계산했어요.`;
+}
+function collectedPrice(entry) {
+  const p = entry.product;
+  return `<b>${formatPrice(entry.price.amount)}</b><span class="fine">${esc(entry.price.store)} 표시가 · ${esc(entry.price.collectedOn)} 수집</span>`;
+}
+function planProductRow(entry) {
+  const p = entry.product, slot = SLOT_BY_ID[p.slot];
+  return `<article class="plan-product">
+    <button class="plan-product-pic" data-action="open-item" data-id="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)} 자세히">${picture(p, slot)}</button>
+    <div class="plan-product-body">
+      <div class="brand-name">${esc(p.brand)}${mine(p) ? ' <span class="mine">내 브랜드</span>' : ''}</div>
+      <button class="name" data-action="open-item" data-id="${p.id}">${esc(p.name)}</button>
+      <div class="price">${collectedPrice(entry)}</div>
+      <div class="fine">${entry.colorConfirmed ? `색 ${esc(COLORS[p.color]?.label || '')}` : '색: 상품 사진으로 추정 · 판매처에서 확인 필요'}</div>
+      <div class="opts plan-product-actions"><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a><button class="chip" data-action="candidate-product" data-id="${p.id}">내 옷과 비교</button></div>
+    </div>
+  </article>`;
+}
+function planLookLine(look) {
+  return `<li><b>${esc(look.title)}</b> · ${look.items.map((row) => row.owned ? `${esc(ROLE_NAME[row.role] || '')} ${esc(row.label)}` : `${esc(ROLE_NAME[row.role] || '')} <em>후보 ${esc(shortName(row.slot))}</em>`).join(' + ')}</li>`;
+}
+function planSection() {
+  const plan = wardrobePlan(state);
+  if (plan.basis.kind === 'empty')
+    return `<section class="section plan-entry"><h2>내 옷장 기준 다음 한 벌</h2><p class="sub">가진 옷을 등록하면, 그 옷과 함께 입을 수 있는 실제 상품을 골라 드려요.</p><button class="btn" data-action="add-start">${ICON.plus}내 옷 추가</button></section>`;
+  const top = plan.gaps[0];
+  const preview = top
+    ? `<div class="plan-preview"><p><b>${esc(top.slot.name)}</b>${josa(top.slot.name, '을', '를')} 더하면 ${plan.basis.kind === 'example' ? '예시 옷' : '내 옷'}과 코디 공식 ${top.newFormulaCount}개가 완성돼요.</p>${top.products[0] ? `<p class="fine">예: ${esc(top.products[0].product.brand)} ${esc(top.products[0].product.name)} · ${formatPrice(top.products[0].price.amount)} (${esc(top.products[0].price.store)} 표시가, ${esc(top.products[0].price.collectedOn)} 수집)</p>` : ''}</div>`
+    : plan.pairs?.[0]
+      ? `<div class="plan-preview"><p>두 벌을 더하면 <b>${esc(plan.pairs[0].look.title)}</b> 코디가 완성돼요: ${plan.pairs[0].slots.map((slot) => esc(shortName(slot))).join(' + ')}</p></div>`
+      : '<div class="plan-preview"><p>지금 옷으로는 한두 벌만 더해 완성되는 코디 공식을 찾지 못했어요.</p></div>';
+  const counts = [
+    `분석 ${plan.analysed.length}벌`,
+    plan.needsCheck.length ? `확인 필요 ${plan.needsCheck.length}벌` : null,
+    plan.duplicates.length ? `겹치는 옷 ${plan.duplicates.length}묶음` : null,
+  ].filter(Boolean).join(' · ');
+  return `<section class="section plan-entry">
+    <div class="section-head"><div><h2>${plan.basis.kind === 'example' ? '예시 옷장으로 보는 다음 한 벌' : '내 옷장 기준 다음 한 벌'}</h2><div class="sub">${esc(counts)}</div></div></div>
+    ${plan.basis.kind === 'example' ? '<p class="fine">예시 옷이라 실제로 가진 옷과 다를 수 있어요. 내 옷을 넣으면 내 옷 기준으로 바뀌어요.</p>' : ''}
+    ${preview}
+    <button class="btn" data-action="open-plan">부족한 옷과 실제 후보 보기 ${ICON.arrow}</button>
+  </section>`;
+}
+function planSheet() {
+  const plan = wardrobePlan(state);
+  const example = plan.basis.kind === 'example';
+  const ownLabel = example ? '예시 옷' : '내 옷';
+  const analysed = plan.analysed.length
+    ? `<div class="plan-owned">${plan.analysed.map((item) => `<button class="plan-owned-item" data-action="${example ? 'tab' : 'open-own'}" ${example ? 'data-tab="closet"' : `data-id="${esc(item.id)}"`}>${itemPicture(item)}<span>${esc(describeGarment(item))}</span></button>`).join('')}</div>`
+    : `<p class="notice">종류와 색을 확인한 ${ownLabel}이 아직 없어요. 아래 옷을 확인하면 계산할 수 있어요.</p>`;
+  const needsCheck = plan.needsCheck.length
+    ? `<div class="notice"><b>확인하면 계산에 넣을 수 있어요</b><ul class="plain-list">${plan.needsCheck.map(({ item, reason }) => `<li>${esc(garmentLabel(item))} · ${reason === 'color' ? '색 미확인' : reason === 'type' ? '세부 종류 미확인' : '세부 종류·색 미확인'} <button class="link" data-action="open-own" data-id="${esc(item.id)}">확인하기</button></li>`).join('')}</ul></div>`
+    : '';
+  const extra = [
+    plan.basis.otherGender ? `다른 분류(${state.gender === 'F' ? '남성' : '여성'}) 옷 ${plan.basis.otherGender}벌은 이번 계산에서 뺐어요.` : null,
+    plan.basis.retired ? `반품·교체로 보유 추천에서 뺀 옷 ${plan.basis.retired}벌은 세지 않았어요.` : null,
+  ].filter(Boolean);
+  const duplicates = plan.duplicates.length || plan.paused.length
+    ? `${plan.duplicates.map((d) => `<div class="plan-dup">${d.items.slice(0, 3).map((item) => itemPicture(item, 'mini')).join('')}<p><b>${esc(COLORS[d.color]?.label || '')} ${esc(d.slot.name)} ${d.items.length}벌</b><br>같은 종류·색이 이미 있어요. 또 사기 전에 이 옷들을 먼저 활용해 보세요.</p></div>`).join('')}
+       ${plan.paused.map((p) => `<p class="fine">${esc(p.slot.name)}: ${p.reason === 'ordered' ? '주문·수령 기록이 있어 후보에서 뺐어요.' : '비슷한 옷이 있다고 답해 후보에서 뺐어요.'}</p>`).join('')}`
+    : `<p class="sub">같은 종류·색으로 겹치는 ${ownLabel}은 없어요.</p>`;
+  const gaps = plan.gaps.length
+    ? plan.gaps.map((gap) => `<section class="plan-gap">
+        <h4>${esc(gap.slot.name)} <span class="plan-count">+코디 ${gap.newFormulaCount}개</span></h4>
+        <p class="sub">함께 입는 ${ownLabel}: ${gap.usesOwned.map((item) => esc(describeGarment(item))).join(', ')}</p>
+        <ul class="plain-list plan-looks">${gap.looks.map(planLookLine).join('')}</ul>
+        <div class="plan-products">${gap.products.map(planProductRow).join('')}</div>
+        ${gap.moreProducts ? `<button class="link" data-action="example" data-q="${esc(gap.slot.name)}">${esc(gap.slot.name)} 후보 ${gap.moreProducts}개 더 보기</button>` : ''}
+      </section>`).join('')
+    : '';
+  const pairs = plan.pairs?.length
+    ? `<h3 class="block">두 벌을 더하면 완성되는 코디</h3>${plan.pairs.map((pair) => `<section class="plan-gap">
+        <h4>${esc(pair.look.title)}</h4>
+        <ul class="plain-list plan-looks">${planLookLine(pair.look)}</ul>
+        ${pair.slots.map((slot) => `<p class="sub"><b>${esc(slot.name)}</b> 후보</p><div class="plan-products">${(pair.products[slot.id] || []).map(planProductRow).join('') || '<p class="fine">조건에 맞는 상품이 목록에 없어요.</p>'}</div>`).join('')}
+      </section>`).join('')}`
+    : '';
+  openSheet(`<h2>${example ? '예시 옷장으로 보는 다음 한 벌' : '내 옷장 기준 다음 한 벌'}</h2>
+    <p class="sub">${esc(planBasisLine(plan))}</p>
+    ${example ? '<div class="notice"><b>예시 옷장이에요</b><p>흐름을 보여 주는 예시 옷이라 실제로 가진 옷과 섞지 않아요.</p><button class="btn small" data-action="add-start">내 옷으로 바꾸기</button></div>' : ''}
+    <h3 class="block">① 계산에 넣은 ${ownLabel}</h3>${analysed}${needsCheck}${extra.map((line) => `<p class="fine">${esc(line)}</p>`).join('')}
+    <h3 class="block">② 겹치는 옷</h3>${duplicates}
+    <h3 class="block">③ 부족한 종류와 실제 상품</h3>
+    ${gaps || (plan.pairs?.length ? '<p class="sub">한 벌만 더해 완성되는 코디는 없어요.</p>' : '<p class="notice">지금 옷으로는 한두 벌만 더해 완성되는 코디 공식을 찾지 못했어요. 옷을 더 등록하거나 스타일을 바꿔 보세요.</p>')}
+    ${plan.moreGaps ? `<p class="fine">이 밖에 코디를 완성하는 종류가 ${plan.moreGaps}개 더 있어요.</p>` : ''}
+    ${pairs}
+    <div class="why"><h3>계산 방법과 한계</h3><ul>${plan.limitations.map((line) => `<li>${esc(line)}</li>`).join('')}<li>가격은 현재 최저가가 아니에요. 같은 상품의 다른 판매처와 배송비는 아직 비교하지 않았어요.</li></ul></div>`, { key: 'plan' });
 }
 
 function renderSearch() {
@@ -837,6 +1083,7 @@ function journeySheet(id) {
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
     ${j.stage === 'candidate' ? `<div class="purchase-decisions">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${action === 'buy' ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}">${label}</button>`).join('')}</div><p class="fine">판단 기록이에요. 주문하거나 결제하지 않아요.</p>` : ''}
     <a class="btn candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>
+    <button class="btn secondary candidate-compare" data-action="open-offers" data-journey="${esc(id)}">판매처·배송비 포함 총액 비교</button>
     <p class="fine">판매처 방문은 구매로 기록하지 않아요. 실제 결제·배송·반품은 판매처에서 처리해요.</p>
     ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="ordered">직접 주문했다고 기록</button>` : ''}
     ${j.stage === 'ordered' ? `<button class="btn candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="received">받았어요</button>` : ''}
@@ -972,6 +1219,7 @@ function closeSheet() {
   pendingOptionChange = null;
   candidateGarmentReview = null;
   if (!accountForm?.busy) accountForm = null;
+  offerView = null;
   sheetKey = null;
 }
 
@@ -1047,6 +1295,7 @@ function itemSheet(id) {
       <a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>
     </div>
     <button class="btn secondary candidate-compare" data-action="candidate-product" data-id="${p.id}">내 옷과 비교 · 구매 여정에 넣기</button>
+    <button class="btn secondary candidate-compare" data-action="open-offers" data-id="${p.id}">판매처·배송비 포함 총액 비교</button>
     <div class="sheet-links">
       <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
       <button class="link" data-action="add-slot" data-slot="${slot.id}">비슷한 옷이 있어요</button>
@@ -2120,6 +2369,7 @@ async function eraseAllWardrobe() {
     // 백업 파일을 받은 날짜 기록은 옷장 자료가 아니라 이 기기의 메모라서 이전 자료
     // 범위(eoul:v1 등)와 따로, 전체 삭제가 끝난 뒤 지운다. 새 옷장은 다시 백업 알림을 받는다.
     clearBackupRecord();
+    clearOffers(localStorage);
     backupNudgeDismissed = false;
     // 이 브라우저의 로그인도 이 기기 자료라서 함께 끝낸다. 계정에 저장된 옷장은 지우지 않는다.
     if (account) {
@@ -2625,6 +2875,45 @@ document.addEventListener('click', async (e) => {
       case 'open-item':
         e.preventDefault();
         itemSheet(el.dataset.id);
+        break;
+      case 'open-plan':
+        planSheet();
+        break;
+      case 'open-offers':
+        beginOffers({ productId: el.dataset.id || null, journeyId: el.dataset.journey || null });
+        if (accountBase && !accountHealth) {
+          createAccountApi({ base: accountBase }).health().then((health) => { accountHealth = health; if (offerView) offerSheet(); }).catch(() => {});
+        }
+        break;
+      case 'offer-add':
+        if (!offerView) break;
+        offerView.form = { seller: '', url: offerView.url || '', price: '', shipping: '', color: readOffers(localStorage, offerView.ref).requested.color ?? offerView.defaultColor, size: readOffers(localStorage, offerView.ref).requested.size || '', stock: 'unknown', sameProduct: 'unconfirmed' };
+        offerView.error = '';
+        offerSheet();
+        break;
+      case 'offer-edit': {
+        if (!offerView) break;
+        const data = readOffers(localStorage, offerView.ref);
+        const offer = el.dataset.id === `catalog:${offerView.productId}` && offerView.catalog ? catalogOffer(offerView.catalog) : data.offers.find((o) => o.id === el.dataset.id);
+        if (!offer) break;
+        offerView.form = offerFormFrom(offer);
+        if (offer.source === 'catalog') offerView.form = { ...offerView.form, price: '', shipping: '', stock: 'unknown' };
+        offerView.error = '';
+        offerSheet();
+        break;
+      }
+      case 'offer-delete': {
+        if (!offerView) break;
+        const data = readOffers(localStorage, offerView.ref);
+        writeOffers(localStorage, offerView.ref, { ...data, offers: data.offers.filter((o) => o.id !== el.dataset.id) });
+        offerSheet();
+        break;
+      }
+      case 'offer-form-cancel':
+        if (offerView) { offerView.form = null; offerView.error = ''; offerSheet(); }
+        break;
+      case 'offer-refresh':
+        await refreshOffers();
         break;
       case 'open-look':
         lookSheet(Number(el.dataset.index));
@@ -3262,6 +3551,13 @@ document.addEventListener('input', (e) => {
 });
 document.addEventListener('change', async (e) => {
   try {
+    if (e.target.dataset?.action === 'offer-requested' && offerView) {
+      const data = readOffers(localStorage, offerView.ref);
+      const requested = { ...data.requested, ...(e.target.id === 'offer-requested-color' ? { color: e.target.value || null } : { size: e.target.value.trim() || null }) };
+      if (requested.color === null && e.target.id !== 'offer-requested-color') requested.color = data.requested.color ?? offerView.defaultColor;
+      writeOffers(localStorage, offerView.ref, { ...data, requested });
+      offerSheet();
+    }
     if (e.target.dataset?.action === 'account-check' && accountForm && !accountForm.busy && ['age14', 'privacy', 'terms'].includes(e.target.dataset.field))
       accountForm[e.target.dataset.field] = !!e.target.checked;
     if (candidateDraft?.candidate && !candidateDraft.saving) {
@@ -3318,6 +3614,16 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('submit', (e) => {
+  const offerFormEl = e.target.closest('form[data-action="offer"]');
+  if (offerFormEl) {
+    e.preventDefault();
+    const field = (name) => offerFormEl.elements?.[name] ?? offerFormEl[name];
+    saveOfferForm({
+      seller: field('seller')?.value, url: field('url')?.value, price: field('price')?.value, shipping: field('shipping')?.value,
+      color: field('color')?.value, size: field('size')?.value, stock: field('stock')?.value, sameProduct: !!field('sameProduct')?.checked,
+    });
+    return;
+  }
   const accountFormEl = e.target.closest('form[data-action="account"]');
   if (accountFormEl) {
     e.preventDefault();

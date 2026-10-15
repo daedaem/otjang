@@ -96,7 +96,7 @@ function referencedPhotos(state) {
   return new Set((state?.garments || []).map((garment) => garment.photoId).filter(Boolean));
 }
 
-export function createApp({ db, config, maskService = null, now = () => Date.now(), log = () => {} }) {
+export function createApp({ db, config, maskService = null, supply = null, now = () => Date.now(), log = () => {} }) {
   const limiter = createRateLimiter({ now });
   const q = {
     identity: db.prepare("SELECT user_id, email, password_hash FROM identities WHERE provider = 'email' AND subject = ?"),
@@ -176,7 +176,8 @@ export function createApp({ db, config, maskService = null, now = () => Date.now
       agreementVersion: AGREEMENT_VERSION,
       signup: { inviteRequired: !!config.inviteCode },
       providers: { email: true, kakao: false, google: false },
-      features: { photoMask: !!maskService },
+      features: { photoMask: !!maskService, offers: !!supply },
+      supply: supply ? supply.sources().map(({ id, name, status, needs = [] }) => ({ id, name, status, needs })) : [],
     }),
 
     'POST /v1/auth/signup': async (req) => {
@@ -247,6 +248,19 @@ export function createApp({ db, config, maskService = null, now = () => Date.now
       try { db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch {}
       log('account-deleted');
       return [204];
+    },
+
+    // Seller prices for one product from the connected sources. Signed in only,
+    // to keep third-party quotas for this server's own users.
+    'GET /v1/offers': async (req, url) => {
+      const session = authenticate(req);
+      if (!supply) throw new HttpError(404, 'feature-off', '이 서버는 가격 조회를 켜지 않았어요.');
+      limit(`offers:${session.userId}`, 30, 10 * 60 * 1000);
+      const productId = url.searchParams.get('productId');
+      if (productId !== null && !/^ms-\d{1,16}$/.test(productId)) throw new HttpError(400, 'bad-product', '상품 번호가 올바르지 않아요.');
+      const query = (url.searchParams.get('q') || '').slice(0, 100);
+      if (!productId && !query.trim()) throw new HttpError(400, 'bad-query', '상품 번호나 검색어가 필요해요.');
+      return supply.lookup({ productId, query });
     },
 
     'GET /v1/wardrobe': (req, url) => {
