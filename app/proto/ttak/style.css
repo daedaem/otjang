@@ -97,7 +97,7 @@ input { -webkit-appearance: none; appearance: none; }
 .tt-tab:focus-visible { outline-offset: -4px; }
 
 /* ── judge ──────────────────────────────── */
-.tt-jhead { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(12px + env(safe-area-inset-top)) 20px 10px 24px; }
+.tt-jhead { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(10px + env(safe-area-inset-top)) 20px 6px 24px; }
 .tt-jbrand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .tt-wm { font-family: var(--disp); font-weight: 800; font-size: 32px; line-height: 1; letter-spacing: -.04em; }
 .tt-left { margin: 0; display: flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--tx2); white-space: nowrap; }
@@ -105,7 +105,7 @@ input { -webkit-appearance: none; appearance: none; }
 .tt-exchip { font-style: normal; font-size: 12px; color: var(--tx3); margin-left: 2px; }
 .tt-linkbtn { flex: none; height: 44px; padding: 0 16px 0 14px; border-radius: 22px; display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 400; color: var(--tx2); box-shadow: 0 0 0 1px var(--hair2) inset; }
 .tt-linkbtn:active { background: var(--s2); }
-.tt-stack { position: relative; flex: 1; min-height: 0; margin: 8px 24px 0; }
+.tt-stack { position: relative; flex: 1; min-height: 0; margin: 6px 22px 0; }
 .tt-stack.is-empty { display: flex; }
 .tt-card { position: absolute; inset: 0 0 28px; border-radius: var(--r); transform-origin: 50% 90%; perspective: 1800px; will-change: transform; outline: none; transition: box-shadow .25s; }
 .tt-card[data-depth="0"] { z-index: 3; }
@@ -118,38 +118,62 @@ input { -webkit-appearance: none; appearance: none; }
 .tt-card-in { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .62s cubic-bezier(.2, .85, .2, 1); border-radius: inherit; }
 .tt-card.is-flipped .tt-card-in { transform: rotateY(180deg); }
 .tt-face { position: absolute; inset: 0; border-radius: inherit; background: var(--s1); box-shadow: 0 0 0 1px var(--hair) inset; overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-.tt-front { display: flex; flex-direction: column; background: var(--s1); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.tt-front { display: flex; flex-direction: column; gap: 10px; padding: 16px 14px 8px; background: var(--s1); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .tt-card.is-grab .tt-front { cursor: grabbing; }
 .tt-back { transform: rotateY(180deg); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
-.tt-photo { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--stage, var(--photo)); isolation: isolate; }
+.tt-lb-head { flex: none; padding: 0 4px; }
+.tt-lb-h { margin: 0; font-family: var(--disp); font-size: 21px; line-height: 1.25; font-weight: 800; letter-spacing: -.03em; }
+.tt-lb-note { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--tx2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tt-lb-note b { font-weight: 500; color: var(--tx); }
+.tt-photo { position: relative; flex: 1; min-height: 96px; overflow: hidden; border-radius: 18px; background: var(--stage, var(--photo)); isolation: isolate; }
 .tt-photo[data-cat="outer"] { --stage: #ECE8E1; }
 .tt-photo[data-cat="top"] { --stage: #EDEDEB; }
 .tt-photo[data-cat="dress"] { --stage: #EFE7E3; }
 .tt-photo[data-cat="bottom"] { --stage: #E4E7EA; }
 .tt-photo[data-cat="shoes"] { --stage: #EAE8E2; }
 .tt-photo[data-cat="acc"] { --stage: #E8E5EA; }
-.tt-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; pointer-events: none; -webkit-user-drag: none; transform: scale(1.02); mix-blend-mode: multiply; }
-.tt-photo::after { content: ''; position: absolute; inset: auto 0 0; height: 46%; background: linear-gradient(to bottom, rgba(33,33,36,0) 0%, rgba(33,33,36,.3) 45%, rgba(33,33,36,.84) 84%, #212124 100%); pointer-events: none; z-index: 1; }
-.tt-kc { position: absolute; right: 16px; top: 18px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--ink); text-shadow: 0 0 12px rgba(255,255,255,.6); }
-.tt-sticker { position: absolute; top: 14px; left: 14px; z-index: 2; height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; letter-spacing: 0; border-radius: 16px; background: rgba(19,19,20,.86) !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.tt-sticker::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.tt-sticker.is-yes { background: #000; color: #fff; }
-.tt-sticker.is-yes::before { background: #fff; }
-.tt-sticker.is-overlap { background: #000; color: #fff; }
+.tt-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; pointer-events: none; -webkit-user-drag: none; mix-blend-mode: multiply; }
+.tt-kc { position: absolute; right: 10px; top: 11px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; font-size: 12px; font-weight: 500; color: #1E1E1E; background: rgba(255,255,255,.84); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.tt-sticker { position: absolute; top: 10px; left: 10px; z-index: 2; height: 30px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; border-radius: 15px; color: #fff; background: rgba(19,19,20,.86); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.tt-sticker::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
 .tt-sticker.is-overlap::before { background: linear-gradient(90deg, #fff 50%, transparent 50%); box-shadow: inset 0 0 0 1.5px #fff; }
-.tt-sticker.is-unsure { background: #000; color: #fff; }
 .tt-sticker.is-unsure::before { background: transparent; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.7); }
-.tt-info { position: relative; z-index: 2; flex: none; margin-top: -84px; padding: 0 20px 14px; }
-.tt-brand { margin: 0; font-size: 12px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tt-name { margin: 4px 0 0; font-family: var(--disp); font-size: 22px; line-height: 1.25; font-weight: 800; letter-spacing: -.03em; color: #fff; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.tt-row { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
-.tt-price { font-size: 15px; font-weight: 400; color: rgba(255,255,255,.8); font-variant-numeric: tabular-nums; }
-.tt-why { height: 44px; margin-right: -8px; padding: 0 8px 0 12px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 500; color: #fff; border-radius: 22px; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,.4); }
-.tt-read { margin: 2px 0 0; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); display: flex; gap: 16px; }
-.tt-read div { display: flex; align-items: baseline; gap: 5px; }
-.tt-read dt { font-size: 13px; color: rgba(255,255,255,.55); }
-.tt-read dd { margin: 0; font-size: 15px; font-weight: 500; color: rgba(255,255,255,.5); font-variant-numeric: tabular-nums; }
-.tt-read .on dd, .tt-read .warn dd { color: rgba(255,255,255,.92); }
+/* the outfit, in wearing order */
+.tt-strip { flex: none; list-style: none; margin: 0; padding: 0 2px; display: flex; gap: 6px; }
+.tt-pc { flex: 1 1 0; min-width: 0; max-width: 64px; display: flex; flex-direction: column; }
+.tt-pc-ph { position: relative; display: grid; place-items: center; aspect-ratio: 5 / 6; border-radius: 10px; overflow: hidden; background: var(--photo); }
+.tt-pc-ph img { width: 100%; height: 100%; object-fit: cover; }
+.tt-pc-r { margin-top: 4px; font-size: 12px; line-height: 1.3; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-pc-o { font-size: 12px; line-height: 1.3; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-pc.is-me .tt-pc-ph { box-shadow: 0 0 0 2px var(--s1), 0 0 0 3.5px #fff; }
+.tt-pc.is-me .tt-pc-o { color: var(--tx); font-weight: 700; }
+.tt-pc.is-need .tt-pc-ph { background: transparent; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.28); }
+.tt-pc.is-need .tt-pc-ph span { padding: 0 4px; font-size: 11px; color: var(--tx2); text-align: center; }
+.tt-strip.is-empty p { margin: 0; padding: 0 4px; font-size: 13px; color: var(--tx3); }
+.tt-info { flex: none; padding: 0 4px; }
+.tt-info-a { margin: 0; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.tt-brand { color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-price { flex: none; font-weight: 500; color: var(--tx); font-variant-numeric: tabular-nums; }
+.tt-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; margin-top: -4px; }
+.tt-name { margin: 0; min-width: 0; font-size: 16px; line-height: 1.4; font-weight: 500; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-why { flex: none; height: 44px; margin-right: -8px; padding: 0 8px 0 10px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; color: var(--tx); border-radius: 22px; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,.35); }
+
+/* closet diagnosis above the stack */
+.tt-diag { flex: none; padding: 0 24px 6px; }
+.tt-diag-a { margin: 0; font-size: 13px; color: var(--tx2); }
+.tt-diag-a b { font-weight: 500; color: var(--tx); }
+.tt-diag-a em { font-style: normal; margin-left: 8px; padding: 1px 6px; border-radius: 8px; font-size: 11px; color: var(--tx2); box-shadow: inset 0 0 0 1px var(--hair2); }
+.tt-diag-b { margin: 2px 0 0; font-family: var(--disp); font-size: 18px; font-weight: 800; letter-spacing: -.03em; line-height: 1.35; }
+
+/* closet: outfits I can wear now */
+.tt-ready { margin-top: 28px; }
+.tt-ready h2, .tt-cgroup h2 { margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.tt-ready h2 b { font-size: 13px; font-weight: 500; color: var(--tx3); }
+.tt-boards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tt-mb { padding: 14px 14px 12px; border-radius: 20px; background: var(--s1); }
+.tt-mb-t { margin: 0; font-family: var(--disp); font-size: 17px; font-weight: 800; letter-spacing: -.03em; }
+.tt-mb-n { margin: 2px 0 10px; font-size: 13px; color: var(--tx2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tt-strip.is-mini .tt-pc { max-width: 58px; }
 
 /* drag hints and the stamp */
 .tt-hint { position: absolute; z-index: 6; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%; display: grid; place-items: center; font-family: var(--disp); font-weight: 800; font-size: 34px; letter-spacing: -.04em; pointer-events: none; transition: opacity .2s; }

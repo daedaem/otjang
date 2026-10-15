@@ -106,7 +106,7 @@ const Proto = (() => {
     const unique = (items) => [...new Map(items.map((g) => [g.id, g])).values()];
     const looks = c.looks.map((row) => ({
       id: row.look.id, title: row.look.title, note: row.look.note || '', isNew: row.new,
-      items: row.items.map((it) => (it.source === 'candidate' ? { candidate: true, product: p, role: it.role } : { garment: it.item, role: it.role })),
+      items: byRole(row.items.map((it) => (it.source === 'candidate' ? { candidate: true, product: p, role: it.role } : { garment: it.item, role: it.role }))),
     }));
     const used = unique(looks.flatMap((look) => look.items.filter((it) => it.garment).map((it) => it.garment)));
     const overlaps = unique([...c.sameProduct, ...c.similarOwned]);
@@ -118,6 +118,42 @@ const Proto = (() => {
       reasons: c.decision.reasons, checks: c.missingChecks.map((x) => x.message), price: candidate.price, empty: !record.garments.length,
     };
   }
+  // Outfit pieces in wearing order (outer, top, inner, dress, bottom, shoes, acc), each with its role name.
+  const byRole = (items) => [...items]
+    .sort((x, y) => ROLE_ORDER.indexOf(x.role) - ROLE_ORDER.indexOf(y.role))
+    .map((it) => ({ ...it, roleName: ROLE_LABEL[it.role] || '' }));
+  // What my closet needs, from the closet plan: each gap is one kind of garment
+  // that completes new outfits with clothes I own (why = how many owned pieces and
+  // new outfits), with those outfits as whole looks and real products for the gap.
+  // Pairs are outfits two pieces away. Ready = outfits I can already wear.
+  function needs({ limit = 4, productsPerGap = 4 } = {}) {
+    const plan = wardrobePlan(engineState(), { gapLimit: limit, productsPerGap });
+    const look = (l, extra = {}) => ({ title: l.title, note: l.note || '', pieces: byRole(l.items.map((it) => (it.owned
+      ? { garment: it.item, role: it.role }
+      : { need: true, slot: it.slot, kind: it.slot?.name || '', role: it.role }))), ...extra });
+    return {
+      garments: record.garments.length,
+      ready: outfits({ limit: 20 }),
+      gaps: plan.gaps.map((gap) => ({
+        kind: gap.slot.name, short: shortName(gap.slot), cat: gap.slot.cat, why: gap.slot.why || '',
+        newLooks: gap.newFormulaCount, usesOwned: gap.usesOwned,
+        line: `가진 옷 ${gap.usesOwned.length}벌과 코디 ${gap.newFormulaCount}개가 새로 완성돼요`,
+        looks: gap.looks.map((l) => look(l)),
+        products: gap.products.map((entry) => entry.product).filter((p) => p && eligible(p) && !owns(p)),
+      })).filter((gap) => gap.products.length),
+      pairs: (plan.pairs || []).map((pair) => ({
+        kinds: pair.slots.map((slot) => slot.name), look: look(pair.look),
+        products: pair.slots.map((slot) => pair.products[slot.id]?.[0]?.product || null),
+        line: `${pair.slots.map((slot) => shortName(slot)).join(' + ')}를 더하면 가진 옷 ${pair.usesOwned.length}벌로 코디가 완성돼요`,
+      })),
+      duplicates: plan.duplicates.map((d) => ({ kind: d.slot.name, color: d.color, items: d.items })),
+    };
+  }
+  // The same look with a chosen product filling the needed piece of its kind.
+  function fillNeed(lookValue, p) {
+    return { ...lookValue, pieces: lookValue.pieces.map((it) => (it.need && it.slot?.id === p.slot ? { candidate: true, product: p, role: it.role, roleName: it.roleName } : it)) };
+  }
+  const roleName = (role) => ROLE_LABEL[role] || '';
   function decide(p, decision) {
     record.decisions = [...record.decisions.filter((d) => d.productId !== p.id), { productId: p.id, decision, at: new Date().toISOString(), price: Number.isFinite(p.price) ? p.price : null }];
     if (decision === 'buy' && meta.addOnBuy) addOwned(p);
@@ -127,7 +163,8 @@ const Proto = (() => {
   // Ready outfits from the registered closet only, each as the garment ids it uses.
   function outfits({ limit = 12 } = {}) {
     return closetLooks(engineState(), { limit }).ready.map((r) => ({
-      id: r.look.id, title: r.look.title, garmentIds: r.items.filter((it) => it.owned && it.item).map((it) => it.item.id),
+      id: r.look.id, title: r.look.title, note: r.look.note || '', garmentIds: r.items.filter((it) => it.owned && it.item).map((it) => it.item.id),
+      pieces: byRole(r.items.filter((it) => it.owned && it.item).map((it) => ({ garment: it.item, role: it.role }))),
     }));
   }
   function fromLink(raw) {
@@ -150,7 +187,7 @@ const Proto = (() => {
 
   return {
     meta, get record() { return record; }, save, reset, start, startExample, addOwned, removeOwned, owns, ownables, candidates, judge, decide, decisionOf,
-    outfits, fromLink, search, product, garmentProduct, photo, colorName, colorHex, kindName, shortKind, category, label, price, buzz, esc, reducedMotion,
+    outfits, needs, fillNeed, roleName, fromLink, search, product, garmentProduct, photo, colorName, colorHex, kindName, shortKind, category, label, price, buzz, esc, reducedMotion,
     styles: (g) => stylesFor(g).map((id) => ({ id, name: STYLES[id].label, short: STYLES[id].short })), cats: CATS,
   };
 })();

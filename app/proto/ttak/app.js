@@ -45,7 +45,7 @@
     tab: 'judge', queue: null, flipped: false, busy: false, session: [],
     closetEdit: false, confirmReset: false, recFilter: 'all',
     pickCat: null, picks: new Map(), addCat: null, sheet: null,
-    toastT: 0, raf: 0, spring: null, lastFocus: null,
+    toastT: 0, raf: 0, spring: null, lastFocus: null, ctx: new Map(), needs: null, needsSig: '',
   };
   let EX = new Set(store.get('ex', []));
   const isEx = (g) => !!(g && g.productId && EX.has(g.productId));
@@ -202,15 +202,51 @@
   }
 
   // ── 판정: the stack ──────────────────────────────────
-  const ensureQueue = () => { if (!ui.queue) ui.queue = P.candidates({ limit: 12 }); };
+  // What the closet needs (cached per closet).
+  function needsNow() {
+    const sig = P.record.garments.map((g) => g.id).join('|');
+    if (!ui.needs || ui.needsSig !== sig) { ui.needs = P.needs({ limit: 4, productsPerGap: 4 }); ui.needsSig = sig; }
+    return ui.needs;
+  }
+  // The stack starts from the closet: each gap's products, then the pairs' products, then other candidates.
+  function buildQueue() {
+    const n = needsNow();
+    const decided = new Set(P.record.decisions.map((d) => d.productId));
+    const out = [];
+    const seen = new Set();
+    ui.ctx = new Map();
+    const add = (p, c) => {
+      if (!p || seen.has(p.id) || decided.has(p.id) || P.owns(p)) return;
+      seen.add(p.id); out.push(p);
+      if (c) ui.ctx.set(p.id, c);
+    };
+    n.gaps.forEach((gap) => gap.products.forEach((p) => add(p, { type: 'gap', gap })));
+    n.pairs.forEach((pair) => pair.products.forEach((p) => add(p, { type: 'pair', pair })));
+    P.candidates({ limit: 12 }).forEach((p) => add(p, null));
+    ui.qsig = P.record.garments.map((g) => g.id).join('|');
+    return out;
+  }
+  const ensureQueue = () => { if (!ui.queue) ui.queue = buildQueue(); };
+  function diagHTML() {
+    const n = needsNow();
+    const g = n.gaps[0];
+    const pr = n.pairs[0];
+    const line = !n.garments ? '가진 옷을 걸면 옷장에 필요한 옷을 알려 드려요.'
+      : g ? `${g.short} 하나면 코디 ${g.newLooks}개가 더 생겨요`
+      : pr ? `${pr.kinds.join(' · ')} 두 벌이면 코디가 하나 더 생겨요`
+      : '지금 옷장으로 충분해요. 겹치는 옷만 피하세요.';
+    return `<p class="tt-diag-a">내 옷장 <b>${n.garments}</b>벌 · 지금 입을 수 있는 코디 <b>${n.ready.length}</b>개${hasEx() ? '<em>예시 옷장</em>' : ''}</p>
+      <p class="tt-diag-b">${esc(line)}</p>`;
+  }
   const productsLeft = () => ui.queue.filter((x) => !x.summary).length;
-  const leftHTML = () => `<span>남은 후보</span><b>${productsLeft()}</b>${hasEx() ? '<em class="tt-exchip">예시 옷장 기준</em>' : ''}`;
+  const leftHTML = () => `<span>남은 후보</span><b>${productsLeft()}</b>`;
   function judgeHTML() {
     ensureQueue();
     return `<header class="tt-jhead">
         <div class="tt-jbrand"><span class="tt-wm" aria-hidden="true">딱</span><p class="tt-left" id="tt-left">${leftHTML()}</p></div>
         <button class="tt-linkbtn" data-act="link">${I.link}<span>링크로 판정</span></button>
       </header>
+      <div class="tt-diag" id="tt-diag">${diagHTML()}</div>
       <div class="tt-stack" id="tt-stack"></div>
       <div class="tt-actions" id="tt-actions">
         <button class="tt-act tt-act-skip" data-act="decide" data-d="skip" aria-label="패스: 안 사요">${I.arrL}<span>패스</span></button>
@@ -245,32 +281,70 @@
       </div></div></div>
     </article>`;
   }
+  // The whole outfit this product completes, in wearing order, and the card's headline.
+  function boardOf(p) {
+    const j = judgeOf(p);
+    // A gap or pair only speaks for the card while the closet still needs it (a 딱 can fill it).
+    const raw = ui.ctx.get(p.id);
+    const n = needsNow();
+    const live = raw?.type === 'gap' ? n.gaps.some((g) => g.kind === raw.gap.kind)
+      : raw?.type === 'pair' ? n.pairs.some((pr) => pr.kinds.join('|') === raw.pair.kinds.join('|')) : false;
+    const c = live ? raw : null;
+    const jl = j.looks.find((l) => l.isNew) || j.looks[0];
+    const fromJudge = (l) => ({ title: l.title, note: l.note, pieces: l.items });
+    let look = null;
+    let head;
+    if (c?.type === 'gap') {
+      const gl = c.gap.looks[0];
+      const same = j.looks.find((l) => l.title === gl?.title);
+      look = same ? fromJudge(same) : gl ? P.fillNeed(gl, p) : null;
+      head = j.verdict === 'overlap' ? `${c.gap.short}, 이미 비슷한 옷이 있어요` : `${c.gap.short} 하나면 코디 ${c.gap.newLooks}개 완성`;
+    } else if (c?.type === 'pair') {
+      look = P.fillNeed(c.pair.look, p);
+      head = `${c.pair.kinds.join(' + ')}, 두 벌이면 코디 완성`;
+    } else if (jl) {
+      look = fromJudge(jl);
+      head = j.verdict === 'overlap' ? '가진 옷과 겹쳐요' : j.newLooks ? `이 옷 하나면 코디 ${j.newLooks}개 완성` : `가진 옷과 코디 ${j.looks.length}개`;
+    } else {
+      head = j.empty ? '옷장이 비어 있어요' : '가진 옷과 맞는 코디가 아직 없어요';
+    }
+    return { j, look, head };
+  }
+  function stripHTML(look, p) {
+    if (!look) return '<div class="tt-strip is-empty"><p>등록한 옷으로는 맞춰지는 코디가 없어요. 근거에서 자세히 볼 수 있어요.</p></div>';
+    return `<ol class="tt-strip" aria-label="입는 순서">${look.pieces.map((it) => {
+      if (it.candidate) return `<li class="tt-pc is-me"><span class="tt-pc-ph"><img src="${P.photo(p)}" alt="" draggable="false"></span><span class="tt-pc-r">${esc(it.roleName)}</span><span class="tt-pc-o">이 옷</span></li>`;
+      if (it.need) return `<li class="tt-pc is-need"><span class="tt-pc-ph"><span>${esc(String(it.kind).split('·')[0])}</span></span><span class="tt-pc-r">${esc(it.roleName)}</span><span class="tt-pc-o">필요</span></li>`;
+      return `<li class="tt-pc"><span class="tt-pc-ph"><img src="${P.photo(it.garment)}" alt="" draggable="false"></span><span class="tt-pc-r">${esc(it.roleName)}</span><span class="tt-pc-o">내 옷</span></li>`;
+    }).join('')}</ol>`;
+  }
   function cardHTML(p, depth) {
     if (p.summary) return summaryHTML(p);
-    const j = judgeOf(p);
+    const b = boardOf(p);
+    const j = b.j;
     const n = { looks: j.looks.length, used: j.used.length, over: j.overlaps.length };
-    const label = `${p.brand} ${p.name}, ${P.price(p.price)}. 판정 ${STICKER_TXT[j.verdict]}. 코디 ${n.looks}, 어울리는 옷 ${n.used}, 겹침 ${n.over}`;
+    const outfitText = b.look ? `${b.look.title}: ${b.look.pieces.map((it) => `${it.roleName} ${it.candidate ? '이 옷' : it.need ? `${it.kind} 필요` : '내 옷'}`).join(', ')}` : '';
+    const label = `${b.head}. ${outfitText}. ${p.brand} ${p.name}, ${P.price(p.price)}. 판정 ${STICKER_TXT[j.verdict]}. 코디 ${n.looks}, 어울리는 옷 ${n.used}, 겹침 ${n.over}`;
     return `<article class="tt-card" data-pid="${esc(p.id)}" aria-label="${esc(label)}" aria-roledescription="후보 카드">
       <div class="tt-shake">
         <div class="tt-card-in">
           <div class="tt-face tt-front">
+            <div class="tt-lb-head">
+              <p class="tt-lb-h">${esc(b.head)}</p>
+              ${b.look ? `<p class="tt-lb-note"><b>${esc(b.look.title)}</b>${b.look.note ? ` · ${esc(b.look.note)}` : ''}</p>` : ''}
+            </div>
             <div class="tt-photo" data-cat="${P.category(p)}">
               <img src="${P.photo(p)}" alt="" draggable="false">
               <span class="tt-kc"><i style="background:${P.colorHex(p.color)}"></i>${esc(kc(p))}</span>
               <span class="tt-sticker is-${j.verdict}" aria-hidden="true">${STICKER[j.verdict]}</span>
             </div>
+            ${stripHTML(b.look, p)}
             <div class="tt-info">
-              <p class="tt-brand">${esc(p.brand)}</p>
-              <h2 class="tt-name">${esc(p.name)}</h2>
+              <p class="tt-info-a"><span class="tt-brand">${esc(p.brand)}</span><span class="tt-price">${esc(P.price(p.price))}</span></p>
               <div class="tt-row">
-                <span class="tt-price">${esc(P.price(p.price))}</span>
+                <h2 class="tt-name">${esc(p.name)}</h2>
                 <button class="tt-why" data-act="flip" aria-label="판정 근거 보기">근거${I.flip}</button>
               </div>
-              <dl class="tt-read">
-                <div class="${n.looks ? 'on' : ''}"><dt>코디</dt><dd>${n.looks}</dd></div>
-                <div class="${n.used ? 'on' : ''}"><dt>어울리는 옷</dt><dd>${n.used}</dd></div>
-                <div class="${n.over ? 'warn' : ''}"><dt>겹침</dt><dd>${n.over}</dd></div>
-              </dl>
             </div>
           </div>
           <div class="tt-face tt-back" aria-hidden="true" inert>${evidenceHTML(j, { inCard: true })}</div>
@@ -309,7 +383,19 @@
   // After a card leaves: shift the rest up without re-rendering (no image flash).
   function advanceStack() {
     const s = $('#tt-stack');
+    const diag = $('#tt-diag');
+    if (diag) diag.innerHTML = diagHTML();
     ui.queue.shift();
+    // The closet changed (a 딱): keep the two cards already in view, refill the rest from the new needs.
+    const sig = P.record.garments.map((g) => g.id).join('|');
+    if (ui.qsig !== undefined && sig !== ui.qsig && ui.queue.length) {
+      const vis = ui.queue.slice(0, 2);
+      const oldCtx = new Map(ui.ctx);
+      const fresh = buildQueue().filter((p) => !vis.some((v) => v.id === p.id));
+      vis.forEach((v) => { if (!ui.ctx.has(v.id) && oldCtx.has(v.id)) ui.ctx.set(v.id, oldCtx.get(v.id)); });
+      ui.queue = [...vis, ...fresh];
+      $('#tt-left').innerHTML = leftHTML();
+    }
     ui.flipped = false;
     $('#tt-left').innerHTML = leftHTML();
     const b = $('#tt-left b');
@@ -343,14 +429,10 @@
     if (!p || p.summary) return;
     const fresh = document.createElement('div');
     fresh.innerHTML = cardHTML(p, 0);
-    const nf = fresh.querySelector('.tt-info');
-    const of = top.querySelector('.tt-info');
-    if (nf.innerHTML !== of.innerHTML) {
-      of.replaceWith(nf);
-      top.querySelector('.tt-sticker').replaceWith(fresh.querySelector('.tt-sticker'));
-      top.querySelector('.tt-back').innerHTML = fresh.querySelector('.tt-back').innerHTML;
-      top.setAttribute('aria-label', fresh.firstElementChild.getAttribute('aria-label'));
-    }
+    if (fresh.firstElementChild.getAttribute('aria-label') === top.getAttribute('aria-label')) return;
+    ['.tt-lb-head', '.tt-strip', '.tt-info', '.tt-sticker'].forEach((sel) => { const n = fresh.querySelector(sel); const o = top.querySelector(sel); if (n && o) o.replaceWith(n); });
+    top.querySelector('.tt-back').innerHTML = fresh.querySelector('.tt-back').innerHTML;
+    top.setAttribute('aria-label', fresh.firstElementChild.getAttribute('aria-label'));
   }
   function doneHTML() {
     const c = { buy: 0, hold: 0, skip: 0 };
@@ -706,7 +788,8 @@
   // ── 옷장 ─────────────────────────────────────────────
   function closetHTML() {
     const gs = P.record.garments;
-    const outfits = gs.length ? P.outfits({ limit: 40 }).length : 0;
+    const ready = gs.length ? P.outfits({ limit: 12 }) : [];
+    const outfits = ready.length;
     const groups = CATS.map((c) => [c, gs.filter((g) => P.category(g) === c)]).filter(([, l]) => l.length);
     const ex = hasEx();
     const tiles = (list) => list.map((g) => `<li class="tt-tile" data-gid="${esc(g.id)}">
@@ -726,6 +809,14 @@
       </div>
       <button class="tt-addbtn" data-act="add">${I.plus}<span>옷 추가</span></button>
       ${ex ? '<p class="tt-exnote"><span class="tt-ex">예시</span>표시는 예시 옷장에서 온 옷이에요. 편집에서 빼고 가진 옷을 걸어 보세요.</p>' : ''}
+      ${ready.length ? `<section class="tt-ready" aria-label="지금 입을 수 있는 코디">
+          <h2><span>지금 입을 수 있는 코디</span><b>${ready.length}</b></h2>
+          <ul class="tt-boards">${ready.map((o) => `<li class="tt-mb">
+            <p class="tt-mb-t">${esc(o.title)}</p>
+            ${o.note ? `<p class="tt-mb-n">${esc(o.note)}</p>` : ''}
+            <ol class="tt-strip is-mini">${o.pieces.map((it) => `<li class="tt-pc"><span class="tt-pc-ph"><img src="${P.photo(it.garment)}" alt="" loading="lazy"></span><span class="tt-pc-r">${esc(it.roleName)}</span><span class="tt-pc-o">${esc(P.shortKind(it.garment))}</span></li>`).join('')}</ol>
+          </li>`).join('')}</ul>
+        </section>` : ''}
       ${groups.length ? groups.map(([c, l]) => `<section class="tt-cgroup" aria-label="${esc(P.cats[c])}">
           <h2><span>${esc(P.cats[c])}</span><b>${l.length}</b></h2>
           <ul class="tt-cgrid">${tiles(l)}</ul>
@@ -923,7 +1014,7 @@
     continue() { dismissSummary('hold'); },
     pushpid(el) { const p = P.product(el.dataset.pid); if (p) pushTop(p); },
     reload() {
-      ui.queue = P.candidates({ limit: 12, includeDecided: false });
+      ui.queue = buildQueue();
       ui.session = [];
       renderStack();
       if (!ui.queue.length) {

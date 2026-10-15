@@ -47,6 +47,11 @@
   const kc = (x) => `${P.colorName(x.color)} ${P.shortKind(x)}`.trim();
   const snap = (g) => ({ id: g.id, productId: g.productId, slot: g.slot, color: g.color, label: P.label(g), ex: exIds.has(g.id) });
   const garments = () => P.record.garments;
+  const snapPiece = (it) => (it.garment ? { garment: snap(it.garment), role: it.role, roleName: it.roleName || P.roleName(it.role) }
+    : it.need ? { need: true, slot: { id: it.slot?.id }, kind: it.kind, role: it.role, roleName: it.roleName || P.roleName(it.role) }
+    : { candidate: true, pid: it.product?.id || it.pid, role: it.role, roleName: it.roleName || P.roleName(it.role) });
+  const snapLook = (l) => ({ title: l.title, note: l.note || '', isNew: l.isNew, pieces: (l.pieces || l.items || []).map(snapPiece) });
+  const filled = (e) => Object.values(e.fills || {}).reduce((l, pid) => (P.product(pid) ? P.fillNeed(l, P.product(pid)) : l), e.look);
   const fmt = (s) => esc(s).replace(/\*(.+?)\*/g, '<em class="hi">$1</em>').replace(/~(.+?)~/g, '<em class="ul">$1</em>');
   const clean = (s) => String(s).replace(/[*~]/g, '');
   function tile(x, cls = '') {
@@ -98,12 +103,28 @@
   setVar();
 
   // ── entries → HTML
-  function lookHtml(e, l) {
-    return `<figure class="look">
-      <div class="look-row">${l.items.map((it, i) => (it.c
-        ? `<span class="pc is-cand" style="--i:${i}"><span class="ph">${tile(P.product(e.pid))}</span><span class="pc-l">이거</span></span>`
-        : `<span class="pc" style="--i:${i}"><span class="ph">${tile(it.g)}</span><span class="pc-l">${esc(P.shortKind(it.g))}${it.g.ex ? '<span class="pc-ex">예시</span>' : ''}</span></span>`)).join('')}</div>
-      <figcaption><span class="cap-t">${esc(l.title)}</span>${l.isNew ? '' : '<span class="cap-s">이미 있는 조합에 하나 더</span>'}</figcaption>
+  const PLUS = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  function pieceHtml(it, i) {
+    if (it.need) {
+      return `<div class="bp is-need" style="--i:${i}"><span class="ph"><span class="tile need-slot">${PLUS}<span class="need-k">${esc(it.kind)}</span></span></span>
+        <span class="bp-l"><b class="need-t">필요해요</b><em class="tag">${esc(it.roleName || '')}</em></span></div>`;
+    }
+    if (it.candidate) {
+      const p = it.product || P.product(it.pid);
+      return `<div class="bp is-cand" style="--i:${i}"><span class="ph">${tile(p)}</span>
+        <span class="bp-l"><b>${esc(p ? P.shortKind(p) : '')}</b><em class="tag new">이거</em></span></div>`;
+    }
+    const g = it.garment;
+    return `<div class="bp" style="--i:${i}"><span class="ph">${tile(g)}</span>
+      <span class="bp-l"><b>${esc(P.shortKind(g))}</b><em class="tag">${g.ex ? '내 옷 · 예시' : '내 옷'}</em></span></div>`;
+  }
+  function boardHtml(l) {
+    if (!l?.pieces?.length) return '';
+    const n = l.pieces.length;
+    const cols = n === 4 || n <= 2 ? 2 : 3;
+    return `<figure class="board" style="--cols:${cols}">
+      <figcaption class="board-h"><b>${esc(l.title)}</b>${l.note ? `<span>${esc(l.note)}</span>` : ''}</figcaption>
+      <div class="board-grid">${l.pieces.map(pieceHtml).join('')}</div>
     </figure>`;
   }
   function productCard(p, cls = 'card') {
@@ -146,12 +167,12 @@
         return `<div class="m m-u m-up" data-id="${e.id}"><div class="pchip">${tile(p, 'sm')}<span class="pchip-t"><span class="pchip-b">${esc(p.brand)}</span><span class="pchip-n">${esc(p.name)}</span><span class="pchip-p">${esc(P.price(p.price))}</span></span></div></div>`;
       }
       case 'looks': {
-        const shown = e.looks.slice(0, 2);
-        const rest = e.looks.slice(2);
+        const shown = e.looks.slice(0, 1);
+        const rest = e.looks.slice(1);
         return `<div class="m att att-looks" data-id="${e.id}">
-          ${shown.map((l) => lookHtml(e, l)).join('')}
-          ${rest.length ? `<div class="looks-more" id="more-${e.id}" hidden>${rest.map((l) => lookHtml(e, l)).join('')}</div>
-          <button class="more" type="button" data-act="more" aria-expanded="false" aria-controls="more-${e.id}">+${rest.length}개 더</button>` : ''}
+          ${shown.map(boardHtml).join('')}
+          ${rest.length ? `<div class="looks-more" id="more-${e.id}" hidden>${rest.map(boardHtml).join('')}</div>
+          <button class="more" type="button" data-act="more" aria-expanded="false" aria-controls="more-${e.id}">코디 ${rest.length}개 더 보기</button>` : ''}
         </div>`;
       }
       case 'over': {
@@ -186,6 +207,18 @@
           <div class="pk-head"><div class="cats" role="group" aria-label="종류">${cats.map((c) => `<button class="cat${c === e.cat ? ' on' : ''}" type="button" data-act="cat" data-cat="${c}" aria-pressed="${c === e.cat}">${esc(P.cats[c])}</button>`).join('')}</div></div>
           <p class="pk-count" aria-live="polite">${esc(pickedLabel(e))}</p>
           <div class="pk-grid">${pickerGrid(e)}</div>
+        </div>`;
+      }
+      case 'ready': return `<div class="m att att-ready" data-id="${e.id}"><div class="ready-row">${e.outfits.map((o, i) => `<figure class="mini" style="--i:${i}">
+          <div class="mini-grid">${o.pieces.slice(0, 4).map((it) => tile(it.garment)).join('')}</div>
+          <figcaption><b>${esc(o.title)}</b><span>${o.pieces.length}벌${o.pieces.some((it) => it.garment.ex) ? ' · 예시' : ''}</span></figcaption></figure>`).join('')}</div></div>`;
+      case 'need': {
+        const chosen = new Set(Object.values(e.fills || {}));
+        const items = e.pids.map((id) => P.product(id)).filter(Boolean);
+        return `<div class="m att att-need" data-id="${e.id}">
+          ${boardHtml(filled(e))}
+          ${items.length ? `<p class="need-p">${e.pair ? '두 자리에 넣어 볼 옷' : `${esc(e.kind)} 자리에 넣어 볼 옷`}</p>
+          <div class="found-row">${items.map((p) => productCard(p, `card card-s${chosen.has(p.id) ? ' is-on' : ''}`).replace('data-act="ask"', `data-act="fill" data-eid="${e.id}"`)).join('')}</div>` : ''}
         </div>`;
       }
       case 'div': return `<div class="m m-div" data-id="${e.id}"><span>${esc(e.text)}</span></div>`;
@@ -319,39 +352,114 @@
       return;
     }
     log.filter((e) => e.t === 'picker').forEach((e) => removeEntry(e.id));
-    await say([`좋아요, ${n}벌 기억할게요.`, { t: 'closet', gs: garments().map(snap), example: false }, ...invite]);
-    openTray();
+    await say([`좋아요, ${n}벌 기억할게요.`, { t: 'closet', gs: garments().map(snap), example: false }]);
+    await closetReport();
   }
   async function useExample() {
     log.filter((e) => e.t === 'picker').forEach((e) => removeEntry(e.id));
     P.startExample(P.record.gender || 'M');
     exIds = new Set(garments().map((g) => g.id)); saveEx();
     updateCount();
-    await say([`예시 옷장 ${garments().length}벌로 시작할게요.`, { t: 'closet', gs: garments().map(snap), example: true }, ...invite]);
-    openTray();
+    await say([`예시 옷장 ${garments().length}벌로 시작할게요.`, { t: 'closet', gs: garments().map(snap), example: true }]);
+    await closetReport();
+  }
+
+  // ── closet first: what I can wear now, and the one piece that adds the most outfits
+  const nextChips = (N) => ({ t: 'chips', opts: [
+    { label: '다른 필요한 옷 보기', a: 'need' },
+    ...((N?.pairs || []).length ? [{ label: '두 벌 더하면 되는 코디', a: 'pair' }] : []),
+  ] });
+  async function closetReport() {
+    const N = P.needs({ limit: 6, productsPerGap: 4 });
+    const ready = N.ready.filter((o) => o.pieces?.length);
+    book.gapIdx = 0; book.pairIdx = 0; saveLog();
+    await say([
+      '옷장을 봤어요.',
+      ready.length ? `지금 바로 입을 수 있는 코디가 ${ready.length}개 있어요.` : '아직 바로 입을 수 있는 코디는 없어요.',
+      ...(ready.length ? [{ t: 'ready', outfits: ready.slice(0, 6).map((o) => ({ title: o.title, pieces: o.pieces.map(snapPiece) })) }] : []),
+    ]);
+    await needStep(N);
+  }
+  async function needStep(N = P.needs({ limit: 6, productsPerGap: 4 })) {
+    const gaps = N.gaps.filter((g) => g.looks?.length);
+    if (!gaps.length) {
+      if (N.pairs.length) { await pairStep(N); return; }
+      await say(['지금 옷장으로 충분해 보여요.', { t: 's', text: '궁금한 옷이 있으면 링크를 붙여 주세요.' }]);
+      return;
+    }
+    const i = (book.gapIdx || 0) % gaps.length;
+    book.gapIdx = i + 1; saveLog();
+    const gap = gaps[i];
+    await say([
+      `${gap.kind} 하나만 있으면`,
+      `코디가 *${gap.newLooks}개* 더 생겨요.`,
+      { t: 's', text: gap.why ? `${gap.why}. ${gap.line}.` : `${gap.line}.` },
+      { t: 'need', kind: gap.kind, look: snapLook(gap.looks[0]), pids: gap.products.slice(0, 4).map((p) => p.id), fills: {} },
+      nextChips(N),
+    ]);
+  }
+  async function pairStep(N = P.needs({ limit: 6, productsPerGap: 4 })) {
+    const pairs = N.pairs.filter((x) => x.look?.pieces?.length);
+    if (!pairs.length) { await needStep(N); return; }
+    const i = (book.pairIdx || 0) % pairs.length;
+    book.pairIdx = i + 1; saveLog();
+    const pair = pairs[i];
+    await say([
+      '두 벌을 더하면',
+      '이런 코디가 돼요.',
+      { t: 's', text: `${pair.line}.` },
+      { t: 'need', pair: true, kind: pair.kinds.join(' + '), look: snapLook(pair.look), pids: pair.products.filter(Boolean).map((p) => p.id), fills: {} },
+      nextChips(N),
+    ]);
+  }
+  function fillFromNeed(eid, pid) {
+    const p = P.product(pid);
+    if (!p || !log.some((x) => x.id === eid)) return;
+    closeTray();
+    P.buzz(10);
+    act(async () => {
+      clearPending();
+      const e = log.find((x) => x.id === eid);
+      if (!e) return;
+      e.fills = { ...(e.fills || {}), [p.slot]: pid };
+      saveLog();
+      const node = stream.querySelector(`[data-id="${eid}"]`);
+      if (node) {
+        const fresh = el(html(e));
+        if (!RM) fresh.classList.add('just-filled');
+        const row = node.querySelector('.found-row');
+        const x = row ? row.scrollLeft : 0;
+        node.replaceWith(fresh);
+        const row2 = fresh.querySelector('.found-row');
+        if (row2) row2.scrollLeft = x;
+      }
+      await wait(700);
+      anchor = add({ t: 'up', pid });
+      await judgeTurn(p, { skipTitle: e.look.title });
+    });
   }
 
   const decisionChips = (p, extra = []) => ({ t: 'chips', opts: [...extra,
     { label: '살래요', a: 'decide', v: 'buy', pid: p.id }, { label: '볼게요', a: 'decide', v: 'hold', pid: p.id }, { label: '안 살래요', a: 'decide', v: 'skip', pid: p.id }] });
 
-  async function judgeTurn(p) {
+  async function judgeTurn(p, { skipTitle = null } = {}) {
     let j;
     try { j = P.judge(p); } catch {
       await say(['이 옷은 비교하지 못해요.', { t: 's', text: '코디 비교에 쓰지 않는 상품이에요.' }, { t: 'note', pid: p.id }]);
       return;
     }
-    const looks = j.looks.slice(0, 6).map((l) => ({
-      title: l.title, isNew: l.isNew,
-      items: l.items.map((it) => (it.candidate ? { c: 1 } : { g: snap(it.garment) })),
-    }));
+    const all = j.looks.slice(0, 6).map(snapLook);
+    const looks = all.filter((l) => l.title !== skipTitle);
+    const sawIt = looks.length < all.length;
     const n = j.looks.length;
     const steps = [];
     if (j.verdict === 'yes') {
-      steps.push('이거 내 옷장이랑', '*잘 맞아요.*', { t: 's', text: n > 1 ? `가진 옷과 ${n}가지로 바로 입을 수 있어요.` : '가진 옷과 바로 입을 수 있어요.' }, { t: 'looks', pid: p.id, looks });
+      steps.push('이거 내 옷장이랑', '*잘 맞아요.*', { t: 's', text: sawIt ? (n > 1 ? `위 코디를 포함해 ${n}가지로 바로 입을 수 있어요.` : '위 코디가 바로 완성돼요.') : (n > 1 ? `가진 옷과 ${n}가지로 바로 입을 수 있어요.` : '가진 옷과 바로 입을 수 있어요.') });
+      if (looks.length) steps.push({ t: 'looks', pid: p.id, looks });
     } else if (j.verdict === 'overlap') {
       const o = j.overlaps[0];
       steps.push('비슷한 옷이', '~이미 있어요.~', { t: 'over', pid: p.id, g: snap(o), same: o.productId === p.id, more: j.overlaps.length - 1 });
-      if (n) steps.push({ t: 's', text: '같이 입을 옷은 있지만, 겹쳐요.' }, { t: 'looks', pid: p.id, looks });
+      if (n) steps.push({ t: 's', text: '같이 입을 옷은 있지만, 겹쳐요.' }, ...(looks.length ? [{ t: 'looks', pid: p.id, looks }] : []));
     } else if (j.empty) {
       steps.push('옷장이 아직 비어 있어요.', { t: 's', text: '가진 옷을 알려 주시면 바로 봐 드릴게요.' });
     } else {
@@ -382,7 +490,7 @@
     if (layerOpen) renderSheet();
     const lines = v === 'buy' ? ['좋아요, 기억해 둘게요.', ...(P.meta.addOnBuy && !had ? [{ t: 's', text: '옷장에 넣어 뒀어요.' }] : [])]
       : v === 'hold' ? ['네, 천천히 보세요.'] : ['알겠어요, 이번엔 넘길게요.'];
-    await say([...lines, { t: 'chips', opts: [{ label: '다른 옷도 골라 주세요', a: 'tray', lead: true }] }]);
+    await say([...lines, { t: 'chips', opts: [{ label: '다른 필요한 옷 보기', a: 'need', lead: true }, { label: '추천 더 보기', a: 'tray' }] }]);
   }
   async function tellMore(pid) {
     const p = P.product(pid);
@@ -416,6 +524,8 @@
       else if (o.a === 'more') await tellMore(o.pid);
       else if (o.a === 'moreDone') await moreDone(o.pid);
       else if (o.a === 'tray') openTray();
+      else if (o.a === 'need') await needStep();
+      else if (o.a === 'pair') await pairStep();
     });
   }
 
@@ -617,6 +727,7 @@
     const a = t.dataset.act;
     if (a === 'chip') onChip(t.closest('[data-id]').dataset.id, Number(t.dataset.i));
     else if (a === 'ask') ask(P.product(t.dataset.pid));
+    else if (a === 'fill') fillFromNeed(t.dataset.eid, t.dataset.pid);
     else if (a === 'ask-from-sheet') { closeSheet(); ask(P.product(t.dataset.pid)); }
     else if (a === 'more') {
       const box = t.parentElement.querySelector('.looks-more');
@@ -624,7 +735,7 @@
       box.hidden = !open;
       if (open && !RM) box.classList.add('is-new');
       t.setAttribute('aria-expanded', String(open));
-      t.textContent = open ? '접기' : `+${box.querySelectorAll('.look').length}개 더`;
+      t.textContent = open ? '접기' : `+${box.querySelectorAll('.board').length}개 더`;
     } else if (a === 'cat') {
       const node = t.closest('[data-id]');
       const e = log.find((x) => x.id === node.dataset.id);

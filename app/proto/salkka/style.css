@@ -368,6 +368,40 @@ body {
 .sh-reset div { display: flex; gap: 8px; }
 .reset-link { min-height: 44px; font-size: 13px; color: var(--mute); text-decoration: underline; text-underline-offset: 3px; }
 
+/* ── whole-outfit look board, in wearing order */
+.board { margin: 0; background: var(--tile); border-radius: 20px; padding: 16px 16px 18px; max-width: 420px; }
+.board + .board, .looks-more .board { margin-top: 12px; }
+.board-h { display: flex; flex-direction: column; gap: 4px; margin: 0 0 14px; }
+.board-h b { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+.board-h span { font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.board-grid { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 14px 8px; }
+.bp { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.board .tile { background: #fff; border-radius: 14px; }
+.bp-l { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.bp-l b { max-width: 100%; font-size: 14px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag { font-style: normal; font-size: 12px; font-weight: 700; line-height: 1; color: var(--ink-2); padding: 5px 8px; border-radius: 8px; background: #fff; white-space: nowrap; }
+.tag.new { background: var(--accent-wash); color: var(--accent-ink); }
+.bp.is-cand .tile { box-shadow: 0 0 0 2px var(--tile), 0 0 0 4px var(--accent); }
+.need-slot {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px;
+  background: #F7FAFF; border: 1.5px dashed var(--accent); color: var(--accent-ink); text-align: center;
+}
+.need-k { font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--accent-ink); word-break: keep-all; }
+.bp-l .need-t { color: var(--accent-ink); font-weight: 700; }
+.need-p { margin: 18px 0 8px; font-size: 15px; font-weight: 700; color: var(--ink); }
+.card.is-on .tile { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.card.is-on .card-n { color: var(--accent-ink); }
+
+/* ready outfits: small boards */
+.ready-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; margin: 0 calc(var(--g) * -1); padding: 4px var(--g) 8px; }
+.ready-row::-webkit-scrollbar { display: none; }
+.mini { flex: 0 0 152px; margin: 0; background: var(--tile); border-radius: 18px; padding: 10px; }
+.mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mini .tile { background: #fff; border-radius: 10px; }
+.mini figcaption { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
+.mini b { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini span { font-size: 13px; color: var(--mute); }
+
 /* ── motion: lines rise and settle; evidence assembles */
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes rise-lg { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
@@ -386,6 +420,12 @@ body {
 .is-new.att-over .is-cand { animation: from-r .6s var(--spring) both; animation-delay: .08s; }
 .is-new.att-over .eq { animation: pop .45s var(--spring) both; animation-delay: .38s; }
 .is-new.att-over figcaption, .is-new.att-looks figcaption { animation: rise .5s var(--spring) both; animation-delay: .45s; }
+.is-new .board .bp, .looks-more.is-new .bp { animation: piece .5s var(--spring) both; animation-delay: calc(160ms + var(--i) * 90ms); }
+.is-new .mini { animation: piece .5s var(--spring) both; animation-delay: calc(120ms + var(--i) * 70ms); }
+@keyframes slot-in { 0% { opacity: 0; transform: translateY(-14px) scale(.8); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes ring-in { from { box-shadow: 0 0 0 2px var(--tile), 0 0 0 14px rgba(49, 130, 246, 0); } }
+.just-filled .bp.is-cand .tile { animation: slot-in .65s var(--spring) both, ring-in .8s var(--out) .2s both; }
+.just-filled .bp.is-cand .tag { animation: pop .4s var(--spring) .35s both; }
 .is-new.att-closet .cl { animation: piece .45s var(--spring) both; animation-delay: calc(80ms + var(--i) * 60ms); }
 .is-new.m-chips .chip { animation: rise .45s var(--spring) both; animation-delay: calc(var(--i) * 50ms); }
 .is-leaving { overflow: hidden; opacity: 0; transition: opacity .18s var(--out), height .24s var(--out), margin .24s var(--out); margin-top: 0 !important; }

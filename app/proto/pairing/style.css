@@ -66,15 +66,62 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .cat.is-on { color: var(--text); font-weight: 700; }
 .cat.is-on::after { content: ''; position: absolute; left: 0; right: .14em; bottom: -1px; height: 2px; background: var(--text); }
 
-/* 에디토리얼 배너 */
-.hero { display: block; width: 100%; text-align: left; margin-bottom: 36px; }
-.hero-ph { display: block; aspect-ratio: 1 / 1; background: var(--photo); overflow: hidden; }
-.hero-ph img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; padding: 8% 16%; }
-.is-enter .hero-ph img { animation: pr-zoom 1.4s var(--ease) both; }
-.hero-tx { display: flex; flex-direction: column; gap: 6px; padding: 18px var(--pad) 0; }
-.hero-h { font-size: 26px; line-height: 1.3; font-weight: 700; letter-spacing: -0.03em; }
-.hero-s { font-size: 13px; color: var(--text-2); }
-.hero-go { align-self: flex-start; margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: .18em; padding-bottom: 2px; border-bottom: 1px solid var(--text); }
+/* YOUR CLOSET NEEDS — 빈자리마다 에디토리얼 블록 */
+.needs { padding: 28px 0 8px; }
+.needs-h { padding: 0 var(--pad); margin-bottom: 4px; }
+.need { padding: 20px 0 32px; margin: 0 var(--pad); border-bottom: 1px solid var(--line); }
+.need + .need { padding-top: 28px; }
+.need-no { color: var(--text-2); }
+.need-h { margin: 8px 0 6px; font-size: 24px; line-height: 1.3; font-weight: 700; letter-spacing: -0.035em; }
+.need-s { margin: 0; font-size: 15px; }
+.need-s b { font-weight: 700; }
+.need-why { margin: 4px 0 0; font-size: 12px; color: var(--text-2); }
+.is-enter .need { animation: pr-in .7s var(--ease) both; }
+
+/* 룩 보드 */
+.look-board { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--text); }
+.lb-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; }
+.lb-h b { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+.lb-note { margin: 4px 0 0; font-size: 12px; color: var(--text-2); }
+.board { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 16px 6px; }
+.bp { display: flex; flex-direction: column; min-width: 0; animation: pr-in .55s var(--ease) both; animation-delay: var(--d, 0ms); }
+.bp-ph { display: block; aspect-ratio: 4 / 5; background: var(--photo); overflow: hidden; }
+.bp-ph img { width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
+.bp--this .bp-ph { box-shadow: inset 0 0 0 1px var(--text); }
+.bp--this.is-new .bp-ph img { animation: pr-zoom .6s var(--ease) both; }
+.bp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #fff; border: 1px dashed #8C8C8C; text-align: center; padding: 6px; }
+.bp-empty span { font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+.bp-empty b { font-size: 12px; font-weight: 500; line-height: 1.3; }
+.bp-role { margin-top: 7px; font-size: 11px; font-weight: 700; line-height: 1.3; }
+.bp-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .1em; line-height: 1.5; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp--this .bp-tag, .bp--need .bp-tag { color: var(--text); }
+.bp-n { font-size: 11px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-pick { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 14px 0 0; padding: 4px 0 4px 12px; border-left: 2px solid var(--text); font-size: 13px; font-weight: 700; }
+.lb-pick > span { display: flex; flex-direction: column; min-width: 0; }
+.lb-go { flex: none; min-height: 44px; padding: 0 16px; background: var(--text); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+
+/* SHOP THE LOOK */
+.stl-h { margin-top: 22px; }
+.stl { list-style: none; margin: 10px calc(var(--pad) * -1) 0; padding: 0 var(--pad); display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.stl::-webkit-scrollbar { display: none; }
+.stl-card { width: 104px; flex: none; display: flex; flex-direction: column; text-align: left; }
+.stl-ph { display: block; aspect-ratio: 4 / 5; background: var(--photo); overflow: hidden; margin-bottom: 6px; transition: box-shadow .2s; }
+.stl-ph img { width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
+.stl-card.is-on .stl-ph { box-shadow: inset 0 0 0 2px var(--text); }
+.stl-card .brand { font-size: 10px; }
+.stl-p { font-size: 12px; font-weight: 700; }
+.badge--need { color: var(--text); font-weight: 700; }
+.badge--need::before { background: var(--text); }
+
+/* 상세: THE LOOK */
+.d-look { margin: 0 var(--pad); padding: 18px 0 4px; border-bottom: 1px solid var(--line); padding-bottom: 22px; }
+
+/* READY TO WEAR */
+.ready { margin: 0 var(--pad) 28px; }
+.ready .sec-h--in { padding: 0; }
+.look-board--ready { margin-top: 0; margin-bottom: 26px; }
+.note--in { margin: 8px 0 0; }
+.sec-h--sub { margin-top: 8px; }
 
 /* 그리드 */
 .sec-h { display: flex; justify-content: space-between; align-items: baseline; padding: 0 var(--pad); margin-bottom: 14px; }
@@ -199,3 +246,5 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .toast span { padding: 11px 18px; background: var(--text); color: #fff; font-size: 13px; }
 .badge--own { color: var(--text-2); }
 .badge--own::before { background: var(--text-2); }
+.bp-ph { position: relative; }
+.bp-ex { position: absolute; left: 0; top: 0; padding: 1px 5px; background: #fff; font-style: normal; font-size: 10px; font-weight: 700; color: var(--text); }

@@ -41,6 +41,20 @@ test('the core judges real catalog products against a real closet', () => {
   assert.ok(closet.every((g) => g.productId && Proto.photo(g)), 'every example garment has a product photo');
   assert.ok(JSON.parse(storage.get('eoul-proto:_probe')).garments.length === closet.length, 'kept in this browser');
 
+  // What the closet needs: a kind that completes new outfits, the whole looks it
+  // completes (pieces in wearing order, the missing one marked), real products for it.
+  const need = Proto.needs();
+  assert.ok(need.gaps.length >= 1);
+  const gap = need.gaps[0];
+  assert.ok(gap.newLooks >= 1 && gap.usesOwned.length >= 1 && gap.products.length >= 1);
+  assert.match(gap.line, /^가진 옷 \d+벌과 코디 \d+개가 새로 완성돼요$/);
+  const whole = gap.looks[0];
+  assert.ok(whole.pieces.some((it) => it.need) && whole.pieces.some((it) => it.garment));
+  const order = ['outer', 'top', 'inner', 'dress', 'bottom', 'shoes', 'acc'];
+  assert.deepEqual([...whole.pieces.map((it) => order.indexOf(it.role))], [...whole.pieces.map((it) => order.indexOf(it.role))].sort((a, b) => a - b));
+  const filled = Proto.fillNeed(whole, gap.products[0]);
+  assert.ok(filled.pieces.some((it) => it.candidate && it.product.id === gap.products[0].id) && !filled.pieces.some((it) => it.need));
+
   const candidates = Proto.candidates({ limit: 8 });
   assert.equal(candidates.length, 8);
   assert.ok(new Set(candidates.map((p) => Proto.category(p))).size >= 2, 'kinds alternate');
@@ -66,6 +80,9 @@ test('the core judges real catalog products against a real closet', () => {
   assert.ok(!Proto.candidates({ limit: 20 }).some((p) => p.id === yes.product.id));
 
   assert.ok(Proto.outfits().length >= 1);
+  assert.ok(Proto.outfits()[0].pieces.every((it) => it.garment && it.roleName));
+
+
   assert.equal(Proto.fromLink('https://example.com/x').error !== undefined, true);
   assert.equal(Proto.fromLink(yes.product.url).product.id, yes.product.id);
   assert.equal(Proto.esc('<b>"x"</b>'), '&lt;b&gt;&quot;x&quot;&lt;/b&gt;');

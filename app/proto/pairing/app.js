@@ -7,7 +7,7 @@
   const CAT_LABEL = { new: 'NEW', outer: 'OUTER', top: 'TOP', dress: 'DRESS', bottom: 'BOTTOM', shoes: 'SHOES', acc: 'ACC' };
   const DECISION = { buy: '살게요', hold: '찜', skip: '안 살게요' };
 
-  const ui = { tab: 'shop', cat: 'new', gender: null, q: '', searching: false, linkError: '', detail: null, sheet: null, toastTimer: 0, lastFocus: null, enter: true };
+  const ui = { fill: {}, tab: 'shop', cat: 'new', gender: null, q: '', searching: false, linkError: '', detail: null, sheet: null, toastTimer: 0, lastFocus: null, enter: true };
 
   // ── 도구
   const rm = () => P.reducedMotion();
@@ -34,7 +34,7 @@
   let jcKey = '';
   function judged(p) {
     const key = team().map((g) => g.id).join(',');
-    if (key !== jcKey) { jc.clear(); jcKey = key; listCache.clear(); }
+    if (key !== jcKey) { jc.clear(); jcKey = key; listCache.clear(); needsCache = null; ui.fill = {}; }
     if (!jc.has(p.id)) { try { jc.set(p.id, P.judge(p)); } catch { jc.set(p.id, null); } }
     return jc.get(p.id);
   }
@@ -42,6 +42,8 @@
     const j = judged(p);
     if (!j) return '';
     if (P.owns(p)) return '<span class="badge badge--own">내 옷장에 있음</span>';
+    const n = needBadge().get(p.id);
+    if (n && j.verdict !== 'overlap') return `<span class="badge badge--need">코디 ${n}개 완성</span>`;
     if (j.verdict === 'yes') return `<span class="badge badge--yes">내 옷 ${j.used.length}벌과 매치</span>`;
     if (j.verdict === 'overlap') return '<span class="badge badge--dup">비슷한 옷 있음</span>';
     return '<span class="badge badge--meh">매치 확인 필요</span>';
@@ -49,13 +51,31 @@
 
   // ── 상품 목록
   const listCache = new Map();
-  const invalidate = () => listCache.clear();
+  let needsCache = null;
+  const invalidate = () => { listCache.clear(); needsCache = null; ui.fill = {}; };
+  // 내 옷장에 필요한 것: 빈자리(gap)마다 완성되는 코디 전체와 그 자리에 놓을 실제 상품
+  function closetNeeds() {
+    if (!needsCache) { try { needsCache = P.needs({ limit: 3, productsPerGap: 4 }); } catch { needsCache = { gaps: [], ready: [], pairs: [] }; } }
+    return needsCache;
+  }
+  const needBadge = () => {
+    const m = new Map();
+    closetNeeds().gaps.forEach((g) => g.products.forEach((p) => { if (!m.has(p.id)) m.set(p.id, g.newLooks); }));
+    return m;
+  };
   function shopList(cat) {
     if (listCache.has(cat)) return listCache.get(cat);
     const skipped = new Set(P.record.decisions.filter((d) => d.decision === 'skip').map((d) => d.productId));
     const ok = (p) => p && !P.owns(p) && !skipped.has(p.id);
-    const base = P.candidates({ limit: cat === 'new' ? 12 : 60, includeDecided: true }).filter(ok);
+    const base = P.candidates({ limit: cat === 'new' ? 16 : 60, includeDecided: true }).filter(ok);
     let out = base;
+    if (cat === 'new') {
+      const seen = new Set();
+      const gapFirst = closetNeeds().gaps.flatMap((g) => g.products).filter(ok);
+      out = [...gapFirst, ...base].filter((p) => !seen.has(p.id) && seen.add(p.id)).slice(0, 16);
+      listCache.set(cat, out);
+      return out;
+    }
     if (cat !== 'new') {
       const seen = new Set();
       out = [...base.filter((p) => P.category(p) === cat), ...P.ownables(cat, { limit: 30 }).filter(ok)]
@@ -122,23 +142,47 @@
       return `<div class="sec-h"><p class="lbl">SEARCH</p><p class="cnt">${found.length} ITEMS</p></div>${found.length ? gridHTML(found) : '<p class="empty">검색 결과가 없어요.</p>'}`;
     }
     const list = shopList(ui.cat);
-    const hero = ui.cat === 'new' ? (list.find((p) => judged(p)?.verdict === 'yes') || list[0]) : null;
+    const gaps = ui.cat === 'new' ? closetNeeds().gaps : [];
     return `<nav class="cats" aria-label="카테고리">${cats().map((c) => `<button class="cat${ui.cat === c ? ' is-on' : ''}" data-act="cat" data-cat="${c}" ${ui.cat === c ? 'aria-current="true"' : ''}>${CAT_LABEL[c]}</button>`).join('')}</nav>
-      ${hero ? heroHTML(hero) : ''}
+      ${gaps.length ? `<section class="needs" aria-labelledby="nd-t"><h2 class="lbl lbl--h needs-h" id="nd-t">YOUR CLOSET NEEDS</h2>${gaps.map(needHTML).join('')}</section>` : ''}
       <div class="sec-h"><p class="lbl">${ui.cat === 'new' ? 'NEW IN' : CAT_LABEL[ui.cat]}</p><p class="cnt">${list.length} ITEMS</p></div>
       ${list.length ? gridHTML(list) : '<p class="empty">지금 보여 드릴 상품이 없어요.</p>'}`;
   }
-  function heroHTML(p) {
-    const j = judged(p);
-    return `<button class="hero" data-act="open" data-id="${esc(p.id)}">
-      <span class="hero-ph">${img(p, p.name, false)}</span>
-      <span class="hero-tx">
-        <span class="lbl">WEEKLY SELECTION</span>
-        <span class="hero-h">내 옷장과 맞는<br>이번 주 셀렉션</span>
-        <span class="hero-s">${esc(p.brand || '')} · ${j?.verdict === 'yes' ? `내 옷 ${j.used.length}벌과 코디 ${j.looks.length}` : esc(P.kindName(p))}</span>
-        <span class="hero-go">SHOP NOW</span>
-      </span>
-    </button>`;
+  // 룩 보드: 입는 순서대로. 가진 옷은 MY CLOSET, 빈자리는 빈 프레임(NEEDED), 고른 상품은 THIS ITEM.
+  function lookBoard(pieces, { tag = 'THIS ITEM', anim = true } = {}) {
+    const n = pieces.length;
+    const cols = n <= 4 ? n : 3;
+    return `<ul class="board" role="list" style="--cols:${cols}">${pieces.map((it, i) => {
+      const d = anim && !rm() ? ` style="--d:${180 + i * 90}ms"` : '';
+      if (it.need) {
+        const short = P.shortKind({ slot: it.slot?.id }) || it.kind;
+        return `<li class="bp bp--need"${d}><span class="bp-ph bp-empty"><span>NEEDED</span><b>${esc(short)}</b></span><span class="bp-role">${esc(it.roleName)}</span><span class="bp-tag">NEEDED</span></li>`;
+      }
+      if (it.candidate) return `<li class="bp bp--this"${d}><span class="bp-ph">${img(it.product)}</span><span class="bp-role">${esc(it.roleName)}</span><span class="bp-tag">${tag}</span><span class="bp-n">${esc(P.shortKind(it.product))}</span></li>`;
+      const g = it.garment;
+      return `<li class="bp"${d}><span class="bp-ph">${img(g)}${isExample(g) ? '<i class="bp-ex">예시</i>' : ''}</span><span class="bp-role">${esc(it.roleName)}</span><span class="bp-tag">MY CLOSET</span><span class="bp-n">${esc(P.shortKind(g))} · ${esc(P.colorName(g.color))}</span></li>`;
+    }).join('')}</ul>`;
+  }
+  function needHTML(gap, i) {
+    const look = gap.looks[0];
+    const pick = ui.fill[i] ? gap.products.find((p) => p.id === ui.fill[i]) : null;
+    const shown = look ? (pick ? P.fillNeed(look, pick) : look) : null;
+    return `<article class="need" id="need-${i}">
+      <p class="lbl need-no">${pad(i + 1)} · ${esc(CAT_LABEL[gap.cat] || '')}</p>
+      <h3 class="need-h">내 옷장에 필요한 ${esc(closetNeeds().gaps.slice(0, i).some((g) => g.cat === gap.cat) ? gap.short : (P.cats[gap.cat] || ''))}</h3>
+      <p class="need-s"><b>${esc(gap.short)}</b> 하나면 코디 ${gap.newLooks}개가 완성돼요.</p>
+      <p class="need-why">${esc(gap.line)}${gap.why ? ` · ${esc(gap.why)}` : ''}</p>
+      ${shown ? `<div class="look-board">
+        <p class="lb-h"><span class="lbl">THE LOOK</span><b>${esc(shown.title)}</b></p>
+        ${shown.note ? `<p class="lb-note">${esc(shown.note)}</p>` : ''}
+        ${lookBoard(shown.pieces, { tag: 'SELECTED', anim: false })}
+        ${pick ? `<p class="lb-pick"><span><span class="brand">${esc(pick.brand || '')}</span>${esc(P.price(pick.price))}</span><button class="lb-go" data-act="open" data-id="${esc(pick.id)}">VIEW ITEM</button></p>` : ''}
+      </div>` : ''}
+      <p class="lbl stl-h">SHOP THE LOOK</p>
+      <ul class="stl" role="list">${gap.products.map((p) => `<li><button class="stl-card${pick?.id === p.id ? ' is-on' : ''}" data-act="fill" data-gap="${i}" data-id="${esc(p.id)}" aria-pressed="${pick?.id === p.id}" aria-label="${esc(p.brand || '')} ${esc(p.name)}, 코디에 놓아 보기">
+        <span class="stl-ph">${img(p)}</span><span class="brand">${esc(p.brand || '')}</span><span class="stl-p">${esc(P.price(p.price))}</span>
+      </button></li>`).join('')}</ul>
+    </article>`;
   }
   function gridHTML(list) {
     return `<ul class="grid" role="list">${list.map((p, i) => `<li class="card" style="--i:${i}">
@@ -168,10 +212,10 @@
     let k = 0;
     const d = () => `style="--d:${rm() ? 0 : 380 + (k++) * 70}ms"`;
     const tile = (x, tag, label, cand = false) => `<li class="tile${cand ? ' tile--this' : ''}" ${d()}><span class="tile-ph">${img(x)}</span><span class="tile-tag">${tag}</span><span class="tile-n">${esc(label)}</span></li>`;
-    const looks = j.looks.map((l, i) => `<section class="look">
+    const looks = j.looks.slice(1).map((l, i0) => { const i = i0 + 1; return `<section class="look">
         <p class="look-h"><span class="lbl">LOOK ${pad(i + 1)}</span><b>${esc(l.title)}</b>${l.isNew ? '<span class="lbl lbl--new">NEW</span>' : ''}</p>
         <ul class="row" role="list">${l.items.map((it) => (it.candidate ? tile(it.product, 'THIS ITEM', P.shortKind(it.product), true) : tile(it.garment, isExample(it.garment) ? 'MY CLOSET · 예시' : 'MY CLOSET', `${P.shortKind(it.garment)} · ${P.colorName(it.garment.color)}`))).join('')}</ul>
-      </section>`).join('');
+      </section>`; }).join('');
     const overlaps = j.overlaps.length ? `<section class="look look--dup">
         <p class="look-h"><span class="lbl lbl--dup">ALREADY OWNED</span><b>이미 가진 비슷한 옷</b></p>
         <ul class="row" role="list">${j.overlaps.map((g) => tile(g, isExample(g) ? 'MY CLOSET · 예시' : 'MY CLOSET', `${P.shortKind(g)} · ${P.colorName(g.color)}`)).join('')}</ul>
@@ -192,6 +236,11 @@
       </header>
       <div class="d-scroll">
         <div class="d-ph">${img(p, p.name, false)}</div>
+        ${j.looks[0] ? `<section class="d-look" aria-labelledby="dl-t">
+          <p class="lb-h"><span class="lbl">THE LOOK</span><b id="dl-t">${esc(j.looks[0].title)}</b>${j.looks[0].isNew ? '<span class="lbl lbl--new">NEW</span>' : ''}</p>
+          ${j.looks[0].note ? `<p class="lb-note">${esc(j.looks[0].note)}</p>` : ''}
+          ${lookBoard(j.looks[0].items)}
+        </section>` : ''}
         <section class="d-info">
           <p class="brand brand--lg">${esc(p.brand || '')}</p>
           <h2 class="d-name" id="d-t">${esc(p.name)}</h2>
@@ -260,12 +309,22 @@
     const sorted = [...all].sort((a, b) => order.indexOf(P.category(a)) - order.indexOf(P.category(b)));
     return `<div class="sec-h sec-h--top"><p class="lbl lbl--h">MY CLOSET</p><p class="cnt">${all.length} ITEMS</p></div>
       ${ex ? `<p class="note">예시 옷 ${ex}벌이 들어 있어요. 눌러서 뺄 수 있어요.</p>` : ''}
+      ${readyHTML()}
+      <div class="sec-h sec-h--sub"><p class="lbl lbl--h">ALL ITEMS</p></div>
       ${all.length ? `<ul class="grid grid--3" role="list">${sorted.map((g) => `<li class="card"><button class="card-open" data-act="garment" data-id="${esc(g.id)}" aria-label="${esc(P.label(g))}, 옷장에서 빼기">
         <span class="card-ph">${img(g)}</span>
         <span class="brand">${esc(CAT_LABEL[P.category(g)] || '')}${isExample(g) ? ' · 예시' : ''}</span>
         <span class="card-n">${esc(P.shortKind(g))} · ${esc(P.colorName(g.color))}</span>
       </button></li>`).join('')}</ul>` : '<p class="empty">옷장이 비어 있어요. SHOP에서 살게요를 누르면 여기에 들어와요.</p>'}
       <div class="foot"><button class="text-btn" data-act="reset">처음부터 다시</button></div>`;
+  }
+
+  function readyHTML() {
+    const ready = P.outfits({ limit: 6 });
+    if (!ready.length) return '<div class="ready"><p class="lbl lbl--h">READY TO WEAR</p><p class="note note--in">지금 옷장으로 완성되는 코디가 아직 없어요. SHOP의 YOUR CLOSET NEEDS를 확인해 보세요.</p></div>';
+    return `<section class="ready" aria-label="지금 입을 수 있는 코디"><div class="sec-h sec-h--in"><p class="lbl lbl--h">READY TO WEAR</p><p class="cnt">${ready.length} LOOKS</p></div>
+      ${ready.map((o, i) => `<article class="look-board look-board--ready"><p class="lb-h"><span class="lbl">LOOK ${pad(i + 1)}</span><b>${esc(o.title)}</b></p>${o.note ? `<p class="lb-note">${esc(o.note)}</p>` : ''}${lookBoard(o.pieces, { anim: false })}</article>`).join('')}
+    </section>`;
   }
 
   // ═══ WISHLIST + 기록
@@ -338,6 +397,19 @@
       renderAll();
       if (ui.searching) document.getElementById('pr-q')?.focus();
     }
+    else if (a === 'fill') {
+      const i = Number(el.dataset.gap);
+      ui.fill[i] = ui.fill[i] === el.dataset.id ? null : el.dataset.id;
+      const gap = closetNeeds().gaps[i];
+      const block = document.getElementById(`need-${i}`);
+      if (gap && block) {
+        block.outerHTML = needHTML(gap, i);
+        const nb = document.getElementById(`need-${i}`);
+        nb.querySelector('.bp--this')?.classList.add('is-new');
+        nb.querySelector(`[data-act="fill"][data-id="${CSS.escape(el.dataset.id)}"]`)?.focus({ preventScroll: true });
+      }
+      P.buzz(8);
+    }
     else if (a === 'open') { const p = P.product(el.dataset.id); if (p) openDetail(p, el); }
     else if (a === 'like') {
       const p = P.product(el.dataset.id); if (!p) return;
@@ -351,7 +423,7 @@
     else if (a === 'garment') openSheet({ type: 'garment', id: el.dataset.id }, el);
     else if (a === 'remove') { P.removeOwned(el.dataset.id); invalidate(); ui.lastFocus = null; closeSheet(); renderScreen(); toast('옷장에서 뺐어요.'); }
     else if (a === 'reset') openSheet({ type: 'reset' }, el);
-    else if (a === 'reset-ok') { P.reset(); invalidate(); jc.clear(); ui.gender = null; ui.tab = 'shop'; ui.cat = 'new'; ui.searching = false; ui.q = ''; ui.lastFocus = null; closeSheet(); renderAll(); window.scrollTo(0, 0); }
+    else if (a === 'reset-ok') { P.reset(); invalidate(); jc.clear(); ui.gender = null; ui.fill = {}; ui.tab = 'shop'; ui.cat = 'new'; ui.searching = false; ui.q = ''; ui.lastFocus = null; closeSheet(); renderAll(); window.scrollTo(0, 0); }
     else if (a === 'sheet-close') closeSheet();
   });
   document.addEventListener('input', (e) => {
