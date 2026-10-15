@@ -10,7 +10,7 @@ import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { legacyWardrobeV2 } from '../src/legacy-wardrobe.js';
 import { createWardrobeStore, photoAsset } from '../src/wardrobe-store.js';
 import { readLegacyPhotos } from '../src/legacy-photos.js';
-import { newWardrobeState, makeGarment } from '../src/wardrobe.js';
+import { newWardrobeState, makeGarment, WARDROBE_SCHEMA } from '../src/wardrobe.js';
 import { CATALOG } from '../src/data/products.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -432,7 +432,7 @@ test('future-schema startup explicitly confirms replacement and preserves its ra
   const raw = await manifest(await broken.app.store.recoveryBackup());
   const preserved = raw.records.find((row) => row.value?.format === 'eoul-wardrobe-recovery-snapshot');
   assert.deepEqual(preserved.value.source.row, future);
-  assert.equal((await broken.app.store.read()).state.schema, 6);
+  assert.equal((await broken.app.store.read()).state.schema, WARDROBE_SCHEMA);
 });
 test('a ready tab with a later failed read confirms preserved recovery before replacing a future record or missing photo', async () => {
   for (const failure of ['future', 'missing-photo']) {
@@ -874,7 +874,7 @@ test('schema two photo database and backup upgrade without dropping generic garm
   const backup = await store.backup();
   store.close();
   const page = await boot(new Map(), indexedDB);
-  assert.equal(page.state().schema, 6);
+  assert.equal(page.state().schema, WARDROBE_SCHEMA);
   assert.deepEqual(page.state().styles, ['cityboy']);
   assert.deepEqual(page.state().legacyDismissed.owned, ['legacy_m-blazer']);
   const item = page.state().garments[0];
@@ -890,7 +890,7 @@ test('schema two photo database and backup upgrade without dropping generic garm
   await add(page, 'pants', '추가');
   await page.app.chooseWardrobeBackup(backup);
   await page.click({ action: 'restore-backup' });
-  assert.equal(page.state().schema, 6);
+  assert.equal(page.state().schema, WARDROBE_SCHEMA);
   assert.equal(page.state().garments.length, 1);
   const restored = await page.app.store.read();
   assert.deepEqual(
@@ -925,7 +925,7 @@ test('full erase requires scope and final confirmation, clears all wardrobe sour
   await page.click({ action: 'open-profile' });
   await page.click({ action: 'erase-review' });
   const scope = page.nodes.get('sheet-root').innerHTML;
-  assert.match(scope, /현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 취향, 복구용 사본/);
+  assert.match(scope, /현재·이전 옷장, 사진, 찜, 구매 여정·옵션·이유·이력, 판매처 가격 기록, 취향, 복구용 사본/);
   assert.match(scope, /다른 앱의 자료는 유지/);
   assert.match(scope, /다른 옷장 탭을 모두 닫아/);
   assert.match(scope, /내려받은 백업 파일은 별도로/);

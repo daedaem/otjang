@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { PRODUCTS } from '../src/data/products.js';
 import { SLOT_BY_ID } from '../src/data/slots.js';
-import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
+import { makeGarment, newWardrobeState, WARDROBE_SCHEMA } from '../src/wardrobe.js';
 import { createWardrobeStore, photoAsset, parseWardrobeBackup } from '../src/wardrobe-store.js';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -850,7 +850,7 @@ test('purchase improvements: hold, buy, wear and return preserve their own reaso
   }
   assert.equal(updated.reason, '다음에는 한 사이즈 크게 확인');
   const persisted = await stored(page);
-  assert.equal(persisted.state.schema, 6);
+  assert.equal(persisted.state.schema, WARDROBE_SCHEMA);
   const reloaded = await boot(page.indexedDB, page.storage);
   t.after(() => reloaded.close());
   assert.deepEqual(reloaded.state().journeys.find((j) => j.id === journey.id), updated);

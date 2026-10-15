@@ -5,7 +5,7 @@ import {
   createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate,
   validatePurchaseJourney, isPublicPurchaseUrl, returnedGarmentIds,
 } from '../src/purchase-journey.js';
-import { newWardrobeState, validateWardrobe, upgradeWardrobe, wardrobeView, makeGarment } from '../src/wardrobe.js';
+import { newWardrobeState, validateWardrobe, upgradeWardrobe, wardrobeView, makeGarment, WARDROBE_SCHEMA } from '../src/wardrobe.js';
 import { createWardrobeStore, photoAsset, parseWardrobeBackup } from '../src/wardrobe-store.js';
 
 const purchaseAt = (day = 14) => `2026-10-${day}T00:00:00.000Z`;
@@ -93,10 +93,11 @@ test('strict v3 migration adds journeys while preserving every known field and r
   const old = { ...purchasePersonal([makeGarment({ id: 'g_old', kind: 'shirt', gender: 'M' })]), schema: 3 };
   delete old.journeys;
   delete old.wears;
+  delete old.offerRecords;
   const original = structuredClone(old);
   assert.equal(validateWardrobe(old), old);
   const migrated = upgradeWardrobe(old);
-  assert.deepEqual(migrated, { ...original, schema: 6, journeys: [], wears: [] });
+  assert.deepEqual(migrated, { ...original, schema: WARDROBE_SCHEMA, journeys: [], wears: [], offerRecords: [] });
   assert.deepEqual(old, original, 'migration is pure');
   assert.throws(() => upgradeWardrobe({ ...old, futureField: 'preserve' }), /지원하지/);
   assert.throws(() => upgradeWardrobe({ ...old, journeys: [] }), /지원하지/);
@@ -199,13 +200,14 @@ test('an existing v3 envelope and photo upgrade through one revision without cha
   };
   delete old.journeys;
   delete old.wears;
+  delete old.offerRecords;
   await store.commit(old, 0, [asset]);
   const read = await store.read();
   assert.equal(read.state.schema, 3);
   const upgraded = upgradeWardrobe(read.state);
   await store.commit(upgraded, read.revision, [], read.epoch);
   const current = await store.read();
-  assert.equal(current.state.schema, 6);
+  assert.equal(current.state.schema, WARDROBE_SCHEMA);
   assert.equal(current.revision, read.revision + 1);
   assert.equal(current.epoch, read.epoch);
   assert.deepEqual(current.state.garments, old.garments);

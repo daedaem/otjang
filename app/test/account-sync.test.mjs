@@ -427,3 +427,54 @@ test('switching accounts while a pull is running never applies the old account�
   assert.equal(serverWardrobe('switch-to@example.com').state.garments.length, 0);
   assert.deepEqual(serverWardrobe('switch-from@example.com').state.garments.map((g) => g.label), ['blazer'], 'the first account is unchanged');
 });
+
+test('seller prices sync to another device, participate in account choice, and older clients cannot erase them', async (t) => {
+  const { setOfferRecord } = await import('../src/offer-store.js');
+  const { validateOffer } = await import('../src/offers.js');
+  const checkedAt = new Date().toISOString();
+  const price = validateOffer({ id: 'o_sync_price', seller: '확인한 판매처', url: 'https://shop.example/synced-product', price: 42000, shipping: 3000,
+    color: 'navy', size: 'M', stock: 'in-stock', sameProduct: 'confirmed', source: 'user', checkedAt });
+  const records = setOfferRecord([], 'ms-3323583', { requested: { color: 'navy', size: 'M' }, offers: [price], refresh: { at: checkedAt, ok: true, message: '' } });
+  const first = await boot();
+  t.after(() => first.close());
+  await first.app.set({ offerRecords: records });
+  assert.equal(first.state().demo, true, 'price research does not turn example clothes into owned clothes');
+  assert.equal(isEmptyWardrobe(first.state()), false, 'price-only personal data must not be treated as empty');
+  await first.signup('price-sync@example.com');
+  await first.app.kickSync();
+  const token = first.app.account().token;
+  const api = (await import('../src/account.js')).createAccountApi({ base: server.base, token });
+  const remote = await api.wardrobe();
+  assert.deepEqual(remote.state.offerRecords, records);
+
+  const second = await boot();
+  t.after(() => second.close());
+  await second.login('price-sync@example.com');
+  await second.app.kickSync();
+  assert.deepEqual(second.state().offerRecords, records);
+  const changed = setOfferRecord(records, 'ms-3323583', { ...records[0], offers: [{ ...price, price: 40000 }] });
+  await second.app.set({ offerRecords: changed });
+  await second.app.kickSync();
+  await first.app.kickSync();
+  assert.deepEqual(first.state().offerRecords, changed, 'a price-only change advances the same wardrobe revision');
+
+  const third = await boot();
+  t.after(() => third.close());
+  const local = setOfferRecord([], 'ms-55555', { requested: { size: 'L' }, offers: [], refresh: null });
+  await third.app.set({ offerRecords: local });
+  await third.login('price-sync@example.com');
+  await third.app.kickSync();
+  assert.equal(third.app.syncState().phase, 'choose');
+  assert.deepEqual(third.state().offerRecords, local, 'logging in never silently discards this device’s price-only notes');
+  await third.click({ action: 'sync-choose' });
+  assert.match(third.sheet(), /가격 비교 1개 상품/);
+  await third.click({ action: 'sync-use-account' });
+  assert.deepEqual(third.state().offerRecords, changed, 'the account replaces price records only after a choice');
+
+  const { offerRecords, ...old } = (await api.wardrobe()).state;
+  const before = await api.wardrobe();
+  await assert.rejects(api.putWardrobe(before.revision, { ...old, schema: 6 }), (error) => error.code === 'old-app');
+  assert.deepEqual((await api.wardrobe()).state.offerRecords, changed);
+  await assert.rejects(api.putWardrobe(before.revision, { ...before.state, offerRecords: [{ ...changed[0], offers: [{ ...price, price: -1 }] }] }), (error) => error.code === 'invalid-wardrobe');
+  assert.deepEqual(await api.wardrobe(), before, 'invalid seller data cannot partially update the account');
+});

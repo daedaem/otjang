@@ -5,7 +5,7 @@ import {
   createPurchaseJourney, transitionPurchaseJourney, validatePurchaseJourney,
   upgradePurchaseJourneyV4, MAX_JOURNEY_HISTORY, MAX_WARDROBE_STATE_BYTES,
 } from '../src/purchase-journey.js';
-import { newWardrobeState, validateWardrobe, upgradeWardrobe, makeGarment } from '../src/wardrobe.js';
+import { newWardrobeState, validateWardrobe, upgradeWardrobe, makeGarment, WARDROBE_SCHEMA } from '../src/wardrobe.js';
 import { createWardrobeStore, photoAsset, parseWardrobeBackup } from '../src/wardrobe-store.js';
 import { legacyPurchaseV4 } from '../src/legacy-purchase-v4.js';
 
@@ -70,7 +70,7 @@ function returnedEvidence() {
 test('schema 5 starts with a complete created snapshot independent of the candidate input', () => {
   const input = candidate();
   const value = createPurchaseJourney(input, { id: 'j_created', at: at() });
-  assert.equal(newWardrobeState().schema, 6);
+  assert.equal(newWardrobeState().schema, WARDROBE_SCHEMA);
   assert.deepEqual(value.feedback, { fit: null, returnReason: null });
   assert.deepEqual(value.history, [{ action: 'created', at: at(), details: {
     candidate: input, option: '', reason: '', feedback: { fit: null, returnReason: null },
@@ -192,10 +192,11 @@ test('v4 import preserves known current values and marks unknown old details wit
   const wardrobe = legacyWardrobe([old]);
   assert.equal(validateWardrobe(wardrobe), wardrobe);
   const converted = upgradeWardrobe(wardrobe, { at: at(18) });
-  assert.equal(converted.schema, 6);
+  assert.equal(converted.schema, WARDROBE_SCHEMA);
   assert.deepEqual(converted.journeys[0], upgradePurchaseJourneyV4(old, { at: at(18) }));
-  const { wears, ...withoutDiary } = converted;
+  const { wears, offerRecords, ...withoutDiary } = converted;
   assert.deepEqual(wears, [], 'the wear diary starts empty');
+  assert.deepEqual(offerRecords, [], 'seller notes start empty');
   assert.deepEqual({ ...withoutDiary, schema: 4, journeys: wardrobe.journeys }, wardrobe);
 });
 
@@ -219,7 +220,7 @@ test('v4 migration keeps all 512 events and uses the final free slot only when o
   assert.equal(full.history.length, MAX_JOURNEY_HISTORY);
   assert.deepEqual(full.history, source.history.map((entry) => ({ ...entry, details: null })));
   assert.deepEqual(old, source);
-  assert.equal(validateWardrobe(upgradeWardrobe(legacyWardrobe([old]), { at: at(18) })).schema, 6);
+  assert.equal(validateWardrobe(upgradeWardrobe(legacyWardrobe([old]), { at: at(18) })).schema, WARDROBE_SCHEMA);
   const almost = { ...old, history: old.history.slice(0, -1) };
   const completed = upgradePurchaseJourneyV4(almost, { at: at(18) });
   assert.equal(completed.history.length, MAX_JOURNEY_HISTORY);
@@ -252,7 +253,7 @@ test('frozen v4 migration refuses unknown keys and malformed old history before 
   }
 });
 
-test('strict v2 and v3 paths still reach schema 5 while retaining known records', () => {
+test('strict v2 and v3 paths still reach the current schema while retaining known records', () => {
   const v2 = {
     schema: 2, onboarded: true, gender: 'M', style: 'classic', occasion: null, budget: null,
     demo: false, demoSelected: [], saved: ['ms-728000'], hidden: [], legacyFingerprint: null,
@@ -262,7 +263,7 @@ test('strict v2 and v3 paths still reach schema 5 while retaining known records'
   };
   const copy = structuredClone(v2);
   const upgraded = upgradeWardrobe(v2, { at: at(18) });
-  assert.equal(upgraded.schema, 6);
+  assert.equal(upgraded.schema, WARDROBE_SCHEMA);
   assert.deepEqual(upgraded.journeys, []);
   assert.deepEqual(upgraded.saved, v2.saved);
   assert.deepEqual(upgraded.garments[0], makeGarment({
@@ -272,7 +273,7 @@ test('strict v2 and v3 paths still reach schema 5 while retaining known records'
   assert.deepEqual(v2, copy);
   const { journeys, ...knownV3 } = legacyWardrobe([], upgraded.garments);
   const v3 = { ...knownV3, schema: 3 };
-  assert.deepEqual(upgradeWardrobe(v3, { at: at(18) }), { ...v3, schema: 6, journeys: [], wears: [] });
+  assert.deepEqual(upgradeWardrobe(v3, { at: at(18) }), { ...v3, schema: WARDROBE_SCHEMA, journeys: [], wears: [], offerRecords: [] });
   for (const old of [v2, v3]) {
     assert.throws(() => upgradeWardrobe({ ...old, futureValue: 'preserve' }, { at: at(18) }));
     assert.throws(() => upgradeWardrobe({ ...old, journeys: [] }, { at: at(18) }));
@@ -314,7 +315,7 @@ test('binary backup v2 round trip retains schema 5 historic snapshots, unknown o
     const backup = await source.backup();
     const metadata = await manifest(backup);
     assert.equal(metadata.version, 2);
-    assert.equal(metadata.state.schema, 6);
+    assert.equal(metadata.state.schema, WARDROBE_SCHEMA);
     const parsed = await parseWardrobeBackup(backup);
     assert.deepEqual(parsed.state, state);
     assert.equal(parsed.assets.length, 1);

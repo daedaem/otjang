@@ -32,13 +32,13 @@ const closet = () => [
 ];
 const personal = (extra = {}) => ({ ...newWardrobeState(), demo: false, demoSelected: [], garments: closet(), ...extra });
 
-test('schema 6 keeps a strict wear diary; schema 5 upgrades with an empty one; examples and older apps never carry it', () => {
-  assert.equal(WARDROBE_SCHEMA, 6);
+test('the current schema keeps a strict wear diary; schema 5 upgrades with an empty one; examples and older apps never carry it', () => {
+  assert.equal(WARDROBE_SCHEMA, 7);
   const state = personal({ wears: [entry('w_1', '2026-10-14', ['g_oxford', 'g_chino'], { note: '비 옴' })] });
   assert.equal(validateWardrobe(state), state);
-  const { wears, ...v5 } = { ...state, schema: 5 };
+  const { wears, offerRecords, ...v5 } = { ...state, schema: 5 };
   assert.deepEqual(upgradeWardrobe(v5).wears, []);
-  assert.throws(() => validateWardrobe({ ...state, schema: 5 }), /지원하지 않는 옷장 형식/, 'a schema 5 app refuses the diary instead of dropping it');
+  assert.throws(() => validateWardrobe({ ...v5, wears }), /지원하지 않는 옷장 형식/, 'a schema 5 app refuses the diary instead of dropping it');
   assert.throws(() => validateWardrobe({ ...newWardrobeState(), wears: [entry('w_1', '2026-10-14', ['demo_M_0'])] }), /예시 옷/);
   for (const bad of [
     { ...entry('w_1', '2026-02-30', ['g_oxford']) },
@@ -286,10 +286,10 @@ test('a fresh outfit ranked below six recently worn ones still comes first; the 
   assert.match(busy.body(), /뒤로 보냈어요/);
 });
 
-test('a backup made by the previous version (schema 5) restores over a schema 6 wardrobe with an empty diary', async () => {
+test('a backup made by the previous version (schema 5) restores over the current wardrobe with an empty diary', async () => {
   const oldStore = createWardrobeStore({ indexedDB: new IDBFactory() });
   const first = await oldStore.load();
-  const { wears, ...v5 } = { ...personal(), schema: 5, garments: [g('m-rugby', 'navy', 'g_from_backup')] };
+  const { wears, offerRecords, ...v5 } = { ...personal(), schema: 5, garments: [g('m-rugby', 'navy', 'g_from_backup')] };
   await oldStore.commit(v5, first.revision, [], first.epoch);
   const backup = await oldStore.backup();
   oldStore.close();
@@ -299,10 +299,10 @@ test('a backup made by the previous version (schema 5) restores over a schema 6 
   await page.click({ action: 'restore-backup' });
   assert.match(page.toasts.at(-1), /옷장과 사진을 복원했어요/);
   const state = page.app.state();
-  assert.equal(state.schema, 6);
+  assert.equal(state.schema, WARDROBE_SCHEMA);
   assert.deepEqual(state.garments.map((x) => x.id), ['g_from_backup']);
   assert.deepEqual(state.wears, [], 'the backup had no diary, so the restored wardrobe has none');
-  assert.equal((await page.app.store.read()).state.schema, 6);
+  assert.equal((await page.app.store.read()).state.schema, WARDROBE_SCHEMA);
 });
 
 test('the server stores the wear diary only from the current app version', async () => {
@@ -320,7 +320,7 @@ test('the server stores the wear diary only from the current app version', async
   const state = personal({ wears: [entry('w_1', '2026-10-14', ['g_oxford'])] });
   assert.equal((await call('PUT', '/v1/wardrobe', { token, json: { baseRevision: 0, state } })).status, 200);
   assert.deepEqual((await call('GET', '/v1/wardrobe', { token })).data.state.wears, state.wears);
-  const { wears, ...old } = { ...state, schema: 5 };
+  const { wears, offerRecords, ...old } = { ...state, schema: 5 };
   assert.equal((await call('PUT', '/v1/wardrobe', { token, json: { baseRevision: 1, state: old } })).data.error.code, 'old-app',
     'an older app cannot overwrite the diary with a version that has none');
 });
