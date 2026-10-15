@@ -491,3 +491,15 @@ img { display: block; max-width: 100%; }
 .plan-product-body .name { text-align: left; font-weight: 600; }
 .plan-product-actions { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
 .plan-product-actions .chip { margin: 0; }
+
+/* 판매처·총액 비교 */
+.offer-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.offer-row { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); display: grid; gap: 4px; font-size: 14px; }
+.offer-row.comparable { border-color: var(--accent); }
+.offer-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.offer-flag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--sunk); color: var(--ink-2); }
+.offer-flag.ok { color: var(--accent); }
+.offer-best b { display: block; }
+.offer-form select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
+.candidate-fields input, .candidate-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.candidate-fields label { display: grid; gap: 4px; min-width: 0; }

@@ -98,6 +98,7 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
     deleteAccount: (password) => request('DELETE', '/v1/me', { json: { password } }),
     wardrobeMeta: () => request('GET', '/v1/wardrobe?meta=1'),
     wardrobe: () => request('GET', '/v1/wardrobe'),
+    offers: ({ productId = null, q = '' } = {}) => request('GET', `/v1/offers?${new URLSearchParams({ ...(productId ? { productId } : {}), ...(q ? { q } : {}) })}`),
     putWardrobe: (baseRevision, state) => request('PUT', '/v1/wardrobe', { json: { baseRevision, state } }),
     putPhoto: (id, blob) => request('PUT', `/v1/photos/${encodeURIComponent(id)}`, { body: blob, type: 'image/jpeg' }),
     getPhoto: (id) => request('GET', `/v1/photos/${encodeURIComponent(id)}`, { raw: true }),
