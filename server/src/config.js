@@ -1,6 +1,7 @@
 // Settings come from environment variables only. Nothing secret lives in the
 // repository: the server needs no signing key (session tokens are random and
 // only their SHA-256 is stored), and the optional invite code is an env value.
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,12 @@ function integer(value, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {
   const n = Number(value);
   if (!Number.isSafeInteger(n) || n < min || n > max) throw new Error(`설정 값이 올바르지 않아요: ${value}`);
   return n;
+}
+
+function addresses(value) {
+  const list = (value || '').split(',').map((s) => s.trim().replace(/^::ffff:/, '')).filter(Boolean);
+  for (const address of list) if (!net.isIP(address)) throw new Error(`IP 주소가 아니에요: ${address}`);
+  return list;
 }
 
 export function loadConfig(env = process.env) {
@@ -28,6 +35,9 @@ export function loadConfig(env = process.env) {
     // Behind Cloudflare Tunnel every request arrives from 127.0.0.1; only then
     // is CF-Connecting-IP the real client address for rate limiting.
     trustProxy: env.EOUL_TRUST_PROXY === 'cloudflare' ? 'cloudflare' : null,
+    // When cloudflared runs in its own container (deploy/docker-compose.yml)
+    // requests come from that container's fixed address instead; list it here.
+    trustedProxies: addresses(env.EOUL_TRUSTED_PROXIES),
     // While testing with a few people, an invite code keeps strangers who find
     // the URL from creating accounts on this PC.
     inviteCode: env.EOUL_INVITE_CODE || null,

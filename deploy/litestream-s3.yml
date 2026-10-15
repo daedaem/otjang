@@ -1,0 +1,19 @@
+# 집 밖 백업: S3 호환 저장소(Cloudflare R2, Backblaze B2, AWS S3 등)로 복제해요.
+# .env에서 EOUL_BACKUP_CONFIG=litestream-s3.yml로 바꾸고 EOUL_S3_* 값을 채우세요.
+# 계정 이메일·비밀번호 해시·옷장 사진이 들어가므로, 운영자 본인만 접근하는 비공개 버킷을 쓰세요.
+snapshot:
+  interval: 24h
+  retention: 168h
+
+dbs:
+  - path: /data/eoul.db
+    replica:
+      type: s3
+      bucket: ${EOUL_S3_BUCKET}
+      path: eoul.db
+      endpoint: ${EOUL_S3_ENDPOINT}
+      region: ${EOUL_S3_REGION}
+      access-key-id: ${EOUL_S3_ACCESS_KEY_ID}
+      secret-access-key: ${EOUL_S3_SECRET_ACCESS_KEY}
+      # 기본 1초. 저장소 요청 수(무료 한도)를 아끼려고 10초로 둡니다. 고장 시 최대 10초치 변경을 잃을 수 있어요.
+      sync-interval: 10s

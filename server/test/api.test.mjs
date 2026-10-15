@@ -7,7 +7,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { openDatabase, backupDatabase } from '../src/db.js';
-import { createApp, AGREEMENT_VERSION } from '../src/app.js';
+import { createApp, requestAddress, AGREEMENT_VERSION } from '../src/app.js';
+import { loadConfig } from '../src/config.js';
 import { hashPassword, verifyPassword } from '../src/auth.js';
 import { makeGarment, newWardrobeState } from '../../app/src/wardrobe.js';
 
@@ -365,4 +366,27 @@ test('a backup copy of the live database holds the same accounts and photos', as
   assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
   assert.deepEqual(Buffer.from(restored.prepare('SELECT bytes FROM photos').get().bytes), photo.bytes);
   assert.equal(restored.prepare('SELECT revision FROM wardrobes').get().revision, 1);
+});
+
+test('the client address comes from cloudflared only, on loopback or at a listed container address', () => {
+  const req = (remoteAddress, ip = '203.0.113.7') => ({ socket: { remoteAddress }, headers: { 'cf-connecting-ip': ip } });
+  const cloudflare = { trustProxy: 'cloudflare', trustedProxies: ['172.31.87.10'] };
+  assert.equal(requestAddress(req('127.0.0.1'), cloudflare), '203.0.113.7');
+  assert.equal(requestAddress(req('::ffff:127.0.0.1'), cloudflare), '203.0.113.7');
+  assert.equal(requestAddress(req('::1'), cloudflare), '203.0.113.7');
+  // cloudflared in its own container (deploy/docker-compose.yml)
+  assert.equal(requestAddress(req('172.31.87.10'), cloudflare), '203.0.113.7');
+  assert.equal(requestAddress(req('::ffff:172.31.87.10'), cloudflare), '203.0.113.7');
+  // Anyone else on the network, or the published port, cannot choose an address.
+  assert.equal(requestAddress(req('172.31.87.1'), cloudflare), '172.31.87.1');
+  assert.equal(requestAddress(req('172.31.87.11'), cloudflare), '172.31.87.11');
+  assert.equal(requestAddress(req('198.51.100.2'), cloudflare), '198.51.100.2');
+  // Without the Cloudflare setting nothing is believed, and older configs without the list still work.
+  assert.equal(requestAddress(req('172.31.87.10'), { trustProxy: null, trustedProxies: ['172.31.87.10'] }), '172.31.87.10');
+  assert.equal(requestAddress(req('127.0.0.1'), { trustProxy: 'cloudflare' }), '203.0.113.7');
+  assert.equal(requestAddress(req('127.0.0.1', 'x'.repeat(64)), cloudflare), '127.0.0.1');
+
+  assert.deepEqual(loadConfig({ EOUL_TRUSTED_PROXIES: ' 172.31.87.10, ::ffff:10.0.0.2 ,' }).trustedProxies, ['172.31.87.10', '10.0.0.2']);
+  assert.deepEqual(loadConfig({}).trustedProxies, []);
+  assert.throws(() => loadConfig({ EOUL_TRUSTED_PROXIES: 'cloudflared' }), /IP 주소가 아니에요/);
 });

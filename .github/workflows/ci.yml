@@ -82,3 +82,45 @@ jobs:
           Server/API and injected-runtime tests run normally. The real U-2-Net inference test reports `SKIP: model or runtime not installed`.
           A passing job therefore does not establish real-model background-removal quality. Run that test separately with the pinned model and runtime installed.
           SUMMARY
+
+  image:
+    name: Server image builds and answers (Docker)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check the compose file with the example settings
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+      - name: Build the server image
+        run: docker build --file deploy/Dockerfile --tag eoul:ci .
+      - name: Start the image and wait for its health check
+        run: |
+          docker run --detach --name eoul --publish 127.0.0.1:8787:8787 eoul:ci
+          for i in $(seq 1 45); do
+            [ "$(docker inspect --format '{{.State.Health.Status}}' eoul)" = healthy ] && break
+            sleep 2
+          done
+          test "$(docker inspect --format '{{.State.Health.Status}}' eoul)" = healthy
+      - name: Check the API, the compressed app page and the install files
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8787/v1/health
+          test "$(curl --fail --silent --output /dev/null --write-out '%header{content-encoding}' --header 'Accept-Encoding: br' http://127.0.0.1:8787/)" = br
+          curl --fail --silent --output /dev/null http://127.0.0.1:8787/manifest.webmanifest
+          curl --fail --silent --output /dev/null http://127.0.0.1:8787/sw.js
+          test "$(docker exec eoul id -u)" = 1000
+      - name: Show the server log
+        if: always()
+        run: docker logs eoul || true
+      - name: Record validation scope
+        if: always()
+        run: |
+          cat <<'SUMMARY' >> "$GITHUB_STEP_SUMMARY"
+          ### Image validation scope
+          Builds `deploy/Dockerfile` without the optional ONNX runtime, runs it as the non-root `node` user and checks health, the brotli app page and the install files.
+          The Cloudflare Tunnel connection and Litestream backup/restore are not exercised here; see `docs/deploy-kit-20261015.md` for the manual drill.
+          SUMMARY

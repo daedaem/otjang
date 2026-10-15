@@ -92,6 +92,19 @@ function referencedPhotos(state) {
   return new Set((state?.garments || []).map((garment) => garment.photoId).filter(Boolean));
 }
 
+// The address rate limits count against. CF-Connecting-IP is believed only
+// from cloudflared: on loopback when it runs on the same machine, or at the
+// fixed container address listed in EOUL_TRUSTED_PROXIES (deploy/).
+export function requestAddress(req, { trustProxy = null, trustedProxies = [] } = {}) {
+  const socket = req.socket?.remoteAddress || 'unknown';
+  const peer = socket.replace(/^::ffff:/, '');
+  if (trustProxy === 'cloudflare' && (/^(127\.|::1$)/.test(peer) || trustedProxies.includes(peer))) {
+    const forwarded = req.headers['cf-connecting-ip'];
+    if (typeof forwarded === 'string' && forwarded.length < 64) return forwarded;
+  }
+  return socket;
+}
+
 export function createApp({ db, config, maskService = null, supply = null, mailer = null, now = () => Date.now(), log = () => {} }) {
   const mail = mailer || { enabled: false, kind: 'off', reason: '메일 발송이 설정되지 않았어요.' };
   const limiter = createRateLimiter({ now });
@@ -127,14 +140,7 @@ export function createApp({ db, config, maskService = null, supply = null, maile
     deletePhoto: db.prepare('DELETE FROM photos WHERE user_id = ? AND id = ?'),
   };
 
-  function clientAddress(req) {
-    const socket = req.socket?.remoteAddress || 'unknown';
-    if (config.trustProxy === 'cloudflare' && /^(127\.|::1$|::ffff:127\.)/.test(socket)) {
-      const forwarded = req.headers['cf-connecting-ip'];
-      if (typeof forwarded === 'string' && forwarded.length < 64) return forwarded;
-    }
-    return socket;
-  }
+  const clientAddress = (req) => requestAddress(req, config);
 
   function limit(key, count, windowMs) {
     if (!limiter.take(key, count, windowMs))

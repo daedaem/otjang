@@ -1,0 +1,102 @@
+# 어울 운영 묶음: 서버 + Cloudflare Tunnel + Litestream 백업.
+# 집 PC와 클라우드 VM에서 이 파일을 그대로 씁니다. 사용법은 deploy/README.md에 있어요.
+#   cd deploy && cp .env.example .env   # 값 채우기
+#   docker compose up -d --build
+name: eoul
+
+x-litestream: &litestream litestream/litestream:0.5.17@sha256:4b02b9859a6b6b4087d8b8944e15f7e984bd7957cba322bbeee38b0e27b9656a
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  eoul:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        WITH_PHOTO_MASK: ${EOUL_WITH_PHOTO_MASK:-false}
+    image: eoul:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      EOUL_HOST: 0.0.0.0
+      EOUL_PORT: "8787"
+      EOUL_DATA_DIR: /data
+      EOUL_TRUST_PROXY: cloudflare
+      # Only the tunnel container below may tell the server the visitor's address.
+      EOUL_TRUSTED_PROXIES: ${EOUL_TUNNEL_ADDRESS:-172.31.87.10}
+      # The tunnel token is for cloudflared only.
+      TUNNEL_TOKEN: ""
+    volumes:
+      # A Docker named volume, not a folder on Windows/macOS: SQLite's WAL
+      # locking is reliable only on the Docker VM's own disk.
+      - eoul-data:/data
+      - eoul-models:/srv/eoul/server/models
+    ports:
+      # For checking on this computer only (http://localhost:8787). Visitors come through the tunnel.
+      - "127.0.0.1:${EOUL_LOCAL_PORT:-8787}:8787"
+    networks:
+      - edge
+    logging: *logging
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      eoul:
+        condition: service_healthy
+    networks:
+      edge:
+        ipv4_address: ${EOUL_TUNNEL_ADDRESS:-172.31.87.10}
+    logging: *logging
+
+  backup-dir:
+    # Docker creates a missing backup folder as root; hand it to the backup user once at start.
+    # (On Windows/macOS folders this changes nothing and is not needed.)
+    image: *litestream
+    user: "0:0"
+    entrypoint: ["sh", "-c", "chown 1000:1000 /backups || true"]
+    volumes:
+      - ${EOUL_BACKUP_DIR:-./backups}:/backups
+    restart: "no"
+    network_mode: none
+    logging: *logging
+
+  backup:
+    image: *litestream
+    restart: unless-stopped
+    # Same user as the server (node, 1000) so files beside the database stay writable by both.
+    user: "1000:1000"
+    command: replicate -config /etc/litestream.yml
+    env_file: .env
+    environment:
+      TUNNEL_TOKEN: ""
+    volumes:
+      - eoul-data:/data
+      - ./${EOUL_BACKUP_CONFIG:-litestream.yml}:/etc/litestream.yml:ro
+      - ${EOUL_BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      eoul:
+        condition: service_healthy
+      backup-dir:
+        condition: service_completed_successfully
+    logging: *logging
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${EOUL_EDGE_SUBNET:-172.31.87.0/24}
+          # Automatic addresses come from the upper half, so the tunnel's fixed address is never taken.
+          ip_range: ${EOUL_EDGE_AUTO_RANGE:-172.31.87.128/25}
+
+volumes:
+  eoul-data:
+  eoul-models:

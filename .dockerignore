@@ -1,0 +1,17 @@
+# Keep the image small and never copy local data or secrets into it.
+.git
+**/node_modules
+app/dist
+server/data
+server/models
+deploy/.env
+deploy/backups
+docs
+experiments
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+app/test
+server/test

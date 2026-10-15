@@ -17,6 +17,8 @@
   - 그래서 `http://192.168.x.x` 같은 집 안 주소로는 사진을 저장할 수 없습니다.
   - https 주소를 붙이는 방법은 아래 "휴대폰에서 접속하기"에 있습니다.
 
+> **실제 운영(집 PC 상시 운영, 나중에 클라우드로 이전)은 [운영 묶음](../deploy/README.md)을 쓰세요.** Docker로 서버, Cloudflare Tunnel, 자동 백업(Litestream)을 한 번에 띄웁니다. 아래는 개발·시험용으로 Node를 직접 실행하는 방법입니다.
+
 ## 처음 실행
 
 ```bash
@@ -35,6 +37,7 @@ npm start          # 앱을 빌드(app/dist/index.html)하고 http://127.0.0.1:8
 | `EOUL_DATA_DIR` | `server/data` | 데이터베이스 폴더. 저장소에 올라가지 않도록 `.gitignore`에 들어 있습니다. |
 | `EOUL_INVITE_CODE` | 없음 | **시험 기간에는 꼭 설정하세요.** 이 코드를 아는 사람만 가입할 수 있습니다. |
 | `EOUL_TRUST_PROXY` | 없음 | Cloudflare Tunnel 뒤에서는 `cloudflare`로 설정합니다. 이렇게 해야 시도 횟수 제한이 실제 접속자 기준으로 동작합니다. |
+| `EOUL_TRUSTED_PROXIES` | 없음 | cloudflared가 다른 컨테이너에서 돌 때 그 고정 IP(쉼표로 여러 개). 같은 PC의 cloudflared(127.0.0.1)는 적지 않아도 됩니다. [운영 묶음](../deploy/README.md)은 자동으로 채웁니다. |
 | `EOUL_ALLOWED_ORIGINS` | 없음 | 앱을 다른 주소(예: GitHub Pages)에 올렸을 때 그 주소를 적습니다. 쉼표로 여러 개를 적을 수 있습니다. |
 | `EOUL_SESSION_DAYS` | `60` | 마지막으로 쓴 뒤 로그인이 유지되는 날수 |
 | `EOUL_SCRYPT_LOG2N` | `17` | 비밀번호 해시 강도. 바꾸지 않아도 됩니다. |

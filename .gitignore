@@ -34,3 +34,6 @@ shots/
 *.db-shm
 *.db-wal
 /server/models/
+
+# Deploy kit: local settings and database replicas
+/deploy/backups/
