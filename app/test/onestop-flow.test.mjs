@@ -850,7 +850,7 @@ test('purchase improvements: hold, buy, wear and return preserve their own reaso
   }
   assert.equal(updated.reason, '다음에는 한 사이즈 크게 확인');
   const persisted = await stored(page);
-  assert.equal(persisted.state.schema, 5);
+  assert.equal(persisted.state.schema, 6);
   const reloaded = await boot(page.indexedDB, page.storage);
   t.after(() => reloaded.close());
   assert.deepEqual(reloaded.state().journeys.find((j) => j.id === journey.id), updated);

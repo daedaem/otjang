@@ -22,6 +22,7 @@ const order = [
   'src/legacy-wardrobe.js',
   'src/legacy-purchase-v4.js',
   'src/purchase-journey.js',
+  'src/wear-log.js',
   'src/wardrobe.js',
   'src/wardrobe-store.js',
   'src/wardrobe-erase.js',

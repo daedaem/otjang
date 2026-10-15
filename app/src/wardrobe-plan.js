@@ -12,6 +12,11 @@
 // Nothing is invented: products whose colour is only guessed from the photo are
 // listed with "colour unconfirmed" and do not count; prices are the catalog's
 // collected price on its date, never a current or lowest price.
+//
+// What happened last time with the same product (returned for size, decided
+// not to buy, kept) is shown next to it. It does not reorder or hide anything:
+// a free-text reason or a return never quietly lowers a product. Only "do not
+// recommend again" hides one.
 import { SLOTS, SLOT_BY_ID, COLORS } from './data/slots.js';
 import { productsFor, matchingLooks, formulaSlots, recommendationContext, styleScore, fillLook } from './engine.js';
 import { compareCandidate, candidateFromProduct } from './purchase-candidate.js';
@@ -30,6 +35,25 @@ function productColorConfirmed(product) {
   return !!color && Object.hasOwn(COLORS, color) && (!slot?.requiredColors || slot.requiredColors.includes(color));
 }
 
+/** The latest purchase record of exactly this product, or null. */
+export function productRecord(state, productId) {
+  const journeys = (state.journeys || []).filter((journey) => journey.candidate?.productId === productId);
+  if (!journeys.length) return null;
+  const lastAt = (journey) => journey.history.at(-1)?.at || '';
+  const latest = journeys.reduce((a, b) => (lastAt(b) > lastAt(a) ? b : a));
+  return {
+    journeyId: latest.id,
+    count: journeys.length,
+    stage: latest.stage,
+    decision: latest.decision,
+    at: lastAt(latest),
+    option: latest.option || '',
+    fit: latest.feedback?.fit || null,
+    returnReason: latest.feedback?.returnReason || null,
+    wearCount: latest.wearCount || 0,
+  };
+}
+
 function gapProducts(slot, state, season, limit) {
   const products = productsFor(slot.id, {
     maxPrice: state.budget ?? null, hidden: new Set(state.hidden || []),
@@ -45,6 +69,7 @@ function gapProducts(slot, state, season, limit) {
       product,
       colorConfirmed: productColorConfirmed(product),
       price: { amount: product.price, store: product.store, collectedOn: product.checkedAt, kind: 'collected' },
+      record: productRecord(state, product.id),
     })),
   };
 }

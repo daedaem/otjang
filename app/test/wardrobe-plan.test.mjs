@@ -111,6 +111,31 @@ test('a Musinsa link outside the catalog stays that exact product and is never s
   assert.deepEqual([candidate.source, candidate.name, candidate.brand, candidate.price, candidate.slot, candidate.color], ['user', '', '', null, null, null]);
 });
 
+test('my last record of the same product is shown next to it without hiding or reordering anything', () => {
+  const state = wardrobe(ivy());
+  const before = wardrobePlan(state, { productsPerGap: 20 });
+  const entry = before.gaps[0].products[0];
+  const product = entry.product;
+  assert.equal(entry.record, null);
+  let returned = createPurchaseJourney(candidateFromProduct(product), { id: 'j_back', at: '2026-10-01T00:00:00.000Z' });
+  returned = transitionPurchaseJourney(returned, 'buy', { at: '2026-10-01T00:01:00.000Z', changes: { option: 'M' } });
+  returned = transitionPurchaseJourney(returned, 'ordered', { at: '2026-10-01T00:02:00.000Z' });
+  returned = transitionPurchaseJourney(returned, 'received', { at: '2026-10-03T00:00:00.000Z', changes: { garmentId: 'g_back' } });
+  returned = transitionPurchaseJourney(returned, 'returned', { at: '2026-10-04T00:00:00.000Z',
+    changes: { feedback: { fit: 'small', returnReason: 'size' } } });
+  let skipped = createPurchaseJourney(candidateFromProduct(product), { id: 'j_skip', at: '2026-09-01T00:00:00.000Z' });
+  skipped = transitionPurchaseJourney(skipped, 'skip', { at: '2026-09-01T00:01:00.000Z' });
+  const after = wardrobePlan(wardrobe([...ivy(), g(product.slot, product.color, { id: 'g_back' })], { journeys: [skipped, returned] }), { productsPerGap: 20 });
+  const gap = after.gaps.find((x) => x.slot.id === before.gaps[0].slot.id);
+  assert.ok(gap, 'a returned purchase does not count as owned');
+  assert.deepEqual(gap.products.map((x) => x.product.id), before.gaps[0].products.map((x) => x.product.id), 'same products, same order');
+  assert.deepEqual(gap.products[0].record, {
+    journeyId: 'j_back', count: 2, stage: 'returned', decision: 'buy', at: '2026-10-04T00:00:00.000Z',
+    option: 'M', fit: 'small', returnReason: 'size', wearCount: 0,
+  }, 'the latest of the two records, with the option and what the user wrote');
+  assert.ok(gap.products.slice(1).every((x) => x.record === null), 'other products carry no record');
+});
+
 // ── the real bundled screen
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'eoul-plan-'));
@@ -179,6 +204,27 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   assert.doesNotMatch(sheet.replace('가격은 현재 최저가가 아니에요', ''), /최저가/);
   await page.click({ action: 'candidate-product', id: p.id });
   assert.equal(page.app.candidateDraft().candidate.productId, p.id);
+});
+
+test('the plan sheet shows a product I decided not to buy as my record, with a way back to it', async () => {
+  const indexedDB = new IDBFactory();
+  const store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const { season, ...base } = wardrobe(ivy());
+  const plan = wardrobePlan({ ...base, season: undefined });
+  const product = plan.gaps[0]?.products[0]?.product;
+  assert.ok(product, 'the current season gives a product');
+  let skipped = createPurchaseJourney(candidateFromProduct(product), { id: 'j_skip', at: '2026-09-01T00:00:00.000Z' });
+  skipped = transitionPurchaseJourney(skipped, 'skip', { at: '2026-09-02T00:00:00.000Z' });
+  await store.commit({ ...base, journeys: [skipped] }, first.revision, [], first.epoch);
+  store.close();
+  const page = await boot(indexedDB);
+  await page.click({ action: 'open-plan' });
+  assert.match(page.sheet(), /내 지난 기록 · 안 사기로 했던 상품 · 2026-09-02 기록<\/span><button class="link" data-action="open-journey" data-id="j_skip">기록 보기/);
+  await page.click({ action: 'open-item', id: product.id });
+  assert.match(page.sheet(), /내 지난 기록 · 안 사기로 했던 상품/, 'the product sheet shows it too');
+  await page.click({ action: 'open-journey', id: 'j_skip' });
+  assert.match(page.sheet(), /안 사기로 함/);
 });
 
 test('the example closet says it is an example on home and in the sheet', async () => {

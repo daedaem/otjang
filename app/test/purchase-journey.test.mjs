@@ -92,10 +92,11 @@ test('candidate certainty and source snapshots are not silently upgraded or norm
 test('strict v3 migration adds journeys while preserving every known field and refusing unknown fields', () => {
   const old = { ...purchasePersonal([makeGarment({ id: 'g_old', kind: 'shirt', gender: 'M' })]), schema: 3 };
   delete old.journeys;
+  delete old.wears;
   const original = structuredClone(old);
   assert.equal(validateWardrobe(old), old);
   const migrated = upgradeWardrobe(old);
-  assert.deepEqual(migrated, { ...original, schema: 5, journeys: [] });
+  assert.deepEqual(migrated, { ...original, schema: 6, journeys: [], wears: [] });
   assert.deepEqual(old, original, 'migration is pure');
   assert.throws(() => upgradeWardrobe({ ...old, futureField: 'preserve' }), /지원하지/);
   assert.throws(() => upgradeWardrobe({ ...old, journeys: [] }), /지원하지/);
@@ -197,13 +198,14 @@ test('an existing v3 envelope and photo upgrade through one revision without cha
     schema: 3,
   };
   delete old.journeys;
+  delete old.wears;
   await store.commit(old, 0, [asset]);
   const read = await store.read();
   assert.equal(read.state.schema, 3);
   const upgraded = upgradeWardrobe(read.state);
   await store.commit(upgraded, read.revision, [], read.epoch);
   const current = await store.read();
-  assert.equal(current.state.schema, 5);
+  assert.equal(current.state.schema, 6);
   assert.equal(current.revision, read.revision + 1);
   assert.equal(current.epoch, read.epoch);
   assert.deepEqual(current.state.garments, old.garments);

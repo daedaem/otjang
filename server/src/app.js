@@ -7,7 +7,7 @@
 // record the app could not read back.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { validateWardrobe } from '../../app/src/wardrobe.js';
+import { validateWardrobe, WARDROBE_SCHEMA } from '../../app/src/wardrobe.js';
 import { MAX_GARMENT_PHOTO_BYTES } from '../../app/src/wardrobe-store.js';
 import { transaction } from './db.js';
 import {
@@ -384,7 +384,7 @@ ${link}
       const body = await readJson(req, MAX_WARDROBE_BODY);
       if (!Number.isSafeInteger(body.baseRevision) || body.baseRevision < 0)
         throw new HttpError(400, 'bad-revision', '동기화 기준 버전이 올바르지 않아요.');
-      if (body.state?.schema !== 5)
+      if (body.state?.schema !== WARDROBE_SCHEMA)
         throw new HttpError(400, 'old-app', '앱을 새로고침한 뒤 다시 저장해 주세요.');
       try {
         validateWardrobe(body.state);

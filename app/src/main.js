@@ -1,5 +1,5 @@
 import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, CATS, COLORS, stylesFor } from './data/slots.js';
-import { ROLE_LABEL } from './data/looks.js';
+import { ROLE_LABEL, LOOKS } from './data/looks.js';
 import { PRODUCTS, CATALOG } from './data/products.js';
 import {
   recommendItems,
@@ -35,7 +35,9 @@ import {
   GARMENT_KINDS,
   slotForItem,
   wardrobeSlotStatus,
+  WARDROBE_SCHEMA,
 } from './wardrobe.js';
+import { addWear, toggleWornOn, deleteWear, wearStats, orderByRecentWear, localDate, wearDateOK, wearMonths, MAX_WEAR_GARMENTS, WEAR_RECENT_DAYS } from './wear-log.js';
 import { createWardrobeStore, parseWardrobeBackup, legacyWardrobeFingerprint, journeyStorageUsage, wardrobeStateStorageUsage, photoAsset } from './wardrobe-store.js';
 import { AGREEMENT_VERSION, ACCOUNT_KEY, accountServer, readAccount, writeAccount, clearAccount, createAccountApi, isEmptyWardrobe, syncDecision, pushWardrobe, pullWardrobe, withDeviceFields, sameWardrobe, wardrobeSummary } from './account.js';
 import { eraseWardrobeData, WARDROBE_ERASE_PENDING_KEY } from './wardrobe-erase.js';
@@ -48,7 +50,7 @@ import { findOwnedCatalog } from './owned-catalog.js';
 import { readStorageHealth, requestPersistence, lastBackupAt, markBackup, clearBackupRecord, backupDue, isStandaloneApp, isAppleTouchBrowser, formatBytes } from './storage-health.js';
 import { prepareLegacyWardrobe } from './legacy-photos.js';
 import { candidateFromLink, candidateFromProduct, compareCandidate } from './purchase-candidate.js';
-import { wardrobePlan, describeGarment } from './wardrobe-plan.js';
+import { wardrobePlan, describeGarment, productRecord } from './wardrobe-plan.js';
 import { validateOffer, compareOffers, mergeRefreshed, OFFER_FLAG_LABEL, OFFER_SOURCE_LABEL, OFFER_STALE_DAYS } from './offers.js';
 import { readOffers, writeOffers, offerRef, clearOffers } from './offer-store.js';
 import { storageLimits, removableJourneys, journeysWithout } from './record-cleanup.js';
@@ -154,7 +156,7 @@ async function bootWardrobe() {
       }
       await wardrobeStore.commit(prepared.state, 0, prepared.assets);
       current = await wardrobeStore.read();
-    } else if (current.state.schema < 5) {
+    } else if (current.state.schema < WARDROBE_SCHEMA) {
       const upgraded = upgradeWardrobe(current.state);
       await wardrobeStore.commit(upgraded, current.revision, [], current.epoch || null);
       current = { ...current, state: upgraded, revision: current.revision + 1, epoch: wardrobeStore.currentEpoch() };
@@ -343,6 +345,7 @@ function lookCard(r, { wide = false } = {}) {
         <b>${r.uncertainCount ? '옷 종류 확인 필요' : r.buyCount ? formatPrice(r.buyTotal) : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</b>
       </div>
       ${r.uncertainCount ? `<p class="fine">${r.uncertainCount}벌은 세부 종류가 미확인입니다. 확인 후 구매를 판단해 주세요.${r.buyCount ? ` 후보 합계 ${formatPrice(r.buyTotal)}` : ''}</p>` : ''}
+      ${r.lastWorn ? `<p class="fine look-worn">${r.recentlyWorn ? '최근에 입은 조합' : '지난 착용'} · ${esc(r.lastWorn)} 기록</p>` : ''}
     </div>
   </button>`;
 }
@@ -716,6 +719,24 @@ function collectedPrice(entry) {
   const p = entry.product;
   return `<b>${formatPrice(entry.price.amount)}</b><span class="fine">${esc(entry.price.store)} 표시가 · ${esc(entry.price.collectedOn)} 수집</span>`;
 }
+// What happened last time with this exact product. Shown as the user's own
+// record; it never predicts fit or size and never reorders the list.
+function productRecordLine(record) {
+  if (!record) return '';
+  const date = record.at ? record.at.slice(0, 10) : '';
+  const fit = { small: '작게 맞음', right: '잘 맞음', large: '크게 맞음' }[record.fit];
+  const reason = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '변심', other: '기타' }[record.returnReason];
+  const what = record.stage === 'returned' ? `반품 기록${reason ? ` · 사유 ${reason}` : ''}`
+    : record.stage === 'kept' ? `계속 입기로 한 상품${record.wearCount ? ` · 착용 기록 ${record.wearCount}회` : ''}`
+    : record.stage === 'received' ? '받은 뒤 보유 확정 전'
+    : record.stage === 'ordered' ? '주문 기록 있음'
+    : record.decision === 'skip' ? '안 사기로 했던 상품'
+    : record.decision === 'hold' ? '보류해 둔 상품'
+    : record.decision === 'buy' ? '사기로 한 상품(주문 기록 전)'
+    : '비교해 본 상품';
+  const detail = [what, record.option ? `옵션 ${record.option}` : null, fit ? `핏 직접 기록: ${fit}` : null, date ? `${date} 기록` : null].filter(Boolean).join(' · ');
+  return `<p class="plan-record"><span>내 지난 기록 · ${esc(detail)}${record.count > 1 ? ` · 기록 ${record.count}개` : ''}</span><button class="link" data-action="open-journey" data-id="${esc(record.journeyId)}">기록 보기</button></p>`;
+}
 function planProductRow(entry) {
   const p = entry.product, slot = SLOT_BY_ID[p.slot];
   return `<article class="plan-product">
@@ -725,6 +746,7 @@ function planProductRow(entry) {
       <button class="name" data-action="open-item" data-id="${p.id}">${esc(p.name)}</button>
       <div class="price">${collectedPrice(entry)}</div>
       <div class="fine">${entry.colorConfirmed ? `색 ${esc(COLORS[p.color]?.label || '')}` : '색: 상품 사진으로 추정 · 판매처에서 확인 필요'}</div>
+      ${productRecordLine(entry.record)}
       <div class="opts plan-product-actions"><a class="chip" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a><button class="chip" data-action="candidate-product" data-id="${p.id}">내 옷과 비교</button></div>
     </div>
   </article>`;
@@ -758,6 +780,7 @@ function planSheet() {
   const plan = wardrobePlan(state);
   const example = plan.basis.kind === 'example';
   const ownLabel = example ? '예시 옷' : '내 옷';
+  const wears = wearStats(state.wears || []);
   const analysed = plan.analysed.length
     ? `<div class="plan-owned">${plan.analysed.map((item) => `<button class="plan-owned-item" data-action="${example ? 'tab' : 'open-own'}" ${example ? 'data-tab="closet"' : `data-id="${esc(item.id)}"`}>${itemPicture(item)}<span>${esc(describeGarment(item))}</span></button>`).join('')}</div>`
     : `<p class="notice">종류와 색을 확인한 ${ownLabel}이 아직 없어요. 아래 옷을 확인하면 계산할 수 있어요.</p>`;
@@ -769,7 +792,7 @@ function planSheet() {
     plan.basis.retired ? `반품·교체로 보유 추천에서 뺀 옷 ${plan.basis.retired}벌은 세지 않았어요.` : null,
   ].filter(Boolean);
   const duplicates = plan.duplicates.length || plan.paused.length
-    ? `${plan.duplicates.map((d) => `<div class="plan-dup">${d.items.slice(0, 3).map((item) => itemPicture(item, 'mini')).join('')}<p><b>${esc(COLORS[d.color]?.label || '')} ${esc(d.slot.name)} ${d.items.length}벌</b><br>같은 종류·색이 이미 있어요. 또 사기 전에 이 옷들을 먼저 활용해 보세요.</p></div>`).join('')}
+    ? `${plan.duplicates.map((d) => `<div class="plan-dup">${d.items.slice(0, 3).map((item) => itemPicture(item, 'mini')).join('')}<p><b>${esc(COLORS[d.color]?.label || '')} ${esc(d.slot.name)} ${d.items.length}벌</b><br>같은 종류·색이 이미 있어요. 또 사기 전에 이 옷들을 먼저 활용해 보세요.${example ? '' : `<br><span class="fine">${d.items.map((item) => { const stat = wears.get(item.id); return `${esc(describeGarment(item))}: ${stat ? `착용 기록 ${stat.count}일` : '착용 기록 없음'}`; }).join(' · ')}</span>`}</p></div>`).join('')}
        ${plan.paused.map((p) => `<p class="fine">${esc(p.slot.name)}: ${p.reason === 'ordered' ? '주문·수령 기록이 있어 후보에서 뺐어요.' : '비슷한 옷이 있다고 답해 후보에서 뺐어요.'}</p>`).join('')}`
     : `<p class="sub">같은 종류·색으로 겹치는 ${ownLabel}은 없어요.</p>`;
   const gaps = plan.gaps.length
@@ -870,9 +893,16 @@ function renderCloset() {
   const nudge = backupNudge(items);
   if (!items.length) return head + nudge + grid + essentialSection(ess);
 
-  const { ready, almost } = closetLooks(state, { limit: 3 });
+  // Every ready outfit is ordered by recent wear before the display limit, so a
+  // fresh outfit ranked lower is not cut off behind recently worn ones.
+  const looks = closetLooks(state, { limit: 100 });
+  const ordered = state.demo ? looks.ready : orderByRecentWear(looks.ready, state.wears || [], localDate());
+  const ready = ordered.slice(0, 3);
+  const almost = looks.almost.slice(0, 3);
+  // The notice appears only when recent wear actually changed the order.
+  const reordered = ordered.some((r, i) => r.look.id !== looks.ready[i].look.id);
   const today = `<section class="section">
-    <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.demo ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div></div></div>
+    <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.demo ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div>${reordered ? `<p class="fine">최근 ${WEAR_RECENT_DAYS}일 안에 같은 옷끼리 입었다고 기록한 코디는 뒤로 보냈어요.</p>` : ''}</div>${!state.demo && state.garments.length ? '<button class="link" data-action="wear-open">착용 기록</button>' : ''}</div>
     ${ready.length ? `<div class="looks">${ready.map((r) => lookCard(r)).join('')}</div>` : ''}
     ${almost.length ? `<h3 class="block">등록한 옷에 후보 한 벌 더하기</h3><div class="looks">${almost.map((r) => lookCard(r)).join('')}</div>` : ''}
   </section>`;
@@ -1193,7 +1223,18 @@ async function recordJourneyAction(id, action, { allowOptionCorrection = false }
   // The first ordered/received snapshot keeps its originally recorded values.
   const corrected = allowOptionCorrection ? transitionPurchaseJourney(j, 'correction', { changes: pendingJourneyForm(id, j) }) : j;
   const updated = transitionPurchaseJourney(corrected, action, { changes });
-  await set({ journeys: state.journeys.map((row) => row.id === id ? updated : row), garments, ...(['received','kept'].includes(action) ? { demo: false, demoSelected: [] } : {}) });
+  let wears = state.wears || [];
+  if (action === 'worn') {
+    const today = localDate();
+    try {
+      if (!wears.some((entry) => entry.date === today && entry.garmentIds.includes(j.garmentId)))
+        wears = toggleWornOn(wears, j.garmentId, { date: today }).wears;
+    } catch (error) {
+      // A full diary never blocks the purchase record itself.
+      if (error.code !== 'wear-full') throw error;
+    }
+  }
+  await set({ journeys: state.journeys.map((row) => row.id === id ? updated : row), garments, wears, ...(['received','kept'].includes(action) ? { demo: false, demoSelected: [] } : {}) });
   journeyForms.delete(id);
   journeySheet(id);
   toast(action === 'received' ? '수령 기록과 옷을 함께 보관했어요. 계속 입을지 정해 주세요' : action === 'kept' ? '내 옷장과 다음 추천에 반영했어요' : action === 'returned' ? '반품 기록을 남겼어요. 옷과 사진은 보관하고 추천에서 제외해요' : '기록을 저장했어요');
@@ -1336,6 +1377,7 @@ function itemSheet(id) {
     <div class="fine">${esc(p.store)} 판매가 · ${esc(p.checkedAt)} 확인${p.color ? ` · ${COLORS[p.color]?.label || ''} (${p.colorSource === 'image' ? '상품 사진 추정' : '상품명·편집 분류'})` : ''}</div>
     ${!state.demo && !owned && !needsCheck ? '<p class="notice">등록한 옷 기준의 구매 후보예요. 실제로 없는 옷인지 먼저 확인해 주세요.</p>' : ''}
     ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
+    ${productRecordLine(productRecord(state, p.id))}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>
       ${[...new Set([slot.why, ...reasons])]
         .slice(0, 3)
@@ -1370,7 +1412,15 @@ function lookSheet(index) {
     ${r.uncertainCount ? `<p class="notice">${r.uncertainCount}벌의 세부 종류를 확인해야 이 코디를 확정할 수 있어요. 확인 전에는 새 옷이 꼭 필요한지 판단하지 않습니다.</p>` : ''}
     <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `구매 후보 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
     ${buyIds.length ? `<div class="cta"><button class="btn" data-action="save-all" data-ids="${buyIds.join(',')}">후보 ${buyIds.length}개 모두 찜하기</button></div>` : ''}
+    ${wearableLook(r) ? `<button class="btn secondary candidate-compare" data-action="wear-look" data-index="${index}">오늘 이렇게 입었어요</button>${r.lastWorn ? `<p class="fine">이 옷들을 함께 입은 마지막 기록: ${esc(r.lastWorn)}</p>` : ''}` : ''}
   `);
+}
+// Only an outfit made entirely of my own active garments can be recorded as worn.
+function wearableLook(r) {
+  if (state.demo || r.buyCount || r.uncertainCount) return false;
+  const active = new Set(state.closet.map((item) => item.id));
+  const owned = r.items.filter((row) => row.owned);
+  return owned.length > 0 && owned.every((row) => row.item && active.has(row.item.id) && ['user', 'legacy'].includes(row.item.source));
 }
 
 // 내 옷 한 벌
@@ -1393,6 +1443,7 @@ function ownSheet(id) {
     ${!active ? '<p class="notice">보유 추천에서 제외 중인 옷이에요. 사진과 기록은 보관 중이며 구매 여정에서 수령·보유·반품 상태를 확인할 수 있어요.</p>' : ''}
     ${item.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 사진을 다시 골라 주세요.</p>' : ''}<div class="fine">${esc(garmentLabel(item))} · ${esc(COLORS[item.color]?.label || '색 미확인')}</div>
     ${active && !state.demo && !item.color ? ownColorCheck(item, p) : ''}
+    ${active && !state.demo && ['user', 'legacy'].includes(item.source) ? ownWearBox(item) : ''}
     <div class="why"><h3>이렇게 입어요</h3><ul><li>${esc(slot.tip)}</li></ul></div>
     ${looks.length ? `<h3 class="block">이 옷으로 만든 코디</h3><div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : active ? '<p class="sub">이 옷이 들어가는 코디 공식이 아직 없어요.</p>' : ''}
     <div class="sheet-links">
@@ -1402,6 +1453,48 @@ function ownSheet(id) {
       <button class="link danger" data-action="remove-own" data-id="${item.id}">옷장에서 빼기</button>
     </div>
   `);
+}
+
+function ownWearBox(item) {
+  const stat = wearStats(state.wears || []).get(item.id);
+  const today = localDate();
+  const wornToday = (state.wears || []).some((entry) => entry.date === today && entry.garmentIds.includes(item.id));
+  return `<div class="wear-box"><p class="fine">${stat ? `착용 기록 ${stat.count}일 · 최근 ${esc(stat.last)}` : '아직 남긴 착용 기록이 없어요'} · 직접 남긴 기록</p><div class="opts"><button class="chip" data-action="wear-toggle" data-id="${esc(item.id)}" aria-pressed="${wornToday}">${wornToday ? '오늘 기록에서 빼기' : '오늘 입었어요'}</button><button class="link" data-action="wear-open">착용 기록 보기</button></div></div>`;
+}
+
+// ── 착용 기록: 직접 남긴 날짜별 기록. 기록이 없는 날을 안 입은 날로 판단하지 않는다.
+let wearForm = null;
+let wearDeleteArmed = null;
+function wearGarmentLabel(id) {
+  const item = state.garments.find((garment) => garment.id === id);
+  return item ? describeGarment(item) : '목록에서 뺀 옷';
+}
+function wearSheet() {
+  const wears = state.wears || [];
+  const today = localDate();
+  const actual = state.closet.filter((item) => ['user', 'legacy'].includes(item.source));
+  // touched keeps the form open while the sheet redraws after each choice.
+  wearForm ||= { date: today, ids: new Set(), note: '', touched: false };
+  const since = (days) => localDate(new Date(Date.now() - days * 86400000));
+  const recent = wears.filter((entry) => entry.date >= since(29) && entry.date <= today);
+  const recentDays = new Set(recent.map((entry) => entry.date)).size;
+  const often = [...wearStats(wears.filter((entry) => entry.date >= since(89))).entries()]
+    .filter(([id]) => actual.some((item) => item.id === id))
+    .sort((a, b) => b[1].count - a[1].count || b[1].last.localeCompare(a[1].last)).slice(0, 3);
+  const recordedRecently = new Set(recent.flatMap((entry) => entry.garmentIds));
+  const quiet = actual.filter((item) => !recordedRecently.has(item.id));
+  const sorted = [...wears].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at));
+  const titleOf = (lookId) => LOOKS.find((look) => look.id === lookId)?.title;
+  openSheet(`<h2>착용 기록</h2>
+    <p class="sub">직접 남긴 기록이에요. 기록하지 않은 날을 안 입은 날로 보지 않아요.</p>
+    ${wears.length ? `<ul class="plain-list"><li>최근 30일 기록 ${recentDays}일</li>${often.length ? `<li>최근 90일 많이 기록한 옷: ${often.map(([id, stat]) => `${esc(wearGarmentLabel(id))} ${stat.count}일`).join(', ')}</li>` : ''}${quiet.length && recentDays ? `<li>최근 30일 기록이 없는 내 옷 ${quiet.length}벌 <span class="fine">(기록하지 않았을 수도 있어요)</span></li>` : ''}</ul>` : ''}
+    <details class="garment-name"${!wears.length || wearForm.touched ? ' open' : ''}><summary>입은 옷 기록하기</summary>
+      <label class="field"><span>날짜</span><input type="date" id="wear-date" value="${esc(wearForm.date)}" max="${today}" min="2000-01-01"></label>
+      ${actual.length ? `<ul class="plain-list wear-pick">${actual.map((item) => `<li><label class="toggle"><input type="checkbox" data-action="wear-pick" data-id="${esc(item.id)}"${wearForm.ids.has(item.id) ? ' checked' : ''}> ${itemPicture(item, 'mini')}<span>${esc(describeGarment(item))}</span></label></li>`).join('')}</ul>` : '<p class="notice">기록할 내 옷이 없어요.</p>'}
+      <label class="field"><span>메모 (선택, 200자)</span><input id="wear-note" maxlength="200" value="${esc(wearForm.note)}" placeholder="예: 비 와서 우산"></label>
+      <button class="btn" data-action="wear-add"${wearForm.ids.size ? '' : ' disabled'}>${wearForm.ids.size ? `${wearForm.ids.size}벌 기록 남기기` : '입은 옷을 골라 주세요'}</button>
+    </details>
+    ${sorted.length ? `<ul class="plain-list wear-list">${sorted.slice(0, 60).map((entry) => `<li><b>${esc(entry.date)}</b>${entry.lookId && titleOf(entry.lookId) ? ` · ${esc(titleOf(entry.lookId))}` : ''}<br>${entry.garmentIds.map((id) => esc(wearGarmentLabel(id))).join(' + ')}${entry.note ? `<br><span class="fine">${esc(entry.note)}</span>` : ''} <button class="link danger" data-action="wear-delete" data-id="${esc(entry.id)}">${wearDeleteArmed === entry.id ? '한 번 더 누르면 지워요' : '지우기'}</button></li>`).join('')}</ul>${sorted.length > 60 ? `<p class="fine">최근 60개만 보여요. 전체 ${sorted.length}개는 백업 파일에 들어 있어요.</p>` : ''}` : '<p class="sub">아직 착용 기록이 없어요. 옷 상세의 ‘오늘 입었어요’나 코디의 ‘오늘 이렇게 입었어요’로도 남길 수 있어요.</p>'}`, { key: 'wear' });
 }
 
 // 색을 모르는 실제 옷은 구매 비교의 조합 수에서 빠진다. 한 번 눌러 확인할 수 있게 한다.
@@ -1986,24 +2079,30 @@ function optionSheet(kind) {
 // ── 저장 한도와 기록 정리
 function usageLine() {
   const l = storageLimits(state);
-  return `<p class="fine">옷 ${l.garments.count}/${l.garments.max}벌 · 구매 기록 ${l.journeys.count}/${l.journeys.max}개 · 기록 크기 ${Math.round((l.bytes.bytes / l.bytes.limitBytes) * 100)}%</p>`;
+  return `<p class="fine">옷 ${l.garments.count}/${l.garments.max}벌 · 구매 기록 ${l.journeys.count}/${l.journeys.max}개${l.wears.count ? ` · 착용 기록 ${l.wears.count}/${l.wears.max}개` : ''} · 기록 크기 ${Math.round((l.bytes.bytes / l.bytes.limitBytes) * 100)}%</p>`;
 }
 let cleanupPick = new Set();
+let cleanupWearPick = new Set();
 function cleanupSheet() {
   const l = storageLimits(state);
   const rows = removableJourneys(state);
   cleanupPick = new Set([...cleanupPick].filter((id) => rows.some((row) => row.journey.id === id)));
   const kept = state.journeys.length - rows.length;
+  const months = wearMonths(state.wears || []);
+  cleanupWearPick = new Set([...cleanupWearPick].filter((month) => months.some((m) => m.month === month)));
   const pct = (a, b) => Math.min(100, Math.round((a / b) * 100));
   openSheet(`<h2>기록 정리</h2>
-    <ul class="plain-list"><li>옷 ${l.garments.count}/${l.garments.max}벌 (${pct(l.garments.count, l.garments.max)}%)</li><li>구매 기록 ${l.journeys.count}/${l.journeys.max}개 (${pct(l.journeys.count, l.journeys.max)}%)</li><li>기록 크기 ${formatBytes(l.bytes.bytes)} / ${formatBytes(l.bytes.limitBytes)} (${pct(l.bytes.bytes, l.bytes.limitBytes)}%)</li><li>구매 기록 크기 ${formatBytes(l.journeyBytes.bytes)} / ${formatBytes(l.journeyBytes.limitBytes)} (${pct(l.journeyBytes.bytes, l.journeyBytes.limitBytes)}%)</li></ul>
+    <ul class="plain-list"><li>옷 ${l.garments.count}/${l.garments.max}벌 (${pct(l.garments.count, l.garments.max)}%)</li><li>구매 기록 ${l.journeys.count}/${l.journeys.max}개 (${pct(l.journeys.count, l.journeys.max)}%)</li><li>착용 기록 ${l.wears.count}/${l.wears.max}개 (${pct(l.wears.count, l.wears.max)}%)</li><li>기록 크기 ${formatBytes(l.bytes.bytes)} / ${formatBytes(l.bytes.limitBytes)} (${pct(l.bytes.bytes, l.bytes.limitBytes)}%)</li><li>구매 기록 크기 ${formatBytes(l.journeyBytes.bytes)} / ${formatBytes(l.journeyBytes.limitBytes)} (${pct(l.journeyBytes.bytes, l.journeyBytes.limitBytes)}%)</li></ul>
     ${l.full ? '<p class="notice" role="alert">한도에 닿아 새 기록을 저장할 수 없어요. 아래에서 정리하거나, 옷장에서 쓰지 않는 옷을 빼 주세요.</p>' : ''}
     <p class="sub">옷과 연결되지 않은 구매 기록(비교만 한 것, 받지 않은 주문)만 지울 수 있어요. 받은·계속 입는·반품한 기록은 옷의 보유 상태를 정하므로 여기서 지우지 않아요${kept ? ` (${kept}개)` : ''}.</p>
     <div class="opts"><button class="chip" data-action="backup">먼저 사진 포함 백업 받기</button></div>
     ${rows.length ? `<ul class="plain-list cleanup-list">${rows.map(({ journey, kind, lastAt, bytes }) => `<li><label class="toggle"><input type="checkbox" data-action="cleanup-toggle" data-id="${esc(journey.id)}"${cleanupPick.has(journey.id) ? ' checked' : ''}> <span><b>${esc(journey.candidate.name || journey.candidate.brand || '가져온 상품')}</b> · ${kind === 'ordered' ? '받지 않은 주문 기록' : '비교만 한 기록'}${journey.decision ? ` · ${{ buy: '사기로 함', hold: '보류', skip: '안 사기로 함' }[journey.decision]}` : ''} · ${esc(lastAt.slice(0, 10))} · ${formatBytes(bytes)}</span></label></li>`).join('')}</ul>
       <button class="btn" data-action="cleanup-delete"${cleanupPick.size ? '' : ' disabled'}>선택한 ${cleanupPick.size}개 지우기</button>
       <p class="fine">받지 않은 주문 기록을 지우면 그 종류를 다시 추천할 수 있어요. 지운 기록은 되돌릴 수 없으니 먼저 백업해 주세요.</p>`
-    : '<p class="notice">지금은 정리할 수 있는 구매 기록이 없어요.</p>'}`, { key: 'cleanup' });
+    : '<p class="notice">지금은 정리할 수 있는 구매 기록이 없어요.</p>'}
+    ${l.wearsFull ? '<p class="notice" role="alert">착용 기록이 가득 찼어요. 오래된 달의 기록을 지우면 다시 남길 수 있어요.</p>' : ''}
+    ${months.length ? `<h3 class="block">착용 기록 (달별)</h3><p class="sub">착용 기록은 옷의 보유 상태와 상관없어서 지워도 옷장은 그대로예요.</p><ul class="plain-list cleanup-list">${months.map((m) => `<li><label class="toggle"><input type="checkbox" data-action="cleanup-wear-toggle" data-month="${esc(m.month)}"${cleanupWearPick.has(m.month) ? ' checked' : ''}> <span>${esc(m.month)} · ${m.count}개</span></label></li>`).join('')}</ul>
+      <button class="btn secondary" data-action="cleanup-wear-delete"${cleanupWearPick.size ? '' : ' disabled'}>선택한 달 ${cleanupWearPick.size}개의 착용 기록 지우기</button>` : ''}`, { key: 'cleanup' });
 }
 
 // ── 이 기기 보관 상태
@@ -2244,7 +2343,8 @@ async function replaceWithAccountWardrobe(api, remote, token = account?.token) {
     return false;
   }
   if (writeBusy) throw Object.assign(new Error('busy'), { code: 'busy' });
-  await set(withDeviceFields(pulled.state, storedWardrobe(state)), { assets: pulled.assets });
+  // An account wardrobe saved by an older version is upgraded first (an empty wear diary).
+  await set(withDeviceFields(upgradeWardrobe(pulled.state), storedWardrobe(state)), { assets: pulled.assets });
   if (!sameSession(token)) {
     syncQueued = signedIn();
     return false;
@@ -2644,7 +2744,7 @@ async function chooseWardrobeBackup(file) {
       if (sheetRevision !== revision) return;
     }
     openSheet(
-      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > 5 ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 사본은 이 브라우저에 남습니다. 저장 원문 받기는 자료 형식·파일 크기에 따라 실패할 수 있어요. 중요한 원문은 교체 전에 먼저 내려받아 주세요.</p>` : `<p class="notice">현재 개인 옷 ${state.garments.length}벌 · 사진 ${photoBlobs.size}장 · 찜 ${state.saved.length}개 · 구매 여정 ${state.journeys.length}개와 취향을 교체합니다. 복구 사본을 만들지 않으니 필요한 기록은 먼저 백업해 주세요.</p>`}<button class="chip" data-action="${parsed.recovery ? 'recovery-backup' : 'backup'}">현재 자료 먼저 받기</button><button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
+      `<h2>백업으로 바꿀까요?</h2><p>개인 옷 ${parsed.state.garments.length}벌 · 사진 ${parsed.assets.length}장</p>${parsed.recovery ? `<p class="notice">${parsed.recovery.schema > WARDROBE_SCHEMA ? '현재 자료는 이 앱이 지원하지 않는 새 버전입니다. ' : ''}현재 자료와 사진 ${parsed.recovery.photoCount}장을 복구용 사본으로 보존한 뒤, 확인한 백업으로 교체합니다. 기존 자료를 자동 변환하거나 영구 삭제하지 않습니다. 사본은 이 브라우저에 남습니다. 저장 원문 받기는 자료 형식·파일 크기에 따라 실패할 수 있어요. 중요한 원문은 교체 전에 먼저 내려받아 주세요.</p>` : `<p class="notice">현재 개인 옷 ${state.garments.length}벌 · 사진 ${photoBlobs.size}장 · 찜 ${state.saved.length}개 · 구매 여정 ${state.journeys.length}개와 취향을 교체합니다. 복구 사본을 만들지 않으니 필요한 기록은 먼저 백업해 주세요.</p>`}<button class="chip" data-action="${parsed.recovery ? 'recovery-backup' : 'backup'}">현재 자료 먼저 받기</button><button class="btn" data-action="restore-backup">${parsed.recovery ? '원문을 보존하고 이 백업으로 교체' : '이 백업으로 바꾸기'}</button>`,
     );
     restoreDraft = parsed;
   } catch (error) {
@@ -3025,6 +3125,94 @@ document.addEventListener('click', async (e) => {
       case 'cleanup-open':
         cleanupSheet();
         break;
+      case 'cleanup-wear-delete': {
+        if (!cleanupWearPick.size) break;
+        if (el.dataset.armed !== '1') {
+          el.dataset.armed = '1';
+          el.textContent = `한 번 더 누르면 ${cleanupWearPick.size}개 달의 기록을 지워요`;
+          break;
+        }
+        const drop = new Set(wearMonths(state.wears || []).filter((m) => cleanupWearPick.has(m.month)).flatMap((m) => m.ids));
+        await set({ wears: (state.wears || []).filter((entry) => !drop.has(entry.id)) });
+        cleanupWearPick = new Set();
+        cleanupSheet();
+        toast(`착용 기록 ${drop.size}개를 지웠어요`);
+        break;
+      }
+      case 'wear-open':
+        wearForm = null;
+        wearDeleteArmed = null;
+        wearSheet();
+        break;
+      case 'wear-toggle': {
+        if (state.demo) break;
+        let result;
+        try {
+          result = toggleWornOn(state.wears || [], el.dataset.id, { date: localDate() });
+        } catch (error) {
+          if (error.code !== 'wear-full') throw error;
+          toast(error.message);
+          break;
+        }
+        await set({ wears: result.wears });
+        ownSheet(el.dataset.id);
+        toast(result.worn ? '오늘 착용 기록에 남겼어요' : '오늘 기록에서 뺐어요');
+        break;
+      }
+      case 'wear-look': {
+        const look = lastLooks[Number(el.dataset.index)];
+        if (!look || !wearableLook(look)) break;
+        const ids = look.items.filter((row) => row.owned).map((row) => row.item.id);
+        let result;
+        try {
+          result = addWear(state.wears || [], { date: localDate(), garmentIds: ids, lookId: look.look.id });
+        } catch (error) {
+          if (error.code !== 'wear-full') throw error;
+          toast(error.message);
+          break;
+        }
+        if (result.added) await set({ wears: result.wears });
+        lookSheet(lastLooks.push({ ...look, lastWorn: localDate() }) - 1);
+        toast(result.added ? '오늘 착용 기록에 남겼어요' : '오늘 이미 같은 옷으로 기록했어요');
+        break;
+      }
+      case 'wear-add': {
+        if (!wearForm?.ids.size) break;
+        const today = localDate();
+        // Input problems are answered in place; they are not storage failures.
+        const active = new Set(state.closet.map((item) => item.id));
+        const ids = [...wearForm.ids].filter((id) => active.has(id));
+        const problem = !wearDateOK(wearForm.date) || wearForm.date > today ? '오늘이나 지난 날짜를 골라 주세요.'
+          : !ids.length ? '기록할 옷을 다시 골라 주세요.'
+          : ids.length > MAX_WEAR_GARMENTS ? `한 번에 ${MAX_WEAR_GARMENTS}벌까지 기록할 수 있어요.`
+          : /[\u0000-\u001f\u007f]/.test(wearForm.note) ? '메모에는 줄바꿈 없이 적어 주세요.' : '';
+        if (problem) { toast(problem); break; }
+        let result;
+        try {
+          result = addWear(state.wears || [], { date: wearForm.date, garmentIds: ids, note: wearForm.note });
+        } catch (error) {
+          if (error.code !== 'wear-full') throw error;
+          toast(error.message);
+          break;
+        }
+        if (result.added) await set({ wears: result.wears });
+        wearForm = null;
+        wearSheet();
+        toast(result.added ? '착용 기록을 남겼어요' : '같은 날 같은 옷으로 이미 기록했어요');
+        break;
+      }
+      case 'wear-delete': {
+        if (wearDeleteArmed !== el.dataset.id) {
+          wearDeleteArmed = el.dataset.id;
+          wearSheet();
+          break;
+        }
+        wearDeleteArmed = null;
+        await set({ wears: deleteWear(state.wears || [], el.dataset.id) });
+        wearSheet();
+        toast('착용 기록을 지웠어요');
+        break;
+      }
       case 'cleanup-delete': {
         if (!cleanupPick.size) break;
         if (el.dataset.armed !== '1') {
@@ -3687,6 +3875,11 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('input', (e) => {
   const id = e.target.id, value = e.target.value;
+  if (wearForm && (id === 'wear-date' || id === 'wear-note')) {
+    wearForm.touched = true;
+    if (id === 'wear-date') wearForm.date = value;
+    if (id === 'wear-note') wearForm.note = value.slice(0, 200);
+  }
   if (accountForm && !accountForm.busy) {
     if (id === 'account-email') accountForm.email = value;
     if (id === 'account-password' || id === 'account-delete-password') accountForm.password = value;
@@ -3736,6 +3929,17 @@ document.addEventListener('change', async (e) => {
       if (e.target.checked) cleanupPick.add(e.target.dataset.id);
       else cleanupPick.delete(e.target.dataset.id);
       cleanupSheet();
+    }
+    if (e.target.dataset?.action === 'cleanup-wear-toggle') {
+      if (e.target.checked) cleanupWearPick.add(e.target.dataset.month);
+      else cleanupWearPick.delete(e.target.dataset.month);
+      cleanupSheet();
+    }
+    if (e.target.dataset?.action === 'wear-pick' && wearForm) {
+      wearForm.touched = true;
+      if (e.target.checked) wearForm.ids.add(e.target.dataset.id);
+      else wearForm.ids.delete(e.target.dataset.id);
+      wearSheet();
     }
     if (e.target.dataset?.action === 'offer-requested' && offerView) {
       const data = readOffers(localStorage, offerView.ref);

@@ -218,6 +218,7 @@ export function wardrobeSummary(state, photoCount = null) {
   const parts = [garments ? `옷 ${garments}벌` : '개인 옷 없음'];
   if (photoCount) parts.push(`사진 ${photoCount}장`);
   if (state.journeys?.length) parts.push(`구매 기록 ${state.journeys.length}개`);
+  if (state.wears?.length) parts.push(`착용 기록 ${state.wears.length}개`);
   if (state.saved?.length) parts.push(`찜 ${state.saved.length}개`);
   return parts.join(' · ');
 }

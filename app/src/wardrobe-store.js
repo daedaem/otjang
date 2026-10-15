@@ -33,7 +33,7 @@ export function wardrobeStateStorageUsage(state) {
 // and confirmed backup replacements keep the full wardrobe validation contract.
 // Only exact lossless journey conversion may grow past the new reserve at boot.
 function losslessJourneyV5Upgrade(previous, next) {
-  if (previous?.schema !== 4 || next.schema !== 5 || previous.journeys.length !== next.journeys.length)
+  if (previous?.schema !== 4 || ![5, 6].includes(next.schema) || previous.journeys.length !== next.journeys.length)
     return false;
   const expected = previous.journeys.map((journey, index) => {
     const converted = {
@@ -51,7 +51,7 @@ function losslessJourneyV5Upgrade(previous, next) {
 }
 
 function essentialOwnershipJourneyChange(previous, next) {
-  if (previous?.schema !== 5 || next.schema !== 5 || previous.journeys.length !== next.journeys.length)
+  if (![5, 6].includes(previous?.schema) || ![5, 6].includes(next.schema) || previous.journeys.length !== next.journeys.length)
     return false;
   let changed = false;
   for (let index = 0; index < previous.journeys.length; index++) {
@@ -80,8 +80,8 @@ function essentialOwnershipJourneyChange(previous, next) {
 
 function validateJourneyGrowth(previous, next) {
   // Schema 2/3/4 are supported legacy read/write formats. The reserve applies to
-  // new schema 5 changes, not a retroactive rejection of those original bytes.
-  if (next.schema !== 5) return;
+  // new schema 5+ changes, not a retroactive rejection of those original bytes.
+  if (next.schema < 5) return;
   const currentBytes = journeyStorageUsage(previous).bytes;
   const nextBytes = journeyStorageUsage(next).bytes;
   if (nextBytes <= MAX_JOURNEY_STATE_BYTES || nextBytes <= currentBytes || losslessJourneyV5Upgrade(previous, next))
