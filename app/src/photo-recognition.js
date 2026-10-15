@@ -7,6 +7,7 @@ export const PHOTO_RECOGNITION_DTYPE = 'q8';
 export const PHOTO_RECOGNITION_KIND_LABELS = [
   ['shirt', '셔츠', 'button-up shirt'], ['tee', '티셔츠', 't-shirt'],
   ['knit', '니트', 'knitted sweater'], ['pants', '바지', 'trousers'],
+  ['vest', '베스트·조끼', 'sleeveless vest'],
   ['jeans', '청바지', 'jeans'], ['jacket', '재킷', 'jacket'],
   ['sneaker', '운동화', 'sneakers'], ['cardigan', '카디건', 'cardigan'],
   ['longtee', '긴팔 티', 'long sleeve t-shirt'], ['sweat', '맨투맨', 'sweatshirt'],
