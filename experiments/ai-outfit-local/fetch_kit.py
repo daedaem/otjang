@@ -1,8 +1,12 @@
 # 시험 입력 받기(한 번만): 공개 예제 모델 사진과, 앱 예시 옷장의 '아이비 캠퍼스' 코디 상품 사진.
-# 저장 위치는 저장소 밖 ~/ai-outfit/inputs. 상품 사진은 판매처 사진이라 내부 시험으로만 보고 올리지 않는다.
-import pathlib, urllib.request
+# Windows 기본 저장 위치는 저장소 밖 D:/ai-outfit/inputs. AI_OUTFIT_DIR로 변경 가능. 상품 사진은 판매처 사진이라 내부 시험으로만 보고 올리지 않는다.
+import os, pathlib, urllib.request
 
-OUT = pathlib.Path.home() / 'ai-outfit' / 'inputs'
+DEFAULT_WORK = pathlib.Path('D:/ai-outfit') if os.name == 'nt' else pathlib.Path.home() / 'ai-outfit'
+WORK = pathlib.Path(os.environ.get('AI_OUTFIT_DIR', str(DEFAULT_WORK))).expanduser().resolve()
+if WORK.is_relative_to(pathlib.Path(__file__).resolve().parents[2]):
+    raise ValueError('Keep trial pictures outside the repository')
+OUT = WORK / 'inputs'
 OUT.mkdir(parents=True, exist_ok=True)
 KIT = {
     '1-model-public-example.png': 'https://huggingface.co/spaces/fashn-ai/fashn-vton-1.5/resolve/main/assets/examples/person2.png',

@@ -9,7 +9,7 @@
 - 기준 브랜치: `claude/fashn-vton-m1-test-3ox240`, 기준 커밋 `d444ac30c50f9ee80b8b67e082679ea87305883c`.
 - 작업 브랜치: `codex/ai-outfit-test`.
 - 개인 얼굴·몸 사진은 사용하지 않았다. 저장소의 `fetch_kit.py`를 그대로 실행해 공개 FASHN 예제 인물, 베이지 와이드 치노, 흰 옥스퍼드 셔츠, 네이비 해링턴 재킷을 받았다.
-- 입력·결과·비교판·시험 로그는 저장소 밖 `~/ai-outfit/`에만 둔다. 상품 사진을 외부 생성 서비스에 보내지 않는다.
+- 입력·결과·비교판·시험 로그는 현재 저장소 밖 `D:/ai-outfit/`에 둔다. 초기 `~/ai-outfit/`에서 대표의 후속 요청에 따라 D로 이전하고 C 원본은 삭제했다. 상품 사진을 외부 생성 서비스에 보내지 않는다.
 - 유료 API, 무료 체험 크레딧, 온라인 데모를 사용하지 않는다. 모델 파일 다운로드만 온라인으로 수행한다.
 - 결과 용도는 코디 분위기 확인이다. 핏·사이즈를 판정하지 않는다.
 
@@ -93,7 +93,24 @@
 2. 같은 4단계·시드 42 케이스 1에서 먼저 재시험한다. 텍스트 인코더·DiT 로딩과 첫 결과 저장까지 성공하는지 확인한 다음 케이스 2·3과 8단계 조건으로 넘어간다. 한 번에 한 무거운 작업만 실행한다.
 3. 8단계 부분 파일은 표준 HTTP Range로 이어받을 수 있다. 전체 크기와 SHA256을 검증한 뒤에만 사용한다. 이후 실제 추론 중에는 다운로드를 병행하지 않는다.
 
-로컬 재개 자료는 `D:/ai-outfit-runtime/`의 격리 환경, `launch_comfy.py`, `run_trials.py`, `download_checkpoint.py`, `make_comparisons.py`와 `~/ai-outfit/logs/`에 보존했다. 현재 서버는 꺼져 있다. 사진은 `~/ai-outfit/inputs/`, 결과 폴더는 `~/ai-outfit/results/`이며 이번 결과 폴더에는 생성 이미지가 없다. 사진·런타임·로그를 Git에 추가하지 않았다.
+로컬 재개 자료는 `D:/ai-outfit-runtime/`의 격리 환경, `launch_comfy.py`, `run_trials.py`, `download_checkpoint.py`, `make_comparisons.py`와 `D:/ai-outfit/logs/`에 보존했다. 현재 서버는 꺼져 있다. 사진은 `D:/ai-outfit/inputs/`, 결과 폴더는 `D:/ai-outfit/results/`이며 이번 결과 폴더에는 생성 이미지가 없다. 사진·런타임·로그를 Git에 추가하지 않았다.
+
+## 후속 요청: D 드라이브로 통일하고 C 작업 파일 삭제
+
+대표의 후속 지시로 초기 홈 폴더 위치 규칙을 D 드라이브 위치로 변경했다.
+
+- `C:/Users/tg868/ai-outfit/` → `D:/ai-outfit/`: 21개 파일.
+- C 작업 공간의 `otjang-ai-outfit-test/` → `D:/otjang-ai-outfit-test/`: Git 메타데이터를 포함한 266개 파일.
+- 각 파일의 크기와 SHA256이 D 사본과 일치하는지 모두 확인한 후, 정확히 위의 C 원본 폴더 두 개만 삭제했다. 이 두 폴더의 총 파일 크기는 8,659,593 bytes였다. 큰 모델과 설치 환경은 이전부터 D에 있었다.
+- Python 3.11.1 실행 파일·표준 라이브러리를 `D:/ai-outfit-runtime/python311/`로 복사하고 기존 D 가상환경을 정식 `venv --upgrade --without-pip`로 갱신했다. 기존 C Python은 2023년부터 있던 설치이며 이번 시험이 만든 설치가 아니므로 삭제하지 않았다.
+- 입력·결과·로그: `D:/ai-outfit/`. ComfyUI 사용자 설정·DB: `D:/ai-outfit/user/`.
+- 임시 파일, Python 바이트코드, pip/Hugging Face/PyTorch/CUDA/컴파일 캐시 및 라이브러리의 홈 디렉터리는 이 시험 프로세스 안에서만 `D:/ai-outfit-runtime/` 아래로 지정했다. Windows 전역 환경 변수는 바꾸지 않았다.
+- 실행 진입점은 `D:/ai-outfit-runtime/run-local.ps1`이다. 예: `D:/ai-outfit-runtime/run-local.ps1 D:/ai-outfit-runtime/launch_comfy.py`.
+- `fetch_kit.py`의 Windows 기본 위치도 D로 바꾸고 `AI_OUTFIT_DIR` 재지정과 저장소 내부 이미지 저장 방지 검사를 추가했다. 이미 확보한 네 장의 입력을 재다운로드하지 않는다.
+
+D 전용 Python·Nunchaku import, 임시/캐시 위치, 기존 입력 재사용, 삭제한 C 폴더가 재생성되지 않았음을 검증했고 모두 통과했다. D 경로로 변경한 외부 통신 차단 가드도 자체 시험을 통과했다. **이번 후속 작업에서는 생성 시험을 다시 실행하지 않았다.** 위 첫 시도의 0/6장과 품질 판정 보류는 그대로다.
+
+별도 시스템 제약도 남아 있다. 읽기 전용 점검에서 Windows 페이지 파일은 `C:/pagefile.sys`로 확인됐다. 작업 폴더를 D로 옮겨도 운영체제의 가상메모리 위치까지 자동으로 바뀌지는 않는다. C 급감의 상세 원인은 이번 측정만으로 확정하지 않았으며, C 사용이 완전히 배제되는 실행을 확인한 것은 아니다. 활성 시스템 파일 삭제, 페이지 파일 재설정, 드라이브 포맷은 수행하지 않았다.
 
 ## 공식 근거
 
