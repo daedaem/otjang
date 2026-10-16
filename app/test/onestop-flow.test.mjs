@@ -22,12 +22,12 @@ execFileSync(process.execPath, [path.join(appRoot, 'tools/build.mjs'), '--out', 
 const html = fs.readFileSync(output, 'utf8');
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(
   /\n\}\)\(\);\s*$/,
-  '\nglobalThis.testApp = { state: () => state, ready: appReady, store: wardrobeStore, candidateDraft: () => candidateDraft, draft: () => draft, pendingOptionChange: () => pendingOptionChange, candidateGarmentReview: () => candidateGarmentReview, beginCandidateGarmentReview, applyCandidateGarmentReview, beginCandidate, compareCatalogProduct, applySnapshot, candidateSheet, saveCandidateDraft, journeySheet, setJourneyField, recordJourneyAction, renderSaved, chooseWardrobeBackup, chooseGarmentPhoto, saveGarmentDraft, recommendLooks, search, itemSheet };\n})();',
+  '\nglobalThis.testApp = { sharedReady: sharedLinkHandled, state: () => state, ready: appReady, store: wardrobeStore, candidateDraft: () => candidateDraft, draft: () => draft, pendingOptionChange: () => pendingOptionChange, candidateGarmentReview: () => candidateGarmentReview, beginCandidateGarmentReview, applyCandidateGarmentReview, beginCandidate, compareCatalogProduct, applySnapshot, candidateSheet, saveCandidateDraft, journeySheet, setJourneyField, recordJourneyAction, renderSaved, chooseWardrobeBackup, chooseGarmentPhoto, saveGarmentDraft, recommendLooks, search, itemSheet };\n})();',
 );
 
 // Run the actual bundled callbacks against IDB. These DOM, photo-decoding and
 // canvas doubles do not verify browser layout, camera quality or transactions at a shop.
-async function boot(indexedDB = new IDBFactory(), storage = new Map()) {
+async function boot(indexedDB = new IDBFactory(), storage = new Map(), extraContext = {}) {
   const urls = new Map();
   let nextURL = 0;
   class TestURL extends URL {
@@ -101,6 +101,7 @@ async function boot(indexedDB = new IDBFactory(), storage = new Map()) {
     window: { scrollTo() {} },
     CSS: { escape: (value) => value },
     setTimeout: () => 1, clearTimeout() {}, requestAnimationFrame: (fn) => fn(),
+    ...extraContext,
   });
   vm.runInContext(script, context);
   await context.testApp.ready;
@@ -1590,4 +1591,61 @@ test('hearted products and purchase journeys are one list: 관심 until compared
   assert.equal((saved.match(/class="journey-row liked-row"/g) || []).length, 0);
   assert.equal((saved.match(/data-action="open-journey"/g) || []).length, 1);
   assert.deepEqual(page.state().saved, [product.id, other.id], 'hearts are kept as they were');
+});
+
+test('a link outside the catalog asks for kind and colour before the optional name', async () => {
+  const page = await boot();
+  page.submitQuery('https://www.musinsa.com/products/5755268');
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(sheet, /종류와 색만 고르면 내 옷과 비교할 수 있어요/);
+  assert.ok(sheet.indexOf('id="candidate-kind"') < sheet.indexOf('id="candidate-name"'), 'kind and colour come first');
+  assert.ok(sheet.indexOf('id="candidate-color"') < sheet.indexOf('id="candidate-name"'));
+  page.close();
+});
+
+test('a page opened from a shopping app share starts a comparison from the shared link and clears it from the address', async () => {
+  const replaced = [];
+  const page = await boot(new IDBFactory(), new Map(), {
+    location: { origin: 'https://eoul.example', pathname: '/', search: `?title=${encodeURIComponent('올리브 자켓')}&text=${encodeURIComponent('[무신사] 올리브 자켓 https://www.musinsa.com/products/5755268')}&keep=1`, hash: '' },
+    history: { replaceState: (_s, _t, url) => replaced.push(url) }, URLSearchParams,
+  });
+  await page.app.sharedReady;
+  assert.equal(page.app.candidateDraft().candidate.productId, 'ms-5755268');
+  assert.equal(page.app.candidateDraft().candidate.name, '', 'shared text is not used as product information');
+  assert.deepEqual(replaced, ['/?keep=1']);
+  assert.equal(page.state().journeys.length, 0, 'a share never saves a record by itself');
+  page.close();
+});
+
+test('pasting share text into the search box opens the comparison for its link', async () => {
+  const page = await boot();
+  page.submitQuery('이거 살까? https://www.musinsa.com/products/5755268');
+  assert.equal(page.app.candidateDraft().candidate.productId, 'ms-5755268');
+  page.close();
+});
+
+test('several basics can be picked at once and saved without colour, then offer the next pick', async () => {
+  const page = await boot();
+  await page.click({ action: 'tab', tab: 'closet' });
+  const slots = [...page.nodes.get('app').innerHTML.matchAll(/data-action="essential-pick" data-slot="([^"]+)"/g)].map((m) => m[1]).slice(0, 2);
+  assert.equal(slots.length, 2, 'the closet offers basics to pick');
+  for (const slot of slots) await page.click({ action: 'essential-pick', slot });
+  assert.match(page.nodes.get('app').innerHTML, /<details class="essential-check" open>/);
+  assert.match(page.nodes.get('app').innerHTML, /고른 2벌 옷장에 넣기/);
+  await page.click({ action: 'essential-pick', slot: slots[1] });
+  assert.match(page.nodes.get('app').innerHTML, /고른 1벌 옷장에 넣기/);
+  await page.click({ action: 'essential-pick', slot: slots[1] });
+  await page.click({ action: 'essential-save' });
+  const garments = page.state().garments;
+  assert.deepEqual(garments.map((g) => g.slot).sort(), [...slots].sort());
+  assert.ok(garments.every((g) => g.color === null && g.photoId === null));
+  assert.equal(page.state().demo, false);
+  assert.match(page.nodes.get('toast').innerHTML, /기본 옷 2벌을 넣었어요/);
+  assert.match(page.nodes.get('toast').innerHTML, /data-action="closet-review-open">색 고르기</, 'colourless basics lead to the review list first');
+  assert.match(page.nodes.get('app').innerHTML, /종류·색 확인 필요 2벌/);
+  await page.click({ action: 'closet-review-open' });
+  assert.match(page.nodes.get('app').innerHTML, /class="review-list"/);
+  for (const g of garments) await page.click({ action: 'own-color', stay: 'review', id: g.id, color: 'navy' });
+  assert.match(page.nodes.get('toast').innerHTML, /확인할 옷을 모두 확인했어요/);
+  page.close();
 });

@@ -797,7 +797,7 @@ img { display: block; max-width: 100%; }
 
 /* Labels sit under photos, not on them (award-winning shops keep the garment
    image clean); the confirmation hint follows the garment name. */
-.citem .closet-status { display: inline-block; justify-self: start; margin-top: var(--space-1); padding: 2px var(--space-2); border-radius: var(--radius-xs); background: var(--sunk); color: var(--ink-2); font-size: var(--text-caption); font-weight: var(--weight-medium); }
+.citem .closet-status, .review-body .closet-status { display: inline-block; justify-self: start; margin-top: var(--space-1); padding: 2px var(--space-2); border-radius: var(--radius-xs); background: var(--sunk); color: var(--ink-2); font-size: var(--text-caption); font-weight: var(--weight-medium); }
 .next-owned-photo { height: auto; aspect-ratio: var(--photo-ratio); }
 /* Spacing utilities for markup that used inline styles. */
 .u-pt-0 { padding-top: 0; }
@@ -828,3 +828,16 @@ h1, h2, h3, h4, .detail-title { text-wrap: balance; }
 .liked-open > span { display: grid; gap: 3px; min-width: 0; }
 .liked-open > span > span { font-size: var(--text-label); color: var(--ink-2); }
 .saved-filters { margin-top: var(--space-4); }
+/* 사진 여러 장 이어서 등록: 몇 번째 사진인지와 건너뛰기·그만두기 */
+.photo-queue { margin: var(--space-2) 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--sunk); }
+.photo-queue p { margin: 0; font-size: var(--text-body-s); line-height: 1.5; }
+.photo-queue .opts { margin-top: var(--space-2); }
+/* 확인 필요 모아 보기: 한 줄에서 색을 바로 고른다 */
+.review-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: 18px; }
+.review-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; align-items: start; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.review-photo { display: block; width: 76px; padding: 0; }
+.review-body { display: grid; gap: var(--space-2); min-width: 0; }
+.review-body .closet-status { margin-top: 0; }
+.review-swatches { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 2px; }
+.review-swatches::-webkit-scrollbar { display: none; }
+.review-swatches .sw.named { flex: 0 0 56px; scroll-snap-align: start; }
