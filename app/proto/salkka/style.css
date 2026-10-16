@@ -23,6 +23,15 @@
   --out: cubic-bezier(.2, .8, .2, 1);
   --dock-h: 72px;
   color-scheme: light;
+  /* the shared add sheet, in the same Toss-like palette */
+  --pa-bg: #FFFFFF;
+  --pa-ink: #191F28;
+  --pa-sub: #6B7684;
+  --pa-line: #E5E8EB;
+  --pa-surface: #F2F4F6;
+  --pa-accent: #1B6FE8;
+  --pa-accent-ink: #FFFFFF;
+  --pa-radius: 20px;
 }
 
 html { background: var(--bg); }
@@ -159,6 +168,17 @@ body {
 .chip:active { transform: scale(.96); }
 .chip.lead { background: var(--accent-btn); color: #fff; }
 .chip.lead:hover { background: #1760CF; }
+.chip.quiet { min-height: 44px; background: none; color: var(--ink-2); font-size: 15px; font-weight: 500; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line-2); }
+.chip.quiet:hover { background: none; color: var(--ink); }
+.add-own {
+  display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+  min-height: 56px; margin: 8px 0 4px; border-radius: 16px;
+  background: var(--accent-btn); color: #fff; font-size: 17px; font-weight: 700; letter-spacing: -.02em;
+  transition: transform .2s var(--spring), background-color .15s var(--out);
+}
+.add-own span { font-size: 22px; font-weight: 500; line-height: 1; }
+.add-own:hover { background: #1760CF; }
+.add-own:active { transform: scale(.97); }
 .chip.danger { background: #E42939; color: #fff; }
 
 .m-div { margin-top: 40px; display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--mute); }

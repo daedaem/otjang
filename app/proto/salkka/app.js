@@ -45,7 +45,7 @@
 
   // ── small helpers
   const kc = (x) => `${P.colorName(x.color)} ${P.shortKind(x)}`.trim();
-  const snap = (g) => ({ id: g.id, productId: g.productId, slot: g.slot, color: g.color, label: P.label(g), ex: exIds.has(g.id) });
+  const snap = (g) => ({ id: g.id, productId: g.productId ?? null, photoId: g.photoId || null, slot: g.slot, color: g.color, label: P.label(g), ex: exIds.has(g.id) });
   const garments = () => P.record.garments;
   const snapPiece = (it) => (it.garment ? { garment: snap(it.garment), role: it.role, roleName: it.roleName || P.roleName(it.role) }
     : it.need ? { need: true, slot: { id: it.slot?.id }, kind: it.kind, role: it.role, roleName: it.roleName || P.roleName(it.role) }
@@ -196,9 +196,12 @@
       }
       case 'chips': {
         const btn = (o, i) => `<button class="chip${o.lead ? ' lead' : ''}" type="button" data-act="chip" data-i="${i}" style="--i:${i}">${esc(o.label)}</button>`;
-        const lead = e.opts.map((o, i) => [o, i]).filter(([o]) => o.lead);
-        const rest = e.opts.map((o, i) => [o, i]).filter(([o]) => !o.lead);
-        return `<div class="m m-chips" data-id="${e.id}" role="group" aria-label="대답 고르기">${lead.map(([o, i]) => btn(o, i)).join('')}${rest.length ? `<div class="chip-row" style="--n:${rest.length}">${rest.map(([o, i]) => btn(o, i)).join('')}</div>` : ''}</div>`;
+        const all = e.opts.map((o, i) => [o, i]);
+        const lead = all.filter(([o]) => o.lead);
+        const rest = all.filter(([o]) => !o.lead && !o.quiet);
+        const quiet = all.filter(([o]) => o.quiet);
+        const n = e.stack ? 1 : rest.length;
+        return `<div class="m m-chips" data-id="${e.id}" role="group" aria-label="대답 고르기">${lead.map(([o, i]) => btn(o, i)).join('')}${rest.length ? `<div class="chip-row" style="--n:${n}">${rest.map(([o, i]) => btn(o, i)).join('')}</div>` : ''}${quiet.map(([o, i]) => btn(o, i).replace('class="chip', 'class="chip quiet')).join('')}</div>`;
       }
       case 'picker': {
         const cats = pickerCats();
@@ -337,11 +340,47 @@
     exIds = new Set(); saveEx();
     updateCount();
     await say([
-      '먼저 옷장을 알려 주세요.',
-      { t: 's', text: '가진 옷과 비슷한 걸 눌러 주세요.' },
+      '가진 옷부터 알려 주세요.',
+      { t: 's', text: '옷 사진을 넣으면, 그 옷에 맞춰 필요한 옷과 코디를 찾아 드려요.' },
+      addChips(),
+    ]);
+  }
+  const addChips = () => ({ t: 'chips', stack: true, opts: [
+    { label: '내 옷 사진으로 넣기', a: 'add', lead: true },
+    { label: '예시 옷장으로 해 볼게요', a: 'example' },
+    { label: '사진 없이 비슷한 옷 골라 넣기', a: 'pick', quiet: true },
+  ] });
+  async function pickFlow() {
+    await say([
+      '비슷한 옷을 눌러 주세요.',
       { t: 'picker', mode: 'first', cat: 'top' },
       { t: 'chips', opts: [{ label: '다 골랐어요', a: 'pickDone', lead: true }, { label: '예시 옷장으로 해 볼게요', a: 'example' }] },
     ]);
+  }
+  // The shared add sheet (photo, kind + colour, or product). Resolves with how many were added.
+  function addSheet() {
+    const before = garments().length;
+    return new Promise((resolve) => {
+      P.openAdd({
+        onChange: () => { updateCount(); refreshPickers(); if (layerOpen) renderSheet(); },
+        onClose: () => { updateCount(); if (layerOpen) renderSheet(); resolve(Math.max(0, garments().length - before)); },
+      });
+    });
+  }
+  async function addFlow() {
+    const added = await addSheet();
+    if (!added) {
+      await say(['괜찮아요, 나중에 넣어도 돼요.', addChips()]);
+      return;
+    }
+    const total = garments().length;
+    await say([`옷 ${added}벌을 봤어요.`, { t: 'closet', gs: garments().map(snap), example: false }]);
+    if (total < 3) {
+      await say([{ t: 's', text: '옷을 3벌 이상 넣으면 필요한 옷과 코디를 더 잘 찾아 드려요.' },
+        { t: 'chips', opts: [{ label: '더 넣기', a: 'add', lead: true }, { label: '이대로 볼게요', a: 'report' }] }]);
+      return;
+    }
+    await closetReport();
   }
   const invite = ['궁금한 옷 링크를 붙여 주세요.', { t: 's', text: '제가 골라 드릴 수도 있어요.' }];
   async function pickDone() {
@@ -384,7 +423,8 @@
     const gaps = N.gaps.filter((g) => g.looks?.length);
     if (!gaps.length) {
       if (N.pairs.length) { await pairStep(N); return; }
-      await say(['지금 옷장으로 충분해 보여요.', { t: 's', text: '궁금한 옷이 있으면 링크를 붙여 주세요.' }]);
+      if (garments().length < 3) await say(['옷을 몇 벌 더 넣어 주세요.', { t: 's', text: '그래야 필요한 옷과 코디를 찾아 드릴 수 있어요.' }, { t: 'chips', opts: [{ label: '더 넣기', a: 'add', lead: true }] }]);
+      else await say(['지금 옷장으로 충분해 보여요.', { t: 's', text: '궁금한 옷이 있으면 링크를 붙여 주세요.' }]);
       return;
     }
     const i = (book.gapIdx || 0) % gaps.length;
@@ -494,9 +534,10 @@
   }
   async function tellMore(pid) {
     const p = P.product(pid);
-    const cat = PAIR[P.category(p)] || 'top';
-    await say(['비슷한 옷을 눌러 주세요.', { t: 'picker', mode: 'more', pid, base: garments().length, cat },
-      { t: 'chips', opts: [{ label: '다 골랐어요', a: 'moreDone', pid, lead: true }] }]);
+    const added = await addSheet();
+    if (!added) { await say(['그대로 둘게요.', ...(p ? [decisionChips(p)] : [])]); return; }
+    await say([`${added}벌 더 기억할게요.`, { t: 's', text: '다시 볼게요.' }]);
+    if (p) await judgeTurn(p);
   }
   async function moreDone(pid) {
     const picker = log.find((e) => e.t === 'picker');
@@ -525,6 +566,9 @@
       else if (o.a === 'moreDone') await moreDone(o.pid);
       else if (o.a === 'tray') openTray();
       else if (o.a === 'need') await needStep();
+      else if (o.a === 'add') await addFlow();
+      else if (o.a === 'pick') await pickFlow();
+      else if (o.a === 'report') await closetReport();
       else if (o.a === 'pair') await pairStep();
     });
   }
@@ -612,6 +656,7 @@
         <h2 id="sh-title" tabindex="-1">내 옷장 <span>${gs.length}벌</span></h2>
         <button class="x" type="button" data-act="sheet-close" aria-label="닫기">${CLOSE}</button>
       </div>
+      <button class="add-own" type="button" data-act="sheet-add"><span aria-hidden="true">+</span> 내 옷 추가</button>
       <button class="tally" type="button" data-act="records" aria-expanded="${sheet.records}" ${decs.length ? '' : 'disabled'}>
         <span>살래요 <b>${count('buy')}</b> · 볼게요 <b>${count('hold')}</b> · 안 살래요 <b>${count('skip')}</b></span>
         ${decs.length ? `<span class="tally-more">${sheet.records ? '접기' : '기록 보기'}</span>` : ''}
@@ -628,7 +673,7 @@
           <button class="rm" type="button" data-act="remove" data-gid="${esc(g.id)}" aria-label="${esc(kc(g))} 빼기">${CLOSE}</button>
         </li>`).join('')}</ul>` : '<p class="sh-empty">아직 비어 있어요. 아래에서 가진 옷과 비슷한 걸 골라 주세요.</p>'}
       <section class="sh-add" aria-labelledby="sh-add-t">
-        <h3 id="sh-add-t">옷 더하기 <span>가진 옷과 비슷한 걸 눌러 주세요</span></h3>
+        <h3 id="sh-add-t">사진 없이 넣기 <span>가진 옷과 비슷한 걸 눌러 주세요</span></h3>
         <div class="cats" role="group" aria-label="종류">${cats.map((c) => `<button class="cat${c === sheet.cat ? ' on' : ''}" type="button" data-act="sheet-cat" data-cat="${c}" aria-pressed="${c === sheet.cat}">${esc(P.cats[c])}</button>`).join('')}</div>
         <div class="pk-grid">${P.ownables(sheet.cat, { limit: 12 }).map((p) => { const on = P.owns(p); return `<button class="pk${on ? ' on' : ''}" type="button" data-act="sheet-own" data-pid="${esc(p.id)}" aria-pressed="${on}" aria-label="${esc(kc(p))} · ${esc(p.name)}">
           <span class="ph">${tile(p)}<span class="ck">${CHECK}</span></span><span class="pk-l">${esc(kc(p))}</span></button>`; }).join('')}</div>
@@ -753,6 +798,7 @@
     } else if (a === 'tray-close') closeTray();
     else if (a === 'closet') openSheet();
     else if (a === 'sheet-close') closeSheet();
+    else if (a === 'sheet-add') addSheet();
     else if (a === 'records') { sheet.records = !sheet.records; renderSheet(); }
     else if (a === 'sheet-cat') { sheet.cat = t.dataset.cat; renderSheet(); }
     else if (a === 'sheet-own') {

@@ -9,3 +9,50 @@ img { display: block; max-width: 100%; }
 [hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* 내 옷 추가 시트(Proto.openAdd). 시안은 --pa-* 변수로 색·모서리만 바꾼다. */
+.pa-scrim { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, .42); animation: pa-fade .18s ease-out; }
+.pa-sheet { width: 100%; max-width: 520px; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--pa-bg, #FFFFFF); color: var(--pa-ink, #111111); border-radius: var(--pa-radius, 20px) var(--pa-radius, 20px) 0 0; padding: 8px max(20px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); animation: pa-rise .26s cubic-bezier(.2, .9, .3, 1); font-family: inherit; }
+@keyframes pa-fade { from { opacity: 0; } }
+@keyframes pa-rise { from { transform: translateY(32px); opacity: 0; } }
+.pa-grab { width: 40px; height: 4px; margin: 4px auto 8px; border-radius: 2px; background: var(--pa-line, #E5E7EB); }
+.pa-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: 8px; }
+.pa-head h2 { margin: 0; text-align: center; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.pa-icon { width: 44px; height: 44px; display: grid; place-items: center; font-size: 26px; line-height: 1; color: var(--pa-sub, #6B7280); border-radius: 50%; }
+.pa-lead { margin: 4px 0 16px; font-size: 15px; line-height: 1.55; color: var(--pa-sub, #6B7280); }
+.pa-lead b { color: var(--pa-ink, #111111); }
+.pa-note { margin: 10px 0; font-size: 13px; color: var(--pa-sub, #6B7280); }
+.pa-error { margin: 12px 0 0; font-size: 14px; color: #C8362B; }
+.pa-option { display: grid; gap: 2px; width: 100%; min-height: 64px; margin-top: 10px; padding: 14px 16px; text-align: left; border: 1px solid var(--pa-line, #E5E7EB); border-radius: calc(var(--pa-radius, 20px) * .7); background: var(--pa-surface, #F4F4F5); cursor: pointer; }
+.pa-option b { font-size: 16px; font-weight: 700; }
+.pa-option span { font-size: 13px; color: var(--pa-sub, #6B7280); }
+.pa-option.pa-primary { background: var(--pa-accent, #111111); border-color: var(--pa-accent, #111111); color: var(--pa-accent-ink, #FFFFFF); }
+.pa-option.pa-primary span { color: inherit; opacity: .8; }
+.pa-preview { display: grid; place-items: center; margin: 0 0 14px; padding: 8px; border-radius: calc(var(--pa-radius, 20px) * .7); background: var(--pa-surface, #F4F4F5); }
+.pa-preview img { max-height: 220px; width: auto; border-radius: 8px; }
+.pa-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.pa-tabs::-webkit-scrollbar { display: none; }
+.pa-tabs button, .pa-chips button { flex: none; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--pa-line, #E5E7EB); background: var(--pa-bg, #FFFFFF); color: var(--pa-ink, #111111); font-size: 14px; }
+.pa-tabs button[aria-selected="true"], .pa-chips button[aria-pressed="true"] { background: var(--pa-accent, #111111); border-color: var(--pa-accent, #111111); color: var(--pa-accent-ink, #FFFFFF); font-weight: 700; }
+.pa-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pa-swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pa-swatches button { display: grid; justify-items: center; gap: 6px; min-height: 76px; padding: 10px 4px; border-radius: 12px; border: 1px solid transparent; background: var(--pa-surface, #F4F4F5); font-size: 12px; color: var(--pa-ink, #111111); }
+.pa-swatches i { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.pa-swatches button[aria-pressed="true"] { border-color: var(--pa-accent, #111111); box-shadow: inset 0 0 0 1px var(--pa-accent, #111111); font-weight: 700; }
+.pa-field { display: grid; gap: 6px; margin: 16px 0 0; font-size: 13px; color: var(--pa-sub, #6B7280); }
+.pa-field input { min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--pa-line, #E5E7EB); background: var(--pa-bg, #FFFFFF); color: var(--pa-ink, #111111); font-size: 16px; }
+.pa-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pa-grid button { display: grid; gap: 2px; text-align: left; min-width: 0; font-size: 12px; color: var(--pa-ink, #111111); }
+.pa-grid img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; background: var(--pa-surface, #F4F4F5); }
+.pa-grid span { color: var(--pa-sub, #6B7280); }
+.pa-grid b { font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pa-grid button[aria-pressed="true"] { opacity: .45; }
+.pa-done { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 14px; align-items: center; margin: 8px 0 4px; }
+.pa-done img { width: 88px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; background: var(--pa-surface, #F4F4F5); }
+.pa-done b { display: block; font-size: 16px; }
+.pa-done span { font-size: 13px; color: var(--pa-sub, #6B7280); }
+.pa-cta, .pa-ghost { display: block; width: 100%; min-height: 56px; margin-top: 16px; border-radius: calc(var(--pa-radius, 20px) * .8); font-size: 16px; font-weight: 700; }
+.pa-cta { background: var(--pa-accent, #111111); color: var(--pa-accent-ink, #FFFFFF); }
+.pa-cta[disabled] { opacity: .35; }
+.pa-ghost { margin-top: 8px; background: var(--pa-surface, #F4F4F5); color: var(--pa-ink, #111111); }
+.pa-icon:focus-visible, .pa-option:focus-visible, .pa-tabs button:focus-visible, .pa-chips button:focus-visible, .pa-swatches button:focus-visible, .pa-grid button:focus-visible, .pa-cta:focus-visible, .pa-ghost:focus-visible { outline: 2px solid var(--pa-accent, #111111); outline-offset: 2px; }

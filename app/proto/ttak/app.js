@@ -157,25 +157,32 @@
       </button>`;
     }).join('');
   }
-  const pickedIn = (c) => [...ui.picks.values()].filter((p) => P.category(p) === c).length;
-  const onbDoneLabel = () => (ui.picks.size ? `${ui.picks.size}벌 걸고 시작` : '옷을 골라 주세요');
   function onbHTML() {
-    const cats = catsWithItems();
-    if (!ui.pickCat || !cats.includes(ui.pickCat)) ui.pickCat = cats.includes('top') ? 'top' : cats[0];
-    return `<div class="tt-onb">
+    return `<div class="tt-onb tt-onb2">
       <header class="tt-onb-head">
         <button class="tt-iconbtn" data-act="onb-back" aria-label="성별 다시 고르기">${I.arrL}</button>
         <p class="tt-step">${P.record.gender === 'F' ? '여성' : '남성'} 옷장 <span>2 / 2</span></p>
       </header>
-      <h1 class="tt-onb-t">가진 옷을<br>탭하세요</h1>
-      <p class="tt-onb-s">똑같지 않아도 돼요. 종류와 색이 비슷하면 판정에 충분해요.</p>
-      <div class="tt-chips tt-onb-chips" role="tablist" aria-label="종류" id="tt-onb-chips">${chipsHTML(cats, ui.pickCat, 'onb-cat', pickedIn)}</div>
-      <div class="tt-pgrid" id="tt-onb-grid">${pickGridHTML(ui.pickCat, (p) => ui.picks.has(p.id), 'onb-pick')}</div>
-      <footer class="tt-onb-foot">
-        <button class="tt-ghostbtn" data-act="onb-example">예시 옷장으로 시작</button>
-        <button class="tt-cta" data-act="onb-done" id="tt-onb-done" ${ui.picks.size ? '' : 'disabled'}>${onbDoneLabel()}</button>
+      <h1 class="tt-onb-t">내 옷부터<br>넣어 주세요</h1>
+      <p class="tt-onb-s">가진 옷을 3벌 이상 넣으면, 내 옷장에 필요한 옷과 그 옷으로 완성되는 코디를 찾아 드려요.</p>
+      <ol class="tt-ways">
+        <li><i>01</i><b>사진으로</b><span>옷 사진을 찍거나 앨범에서 골라요</span></li>
+        <li><i>02</i><b>종류와 색으로</b><span>사진 없이 빠르게</span></li>
+        <li><i>03</i><b>상품 이름으로</b><span>무신사 상품에서 같은 옷을 찾아요</span></li>
+      </ol>
+      <p class="tt-fine">사진은 이 브라우저에만 남아요.</p>
+      <footer class="tt-onb-foot is-stack">
+        <button class="tt-cta is-lime" data-act="onb-add">${I.plus}<span>내 옷 넣고 시작</span></button>
+        <button class="tt-ghostbtn" data-act="onb-example">예시 옷장으로 둘러보기</button>
       </footer>
     </div>`;
+  }
+  // The shared add sheet; every change refreshes the closet's needs and the stack.
+  function openAddSheet(after) {
+    P.openAdd({
+      onChange: () => { ui.queue = null; ui.needs = null; if (!store.get('onb', false)) renderView({ keepScroll: true }); },
+      onClose: () => { ui.queue = null; ui.needs = null; if (after) after(); else renderView({ keepScroll: true }); },
+    });
   }
 
   // ── shell ────────────────────────────────────────────
@@ -234,13 +241,28 @@
     const line = !n.garments ? '가진 옷을 걸면 옷장에 필요한 옷을 알려 드려요.'
       : g ? `${g.short} 하나면 코디 ${g.newLooks}개가 더 생겨요`
       : pr ? `${pr.kinds.join(' · ')} 두 벌이면 코디가 하나 더 생겨요`
-      : '지금 옷장으로 충분해요. 겹치는 옷만 피하세요.';
+      : !n.ready.length ? '아직 코디가 안 나와요. 옷을 더 넣으면 필요한 옷을 찾아 드려요.'
+      : '지금 옷장으로 코디가 나와요. 겹치는 옷만 피하세요.';
     return `<p class="tt-diag-a">내 옷장 <b>${n.garments}</b>벌 · 지금 입을 수 있는 코디 <b>${n.ready.length}</b>개${hasEx() ? '<em>예시 옷장</em>' : ''}</p>
       <p class="tt-diag-b">${esc(line)}</p>`;
   }
   const productsLeft = () => ui.queue.filter((x) => !x.summary).length;
   const leftHTML = () => `<span>남은 후보</span><b>${productsLeft()}</b>`;
+  function emptyHTML() {
+    const gs = P.record.garments;
+    const slots = [0, 1, 2].map((i) => (gs[i] ? `<li class="tt-slot is-on"><img src="${P.photo(gs[i])}" alt=""></li>` : `<li class="tt-slot"><span>${i + 1}</span></li>`)).join('');
+    return `<header class="tt-jhead"><div class="tt-jbrand"><span class="tt-wm" aria-hidden="true">딱</span><p class="tt-left"><span>내 옷장</span><b>${gs.length}</b><span>벌</span></p></div></header>
+      <section class="tt-empty">
+        <ol class="tt-slots" aria-label="넣은 옷 ${gs.length}벌, 3벌 중">${slots}</ol>
+        <h1 class="tt-empty-t">옷을 3벌 이상 넣으면, 내 옷장에 필요한 옷과 코디를 찾아 드려요.</h1>
+        <p class="tt-empty-s">${gs.length ? `${3 - gs.length}벌만 더 넣으면 돼요.` : '사진, 종류·색, 상품 이름 중 편한 방법으로 넣어요.'}</p>
+        <button class="tt-cta is-lime" data-act="add">${I.plus}<span>내 옷 추가</span></button>
+        <button class="tt-ghostbtn" data-act="example-browse">예시 옷장으로 둘러보기</button>
+        ${gs.length ? '<p class="tt-fine">예시로 바꾸면 넣은 옷 대신 예시 옷 6벌이 걸려요.</p>' : ''}
+      </section>`;
+  }
   function judgeHTML() {
+    if (P.record.garments.length < 3) return emptyHTML();
     ensureQueue();
     return `<header class="tt-jhead">
         <div class="tt-jbrand"><span class="tt-wm" aria-hidden="true">딱</span><p class="tt-left" id="tt-left">${leftHTML()}</p></div>
@@ -799,15 +821,17 @@
         ${ui.closetEdit ? `<button class="tt-tile-x" data-act="remove" data-gid="${esc(g.id)}" aria-label="${esc(`${P.label(g)} 빼기`)}">${I.minus}</button>` : ''}
       </li>`).join('');
     return `<section class="tt-page tt-closet${ui.closetEdit ? ' is-edit' : ''}">
-      <header class="tt-phead">
+      <header class="tt-phead tt-chead">
         <h1 class="tt-ptitle">옷장</h1>
-        ${gs.length ? `<button class="tt-textbtn${ui.closetEdit ? ' on' : ''}" data-act="edit" aria-pressed="${ui.closetEdit}">${ui.closetEdit ? '완료' : '편집'}</button>` : ''}
+        <div class="tt-chead-r">
+          ${gs.length ? `<button class="tt-textbtn${ui.closetEdit ? ' on' : ''}" data-act="edit" aria-pressed="${ui.closetEdit}">${ui.closetEdit ? '완료' : '편집'}</button>` : ''}
+          <button class="tt-addpill" data-act="add">${I.plus}<span>내 옷 추가</span></button>
+        </div>
       </header>
       <div class="tt-cstats">
         <p><b>${gs.length}</b><span>벌</span></p>
         <p><b class="${outfits ? 'on' : ''}">${outfits}</b><span>지금 되는 코디</span></p>
       </div>
-      <button class="tt-addbtn" data-act="add">${I.plus}<span>옷 추가</span></button>
       ${ex ? '<p class="tt-exnote"><span class="tt-ex">예시</span>표시는 예시 옷장에서 온 옷이에요. 편집에서 빼고 가진 옷을 걸어 보세요.</p>' : ''}
       ${ready.length ? `<section class="tt-ready" aria-label="지금 입을 수 있는 코디">
           <h2><span>지금 입을 수 있는 코디</span><b>${ready.length}</b></h2>
@@ -872,7 +896,7 @@
         <p class="tt-sheet-sub">무신사 상품 링크를 붙여넣으면 맨 위 카드로 올려요. 이름으로 찾아도 돼요.</p>
         <form class="tt-linkform" data-form="link" novalidate>
           <label class="sr-only" for="tt-link-q">상품 링크 또는 이름</label>
-          <input id="tt-link-q" name="q" type="text" autocomplete="off" spellcheck="false" placeholder="musinsa.com/products/… 또는 이름" enterkeyhint="go" value="${esc(s.q || '')}">
+          <input id="tt-link-q" name="q" type="text" autocomplete="off" spellcheck="false" placeholder="무신사 상품 링크 또는 이름" enterkeyhint="go" value="${esc(s.q || '')}">
           <button type="submit" class="tt-go">판정</button>
         </form>
         <p class="tt-err" role="alert"></p>
@@ -967,30 +991,6 @@
       if (!rm()) $('.tt-onb')?.animate([{ opacity: 0, transform: 'translateX(24px)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
     },
     'onb-back'() { P.reset(); store.del('onb'); route(); },
-    'onb-cat'(el) {
-      ui.pickCat = el.dataset.c;
-      swapChips($('#tt-onb-chips'), ui.pickCat);
-      $('#tt-onb-grid').innerHTML = pickGridHTML(ui.pickCat, (p) => ui.picks.has(p.id), 'onb-pick');
-    },
-    'onb-pick'(el) {
-      const p = P.product(el.dataset.pid);
-      if (!p) return;
-      if (ui.picks.has(p.id)) ui.picks.delete(p.id); else { ui.picks.set(p.id, p); P.buzz(8); }
-      el.setAttribute('aria-pressed', String(ui.picks.has(p.id)));
-      snap(el);
-      $('#tt-onb-chips').innerHTML = chipsHTML(catsWithItems(), ui.pickCat, 'onb-cat', pickedIn);
-      const done = $('#tt-onb-done');
-      done.disabled = !ui.picks.size;
-      done.textContent = onbDoneLabel();
-    },
-    'onb-done'() {
-      if (!ui.picks.size) return;
-      ui.picks.forEach((p) => P.addOwned(p));
-      EX = new Set(); saveEx();
-      store.del('onb');
-      ui.picks = new Map(); ui.queue = null; ui.tab = 'judge';
-      route();
-    },
     'onb-example'() {
       P.startExample(P.record.gender || 'M');
       EX = new Set(P.record.garments.map((g) => g.productId)); saveEx();
@@ -1036,7 +1036,16 @@
       renderView({ keepScroll: true });
       announce(`${P.label(g)}을 옷장에서 뺐어요.`);
     },
-    add() { openSheet('add'); },
+    add() { openAddSheet(); },
+    'example-browse'() {
+      P.startExample(P.record.gender || 'M');
+      EX = new Set(P.record.garments.map((g) => g.productId)); saveEx();
+      ui.queue = null; ui.needs = null;
+      renderView();
+    },
+    'onb-add'() {
+      openAddSheet(() => { store.del('onb'); ui.tab = 'judge'; ui.queue = null; route(); });
+    },
     'add-cat'(el) {
       ui.addCat = el.dataset.c;
       swapChips($('#tt-add-chips'), ui.addCat);

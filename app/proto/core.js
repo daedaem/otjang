@@ -41,7 +41,16 @@ const Proto = (() => {
   const slotOf = (p) => SLOT_BY_ID[p?.slot];
   const product = (id) => PRODUCT_BY_ID[id] || null;
   const garmentProduct = (g) => product(g.productId) || lookalike(g.slot, g.color);
-  const photo = (x) => (x?.productId !== undefined && !x.img ? garmentProduct(x)?.img : x?.img) || '';
+  // A garment shows its own photo when it has one, else its catalog product, else a look-alike product.
+  const photo = (x) => (x?.photoId ? photoOf(x.photoId) : '') || (x?.productId !== undefined && !x.img ? garmentProduct(x)?.img : x?.img) || (x?.slot ? art(x) : '');
+  // Last resort for a garment with no photo and no look-alike product: its silhouette in its colour.
+  function art(g) {
+    const s = SLOT_BY_ID[g.slot];
+    if (!s) return '';
+    const svg = garmentSvg(s, { color: COLORS[g.color]?.hex || '#BBBBBB' }).replaceAll('var(--art-line)', '#8A8A8A')
+      .replace(/<svg([^>]*)>/, '<svg$1 xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#EFEFEC"/>');
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
   const colorName = (c) => COLORS[c]?.label || '';
   const colorHex = (c) => COLORS[c]?.hex || '#999999';
   const kindName = (x) => slotOf(x)?.name || '';
@@ -72,6 +81,10 @@ const Proto = (() => {
     save();
   }
   function removeOwned(id) {
+    for (const g of record.garments.filter((g) => (g.id === id || g.productId === id) && g.photoId)) {
+      try { localStorage.removeItem(PHOTO_KEY(g.photoId)); } catch {}
+      photoCache.delete(g.photoId);
+    }
     record.garments = record.garments.filter((g) => g.id !== id && g.productId !== id);
     save();
   }
@@ -195,9 +208,182 @@ const Proto = (() => {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const reducedMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
+  // ── My own clothes: a photo, or kind and color, or a product found by name.
+  // Photos are made small (longest side 560px, JPEG) and kept in this browser only.
+  const PHOTO_KEY = (id) => `eoul-proto:photo:${id}`;
+  const photoCache = new Map();
+  function photoOf(id) {
+    if (!photoCache.has(id)) { let v = ''; try { v = localStorage.getItem(PHOTO_KEY(id)) || ''; } catch {} photoCache.set(id, v); }
+    return photoCache.get(id);
+  }
+  // Kinds of clothes for the current gender, grouped by category, in the app's own order.
+  function kinds() {
+    const gender = record.gender || 'M';
+    return Object.entries(CATS).map(([cat, name]) => ({ cat, name, slots: SLOTS.filter((s) => s.g === gender && s.cat === cat) }))
+      .filter((group) => group.slots.length);
+  }
+  const colorList = () => Object.entries(COLORS).map(([id, c]) => ({ id, label: c.label, hex: c.hex }));
+  function addGarment({ slot, color, photo = null, label = '' }) {
+    const s = SLOT_BY_ID[slot];
+    if (!s || !COLORS[color]) throw new Error('종류와 색을 골라 주세요.');
+    const id = `g_${crypto.randomUUID()}`;
+    if (photo) {
+      try { localStorage.setItem(PHOTO_KEY(id), photo); } catch { throw new Error('이 브라우저에 사진을 더 저장할 공간이 없어요. 사진 없이 추가해 주세요.'); }
+      photoCache.set(id, photo);
+    }
+    const garment = makeGarment({ id, slot, color, gender: s.g, photoId: photo ? id : null, label, source: 'user' });
+    record.garments = [...record.garments, garment];
+    save();
+    return garment;
+  }
+  // Reads a picked image file into a small JPEG data URL and a suggested color
+  // (the most common colour in the middle of the picture, matched to the app's colours).
+  function readPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, 560 / Math.max(img.naturalWidth, img.naturalHeight));
+          const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const g = canvas.getContext('2d');
+          g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, w, h);
+          g.drawImage(img, 0, 0, w, h);
+          // The background is estimated from the picture's edge and left out, so a
+          // white studio or a floor does not decide the garment's colour.
+          const all = g.getImageData(0, 0, w, h).data;
+          const at = (x, y) => { const i = (y * w + x) * 4; return [all[i], all[i + 1], all[i + 2]]; };
+          const edge = [];
+          for (let x = 0; x < w; x += 4) edge.push(at(x, 0), at(x, h - 1));
+          for (let y = 0; y < h; y += 4) edge.push(at(0, y), at(w - 1, y));
+          const bg = [0, 1, 2].map((k) => edge.reduce((t, c) => t + c[k], 0) / edge.length);
+          const near = (c, d) => (c[0] - d[0]) ** 2 + (c[1] - d[1]) ** 2 + (c[2] - d[2]) ** 2 < 45 ** 2;
+          const bins = new Map();
+          for (let y = Math.round(h * .15); y < Math.round(h * .85); y += 3) {
+            for (let x = Math.round(w * .15); x < Math.round(w * .85); x += 3) {
+              const c = at(x, y);
+              if (near(c, bg)) continue;
+              const key = `${c[0] >> 5},${c[1] >> 5},${c[2] >> 5}`;
+              const bin = bins.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+              bin.n += 1; bin.r += c[0]; bin.g += c[1]; bin.b += c[2];
+              bins.set(key, bin);
+            }
+          }
+          const top = [...bins.values()].sort((x, y) => y.n - x.n)[0];
+          const avg = top ? [top.r / top.n, top.g / top.n, top.b / top.n] : [128, 128, 128];
+          const hexRGB = (hex) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+          const color = Object.entries(COLORS).map(([id, c]) => [id, hexRGB(c.hex).reduce((d, v, k) => d + (v - avg[k]) ** 2, 0)])
+            .sort((x, y) => x[1] - y[1])[0][0];
+          resolve({ photo: canvas.toDataURL('image/jpeg', .8), color });
+        } catch (error) { reject(error); } finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이 사진을 열 수 없어요. 다른 사진을 골라 주세요.')); };
+      img.src = url;
+    });
+  }
+
+  // The add sheet, shared by every prototype and themed by CSS custom properties
+  // (--pa-bg, --pa-ink, --pa-sub, --pa-line, --pa-surface, --pa-accent, --pa-accent-ink, --pa-radius).
+  function openAdd({ onChange = () => {}, onClose = () => {} } = {}) {
+    document.querySelector('.pa-scrim')?.remove();
+    const root = document.createElement('div');
+    root.className = 'pa-scrim';
+    root.innerHTML = '<div class="pa-sheet" role="dialog" aria-modal="true" aria-label="내 옷 추가"><div class="pa-grab"></div><div class="pa-body"></div></div>';
+    document.body.append(root);
+    const body = root.querySelector('.pa-body');
+    const ui = { step: 'start', photo: null, cat: kinds()[0]?.cat, slot: null, color: null, suggested: null, label: '', query: '', added: [], error: '' };
+    const close = () => { root.remove(); document.removeEventListener('keydown', onKey); onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    const head = (title, back = true) => `<div class="pa-head">${back ? '<button class="pa-icon" data-pa="back" aria-label="이전">‹</button>' : '<span></span>'}<h2>${esc(title)}</h2><button class="pa-icon" data-pa="close" aria-label="닫기">×</button></div>`;
+    const preview = () => ui.photo ? `<div class="pa-preview"><img src="${ui.photo}" alt="고른 사진"></div>` : '';
+    function draw() {
+      const slot = SLOT_BY_ID[ui.slot];
+      if (ui.step === 'start') {
+        body.innerHTML = `${head('내 옷 추가', false)}
+          <p class="pa-lead">가진 옷을 넣으면, 그 옷에 맞춰 필요한 옷과 코디를 찾아 드려요.</p>
+          <label class="pa-option pa-primary"><input type="file" accept="image/*" data-pa="file" hidden><b>사진으로 추가</b><span>옷 사진을 찍거나 앨범에서 골라요</span></label>
+          <button class="pa-option" data-pa="go" data-step="kind"><b>종류와 색으로 추가</b><span>사진 없이 빠르게</span></button>
+          <button class="pa-option" data-pa="go" data-step="search"><b>상품 이름으로 찾기</b><span>무신사 상품에서 같은·비슷한 옷을 골라요</span></button>
+          ${ui.added.length ? `<p class="pa-note">방금 넣은 옷 ${ui.added.length}벌</p><button class="pa-cta" data-pa="close">다 했어요</button>` : ''}
+          ${ui.error ? `<p class="pa-error">${esc(ui.error)}</p>` : ''}`;
+      } else if (ui.step === 'kind') {
+        const groups = kinds();
+        const group = groups.find((g) => g.cat === ui.cat) || groups[0];
+        body.innerHTML = `${head('어떤 옷인가요?')}${preview()}
+          <div class="pa-tabs" role="tablist">${groups.map((g) => `<button role="tab" data-pa="cat" data-cat="${g.cat}" aria-selected="${g.cat === group.cat}">${esc(g.name)}</button>`).join('')}</div>
+          <div class="pa-chips">${group.slots.map((s) => `<button data-pa="slot" data-slot="${s.id}" aria-pressed="${ui.slot === s.id}">${esc(s.name)}</button>`).join('')}</div>`;
+      } else if (ui.step === 'color') {
+        const fixed = slot?.requiredColors;
+        const list = colorList().filter((c) => !fixed || fixed.includes(c.id));
+        body.innerHTML = `${head('무슨 색인가요?')}${preview()}
+          <p class="pa-lead"><b>${esc(slot?.name || '')}</b>${ui.suggested ? ` · 사진에서 고른 색은 <b>${esc(COLORS[ui.suggested]?.label || '')}</b>이에요. 다르면 바꿔 주세요.` : ''}</p>
+          <div class="pa-swatches">${list.map((c) => `<button data-pa="color" data-color="${c.id}" aria-pressed="${ui.color === c.id}"><i style="background:${c.hex}"></i><span>${esc(c.label)}</span></button>`).join('')}</div>
+          <label class="pa-field"><span>이름 (선택)</span><input data-pa="label" maxlength="40" placeholder="예: 유니클로 옥스퍼드 셔츠" value="${esc(ui.label)}"></label>
+          ${ui.error ? `<p class="pa-error">${esc(ui.error)}</p>` : ''}
+          <button class="pa-cta" data-pa="save" ${ui.color ? '' : 'disabled'}>옷장에 넣기</button>`;
+      } else if (ui.step === 'search') {
+        const results = ui.query.trim() ? search(ui.query, { limit: 24 }) : ownables(null, { limit: 12 });
+        body.innerHTML = `${head('상품 이름으로 찾기')}
+          <label class="pa-field"><span>브랜드나 상품 이름</span><input data-pa="query" type="search" placeholder="예: 옥스퍼드 셔츠, 치노" value="${esc(ui.query)}"></label>
+          <p class="pa-note">${ui.query.trim() ? `${results.length}개 찾았어요` : '많이 가진 기본 옷이에요'} · 눌러서 내 옷장에 넣어요</p>
+          <div class="pa-grid">${results.map((p) => `<button data-pa="product" data-id="${p.id}" ${owns(p) ? 'aria-pressed="true"' : ''}><img src="${p.img}" alt="" loading="lazy"><span>${esc(p.brand)}</span><b>${esc(p.name)}</b></button>`).join('') || '<p class="pa-note">찾는 상품이 없어요. 종류와 색으로 추가해 주세요.</p>'}</div>`;
+        const input = body.querySelector('[data-pa="query"]');
+        input.focus(); input.setSelectionRange(input.value.length, input.value.length);
+      } else if (ui.step === 'done') {
+        const last = ui.added[ui.added.length - 1];
+        body.innerHTML = `${head('옷장에 넣었어요', false)}
+          <div class="pa-done"><img src="${photo(last)}" alt=""><div><b>${esc(label(last))}</b><span>${esc(COLORS[last.color]?.label || '')} · ${esc(SLOT_BY_ID[last.slot]?.name || '')}</span></div></div>
+          <p class="pa-lead">지금 옷장 ${record.garments.length}벌. 많이 넣을수록 필요한 옷과 코디가 정확해져요.</p>
+          <button class="pa-cta" data-pa="again">한 벌 더 추가</button>
+          <button class="pa-ghost" data-pa="close">다 했어요</button>`;
+      }
+    }
+    const finish = (garment) => { ui.added.push(garment); ui.error = ''; ui.step = 'done'; onChange(garment); draw(); };
+    root.addEventListener('click', (e) => {
+      if (e.target === root) return close();
+      const el = e.target.closest('[data-pa]');
+      if (!el) return;
+      const a = el.dataset.pa;
+      if (a === 'close') return close();
+      if (a === 'back') { ui.step = ui.step === 'color' ? 'kind' : 'start'; ui.error = ''; return draw(); }
+      if (a === 'go') { ui.step = el.dataset.step; ui.photo = null; ui.suggested = null; ui.color = null; ui.slot = null; return draw(); }
+      if (a === 'cat') { ui.cat = el.dataset.cat; return draw(); }
+      if (a === 'slot') { ui.slot = el.dataset.slot; const fixed = SLOT_BY_ID[ui.slot]?.requiredColors; ui.color = fixed?.length === 1 ? fixed[0] : ui.suggested; ui.step = 'color'; return draw(); }
+      if (a === 'color') { ui.color = el.dataset.color; return draw(); }
+      if (a === 'save') {
+        try { finish(addGarment({ slot: ui.slot, color: ui.color, photo: ui.photo, label: ui.label.trim() })); buzz(10); }
+        catch (error) { ui.error = error.message; draw(); }
+        return;
+      }
+      if (a === 'product') {
+        const p = product(el.dataset.id);
+        if (p && !owns(p)) { addOwned(p); finish(record.garments[record.garments.length - 1]); buzz(10); }
+        return;
+      }
+      if (a === 'again') { Object.assign(ui, { step: 'start', photo: null, slot: null, color: null, suggested: null, label: '', query: '' }); return draw(); }
+    });
+    root.addEventListener('change', async (e) => {
+      if (e.target.dataset?.pa !== 'file' || !e.target.files?.[0]) return;
+      try {
+        const { photo: data, color } = await readPhoto(e.target.files[0]);
+        Object.assign(ui, { photo: data, suggested: color, color: null, slot: null, error: '', step: 'kind' });
+      } catch (error) { ui.error = error.message; }
+      draw();
+    });
+    root.addEventListener('input', (e) => {
+      if (e.target.dataset?.pa === 'label') ui.label = e.target.value;
+      if (e.target.dataset?.pa === 'query') { ui.query = e.target.value; draw(); }
+    });
+    draw();
+    return close;
+  }
+
   return {
     meta, get record() { return record; }, save, reset, start, startExample, addOwned, removeOwned, owns, ownables, candidates, judge, decide, decisionOf,
-    outfits, needs, fillNeed, roleName, fromLink, search, product, garmentProduct, photo, colorName, colorHex, kindName, shortKind, category, label, price, buzz, esc, reducedMotion,
+    outfits, needs, fillNeed, roleName, kinds, colorList, addGarment, readPhoto, openAdd, fromLink, search, product, garmentProduct, photo, colorName, colorHex, kindName, shortKind, category, label, price, buzz, esc, reducedMotion,
     styles: (g) => stylesFor(g).map((id) => ({ id, name: STYLES[id].label, short: STYLES[id].short })), cats: CATS,
   };
 })();

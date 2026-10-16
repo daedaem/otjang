@@ -37,16 +37,15 @@
     return `<main class="welcome">
       <div class="w-top">
         <p class="w-mark">Owned</p>
-        <h1 class="w-tag">Before you buy,<br>see what you own.</h1>
-        <p class="w-sub">사기 전에, 가진 옷부터.</p>
+        <h1 class="w-tag">사기 전에,<br>가진 옷부터.</h1>
       </div>
       <div class="w-bottom">
         <p class="w-q" id="wq">어떤 옷장으로 볼까요?</p>
         <div class="seg" role="radiogroup" aria-labelledby="wq">
           ${[['M', '남성'], ['F', '여성']].map(([g, l]) => `<button class="seg-b${ui.gender === g ? ' on' : ''}" role="radio" aria-checked="${ui.gender === g}" data-act="gender" data-g="${g}">${l}</button>`).join('')}
         </div>
-        <button class="btn-primary wide" data-act="start-example" ${ui.gender ? '' : 'disabled'}>예시 옷장으로 시작</button>
-        <button class="btn-link" data-act="start-own" ${ui.gender ? '' : 'disabled'}>가진 옷 직접 고르기</button>
+        <button class="btn-primary wide" data-act="start-own" ${ui.gender ? '' : 'disabled'}>내 옷 넣고 시작</button>
+        <button class="btn-link" data-act="start-example" ${ui.gender ? '' : 'disabled'}>예시 옷장으로 둘러보기</button>
         <p class="w-fine">기록은 이 기기에만 저장돼요.</p>
       </div>
     </main>`;
@@ -65,30 +64,46 @@
 
   // ── 전체 코디 보드: 입는 순서대로, 가진 옷은 Owned, 필요한 자리는 빈 칸
   const kindOf = (pc) => (pc.need ? P.shortKind({ slot: pc.slot?.id }) || pc.kind : P.shortKind(pc.garment || pc.product));
-  function board(pieces, { candTag = 'Selected', fill = false } = {}) {
+  function board(pieces, { candTag = '선택함', fill = false } = {}) {
     const n = pieces.length; const cols = n === 4 ? 2 : Math.max(1, Math.min(3, n));
     return `<ul class="board c${cols}">${pieces.map((pc, k) => {
-      if (pc.need) return `<li class="pc need" style="--k:${k}"><span class="pc-stage"><span class="pc-plus">${IC.plus}</span><span class="pc-need">${esc(kindOf(pc))}</span></span><span class="pc-tag latin">Needed</span><span class="pc-k">${esc(pc.roleName || '')} · ${esc(kindOf(pc))}</span></li>`;
+      if (pc.need) return `<li class="pc need" style="--k:${k}"><span class="pc-stage"><span class="pc-plus">${IC.plus}</span><span class="pc-need">${esc(kindOf(pc))}</span></span><span class="pc-tag">필요해요</span><span class="pc-k">${esc(pc.roleName || '')} · ${esc(kindOf(pc))}</span></li>`;
       const x = pc.garment || pc.product; const cand = !!pc.candidate;
-      return `<li class="pc ${cand ? `cand${fill ? ' fill' : ''}` : 'own'}" style="--k:${k}"><span class="pc-stage">${pic(x)}</span><span class="pc-tag latin">${cand ? candTag : 'Owned'}</span><span class="pc-k">${esc(pc.roleName || catName(x))} · ${esc(P.shortKind(x))}</span></li>`;
+      return `<li class="pc ${cand ? `cand${fill ? ' fill' : ''}` : 'own'}" style="--k:${k}"><span class="pc-stage">${pic(x)}</span><span class="pc-tag">${cand ? candTag : '내 옷'}</span><span class="pc-k">${esc(pc.roleName || catName(x))} · ${esc(P.shortKind(x))}</span></li>`;
     }).join('')}</ul>`;
   }
   const thumbs = (pieces) => `<span class="mini">${pieces.map((pc) => (pc.need ? '<span class="mi need"></span>' : `<span class="mi">${pic(pc.garment || pc.product)}</span>`)).join('')}</span>`;
 
   // ── 홈: 내 옷장에 필요한 것부터
   function home() {
+    if (gs().length < 3) {
+      const have = gs();
+      const slots = [0, 1, 2].map((i) => have[i]);
+      return `<main class="page"><section class="need-hero start" aria-labelledby="startH">
+        <p class="eyebrow">내 옷장</p>
+        <h1 class="h-xl" id="startH">내 옷부터<br>넣어 주세요.</h1>
+        <p class="sub big">옷을 3벌 이상 넣으면, 필요한 옷과 코디를 찾아 드려요.</p>
+        <article class="tile t-start">
+          <ul class="board c3">${slots.map((g, k) => (g
+            ? `<li class="pc own" style="--k:${k}"><span class="pc-stage">${pic(g)}</span><span class="pc-tag">내 옷</span><span class="pc-k">${esc(P.shortKind(g))} · ${esc(P.colorName(g.color))}</span></li>`
+            : `<li class="pc need" style="--k:${k}"><button class="pc-stage" data-act="add" aria-label="내 옷 추가"><span class="pc-plus">${IC.plus}</span></button><span class="pc-tag">${k === have.length ? '다음' : '&nbsp;'}</span><span class="pc-k">&nbsp;</span></li>`)).join('')}</ul>
+          <p class="t-cap">지금 ${have.length}벌 · ${3 - have.length}벌 더 넣으면 시작돼요</p>
+        </article>
+        <div class="cta-row"><button class="btn-primary wide" data-act="add">내 옷 추가</button><p class="cta-hint">사진, 종류와 색, 상품 이름 중 편한 방법으로</p></div>
+      </section></main>`;
+    }
     const N = needsM(); const gaps = N.gaps;
     const ex = gs().some(isEx);
     let hero;
     if (!gaps.length) {
-      hero = `<section class="need-hero"><p class="eyebrow latin">Your closet needs</p><h1 class="h-xl">지금 옷장으로<br>충분히 입을 수 있어요.</h1><p class="sub">새로 채울 자리가 보이지 않아요. 옷장에 옷을 더 담으면 다시 찾아볼게요.</p><button class="btn-primary" data-act="go" data-v="closet">옷장 열기</button></section>`;
+      hero = `<section class="need-hero"><p class="eyebrow">내 옷장에 필요한 옷</p><h1 class="h-xl">지금 옷장으로<br>충분히 입을 수 있어요.</h1><p class="sub">새로 채울 자리가 보이지 않아요. 옷장에 옷을 더 담으면 다시 찾아볼게요.</p><button class="btn-primary" data-act="go" data-v="closet">옷장 열기</button></section>`;
     } else {
       const gi = Math.min(ui.gapIdx, gaps.length - 1); const gap = gaps[gi];
       const look = gap.looks[0];
       const sel = gap.products.find((x) => x.id === ui.sel[gap.kind]) || null;
       const shown = sel && look ? P.fillNeed(look, sel) : look;
       hero = `<section class="need-hero" aria-labelledby="needH">
-        <p class="eyebrow latin">Your closet needs</p>
+        <p class="eyebrow">내 옷장에 필요한 옷</p>
         <h1 class="h-xl" id="needH">${esc(gap.short)} 하나면,<br>코디 ${gap.newLooks}개가 더 완성돼요.</h1>
         <p class="sub big">${esc(gap.line)}</p>
         ${look ? `<article class="tile t-board">
@@ -98,7 +113,7 @@
           ${ex ? '<p class="t-fine">예시 옷장 기준</p>' : ''}
         </article>` : ''}
         <div class="choose">
-          <div class="sec-h row"><h2 class="h-m latin">Choose one</h2><p class="sub sm">${esc(gap.short)} · 실제 상품 ${gap.products.length}개</p></div>
+          <div class="sec-h row"><h2 class="h-m">하나 골라 보세요</h2><p class="sub sm">${esc(gap.short)} · 실제 상품 ${gap.products.length}개</p></div>
           <div class="rail">${gap.products.slice(0, 4).map((x) => `<button class="rcard${sel && sel.id === x.id ? ' on' : ''}" data-act="pick" data-pid="${esc(x.id)}" aria-pressed="${!!(sel && sel.id === x.id)}">
             <span class="rc-stage">${pic(x)}<span class="rc-ck">${IC.tick}</span></span>
             <span class="rc-k">${esc(x.brand || '')}</span>
@@ -115,13 +130,13 @@
     const pairs = N.pairs.filter((pr) => pr.products[0]);
     return `<main class="page">
       ${hero}
-      ${ready.length ? `<section class="block" aria-labelledby="readyH"><div class="sec-h"><h2 class="h-l latin" id="readyH">Ready to wear</h2><p class="sub">지금 가진 옷으로 바로 입는 코디 ${ready.length}개</p></div>
+      ${ready.length ? `<section class="block" aria-labelledby="readyH"><div class="sec-h"><h2 class="h-l" id="readyH">지금 입을 수 있는 코디</h2><p class="sub">지금 가진 옷으로 바로 입는 코디 ${ready.length}개</p></div>
         <div class="rail">${ready.map((o) => `<article class="rtile"><p class="r-title">${esc(o.title)}</p>${o.note ? `<p class="r-note">${esc(o.note)}</p>` : ''}
           <ul class="r-pcs">${o.pieces.map((pc) => `<li><span class="r-stage">${pic(pc.garment)}</span><span class="r-k">${esc(pc.roleName)}</span></li>`).join('')}</ul></article>`).join('')}</div></section>` : ''}
-      ${nextGaps.length || pairs.length ? `<section class="block" aria-labelledby="nextH"><div class="sec-h"><h2 class="h-l latin" id="nextH">Also worth adding</h2><p class="sub">다음으로 채우면 좋은 자리</p></div>
+      ${nextGaps.length || pairs.length ? `<section class="block" aria-labelledby="nextH"><div class="sec-h"><h2 class="h-l" id="nextH">더 있으면 좋은 옷</h2><p class="sub">다음으로 채우면 좋은 자리</p></div>
         <div class="ngrid">
-          ${nextGaps.map(({ g, i }) => `<button class="ntile" data-act="gap" data-i="${i}"><span class="t-eye latin">Needed · ${esc(g.short)}</span><span class="n-h">코디 ${g.newLooks}개 더</span><span class="n-line">${esc(g.line)}</span>${g.looks[0] ? thumbs(g.looks[0].pieces) : ''}</button>`).join('')}
-          ${pairs.map((pr) => `<button class="ntile" data-act="judge" data-pid="${esc(pr.products[0].id)}"><span class="t-eye latin">Two pieces away</span><span class="n-h">${esc(pr.kinds.join(' + '))}</span><span class="n-line">${esc(pr.line)}</span>${thumbs(pr.look.pieces)}</button>`).join('')}
+          ${nextGaps.map(({ g, i }) => `<button class="ntile" data-act="gap" data-i="${i}"><span class="t-eye">필요해요 · ${esc(g.short)}</span><span class="n-h">코디 ${g.newLooks}개 더</span><span class="n-line">${esc(g.line)}</span>${g.looks[0] ? thumbs(g.looks[0].pieces) : ''}</button>`).join('')}
+          ${pairs.map((pr) => `<button class="ntile" data-act="judge" data-pid="${esc(pr.products[0].id)}"><span class="t-eye">두 벌만 더 있으면</span><span class="n-h">${esc(pr.kinds.join(' + '))}</span><span class="n-line">${esc(pr.line)}</span>${thumbs(pr.look.pieces)}</button>`).join('')}
         </div></section>` : ''}
     </main>`;
   }
@@ -136,26 +151,26 @@
     const used = j.used;
     const look0 = j.looks[0];
     const tileBoard = `<article class="tile t-wide t-board" style="--i:0">
-      <p class="t-eye latin">The whole outfit</p>
-      ${look0 ? `<div class="b-head"><p class="b-title">${esc(look0.title)}</p>${j.looks.length > 1 ? `<span class="b-more">외 ${j.looks.length - 1}개</span>` : ''}</div>${look0.note ? `<p class="b-note">${esc(look0.note)}</p>` : ''}${board(look0.items, { candTag: 'This piece' })}`
-        : `<p class="b-title">아직 완성되는 코디가 없어요.</p><p class="b-note">가진 옷과 종류·색이 맞는 공식을 찾지 못했어요. 옷장에 옷을 더 담아 보세요.</p>${board([{ candidate: true, product: p, roleName: catName(p) }], { candTag: 'This piece' })}`}
+      <p class="t-eye">완성되는 코디</p>
+      ${look0 ? `<div class="b-head"><p class="b-title">${esc(look0.title)}</p>${j.looks.length > 1 ? `<span class="b-more">외 ${j.looks.length - 1}개</span>` : ''}</div>${look0.note ? `<p class="b-note">${esc(look0.note)}</p>` : ''}${board(look0.items, { candTag: '이 옷' })}`
+        : `<p class="b-title">아직 완성되는 코디가 없어요.</p><p class="b-note">가진 옷과 종류·색이 맞는 공식을 찾지 못했어요. 옷장에 옷을 더 담아 보세요.</p>${board([{ candidate: true, product: p, roleName: catName(p) }], { candTag: '이 옷' })}`}
       ${ex && look0 ? '<p class="t-fine">예시 옷장 기준</p>' : ''}
     </article>`;
     const tileUsed = `<article class="tile" style="--i:1">
-      <p class="t-eye latin">Pairs with</p>
-      <p class="t-big"><span class="num">${used.length}</span> <span class="latin">${plural(used.length, 'piece', 'pieces')} you own</span></p>
+      <p class="t-eye">어울리는 내 옷</p>
+      <p class="t-big"><span class="t-pre">가진 옷</span><br><span class="num">${used.length}</span>벌과 어울려요</p>
       <p class="t-cap">${used.length ? esc(used.map((g) => P.shortKind(g)).join(' · ')) : '함께 입을 옷을 아직 못 찾았어요.'}</p>
     </article>`;
     const tileLooks = `<article class="tile" style="--i:2">
-      <p class="t-eye latin">Outfits</p>
-      <p class="t-big"><span class="num">${j.looks.length}</span> <span class="latin">${plural(j.looks.length, 'outfit', 'outfits')}</span></p>
-      ${j.looks.length ? `<ul class="t-list">${j.looks.slice(0, 3).map((l) => `<li>${esc(l.title)}${l.isNew ? ' <b class="new latin">New</b>' : ''}</li>`).join('')}</ul>` : '<p class="t-cap">맞는 코디 공식이 아직 없어요.</p>'}
+      <p class="t-eye">완성되는 코디</p>
+      <p class="t-big"><span class="t-pre">코디</span><br><span class="num">${j.looks.length}</span>개</p>
+      ${j.looks.length ? `<ul class="t-list">${j.looks.slice(0, 3).map((l) => `<li>${esc(l.title)}${l.isNew ? ' <b class="new">새 코디</b>' : ''}</li>`).join('')}</ul>` : '<p class="t-cap">맞는 코디 공식이 아직 없어요.</p>'}
     </article>`;
     const tileDup = j.overlaps.length
-      ? `<article class="tile t-wide warn" style="--i:3"><p class="t-eye latin">Duplicates</p><p class="t-big"><span class="num">${j.overlaps.length}</span><span>벌</span></p><p class="t-cap">비슷한 옷 ${j.overlaps.length}벌<br>${esc(j.overlaps.map((g) => `${P.shortKind(g)} ${P.colorName(g.color)}`).join(', '))}</p><div class="t-mini">${j.overlaps.slice(0, 3).map((g) => `<span class="tp-stage sm">${pic(g)}</span>`).join('')}</div></article>`
-      : `<article class="tile t-wide dup-ok" style="--i:3"><p class="t-eye latin">Duplicates</p><span class="t-check">${IC.check}</span><p class="t-mid latin">No duplicates</p><p class="t-cap">겹치는 옷이 없어요.</p></article>`;
+      ? `<article class="tile t-wide warn" style="--i:3"><p class="t-eye">겹치는 옷</p><p class="t-big"><span class="num">${j.overlaps.length}</span><span>벌</span></p><p class="t-cap">비슷한 옷 ${j.overlaps.length}벌<br>${esc(j.overlaps.map((g) => `${P.shortKind(g)} ${P.colorName(g.color)}`).join(', '))}</p><div class="t-mini">${j.overlaps.slice(0, 3).map((g) => `<span class="tp-stage sm">${pic(g)}</span>`).join('')}</div></article>`
+      : `<article class="tile t-wide dup-ok" style="--i:3"><p class="t-eye">겹치는 옷</p><span class="t-check">${IC.check}</span><p class="t-mid">겹치는 옷 없음</p><p class="t-cap">같은 종류·같은 색의 옷이 옷장에 없어요.</p></article>`;
     const tilePrice = `<article class="tile t-wide" style="--i:4">
-      <div class="t-row"><div><p class="t-eye latin">Price</p><p class="t-price">${esc(P.price(p.price))}</p><p class="t-cap">${p.checkedAt ? `${esc(p.checkedAt.slice(5).replace('-', '.'))} 기록 가격` : '기록 가격'}</p></div>
+      <div class="t-row"><div><p class="t-eye">가격</p><p class="t-price">${esc(P.price(p.price))}</p><p class="t-cap">${p.checkedAt ? `${esc(p.checkedAt.slice(5).replace('-', '.'))} 기록 가격` : '기록 가격'}</p></div>
       <a class="link" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">판매처에서 확인하기${IC.out}</a></div>
       <p class="t-note">코디는 종류·색으로 맞춘 공식이에요. 핏·사이즈·소재·현재 가격은 판매처에서 확인해 주세요.</p>
     </article>`;
@@ -182,22 +197,16 @@
   function closet() {
     const list = gs();
     const ex = list.some(isEx);
-    const cats = Object.keys(P.cats).filter((c) => P.ownables(c, { limit: 1 }).length);
-    if (!cats.includes(ui.addCat)) ui.addCat = cats[0];
     return `<main class="page">
-      <section class="c-head"><p class="eyebrow latin">Your closet</p><h1 class="h-xl">내 옷장 ${list.length}벌</h1>${ex ? '<p class="sub">예시 옷장이에요. 내 옷으로 바꿔 담아 보세요.</p>' : ''}</section>
-      ${list.length ? `<ul class="cgrid">${list.map((g) => `<li class="ccard">
+      <section class="c-head"><p class="eyebrow">내 옷장</p><h1 class="h-xl">내 옷 ${list.length}벌</h1>${ex ? '<p class="sub">예시 옷장이에요. 내 옷으로 바꿔 담아 보세요.</p>' : '<p class="sub">많이 넣을수록 필요한 옷과 코디가 정확해져요.</p>'}</section>
+      <ul class="cgrid">
+        <li class="ccard add-tile"><button class="add-btn" data-act="add"><span class="add-plus">${IC.plus}</span><span class="add-t">내 옷 추가</span><span class="add-s">사진 · 종류와 색 · 상품 이름</span></button></li>
+        ${list.map((g) => `<li class="ccard">
         <span class="cc-stage">${pic(g)}</span>
         <span class="cc-k">${esc(P.shortKind(g))} · ${esc(P.colorName(g.color))}${isEx(g) ? ' · 예시' : ''}</span>
         <span class="cc-n">${esc(P.label(g))}</span>
         <button class="cc-x" data-act="remove" data-id="${esc(g.id)}" aria-label="${esc(P.label(g))} 빼기">${IC.close}</button>
-      </li>`).join('')}</ul>` : '<p class="sub pad">아직 담은 옷이 없어요. 아래에서 닮은 옷을 골라 주세요.</p>'}
-      <section class="add" aria-labelledby="addH">
-        <div class="sec-h"><h2 class="h-l latin" id="addH">Add pieces</h2><p class="sub">가진 옷과 닮은 것을 눌러 담아요.</p></div>
-        <div class="chips" role="tablist">${cats.map((c) => `<button class="chip${c === ui.addCat ? ' on' : ''}" role="tab" aria-selected="${c === ui.addCat}" data-act="cat" data-cat="${c}">${esc(P.cats[c])}</button>`).join('')}</div>
-        <div class="agrid">${P.ownables(ui.addCat, { limit: 18 }).map((p) => { const on = P.owns(p); return `<button class="acard${on ? ' on' : ''}" data-act="own" data-pid="${esc(p.id)}" aria-pressed="${on}">
-          <span class="ac-stage">${pic(p)}<span class="ac-ck">${IC.tick}</span></span><span class="ac-k">${esc(P.shortKind(p))}</span><span class="ac-c">${esc(P.colorName(p.color))}</span></button>`; }).join('')}</div>
-      </section>
+      </li>`).join('')}</ul>
       <section class="reset">${ui.resetAsk ? '<p>옷장과 기록이 모두 지워져요.</p><div class="r-row"><button class="btn-soft" data-act="reset-no">취소</button><button class="btn-danger" data-act="reset-yes">모두 지우기</button></div>' : '<button class="btn-link sm" data-act="reset-ask">처음부터 다시</button>'}</section>
     </main>`;
   }
@@ -218,13 +227,15 @@
     if (scroll) window.scrollTo(0, 0);
   }
 
+  const openAdd = () => P.openAdd({ onChange: () => render({ scroll: false }), onClose: () => render({ scroll: false }) });
   root.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act]');
     if (!t || t.disabled) return;
     const a = t.dataset.act;
     if (a === 'gender') { ui.gender = t.dataset.g; render({ scroll: false }); }
     else if (a === 'start-example') { P.startExample(ui.gender); P.record.exampleIds = gs().map((g) => g.id); P.save(); ui.view = 'home'; render(); }
-    else if (a === 'start-own') { P.start(ui.gender); ui.view = 'closet'; ui.addCat = 'top'; render(); }
+    else if (a === 'start-own') { P.start(ui.gender); ui.view = 'home'; render(); openAdd(); }
+    else if (a === 'add') { openAdd(); }
     else if (a === 'go') { ui.view = t.dataset.v; ui.resetAsk = false; render(); }
     else if (a === 'judge') { ui.from = ui.view === 'closet' ? 'closet' : 'home'; ui.pid = t.dataset.pid; ui.view = 'judge'; render(); }
     else if (a === 'decide') {

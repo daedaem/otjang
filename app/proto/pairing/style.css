@@ -1,5 +1,6 @@
 /* PAIRING — 흰 바탕, 검은 글자, 1px 선, 넓은 자간의 영문 대문자 레이블. 모서리와 그림자는 없다. */
 :root {
+  --pa-bg: #FFFFFF; --pa-ink: #000000; --pa-sub: #666666; --pa-line: #E6E6E6; --pa-surface: #F3F3F3; --pa-accent: #000000; --pa-accent-ink: #FFFFFF; --pa-radius: 0px;
   --bg: #FFFFFF;
   --text: #000000;
   --text-2: #666666;
@@ -20,11 +21,11 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .pr { max-width: 480px; margin: 0 auto; }
 .scr { min-height: 100vh; padding-bottom: calc(var(--tabs) + 40px + env(safe-area-inset-bottom)); }
 
-.lbl { margin: 0; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; }
-.lbl--h { font-size: 12px; font-weight: 700; letter-spacing: .18em; }
-.lbl--new { font-size: 10px; padding: 1px 5px; border: 1px solid var(--text); letter-spacing: .14em; }
+.lbl { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.lbl--h { font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+.lbl--new { font-size: 11px; padding: 0 5px; border: 1px solid var(--text); letter-spacing: .02em; }
 .lbl--dup { color: var(--red); }
-.brand { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { padding: 32px var(--pad); color: var(--text-2); }
 .note { margin: 0 var(--pad) 16px; font-size: 12px; color: var(--text-2); }
 
@@ -43,7 +44,7 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .ob-mark { margin: 0 0 auto; padding-top: 38vh; font-size: 40px; font-weight: 700; letter-spacing: .28em; line-height: 1; text-align: center; margin-right: -.28em; animation: pr-in .9s var(--ease) both; }
 .ob-sub { margin: 14px 0 auto; text-align: center; font-size: 13px; color: var(--text-2); animation: pr-in .9s var(--ease) .1s both; }
 .ob-g { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 10px; }
-.ob-btn { min-height: 52px; font-size: 13px; font-weight: 700; letter-spacing: .2em; box-shadow: inset 0 0 0 1px var(--line-2); }
+.ob-btn { min-height: 52px; font-size: 15px; font-weight: 700; letter-spacing: .08em; box-shadow: inset 0 0 0 1px var(--line-2); }
 .ob-btn + .ob-btn { margin-left: -1px; }
 .ob-btn.is-on { background: var(--text); color: #fff; }
 .ob .cta { width: 100%; }
@@ -62,7 +63,7 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 /* 카테고리 */
 .cats { position: sticky; top: calc(var(--bar) + env(safe-area-inset-top)); z-index: 9; display: flex; gap: 22px; overflow-x: auto; scrollbar-width: none; padding: 0 var(--pad); background: #fff; border-bottom: 1px solid var(--line); }
 .cats::-webkit-scrollbar { display: none; }
-.cat { position: relative; flex: none; min-height: 44px; font-size: 12px; font-weight: 500; letter-spacing: .14em; color: var(--text-2); }
+.cat { position: relative; flex: none; min-height: 44px; font-size: 14px; font-weight: 500; letter-spacing: .02em; color: var(--text-2); }
 .cat.is-on { color: var(--text); font-weight: 700; }
 .cat.is-on::after { content: ''; position: absolute; left: 0; right: .14em; bottom: -1px; height: 2px; background: var(--text); }
 
@@ -90,15 +91,15 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .bp--this .bp-ph { box-shadow: inset 0 0 0 1px var(--text); }
 .bp--this.is-new .bp-ph img { animation: pr-zoom .6s var(--ease) both; }
 .bp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #fff; border: 1px dashed #8C8C8C; text-align: center; padding: 6px; }
-.bp-empty span { font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+.bp-empty span { font-size: 11px; font-weight: 700; letter-spacing: .04em; }
 .bp-empty b { font-size: 12px; font-weight: 500; line-height: 1.3; }
 .bp-role { margin-top: 7px; font-size: 11px; font-weight: 700; line-height: 1.3; }
-.bp-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .1em; line-height: 1.5; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-tag { font-size: 11px; font-weight: 500; letter-spacing: .02em; line-height: 1.5; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bp--this .bp-tag, .bp--need .bp-tag { color: var(--text); }
 .bp-n { font-size: 11px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lb-pick { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 14px 0 0; padding: 4px 0 4px 12px; border-left: 2px solid var(--text); font-size: 13px; font-weight: 700; }
 .lb-pick > span { display: flex; flex-direction: column; min-width: 0; }
-.lb-go { flex: none; min-height: 44px; padding: 0 16px; background: var(--text); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+.lb-go { flex: none; min-height: 44px; padding: 0 16px; background: var(--text); color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .04em; }
 
 /* SHOP THE LOOK */
 .stl-h { margin-top: 22px; }
@@ -127,7 +128,7 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .sec-h { display: flex; justify-content: space-between; align-items: baseline; padding: 0 var(--pad); margin-bottom: 14px; }
 .sec-h--top { padding-top: 20px; }
 .sec-h--hist { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--line); margin-left: var(--pad); margin-right: var(--pad); padding-left: 0; padding-right: 0; }
-.cnt { margin: 0; font-size: 11px; letter-spacing: .12em; color: var(--text-2); }
+.cnt { margin: 0; font-size: 12px; letter-spacing: .02em; color: var(--text-2); }
 .grid { list-style: none; margin: 0; padding: 0 var(--pad); display: grid; grid-template-columns: 1fr 1fr; gap: 32px 8px; }
 .grid--3 { grid-template-columns: repeat(3, 1fr); gap: 24px 6px; }
 .card { position: relative; min-width: 0; }
@@ -188,7 +189,7 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .tile-ph { display: block; aspect-ratio: 4 / 5; background: var(--photo); overflow: hidden; }
 .tile-ph img { width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
 .tile--this .tile-ph { box-shadow: inset 0 0 0 1px var(--text); }
-.tile-tag { margin-top: 8px; font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-tag { margin-top: 8px; font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile--this .tile-tag { color: var(--text); }
 .look--dup .tile-tag { color: var(--red); }
 .tile-n { font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -225,7 +226,7 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 /* ═══ 탭 바 */
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: #fff; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .tabs-in { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
-.tab { height: var(--tabs); font-size: 11px; font-weight: 500; letter-spacing: .16em; color: var(--text-2); }
+.tab { height: var(--tabs); font-size: 13px; font-weight: 500; letter-spacing: .04em; color: var(--text-2); }
 .tab.is-on { color: var(--text); font-weight: 700; }
 
 /* ═══ 시트 */
@@ -248,3 +249,17 @@ html.is-locked, html.is-locked body { overflow: hidden; }
 .badge--own::before { background: var(--text-2); }
 .bp-ph { position: relative; }
 .bp-ex { position: absolute; left: 0; top: 0; padding: 1px 5px; background: #fff; font-style: normal; font-size: 10px; font-weight: 700; color: var(--text); }
+
+/* 내 옷 넣기 */
+.cta-2 { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; margin-top: 8px; font-size: 14px; font-weight: 500; letter-spacing: .04em; box-shadow: inset 0 0 0 1px var(--text); }
+.cta-2:disabled { box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); cursor: default; }
+.add-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; margin-top: 18px; padding: 0 22px; background: var(--text); color: #fff; font-size: 15px; font-weight: 700; letter-spacing: .04em; }
+.add-btn--block { width: 100%; margin-top: 0; }
+.add-wrap { margin: 0 var(--pad) 28px; }
+.fine--l { text-align: left; }
+.need--add { border-bottom: 1px solid var(--line); }
+/* 공통 시트를 이 숍의 각진 모양으로 */
+.pa-sheet .pa-tabs button, .pa-sheet .pa-chips button, .pa-sheet .pa-swatches button, .pa-sheet .pa-field input, .pa-sheet .pa-grid img, .pa-sheet .pa-done img, .pa-sheet .pa-preview img, .pa-sheet .pa-icon, .pa-sheet .pa-grab { border-radius: 0; }
+.pa-sheet .pa-cta, .pa-sheet .pa-ghost { border-radius: 0; }
+.pa-sheet .pa-swatches i { border-radius: 50%; }
+.dup-h { font-size: 14px; font-weight: 700; color: var(--red); }

@@ -87,6 +87,18 @@ test('the core judges real catalog products against a real closet', () => {
   assert.equal(Proto.fromLink(yes.product.url).product.id, yes.product.id);
   assert.equal(Proto.esc('<b>"x"</b>'), '&lt;b&gt;&quot;x&quot;&lt;/b&gt;');
 
+  // My own clothes by kind and color (no photo): counted in the closet and the needs.
+  const before = Proto.record.garments.length;
+  const kinds = Proto.kinds();
+  assert.ok(kinds.some((g) => g.cat === 'top') && kinds.every((g) => g.slots.every((s) => s.g === 'M')));
+  const mine = Proto.addGarment({ slot: 'm-chino', color: 'navy', label: '내 네이비 치노' });
+  assert.equal(Proto.record.garments.length, before + 1);
+  assert.equal(Proto.label(mine), '내 네이비 치노');
+  assert.ok(Proto.photo(mine), 'a garment without its own photo shows a look-alike product');
+  assert.throws(() => Proto.addGarment({ slot: 'm-chino', color: 'no-such-color' }));
+  Proto.removeOwned(mine.id);
+  assert.equal(Proto.record.garments.length, before);
+
   Proto.reset();
   assert.equal(Proto.record.garments.length, 0);
 });

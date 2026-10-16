@@ -1,5 +1,6 @@
 /* Owned — 흰 바탕과 #F5F5F7 무대, 거의 검은 글자, 파란색은 아껴서. */
 :root {
+  --pa-bg: #FFFFFF; --pa-ink: #1D1D1F; --pa-sub: #636366; --pa-line: #E5E5EA; --pa-surface: #F5F5F7; --pa-accent: #0071E3; --pa-accent-ink: #FFFFFF; --pa-radius: 22px;
   --bg: #FFFFFF; --stage: #F5F5F7; --t: #1D1D1F; --t2: #636366; --t3: #86868B; --hair: rgba(0, 0, 0, .08);
   --blue: #0071E3; --blue-press: #0062C4; --soft: #E8E8ED; --warn: #B25000;
   --sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -239,3 +240,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blue); outline-
 .tile.dup-ok .t-check { grid-row: 2 / 4; margin: 8px 0 0; }
 .tile.dup-ok .t-mid { margin-top: 8px; }
 .tile.dup-ok .t-cap { margin-top: 0; }
+
+/* 내 옷 넣기가 먼저 */
+.need-hero.start .h-xl { font-size: 40px; letter-spacing: -0.05em; }
+.t-start { margin: 24px -8px 0; }
+.t-start .t-cap { margin-top: 14px; }
+.pc.need button.pc-stage { width: 100%; cursor: pointer; }
+.pc.need button.pc-stage:active { transform: scale(.97); }
+.add-tile { padding: 0; background: none; }
+.add-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 100%; min-height: 200px; border-radius: 24px; background: var(--blue); color: #fff; text-align: center; padding: 16px; }
+.add-btn:active { transform: scale(.98); }
+.add-plus { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, .18); margin-bottom: 6px; }
+.add-t { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.add-s { font-size: 13px; opacity: .85; }
+.pa-sheet { font-family: var(--sans); }
+.t-pre { font-size: 15px; font-weight: 500; color: var(--t2); letter-spacing: -0.01em; }
+.tile.dup-ok .t-mid { font-size: 20px; }
