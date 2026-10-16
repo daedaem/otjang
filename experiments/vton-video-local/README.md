@@ -14,6 +14,19 @@
 - 첫 회차는 FASHN이 공개한 예제 사진만 쓴다. 대표 본인 사진은 둘째 회차에서 이 PC 안에서만 쓴다.
 - 결과는 "착용 분위기 미리보기"다. 사이즈·핏을 판단하는 근거로 쓰지 않는다.
 
+## 대표 PC 사양 (이전 대화 기록, 2026-10-13)
+
+- **Windows 노트북 MSI GP66**: RTX 3070 Laptop GPU(보통 8GB VRAM, `nvidia-smi`로 확인), RAM 16GB. **이 시험의 주 장비다.**
+- **맥북 M1 Pro 16GB**: NVIDIA GPU가 없어 영상 모델은 사실상 어렵다. 착용 사진만 CPU로 시험한 기록이 있다(`experiments/vton-fashn-1.5`).
+
+8GB VRAM과 RAM 16GB가 뜻하는 것(추정, 시험으로 확인):
+- **Wan2.2 TI2V-5B 공식 CLI**: 24GB 기준이라 그대로는 안 들어간다. ComfyUI에서 fp8/GGUF 양자화 + 오프로딩, 480p·3초로 낮춰 시도한다.
+  - 시간은 공식 9분(4090)보다 훨씬 길 수 있다.
+- **FASHN VTON v1.5 착용 사진**: 들어갈 가능성이 높다(옛 줄기 ADR-14에 이 노트북으로 보이는 시험 기록이 있다).
+- 그래서 이 노트북에서는 **움직임 재사용(아래 5)**이 핵심이다.
+  - 고객별 기본 영상은 한 번만 오래 걸려도 된다.
+  - 상품마다는 착용 사진 한 장 + 흐름 따라 옮기기(1초 미만)만 하면 된다.
+
 ## 0. 먼저 확인할 것
 
 - **운영체제**: Windows면 WSL2(우분투)에서 하는 것을 권장한다.
@@ -74,7 +87,39 @@ python generate.py --task ti2v-5B --size 704*1280 --ckpt_dir ./Wan2.2-TI2V-5B \
 - 빠른 설정의 영상 시간이 3분 이하다.
   - 3분이면 고객에게 "준비되면 알려드려요"로 보여 줄 수 있는 범위로 본다(가정).
 
-## 5. 둘째 회차 (첫 회차를 통과한 뒤)
+## 5. 움직임 재사용과 살아 있는 사진 (빠른 길) — `scripts/`
+
+이 클라우드 CPU에서 같은 방식(경로만 다른 사본)으로 케이스 A를 돌리고 있다. `live.py`·`warp.py`는 CPU에서 실행을 확인했다. `tryon.py`·`svd.py`의 GPU 경로(fp16·오프로딩)는 아직 실행해 보지 않았다.
+- `tryon.py`: 착용 사진(FASHN VTON v1.5).
+- `live.py`: ③ 살아 있는 사진.
+  - 깊이 추정(Depth Anything V2 Small, Apache-2.0)으로 시차와 숨쉬는 듯한 움직임을 만든다. CPU에서 한 장 5초.
+- `svd.py`: 고객별 기본 영상. 한 번만 만든다.
+  - Stable Video Diffusion XT(Stability AI Community License, 평가용)를 쓴다. GPU면 fp16과 CPU 오프로딩.
+  - 이 영상의 화면은 쓰지 않고 움직임만 쓴다.
+- `warp.py`: ① 움직임 재사용.
+  - 기본 영상에서 광학 흐름(DIS)을 뽑고, 착용 사진을 그 흐름대로 옮긴다. 얼굴·로고는 착용 사진의 픽셀이 그대로 움직인다.
+- `run_cases.py`: A·B·C 전체를 돌린다. `sheet.py`는 비교판을 만든다.
+- 모든 결과는 `VTON_WORK`(기본 `~/vton-video`)에만 남는다.
+
+Windows(PowerShell) 예시. CUDA 휠 주소는 `nvidia-smi`의 CUDA 버전에 맞춘다.
+
+```powershell
+$W = "$HOME\vton-video"
+py -3.11 -m venv $W\.venv
+& $W\.venv\Scripts\python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+& $W\.venv\Scripts\python -m pip install diffusers transformers accelerate imageio imageio-ffmpeg opencv-python onnxruntime-gpu fashn-human-parser safetensors huggingface_hub einops matplotlib tqdm
+git clone https://github.com/fashn-AI/fashn-vton-1.5 $W\fashn-vton-1.5
+& $W\.venv\Scripts\python -m pip install --no-deps -e $W\fashn-vton-1.5
+& $W\.venv\Scripts\python $W\fashn-vton-1.5\scripts\download_weights.py --weights-dir $W\weights
+cd experiments\vton-video-local\scripts
+& $W\.venv\Scripts\python fetch.py           # 예제 사진과 가중치(한 번만)
+$env:HF_HUB_OFFLINE = "1"                     # 이후로는 외부 접속 없음
+& $W\.venv\Scripts\python run_cases.py
+```
+
+기록표에 "상품당 시간(착용 사진 + 옮기기)"을 따로 적는다.
+
+## 6. 둘째 회차 (첫 회차를 통과한 뒤)
 
 - 대표 본인 전신 사진 1장과 같은 옷을 실제로 입은 사진으로 같은 표를 채운다.
 - 실제로 입은 사진과 비교해 "분위기"와 "실제 핏"이 얼마나 다른지 적는다.
