@@ -1374,3 +1374,25 @@ test('borrowed product photos are labeled in own details and outfit tiles rather
   assert.ok(look);
   assert.match(page.app.lookCard(look), /photo-caption">비슷한 상품 사진/);
 });
+
+test('a saved taste renders at once: picking women\'s French chic shows the women\'s example closet without a reload', async () => {
+  const page = await boot();
+  await page.click({ action: 'taste-start' });
+  await page.click({ action: 'ob-gender', g: 'F' });
+  await page.click({ action: 'toggle-style', style: 'french' });
+  await page.click({ action: 'ob-next' });
+  await page.click({ action: 'ob-done' });
+  assert.equal(page.state().gender, 'F');
+  assert.deepEqual(page.state().styles, ['french']);
+  assert.ok(page.state().closet.length && page.state().closet.every((item) => item.gender === 'F'),
+    'the example closet on screen follows the saved pick, not the state from before picking');
+});
+
+test('the example closet can switch between men\'s and women\'s examples from the home notice', async () => {
+  const page = await boot();
+  assert.match(page.nodes.get('app').innerHTML, /data-action="set-gender" data-g="F" data-stay="1"/);
+  await page.click({ action: 'set-gender', g: 'F', stay: '1' });
+  assert.equal(page.state().gender, 'F');
+  assert.ok(page.state().closet.every((item) => item.gender === 'F'));
+  assert.equal(page.nodes.get('sheet-root').innerHTML, '', 'switching examples does not open the profile sheet');
+});

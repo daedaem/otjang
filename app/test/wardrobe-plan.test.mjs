@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { IDBFactory } from 'fake-indexeddb';
 import { wardrobePlan } from '../src/wardrobe-plan.js';
-import { compareCandidate, candidateFromProduct, candidateFromLink } from '../src/purchase-candidate.js';
+import { compareCandidate, candidateFromProduct, candidateFromLink, quickCompare } from '../src/purchase-candidate.js';
 import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
 import { createWardrobeStore } from '../src/wardrobe-store.js';
 import { PRODUCT_BY_ID } from '../src/engine.js';
@@ -369,4 +369,16 @@ test('without confirmed subtypes the comparison still states whether the closet 
   assert.equal(compareCandidate(page.app.state(), candidateFromProduct(product)).decision.kind, 'hold',
     'a kind-level headline must not turn into a buy recommendation');
   page.app.store.close();
+});
+
+test('a link-less quick check compares by kind and color against real garments only', () => {
+  const navy = makeGarment({ kind: 'jacket', color: 'navy', gender: 'M' });
+  const black = makeGarment({ kind: 'jacket', color: 'black', gender: 'M' });
+  const dress = makeGarment({ kind: 'dress', color: 'navy', gender: 'F' });
+  const state = { ...newWardrobeState(), demo: false, garments: [navy, black, dress] };
+  assert.deepEqual(quickCompare(state, { kind: 'jacket', color: 'navy', gender: 'M' }).sameColor.map((i) => i.id), [navy.id]);
+  assert.deepEqual(quickCompare(state, { kind: 'jacket', color: 'navy', gender: 'M' }).otherColor.map((i) => i.id), [black.id]);
+  assert.equal(quickCompare(state, { kind: 'knit', color: 'navy', gender: 'M' }).sameColor.length, 0);
+  assert.deepEqual(quickCompare(state, { kind: 'dress', color: 'navy', gender: 'F' }).sameColor.map((i) => i.id), [dress.id]);
+  assert.equal(quickCompare({ ...newWardrobeState() }, { kind: 'jacket', color: 'navy' }).actualCount, 0, 'examples never count as owned');
 });

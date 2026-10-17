@@ -841,3 +841,6 @@ h1, h2, h3, h4, .detail-title { text-wrap: balance; }
 .review-swatches { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 2px; }
 .review-swatches::-webkit-scrollbar { display: none; }
 .review-swatches .sw.named { flex: 0 0 56px; scroll-snap-align: start; }
+
+.demo-notice > .demo-gender { grid-column: 1 / -1; display: flex; flex-flow: row wrap; gap: 8px; }
+.demo-notice > .demo-gender .chip { flex: 0 0 auto; width: auto; }

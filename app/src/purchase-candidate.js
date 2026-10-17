@@ -112,6 +112,20 @@ function candidateContext(state, closet, gender) {
   };
 }
 
+export function quickCompare(state, { kind, color = null, gender = 'M' } = {}) {
+  const g = gender === 'F' || gender === 'f' ? 'F' : 'M';
+  const inactiveIds = inactivePurchaseGarmentIds(state);
+  const actual = (Array.isArray(state.garments) ? state.garments : state.demo ? [] : state.closet || [])
+    .filter((item) => ['user', 'legacy'].includes(item.source) && !String(item.id).startsWith('demo_') &&
+      item.gender === g && !inactiveIds.has(item.id));
+  const sameKind = kind ? actual.filter((item) => item.kind === kind) : [];
+  return {
+    actualCount: actual.length,
+    sameColor: color ? sameKind.filter((item) => item.color === color) : [],
+    otherColor: sameKind.filter((item) => !color || item.color !== color),
+  };
+}
+
 export function compareCandidate(state, candidate, { absence = 'unknown', intent = 'add', replacementGarmentId = null } = {}) {
   const resultCandidate = { ...candidate };
   const gender = candidate?.gender === 'f' || candidate?.gender === 'F' ? 'F' : 'M';
