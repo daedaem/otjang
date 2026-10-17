@@ -103,6 +103,29 @@ const ITEM_WORDS = [
   [/벨트/, (s) => s.shape === 'belt', '벨트'],
 ];
 
+// "밝은/어두운" 같은 색 톤. 특정 색 하나가 아니라 밝기로 고른다.
+const TONE_WORDS = [
+  [/밝은|화사한|연한|라이트/, 'light', '밝은 색'],
+  [/어두운|짙은|진한|다크/, 'dark', '어두운 색'],
+];
+
+// 상품 자료에 없어 반영할 수 없는 조건. 조용히 무시하지 않고 "반영하지 못했어요"로 알린다.
+const UNSUPPORTED_WORDS = [
+  [/구김|링클|구겨지/, '구김 정도'],
+  [/방수|발수|비\s*(?:올|와)|생활\s*방수/, '방수·발수'],
+  [/기모|보온|따뜻한|안\s*추운/, '보온성'],
+  [/시원한|통기|땀|쿨링/, '통기성'],
+  [/린넨|리넨|캐시미어|코튼|면\s*100|울\s*(?:소재|100|함량)|가죽|레더|스웨이드|소재/, '소재'],
+  [/슬림\s*핏|와이드|루즈\s*핏|크롭|기장|짧은|긴\s*(?:기장|길이)/, '핏·기장'],
+  [/사이즈|체형|통통|마른|키\s*(?:큰|작은)|어깨|허벅지|뱃살|하체|상체/, '사이즈·체형'],
+  [/얇은|두꺼운|두툼/, '두께'],
+  [/스판|신축|늘어나/, '신축성'],
+  [/세탁|물빨래|드라이/, '세탁 방법'],
+];
+
+// 조건을 덧붙이지 않는 말. 이해하지 못한 단어를 고를 때 빼고 본다.
+const FILLER = /^(?:추천|추천해|추천해줘|해줘|해주세요|주세요|줘|좀|하나|한\s*벌|사고|살|싶어|싶은|싶다|찾아|찾는|찾고|입을|입기|입고|신을|옷|거|것|걸|용|할|수|있는|좋은|괜찮은|무난한|예쁜|이쁜|요즘|같은|느낌|스타일|룩|코디|뭐|어떤|입을만한|살만한|필요|필요해|사려고|고민|중|이번|새로|새|제|내|나|저|우리|그냥|대충|정도|쯤|약|요|도|안|가는|않는|없는|있게|되는|된|잘|딱|좀더|조금|많이|너무|아주|진짜|넣고|빼고|말고|아닌|아니고|대신|제외|제외하고|조건|가격|이하|이상|미만|초과|대|까지|부터|이내|원|만원)$/;
+
 // 브랜드 이름의 다른 표기
 const BRAND_ALIASES = {
   '폴로 랄프 로렌': [
@@ -211,9 +234,21 @@ function priceBounds(text) {
   return { minPrice, maxPrice, minPriceExclusive, maxPriceExclusive };
 }
 
+const NEGATION = /([^\s,]+)\s*(?:은|는|이|가|색|색은|색깔)?\s*(?:말고|빼고|제외하고|제외|아닌|아니고|대신|싫고|싫어|없이)(?=$|[\s,.])/g;
+
 export function parseQuery(raw = '', { brands = [] } = {}) {
   let text = ` ${raw.trim().toLowerCase()} `;
   const terms = [];
+
+  // "검정 말고", "셔츠 빼고": 앞 단어는 원하는 조건이 아니라 뺄 조건이다.
+  const excludeColors = [], excludeItems = [];
+  text = text.replace(NEGATION, (whole, word) => {
+    const color = firstMatch(COLOR_WORDS, word);
+    if (color) { excludeColors.push(color); return ' '; }
+    const item = ITEM_WORDS.find(([re]) => re.test(word));
+    if (item) { excludeItems.push({ fn: item[1], label: item[2] }); return ' '; }
+    return whole;
+  });
 
   // 브랜드: 긴 이름부터 찾고, 찾은 글자는 아이템 단어 해석에서 뺀다
   let brand = null;
@@ -257,6 +292,11 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
   if (style) terms.push(style.label);
   const color = firstMatch(COLOR_WORDS, targetText);
   if (color) terms.push(color.label);
+  const tone = color ? null : firstMatch(TONE_WORDS, targetText);
+  if (tone) terms.push(tone.label);
+  for (const c of excludeColors) terms.push(`${c.label} 제외`);
+  for (const i of excludeItems) terms.push(`${i.label} 제외`);
+  const unsupported = UNSUPPORTED_WORDS.filter(([re]) => re.test(text)).map(([, label]) => label);
   const anchorColor = firstMatch(COLOR_WORDS, anchorText);
   if (anchorColor) terms.push(`기준 색: ${anchorColor.label}`);
 
@@ -304,10 +344,23 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
     summary = `${head}${objectParticle(noun)} ${priceTerms.length ? `${priceTerms.join(' · ')} 조건으로 ` : ''}${priceSort ? `${sortLabel}으로 ` : ''}골랐어요`;
   }
 
+  // 표에 없는 단어: 조사를 떼고 어느 표에도, 채움말에도 맞지 않는 단어만 고른다(부분 이해를 알리기 위해).
+  const known = [OCCASION_WORDS, SEASON_WORDS, STYLE_WORDS, COLOR_WORDS, TONE_WORDS, UNSUPPORTED_WORDS, ITEM_WORDS].flat();
+  const brandWords = new Set(brands.flatMap((b) => [b, ...(BRAND_ALIASES[b] || [])]).flatMap((w) => w.toLowerCase().split(/\s+/)));
+  const unknown = raw.toLowerCase().split(/[\s,.!?~]+/).map((w) => w.replace(/(?:으로|에서|에게|이랑|랑|하고|까지|부터|처럼|보다|이나|은|는|이|가|을|를|에|의|로|와|과|도|만|요)$/, ''))
+    .filter((w) => w.length >= 2 && /[가-힣a-z]/.test(w) && !/\d/.test(w) && !FILLER.test(w) && !brandWords.has(w) &&
+      !known.some(([re]) => re.test(` ${w} `)) && !/여자|여성|남자|남성|여친|남친|저렴|가성비|싼|비싼|고급|명품|퀄리티|품질|최저|최고|순서|순|이하|이상|어울|맞는|매치|코디|받쳐|같이|함께/.test(w));
+
   return {
     raw,
     summary,
     terms,
+    tone: tone?.value || null,
+    excludeColors: excludeColors.map((c) => c.value),
+    excludeMatch: (slot) => excludeItems.some((i) => i.fn(slot)),
+    excludedItems: excludeItems.map((i) => i.label),
+    unsupported,
+    unknown: [...new Set(unknown)],
     occasion: occ?.value || null,
     season: season?.value || null,
     style: style?.value || null,

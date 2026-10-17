@@ -286,8 +286,8 @@ function closetStart() {
   const slots = STARTER[gender].map((id) => SLOT_BY_ID[id]).filter(Boolean);
   const picked = [...starterPicks.keys()].filter((id) => slots.some((s) => s.id === id));
   return `<section class="section closet-start starter" aria-labelledby="starter-title">
-    <span class="eyebrow">내 옷장 시작하기</span>
-    <h2 id="starter-title">가진 옷을 눌러 주세요</h2>
+    <span class="eyebrow">선택 · 더 정확한 추천</span>
+    <h2 id="starter-title">내 옷장을 넣으면 더 정확해져요</h2>
     <p class="sub">한 벌만 골라도 그 옷으로 코디를 보여 드려요. 사진은 같은 종류·색의 비슷한 상품 사진이에요. 브랜드·품명·핏은 정하지 않고, 나중에 내 사진으로 바꿀 수 있어요.</p>
     <div class="starter-gender" role="group" aria-label="옷 분류"><button class="chip" data-action="set-gender" data-g="M" data-stay="1" aria-pressed="${gender === 'M'}">남성 옷</button><button class="chip" data-action="set-gender" data-g="F" data-stay="1" aria-pressed="${gender === 'F'}">여성 옷</button></div>
     <div class="starter-grid">${slots.map((slot) => {
@@ -297,6 +297,15 @@ function closetStart() {
     <div class="starter-actions">${picked.length ? `<button class="btn" data-action="starter-save">고른 ${picked.length}벌로 옷장 시작</button>` : ''}
       <button class="btn secondary" data-action="add-start">내 옷 사진으로 넣기</button>
       <button class="link" data-action="candidate-start">고민 중인 옷부터 비교하기</button></div>
+  </section>`;
+}
+// 홈 맨 위: 한 줄로 묻고 바로 실제 상품으로. 옷장이 없어도 된다.
+function askHero() {
+  return `<section class="section ask-hero" aria-labelledby="ask-title">
+    <h2 id="ask-title" class="ask-title">어떤 옷 찾으세요?</h2>
+    <p class="sub">대충 말해도 돼요. 옷장을 넣지 않아도 실제 상품과 이유를 바로 보여 드려요.</p>
+    ${homeHeader()}
+    <div class="suggest ask-examples" aria-label="예시 요청">${EXAMPLES[state.gender === 'F' ? 'F' : 'M'].map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div>
   </section>`;
 }
 function demoNotice() {
@@ -513,6 +522,7 @@ function homeHeader() {
       ${ICON.search}
       <input id="ask-input" name="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="예) ${esc(EXAMPLES[state.gender][0])}" value="${esc(query)}" aria-label="찾는 옷을 한 줄로 적어 주세요">
       ${query ? `<button type="button" class="clear" data-action="clear-q" aria-label="검색 지우기">${ICON.close}</button>` : ''}
+      <button type="submit" class="ask-go">찾기</button>
     </form>
     <div class="suggest-pop" id="suggest" hidden><div class="sub">이렇게 물어보세요</div><div class="suggest">${EXAMPLES[state.gender].map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>
     <details class="discovery-filters"${state.occasion || state.budget || state.brandOnly ? ' open' : ''}><summary>추천 조건 <span>${esc([state.occasion ? OCCASIONS[state.occasion] : '상황 전체', budgetLabel].join(' · '))}</span></summary><div class="chips" role="group" aria-label="상황과 예산">
@@ -601,6 +611,7 @@ function renderHome() {
     : pair ? homePairCard(pair, ownLabel) : `<div class="next-pick next-pick-empty"><span class="eyebrow">다음 한 벌</span><h3>${plan.needsCheck.length ? '내 옷을 조금 더 알려주세요' : ownedCount ? '함께 입는 옷을 더 알려주세요' : '가진 옷부터 살펴볼까요?'}</h3><p class="sub">${plan.needsCheck.length ? `종류·색을 확인할 옷이 ${plan.needsCheck.length}벌 있어요. 확인한 옷으로 후보를 찾아드려요.` : ownedCount ? '지금 조건에서는 한 벌을 더해 완성되는 코디가 없어요. 함께 입는 옷을 더 등록하거나, 옷장 분석에서 다른 조합을 살펴보세요.' : '옷을 등록하면 함께 입기 좋은 종류와 실제 상품을 찾을 수 있어요.'}</p>${ownedCount ? `<div class="next-owned"><span>등록한 ${ownLabel}</span><div>${myCloset().slice(0, 3).map((item) => `<button data-action="${state.demo ? 'tab' : 'open-own'}" ${state.demo ? 'data-tab="closet"' : `data-id="${esc(item.id)}"`} aria-label="${esc(garmentLabel(item))}">${itemPicture(item, 'next-owned-photo')}</button>`).join('')}</div></div>` : ''}<button class="btn" data-action="${plan.needsCheck.length ? 'closet-review' : 'add-start'}">${plan.needsCheck.length ? '확인할 옷 보기' : '내 옷 추가'}</button><button class="link" data-action="open-plan">옷장 분석 보기</button></div>`;
   const deck = BRAND.deck ? homeDeck(plan, items) : '';
   return `
+    ${askHero()}
     ${closetStart()}
     <section class="section page-intro"><span class="eyebrow">${esc(SEASON_LABEL[season])} · ${esc(styleLine())}</span><h2>${BRAND.heroTitle}</h2><p class="sub">${state.demo ? '예시 옷장으로 먼저 둘러보세요.' : ownedCount ? `내 옷 ${ownedCount}벌을 바탕으로 골랐어요.` : '옷 한 벌을 넣고, 함께 입을 조합부터 찾아보세요.'}</p></section>
     <div class="home-lead">
@@ -609,7 +620,6 @@ function renderHome() {
       ${looks.length ? `<div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : '<div class="empty"><b>이 조건에 맞는 코디가 없어요</b><p>아래 추천 조건을 넓혀보세요.</p></div>'}</section>
     </div>
     <section class="section home-shortcuts" aria-label="바로 시작"><button data-action="add-start">${ICON.plus}<span><b>내 옷 추가</b><small>사진 한 장으로 시작</small></span>${ICON.arrow}</button><button data-action="candidate-start">${ICON.search}<span><b>살까 말까?</b><small>상품 링크로 내 옷과 비교</small></span>${ICON.arrow}</button></section>
-    ${homeHeader()}
     <section class="section">
       <div class="section-head"><div><h2>내 옷과 비교할 구매 후보</h2><div class="sub">${ownedCount ? (state.demo ? '예시 옷과 연결되는 종류 순서예요' : '등록한 옷과 코디 공식으로 고른 순서예요') : '고른 스타일의 기본부터 골랐어요'}${state.brandOnly ? ' · 내 브랜드만' : ''}</div></div></div>
       ${!state.demo ? '<p class="sub">등록하지 않은 옷이 없다는 뜻은 아니에요. 이미 비슷한 옷이 있다면 상품에서 알려 주세요.</p>' : ''}
@@ -1034,16 +1044,19 @@ function renderSearch() {
     : '';
   const items = r.items.length
     ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${r.query.priceSort ? `수집일 가격이 ${r.query.priceSort === 'desc' ? '높은' : '낮은'} 순서 · 옵션과 배송비는 판매 페이지에서 확인해요` : `${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요`}</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
-    : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>예산을 조금 넓히거나 다른 표현으로 찾아보세요.</div>`;
+    : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>${r.query.terms.length ? `<p>적용한 조건: ${esc(r.query.terms.join(' · '))}</p>` : ''}<p>조건을 자동으로 넓히지 않았어요. 예산이나 색 조건을 빼고 다시 적어 보세요.</p></div>`;
   const anchor = r.anchorItem
     ? `<div class="notice search-anchor">${itemPicture(r.anchorItem)}<div><b>이 옷을 기준으로 찾아요</b><p>${esc(garmentLabel(r.anchorItem))} · ${esc(COLORS[r.anchorItem.color]?.label || '색 미확인')}</p></div><button class="link" data-action="clear-anchor">기준 해제</button></div>`
     : r.anchorUnavailable
       ? `<div class="notice" role="status">${esc(r.anchorUnavailable)} <button class="link" data-action="tab" data-tab="closet">내 옷 다시 고르기</button></div>`
       : '';
+  const partial = r.understood && (r.query.unsupported.length || r.query.unknown.length)
+    ? `<div class="notice" role="status">${r.query.unsupported.length ? `<p><b>반영하지 못한 조건:</b> ${esc(r.query.unsupported.join(', '))}. 상품 자료에 이 정보가 없어서 이 조건 없이 골랐어요. 판매 페이지에서 확인해 주세요.</p>` : ''}${r.query.unknown.length ? `<p><b>이해하지 못한 말:</b> ${esc(r.query.unknown.join(', '))}. 이 말은 빼고 골랐어요. 다른 말로 다시 적어 주셔도 돼요.</p>` : ''}</div>`
+    : '';
   const qualityNotice = r.query.qualityUnavailable
     ? '<p class="notice">품질을 비교할 자료는 없어요. 가격으로 품질을 판단하지 않고 평점·후기 등 인기 정보를 참고했어요.</p>'
     : '';
-  return head + anchor + notice + qualityNotice + outfit + items + footer();
+  return head + anchor + notice + partial + qualityNotice + outfit + items + footer();
 }
 
 // ── 내 옷장

@@ -599,8 +599,11 @@ export function search(state, text, { anchorItemId = null } = {}) {
   const q = parseQuery(text, { brands: brandNames });
   const c = ctx({
     ...state,
+    // 예시 옷은 실제 보유 근거가 아니다: 검색에서는 옷장이 없는 것으로 본다.
+    closet: state.demo ? [] : state.closet,
     gender: q.gender || state.gender,
-    styles: q.style ? [q.style, ...(state.styles || [])] : state.styles,
+    // 이번 요청에서 말한 스타일이 저장된 취향보다 먼저다.
+    styles: q.style ? [q.style] : state.styles,
     occasion: q.occasion || state.occasion || null,
     season: q.season || state.season,
     budget: q.maxPrice ?? state.budget,
@@ -646,10 +649,22 @@ export function search(state, text, { anchorItemId = null } = {}) {
       else anchorUnavailable = '요청한 기준 옷의 색을 확인할 수 있는 옷장 기록이나 상품이 없어요.';
     }
   }
-  let targets = genderSlots.filter((s) => q.targetMatch(s));
+  let targets = genderSlots.filter((s) => q.targetMatch(s) && !q.excludeMatch(s));
   if (!targets.length && anchors.length) targets = genderSlots.filter((s) => !anchors.some((a) => a.cat === s.cat));
   const understood = q.terms.length > 0 || !!anchorItem;
-  if (!targets.length) targets = genderSlots;
+  if (!targets.length) targets = genderSlots.filter((s) => !q.excludeMatch(s));
+  // 말한 스타일에 맞는 자리만 남긴다(맞는 자리가 하나도 없으면 그대로 둔다).
+  if (q.style) {
+    const styled = targets.filter((s) => (s.style[q.style] || 0) >= 2);
+    if (styled.length) targets = styled;
+  }
+  // 색을 빼거나 밝기를 말했으면 그 조건에 맞는 상품만 남긴다(맞는 게 없으면 조건을 풀지 않고 0건으로 둔다).
+  const toneOK = (p) => {
+    if (q.excludeColors.includes(p.color)) return false;
+    if (!q.tone) return true;
+    const l = COLORS[p.color]?.light;
+    return Number.isFinite(l) && (q.tone === 'light' ? l >= 60 : l <= 40);
+  };
 
   const looks = LOOKS.filter((l) => l.g === c.gender);
   const anchorIds = new Set(anchors.map((a) => a.id));
@@ -659,6 +674,11 @@ export function search(state, text, { anchorItemId = null } = {}) {
     const base = scoreSlot(slot, { ...c, ownedSlots: c.ownedSlots }, matchingLooks(c, { occasion: null }));
     let score = base.score;
     let reasons = [slot.why, ...base.reasons].slice(0, 2);
+    // 요청에서 말한 스타일이 이유의 첫 줄이고, 그 스타일에 더 가까운 아이템이 앞선다.
+    if (q.style) {
+      score += (slot.style[q.style] || 0) * 1.5;
+      reasons = [`${STYLES[q.style].label} 코디에 쓰는 ${shortName(slot)}`, slot.why].slice(0, 2);
+    }
     if (anchors.length) {
       const a = anchorItem
         ? garmentLabel(anchorItem)
@@ -681,6 +701,7 @@ export function search(state, text, { anchorItemId = null } = {}) {
       brand: q.brand,
       season: q.season || (q.slotNamed ? null : c.season),
     });
+    products = products.filter(toneOK);
     const selected = q.priceSort ? products : products.slice(0, q.brand ? 6 : 3);
     selected.forEach((product, i) => {
       results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3, reasons });
@@ -700,6 +721,7 @@ export function search(state, text, { anchorItemId = null } = {}) {
       ? recommendLooks(
           {
             ...state,
+            closet: state.demo ? [] : state.closet,
             gender: c.gender,
             styles: c.styles,
             season: c.season,

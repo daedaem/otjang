@@ -1399,7 +1399,8 @@ test('the example closet can switch between men\'s and women\'s examples from th
 
 test('a first visit starts the closet by picking owned basics: kind and color only, then the picked garment opens with outfits from owned clothes', async () => {
   const page = await boot();
-  assert.match(page.nodes.get('app').innerHTML, /가진 옷을 눌러 주세요/);
+  assert.match(page.nodes.get("app").innerHTML, /어떤 옷 찾으세요\?/);
+  assert.match(page.nodes.get("app").innerHTML, /내 옷장을 넣으면 더 정확해져요/);
   await page.click({ action: 'starter-pick', slot: 'm-oxford' });
   await page.click({ action: 'starter-color', slot: 'm-oxford', color: 'white' });
   await page.click({ action: 'starter-pick', slot: 'm-chino' });
