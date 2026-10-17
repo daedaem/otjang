@@ -139,6 +139,16 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     (slot && garmentSlotStatus(item, slot) === 'uncertain') ||
     (classificationValid && garmentSlotStatus(item, slot) === 'confirmed' && !item.color) ||
     (sameProduct.includes(item) && !exactOwned.includes(item)));
+  // Kind+color match needs no subtype, so the sheet can lead with a conclusion
+  // ("a similar one is already in your closet") before details are confirmed.
+  const candidateKind = candidate?.kind || slot?.shape || null;
+  const kindMatch = {
+    kind: candidateKind,
+    sameColor: candidateKind && hasColor ? actual.filter((item) => item.kind === candidateKind &&
+      item.color === candidateColor && !exactOwned.includes(item)) : [],
+    otherColor: candidateKind ? actual.filter((item) => item.kind === candidateKind &&
+      (!hasColor || item.color !== candidateColor)) : [],
+  };
   const checks = [];
   const check = (code, message, garmentIds) => checks.push({ code, message, ...(garmentIds ? { garmentIds } : {}) });
   const parsed = parseCandidateLink(candidate?.url || '');
@@ -261,6 +271,7 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     similarOwned,
     sameTypeOwned,
     uncertainOwned,
+    kindMatch,
     existingFormulaCount: existing.size,
     newFormulaCount,
     looks,

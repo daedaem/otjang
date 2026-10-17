@@ -1522,21 +1522,37 @@ function journeySheet(id) {
   const linked = j.garmentId && state.garments.find((item) => item.id === j.garmentId);
   const needsOwnership = !comparison.sameTypeOwned.length && !comparison.sameProduct.length && j.intent === 'add';
   const ownershipCheck = comparison.missingChecks.find((check) => check.code === 'ownership-unknown');
-  const pairContext = comparison.newFormulaCount || comparison.decision.kind === 'skip' ? null : purchasePlanContext(state, c, { intent: j.intent });
-  const reasons = [...new Set(pairContext ? comparison.missingChecks.map((check) => check.message) : comparison.decision.reasons)].filter((reason) => reason !== ownershipCheck?.message);
+  const similarHeld = comparison.decision.kind !== 'skip' && j.intent === 'add' ? [...new Map([...comparison.similarOwned,
+    ...(comparison.kindMatch?.sameColor || [])].map((item) => [item.id, item])).values()] : [];
+  const pairContext = comparison.newFormulaCount || comparison.decision.kind === 'skip' || similarHeld.length ? null : purchasePlanContext(state, c, { intent: j.intent });
+  const reasons = [...new Set(pairContext || similarHeld.length ? comparison.missingChecks.map((check) => check.message) : comparison.decision.reasons)].filter((reason) => reason !== ownershipCheck?.message);
   const questionKind = SLOT_BY_ID[c.slot]?.name || '비슷한 옷';
   const otherChecks = comparison.missingChecks.filter((check) => check.code !== 'ownership-unknown' && !reasons.includes(check.message));
   const firstLook = comparison.looks.find((look) => look.new) || comparison.looks[0];
-  const verdict = pairContext ? `${shortName(pairContext.companionSlot)}까지 더하는 ${pairContext.pair.look.title} 조합`
-    : comparison.decision.kind === 'skip' ? '같은 상품이 이미 있어요'
+  // Lead with the conclusion: duplicate first, then what this one item adds, then kind-level facts.
+  const kindName = GARMENT_KINDS.find((k) => k.id === comparison.kindMatch?.kind)?.name || '';
+  const otherKind = comparison.kindMatch?.otherColor || [];
+  const roughOnly = !comparison.newFormulaCount && comparison.decision.kind === 'hold' && !state.demo &&
+    comparison.actualGarmentIds.length && kindName;
+  const verdict = comparison.decision.kind === 'skip' ? '같은 상품이 이미 있어요'
+    : similarHeld.length ? '비슷한 옷이 이미 있어요'
     : firstLook && comparison.newFormulaCount ? `${firstLook.look.title} 코디가 새로 연결돼요`
-    : comparison.decision.kind === 'consider' ? '가진 옷과 활용해볼 수 있어요' : '결정 전에 조금 더 확인해요';
+    : pairContext ? '이 옷 하나로는 새 코디가 생기지 않아요'
+    : comparison.decision.kind === 'consider' ? '가진 옷과 활용해볼 수 있어요'
+    : roughOnly && otherKind.length ? `${kindName}${josa(kindName, '은', '는')} 이미 ${otherKind.length}벌 있어요 · 색은 달라요`
+    : roughOnly ? `가진 옷 중 ${kindName}${josa(kindName, '은', '는')} 아직 없어요`
+    : '결정 전에 조금 더 확인해요';
+  const similarLine = similarHeld.length ? `<p class="sub similar-held">${similarHeld.slice(0, 3).map((item) =>
+    esc(`${COLORS[item.color]?.label || ''} ${garmentLabel(item)}`.trim())).join(', ')}${similarHeld.length > 3 ? ` 외 ${similarHeld.length - 3}벌` : ''} · 같은 종류·색이에요. 새로 더할 이유가 있는지 먼저 확인해 주세요.</p>` : '';
+  const roughLine = roughOnly && !similarHeld.length && !pairContext
+    ? `<p class="sub">종류·색으로 먼저 비교했어요. 세부 종류까지 확인하면 어떤 코디가 생기는지도 알려 드려요.</p>` : '';
 
   openSheet(`<div class="journey-overview"><div class="journey-product-photo">${candidatePicture(c, 'hero candidate-hero')}</div><div><span class="eyebrow">${labels[j.stage]}</span><p class="brand-name">${esc(c.brand || '')}</p><h2 class="detail-title">${esc(c.name || '가져온 상품')}</h2><p class="sub">${j.decision ? decisionLabels[j.decision] : '가진 옷과 먼저 비교해보세요'}</p>
     <div class="fine">${c.price === null ? '가격 미확인' : `${formatPrice(c.price)} · ${esc(c.checkedAt || '확인 날짜 없음')} ${c.priceSource === 'catalog' ? '수집일' : '직접 입력'} 기준 참고 가격`}</div>
     <p class="fine">고른 옵션의 현재 가격·배송비·품절 여부는 판매처에서 확인해 주세요.</p></div></div>
     <section class="journey-verdict" aria-label="내 옷을 기준으로 비교"><span class="eyebrow">내 옷을 기준으로 비교</span><h3>${esc(verdict)}</h3>
-    ${pairContext ? `<p class="sub">두 벌 중 한 벌을 보고 있어요. ${pairContext.pair.usesOwned.length}벌의 내 옷에 두 종류를 함께 더하는 코디 공식이에요. 이 상품 하나만으로 완성되는 조합은 아니에요.</p>` : ''}
+    ${similarLine}${roughLine}
+    ${pairContext ? `<p class="sub">${esc(shortName(pairContext.companionSlot))}${josa(shortName(pairContext.companionSlot), '을', '를')} 함께 더해야 ${esc(pairContext.pair.look.title)} 조합이 돼요. ${pairContext.pair.usesOwned.length}벌의 내 옷에 두 종류를 함께 더하는 코디 공식이에요.</p>` : ''}
     ${firstLook && comparison.newFormulaCount ? `<p class="sub">등록한 옷 기준으로 새 코디 공식 ${comparison.newFormulaCount}개. 실제 핏·사이즈는 별도 확인이 필요해요.</p>` : ''}
     ${ownershipCheck ? `<p class="sub">${firstLook ? '어울리는 조합은 찾았어요. ' : ''}구매가 필요한지는 가진 옷을 한 번 더 확인해요.</p>` : ''}
     ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>` : ''}</section>

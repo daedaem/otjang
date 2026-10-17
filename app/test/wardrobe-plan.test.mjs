@@ -12,6 +12,7 @@ import { compareCandidate, candidateFromProduct, candidateFromLink } from '../sr
 import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
 import { createWardrobeStore } from '../src/wardrobe-store.js';
 import { PRODUCT_BY_ID } from '../src/engine.js';
+import { SLOT_BY_ID } from '../src/data/slots.js';
 import { createPurchaseJourney, transitionPurchaseJourney } from '../src/purchase-journey.js';
 
 const g = (slot, color, extra = {}) => makeGarment({ slot, color, gender: 'M', ...extra });
@@ -320,15 +321,52 @@ test('both candidates in a two-item plan retain the same combination context wit
     await page.click({ action: 'candidate-product', id: selected.id });
     const journey = page.app.state().journeys.find((item) => item.candidate.productId === selected.id);
     assert.ok(page.sheet().includes(pair.look.title));
-    assert.match(page.sheet(), /두 벌 중 한 벌/);
+    assert.match(page.sheet(), /이 옷 하나로는 새 코디가 생기지 않아요[\s\S]*함께 더해야/);
     assert.ok(page.sheet().includes(`data-action="candidate-product" data-id="${companion.id}"`));
     await page.click({ action: 'journey-field', id: journey.id, field: 'absence', value: 'absent' });
     assert.ok(page.sheet().includes(pair.look.title), 'answering ownership must not erase the two-item plan');
     assert.doesNotMatch(page.sheet(), /현재 등록한 옷에서는 이 상품만 더해 새로 완성되는/);
-    assert.match(page.sheet(), /이 상품 하나만으로 완성되는 조합은 아니에요/);
+    assert.match(page.sheet(), /이 옷 하나로는 새 코디가 생기지 않아요/);
     const comparison = compareCandidate(page.app.state(), journey.candidate, { absence: 'absent' });
     assert.equal(comparison.newFormulaCount, 0);
     assert.equal(comparison.decision.kind, 'hold', 'pair context never upgrades a single-item purchase verdict');
   }
+  page.app.store.close();
+});
+
+test('the comparison leads with a similar garment found by kind and color, even before subtypes are confirmed', async () => {
+  const product = PRODUCT_BY_ID['ms-3323583'];
+  const kind = SLOT_BY_ID[product.slot].shape;
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const blouson = makeGarment({ kind, color: product.color, gender: 'M' });
+  const { season, ...record } = wardrobe([g('m-oxford', 'white'), g('m-chino', 'beige'), blouson]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const comparison = compareCandidate(page.app.state(), candidateFromProduct(product));
+  assert.deepEqual(comparison.kindMatch.sameColor.map((item) => item.id), [blouson.id]);
+  await page.click({ action: 'candidate-product', id: product.id });
+  const sheet = page.sheet();
+  assert.match(sheet, /<h3>비슷한 옷이 이미 있어요<\/h3>/);
+  assert.match(sheet, /similar-held/);
+  assert.doesNotMatch(sheet, /journey-pair/, 'a duplicate must not be upsold with a companion item');
+  page.app.store.close();
+});
+
+test('without confirmed subtypes the comparison still states whether the closet has that kind', async () => {
+  const product = PRODUCT_BY_ID['ms-3323583'];
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const shirt = makeGarment({ kind: SLOT_BY_ID['m-oxford'].shape, color: 'white', gender: 'M' });
+  const pants = makeGarment({ kind: SLOT_BY_ID['m-chino'].shape, color: 'beige', gender: 'M' });
+  const { season, ...record } = wardrobe([shirt, pants]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  await page.click({ action: 'candidate-product', id: product.id });
+  const sheet = page.sheet();
+  assert.match(sheet, /<h3>가진 옷 중 [^<]+ 아직 없어요<\/h3>/);
+  assert.doesNotMatch(sheet, /<h3>결정 전에 조금 더 확인해요<\/h3>/);
+  assert.equal(compareCandidate(page.app.state(), candidateFromProduct(product)).decision.kind, 'hold',
+    'a kind-level headline must not turn into a buy recommendation');
   page.app.store.close();
 });
