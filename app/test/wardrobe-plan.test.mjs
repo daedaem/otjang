@@ -9,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { IDBFactory } from 'fake-indexeddb';
 import { wardrobePlan } from '../src/wardrobe-plan.js';
 import { compareCandidate, candidateFromProduct, candidateFromLink, quickCompare } from '../src/purchase-candidate.js';
-import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
+import { makeGarment, newWardrobeState, wardrobeView } from '../src/wardrobe.js';
 import { createWardrobeStore } from '../src/wardrobe-store.js';
-import { PRODUCT_BY_ID } from '../src/engine.js';
+import { PRODUCT_BY_ID, basicOutfits } from '../src/engine.js';
 import { SLOT_BY_ID } from '../src/data/slots.js';
 import { createPurchaseJourney, transitionPurchaseJourney } from '../src/purchase-journey.js';
 
@@ -408,4 +408,22 @@ test('an unknown color is never reported as a different color, whether the candi
   assert.match(page.sheet(), /색은 확인이 필요해요/);
   assert.doesNotMatch(page.sheet(), /색은 달라요/);
   page.app.store.close();
+});
+
+test('basic outfits use only owned garments, include the anchor, and never suggest a purchase', () => {
+  const top = makeGarment({ slot: 'm-tee', color: 'white', gender: 'M' });
+  const bottom = makeGarment({ slot: 'm-denim', color: 'blue', gender: 'M' });
+  const shoes = makeGarment({ slot: 'm-white-sneaker', color: 'white', gender: 'M' });
+  const state = wardrobeView({ ...newWardrobeState(), demo: false, garments: [top, bottom, shoes] });
+  const looks = basicOutfits(state, { anchorItem: state.closet.find((i) => i.id === bottom.id) });
+  assert.equal(looks.length, 1);
+  assert.equal(looks[0].buyCount, 0);
+  assert.deepEqual(looks[0].items.map((row) => row.item.id).sort(), [top.id, bottom.id, shoes.id].sort());
+  assert.ok(looks[0].items.every((row) => row.owned));
+  const noShoes = wardrobeView({ ...newWardrobeState(), demo: false, garments: [top, bottom] });
+  assert.equal(basicOutfits(noShoes, { anchorItem: noShoes.closet[0] }).length, 0, 'without shoes there is no complete outfit');
+  const dress = makeGarment({ slot: 'f-dress', color: 'navy', gender: 'F' });
+  const flats = makeGarment({ slot: 'f-flat', color: 'black', gender: 'F' });
+  const women = wardrobeView({ ...newWardrobeState(), gender: 'F', styles: ['french'], demo: false, garments: [dress, flats] });
+  assert.equal(basicOutfits(women, { anchorItem: women.closet.find((i) => i.id === dress.id) }).length, 1);
 });

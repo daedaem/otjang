@@ -7,6 +7,7 @@ import {
   recommendLooks,
   closetLooks,
   essentials,
+  basicOutfits,
   search,
   productsFor,
   scoreSlot,
@@ -263,6 +264,40 @@ function storageNotice() {
       ? '<div class="notice legacy-notice">Claude 최신 버전의 기록이 별도로 있습니다. 이 미리보기로 자동 이전되지 않았으며 원본은 유지 중입니다. 최신 버전에서 백업한 자료를 보관해 주세요.</div>'
       : '')
   );
+}
+// ── 옷장에서 시작: 홈 맨 위는 내 옷장이다.
+// 아직 실제 옷이 없으면 "가진 옷 고르기"(종류와 색만, 브랜드·품명·핏은 정하지 않음)로 몇 벌만 넣고,
+// 옷이 있으면 한 벌을 꺼내 가진 옷 코디로 이어진다. 개수는 강제하지 않는다: 한 벌만 골라도 된다.
+const STARTER = {
+  M: ['m-oxford', 'm-tee', 'm-knit', 'm-sweat', 'm-harrington', 'm-blazer', 'm-denim', 'm-chino', 'm-slacks', 'm-white-sneaker', 'm-loafer', 'm-runner'],
+  F: ['f-shirt', 'f-tee', 'f-knit', 'f-cardigan', 'f-trench', 'f-blazer', 'f-denim', 'f-slacks', 'f-skirt', 'f-dress', 'f-sneaker', 'f-loafer'],
+};
+let starterPicks = new Map(); // slot id -> color id | null (null: 색 모름)
+function closetStart() {
+  const real = state.demo ? [] : state.closet.filter((i) => ['user', 'legacy'].includes(i.source));
+  if (real.length) {
+    const shown = [...real].sort((a, b) => (wearStats(state.wears || []).get(b.id)?.count || 0) - (wearStats(state.wears || []).get(a.id)?.count || 0)).slice(0, 12);
+    return `<section class="section closet-start" aria-labelledby="closet-start-title">
+      <div class="section-head"><div><span class="eyebrow">내 옷장 ${real.length}벌</span><h2 id="closet-start-title">오늘은 어떤 옷을 꺼낼까요?</h2><div class="sub">한 벌을 누르면 가진 옷으로 만든 코디부터 보여 드려요.</div></div><button class="link" data-action="tab" data-tab="closet">옷장 전체</button></div>
+      <div class="closet-strip">${shown.map((i) => `<button class="strip-item" data-action="open-own" data-id="${esc(i.id)}"><span class="strip-photo">${itemPicture(i)}</span><span class="strip-name">${esc(COLORS[i.color]?.label && !garmentLabel(i).includes(COLORS[i.color].label) ? `${COLORS[i.color].label} ` : '')}${esc(garmentLabel(i))}</span></button>`).join('')}<button class="strip-item strip-add" data-action="add-start"><span class="strip-photo">${ICON.plus}</span><span class="strip-name">옷 추가</span></button></div>
+    </section>`;
+  }
+  const gender = state.gender === 'F' ? 'F' : 'M';
+  const slots = STARTER[gender].map((id) => SLOT_BY_ID[id]).filter(Boolean);
+  const picked = [...starterPicks.keys()].filter((id) => slots.some((s) => s.id === id));
+  return `<section class="section closet-start starter" aria-labelledby="starter-title">
+    <span class="eyebrow">내 옷장 시작하기</span>
+    <h2 id="starter-title">가진 옷을 눌러 주세요</h2>
+    <p class="sub">한 벌만 골라도 그 옷으로 코디를 보여 드려요. 사진은 같은 종류·색의 비슷한 상품 사진이에요. 브랜드·품명·핏은 정하지 않고, 나중에 내 사진으로 바꿀 수 있어요.</p>
+    <div class="starter-gender" role="group" aria-label="옷 분류"><button class="chip" data-action="set-gender" data-g="M" data-stay="1" aria-pressed="${gender === 'M'}">남성 옷</button><button class="chip" data-action="set-gender" data-g="F" data-stay="1" aria-pressed="${gender === 'F'}">여성 옷</button></div>
+    <div class="starter-grid">${slots.map((slot) => {
+      const on = starterPicks.has(slot.id), color = starterPicks.get(slot.id);
+      return `<div class="starter-tile${on ? ' on' : ''}"><button class="starter-pick" data-action="starter-pick" data-slot="${slot.id}" aria-pressed="${on}">${slotPicture(slot, color || slot.colors[0], 'thumb')}<span>${esc(shortName(slot))}</span></button>${on ? `<div class="starter-colors" role="group" aria-label="${esc(shortName(slot))} 색">${slot.colors.map((c) => `<button class="sw named" data-action="starter-color" data-slot="${slot.id}" data-color="${c}" aria-pressed="${color === c}"><i style="background:${COLORS[c].hex}"></i><span>${esc(COLORS[c].label)}</span></button>`).join('')}<button class="chip small" data-action="starter-color" data-slot="${slot.id}" data-color="" aria-pressed="${color === null}">모름</button></div>` : ''}</div>`;
+    }).join('')}</div>
+    <div class="starter-actions">${picked.length ? `<button class="btn" data-action="starter-save">고른 ${picked.length}벌로 옷장 시작</button>` : ''}
+      <button class="btn secondary" data-action="add-start">내 옷 사진으로 넣기</button>
+      <button class="link" data-action="candidate-start">고민 중인 옷부터 비교하기</button></div>
+  </section>`;
 }
 function demoNotice() {
   return state.demo
@@ -566,6 +601,7 @@ function renderHome() {
     : pair ? homePairCard(pair, ownLabel) : `<div class="next-pick next-pick-empty"><span class="eyebrow">다음 한 벌</span><h3>${plan.needsCheck.length ? '내 옷을 조금 더 알려주세요' : ownedCount ? '함께 입는 옷을 더 알려주세요' : '가진 옷부터 살펴볼까요?'}</h3><p class="sub">${plan.needsCheck.length ? `종류·색을 확인할 옷이 ${plan.needsCheck.length}벌 있어요. 확인한 옷으로 후보를 찾아드려요.` : ownedCount ? '지금 조건에서는 한 벌을 더해 완성되는 코디가 없어요. 함께 입는 옷을 더 등록하거나, 옷장 분석에서 다른 조합을 살펴보세요.' : '옷을 등록하면 함께 입기 좋은 종류와 실제 상품을 찾을 수 있어요.'}</p>${ownedCount ? `<div class="next-owned"><span>등록한 ${ownLabel}</span><div>${myCloset().slice(0, 3).map((item) => `<button data-action="${state.demo ? 'tab' : 'open-own'}" ${state.demo ? 'data-tab="closet"' : `data-id="${esc(item.id)}"`} aria-label="${esc(garmentLabel(item))}">${itemPicture(item, 'next-owned-photo')}</button>`).join('')}</div></div>` : ''}<button class="btn" data-action="${plan.needsCheck.length ? 'closet-review' : 'add-start'}">${plan.needsCheck.length ? '확인할 옷 보기' : '내 옷 추가'}</button><button class="link" data-action="open-plan">옷장 분석 보기</button></div>`;
   const deck = BRAND.deck ? homeDeck(plan, items) : '';
   return `
+    ${closetStart()}
     <section class="section page-intro"><span class="eyebrow">${esc(SEASON_LABEL[season])} · ${esc(styleLine())}</span><h2>${BRAND.heroTitle}</h2><p class="sub">${state.demo ? '예시 옷장으로 먼저 둘러보세요.' : ownedCount ? `내 옷 ${ownedCount}벌을 바탕으로 골랐어요.` : '옷 한 벌을 넣고, 함께 입을 조합부터 찾아보세요.'}</p></section>
     <div class="home-lead">
       <section class="section home-next">${deck || nextPick}</section>
@@ -1570,7 +1606,7 @@ function journeySheet(id) {
   const similarLine = similarHeld.length ? `<p class="sub similar-held">${similarHeld.slice(0, 3).map((item) =>
     esc(`${COLORS[item.color]?.label || ''} ${garmentLabel(item)}`.trim())).join(', ')}${similarHeld.length > 3 ? ` 외 ${similarHeld.length - 3}벌` : ''} · 같은 종류·색이에요. 새로 더할 이유가 있는지 먼저 확인해 주세요.</p>` : '';
   const roughLine = roughOnly && !similarHeld.length && !pairContext
-    ? `<p class="sub">종류·색으로 먼저 비교했어요. 세부 종류까지 확인하면 어떤 코디가 생기는지도 알려 드려요.</p>` : '';
+    ? `<p class="sub">종류·색으로 먼저 비교했어요. 확인 안 된 정보(세부 종류·색)를 채우면 어떤 코디가 생기는지도 알려 드려요.</p>` : '';
 
   openSheet(`<div class="journey-overview"><div class="journey-product-photo">${candidatePicture(c, 'hero candidate-hero')}</div><div><span class="eyebrow">${labels[j.stage]}</span><p class="brand-name">${esc(c.brand || '')}</p><h2 class="detail-title">${esc(c.name || '가져온 상품')}</h2><p class="sub">${j.decision ? decisionLabels[j.decision] : '가진 옷과 먼저 비교해보세요'}</p>
     <div class="fine">${c.price === null ? '가격 미확인' : `${formatPrice(c.price)} · ${esc(c.checkedAt || '확인 날짜 없음')} ${c.priceSource === 'catalog' ? '수집일' : '직접 입력'} 기준 참고 가격`}</div>
@@ -1888,10 +1924,15 @@ function ownSheet(id) {
   const active = state.closet.some((i) => i.id === id);
   const slot = slotForItem(item);
   const p = item.productId ? PRODUCT_BY_ID[item.productId] : null;
-  const looks = active ? recommendLooks(
+  const allLooks = active ? recommendLooks(
     { ...state, budget: null, occasion: null },
-    { limit: 2, occasion: null, anchorItem: item },
+    { limit: 6, occasion: null, anchorItem: item },
   ) : [];
+  // 가진 옷만으로 완성되는 코디를 먼저, 한 벌을 더하면 완성되는 코디는 추천 가설로 따로 보여 준다.
+  const ownedLooks = allLooks.filter((r) => !r.buyCount && !r.uncertainCount).slice(0, 2);
+  const basicLooks = ownedLooks.length || !active ? [] : basicOutfits(state, { anchorItem: item, limit: 2 });
+  const addLooks = allLooks.filter((r) => r.buyCount && !ownedLooks.includes(r)).sort((a, b) => a.buyCount - b.buyCount).slice(0, 2);
+  const firstBuy = addLooks.flatMap((r) => r.items.filter((row) => !row.owned && row.slot))[0];
   lastLooks = [];
   openSheet(`
     ${itemPicture(item, 'hero')}
@@ -1900,10 +1941,16 @@ function ownSheet(id) {
     <h2 class="detail-title">${esc(item.label || p?.name || garmentLabel(item))}</h2>
     ${!active ? '<p class="notice">보유 추천에서 제외 중인 옷이에요. 사진과 기록은 보관 중이며 구매 여정에서 수령·보유·반품 상태를 확인할 수 있어요.</p>' : ''}
     ${item.photoMissing ? '<p class="notice">이전 버전에서 사진이 저장되지 않았던 옷이에요. 사진을 다시 골라 주세요.</p>' : ''}<div class="fine">${esc(garmentLabel(item))} · ${esc(COLORS[item.color]?.label || '색 미확인')}</div>
+    ${active ? `<section class="own-looks" aria-label="이 옷을 꺼내면">
+      <h3 class="block">이 옷을 꺼내면</h3>
+      ${ownedLooks.length ? `<p class="sub">가진 옷만으로 완성되는 코디예요.</p><div class="looks">${ownedLooks.map((r) => lookCard(r)).join('')}</div>`
+        : basicLooks.length ? `<p class="sub">가진 옷으로 바로 입을 수 있는 기본 조합이에요. 스타일 코디 공식은 옷이 더 있으면 찾아 드려요.</p><div class="looks">${basicLooks.map((r) => lookCard(r)).join('')}</div>`
+        : `<p class="sub">${!item.color ? '이 옷의 색을 고르면 가진 옷 조합을 더 정확히 찾아요.' : '함께 입을 상의·하의·신발을 등록하면 가진 옷 조합을 보여 드려요.'}</p>`}
+      ${addLooks.length ? `<h4 class="block">더 있으면 완성되는 코디 <span class="fine">· 추천 가설</span></h4><p class="fine">등록하지 않았을 뿐 이미 가진 옷일 수 있어요. 있으면 옷장에 넣어 주세요. 없을 때만 후보와 비교해 보세요.</p><div class="looks">${addLooks.map((r) => lookCard(r)).join('')}</div>${firstBuy ? `<button class="chip" data-action="add-slot" data-slot="${esc(firstBuy.slot.id)}">${esc(shortName(firstBuy.slot))} 이미 있어요 · 옷장에 넣기</button>` : ''}` : ''}
+    </section>` : ''}
     ${active && !state.demo && !item.color ? ownColorCheck(item, p) : ''}
     ${active && !state.demo && ['user', 'legacy'].includes(item.source) ? ownWearBox(item) : ''}
     <div class="why"><h3>이렇게 입어요</h3><ul><li>${esc(slot.tip)}</li></ul></div>
-    ${looks.length ? `<h3 class="block">이 옷으로 만든 코디</h3><div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : active ? '<p class="sub">이 옷이 들어가는 코디 공식이 아직 없어요.</p>' : ''}
     <div class="sheet-links">
       ${p ? `<a class="link" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">판매 페이지</a>` : ''}
       ${active ? `<button class="link" data-action="search-with" data-id="${item.id}">이 옷에 어울리는 아이템 찾기</button>` : ''}
@@ -4473,6 +4520,39 @@ document.addEventListener('click', async (e) => {
         if (!draft) beginDraft();
         document.getElementById('camera-photo-input')?.click();
         break;
+      case 'starter-pick': {
+        const id = el.dataset.slot;
+        if (!SLOT_BY_ID[id]) break;
+        if (starterPicks.has(id)) starterPicks.delete(id);
+        else starterPicks.set(id, SLOT_BY_ID[id].colors.length === 1 ? SLOT_BY_ID[id].colors[0] : null);
+        render();
+        document.querySelector(`[data-action="starter-pick"][data-slot="${CSS.escape(id)}"]`)?.focus();
+        break;
+      }
+      case 'starter-color': {
+        const id = el.dataset.slot;
+        if (!starterPicks.has(id)) break;
+        starterPicks.set(id, el.dataset.color && COLORS[el.dataset.color] ? el.dataset.color : null);
+        render();
+        document.querySelector(`[data-action="starter-color"][data-slot="${CSS.escape(id)}"][data-color="${CSS.escape(el.dataset.color || '')}"]`)?.focus();
+        break;
+      }
+      case 'starter-save': {
+        const added = [...starterPicks].filter(([id]) => SLOT_BY_ID[id]).map(([id, color]) =>
+          makeGarment({ slot: id, kind: SLOT_BY_ID[id].shape, gender: SLOT_BY_ID[id].g, color }));
+        if (!added.length) break;
+        try {
+          await set({ demo: false, demoSelected: [], garments: [...state.garments, ...added], tab: 'home' });
+          starterPicks = new Map();
+          window.scrollTo(0, 0);
+          const first = added.find((item) => item.color) || added[0];
+          ownSheet(first.id);
+          toast(`${added.length}벌로 옷장을 시작했어요 · 비슷한 상품 사진은 나중에 내 사진으로 바꿀 수 있어요`);
+        } catch (error) {
+          toast(storageMessage(error));
+        }
+        break;
+      }
       case 'essential-pick': {
         const id = el.dataset.slot;
         if (!SLOT_BY_ID[id]) break;

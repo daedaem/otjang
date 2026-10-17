@@ -1396,3 +1396,36 @@ test('the example closet can switch between men\'s and women\'s examples from th
   assert.ok(page.state().closet.every((item) => item.gender === 'F'));
   assert.equal(page.nodes.get('sheet-root').innerHTML, '', 'switching examples does not open the profile sheet');
 });
+
+test('a first visit starts the closet by picking owned basics: kind and color only, then the picked garment opens with outfits from owned clothes', async () => {
+  const page = await boot();
+  assert.match(page.nodes.get('app').innerHTML, /가진 옷을 눌러 주세요/);
+  await page.click({ action: 'starter-pick', slot: 'm-oxford' });
+  await page.click({ action: 'starter-color', slot: 'm-oxford', color: 'white' });
+  await page.click({ action: 'starter-pick', slot: 'm-chino' });
+  await page.click({ action: 'starter-color', slot: 'm-chino', color: 'beige' });
+  await page.click({ action: 'starter-pick', slot: 'm-white-sneaker' });
+  await page.click({ action: 'starter-save' });
+  const state = page.state();
+  assert.equal(state.demo, false);
+  assert.equal(state.garments.length, 3);
+  for (const item of state.garments) {
+    assert.equal(item.source, 'user');
+    assert.ok(!item.brand && !item.label && !item.productId && !item.photoId, 'a picked basic never claims a brand, name, product or photo');
+  }
+  assert.deepEqual(state.garments.map((item) => item.color).sort(), ['beige', 'white', 'white']);
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(sheet, /이 옷을 꺼내면/);
+  assert.match(sheet, /가진 옷 기본 조합/);
+  assert.match(page.nodes.get('app').innerHTML, /오늘은 어떤 옷을 꺼낼까요\?/);
+});
+
+test('a picked basic may keep its color unknown and one garment is enough to start', async () => {
+  const page = await boot();
+  await page.click({ action: 'starter-pick', slot: 'm-knit' });
+  await page.click({ action: 'starter-save' });
+  const [item] = page.state().garments;
+  assert.equal(page.state().garments.length, 1);
+  assert.equal(item.color, null);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /색을 고르면/);
+});

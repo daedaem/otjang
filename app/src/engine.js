@@ -5,7 +5,7 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, COLORS } from './data/slots.js';
 import { LOOKS, ROLE_ORDER } from './data/looks.js';
 import { PRODUCTS } from './data/products.js';
 import { parseQuery } from './query.js';
-import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus } from './wardrobe.js';
+import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus, slotForItem } from './wardrobe.js';
 import { productEligible, evidenceColor } from './catalog-policy.js';
 import { inactivePurchaseGarmentIds } from './purchase-journey.js';
 export const SAFE_PRODUCTS = PRODUCTS.filter(productEligible);
@@ -503,13 +503,16 @@ function rankLooks(results, c) {
 export function recommendLooks(
   state,
   { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null, anchorColor = null,
-    allowPendingPurchases = false, requestedPurchaseSlots = null } = {},
+    allowPendingPurchases = false, requestedPurchaseSlots = null, anySeason = false, anyStyle = false } = {},
 ) {
   if (pinnedProduct && !productEligible(pinnedProduct)) return [];
-  const c = ctx(state);
+  const base = ctx(state);
+  // A widened search (every season and style of this gender) is for "what can I wear with what I own",
+  // never for buying advice; callers label those looks as outside the current season/style.
+  const c = anyStyle ? { ...base, styles: Object.keys(STYLES).filter((k) => STYLES[k].g.includes(base.gender)) } : base;
   const force = new Set(forceOwned);
-  let looks = matchingLooks(c, { occasion: occasion ?? c.occasion });
-  if (!looks.length) looks = matchingLooks(c, { occasion: null });
+  let looks = matchingLooks(c, { occasion: occasion ?? c.occasion, anySeason });
+  if (!looks.length) looks = matchingLooks(c, { occasion: null, anySeason });
   if (force.size) {
     const cats = [...new Set([...force].map((id) => SLOT_BY_ID[id]?.cat))];
     looks = looks.filter((l) =>
@@ -543,6 +546,39 @@ export function closetLooks(state, { limit = 3 } = {}) {
     .filter((r) => r.buyCount === 1 && r.ownedCount >= 2 && r.uncertainCount === 0)
     .slice(0, limit);
   return { ready, almost };
+}
+
+// 가진 옷 기본 조합: 코디 공식(LOOKS)에 없어도 가진 옷으로 입을 수 있는 상의+하의+신발(또는 원피스+신발),
+// 겉옷이 있으면 하나 더한다. 종류와 색 조화만 본 조합이라 구매 추천·부족한 옷 판단에는 쓰지 않는다.
+export function basicOutfits(state, { anchorItem = null, limit = 2 } = {}) {
+  const c = ctx(state);
+  const owned = c.closet.filter((i) => ['user', 'legacy'].includes(i.source) && !String(i.id).startsWith('demo_'));
+  const cat = (i) => slotForItem(i).cat;
+  const pick = (k) => (anchorItem && cat(anchorItem) === k ? [anchorItem] : owned.filter((i) => cat(i) === k)).slice(0, 8);
+  const shoes = pick('shoes'), outers = [null, ...pick('outer')];
+  const bases = anchorItem && cat(anchorItem) === 'dress'
+    ? [[anchorItem]]
+    : [...pick('top').flatMap((t) => pick('bottom').map((b) => [t, b])),
+       ...(anchorItem && !['top', 'bottom'].includes(cat(anchorItem)) ? pick('dress').map((d) => [d]) : [])];
+  const out = [];
+  for (const base of bases) for (const shoe of shoes) for (const outer of outers) {
+    const items = [outer, ...base, shoe].filter(Boolean);
+    if (anchorItem && !items.includes(anchorItem)) continue;
+    const entries = items.map((i) => ({ color: i.color, cat: cat(i) }));
+    out.push({ items, score: harmony(entries) + (outer ? 0.2 : 0) - items.filter((i) => !i.color).length * 0.5 });
+  }
+  out.sort((a, b) => b.score - a.score);
+  const seen = new Set();
+  return out.filter(({ items }) => {
+    const key = items.filter((i) => cat(i) !== 'outer').map((i) => i.id).join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, limit).map(({ items }, n) => ({
+    look: { id: `basic-${n}`, title: `가진 옷 기본 조합 ${n + 1}`, note: '코디 공식이 아니라 종류와 색이 어울리는 기본 조합이에요.' },
+    items: items.map((i) => ({ role: cat(i) === 'dress' ? 'top' : cat(i), slot: slotForItem(i), owned: true, item: i, color: i.color, certainty: 'confirmed' })),
+    ownedCount: items.length, buyCount: 0, buyTotal: 0, uncertainCount: 0, basic: true,
+  }));
 }
 
 // 고른 스타일의 기본 아이템을 가졌는지
