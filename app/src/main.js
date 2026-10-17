@@ -1293,8 +1293,9 @@ function quickCheckSection(d) {
     result = !r.actualCount
       ? `<h3>내 옷을 먼저 넣어 주세요</h3><p class="sub">예시 옷이 아닌 실제 가진 옷과 비교해요.</p><button class="chip" data-action="add-start">내 옷 추가</button>`
       : r.sameColor.length ? `<h3>비슷한 옷이 이미 있어요</h3><p class="sub">${names(r.sameColor)} · 같은 종류·색이에요.</p>`
+      : r.unknownColor.length ? `<h3>${esc(kindName)}${josa(kindName, '은', '는')} 이미 ${r.otherColor.length + r.unknownColor.length}벌 있어요 · 색은 확인이 필요해요</h3><p class="sub">${names([...r.unknownColor, ...r.otherColor])}</p>`
       : r.otherColor.length ? `<h3>${esc(kindName)}${josa(kindName, '은', '는')} 이미 ${r.otherColor.length}벌 있어요 · 색은 달라요</h3><p class="sub">${names(r.otherColor)}</p>`
-      : `<h3>가진 옷 중 ${esc(kindName)}${josa(kindName, '은', '는')} 아직 없어요</h3>`;
+      : `<h3>등록한 옷 중 ${esc(kindName)}${josa(kindName, '은', '는')} 아직 없어요</h3>`;
     result = `<section class="journey-verdict quick-result" aria-live="polite">${result}<p class="fine">링크가 없어 기록으로 남기지 않아요. 판매 링크를 붙여 넣으면 코디까지 비교해요.</p></section>`;
   }
   return `<details class="quick-check"${q.checked || d.linkError ? ' open' : ''}><summary>링크가 없나요? 종류·색으로 바로 확인</summary>
@@ -1554,6 +1555,7 @@ function journeySheet(id) {
   // Lead with the conclusion: duplicate first, then what this one item adds, then kind-level facts.
   const kindName = GARMENT_KINDS.find((k) => k.id === comparison.kindMatch?.kind)?.name || '';
   const otherKind = comparison.kindMatch?.otherColor || [];
+  const unsureKind = comparison.kindMatch?.unknownColor || [];
   const roughOnly = !comparison.newFormulaCount && comparison.decision.kind === 'hold' && !state.demo &&
     comparison.actualGarmentIds.length && kindName;
   const verdict = comparison.decision.kind === 'skip' ? '같은 상품이 이미 있어요'
@@ -1561,8 +1563,9 @@ function journeySheet(id) {
     : firstLook && comparison.newFormulaCount ? `${firstLook.look.title} 코디가 새로 연결돼요`
     : pairContext ? '이 옷 하나로는 새 코디가 생기지 않아요'
     : comparison.decision.kind === 'consider' ? '가진 옷과 활용해볼 수 있어요'
+    : roughOnly && unsureKind.length ? `${kindName}${josa(kindName, '은', '는')} 이미 ${otherKind.length + unsureKind.length}벌 있어요 · 색은 확인이 필요해요`
     : roughOnly && otherKind.length ? `${kindName}${josa(kindName, '은', '는')} 이미 ${otherKind.length}벌 있어요 · 색은 달라요`
-    : roughOnly ? `가진 옷 중 ${kindName}${josa(kindName, '은', '는')} 아직 없어요`
+    : roughOnly ? `등록한 옷 중 ${kindName}${josa(kindName, '은', '는')} 아직 없어요`
     : '결정 전에 조금 더 확인해요';
   const similarLine = similarHeld.length ? `<p class="sub similar-held">${similarHeld.slice(0, 3).map((item) =>
     esc(`${COLORS[item.color]?.label || ''} ${garmentLabel(item)}`.trim())).join(', ')}${similarHeld.length > 3 ? ` 외 ${similarHeld.length - 3}벌` : ''} · 같은 종류·색이에요. 새로 더할 이유가 있는지 먼저 확인해 주세요.</p>` : '';

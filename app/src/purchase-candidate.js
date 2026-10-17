@@ -119,10 +119,13 @@ export function quickCompare(state, { kind, color = null, gender = 'M' } = {}) {
     .filter((item) => ['user', 'legacy'].includes(item.source) && !String(item.id).startsWith('demo_') &&
       item.gender === g && !inactiveIds.has(item.id));
   const sameKind = kind ? actual.filter((item) => item.kind === kind) : [];
+  const known = (value) => !!value && Object.hasOwn(COLORS, value);
+  // A color nobody has confirmed (candidate or owned) is "unknown", never "different".
   return {
     actualCount: actual.length,
-    sameColor: color ? sameKind.filter((item) => item.color === color) : [],
-    otherColor: sameKind.filter((item) => !color || item.color !== color),
+    sameColor: known(color) ? sameKind.filter((item) => item.color === color) : [],
+    otherColor: known(color) ? sameKind.filter((item) => known(item.color) && item.color !== color) : [],
+    unknownColor: sameKind.filter((item) => !known(color) || !known(item.color)),
   };
 }
 
@@ -160,8 +163,10 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     kind: candidateKind,
     sameColor: candidateKind && hasColor ? actual.filter((item) => item.kind === candidateKind &&
       item.color === candidateColor && !exactOwned.includes(item)) : [],
-    otherColor: candidateKind ? actual.filter((item) => item.kind === candidateKind &&
-      (!hasColor || item.color !== candidateColor)) : [],
+    otherColor: candidateKind && hasColor ? actual.filter((item) => item.kind === candidateKind &&
+      Object.hasOwn(COLORS, item.color) && item.color !== candidateColor) : [],
+    unknownColor: candidateKind ? actual.filter((item) => item.kind === candidateKind &&
+      (!hasColor || !Object.hasOwn(COLORS, item.color))) : [],
   };
   const checks = [];
   const check = (code, message, garmentIds) => checks.push({ code, message, ...(garmentIds ? { garmentIds } : {}) });

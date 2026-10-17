@@ -364,7 +364,7 @@ test('without confirmed subtypes the comparison still states whether the closet 
   const page = await boot(indexedDB);
   await page.click({ action: 'candidate-product', id: product.id });
   const sheet = page.sheet();
-  assert.match(sheet, /<h3>가진 옷 중 [^<]+ 아직 없어요<\/h3>/);
+  assert.match(sheet, /<h3>등록한 옷 중 [^<]+ 아직 없어요<\/h3>/);
   assert.doesNotMatch(sheet, /<h3>결정 전에 조금 더 확인해요<\/h3>/);
   assert.equal(compareCandidate(page.app.state(), candidateFromProduct(product)).decision.kind, 'hold',
     'a kind-level headline must not turn into a buy recommendation');
@@ -381,4 +381,31 @@ test('a link-less quick check compares by kind and color against real garments o
   assert.equal(quickCompare(state, { kind: 'knit', color: 'navy', gender: 'M' }).sameColor.length, 0);
   assert.deepEqual(quickCompare(state, { kind: 'dress', color: 'navy', gender: 'F' }).sameColor.map((i) => i.id), [dress.id]);
   assert.equal(quickCompare({ ...newWardrobeState() }, { kind: 'jacket', color: 'navy' }).actualCount, 0, 'examples never count as owned');
+});
+
+test('an unknown color is never reported as a different color, whether the candidate or the owned garment lacks it', async () => {
+  const navy = makeGarment({ kind: 'jacket', color: 'navy', gender: 'M' });
+  const unsure = makeGarment({ kind: 'jacket', color: null, gender: 'M' });
+  const state = { ...newWardrobeState(), demo: false, garments: [navy, unsure] };
+  const noCandidateColor = quickCompare(state, { kind: 'jacket', color: '', gender: 'M' });
+  assert.equal(noCandidateColor.otherColor.length, 0);
+  assert.equal(noCandidateColor.unknownColor.length, 2);
+  const navyCandidate = quickCompare(state, { kind: 'jacket', color: 'black', gender: 'M' });
+  assert.deepEqual(navyCandidate.otherColor.map((i) => i.id), [navy.id]);
+  assert.deepEqual(navyCandidate.unknownColor.map((i) => i.id), [unsure.id]);
+
+  const product = PRODUCT_BY_ID['ms-3323583'];
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const owned = makeGarment({ kind: SLOT_BY_ID[product.slot].shape, color: null, gender: 'M' });
+  const { season, ...record } = wardrobe([owned]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const comparison = compareCandidate(page.app.state(), candidateFromProduct(product));
+  assert.equal(comparison.kindMatch.otherColor.length, 0);
+  assert.deepEqual(comparison.kindMatch.unknownColor.map((i) => i.id), [owned.id]);
+  await page.click({ action: 'candidate-product', id: product.id });
+  assert.match(page.sheet(), /색은 확인이 필요해요/);
+  assert.doesNotMatch(page.sheet(), /색은 달라요/);
+  page.app.store.close();
 });
