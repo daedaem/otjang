@@ -773,3 +773,118 @@ test('data saving mode requires an explicit analysis choice for each new photo d
   assert.match(page.nodes.get('sheet-root').innerHTML, /data-action="photo-start"/);
   assert.equal((await photoFlowStored(page)).photos.size, 0);
 });
+
+// 사진 여러 장: 한 장씩 이어서 열고, 종류를 확인한 사진만 저장한다. 분석 도구는 다시 받지 않는다.
+async function choosePhotos(page, fake, files, result = photoFlowResult()) {
+  const nextJob = fake.jobs.length + 1;
+  const changed = page.change('photo-input', '', { files });
+  (await waitForPhotoJob(fake, nextJob)).resolve(result);
+  await changed;
+}
+async function clickThenAnalyze(page, fake, dataset, result = photoFlowResult()) {
+  const nextJob = fake.jobs.length + 1;
+  const clicked = page.click(dataset);
+  (await waitForPhotoJob(fake, nextJob)).resolve(result);
+  await clicked;
+}
+const sheetHTML = (page) => page.nodes.get('sheet-root').innerHTML;
+const toastText = (page) => page.nodes.get('toast').innerHTML;
+
+test('several photos open one after another and each is saved only after its kind is confirmed', async (t) => {
+  const fake = deferredRecognizer();
+  const page = await bootPhotoFlow({ factory: fake.factory });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  const [a, b, c] = [photoFlowJPEG(31), photoFlowJPEG(32), photoFlowJPEG(33)];
+  await choosePhotos(page, fake, [a, b, c]);
+  assert.match(sheetHTML(page), /사진 1 \/ 3/);
+  assert.match(sheetHTML(page), /data-action="queue-skip"/);
+  assert.match(sheetHTML(page), /남은 2장 넣지 않기/);
+  assert.equal(page.state().garments.length, 0, 'nothing is saved before a kind is confirmed');
+  await assertPhotoFlowBytes(page.app.draft().asset.blob, a);
+
+  await page.click({ action: 'draft-kind', kind: 'shirt' });
+  assert.match(sheetHTML(page), /저장하고 다음 사진/);
+  await clickThenAnalyze(page, fake, { action: 'draft-save' });
+  assert.equal(page.state().garments.length, 1);
+  assert.match(sheetHTML(page), /사진 2 \/ 3/);
+  await assertPhotoFlowBytes(page.app.draft().asset.blob, b);
+  assert.equal(page.app.draft().kind, null, 'the next photo starts without the previous kind');
+  assert.equal(fake.disposals, 0, 'the prepared analysis tool is handed to the next photo');
+
+  await clickThenAnalyze(page, fake, { action: 'queue-skip' });
+  assert.match(sheetHTML(page), /사진 3 \/ 3/);
+  assert.match(sheetHTML(page), /마지막 사진이에요/);
+  assert.doesNotMatch(sheetHTML(page), /data-action="queue-skip"/);
+  await assertPhotoFlowBytes(page.app.draft().asset.blob, c);
+  await page.click({ action: 'draft-kind', kind: 'jacket' });
+  assert.match(sheetHTML(page), />옷장에 저장</);
+  await page.click({ action: 'draft-save' });
+  assert.equal(sheetHTML(page), '', 'the sheet closes after the last photo');
+  assert.match(toastText(page), /사진 3장 중 2벌을 저장했어요 · 2벌은 (&#39;|')확인 필요/);
+  assert.match(toastText(page), /data-action="closet-review-open">색 고르기</);
+
+  const saved = await photoFlowStored(page);
+  assert.deepEqual(saved.state.garments.map((g) => g.kind).sort(), ['jacket', 'shirt']);
+  await assertPhotoFlowBytes(saved.photos.get(saved.state.garments.find((g) => g.kind === 'shirt').photoId), a);
+  await assertPhotoFlowBytes(saved.photos.get(saved.state.garments.find((g) => g.kind === 'jacket').photoId), c);
+});
+
+test('closing the sheet drops the remaining photos; editing a garment uses one photo only', async (t) => {
+  const fake = deferredRecognizer();
+  const page = await bootPhotoFlow({ factory: fake.factory });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await choosePhotos(page, fake, [photoFlowJPEG(41), photoFlowJPEG(42), photoFlowJPEG(43)]);
+  await page.click({ action: 'queue-stop' });
+  assert.match(sheetHTML(page), /사진 1 \/ 1/);
+  assert.match(toastText(page), /남은 사진 2장은 넣지 않아요/);
+  await page.click({ action: 'draft-kind', kind: 'shirt' });
+  await page.click({ action: 'draft-save' });
+  assert.equal(page.state().garments.length, 1);
+
+  page.app.beginDraft();
+  await choosePhotos(page, fake, [photoFlowJPEG(44), photoFlowJPEG(45)]);
+  page.app.closeSheet();
+  assert.match(toastText(page), /남은 사진 1장은 넣지 않았어요/);
+  assert.equal(page.state().garments.length, 1, 'closing saves nothing');
+
+  page.app.beginDraft(page.app.state().garments[0]);
+  await choosePhotos(page, fake, [photoFlowJPEG(46), photoFlowJPEG(47)]);
+  assert.doesNotMatch(sheetHTML(page), /사진 1 \//, 'an edit takes only the first photo');
+  assert.match(sheetHTML(page), />옷장에 저장</);
+});
+
+test('the review list sets colours in place and returns to the list after choosing a detailed kind', async (t) => {
+  const fake = deferredRecognizer();
+  const page = await bootPhotoFlow({ factory: fake.factory });
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await choosePhotos(page, fake, [photoFlowJPEG(51), photoFlowJPEG(52)]);
+  await page.click({ action: 'draft-kind', kind: 'shirt' });
+  await clickThenAnalyze(page, fake, { action: 'draft-save' });
+  await page.click({ action: 'draft-kind', kind: 'jacket' });
+  await page.click({ action: 'draft-save' });
+  const [shirt, jacket] = ['shirt', 'jacket'].map((kind) => page.state().garments.find((g) => g.kind === kind));
+
+  await page.click({ action: 'closet-review' });
+  const app = () => page.nodes.get('app').innerHTML;
+  assert.match(app(), /class="review-list"/);
+  assert.match(app(), new RegExp(`data-action="own-color" data-stay="review" data-id="${shirt.id}" data-color="navy"`));
+  assert.match(app(), new RegExp(`data-action="edit-own" data-review="1" data-id="${jacket.id}">세부 종류 고르기`));
+
+  await page.click({ action: 'own-color', stay: 'review', id: shirt.id, color: 'navy' });
+  assert.equal(page.state().garments.find((g) => g.id === shirt.id).color, 'navy');
+  assert.equal(sheetHTML(page), '', 'choosing a colour stays on the list');
+  assert.match(app(), /class="review-list"/);
+  assert.match(toastText(page), /색을 저장했어요 · 확인할 옷 2벌 남았어요/);
+
+  await page.click({ action: 'edit-own', review: '1', id: jacket.id });
+  assert.equal(page.app.draft().fromReview, true);
+  assert.equal(page.app.draft().confirmDetails, true);
+  await page.click({ action: 'draft-color', color: 'black' });
+  await page.click({ action: 'draft-save' });
+  assert.equal(page.state().garments.find((g) => g.id === jacket.id).color, 'black');
+  assert.match(app(), /class="review-list"/, 'still unchecked clothes keep the review list open');
+  assert.match(toastText(page), /확인했어요 · 확인할 옷 \d+벌 남았어요/);
+});

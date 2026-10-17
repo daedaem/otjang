@@ -5,6 +5,7 @@
 //                                                          (외부 이미지를 막는 환경에서 미리보기할 때)
 //       node app/tools/build.mjs --fragment             →  <html>·<head>·<body> 없이 본문만 (페이지 뼈대를 씌워 주는 호스팅용)
 //       node app/tools/build.mjs --server https://…     →  그 주소의 어울 서버로 계정·동기화를 켠다
+//       node app/tools/build.mjs --theme deulim         →  app/themes/deulim.json·.css의 이름·글꼴·색·판단 요약으로 만든다(디자인 비교용)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +49,7 @@ const order = [
   'src/community-post.js',
   'src/jpeg-clean.js',
   'src/icons.js',
+  'src/brand.js',
   'src/zip-store.js',
   'src/main.js',
 ];
@@ -74,7 +76,17 @@ if (imagesFile) {
   console.log(`images inlined: ${replaced}`);
 }
 
-const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+// --theme <id>: the same app under another name and look (app/themes/<id>.json and .css).
+const themeId = option('--theme');
+const theme = themeId ? JSON.parse(fs.readFileSync(path.join(root, 'themes', `${themeId}.json`), 'utf8')) : null;
+if (theme) {
+  const before = js;
+  js = js.replace(/const BRAND = \{[\s\S]*?\n\};/, () => `const BRAND = ${JSON.stringify(theme.brand)};`);
+  if (js === before) throw new Error('BRAND를 찾지 못했어요.');
+}
+let css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+// A theme may build on shared parts (themes/<name>.css listed in "include") before its own file.
+if (theme) for (const name of [...(theme.include || []), themeId]) css += `\n/* ── theme: ${name} */\n${fs.readFileSync(path.join(root, 'themes', `${name}.css`), 'utf8')}`;
 const script = `<script type="module">\n(() => {\n${js}\n})();\n</script>`;
 let html;
 if (flag('--fragment')) {
@@ -99,7 +111,30 @@ if (serverURL) {
   else html = html.replace(/<head>/, () => `<head>\n  <meta name="eoul-api" content="${url.origin}">`);
 }
 
+if (theme) {
+  const name = theme.brand.name;
+  html = html
+    .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${name} · ${theme.brand.tagline}</title>`)
+    .replace(/(<meta name="(?:application-name|apple-mobile-web-app-title)" content=")[^"]*(")/g, (_, a, b) => `${a}${name}${b}`)
+    .replace(/어울에서 옷장부터/, () => `${name}에서 옷장부터`);
+  // A theme has one fixed palette, light or dark, so the browser bar takes its one background.
+  if (theme.themeColor) {
+    html = html
+      .replace(/\s*<meta name="theme-color" content="[^"]*" media="\(prefers-color-scheme: dark\)">/, '')
+      .replace(/<meta name="theme-color" content="[^"]*"[^>]*>/, () => `<meta name="theme-color" content="${theme.themeColor}">`);
+  }
+  if (theme.fonts) {
+    const link = `<link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="stylesheet" href="${theme.fonts}">`;
+    html = flag('--fragment') ? `${link}\n${html}` : html.replace(/<\/head>/, () => `  ${link}\n</head>`);
+  }
+}
+
 const out = option('--out') || path.join(root, 'dist/index.html');
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, html);
 console.log(`${path.relative(process.cwd(), out)} ${(html.length / 1024).toFixed(0)} KB`);
+
+// The installable-app files (manifest, service worker, icons) sit next to the
+// page. The server sends only these named files; a page hosted elsewhere
+// simply has no install support.
+if (!flag('--fragment')) fs.cpSync(path.join(root, 'public'), path.dirname(out), { recursive: true });

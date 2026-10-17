@@ -24,7 +24,8 @@ export function createSupply({ env = process.env, fetchImpl = globalThis.fetch, 
     { id: 'catalog', name: '어울 상품 목록 수집가', status: 'collected', note: '목록에 넣은 날의 표시가예요. 현재 가격이 아니에요.' },
     naverId && naverSecret
       ? { id: 'naver-shopping', name: '네이버 쇼핑 검색 API', status: 'connected', note: '검색으로 찾은 판매처예요. 같은 상품·옵션인지 직접 확인해야 비교에 넣어요. 배송비는 제공되지 않아요.' }
-      : { id: 'naver-shopping', name: '네이버 쇼핑 검색 API', status: 'not-connected', needs: ['네이버 개발자센터 애플리케이션 등록', 'EOUL_NAVER_CLIENT_ID', 'EOUL_NAVER_CLIENT_SECRET'] },
+      // 여러 보도(2026-08~10)는 쇼핑 검색 API가 2026-07-31에 대체 없이 끝났다고 전한다. 1차 공지는 아직 확인하지 못했다.
+      : { id: 'naver-shopping', name: '네이버 쇼핑 검색 API', status: 'not-connected', note: '2026-07-31에 대체 없이 끝났다는 보도가 있어요. 네이버 공지를 먼저 확인하세요.', needs: ['네이버 개발자센터 애플리케이션 등록', 'EOUL_NAVER_CLIENT_ID', 'EOUL_NAVER_CLIENT_SECRET'] },
     { id: 'musinsa', name: '무신사 실시간 가격·재고', status: 'not-connected', needs: ['운영자 결정: 무신사 제휴 또는 공식 API, 이용약관·robots 확인'] },
     { id: 'coupang-partners', name: '쿠팡 파트너스 API', status: 'not-connected', needs: ['쿠팡 파트너스 가입·승인', 'Access Key·Secret Key'] },
   ];

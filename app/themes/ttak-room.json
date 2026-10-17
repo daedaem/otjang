@@ -1,0 +1,6 @@
+{
+  "brand": { "id": "ttak-room", "name": "딱", "tagline": "나의 드레스룸", "heroTitle": "옷장 문을 열고,<br>딱 맞는 한 벌.", "wardrobe": true, "stamps": { "buy": "딱!", "hold": "잠깐", "skip": "패스" }, "deck": true, "daypart": true, "haptic": false },
+  "include": ["stamp-base"],
+  "themeColor": "#1B1612",
+  "fonts": "https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+}

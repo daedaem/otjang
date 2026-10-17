@@ -1,0 +1,11 @@
+# 기본 백업: 데이터베이스 변경분을 몇 초 안에 /backups(호스트의 EOUL_BACKUP_DIR)로 복제해요.
+# 집 PC에서는 EOUL_BACKUP_DIR을 다른 디스크(외장·두 번째 드라이브)로 두세요. 같은 디스크면 디스크 고장에 못 버팁니다.
+snapshot:
+  interval: 24h      # 하루에 한 번 전체 사본
+  retention: 168h    # 7일 전 시점까지 되돌릴 수 있음
+
+dbs:
+  - path: /data/eoul.db
+    replica:
+      type: file
+      path: /backups/eoul.db

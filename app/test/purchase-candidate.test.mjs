@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCandidateLink, candidateFromLink, candidateFromProduct, compareCandidate } from '../src/purchase-candidate.js';
+import { parseCandidateLink, extractPurchaseLink, candidateFromLink, candidateFromProduct, compareCandidate } from '../src/purchase-candidate.js';
 import { PRODUCTS } from '../src/data/products.js';
 import { SLOT_BY_ID } from '../src/data/slots.js';
 import { recommendItems, recommendLooks, essentials, closetLooks, search, SAFE_PRODUCTS } from '../src/engine.js';
@@ -550,4 +550,16 @@ test('replacement reports a lost formula while other actual garments can preserv
   assert.equal(preserved.replacement.lostFormulaCount, 0, 'a surviving actual garment keeps the formula available');
   assert.equal(target.photoId, 'chambray-original-photo');
   assert.equal(other.photoId, 'other-shirt-original-photo');
+});
+
+test('shared text from a shopping app yields its first link, while a link that starts the text stays whole', () => {
+  const shared = parseCandidateLink('[무신사] 올리브 자켓\nhttps://www.musinsa.com/products/5755268?color=olive\n지금 확인해 보세요');
+  assert.equal(shared.ok, true);
+  assert.equal(shared.productId, 'ms-5755268');
+  assert.equal(shared.originalUrl, 'https://www.musinsa.com/products/5755268?color=olive');
+  assert.equal(extractPurchaseLink('이 셔츠 어때요? (https://shop.example.com/item/9).'), 'https://shop.example.com/item/9');
+  assert.equal(extractPurchaseLink('https://shop.example.com/\nitem/1'), 'https://shop.example.com/\nitem/1', 'a broken link is not shortened into another link');
+  assert.equal(parseCandidateLink('https://shop.example.com/\nitem/1').ok, false);
+  assert.equal(parseCandidateLink('링크 없는 공유 글').ok, false);
+  assert.equal(parseCandidateLink('상품 http://localhost/private').ok, false, 'an extracted link passes the same public-seller checks');
 });

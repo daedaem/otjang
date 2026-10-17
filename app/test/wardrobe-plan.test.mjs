@@ -8,10 +8,11 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { IDBFactory } from 'fake-indexeddb';
 import { wardrobePlan } from '../src/wardrobe-plan.js';
-import { compareCandidate, candidateFromProduct, candidateFromLink } from '../src/purchase-candidate.js';
-import { makeGarment, newWardrobeState } from '../src/wardrobe.js';
+import { compareCandidate, candidateFromProduct, candidateFromLink, quickCompare } from '../src/purchase-candidate.js';
+import { makeGarment, newWardrobeState, wardrobeView } from '../src/wardrobe.js';
 import { createWardrobeStore } from '../src/wardrobe-store.js';
-import { PRODUCT_BY_ID } from '../src/engine.js';
+import { PRODUCT_BY_ID, basicOutfits } from '../src/engine.js';
+import { SLOT_BY_ID } from '../src/data/slots.js';
 import { createPurchaseJourney, transitionPurchaseJourney } from '../src/purchase-journey.js';
 
 const g = (slot, color, extra = {}) => makeGarment({ slot, color, gender: 'M', ...extra });
@@ -189,7 +190,7 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   await page.click({ action: 'open-plan' });
   const sheet = page.sheet();
   assert.match(sheet, /등록한 내 옷 5벌 중 종류·색을 확인한 4벌로 계산했어요/);
-  assert.match(sheet, /부족한 종류와 실제 상품[\s\S]*<summary>계산 기준 · 내 옷과 겹치는 종류<\/summary>[\s\S]*계산에 넣은 내 옷[\s\S]*겹치는 옷/);
+  assert.match(sheet, /부족한 종류와 실제 상품[\s\S]*<summary>계산 기준 · 겹치는 옷 · 한계<\/summary>[\s\S]*계산에 넣은 내 옷[\s\S]*겹치는 옷[\s\S]*계산 방법과 한계/);
   assert.match(sheet, /데님 · 색 미확인 <button class="link" data-action="open-own" data-id="g_jeans">/);
   assert.match(sheet, /<b>화이트 [^<]*옥스퍼드[^<]* 2벌<\/b>/);
   const plan = wardrobePlan(JSON.parse(JSON.stringify(page.app.state())));
@@ -202,6 +203,10 @@ test('home and the plan sheet: my clothes → overlap → gap → exact product,
   assert.ok(sheet.includes(`data-action="candidate-product" data-id="${p.id}"`), 'one tap to compare with my clothes and keep a journey');
   assert.match(sheet, /가격은 현재 최저가가 아니에요/);
   assert.doesNotMatch(sheet.replace('가격은 현재 최저가가 아니에요', ''), /최저가/);
+  const firstGap = sheet.slice(sheet.indexOf('<section class="plan-gap">'));
+  const shownFirst = firstGap.slice(0, firstGap.indexOf('<details class="plan-more">') >= 0 ? firstGap.indexOf('<details class="plan-more">') : firstGap.indexOf('</section>'));
+  assert.equal((shownFirst.match(/<article class="plan-product">/g) || []).length, 1, 'each recommendation leads with one product; other candidates are folded');
+  assert.match(shownFirst, /class="plan-owned-strip"/, 'the clothes it goes with are shown as photos');
   await page.click({ action: 'candidate-product', id: p.id });
   assert.equal(page.app.state().journeys.at(-1).candidate.productId, p.id);
   assert.equal(page.app.candidateDraft(), null, 'one comparison tap no longer asks for catalog metadata again');
@@ -316,15 +321,109 @@ test('both candidates in a two-item plan retain the same combination context wit
     await page.click({ action: 'candidate-product', id: selected.id });
     const journey = page.app.state().journeys.find((item) => item.candidate.productId === selected.id);
     assert.ok(page.sheet().includes(pair.look.title));
-    assert.match(page.sheet(), /두 벌 중 한 벌/);
+    assert.match(page.sheet(), /이 옷 하나로는 새 코디가 생기지 않아요[\s\S]*함께 더해야/);
     assert.ok(page.sheet().includes(`data-action="candidate-product" data-id="${companion.id}"`));
     await page.click({ action: 'journey-field', id: journey.id, field: 'absence', value: 'absent' });
     assert.ok(page.sheet().includes(pair.look.title), 'answering ownership must not erase the two-item plan');
     assert.doesNotMatch(page.sheet(), /현재 등록한 옷에서는 이 상품만 더해 새로 완성되는/);
-    assert.match(page.sheet(), /이 상품 하나만으로 완성되는 조합은 아니에요/);
+    assert.match(page.sheet(), /이 옷 하나로는 새 코디가 생기지 않아요/);
     const comparison = compareCandidate(page.app.state(), journey.candidate, { absence: 'absent' });
     assert.equal(comparison.newFormulaCount, 0);
     assert.equal(comparison.decision.kind, 'hold', 'pair context never upgrades a single-item purchase verdict');
   }
   page.app.store.close();
+});
+
+test('the comparison leads with a similar garment found by kind and color, even before subtypes are confirmed', async () => {
+  const product = PRODUCT_BY_ID['ms-3323583'];
+  const kind = SLOT_BY_ID[product.slot].shape;
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const blouson = makeGarment({ kind, color: product.color, gender: 'M' });
+  const { season, ...record } = wardrobe([g('m-oxford', 'white'), g('m-chino', 'beige'), blouson]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const comparison = compareCandidate(page.app.state(), candidateFromProduct(product));
+  assert.deepEqual(comparison.kindMatch.sameColor.map((item) => item.id), [blouson.id]);
+  await page.click({ action: 'candidate-product', id: product.id });
+  const sheet = page.sheet();
+  assert.match(sheet, /<h3>비슷한 옷이 이미 있어요<\/h3>/);
+  assert.match(sheet, /similar-held/);
+  assert.doesNotMatch(sheet, /journey-pair/, 'a duplicate must not be upsold with a companion item');
+  page.app.store.close();
+});
+
+test('without confirmed subtypes the comparison still states whether the closet has that kind', async () => {
+  const product = PRODUCT_BY_ID['ms-3323583'];
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const shirt = makeGarment({ kind: SLOT_BY_ID['m-oxford'].shape, color: 'white', gender: 'M' });
+  const pants = makeGarment({ kind: SLOT_BY_ID['m-chino'].shape, color: 'beige', gender: 'M' });
+  const { season, ...record } = wardrobe([shirt, pants]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  await page.click({ action: 'candidate-product', id: product.id });
+  const sheet = page.sheet();
+  assert.match(sheet, /<h3>등록한 옷 중 [^<]+ 아직 없어요<\/h3>/);
+  assert.doesNotMatch(sheet, /<h3>결정 전에 조금 더 확인해요<\/h3>/);
+  assert.equal(compareCandidate(page.app.state(), candidateFromProduct(product)).decision.kind, 'hold',
+    'a kind-level headline must not turn into a buy recommendation');
+  page.app.store.close();
+});
+
+test('a link-less quick check compares by kind and color against real garments only', () => {
+  const navy = makeGarment({ kind: 'jacket', color: 'navy', gender: 'M' });
+  const black = makeGarment({ kind: 'jacket', color: 'black', gender: 'M' });
+  const dress = makeGarment({ kind: 'dress', color: 'navy', gender: 'F' });
+  const state = { ...newWardrobeState(), demo: false, garments: [navy, black, dress] };
+  assert.deepEqual(quickCompare(state, { kind: 'jacket', color: 'navy', gender: 'M' }).sameColor.map((i) => i.id), [navy.id]);
+  assert.deepEqual(quickCompare(state, { kind: 'jacket', color: 'navy', gender: 'M' }).otherColor.map((i) => i.id), [black.id]);
+  assert.equal(quickCompare(state, { kind: 'knit', color: 'navy', gender: 'M' }).sameColor.length, 0);
+  assert.deepEqual(quickCompare(state, { kind: 'dress', color: 'navy', gender: 'F' }).sameColor.map((i) => i.id), [dress.id]);
+  assert.equal(quickCompare({ ...newWardrobeState() }, { kind: 'jacket', color: 'navy' }).actualCount, 0, 'examples never count as owned');
+});
+
+test('an unknown color is never reported as a different color, whether the candidate or the owned garment lacks it', async () => {
+  const navy = makeGarment({ kind: 'jacket', color: 'navy', gender: 'M' });
+  const unsure = makeGarment({ kind: 'jacket', color: null, gender: 'M' });
+  const state = { ...newWardrobeState(), demo: false, garments: [navy, unsure] };
+  const noCandidateColor = quickCompare(state, { kind: 'jacket', color: '', gender: 'M' });
+  assert.equal(noCandidateColor.otherColor.length, 0);
+  assert.equal(noCandidateColor.unknownColor.length, 2);
+  const navyCandidate = quickCompare(state, { kind: 'jacket', color: 'black', gender: 'M' });
+  assert.deepEqual(navyCandidate.otherColor.map((i) => i.id), [navy.id]);
+  assert.deepEqual(navyCandidate.unknownColor.map((i) => i.id), [unsure.id]);
+
+  const product = PRODUCT_BY_ID['ms-3323583'];
+  const indexedDB = new IDBFactory(), store = createWardrobeStore({ indexedDB });
+  const first = await store.load();
+  const owned = makeGarment({ kind: SLOT_BY_ID[product.slot].shape, color: null, gender: 'M' });
+  const { season, ...record } = wardrobe([owned]);
+  await store.commit(record, first.revision, [], first.epoch); store.close();
+  const page = await boot(indexedDB);
+  const comparison = compareCandidate(page.app.state(), candidateFromProduct(product));
+  assert.equal(comparison.kindMatch.otherColor.length, 0);
+  assert.deepEqual(comparison.kindMatch.unknownColor.map((i) => i.id), [owned.id]);
+  await page.click({ action: 'candidate-product', id: product.id });
+  assert.match(page.sheet(), /색은 확인이 필요해요/);
+  assert.doesNotMatch(page.sheet(), /색은 달라요/);
+  page.app.store.close();
+});
+
+test('basic outfits use only owned garments, include the anchor, and never suggest a purchase', () => {
+  const top = makeGarment({ slot: 'm-tee', color: 'white', gender: 'M' });
+  const bottom = makeGarment({ slot: 'm-denim', color: 'blue', gender: 'M' });
+  const shoes = makeGarment({ slot: 'm-white-sneaker', color: 'white', gender: 'M' });
+  const state = wardrobeView({ ...newWardrobeState(), demo: false, garments: [top, bottom, shoes] });
+  const looks = basicOutfits(state, { anchorItem: state.closet.find((i) => i.id === bottom.id) });
+  assert.equal(looks.length, 1);
+  assert.equal(looks[0].buyCount, 0);
+  assert.deepEqual(looks[0].items.map((row) => row.item.id).sort(), [top.id, bottom.id, shoes.id].sort());
+  assert.ok(looks[0].items.every((row) => row.owned));
+  const noShoes = wardrobeView({ ...newWardrobeState(), demo: false, garments: [top, bottom] });
+  assert.equal(basicOutfits(noShoes, { anchorItem: noShoes.closet[0] }).length, 0, 'without shoes there is no complete outfit');
+  const dress = makeGarment({ slot: 'f-dress', color: 'navy', gender: 'F' });
+  const flats = makeGarment({ slot: 'f-flat', color: 'black', gender: 'F' });
+  const women = wardrobeView({ ...newWardrobeState(), gender: 'F', styles: ['french'], demo: false, garments: [dress, flats] });
+  assert.equal(basicOutfits(women, { anchorItem: women.closet.find((i) => i.id === dress.id) }).length, 1);
 });

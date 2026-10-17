@@ -10,12 +10,23 @@ const CANDIDATE_ABSENCE = new Set(['unknown', 'absent', 'present']);
 const CANDIDATE_INTENTS = new Set(['add', 'replace']);
 const CANDIDATE_COLOR_SOURCES = new Set(['user', 'name', 'curation', 'image']);
 
+// 쇼핑 앱의 '공유' 글은 "상품명 + 링크" 모양이다. 글 속 첫 http(s) 링크만 꺼내고, 나머지 글은
+// 상품 정보로 쓰지 않는다(이름·색을 글에서 짐작해 확정하지 않는다). 주소로 시작하는 글은
+// 주소 전체로 본다: 중간에 줄바꿈·공백이 낀 주소를 잘라 다른 주소로 만들지 않기 위해서다.
+export function extractPurchaseLink(raw) {
+  const text = String(raw ?? '').trim();
+  if (!/\s/.test(text) || /^https?:\/\//i.test(text)) return text;
+  const found = text.match(/https?:\/\/[^\s<>"'`]+/i);
+  return found ? found[0].replace(/[)\]}>.,!?…。、」』"'”’]+$/u, '') : text;
+}
+
 export function parseCandidateLink(raw, { catalog = PRODUCTS } = {}) {
   const invalid = (error) => ({ ok: false, kind: null, originalUrl: null, canonicalUrl: null, productId: null, product: null, error });
-  if (typeof raw !== 'string' || raw.length > 2048 || /[\u0000-\u001f\u007f\\]/.test(raw))
-    return invalid('상품 링크를 확인해 주세요.');
+  if (typeof raw !== 'string' || raw.length > 4096) return invalid('상품 링크를 확인해 주세요.');
+  const link = extractPurchaseLink(raw);
+  if (link.length > 2048 || /[\u0000-\u001f\u007f\\]/.test(link)) return invalid('상품 링크를 확인해 주세요.');
   let url;
-  try { url = new URL(raw.trim()); } catch { return invalid('https 상품 링크를 붙여 넣어 주세요.'); }
+  try { url = new URL(link); } catch { return invalid('https 상품 링크를 붙여 넣어 주세요.'); }
   if (!isPublicPurchaseUrl(url.href))
     return invalid('공개 판매처의 https 링크를 사용해 주세요.');
   if (url.port && url.port !== '443') return invalid('판매처의 기본 https 링크를 사용해 주세요.');
@@ -101,6 +112,23 @@ function candidateContext(state, closet, gender) {
   };
 }
 
+export function quickCompare(state, { kind, color = null, gender = 'M' } = {}) {
+  const g = gender === 'F' || gender === 'f' ? 'F' : 'M';
+  const inactiveIds = inactivePurchaseGarmentIds(state);
+  const actual = (Array.isArray(state.garments) ? state.garments : state.demo ? [] : state.closet || [])
+    .filter((item) => ['user', 'legacy'].includes(item.source) && !String(item.id).startsWith('demo_') &&
+      item.gender === g && !inactiveIds.has(item.id));
+  const sameKind = kind ? actual.filter((item) => item.kind === kind) : [];
+  const known = (value) => !!value && Object.hasOwn(COLORS, value);
+  // A color nobody has confirmed (candidate or owned) is "unknown", never "different".
+  return {
+    actualCount: actual.length,
+    sameColor: known(color) ? sameKind.filter((item) => item.color === color) : [],
+    otherColor: known(color) ? sameKind.filter((item) => known(item.color) && item.color !== color) : [],
+    unknownColor: sameKind.filter((item) => !known(color) || !known(item.color)),
+  };
+}
+
 export function compareCandidate(state, candidate, { absence = 'unknown', intent = 'add', replacementGarmentId = null } = {}) {
   const resultCandidate = { ...candidate };
   const gender = candidate?.gender === 'f' || candidate?.gender === 'F' ? 'F' : 'M';
@@ -128,6 +156,18 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     (slot && garmentSlotStatus(item, slot) === 'uncertain') ||
     (classificationValid && garmentSlotStatus(item, slot) === 'confirmed' && !item.color) ||
     (sameProduct.includes(item) && !exactOwned.includes(item)));
+  // Kind+color match needs no subtype, so the sheet can lead with a conclusion
+  // ("a similar one is already in your closet") before details are confirmed.
+  const candidateKind = candidate?.kind || slot?.shape || null;
+  const kindMatch = {
+    kind: candidateKind,
+    sameColor: candidateKind && hasColor ? actual.filter((item) => item.kind === candidateKind &&
+      item.color === candidateColor && !exactOwned.includes(item)) : [],
+    otherColor: candidateKind && hasColor ? actual.filter((item) => item.kind === candidateKind &&
+      Object.hasOwn(COLORS, item.color) && item.color !== candidateColor) : [],
+    unknownColor: candidateKind ? actual.filter((item) => item.kind === candidateKind &&
+      (!hasColor || !Object.hasOwn(COLORS, item.color))) : [],
+  };
   const checks = [];
   const check = (code, message, garmentIds) => checks.push({ code, message, ...(garmentIds ? { garmentIds } : {}) });
   const parsed = parseCandidateLink(candidate?.url || '');
@@ -250,6 +290,7 @@ export function compareCandidate(state, candidate, { absence = 'unknown', intent
     similarOwned,
     sameTypeOwned,
     uncertainOwned,
+    kindMatch,
     existingFormulaCount: existing.size,
     newFormulaCount,
     looks,

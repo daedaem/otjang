@@ -30,7 +30,14 @@ shots/
 
 # Self-hosted server data (accounts, wardrobes, photos)
 /server/data/
+/server/data-try/
 *.db
 *.db-shm
 *.db-wal
 /server/models/
+
+# Deploy kit: local settings and database replicas
+/deploy/backups/
+/deploy/backups-staging/
+/deploy/policy/
+/server/policy/

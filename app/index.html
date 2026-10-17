@@ -9,6 +9,12 @@
   <meta name="application-name" content="어울">
   <meta name="description" content="내 옷을 정리하고, 함께 입을 조합과 다음 구매 후보를 살펴보세요. 어울에서 옷장부터 구매 판단까지 이어갑니다.">
   <title>어울 · 내 옷에서 시작하는 스타일</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="어울">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -16,7 +22,7 @@
   <div id="app" class="app"></div>
   <div id="sheet-root"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+  <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
   <input id="camera-photo-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
   <input id="label-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
   <input id="wardrobe-backup-input" type="file" hidden aria-label="옷장 백업 파일 선택">

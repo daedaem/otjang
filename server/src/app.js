@@ -6,12 +6,15 @@
 // every snapshot with the app's own validateWardrobe, so it never stores a
 // record the app could not read back.
 import fs from 'node:fs';
+import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { validateWardrobe, WARDROBE_SCHEMA } from '../../app/src/wardrobe.js';
 import { MAX_GARMENT_PHOTO_BYTES } from '../../app/src/wardrobe-store.js';
 import { transaction } from './db.js';
 import { HttpError } from './http-error.js';
 import { createCommunity } from './community.js';
+import { policyPage, policyDocument } from './policy.js';
 import {
   normalizeEmail, passwordProblem, hashPassword, verifyPassword, burnPasswordTime,
   newSessionToken, tokenHash, newUserId,
@@ -90,12 +93,26 @@ function referencedPhotos(state) {
   return new Set((state?.garments || []).map((garment) => garment.photoId).filter(Boolean));
 }
 
+// The address rate limits count against. CF-Connecting-IP is believed only
+// from cloudflared: on loopback when it runs on the same machine, or at the
+// fixed container address listed in EOUL_TRUSTED_PROXIES (deploy/).
+export function requestAddress(req, { trustProxy = null, trustedProxies = [] } = {}) {
+  const socket = req.socket?.remoteAddress || 'unknown';
+  const peer = socket.replace(/^::ffff:/, '');
+  if (trustProxy === 'cloudflare' && (/^(127\.|::1$)/.test(peer) || trustedProxies.includes(peer))) {
+    const forwarded = req.headers['cf-connecting-ip'];
+    if (typeof forwarded === 'string' && forwarded.length < 64) return forwarded;
+  }
+  return socket;
+}
+
 export function createApp({ db, config, maskService = null, supply = null, mailer = null, now = () => Date.now(), log = () => {} }) {
   const mail = mailer || { enabled: false, kind: 'off', reason: '메일 발송이 설정되지 않았어요.' };
   const limiter = createRateLimiter({ now });
   const q = {
     identity: db.prepare("SELECT user_id, email, password_hash FROM identities WHERE provider = 'email' AND subject = ?"),
-    insertUser: db.prepare('INSERT INTO users (id, created_at, agreement_version, agreed_at) VALUES (?, ?, ?, ?)'),
+    insertUser: db.prepare('INSERT INTO users (id, created_at, agreement_version, agreed_at, last_seen_at) VALUES (?, ?, ?, ?, ?)'),
+    touchUser: db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?'),
     insertIdentity: db.prepare("INSERT INTO identities (provider, subject, user_id, email, password_hash, created_at) VALUES ('email', ?, ?, ?, ?, ?)"),
     insertSession: db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, last_used_at, expires_at) VALUES (?, ?, ?, ?, ?)'),
     session: db.prepare('SELECT s.user_id, s.last_used_at, s.expires_at, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?'),
@@ -125,14 +142,7 @@ export function createApp({ db, config, maskService = null, supply = null, maile
     deletePhoto: db.prepare('DELETE FROM photos WHERE user_id = ? AND id = ?'),
   };
 
-  function clientAddress(req) {
-    const socket = req.socket?.remoteAddress || 'unknown';
-    if (config.trustProxy === 'cloudflare' && /^(127\.|::1$|::ffff:127\.)/.test(socket)) {
-      const forwarded = req.headers['cf-connecting-ip'];
-      if (typeof forwarded === 'string' && forwarded.length < 64) return forwarded;
-    }
-    return socket;
-  }
+  const clientAddress = (req) => requestAddress(req, config);
 
   function limit(key, count, windowMs) {
     if (!limiter.take(key, count, windowMs))
@@ -180,6 +190,7 @@ ${link}
   function startSession(userId) {
     const token = newSessionToken(), t = now();
     q.insertSession.run(tokenHash(token), userId, t, t, t + config.sessionDays * 24 * HOUR);
+    q.touchUser.run(t, userId);
     return token;
   }
 
@@ -195,7 +206,11 @@ ${link}
       throw new HttpError(401, 'signed-out', '로그인이 만료됐어요. 다시 로그인해 주세요.');
     }
     // Sliding expiry, written at most once an hour per session.
-    if (t - row.last_used_at > HOUR) q.touchSession.run(t, t + config.sessionDays * 24 * HOUR, hash);
+    // The account's last use (for retention counts) moves with it.
+    if (t - row.last_used_at > HOUR) {
+      q.touchSession.run(t, t + config.sessionDays * 24 * HOUR, hash);
+      q.touchUser.run(t, row.user_id);
+    }
     return { userId: row.user_id, tokenHash: hash, createdAt: row.created_at };
   }
 
@@ -221,6 +236,9 @@ ${link}
       providers: { email: true, kakao: false, google: false },
       features: { photoMask: !!maskService, offers: !!supply, email: !!mail.enabled, community: !!config.community },
       supply: supply ? supply.sources().map(({ id, name, status, needs = [] }) => ({ id, name, status, needs })) : [],
+      operator: operatorInfo(),
+      policy: { privacy: '/privacy', terms: '/terms', draft: policyDraft() },
+      affiliateHosts: config.affiliateHosts || [],
     }),
 
     'POST /v1/auth/signup': async (req) => {
@@ -241,7 +259,7 @@ ${link}
       const userId = newUserId(), t = now();
       const token = transaction(db, () => {
         if (q.identity.get(email)) throw new HttpError(409, 'email-taken', '이미 가입한 이메일이에요. 로그인해 주세요.');
-        q.insertUser.run(userId, t, AGREEMENT_VERSION, t);
+        q.insertUser.run(userId, t, AGREEMENT_VERSION, t, t);
         q.insertIdentity.run(email, userId, email, hash, t);
         return startSession(userId);
       });
@@ -461,26 +479,121 @@ ${link}
     send(res, stored ? 201 : 200, { id });
   }
 
-  function serveApp(res) {
-    let html;
-    try {
-      html = fs.readFileSync(config.appFile, 'utf8');
-    } catch {
-      send(res, 404, { error: { code: 'app-not-built', message: '앱을 먼저 빌드해 주세요: node app/tools/build.mjs' } });
-      return;
-    }
+  // The single-file app is about 1MB of text. It is compressed once per build
+  // (gzip and brotli) and carries an ETag, so a phone downloads roughly a
+  // quarter of it, and a revisit with an unchanged build gets 304 instead.
+  let appPage = null;
+  function preparedApp() {
+    const stat = fs.statSync(config.appFile);
+    const version = `${stat.mtimeMs}:${stat.size}`;
+    if (appPage?.version === version) return appPage;
+    let html = fs.readFileSync(config.appFile, 'utf8');
     // The page learns that its API lives on this same origin.
     const meta = '<meta name="eoul-api" content="same-origin">';
     html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (head) => `${head}\n${meta}`) : `${meta}\n${html}`;
+    const body = Buffer.from(html, 'utf8');
+    appPage = {
+      version,
+      etag: `W/"${crypto.createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`,
+      identity: body,
+      gzip: zlib.gzipSync(body, { level: 9 }),
+      br: zlib.brotliCompressSync(body, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: body.length } }),
+    };
+    return appPage;
+  }
+  function acceptedEncodings(header) {
+    const accepted = new Set();
+    for (const part of String(header || '').split(',')) {
+      const [name, ...params] = part.trim().toLowerCase().split(';');
+      const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
+      if (name && !(q && Number(q.slice(2)) === 0)) accepted.add(name);
+    }
+    return accepted;
+  }
+  // Installable-app files that the build puts next to the page. Only these
+  // names are served; nothing else in that folder (or outside it) is exposed.
+  const APP_FILES = new Map([
+    ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json; charset=utf-8', 'no-cache']],
+    ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8', 'no-cache']],
+    ['/icons/icon.svg', ['icons/icon.svg', 'image/svg+xml', 'public, max-age=86400']],
+    ['/icons/icon-192.png', ['icons/icon-192.png', 'image/png', 'public, max-age=86400']],
+    ['/icons/icon-512.png', ['icons/icon-512.png', 'image/png', 'public, max-age=86400']],
+    ['/icons/maskable-512.png', ['icons/maskable-512.png', 'image/png', 'public, max-age=86400']],
+    ['/icons/apple-touch-icon.png', ['icons/apple-touch-icon.png', 'image/png', 'public, max-age=86400']],
+    ['/favicon.ico', ['icons/icon-192.png', 'image/png', 'public, max-age=86400']],
+  ]);
+  function serveAppFile(res, pathname) {
+    const [name, type, cache] = APP_FILES.get(pathname);
+    let body;
+    try {
+      body = fs.readFileSync(path.join(path.dirname(config.appFile), name));
+    } catch {
+      send(res, 404, { error: { code: 'not-found', message: '찾는 파일이 없어요.' } });
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': cache, 'X-Content-Type-Options': 'nosniff' });
+    res.end(body);
+  }
+  const operator = config.operator || {};
+  const operatorInfo = () => (operator.name || operator.email
+    ? { name: operator.name || null, email: operator.email || null, businessNumber: operator.businessNumber || null } : null);
+  const policyOptions = () => ({
+    dir: config.policyDir || null,
+    values: {
+      OPERATOR_NAME: operator.name, OPERATOR_EMAIL: operator.email, PRIVACY_OFFICER: operator.privacyOfficer || operator.name,
+      BUSINESS_NUMBER: operator.businessNumber, EFFECTIVE_DATE: operator.policyDate, AGREEMENT_VERSION,
+      COMMUNITY_CONTACT: config.communityContact, REVIEW_DAYS: config.communityReviewDays ?? 7,
+    },
+  });
+  function policyDraft() {
+    try {
+      return ['privacy', 'terms'].some((name) => policyDocument(name, policyOptions()).draft);
+    } catch {
+      return true;
+    }
+  }
+  function servePolicy(res, name) {
+    const page = policyPage(name, policyOptions());
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',
       'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     });
-    res.end(html);
+    res.end(page.html);
   }
 
-  const community = createCommunity({ db, enabled: !!config.community, maxBytes: config.communityMaxBytes ?? undefined, now, log, authenticate, limit, readJson });
+  function serveApp(req, res) {
+    let page;
+    try {
+      page = preparedApp();
+    } catch {
+      send(res, 404, { error: { code: 'app-not-built', message: '앱을 먼저 빌드해 주세요: node app/tools/build.mjs' } });
+      return;
+    }
+    const headers = {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'X-Frame-Options': 'DENY',
+      ETag: page.etag,
+      Vary: 'Accept-Encoding',
+    };
+    const known = String(req.headers['if-none-match'] || '').split(',').map((tag) => tag.trim().replace(/^W\//, ''));
+    if (known.includes(page.etag.replace(/^W\//, '')) || known.includes('*')) {
+      res.writeHead(304, headers);
+      res.end();
+      return;
+    }
+    const accepted = acceptedEncodings(req.headers['accept-encoding']);
+    const encoding = accepted.has('br') ? 'br' : accepted.has('gzip') ? 'gzip' : null;
+    const body = encoding ? page[encoding] : page.identity;
+    res.writeHead(200, { ...headers, ...(encoding ? { 'Content-Encoding': encoding } : {}), 'Content-Length': body.length });
+    res.end(body);
+  }
+
+  const community = createCommunity({ db, enabled: !!config.community, maxBytes: config.communityMaxBytes ?? undefined,
+    contact: config.communityContact ?? null, reviewDays: config.communityReviewDays ?? 7, now, log, authenticate, limit, readJson });
 
   let lastSweep = 0;
   async function handle(req, res) {
@@ -504,7 +617,9 @@ ${link}
       }
       if (method === 'OPTIONS') return send(res, 204);
       if (url.pathname.startsWith('/v1/')) res.setHeader('Cache-Control', 'no-store');
-      if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(res);
+      if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveApp(req, res);
+      if (method === 'GET' && APP_FILES.has(url.pathname)) return serveAppFile(res, url.pathname);
+      if (method === 'GET' && (url.pathname === '/privacy' || url.pathname === '/terms')) return servePolicy(res, url.pathname.slice(1));
       if (method === 'POST' && url.pathname === '/v1/photo-mask') return await photoMaskRoute(req, res);
       const photo = /^\/v1\/photos\/([^/]+)$/.exec(url.pathname);
       if (photo) {

@@ -102,10 +102,10 @@ async function seeded(count, options = {}) {
 
 test('backup reminders start at three real garments and repeat after two weeks', () => {
   const now = new Date('2026-10-15T00:00:00Z');
-  assert.equal(backupDue({ garmentCount: 2, last: null, now }), false);
-  assert.equal(backupDue({ garmentCount: 3, last: null, now }), true);
-  assert.equal(backupDue({ garmentCount: 3, last: new Date('2026-10-10T00:00:00Z'), now }), false);
-  assert.equal(backupDue({ garmentCount: 3, last: new Date('2026-09-30T00:00:00Z'), now }), true);
+  assert.equal(backupDue({ garmentCount: 4, last: null, now }), false);
+  assert.equal(backupDue({ garmentCount: 5, last: null, now }), true);
+  assert.equal(backupDue({ garmentCount: 5, last: new Date('2026-10-10T00:00:00Z'), now }), false);
+  assert.equal(backupDue({ garmentCount: 5, last: new Date('2026-09-30T00:00:00Z'), now }), true);
   const storage = new Map();
   const local = { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v) };
   assert.equal(lastBackupAt(local), null);
@@ -129,7 +129,7 @@ test('persistence is requested only when not already granted, and a missing API 
 });
 
 test('a real wardrobe without a backup file gets a reminder; iPhone Safari also hears about the 7-day rule', async (t) => {
-  const page = await seeded(3, { navigator: { userAgent: iPhone } });
+  const page = await seeded(5, { navigator: { userAgent: iPhone } });
   t.after(() => page.close());
   await page.click({ action: 'tab', tab: 'closet' });
   const closet = page.nodes.get('app').innerHTML;
@@ -141,7 +141,7 @@ test('a real wardrobe without a backup file gets a reminder; iPhone Safari also 
 });
 
 test('the reminder can be dismissed for the session, and a Home Screen app is not told about Safari eviction', async (t) => {
-  const page = await seeded(4, { navigator: { userAgent: iPhone }, standalone: true });
+  const page = await seeded(5, { navigator: { userAgent: iPhone }, standalone: true });
   t.after(() => page.close());
   await page.click({ action: 'tab', tab: 'closet' });
   assert.match(page.nodes.get('app').innerHTML, /backup-nudge/);

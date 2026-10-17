@@ -250,7 +250,17 @@ test('after choosing a photographed garment kind, recipe detail and colour are v
   assert.doesNotMatch(openingDetailsFor(markup, '브랜드·이름 수정'), /\bopen(?:\s|=|>)/);
   assert.equal(page.app.draft().slot, null);
   assert.equal(page.app.draft().color, null, 'visibility does not silently infer type or colour');
+  const colour = markup.slice(markup.indexOf('<fieldset class="color-confirm">'));
+  assert.doesNotMatch(colour, /aria-pressed="true"/, 'no colour, not even "unknown", is preselected');
+  assert.match(colour, /data-color="navy" aria-pressed="false"><i [^>]*><\/i><span>네이비<\/span>/, 'each colour shows its name');
+  assert.match(colour, /data-color="indigo"[^>]*>[\s\S]*?<span>인디고<\/span>/);
+  assert.match(colour, /아직 고르지 않았어요/);
   await page.click({ action: 'draft-slot', slot: 'm-oxford' });
+  await page.click({ action: 'draft-color', color: 'navy' });
+  assert.match(page.sheet(), /data-color="navy" aria-pressed="true"/);
+  assert.match(page.sheet(), /data-action="draft-color" data-color="">색은 나중에 정하기/, 'a chosen colour can be cleared again');
+  await page.click({ action: 'draft-color', color: '' });
+  assert.equal(page.app.draft().color, null);
   await page.click({ action: 'draft-color', color: 'blue' });
   const id = page.app.draft().id;
   await page.app.saveGarmentDraft();
@@ -679,4 +689,29 @@ test('storage and example notices live inside the main landmark under one page h
   assert.equal(markup.match(/<h1\b/g).length, 1);
   await page.click({ action: 'tab', tab: 'closet' });
   assert.match(page.nodes.get('app').innerHTML, /^<main\b[^>]*id="main-content"[^>]*><h1 class="sr-only">어울 내 옷장<\/h1>/);
+});
+
+test('kinds I registered recently come first among the quick photo types, still twelve distinct choices', async (t) => {
+  const page = await registrationPage('M', 'classic');
+  t.after(() => page.close());
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(jpeg(91));
+  const defaults = quickRegistrationSlots(page.sheet()).map((slot) => slot.id);
+  assert.ok(!defaults.includes('m-runner'), 'the fixture kind starts outside the default set');
+  // Register running sneakers through "other kinds", then a chino through its tile.
+  await page.click({ action: 'draft-kind', kind: 'sneaker' });
+  await page.click({ action: 'draft-slot', slot: 'm-runner' });
+  await page.app.saveGarmentDraft();
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(jpeg(92));
+  await page.click({ action: 'draft-quick-slot', slot: 'm-chino' });
+  await page.app.saveGarmentDraft();
+  page.app.beginDraft();
+  await page.app.chooseGarmentPhoto(jpeg(93));
+  const slots = quickRegistrationSlots(page.sheet());
+  assert.deepEqual(slots.slice(0, 2).map((slot) => slot.id), ['m-chino', 'm-runner'], 'most recent first');
+  assert.equal(slots.length, 12);
+  assert.equal(new Set(slots.map((slot) => slot.id)).size, 12);
+  assert.ok(slots.every((slot) => slot.g === 'M'));
+  for (const kind of ['tee', 'shirt', 'knit']) assert.ok(slots.some((slot) => slot.shape === kind), `${kind} stays reachable`);
 });

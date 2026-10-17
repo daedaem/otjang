@@ -84,7 +84,7 @@ export function clearBackupRecord(storage = globalThis.localStorage) {
 
 /** A real wardrobe with no recent backup file gets a gentle reminder. */
 export function backupDue({ garmentCount, last, now = new Date() }) {
-  if (garmentCount < 3) return false;
+  if (garmentCount < 5) return false;
   if (!last) return true;
   return now - last > BACKUP_NUDGE_DAYS * 86400000;
 }

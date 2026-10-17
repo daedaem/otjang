@@ -5,8 +5,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { openDatabase, backupDatabase } from '../src/db.js';
-import { createApp, AGREEMENT_VERSION } from '../src/app.js';
+import { createApp, requestAddress, AGREEMENT_VERSION } from '../src/app.js';
+import { loadConfig } from '../src/config.js';
 import { hashPassword, verifyPassword } from '../src/auth.js';
 import { makeGarment, newWardrobeState } from '../../app/src/wardrobe.js';
 
@@ -43,7 +45,7 @@ async function start(overrides = {}) {
     json: { email, password: 'correct horse', agreements: { version: AGREEMENT_VERSION, terms: true, privacy: true, age14: true }, ...extra },
   });
   return {
-    db, clock, call, signup, logs,
+    db, clock, call, signup, logs, port: server.address().port,
     close: () => new Promise((resolve) => server.close(() => { db.close(); resolve(); })),
   };
 }
@@ -268,6 +270,86 @@ test('the built app is served with a marker that its API is on the same origin',
   assert.equal(page.headers.get('x-frame-options'), 'DENY');
 });
 
+test('the app page is sent compressed with an ETag, and an unchanged build answers 304', async (t) => {
+  const appFile = path.join(temp, 'compressed.html');
+  const html = `<!doctype html><html><head><title>어울</title></head><body>${'<p>옷장</p>'.repeat(4000)}</body></html>`;
+  fs.writeFileSync(appFile, html);
+  const s = await start({ appFile });
+  t.after(s.close);
+  const raw = (headers) => new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port: s.port, path: '/', headers }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on('error', reject);
+  });
+  const expected = html.replace('<head>', '<head>\n<meta name="eoul-api" content="same-origin">');
+
+  const plain = await raw({});
+  assert.equal(plain.status, 200);
+  assert.equal(plain.headers['content-encoding'], undefined);
+  assert.equal(plain.body.toString('utf8'), expected);
+  assert.equal(plain.headers.vary, 'Accept-Encoding');
+  assert.match(plain.headers.etag, /^W\/"[A-Za-z0-9_-]+"$/);
+
+  const gz = await raw({ 'Accept-Encoding': 'gzip' });
+  assert.equal(gz.headers['content-encoding'], 'gzip');
+  assert.equal(zlib.gunzipSync(gz.body).toString('utf8'), expected);
+  assert.ok(gz.body.length < plain.body.length / 4, 'compressed page is much smaller');
+  assert.equal(Number(gz.headers['content-length']), gz.body.length);
+
+  const br = await raw({ 'Accept-Encoding': 'gzip, deflate, br' });
+  assert.equal(br.headers['content-encoding'], 'br');
+  assert.equal(zlib.brotliDecompressSync(br.body).toString('utf8'), expected);
+  const noBr = await raw({ 'Accept-Encoding': 'br;q=0, gzip' });
+  assert.equal(noBr.headers['content-encoding'], 'gzip');
+
+  const again = await raw({ 'Accept-Encoding': 'gzip', 'If-None-Match': plain.headers.etag });
+  assert.equal(again.status, 304);
+  assert.equal(again.body.length, 0);
+  assert.equal(again.headers.etag, plain.headers.etag);
+  assert.equal(again.headers['x-frame-options'], 'DENY');
+
+  // A new build gets a new ETag, so the stale copy is not reused.
+  fs.writeFileSync(appFile, html.replace('옷장', '새 옷장'));
+  const future = new Date(Date.now() + 5000);
+  fs.utimesSync(appFile, future, future);
+  const rebuilt = await raw({ 'If-None-Match': plain.headers.etag });
+  assert.equal(rebuilt.status, 200);
+  assert.notEqual(rebuilt.headers.etag, plain.headers.etag);
+  assert.match(rebuilt.body.toString('utf8'), /새 옷장/);
+});
+
+test('the installable-app files next to the page are served by name, and nothing else in that folder is', async (t) => {
+  const folder = fs.mkdtempSync(path.join(temp, 'pwa-'));
+  fs.mkdirSync(path.join(folder, 'icons'));
+  const appFile = path.join(folder, 'index.html');
+  fs.writeFileSync(appFile, '<!doctype html><html><head></head><body></body></html>');
+  fs.writeFileSync(path.join(folder, 'manifest.webmanifest'), '{"name":"어울"}');
+  fs.writeFileSync(path.join(folder, 'sw.js'), 'self.addEventListener("fetch", () => {});');
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+  fs.writeFileSync(path.join(folder, 'icons', 'icon-192.png'), png);
+  fs.writeFileSync(path.join(folder, 'icons', 'maskable.svg'), '<svg/>');
+  fs.writeFileSync(path.join(folder, 'secret.txt'), 'not public');
+  const s = await start({ appFile });
+  t.after(s.close);
+  const manifest = await s.call('GET', '/manifest.webmanifest');
+  assert.equal(manifest.status, 200);
+  assert.match(manifest.headers.get('content-type'), /^application\/manifest\+json/);
+  assert.equal(manifest.headers.get('cache-control'), 'no-cache');
+  const worker = await s.call('GET', '/sw.js');
+  assert.match(worker.headers.get('content-type'), /^text\/javascript/);
+  assert.equal(worker.data.toString('utf8'), 'self.addEventListener("fetch", () => {});');
+  const icon = await s.call('GET', '/icons/icon-192.png');
+  assert.equal(icon.headers.get('content-type'), 'image/png');
+  assert.deepEqual(icon.data, png);
+  assert.deepEqual((await s.call('GET', '/favicon.ico')).data, png, 'the browser default favicon request gets the app icon');
+  assert.equal((await s.call('GET', '/icons/icon-512.png')).status, 404, 'a listed file that was not built is a plain 404');
+  for (const hidden of ['/secret.txt', '/icons/maskable.svg', '/icons/../secret.txt', '/index.html/../secret.txt'])
+    assert.equal((await s.call('GET', hidden)).status, 404, `${hidden} is not served`);
+});
+
 test('a backup copy of the live database holds the same accounts and photos', async (t) => {
   const database = path.join(temp, 'live.db');
   const s = await start({ database });
@@ -284,4 +366,46 @@ test('a backup copy of the live database holds the same accounts and photos', as
   assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
   assert.deepEqual(Buffer.from(restored.prepare('SELECT bytes FROM photos').get().bytes), photo.bytes);
   assert.equal(restored.prepare('SELECT revision FROM wardrobes').get().revision, 1);
+});
+
+test('the client address comes from cloudflared only, on loopback or at a listed container address', () => {
+  const req = (remoteAddress, ip = '203.0.113.7') => ({ socket: { remoteAddress }, headers: { 'cf-connecting-ip': ip } });
+  const cloudflare = { trustProxy: 'cloudflare', trustedProxies: ['172.31.87.10'] };
+  assert.equal(requestAddress(req('127.0.0.1'), cloudflare), '203.0.113.7');
+  assert.equal(requestAddress(req('::ffff:127.0.0.1'), cloudflare), '203.0.113.7');
+  assert.equal(requestAddress(req('::1'), cloudflare), '203.0.113.7');
+  // cloudflared in its own container (deploy/docker-compose.yml)
+  assert.equal(requestAddress(req('172.31.87.10'), cloudflare), '203.0.113.7');
+  assert.equal(requestAddress(req('::ffff:172.31.87.10'), cloudflare), '203.0.113.7');
+  // Anyone else on the network, or the published port, cannot choose an address.
+  assert.equal(requestAddress(req('172.31.87.1'), cloudflare), '172.31.87.1');
+  assert.equal(requestAddress(req('172.31.87.11'), cloudflare), '172.31.87.11');
+  assert.equal(requestAddress(req('198.51.100.2'), cloudflare), '198.51.100.2');
+  // Without the Cloudflare setting nothing is believed, and older configs without the list still work.
+  assert.equal(requestAddress(req('172.31.87.10'), { trustProxy: null, trustedProxies: ['172.31.87.10'] }), '172.31.87.10');
+  assert.equal(requestAddress(req('127.0.0.1'), { trustProxy: 'cloudflare' }), '203.0.113.7');
+  assert.equal(requestAddress(req('127.0.0.1', 'x'.repeat(64)), cloudflare), '127.0.0.1');
+
+  assert.deepEqual(loadConfig({ EOUL_TRUSTED_PROXIES: ' 172.31.87.10, ::ffff:10.0.0.2 ,' }).trustedProxies, ['172.31.87.10', '10.0.0.2']);
+  assert.deepEqual(loadConfig({}).trustedProxies, []);
+  assert.throws(() => loadConfig({ EOUL_TRUSTED_PROXIES: 'cloudflared' }), /IP 주소가 아니에요/);
+});
+
+test('an account keeps its last use to the hour, for retention counts', async (t) => {
+  const s = await start();
+  t.after(s.close);
+  const signedUp = s.clock.t;
+  const { token } = (await s.signup()).data;
+  const lastSeen = () => s.db.prepare('SELECT last_seen_at FROM users').get().last_seen_at;
+  assert.equal(lastSeen(), signedUp);
+  s.clock.t += 30 * 60 * 1000;
+  await s.call('GET', '/v1/wardrobe', { token });
+  assert.equal(lastSeen(), signedUp, 'written at most once an hour');
+  s.clock.t += 9 * 24 * 3600 * 1000;
+  await s.call('GET', '/v1/wardrobe', { token });
+  assert.equal(lastSeen(), s.clock.t);
+  // Signing out deletes the session, but the account still remembers its last use.
+  await s.call('POST', '/v1/auth/logout', { token });
+  assert.equal(s.db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 0);
+  assert.equal(lastSeen(), s.clock.t);
 });

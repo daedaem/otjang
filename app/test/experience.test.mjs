@@ -1374,3 +1374,59 @@ test('borrowed product photos are labeled in own details and outfit tiles rather
   assert.ok(look);
   assert.match(page.app.lookCard(look), /photo-caption">비슷한 상품 사진/);
 });
+
+test('a saved taste renders at once: picking women\'s French chic shows the women\'s example closet without a reload', async () => {
+  const page = await boot();
+  await page.click({ action: 'taste-start' });
+  await page.click({ action: 'ob-gender', g: 'F' });
+  await page.click({ action: 'toggle-style', style: 'french' });
+  await page.click({ action: 'ob-next' });
+  await page.click({ action: 'ob-done' });
+  assert.equal(page.state().gender, 'F');
+  assert.deepEqual(page.state().styles, ['french']);
+  assert.ok(page.state().closet.length && page.state().closet.every((item) => item.gender === 'F'),
+    'the example closet on screen follows the saved pick, not the state from before picking');
+});
+
+test('the example closet can switch between men\'s and women\'s examples from the home notice', async () => {
+  const page = await boot();
+  assert.match(page.nodes.get('app').innerHTML, /data-action="set-gender" data-g="F" data-stay="1"/);
+  await page.click({ action: 'set-gender', g: 'F', stay: '1' });
+  assert.equal(page.state().gender, 'F');
+  assert.ok(page.state().closet.every((item) => item.gender === 'F'));
+  assert.equal(page.nodes.get('sheet-root').innerHTML, '', 'switching examples does not open the profile sheet');
+});
+
+test('a first visit starts the closet by picking owned basics: kind and color only, then the picked garment opens with outfits from owned clothes', async () => {
+  const page = await boot();
+  assert.match(page.nodes.get("app").innerHTML, /어떤 옷 찾으세요\?/);
+  assert.match(page.nodes.get("app").innerHTML, /내 옷장을 넣으면 더 정확해져요/);
+  await page.click({ action: 'starter-pick', slot: 'm-oxford' });
+  await page.click({ action: 'starter-color', slot: 'm-oxford', color: 'white' });
+  await page.click({ action: 'starter-pick', slot: 'm-chino' });
+  await page.click({ action: 'starter-color', slot: 'm-chino', color: 'beige' });
+  await page.click({ action: 'starter-pick', slot: 'm-white-sneaker' });
+  await page.click({ action: 'starter-save' });
+  const state = page.state();
+  assert.equal(state.demo, false);
+  assert.equal(state.garments.length, 3);
+  for (const item of state.garments) {
+    assert.equal(item.source, 'user');
+    assert.ok(!item.brand && !item.label && !item.productId && !item.photoId, 'a picked basic never claims a brand, name, product or photo');
+  }
+  assert.deepEqual(state.garments.map((item) => item.color).sort(), ['beige', 'white', 'white']);
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(sheet, /이 옷을 꺼내면/);
+  assert.match(sheet, /가진 옷 기본 조합/);
+  assert.match(page.nodes.get('app').innerHTML, /오늘은 어떤 옷을 꺼낼까요\?/);
+});
+
+test('a picked basic may keep its color unknown and one garment is enough to start', async () => {
+  const page = await boot();
+  await page.click({ action: 'starter-pick', slot: 'm-knit' });
+  await page.click({ action: 'starter-save' });
+  const [item] = page.state().garments;
+  assert.equal(page.state().garments.length, 1);
+  assert.equal(item.color, null);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /색을 고르면/);
+});

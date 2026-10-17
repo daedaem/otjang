@@ -1,0 +1,68 @@
+/* 딱 · 라벨기 — 손에 잡히는 기계. 플라스틱 몸체, 눌리는 키, 주황 표시등, 액정 숫자, 찍어 나오는 라벨 테이프. (참고: 2026 ADA 후보 (Not Boring) Camera의 큰 버튼과 손맛) */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg: #E4E2DC; --surface: #EFEDE8; --sunk: #D9D6CF; --ink: #1B1B1B; --ink-2: #3A3936; --ink-3: #5B5954;
+  --line: #C4C0B7; --accent: #FF5B14; --accent-soft: #FFE2D3; --heart: #E8431A; --art-line: #8E8A82; --photo-surface: #F8F7F4;
+  --tape: #151515; --lcd: #1E281D; --lcd-ink: #B5F26A;
+  --mono: "Nanum Gothic Coding", ui-monospace, monospace;
+  --notch: polygon(0 0, 100% 0, 97% 50%, 100% 100%, 0 100%, 3% 50%);
+  --radius-xs: 8px; --radius-sm: 12px; --radius-md: 18px;
+  --rod: #9C988F; --shelf: #B4AFA5; --floor: #CFCAC1; --door: #EFEDE8; --handle: #FF5B14; --wardrobe-inside: #DEDBD4; --drawer: #E8E6E0;
+  color-scheme: light;
+}
+body { font-family: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", sans-serif; }
+.section.page-intro h2, .section h2, .detail-title, .look-title, .onboard .lead, .journey-verdict h3, .deck-body h3, .sheet h2 { font-family: "Do Hyeon", "IBM Plex Sans KR", sans-serif; font-weight: 400; letter-spacing: -.01em; }
+.section.page-intro h2 { font-size: 38px; line-height: 1.15; }
+.brand, .onboard .logo { display: inline-flex; align-items: baseline; gap: 10px; min-height: 0; padding: 6px 16px 7px; background: var(--tape); color: #FFFFFF; font-family: var(--mono); font-weight: 700; font-size: 24px; letter-spacing: .14em; clip-path: var(--notch); text-shadow: 0 1px 0 rgba(255,255,255,.28), 0 -1px 0 #000; }
+.brand small { margin: 0; color: #BDBAB3; font-family: var(--mono); font-size: var(--text-caption); letter-spacing: .08em; text-shadow: none; }
+.eyebrow { font-family: var(--mono); letter-spacing: .12em; color: var(--ink-2); }
+.eyebrow::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); vertical-align: 1px; }
+.top { background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: 0 2px 0 rgba(0,0,0,.03); }
+.btn, .profile-btn, .chip, .btn.secondary { transition: transform .08s, box-shadow .08s; }
+.btn { border-radius: 14px; background: linear-gradient(#FF6D2C, #F04E0B); color: #FFFFFF; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 0 #B23A08, 0 7px 12px rgba(0,0,0,.16); }
+.btn.secondary, .profile-btn { background: linear-gradient(#FAF9F6, #E5E2DB); color: var(--ink); border: 0; box-shadow: inset 0 1px 0 #FFFFFF, 0 4px 0 #B9B4AA, 0 7px 12px rgba(0,0,0,.12); }
+.chip { border: 0; border-radius: 10px; background: linear-gradient(#FAF9F6, #E5E2DB); color: var(--ink); box-shadow: inset 0 1px 0 #FFFFFF, 0 3px 0 #B9B4AA; }
+.chip[aria-pressed="true"] { background: linear-gradient(#2B2B2B, #151515); color: #FFFFFF; box-shadow: inset 0 2px 4px rgba(0,0,0,.6), 0 1px 0 #B9B4AA; transform: translateY(2px); }
+.btn:active, .btn.secondary:active, .profile-btn:active, .chip:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 0 #8E8A82; }
+.next-pick, .deck, .look, .home-shortcuts > button, .notice, .demo-notice, .stamp-tally, .journey-verdict, .wardrobe {
+  border: 0; border-radius: 18px; background-color: var(--surface);
+  background-image: radial-gradient(circle at 11px 11px, #A9A59C 0 2.4px, transparent 3px), radial-gradient(circle at calc(100% - 11px) 11px, #A9A59C 0 2.4px, transparent 3px), radial-gradient(circle at 11px calc(100% - 11px), #A9A59C 0 2.4px, transparent 3px), radial-gradient(circle at calc(100% - 11px) calc(100% - 11px), #A9A59C 0 2.4px, transparent 3px);
+  box-shadow: inset 0 1px 0 #FFFFFF, 0 0 0 1px var(--line), 0 2px 0 rgba(0,0,0,.05);
+}
+.deck, .next-pick { padding: 18px; }
+.look { padding: 12px; }
+.look-grid { background: var(--surface); }
+.thumb, .citem .thumb, .tile, .closet-add-stage { background: var(--photo-surface); border-radius: 10px; box-shadow: inset 0 2px 6px rgba(0,0,0,.12); }
+.thumb img, .tile img { mix-blend-mode: multiply; }
+.price, .deck-count, .look-meta b { font-family: var(--mono); font-weight: 700; letter-spacing: .02em; }
+.nav { background: #1E1E1E; border-top: 0; }
+.nav button { color: #A9A7A1; }
+.nav button[aria-current="page"] { background: transparent; color: #FFFFFF; }
+.nav button[aria-current="page"]::after { content: ""; position: absolute; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.nav .count { background: var(--accent); color: #FFFFFF; }
+.sheet { background: var(--bg); border-radius: 22px 22px 0 0; }
+.closet-toolbar-tabs button[aria-pressed="true"] { border-bottom-color: var(--accent); }
+
+.tv-seal, .stamp-mark { width: auto; height: auto; padding: 12px 20px 13px; background: var(--accent); color: #FFFFFF; font-family: var(--mono); font-weight: 700; font-size: 28px; letter-spacing: .12em; clip-path: var(--notch); text-shadow: 0 1px 0 rgba(255,255,255,.35), 0 -1px 0 rgba(0,0,0,.45); --seal-tilt: -5deg; filter: drop-shadow(0 3px 2px rgba(0,0,0,.25)); }
+.tv-seal.tv-hold, .stamp-mark.stamp-hold { background: var(--tape); }
+.stamp-mark { min-width: 0; padding: 5px 10px 6px; font-size: var(--text-label); transform: rotate(-6deg); }
+.stamp-mark.stamp-skip { background: #8E8A82; }
+.tv-hero { background: var(--sunk); border-radius: 18px; box-shadow: inset 0 2px 8px rgba(0,0,0,.12); }
+.tv-hero .tv-img { border-radius: 10px; }
+.tv-stats > div { padding: 10px; background: var(--lcd); border-radius: 8px; box-shadow: inset 0 2px 7px rgba(0,0,0,.6), 0 1px 0 #FFFFFF; }
+.tv-stats dd { color: var(--lcd-ink); font-family: var(--mono); font-size: 28px; text-shadow: 0 0 8px rgba(181,242,106,.45); }
+.tv-stats dt { color: #86A473; font-family: var(--mono); font-size: var(--text-micro); letter-spacing: .02em; }
+.stamp-word { font-family: var(--mono); letter-spacing: .06em; }
+.purchase-decisions .stamp-word { padding: 1px 6px; background: var(--tape); color: #FFFFFF; clip-path: var(--notch); }
+.stamp-tally .stamp-word { padding: 3px 9px; background: var(--tape); color: #FFFFFF; clip-path: var(--notch); }
+.stamp-tally.stamp-buy .stamp-word { background: var(--accent); }
+.stamp-tally b { font-family: var(--mono); }
+.stamp-saved { background: var(--lcd); color: var(--lcd-ink); font-family: var(--mono); border-radius: 10px; box-shadow: inset 0 2px 7px rgba(0,0,0,.6); }
+.stamp-saved small { color: #86A473; }
+
+.rack-label { display: inline-block; padding: 3px 10px 4px; background: var(--tape); color: #FFFFFF; font-family: var(--mono); letter-spacing: .1em; clip-path: var(--notch); }
+.rack-label span { color: #BDBAB3; }
+.rack-hang .rack-row { background: linear-gradient(#C9C5BC, #8D897F) 0 9px / 100% 7px no-repeat; background-attachment: local; }
+.rack-hang .citem::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 30' fill='none' stroke='%235B5954' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 13V9.5a3.5 3.5 0 1 0-3.5-3.5'/%3E%3Cpath d='M24 13 3 27h42z'/%3E%3C/svg%3E"); }
+.rack-shelf .rack-row { background: linear-gradient(#CBC6BC, #A39E94) 0 100% / 100% 9px no-repeat; }
+.rack-add .closet-add-tile { border: 0; background: linear-gradient(#FAF9F6, #E5E2DB); box-shadow: inset 0 1px 0 #FFFFFF, 0 4px 0 #B9B4AA; color: var(--ink); }
+.wardrobe-opening::before, .wardrobe-opening::after { box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 #FFFFFF; }

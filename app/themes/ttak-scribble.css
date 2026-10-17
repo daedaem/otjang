@@ -1,0 +1,69 @@
+/* 딱 · 낙서 — 흰 종이에 검은 마커, 노란 형광펜, 빨간 펜 도장. 모든 테두리는 손으로 그은 선. (참고: 2026 ADA Delight and Fun 수상작 grug의 손그림 UI) */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sunk: #F5F5F2; --ink: #161616; --ink-2: #383838; --ink-3: #5C5C5C;
+  --line: #161616; --accent: #E2352B; --accent-soft: #FDE8E6; --heart: #E2352B; --art-line: #161616; --photo-surface: #FFFFFF;
+  --hl: #FFE35A; --wobble: 255px 15px 225px 15px / 15px 225px 15px 255px; --wobble-2: 15px 225px 15px 255px / 255px 15px 225px 15px;
+  --radius-xs: 10px; --radius-sm: 14px; --radius-md: 18px;
+  --rod: #161616; --shelf: #161616; --floor: #FFE35A; --door: #FFFFFF; --handle: #161616; --wardrobe-inside: #FFFFFF; --drawer: #FFFFFF;
+  --scrawl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='8' viewBox='0 0 44 8'%3E%3Cpath d='M0 4.5C5 1 9 7 14 4s9-3 15 .5 10 2 15-1' fill='none' stroke='%23161616' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+body { font-family: "Gowun Dodum", -apple-system, "Apple SD Gothic Neo", sans-serif; }
+.brand, .onboard .logo, .section.page-intro h2, .section h2, .detail-title, .look-title, .onboard .lead, .journey-verdict h3, .deck-body h3, .sheet h2 { font-family: Gaegu, "Gowun Dodum", sans-serif; font-weight: 700; letter-spacing: -.01em; }
+.brand { font-size: 38px; }
+.brand small { font-family: "Gowun Dodum", sans-serif; font-weight: 400; letter-spacing: 0; }
+.section.page-intro h2 { font-size: 44px; line-height: 1.05; }
+.section h2 { display: inline; padding: 0 4px; background: linear-gradient(transparent 56%, var(--hl) 56% 90%, transparent 90%); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.eyebrow { letter-spacing: .02em; color: var(--ink-2); }
+.next-pick-body .eyebrow, .deck-head .eyebrow { color: var(--accent); }
+.top { border-bottom: 0; background: var(--scrawl) 0 100% / 44px 8px repeat-x; }
+.profile-btn { border: 2px solid var(--ink); border-radius: var(--wobble-2); color: var(--ink); }
+.btn { border: 2px solid var(--ink); border-radius: var(--wobble); background: var(--ink); color: #FFFFFF; font-family: Gaegu, sans-serif; font-size: 22px; font-weight: 700; transition: transform .12s; }
+.purchase-decisions .btn, .next-pick .btn, .btn.small { font-family: "Gowun Dodum", sans-serif; font-size: var(--text-label); }
+.btn.secondary { background: #FFFFFF; color: var(--ink); }
+.btn:active { transform: rotate(-1.5deg) scale(.98); }
+.chip { border: 1.5px solid var(--ink); border-radius: var(--wobble-2); background: #FFFFFF; color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--hl); color: var(--ink); border-color: var(--ink); }
+.thumb, .citem .thumb, .closet-add-stage { background: #FFFFFF; border: 2px solid var(--ink); border-radius: var(--wobble); }
+.thumb img, .tile img { mix-blend-mode: multiply; }
+.next-pick, .deck, .look, .home-shortcuts > button, .notice, .demo-notice, .stamp-tally, .wardrobe, .journey-verdict { border: 2px solid var(--ink); border-radius: var(--wobble); background: #FFFFFF; }
+.deck, .next-pick { padding: 14px; transform: rotate(-.4deg); }
+.look { padding: 10px; }
+.looks .look:nth-child(even) { transform: rotate(.6deg); }
+.look-grid { background: #FFFFFF; gap: 6px; }
+.tile { background: #FFFFFF; border: 1.5px solid var(--ink); border-radius: var(--wobble-2); }
+.home-shortcuts > button:nth-child(2) { transform: rotate(.8deg); background: var(--hl); }
+.notice { border-left-width: 2px; }
+.section-head { padding-bottom: 6px; }
+.nav { background: #FFFFFF var(--scrawl) 0 0 / 44px 8px repeat-x; border-top: 0; }
+.nav button[aria-current="page"] { background: linear-gradient(transparent 58%, var(--hl) 58% 86%, transparent 86%) 50% 50% / 56% 100% no-repeat; color: var(--ink); font-weight: 700; }
+.nav .count { background: var(--accent); color: #FFFFFF; }
+.sheet { border-top: 2px solid var(--ink); border-radius: 26px 26px 0 0; }
+.closet-toolbar-tabs { border-bottom: 0; background: var(--scrawl) 0 100% / 44px 8px repeat-x; }
+.closet-toolbar-tabs button[aria-pressed="true"] { border-bottom-color: transparent; background: linear-gradient(transparent 60%, var(--hl) 60% 92%, transparent 92%); }
+
+.deck-photo .thumb { border-width: 2.5px; }
+.tv-seal { position: relative; width: 104px; height: 104px; color: var(--accent); font-family: Gaegu, sans-serif; font-weight: 700; font-size: 38px; border: 3px solid var(--accent); border-radius: 50% 44% 56% 47% / 52% 58% 42% 50%; background: rgba(255, 255, 255, .88); }
+.tv-seal::after { content: ""; position: absolute; inset: -7px -4px -3px -8px; border: 2px solid var(--accent); border-radius: 46% 54% 50% 50% / 55% 45% 55% 45%; transform: rotate(16deg); }
+.tv-seal.tv-hold { color: var(--ink); border-color: var(--ink); font-size: 30px; }
+.tv-seal.tv-hold::after { border-color: var(--ink); }
+.tv-hero .tv-img { border: 2px solid var(--ink); border-radius: var(--wobble); background: #FFFFFF; }
+.tv-stats dd { font-family: Gaegu, sans-serif; font-weight: 700; font-size: 36px; }
+.tv-stats > div:first-child dd { color: var(--accent); }
+.tv-stats dt { color: var(--ink-2); }
+.tv-say { justify-self: start; display: inline; padding: 0 2px; background: linear-gradient(transparent 58%, var(--hl) 58%); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.stamp-mark { color: var(--accent); background: #FFFFFF; border: 2px solid var(--accent); border-radius: 50% 44% 56% 47% / 52% 58% 42% 50%; font-family: Gaegu, sans-serif; font-size: 17px; }
+.stamp-mark.stamp-hold, .stamp-mark.stamp-skip { color: var(--ink); border-color: var(--ink); }
+.stamp-word { font-family: Gaegu, sans-serif; font-size: 1.2em; }
+.stamp-tally .stamp-word { color: var(--accent); }
+.stamp-tally b { font-family: Gaegu, sans-serif; font-size: 36px; }
+.stamp-saved { background: var(--hl); border-radius: var(--wobble-2); }
+
+.wardrobe { padding: 20px 14px 16px; }
+.rack-label { font-family: Gaegu, sans-serif; font-size: 18px; color: var(--ink); letter-spacing: 0; }
+.rack-hang .rack-row { background: var(--scrawl) 0 8px / 44px 8px repeat-x; background-attachment: local; }
+.rack-hang .citem::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 30' fill='none' stroke='%23161616' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24.5 13.5c-.4-1.6.2-3 .1-4.2C24.4 7 22 5.8 20.6 7'/%3E%3Cpath d='M24 13C17 17.5 9 22 3.5 26.6c13.2.6 28 .4 41.3-.2C38 22 31 17.5 24.4 13.3'/%3E%3C/svg%3E"); }
+.rack-shelf .rack-row { background: var(--scrawl) 0 100% / 44px 8px repeat-x; }
+.rack-drawer .rack-row { border: 2px solid var(--ink); border-radius: var(--wobble-2); }
+.rack-add .closet-add-tile { border: 2px dashed var(--ink); border-radius: var(--wobble); font-family: Gaegu, sans-serif; font-size: 18px; color: var(--ink); }
+.wardrobe-opening::before, .wardrobe-opening::after { box-shadow: inset 0 0 0 2px var(--ink); border-radius: 12px; }

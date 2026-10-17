@@ -8,7 +8,8 @@
 
 // Bump with the sign-up notice below; the server refuses an outdated version.
 // 2026-10-15.2: purposes now include background removal on the operator's server.
-export const AGREEMENT_VERSION = '2026-10-15.2';
+// 2026-10-15.3: password reset by mail, links to the full policy and terms (/privacy, /terms).
+export const AGREEMENT_VERSION = '2026-10-15.3';
 export const ACCOUNT_KEY = 'eoul:account';
 const DEVICE_LOCAL_FIELDS = ['legacyFingerprint', 'legacyBaseline', 'legacyDismissed'];
 
@@ -117,6 +118,9 @@ export function createAccountApi({ base, token = null, fetch: fetchImpl = global
     communityDelete: (id) => request('DELETE', `/v1/community/posts/${encodeURIComponent(id)}`),
     communityReport: (id, reason) => request('POST', `/v1/community/posts/${encodeURIComponent(id)}/report`, { json: { reason } }),
     communityPhoto: (id, idx) => request('GET', `/v1/community/posts/${encodeURIComponent(id)}/photos/${idx}`, { raw: true }),
+    communityBlock: (id) => request('POST', `/v1/community/posts/${encodeURIComponent(id)}/block`),
+    communityBlocks: () => request('GET', '/v1/community/blocks'),
+    communityUnblock: (id) => request('DELETE', `/v1/community/blocks/${encodeURIComponent(id)}`),
   };
 }
 

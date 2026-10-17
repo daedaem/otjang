@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 5;
 
 export function openDatabase(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -127,6 +127,46 @@ export function openDatabase(file) {
           PRIMARY KEY (post_id, user_id)
         );
         PRAGMA user_version = 3;
+      `);
+    });
+  }
+  if (version < 4) {
+    transaction(db, () => {
+      db.exec(`
+        -- When the account was last used, to the hour. Sessions are deleted at
+        -- sign-out and expiry, so this is what pilot retention counts read
+        -- (node cli.mjs metrics). It goes with the account.
+        ALTER TABLE users ADD COLUMN last_seen_at INTEGER;
+        UPDATE users SET last_seen_at = MAX(created_at, COALESCE((SELECT MAX(last_used_at) FROM sessions WHERE user_id = users.id), 0));
+        PRAGMA user_version = 4;
+      `);
+    });
+  }
+  if (version < 5) {
+    transaction(db, () => {
+      db.exec(`
+        -- A member blocks another: neither sees the other's posts. The blocked
+        -- member is not told. Leaving the community removes one's own blocks.
+        CREATE TABLE community_blocks (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at INTEGER NOT NULL,
+          UNIQUE (user_id, blocked_id)
+        );
+        CREATE INDEX community_blocks_blocked ON community_blocks(blocked_id);
+        -- What happened to reported or hidden posts, kept after a post is gone so
+        -- the operator can show how reports were handled. No author, text or photo.
+        CREATE TABLE moderation_log (
+          seq INTEGER PRIMARY KEY AUTOINCREMENT,
+          post_id TEXT NOT NULL,
+          action TEXT NOT NULL CHECK (action IN ('hidden-by-reports', 'hide', 'restore', 'delete')),
+          reason TEXT,
+          reports INTEGER NOT NULL,
+          first_report_at INTEGER,
+          at INTEGER NOT NULL
+        );
+        PRAGMA user_version = 5;
       `);
     });
   }

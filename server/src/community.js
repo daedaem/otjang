@@ -5,7 +5,10 @@
 // holds the outfit shape (checked by the app's own validateCommunityLook), a
 // short caption and, only when the member agreed for that post, up to four
 // photos. A report hides the post for the reporter at once; three reports hide
-// it for everyone until the operator looks (node cli.mjs community …).
+// it for everyone until the operator looks (node cli.mjs community …), within
+// the days the operator promised. A member can block another; then neither
+// sees the other's posts. What happens to reported posts is kept in
+// moderation_log without the author, text or photos.
 // Leaving the community or deleting the account removes every post and photo.
 import crypto from 'node:crypto';
 import { HttpError } from './http-error.js';
@@ -22,7 +25,10 @@ export const REPORTS_TO_HIDE = 3;
 export const MAX_MEMBER_POSTS = 300;
 export const MAX_MEMBER_PHOTOS = 120;
 export const MAX_MEMBER_PHOTO_BYTES = 40 * 1024 * 1024;
+export const MAX_MEMBER_BLOCKS = 500;
 const POST_ID = /^c_[A-Za-z0-9_-]{24}$/;
+const BLOCK_ID = /^b_[A-Za-z0-9_-]{16}$/;
+const DAY = 24 * 3600 * 1000;
 const PAGE = 20;
 const MAX_JOIN_BODY = 4 * 1024;
 const MAX_POST_BODY = Math.ceil((MAX_POST_PHOTOS * MAX_POST_PHOTO_BYTES * 4) / 3) + 64 * 1024;
@@ -46,6 +52,8 @@ function statements(db) {
       FROM posts p JOIN community_members m ON m.user_id = p.user_id
       WHERE (p.created_at < ? OR (p.created_at = ? AND p.id < ?)) AND (p.hidden_at IS NULL OR p.user_id = ?) AND (? = 0 OR p.user_id = ?)
         AND NOT EXISTS (SELECT 1 FROM post_reports r WHERE r.post_id = p.id AND r.user_id = ?)
+        AND NOT EXISTS (SELECT 1 FROM community_blocks b
+          WHERE (b.user_id = ? AND b.blocked_id = p.user_id) OR (b.user_id = p.user_id AND b.blocked_id = ?))
       ORDER BY p.created_at DESC, p.id DESC LIMIT ?`),
     report: db.prepare('INSERT OR IGNORE INTO post_reports (post_id, user_id, reason, created_at) VALUES (?, ?, ?, ?)'),
     reportCount: db.prepare('SELECT COUNT(*) AS n FROM post_reports WHERE post_id = ?'),
@@ -54,7 +62,23 @@ function statements(db) {
     memberPhotos: db.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(length(f.bytes)), 0) AS bytes
       FROM post_photos f JOIN posts p ON p.id = f.post_id WHERE p.user_id = ?`),
     allPhotoBytes: db.prepare('SELECT COALESCE(SUM(length(bytes)), 0) AS bytes FROM post_photos'),
+    blockedEither: db.prepare('SELECT 1 AS found FROM community_blocks WHERE (user_id = ? AND blocked_id = ?) OR (user_id = ? AND blocked_id = ?)'),
+    insertBlock: db.prepare('INSERT OR IGNORE INTO community_blocks (id, user_id, blocked_id, created_at) VALUES (?, ?, ?, ?)'),
+    blockCount: db.prepare('SELECT COUNT(*) AS n FROM community_blocks WHERE user_id = ?'),
+    blocks: db.prepare(`SELECT b.id, b.created_at, m.name FROM community_blocks b
+      LEFT JOIN community_members m ON m.user_id = b.blocked_id WHERE b.user_id = ? ORDER BY b.created_at DESC, b.id`),
+    deleteBlock: db.prepare('DELETE FROM community_blocks WHERE id = ? AND user_id = ?'),
+    deleteMyBlocks: db.prepare('DELETE FROM community_blocks WHERE user_id = ?'),
+    reportsOf: db.prepare('SELECT COUNT(*) AS n, MIN(created_at) AS first FROM post_reports WHERE post_id = ?'),
+    logAction: db.prepare('INSERT INTO moderation_log (post_id, action, reason, reports, first_report_at, at) VALUES (?, ?, ?, ?, ?, ?)'),
   };
+}
+
+// What the author of a hidden post is told.
+function hiddenNote(reason) {
+  if (reason === 'reports') return '신고가 모여 운영자 확인 전까지 숨겨졌어요.';
+  const key = typeof reason === 'string' && reason.startsWith('operator:') ? reason.slice('operator:'.length) : null;
+  return key && Object.hasOwn(COMMUNITY_REPORT_REASONS, key) ? `운영자가 숨겼어요(사유: ${COMMUNITY_REPORT_REASONS[key]}).` : '운영자가 숨겼어요.';
 }
 
 function nameKey(name) {
@@ -77,8 +101,9 @@ function decodePhoto(entry) {
   }
 }
 
-export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, log = () => {}, authenticate, limit, readJson }) {
+export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, contact = null, reviewDays = 7, now, log = () => {}, authenticate, limit, readJson }) {
   const q = statements(db);
+  const operator = { contact, reviewDays };
 
   function signedIn(req) {
     const session = authenticate(req);
@@ -94,7 +119,8 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
   function visiblePost(id, userId) {
     if (!POST_ID.test(id)) throw new HttpError(400, 'bad-post-id', '글 번호가 올바르지 않아요.');
     const row = q.post.get(id);
-    if (!row || (row.hidden_at && row.user_id !== userId)) throw new HttpError(404, 'not-found', '글을 찾지 못했어요. 지워졌거나 숨겨졌을 수 있어요.');
+    if (!row || (row.user_id !== userId && (row.hidden_at || q.blockedEither.get(userId, row.user_id, row.user_id, userId))))
+      throw new HttpError(404, 'not-found', '글을 찾지 못했어요. 지워졌거나 숨겨졌을 수 있어요.');
     return row;
   }
 
@@ -106,7 +132,19 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
       return {
         enabled,
         rulesVersion: COMMUNITY_RULES_VERSION,
-        member: row ? { name: row.name, current: row.rules_version === COMMUNITY_RULES_VERSION, posts: q.memberPosts.get(session.userId).n } : null,
+        operator,
+        member: row ? {
+          name: row.name, current: row.rules_version === COMMUNITY_RULES_VERSION,
+          posts: q.memberPosts.get(session.userId).n, blocks: q.blockCount.get(session.userId).n,
+        } : null,
+      };
+    },
+
+    // Also when the feature is off, so a member can always undo a block.
+    'GET /v1/community/blocks': (req) => {
+      const session = authenticate(req);
+      return {
+        blocks: q.blocks.all(session.userId).map((row) => ({ id: row.id, name: row.name ?? null, createdAt: new Date(row.created_at).toISOString() })),
       };
     },
 
@@ -133,6 +171,7 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
       const session = authenticate(req);
       transaction(db, () => {
         q.deleteUserPosts.run(session.userId);
+        q.deleteMyBlocks.run(session.userId);
         q.deleteMember.run(session.userId);
       });
       log('community-left');
@@ -147,7 +186,8 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
       if (url.searchParams.get('before') && !cursor) throw new HttpError(400, 'bad-cursor', '목록 위치가 올바르지 않아요.');
       const [before, beforeId] = cursor ? [Number(cursor[1]), cursor[2]] : [Number.MAX_SAFE_INTEGER, ''];
       const mine = url.searchParams.get('mine') === '1' ? 1 : 0;
-      const rows = q.feed.all(before, before, beforeId, session.userId, mine, session.userId, session.userId, PAGE + 1);
+      const me = session.userId;
+      const rows = q.feed.all(before, before, beforeId, me, mine, me, me, me, me, PAGE + 1);
       return {
         posts: rows.slice(0, PAGE).map((row) => ({
           id: row.id,
@@ -157,7 +197,7 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
           look: JSON.parse(row.look),
           caption: row.caption,
           photoCount: row.photo_count,
-          hidden: row.hidden_at ? (row.hidden_reason === 'reports' ? '신고가 모여 운영자 확인 전까지 숨겨졌어요.' : '운영자가 숨겼어요.') : null,
+          hidden: row.hidden_at ? hiddenNote(row.hidden_reason) : null,
         })),
         next: rows.length > PAGE ? `${rows[PAGE - 1].created_at}.${rows[PAGE - 1].id}` : null,
       };
@@ -218,11 +258,33 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
       if (row.user_id === session.userId) throw new HttpError(400, 'own-post', '내 글은 신고 대신 지울 수 있어요.');
       const hidden = transaction(db, () => {
         q.report.run(row.id, session.userId, body.reason, now());
-        if (q.reportCount.get(row.id).n >= REPORTS_TO_HIDE) return q.hide.run(now(), 'reports', row.id).changes > 0;
-        return false;
+        const reports = q.reportsOf.get(row.id);
+        if (reports.n < REPORTS_TO_HIDE || q.hide.run(now(), 'reports', row.id).changes === 0) return false;
+        q.logAction.run(row.id, 'hidden-by-reports', null, reports.n, reports.first, now());
+        return true;
       });
       if (hidden) log('community-hidden-by-reports');
-      return { reported: true };
+      return { reported: true, reviewDays };
+    }],
+    [/^\/v1\/community\/posts\/([^/]+)\/block$/, 'POST', (req, match) => {
+      const session = signedIn(req);
+      memberOf(session.userId);
+      limit(`community-block:${session.userId}`, 30, HOUR);
+      const row = visiblePost(match[1], session.userId);
+      if (row.user_id === session.userId) throw new HttpError(400, 'own-post', '나를 차단할 수는 없어요.');
+      transaction(db, () => {
+        if (q.blockCount.get(session.userId).n >= MAX_MEMBER_BLOCKS)
+          throw new HttpError(413, 'block-limit', `차단은 ${MAX_MEMBER_BLOCKS}명까지 할 수 있어요. 차단한 회원 목록에서 풀고 다시 해 주세요.`);
+        q.insertBlock.run(`b_${crypto.randomBytes(12).toString('base64url')}`, session.userId, row.user_id, now());
+      });
+      log('community-block');
+      return { blocked: { name: q.member.get(row.user_id)?.name ?? null } };
+    }],
+    [/^\/v1\/community\/blocks\/([^/]+)$/, 'DELETE', (req, match) => {
+      const session = authenticate(req);
+      if (!BLOCK_ID.test(match[1])) throw new HttpError(400, 'bad-block-id', '차단 번호가 올바르지 않아요.');
+      if (q.deleteBlock.run(match[1], session.userId).changes === 0) throw new HttpError(404, 'not-found', '이미 풀린 차단이에요.');
+      return [204];
     }],
     [/^\/v1\/community\/posts\/([^/]+)\/photos\/(\d)$/, 'GET', (req, match) => {
       const session = signedIn(req);
@@ -247,34 +309,73 @@ export function createCommunity({ db, enabled, maxBytes = 2 * 1024 ** 3, now, lo
   return { match };
 }
 
-/** Operator tools for reported and hidden posts (node cli.mjs community …). */
-export function communityAdmin(db, now = () => Date.now()) {
+/** Operator tools for reported and hidden posts (node cli.mjs community …). Every decision is logged. */
+export function communityAdmin(db, now = () => Date.now(), { reviewDays = 7 } = {}) {
   const q = statements(db);
+  const record = (id, action, reason) => {
+    const reports = q.reportsOf.get(id);
+    q.logAction.run(id, action, reason, reports.n, reports.first, now());
+  };
+  const reasonKey = (reason) => {
+    if (reason == null) return null;
+    if (!Object.hasOwn(COMMUNITY_REPORT_REASONS, reason))
+      throw new Error(`사유는 ${Object.keys(COMMUNITY_REPORT_REASONS).join('·')} 중 하나로 적어 주세요.`);
+    return reason;
+  };
   return {
+    reviewDays,
+    // Posts waiting for a decision come first, the longest-waiting first; overdue ones are marked.
     review() {
+      const t = now();
       return db.prepare(`SELECT p.id, p.created_at, p.caption, p.hidden_at, p.hidden_reason, m.name,
           (SELECT COUNT(*) FROM post_photos f WHERE f.post_id = p.id) AS photos,
-          (SELECT group_concat(reason) FROM post_reports r WHERE r.post_id = p.id) AS reasons
+          (SELECT group_concat(reason) FROM post_reports r WHERE r.post_id = p.id) AS reasons,
+          (SELECT MIN(created_at) FROM post_reports r WHERE r.post_id = p.id) AS first_report
         FROM posts p LEFT JOIN community_members m ON m.user_id = p.user_id
-        WHERE p.hidden_at IS NOT NULL OR EXISTS (SELECT 1 FROM post_reports r WHERE r.post_id = p.id)
-        ORDER BY p.created_at DESC`).all().map((row) => ({
-        id: row.id, author: row.name, createdAt: new Date(row.created_at).toISOString(),
-        hidden: row.hidden_at ? row.hidden_reason : null, photos: row.photos,
-        reports: (row.reasons || '').split(',').filter(Boolean), caption: row.caption.slice(0, 80),
-      }));
+        WHERE p.hidden_at IS NOT NULL OR EXISTS (SELECT 1 FROM post_reports r WHERE r.post_id = p.id)`).all().map((row) => {
+        const decided = typeof row.hidden_reason === 'string' && row.hidden_reason.startsWith('operator');
+        return {
+          id: row.id, author: row.name, createdAt: new Date(row.created_at).toISOString(),
+          hidden: row.hidden_at ? row.hidden_reason : null, photos: row.photos,
+          reports: (row.reasons || '').split(',').filter(Boolean), caption: row.caption.slice(0, 80),
+          firstReportAt: row.first_report ? new Date(row.first_report).toISOString() : null,
+          waiting: !decided && !!row.first_report,
+          overdue: !decided && !!row.first_report && t - row.first_report > reviewDays * DAY,
+          sortKey: row.first_report ?? row.hidden_at,
+        };
+      }).sort((a, b) => Number(b.waiting) - Number(a.waiting) || a.sortKey - b.sortKey).map(({ sortKey, ...row }) => row);
     },
-    hide(id) {
-      return db.prepare('UPDATE posts SET hidden_at = ?, hidden_reason = ? WHERE id = ?').run(now(), 'operator', id).changes > 0;
+    hide(id, reason = 'other') {
+      const key = reasonKey(reason);
+      return transaction(db, () => {
+        const changed = db.prepare('UPDATE posts SET hidden_at = ?, hidden_reason = ? WHERE id = ?').run(now(), `operator:${key}`, id).changes > 0;
+        if (changed) record(id, 'hide', key);
+        return changed;
+      });
     },
     // Restoring clears the reports it was reviewed for, so the same reports do not hide it again.
     restore(id) {
       return transaction(db, () => {
+        if (!q.post.get(id)) return false;
+        record(id, 'restore', null);
         db.prepare('DELETE FROM post_reports WHERE post_id = ?').run(id);
         return db.prepare('UPDATE posts SET hidden_at = NULL, hidden_reason = NULL WHERE id = ?').run(id).changes > 0;
       });
     },
-    remove(id) {
-      return q.deletePost.run(id).changes > 0;
+    remove(id, reason = null) {
+      const key = reasonKey(reason);
+      return transaction(db, () => {
+        if (!q.post.get(id)) return false;
+        record(id, 'delete', key);
+        return q.deletePost.run(id).changes > 0;
+      });
+    },
+    log(count = 50) {
+      return db.prepare('SELECT post_id, action, reason, reports, first_report_at, at FROM moderation_log ORDER BY seq DESC LIMIT ?').all(count).map((row) => ({
+        postId: row.post_id, action: row.action, reason: row.reason ? COMMUNITY_REPORT_REASONS[row.reason] ?? row.reason : null, reports: row.reports,
+        firstReportAt: row.first_report_at ? new Date(row.first_report_at).toISOString() : null, at: new Date(row.at).toISOString(),
+        daysToDecide: row.first_report_at && row.action !== 'hidden-by-reports' ? Math.round(((row.at - row.first_report_at) / DAY) * 10) / 10 : null,
+      }));
     },
   };
 }

@@ -17,6 +17,8 @@
   - 그래서 `http://192.168.x.x` 같은 집 안 주소로는 사진을 저장할 수 없습니다.
   - https 주소를 붙이는 방법은 아래 "휴대폰에서 접속하기"에 있습니다.
 
+> **실제 운영(집 PC 상시 운영, 나중에 클라우드로 이전)은 [운영 묶음](../deploy/README.md)을 쓰세요.** Docker로 서버, Cloudflare Tunnel, 자동 백업(Litestream)을 한 번에 띄웁니다. 아래는 개발·시험용으로 Node를 직접 실행하는 방법입니다.
+
 ## 처음 실행
 
 ```bash
@@ -35,6 +37,7 @@ npm start          # 앱을 빌드(app/dist/index.html)하고 http://127.0.0.1:8
 | `EOUL_DATA_DIR` | `server/data` | 데이터베이스 폴더. 저장소에 올라가지 않도록 `.gitignore`에 들어 있습니다. |
 | `EOUL_INVITE_CODE` | 없음 | **시험 기간에는 꼭 설정하세요.** 이 코드를 아는 사람만 가입할 수 있습니다. |
 | `EOUL_TRUST_PROXY` | 없음 | Cloudflare Tunnel 뒤에서는 `cloudflare`로 설정합니다. 이렇게 해야 시도 횟수 제한이 실제 접속자 기준으로 동작합니다. |
+| `EOUL_TRUSTED_PROXIES` | 없음 | cloudflared가 다른 컨테이너에서 돌 때 그 고정 IP(쉼표로 여러 개). 같은 PC의 cloudflared(127.0.0.1)는 적지 않아도 됩니다. [운영 묶음](../deploy/README.md)은 자동으로 채웁니다. |
 | `EOUL_ALLOWED_ORIGINS` | 없음 | 앱을 다른 주소(예: GitHub Pages)에 올렸을 때 그 주소를 적습니다. 쉼표로 여러 개를 적을 수 있습니다. |
 | `EOUL_SESSION_DAYS` | `60` | 마지막으로 쓴 뒤 로그인이 유지되는 날수 |
 | `EOUL_SCRYPT_LOG2N` | `17` | 비밀번호 해시 강도. 바꾸지 않아도 됩니다. |
@@ -142,7 +145,7 @@ EOUL_NAVER_CLIENT_ID=... EOUL_NAVER_CLIENT_SECRET=... npm start
 - 이 서버에 가입한 회원끼리 코디를 나누는 기능입니다. `EOUL_COMMUNITY=on`일 때만 켜집니다.
 - **켜기 전에 운영자가 정해야 할 것**
   - 커뮤니티 규칙: 앱에 보이는 규칙은 `app/src/community-post.js`의 `COMMUNITY_RULES`입니다. 바꾸면 `COMMUNITY_RULES_VERSION`도 올려야 회원이 다시 동의합니다.
-  - 신고를 받는 연락처와 처리 기간.
+  - 신고를 받는 연락처 `EOUL_COMMUNITY_CONTACT`(필수, 없으면 서버가 켜지지 않음)와 확인 기한 `EOUL_COMMUNITY_REVIEW_DAYS`(기본 7일). 둘 다 앱의 규칙과 신고 화면에 보입니다.
   - 처리방침의 "회원 코디" 항목을 채우는 것.
 - **올라가는 것**
   - 코디의 모양: 역할, 종류, 색, 회원이 적은 브랜드, 목록에 있는 상품 번호.
@@ -152,6 +155,12 @@ EOUL_NAVER_CLIENT_ID=... EOUL_NAVER_CLIENT_SECRET=... npm start
 - **신고와 숨김**
   - 신고하면 신고한 회원에게는 바로 안 보입니다.
   - 서로 다른 회원 3명이 신고하면 운영자가 확인할 때까지 모두에게 숨겨집니다. 작성자에게는 숨겨진 이유가 보입니다.
+  - 신고한 회원에게 "운영자가 N일 안에 확인해요"를 보여 줍니다. 운영자 화면(`community review`)은 기다리는 신고를 오래된 순서로 먼저 보여 주고, 기한이 지나면 표시합니다.
+  - 운영자가 숨기거나 지울 때 사유(privacy·rights·spam·abuse·other)를 고르면 작성자에게 그 사유가 보입니다.
+  - 숨김·복구·삭제와 신고 수에 따른 자동 숨김은 `community log`에 남습니다. 글 번호, 처리, 사유, 신고 수, 첫 신고와 처리 시각만 남고 작성자·글·사진은 남기지 않습니다.
+- **차단**
+  - 회원은 글에서 "이 회원 차단"을 두 번 눌러 차단합니다. 그러면 서로의 글이 보이지 않고, 사진·신고도 막힙니다. 상대에게는 알리지 않습니다.
+  - "차단한 회원"에서 언제든 풀 수 있습니다. 한 회원은 500명까지 차단할 수 있고, 커뮤니티를 나가면 내 차단도 지워집니다.
 - **지우기**
   - 작성자는 언제든 지울 수 있습니다. 커뮤니티를 나가거나 계정을 지우면 그 회원의 글과 사진이 모두 지워집니다.
   - 운영자가 `EOUL_COMMUNITY`를 꺼도 회원은 남긴 글을 지울 수 있습니다.
@@ -161,10 +170,11 @@ EOUL_NAVER_CLIENT_ID=... EOUL_NAVER_CLIENT_SECRET=... npm start
   - 서버 전체는 `EOUL_COMMUNITY_MAX_MB`(기본 2048)입니다.
 
 ```bash
-node cli.mjs community review              # 신고되거나 숨겨진 글 (이메일 없이 이름·사유·한마디 앞부분)
-node cli.mjs community hide <글 번호>       # 운영자가 숨김
-node cli.mjs community restore <글 번호>    # 다시 보이게 함 (그 신고 기록은 정리)
-node cli.mjs community delete <글 번호>     # 글과 사진 삭제
+node cli.mjs community review                  # 신고되거나 숨겨진 글. 기다리는 신고가 먼저, 기한 지난 것 표시 (이메일 없음)
+node cli.mjs community hide <글 번호> [사유]     # 운영자가 숨김. 사유: privacy|rights|spam|abuse|other (작성자에게 보임)
+node cli.mjs community restore <글 번호>        # 다시 보이게 함 (그 신고 기록은 정리)
+node cli.mjs community delete <글 번호> [사유]   # 글과 사진 삭제
+node cli.mjs community log                     # 처리 기록과 첫 신고부터 처리까지 걸린 날수
 ```
 
 - 서버 로그에는 글 내용, 이름, 이메일을 남기지 않습니다.
@@ -176,6 +186,7 @@ node cli.mjs community delete <글 번호>     # 글과 사진 삭제
 cd server
 node cli.mjs backup ../../eoul-backup-2026-10-15.db   # 서버를 켠 채로 만들어도 일관된 사본
 node cli.mjs stats                                     # 계정·옷장·사진 수 (개인 정보는 보여 주지 않음)
+node cli.mjs metrics                                   # 파일럿 지표 (아래 "파일럿 지표")
 ```
 
 - 백업 파일에는 이메일, 비밀번호 해시, 옷장 기록, 사진이 모두 들어 있습니다.
@@ -186,6 +197,45 @@ node cli.mjs stats                                     # 계정·옷장·사진 
   2. 백업 파일을 `server/data/eoul.db`로 복사합니다.
   3. 서버를 다시 켭니다.
 - 복구하면 서버가 그 시점으로 돌아갑니다. 그 뒤에 바뀐 기기는 앱이 "어느 옷장을 쓸까요?"라고 묻습니다. 서버가 과거로 돌아간 것을 앱이 알아채기 때문입니다.
+
+## 약관·처리방침과 운영자 정보
+
+- 서버는 `/privacy`(개인정보 처리방침)와 `/terms`(이용약관)를 누구나 열 수 있는 페이지로 보여 줍니다. 앱의 가입 화면과 "내 설정 → 약관과 운영자"가 이 주소로 이어집니다.
+- 내용은 `EOUL_POLICY_DIR`(기본 `server/policy/`, 저장소에 올라가지 않음)의 `privacy.md`, `terms.md`입니다. 없으면 `server/policy-templates/`의 초안을 "초안" 표시와 함께 보여 줍니다.
+- `{{OPERATOR_NAME}}` 같은 칸은 아래 설정으로 채워집니다. `[[채울 칸: …]]`은 운영자가 직접 써야 하는 곳이고, 하나라도 남아 있으면 계속 "초안"으로 표시합니다.
+- 페이지는 정해진 Markdown 일부(제목, 문단, 목록, 표, 굵게, https·mailto 링크)만 그리고, 나머지 HTML은 모두 글자로 바꿉니다.
+
+| 이름 | 뜻 |
+|---|---|
+| `EOUL_OPERATOR_NAME` | 운영자 이름(상호). 앱과 문서에 보임 |
+| `EOUL_OPERATOR_EMAIL` | 문의 이메일 |
+| `EOUL_PRIVACY_OFFICER` | 개인정보 보호책임자. 비우면 운영자 이름 |
+| `EOUL_BUSINESS_NUMBER` | 사업자등록번호(있으면) |
+| `EOUL_POLICY_DATE` | 시행일 |
+| `EOUL_AFFILIATE_HOSTS` | 수수료를 주는 제휴 링크의 호스트(쉼표로 여러 개). 이 호스트로 가는 판매처 링크 옆에 "제휴 링크 · 이 링크로 사면 어울이 수수료를 받을 수 있어요"를 표시합니다. 실제 제휴 링크를 쓰기 전에는 비워 두세요 |
+
+## 파일럿 지표
+
+```bash
+node cli.mjs metrics                               # 전체와 가입 주(월요일, 한국 시각)별 합계
+node cli.mjs metrics --exclude me@example.com      # 운영자·시험 계정 빼기(쉼표로 여러 개)
+node cli.mjs metrics --json                        # 표 대신 JSON
+# Docker 운영 묶음에서는: docker compose exec eoul node server/cli.mjs metrics --exclude me@example.com
+```
+
+- **보여 주는 것**
+  - 가입 수
+  - 옷 등록, 활성화(7일 안에 5벌 이상), 7일 안의 "내 옷과 비교", 착용 기록
+  - 7일·21일 뒤 재방문
+  - 구매 판단·주문·보관·반품 건수, 회원 코디 활동
+- **보여 주지 않는 것**: 이메일, 계정 ID, 옷, 상품, 메모, 사진. 출력에는 수와 비율만 있습니다.
+- **작은 묶음**: 계정이 5개 미만인 묶음은 인원수만 보여 줍니다. 몇 명뿐이면 누구의 기록인지 알 수 있기 때문입니다. 운영자 본인만 볼 때는 `--show-small`로 비율까지 볼 수 있습니다.
+- **재방문을 세는 방법**
+  - 계정마다 "마지막 사용 시각"을 1시간 단위로 하나만 남깁니다(데이터베이스 4판).
+  - 4판 이전 데이터베이스는 처음 켤 때 남아 있는 로그인 기록으로 채웁니다.
+  - 4판 데이터베이스는 이전 버전 서버로 열 수 없습니다.
+- 계정 없이 기기에만 저장하는 사용자는 세지 못합니다.
+- 지표 정의와 목표: [사업 로드맵](../docs/business-roadmap-20261015.md#파일럿-지표)
 
 ## 운영 시 알아 둘 것
 

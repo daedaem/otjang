@@ -103,6 +103,7 @@ test('supply: the collected catalog price, sources that are not connected with w
   const sources = plain.sources();
   assert.equal(sources.find((s) => s.id === 'naver-shopping').status, 'not-connected');
   assert.deepEqual(sources.find((s) => s.id === 'naver-shopping').needs.slice(1), ['EOUL_NAVER_CLIENT_ID', 'EOUL_NAVER_CLIENT_SECRET']);
+  assert.match(sources.find((s) => s.id === 'naver-shopping').note, /2026-07-31/, 'the reported shutdown is shown before asking for keys');
   assert.equal(sources.find((s) => s.id === 'musinsa').status, 'not-connected');
   const base = await plain.lookup({ productId: product.id });
   assert.equal(base.offers.length, 1);

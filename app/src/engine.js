@@ -5,7 +5,7 @@ import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, COLORS } from './data/slots.js';
 import { LOOKS, ROLE_ORDER } from './data/looks.js';
 import { PRODUCTS } from './data/products.js';
 import { parseQuery } from './query.js';
-import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus } from './wardrobe.js';
+import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus, slotForItem } from './wardrobe.js';
 import { productEligible, evidenceColor } from './catalog-policy.js';
 import { inactivePurchaseGarmentIds } from './purchase-journey.js';
 export const SAFE_PRODUCTS = PRODUCTS.filter(productEligible);
@@ -503,13 +503,16 @@ function rankLooks(results, c) {
 export function recommendLooks(
   state,
   { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null, anchorColor = null,
-    allowPendingPurchases = false, requestedPurchaseSlots = null } = {},
+    allowPendingPurchases = false, requestedPurchaseSlots = null, anySeason = false, anyStyle = false } = {},
 ) {
   if (pinnedProduct && !productEligible(pinnedProduct)) return [];
-  const c = ctx(state);
+  const base = ctx(state);
+  // A widened search (every season and style of this gender) is for "what can I wear with what I own",
+  // never for buying advice; callers label those looks as outside the current season/style.
+  const c = anyStyle ? { ...base, styles: Object.keys(STYLES).filter((k) => STYLES[k].g.includes(base.gender)) } : base;
   const force = new Set(forceOwned);
-  let looks = matchingLooks(c, { occasion: occasion ?? c.occasion });
-  if (!looks.length) looks = matchingLooks(c, { occasion: null });
+  let looks = matchingLooks(c, { occasion: occasion ?? c.occasion, anySeason });
+  if (!looks.length) looks = matchingLooks(c, { occasion: null, anySeason });
   if (force.size) {
     const cats = [...new Set([...force].map((id) => SLOT_BY_ID[id]?.cat))];
     looks = looks.filter((l) =>
@@ -545,6 +548,39 @@ export function closetLooks(state, { limit = 3 } = {}) {
   return { ready, almost };
 }
 
+// 가진 옷 기본 조합: 코디 공식(LOOKS)에 없어도 가진 옷으로 입을 수 있는 상의+하의+신발(또는 원피스+신발),
+// 겉옷이 있으면 하나 더한다. 종류와 색 조화만 본 조합이라 구매 추천·부족한 옷 판단에는 쓰지 않는다.
+export function basicOutfits(state, { anchorItem = null, limit = 2 } = {}) {
+  const c = ctx(state);
+  const owned = c.closet.filter((i) => ['user', 'legacy'].includes(i.source) && !String(i.id).startsWith('demo_'));
+  const cat = (i) => slotForItem(i).cat;
+  const pick = (k) => (anchorItem && cat(anchorItem) === k ? [anchorItem] : owned.filter((i) => cat(i) === k)).slice(0, 8);
+  const shoes = pick('shoes'), outers = [null, ...pick('outer')];
+  const bases = anchorItem && cat(anchorItem) === 'dress'
+    ? [[anchorItem]]
+    : [...pick('top').flatMap((t) => pick('bottom').map((b) => [t, b])),
+       ...(anchorItem && !['top', 'bottom'].includes(cat(anchorItem)) ? pick('dress').map((d) => [d]) : [])];
+  const out = [];
+  for (const base of bases) for (const shoe of shoes) for (const outer of outers) {
+    const items = [outer, ...base, shoe].filter(Boolean);
+    if (anchorItem && !items.includes(anchorItem)) continue;
+    const entries = items.map((i) => ({ color: i.color, cat: cat(i) }));
+    out.push({ items, score: harmony(entries) + (outer ? 0.2 : 0) - items.filter((i) => !i.color).length * 0.5 });
+  }
+  out.sort((a, b) => b.score - a.score);
+  const seen = new Set();
+  return out.filter(({ items }) => {
+    const key = items.filter((i) => cat(i) !== 'outer').map((i) => i.id).join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, limit).map(({ items }, n) => ({
+    look: { id: `basic-${n}`, title: `가진 옷 기본 조합 ${n + 1}`, note: '코디 공식이 아니라 종류와 색이 어울리는 기본 조합이에요.' },
+    items: items.map((i) => ({ role: cat(i) === 'dress' ? 'top' : cat(i), slot: slotForItem(i), owned: true, item: i, color: i.color, certainty: 'confirmed' })),
+    ownedCount: items.length, buyCount: 0, buyTotal: 0, uncertainCount: 0, basic: true,
+  }));
+}
+
 // 고른 스타일의 기본 아이템을 가졌는지
 export function essentials(state) {
   const c = ctx(state);
@@ -563,8 +599,11 @@ export function search(state, text, { anchorItemId = null } = {}) {
   const q = parseQuery(text, { brands: brandNames });
   const c = ctx({
     ...state,
+    // 예시 옷은 실제 보유 근거가 아니다: 검색에서는 옷장이 없는 것으로 본다.
+    closet: state.demo ? [] : state.closet,
     gender: q.gender || state.gender,
-    styles: q.style ? [q.style, ...(state.styles || [])] : state.styles,
+    // 이번 요청에서 말한 스타일이 저장된 취향보다 먼저다.
+    styles: q.style ? [q.style] : state.styles,
     occasion: q.occasion || state.occasion || null,
     season: q.season || state.season,
     budget: q.maxPrice ?? state.budget,
@@ -610,10 +649,22 @@ export function search(state, text, { anchorItemId = null } = {}) {
       else anchorUnavailable = '요청한 기준 옷의 색을 확인할 수 있는 옷장 기록이나 상품이 없어요.';
     }
   }
-  let targets = genderSlots.filter((s) => q.targetMatch(s));
+  let targets = genderSlots.filter((s) => q.targetMatch(s) && !q.excludeMatch(s));
   if (!targets.length && anchors.length) targets = genderSlots.filter((s) => !anchors.some((a) => a.cat === s.cat));
   const understood = q.terms.length > 0 || !!anchorItem;
-  if (!targets.length) targets = genderSlots;
+  if (!targets.length) targets = genderSlots.filter((s) => !q.excludeMatch(s));
+  // 말한 스타일에 맞는 자리만 남긴다(맞는 자리가 하나도 없으면 그대로 둔다).
+  if (q.style) {
+    const styled = targets.filter((s) => (s.style[q.style] || 0) >= 2);
+    if (styled.length) targets = styled;
+  }
+  // 색을 빼거나 밝기를 말했으면 그 조건에 맞는 상품만 남긴다(맞는 게 없으면 조건을 풀지 않고 0건으로 둔다).
+  const toneOK = (p) => {
+    if (q.excludeColors.includes(p.color)) return false;
+    if (!q.tone) return true;
+    const l = COLORS[p.color]?.light;
+    return Number.isFinite(l) && (q.tone === 'light' ? l >= 60 : l <= 40);
+  };
 
   const looks = LOOKS.filter((l) => l.g === c.gender);
   const anchorIds = new Set(anchors.map((a) => a.id));
@@ -623,6 +674,11 @@ export function search(state, text, { anchorItemId = null } = {}) {
     const base = scoreSlot(slot, { ...c, ownedSlots: c.ownedSlots }, matchingLooks(c, { occasion: null }));
     let score = base.score;
     let reasons = [slot.why, ...base.reasons].slice(0, 2);
+    // 요청에서 말한 스타일이 이유의 첫 줄이고, 그 스타일에 더 가까운 아이템이 앞선다.
+    if (q.style) {
+      score += (slot.style[q.style] || 0) * 1.5;
+      reasons = [`${STYLES[q.style].label} 코디에 쓰는 ${shortName(slot)}`, slot.why].slice(0, 2);
+    }
     if (anchors.length) {
       const a = anchorItem
         ? garmentLabel(anchorItem)
@@ -645,6 +701,7 @@ export function search(state, text, { anchorItemId = null } = {}) {
       brand: q.brand,
       season: q.season || (q.slotNamed ? null : c.season),
     });
+    products = products.filter(toneOK);
     const selected = q.priceSort ? products : products.slice(0, q.brand ? 6 : 3);
     selected.forEach((product, i) => {
       results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3, reasons });
@@ -664,6 +721,7 @@ export function search(state, text, { anchorItemId = null } = {}) {
       ? recommendLooks(
           {
             ...state,
+            closet: state.demo ? [] : state.closet,
             gender: c.gender,
             styles: c.styles,
             season: c.season,
