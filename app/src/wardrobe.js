@@ -40,7 +40,7 @@ export const GARMENT_KINDS = [
   ['sneaker', '운동화'],
   ['cardigan', '카디건'],
   ['longtee', '긴팔 티'],
-  ['sweat', '맨투맨'],
+  ['sweat', '맨투맨·후드'],
   ['polo', '폴로 셔츠'],
   ['blazer', '블레이저'],
   ['coat', '코트'],
@@ -51,8 +51,15 @@ export const GARMENT_KINDS = [
   ['boot', '부츠'],
   ['bag', '가방'],
   ['cap', '모자'],
+  ['beanie', '비니'],
   ['belt', '벨트'],
 ].map(([id, name]) => ({ id, name }));
+// Owning a garment does not depend on whether our shopping catalog carries it.
+// All registration paths share these kinds. Gender only changes their display order.
+export function garmentKindChoices(gender = 'M') {
+  const first = gender === 'F' ? ['shirt', 'tee', 'knit', 'dress', 'skirt', 'pants', 'jeans', 'cardigan'] : [];
+  return [...GARMENT_KINDS].sort((a, b) => (first.indexOf(a.id) + 1 || 99) - (first.indexOf(b.id) + 1 || 99));
+}
 export function garmentKindName(kind) {
   return GARMENT_KINDS.find((k) => k.id === kind)?.name || '옷';
 }

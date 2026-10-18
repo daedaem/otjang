@@ -36,11 +36,14 @@ import {
   makeGarment,
   garmentLabel,
   garmentKindName,
+  garmentKindChoices,
   GARMENT_KINDS,
   slotForItem,
   wardrobeSlotStatus,
   WARDROBE_SCHEMA,
 } from './wardrobe.js';
+import { resolveSearchFollowUp } from './search-follow-up.js';
+import { outfitCopy } from './outfit-copy.js';
 import { stripJpegMetadata } from './jpeg-clean.js';
 import { COMMUNITY_RULES, COMMUNITY_RULES_VERSION, COMMUNITY_REPORT_REASONS, MAX_POST_PHOTOS, MAX_CAPTION, communityLookFrom, nameProblem } from './community-post.js';
 import { addWear, toggleWornOn, deleteWear, wearStats, orderByRecentWear, localDate, wearDateOK, wearMonths, MAX_WEAR_GARMENTS, WEAR_RECENT_DAYS } from './wear-log.js';
@@ -444,12 +447,13 @@ function tile(i) {
 }
 function lookCard(r, { wide = false } = {}) {
   const index = lastLooks.push(r) - 1;
+  const copy = outfitCopy(r);
   const tiles = r.items.filter((i) => i.role !== 'acc' && i.role !== 'inner').slice(0, 4);
-  return `<button class="look" data-action="open-look" data-index="${index}" ${wide ? 'style="width:100%"' : ''}>
+  return `<button class="look" data-action="open-look" data-index="${index}" data-look-id="${esc(r.look.id)}" ${wide ? 'style="width:100%"' : ''}>
     <div class="look-grid n${tiles.length}">${tiles.map(tile).join('')}</div>
     <div class="look-body">
-      <div class="look-title">${esc(r.look.title)}</div>
-      <div class="look-note">${esc(r.look.note)}</div>
+      <div class="look-title">${esc(copy.title)}</div>
+      <div class="look-note">${esc(copy.note)}</div>
       <div class="look-meta">
         <span>${r.ownedCount ? `${state.demo ? '예시 옷' : '내 옷'} ${r.ownedCount}개${r.buyCount ? ` + 후보 ${r.buyCount}개` : ''}` : `구매 후보 ${r.buyCount}개`}</span>
         <b>${r.uncertainCount ? '옷 종류 확인 필요' : r.buyCount ? formatPrice(r.buyTotal) : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</b>
@@ -1058,12 +1062,8 @@ let searchCriteria = null;
 let searchDrop = [];
 // "더 싼 걸로"처럼 이전 검색을 이어서 고친 요청. 화면에 그렇게 했다고 알린다.
 let searchFollowUp = null;
-const FOLLOW_UP = /^\s*(?:좀\s*)?더\s*(싼|저렴한|저렴하게|싸게|비싼|비싸게|좋은)\s*(?:걸로|거|것|거로|걸|건)?\s*(?:없어|있어|보여\s*줘|줘|요)?[?.!]*\s*$/;
 function followUpQuery(text) {
-  const m = query && !/낮은 가격순|높은 가격순/.test(query) ? text.match(FOLLOW_UP) : null;
-  if (!m) return null;
-  const order = /비싼|비싸게|좋은/.test(m[1]) ? '높은 가격순' : '낮은 가격순';
-  return { query: `${query} ${order}`, follow: { said: text.trim(), order } };
+  return resolveSearchFollowUp(query, text);
 }
 function renderSearch() {
   ensureBackGuard();
@@ -1102,7 +1102,7 @@ function renderSearch() {
     ? '<p class="notice">착용감 자료는 없어요. 상품명에 ‘밴딩·이지·와이드’ 같은 표기가 있는 상품을 앞에, ‘생지·리지드’는 뒤에 뒀어요. 실제 착용감은 판매 페이지 후기로 확인해 주세요.</p>'
     : '';
   const followNote = searchFollowUp
-    ? `<p class="notice" role="status">‘${esc(searchFollowUp.said)}’는 이전 조건을 그대로 두고 ${esc(searchFollowUp.order)}으로 다시 찾았어요. 새로 찾으려면 종류까지 적어 주세요.</p>`
+    ? `<p class="notice" role="status">${searchFollowUp.clarification ? `‘${esc(searchFollowUp.said)}’: ${esc(searchFollowUp.clarification)}` : `‘${esc(searchFollowUp.said)}’는 이전 조건을 그대로 두고 ${esc(searchFollowUp.order)}으로 다시 찾았어요. 새로 찾으려면 종류까지 적어 주세요.`}</p>`
     : '';
   const qualityNotice = r.query.qualityUnavailable
     ? '<p class="notice">품질을 비교할 자료는 없어요. 가격으로 품질을 판단하지 않고 평점·후기 등 인기 정보를 참고했어요.</p>'
@@ -1120,7 +1120,7 @@ function renderSearch() {
       : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>${r.conds.length ? `<p>적용한 조건: ${esc(r.conds.map((x) => x.label).join(' · '))}</p>` : ''}<p>조건을 자동으로 넓히지 않았어요. 위 조건 칩의 ×를 눌러 직접 빼고 다시 찾을 수 있어요.</p></div>`;
   // 코디는 상품 다음에. 예산은 상품 한 벌 기준이라 코디 합계와 다르다고 적는다.
   const outfit = r.outfit && !none
-    ? `<section class="section"><div class="section-head"><div><h2>이 조건으로 한 벌 맞춰 보면</h2><div class="sub">${esc(r.outfit.look.title)}${r.criteria.maxPrice != null ? ' · 예산은 상품 한 벌 기준이에요(코디 합계 아님)' : ''}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
+    ? `<section class="section"><div class="section-head"><div><h2>이 조건으로 한 벌 맞춰 보면</h2><div class="sub">${esc(outfitCopy(r.outfit).title)}${r.criteria.maxPrice != null ? ' · 예산은 상품 한 벌 기준이에요(코디 합계 아님)' : ''}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
     : '';
   return head + followNote + genderNote + anchor + partial + comfortNotice + qualityNotice + items + outfit + footer();
 }
@@ -1395,7 +1395,7 @@ function candidateSheet() {
     ${candidatePicture(c, 'hero candidate-hero')}<p class="sub">${imported ? '주문에서 읽은 상품명·브랜드를 채워 두었어요. 종류만 고르면 되고, 색은 모르면 그대로 두세요.' : c.source === 'catalog' ? '저장된 상품 정보예요. 고른 색·옵션과 현재 판매 페이지를 확인해 주세요.' : '링크를 보관했어요. 아직 상품 정보는 자동으로 읽지 않았어요. 종류와 색만 고르면 내 옷과 비교할 수 있어요.'}</p>
     <a class="link candidate-url" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 상품 확인 ${ICON.arrow}</a>
     ${linkOnly ? '' : nameField}
-    <div class="candidate-fields"><label>종류<select id="candidate-kind">${options([['', '아직 모름'], ...GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === gender && s.shape === k.id)).map((k) => [k.id, k.name])], c.kind)}</select></label><label>고른 색<select id="candidate-color">${options([['', '아직 모름'], ...Object.entries(COLORS).map(([id, value]) => [id, value.label])], c.colorSource === 'image' ? null : c.color)}</select></label></div>
+    <div class="candidate-fields"><label>종류<select id="candidate-kind">${options([['', '아직 모름'], ...garmentKindChoices(gender).map((k) => [k.id, k.name])], c.kind)}</select></label><label>고른 색<select id="candidate-color">${options([['', '아직 모름'], ...Object.entries(COLORS).map(([id, value]) => [id, value.label])], c.colorSource === 'image' ? null : c.color)}</select></label></div>
     ${specific.length ? `<label>세부 종류 (모르면 그대로 두세요)<select id="candidate-slot">${options([['', '아직 모름'], ...specific.map((s) => [s.id, s.name])], c.slot)}</select></label>` : ''}
     ${linkOnly ? nameField : ''}
     <details class="garment-name"><summary>브랜드·가격 추가 (선택)</summary><label for="candidate-brand">브랜드</label><input id="candidate-brand" maxlength="120" value="${esc(c.brand)}"><label for="candidate-price">직접 확인한 가격</label><input id="candidate-price" inputmode="numeric" type="number" min="0" max="1000000000" value="${c.price ?? ''}"><p class="fine">입력한 시점의 참고 가격이에요. 배송비·쿠폰·재고·최저가는 확인하지 않았어요.</p></details>
@@ -1424,7 +1424,7 @@ function quickCheckSection(d) {
     result = `<section class="journey-verdict quick-result" aria-live="polite">${result}<p class="fine">링크가 없어 기록으로 남기지 않아요. 판매 링크를 붙여 넣으면 코디까지 비교해요.</p></section>`;
   }
   return `<details class="quick-check"${q.checked || d.linkError ? ' open' : ''}><summary>링크가 없나요? 종류·색으로 바로 확인</summary>
-    <div class="candidate-fields"><label>종류<select id="quick-kind">${options([['', '고르기'], ...GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === gender && s.shape === k.id)).map((k) => [k.id, k.name])], q.kind)}</select></label><label>색<select id="quick-color">${options([['', '아직 모름'], ...Object.entries(COLORS).map(([id, value]) => [id, value.label])], q.color)}</select></label></div>
+    <div class="candidate-fields"><label>종류<select id="quick-kind">${options([['', '고르기'], ...garmentKindChoices(gender).map((k) => [k.id, k.name])], q.kind)}</select></label><label>색<select id="quick-color">${options([['', '아직 모름'], ...Object.entries(COLORS).map(([id, value]) => [id, value.label])], q.color)}</select></label></div>
     <button class="btn secondary" data-action="quick-check">가진 옷과 겹치는지 보기</button>${result}</details>`;
 }
 async function saveCandidateDraft({ allowOptionCorrection = false } = {}) {
@@ -2107,10 +2107,11 @@ function itemSheet(id) {
 function lookSheet(index) {
   const r = lastLooks[index];
   if (!r) return;
+  const copy = outfitCopy(r);
   const buyIds = r.items.filter((i) => !i.owned).map((i) => i.product.id);
   openSheet(`
-    <h2 class="detail-title" style="padding-right:48px">${esc(r.look.title)}</h2>
-    <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
+    <h2 class="detail-title" data-look-id="${esc(r.look.id)}" style="padding-right:48px">${esc(copy.title)}</h2>
+    <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(copy.note)}</p>
     ${lookRows(r)}
     ${r.uncertainCount ? `<p class="notice">${r.uncertainCount}벌의 세부 종류를 확인해야 이 코디를 확정할 수 있어요. 확인 전에는 새 옷이 꼭 필요한지 판단하지 않습니다.</p>` : ''}
     <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `구매 후보 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
@@ -2560,7 +2561,7 @@ function photoAnalysisPanel() {
   const stage = progress?.task === 'ocr' ? '라벨 글자 읽는 중' :
     progress?.stage === 'kind-analysis' ? '옷 종류 분석 중' :
     progress?.stage === 'color-analysis' ? '색 후보 분석 중' : '분석 도구 준비 중';
-  const kinds = (r?.kinds || []).filter((x) => SLOTS.some((s) => s.g === draft.gender && s.shape === x.kind));
+  const kinds = (r?.kinds || []).filter((x) => garmentKindChoices(draft.gender).some((k) => k.id === x.kind));
   const candidates = confirmedText ? identity?.candidates || [] : [];
   return `<section class="photo-analysis" aria-label="사진 분석 후보"><h3>${r ? '사진에서 찾았어요' : draft.recognizing ? '사진 분석 중' : '사진에서 정보 찾기'}</h3>
     ${!photoCanAutoAnalyze() && !draft.photoRecognition ? '<p class="sub">사진에서 종류와 라벨 글자를 찾아볼까요? 처음에는 약154MB의 모델과 문자 도구를 다운로드해요. 사진은 이 기기에서 처리해요. 데이터 절약 모드에서는 사진마다 분석을 선택해요.</p><button class="chip" data-action="photo-start">이 기기에서 사진 분석하기</button><p class="sub">아래에서 종류만 골라 바로 저장해도 돼요.</p>' : ''}
@@ -2831,14 +2832,12 @@ function addSheet() {
   }
   const selected = slotForItem(draft);
   // 여성 옷장은 원피스·스커트가 첫 화면(앞 8개)에 보여야 한다.
-  const FIRST_F = ['shirt', 'tee', 'knit', 'dress', 'skirt', 'pants', 'jeans', 'cardigan'];
-  const kinds = GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === draft.gender && s.shape === k.id))
-    .sort((a, b) => draft.gender === 'F' ? (FIRST_F.indexOf(a.id) + 1 || 99) - (FIRST_F.indexOf(b.id) + 1 || 99) : 0);
-  const kindButton = (k) => `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === draft.gender && s.shape === k.id))}<span>${k.name}</span></button>`;
+  const kinds = garmentKindChoices(draft.gender);
+  const kindButton = (k) => `<button class="kind-pick" data-action="draft-kind" data-kind="${k.id}" aria-pressed="${draft.kind === k.id}">${typePicture(SLOTS.find((s) => s.g === draft.gender && s.shape === k.id) || slotForItem({ kind: k.id, gender: draft.gender, slot: null }))}<span>${k.name}</span></button>`;
   const photo = draft.preview || photos.get(draft.photoId);
   const entry = !draft.before && draft.entryMode === 'choice' && !photo && !draft.kind;
   // The kind grid stays open unless a visual suggestion or a chosen kind is shown above it.
-  const suggested = (draft.photoRecognition?.kinds || []).some((x) => SLOTS.some((s) => s.g === draft.gender && s.shape === x.kind));
+  const suggested = (draft.photoRecognition?.kinds || []).some((x) => garmentKindChoices(draft.gender).some((k) => k.id === x.kind));
   const manual = !draft.kind && !suggested;
   const specificKinds = SLOTS.filter((s) => s.g === draft.gender && s.shape === draft.kind);
   const manualKinds = `<fieldset><legend>어떤 옷인가요?</legend><div class="kind-grid">${kinds.slice(0, 8).map(kindButton).join('')}</div><details class="more-kinds"><summary>다른 종류</summary><div class="kind-grid">${kinds.slice(8).map(kindButton).join('')}</div></details></fieldset>`;
@@ -2853,7 +2852,8 @@ function addSheet() {
   ${analysisActive ? photoAnalysisPanel() : ''}
   ${draft.kind ? `<div class="confirmed-kind"><span>확인한 종류</span><b>${esc(garmentKindName(draft.kind))}</b>${draft.brand ? `<small>${esc(draft.brand)}</small>` : ''}</div>` : ''}
   ${manual ? (photo ? quickKinds : manualKinds) : `<details class="manual-kinds"><summary>${draft.kind ? '다른 종류로 바꾸기' : '다른 종류로 등록'}</summary>${manualKinds}</details>`}
-  ${draft.kind ? `<div class="wardrobe-ready"><p class="sub">색까지 고르면 이 옷이 코디와 구매 비교에 바로 쓰여요.</p>
+  ${draft.kind ? `<div class="wardrobe-ready"><p class="sub">색을 확인하면 같은 종류·색의 옷과 비교할 수 있어요.</p>
+  ${!specificKinds.length ? '<p class="fine">이 종류의 상품·코디 자료는 아직 부족해요. 내 옷장에는 저장할 수 있고, 세부 종류를 추측해 넣지 않아요.</p>' : ''}
   ${specificKinds.length ? `<details class="garment-name"${!draft.slot || draft.confirmDetails ? ' open' : ''}><summary>세부 종류 확인 (선택)${draft.slot ? ` · ${esc(shortName(selected))}` : ''}</summary><div class="opts"><button class="chip" data-action="draft-slot" data-slot="" aria-pressed="${!draft.slot}">아직 모름</button>${specificKinds.map((s) => `<button class="chip" data-action="draft-slot" data-slot="${s.id}" aria-pressed="${draft.slot === s.id}">${esc(s.name)}</button>`).join('')}</div></details>` : ''}
   <fieldset class="color-confirm"><legend>색 <span class="sub">${esc(COLORS[draft.color]?.label || '아직 고르지 않았어요')}</span></legend><div class="swatches named-swatches">${Object.entries(COLORS).map(([id, c]) => `<button class="sw named" data-action="draft-color" data-color="${id}" aria-pressed="${draft.color === id}"><i style="background:${c.hex}"></i><span>${esc(c.label)}</span></button>`).join('')}</div>${draft.color ? '<button class="link color-later" data-action="draft-color" data-color="">색은 나중에 정하기</button>' : '<p class="fine">모르면 고르지 않고 저장해도 돼요. 옷장에 \'색 확인\'으로 표시돼요.</p>'}</fieldset></div>` : ''}
   <details class="garment-name"><summary>브랜드·이름 수정 (선택)</summary><label for="garment-label">내가 부를 이름</label><input id="garment-label" maxlength="80" value="${esc(draft.label)}"><label for="garment-brand">브랜드</label><input id="garment-brand" maxlength="120" value="${esc(draft.brand || '')}"><p class="sub">모르는 정보는 비워 둬도 돼요.</p></details>
@@ -4851,8 +4851,7 @@ document.addEventListener('click', async (e) => {
       case 'draft-kind':
       case 'photo-kind':
         if (draft) {
-          if (!GARMENT_KINDS.some((k) => k.id === el.dataset.kind) ||
-              !SLOTS.some((s) => s.g === draft.gender && s.shape === el.dataset.kind)) break;
+          if (!garmentKindChoices(draft.gender).some((k) => k.id === el.dataset.kind)) break;
           if (el.dataset.action === 'photo-kind' && !draft.photoRecognition?.kinds?.some((x) => x.kind === el.dataset.kind)) break;
           draft.kind = el.dataset.kind;
           if (draft.entryMode === 'choice') draft.entryMode = 'manual';

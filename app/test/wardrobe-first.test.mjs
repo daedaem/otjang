@@ -334,7 +334,8 @@ test('women receive twelve gender-appropriate quick choices with bottoms and sho
     assertBalancedRegistrationChoices(slots, 'F');
     assert.ok(slots.some((slot) => slot.shape === 'skirt'));
     assert.match(page.sheet(), /data-action="draft-kind" data-kind="dress"/, 'other available kinds remain reachable');
-    assert.doesNotMatch(page.sheet(), /data-action="draft-kind" data-kind="vest"/, 'a male-only detailed type cannot be selected for a female garment');
+    assert.match(page.sheet(), /data-action="draft-kind" data-kind="vest"/, 'owning a vest does not require a matching shopping catalog');
+    assert.doesNotMatch(page.sheet(), /data-action="draft-quick-slot" data-slot="m-/, 'a male catalog subtype must not be suggested as a female subtype');
     assert.equal(page.app.draft().color, null);
     assert.equal(page.app.draft().brand, null);
   }

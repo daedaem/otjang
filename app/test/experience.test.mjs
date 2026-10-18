@@ -1278,7 +1278,7 @@ test('unconfirmed outfit row opens that garment detail and returns to a refreshe
   assert.equal(page.state().garments.find((i) => i.id === row.item.id).slot, row.slot.id);
   assert.equal(page.state().garments.find((i) => i.id === row.item.id).photoId, row.item.photoId);
   const refreshed = page.nodes.get('sheet-root').innerHTML;
-  assert.ok(refreshed.includes(outfit.look.title));
+  assert.ok(refreshed.includes(`data-look-id="${outfit.look.id}"`), 'returns to the same formula with refreshed garment-based copy');
   assert.ok(!refreshed.includes(`data-action="confirm-own-kind" data-id="${row.item.id}"`));
   assert.ok(refreshed.includes('확인할 셔츠'));
   assert.equal((await page.app.store.read()).state.garments.find((i) => i.id === row.item.id).slot, row.slot.id);

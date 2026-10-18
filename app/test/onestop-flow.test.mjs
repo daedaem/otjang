@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { PRODUCTS } from '../src/data/products.js';
 import { SLOT_BY_ID } from '../src/data/slots.js';
-import { makeGarment, newWardrobeState, WARDROBE_SCHEMA } from '../src/wardrobe.js';
+import { makeGarment, newWardrobeState, WARDROBE_SCHEMA, garmentKindChoices } from '../src/wardrobe.js';
 import { createWardrobeStore, photoAsset, parseWardrobeBackup } from '../src/wardrobe-store.js';
 import { candidateFromProduct } from '../src/purchase-candidate.js';
 import { productEligible } from '../src/catalog-policy.js';
@@ -161,6 +161,68 @@ async function stored(page) {
   const row = await page.app.store.read();
   return { revision: row.revision, state: plain(row.state), photos: row.photos };
 }
+
+test('better-quality follow-up preserves the visible results, removed conditions and repeated price context', async (t) => {
+  const page = await boot(); t.after(() => page.close());
+  page.submitQuery('검정 말고 출근용 셔츠 10만원 이하');
+  await page.click({ action: 'drop-cond', key: 'price' });
+  const ids = () => [...page.nodes.get('app').innerHTML.matchAll(/data-action="open-item" data-id="([^"]+)"/g)].map((m) => m[1]);
+  const before = ids();
+  assert.ok(before.length);
+  page.submitQuery('더 좋은 걸로');
+  assert.deepEqual(ids(), before);
+  assert.match(page.nodes.get('app').innerHTML, /어느 상품이 더 좋은지 판단하지 못했어요/);
+  assert.match(page.nodes.get('app').innerHTML, /뺀 조건 되돌리기/);
+  page.submitQuery('더 싼 걸로');
+  assert.match(page.nodes.get('app').innerHTML, /낮은 가격순/);
+  page.submitQuery('더 비싼 걸로');
+  assert.match(page.nodes.get('app').innerHTML, /높은 가격순/);
+  assert.match(page.nodes.get('app').innerHTML, /셔츠/);
+  assert.match(page.nodes.get('app').innerHTML, /블랙 제외/);
+  assert.match(page.nodes.get('app').innerHTML, /뺀 조건 되돌리기/);
+});
+
+test('manual, photo, quick comparison and pasted-link paths share kinds even without matching catalog slots', async (t) => {
+  const db = new IDBFactory();
+  const store = createWardrobeStore({ indexedDB: db });
+  const first = await store.load();
+  await store.commit({ ...newWardrobeState(), onboarded: true, gender: 'F', styles: ['minimal'], demo: false, demoSelected: [], garments: [] }, first.revision, [], first.epoch);
+  store.close();
+  let page = await boot(db); t.after(() => page.close());
+  const expected = garmentKindChoices('F').map((k) => k.id).sort();
+  const kindButtons = () => [...page.nodes.get('sheet-root').innerHTML.matchAll(/data-action="draft-kind" data-kind="([^"]+)"/g)].map((m) => m[1]).sort();
+  const kindOptions = (id) => {
+    const select = page.nodes.get('sheet-root').innerHTML.match(new RegExp(`<select id="${id}">([\\s\\S]*?)<\\/select>`))[1];
+    return [...select.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]).sort();
+  };
+  await page.click({ action: 'add-start' });
+  await page.click({ action: 'draft-manual' });
+  assert.deepEqual(kindButtons(), expected);
+  await page.app.chooseGarmentPhoto(jpeg());
+  assert.deepEqual(kindButtons(), expected, 'a photo must not remove kinds available for manual entry');
+  await page.click({ action: 'draft-kind', kind: 'beanie' });
+  assert.match(page.nodes.get('sheet-root').innerHTML, /내 옷장에는 저장할 수 있고/);
+  await page.app.saveGarmentDraft();
+  const saved = await stored(page);
+  assert.equal(saved.state.garments.length, 1);
+  assert.equal(saved.state.garments[0].kind, 'beanie');
+  assert.equal(saved.state.garments[0].slot, null);
+  assert.equal(saved.state.garments[0].color, null);
+  assert.ok(saved.photos.get(saved.state.garments[0].photoId));
+  page.close(); page = await boot(db);
+  assert.equal(page.state().garments[0].kind, 'beanie', 'the generic kind survives reload');
+  page.app.beginCandidate();
+  assert.deepEqual(kindOptions('quick-kind'), expected);
+  page.app.beginCandidate('https://shop.example.com/products/a-hat');
+  assert.deepEqual(kindOptions('candidate-kind'), expected);
+  await page.change('candidate-kind', 'beanie');
+  await page.app.saveCandidateDraft();
+  const final = await stored(page);
+  assert.equal(final.state.journeys[0].candidate.kind, 'beanie');
+  assert.equal(final.state.journeys[0].candidate.slot, null);
+  assert.equal(final.state.journeys[0].candidate.price, null);
+  assert.equal(final.state.garments[0].photoId, saved.state.garments[0].photoId);
+});
 
 async function assertOriginalPhoto(page, asset) {
   const snapshot = await stored(page);

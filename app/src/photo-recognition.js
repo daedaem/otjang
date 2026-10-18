@@ -10,12 +10,12 @@ export const PHOTO_RECOGNITION_KIND_LABELS = [
   ['vest', '베스트·조끼', 'sleeveless vest'],
   ['jeans', '청바지', 'jeans'], ['jacket', '재킷', 'jacket'],
   ['sneaker', '운동화', 'sneakers'], ['cardigan', '카디건', 'cardigan'],
-  ['longtee', '긴팔 티', 'long sleeve t-shirt'], ['sweat', '맨투맨', 'sweatshirt'],
+  ['longtee', '긴팔 티', 'long sleeve t-shirt'], ['sweat', '맨투맨·후드', 'sweatshirt'],
   ['polo', '폴로 셔츠', 'polo shirt'], ['blazer', '블레이저', 'blazer'],
   ['coat', '코트', 'coat'], ['down', '패딩', 'puffer jacket'],
   ['dress', '원피스', 'dress'], ['skirt', '스커트', 'skirt'],
   ['loafer', '구두·로퍼', 'leather shoes'], ['boot', '부츠', 'boots'],
-  ['bag', '가방', 'bag'], ['cap', '모자', 'hat'], ['belt', '벨트', 'belt'],
+  ['bag', '가방', 'bag'], ['cap', '모자', 'hat'], ['beanie', '비니', 'beanie hat'], ['belt', '벨트', 'belt'],
 ];
 export const PHOTO_RECOGNITION_KIND_ALIASES = [['jacket', 'denim jacket'], ['sweat', 'hoodie']];
 export const PHOTO_RECOGNITION_DISTRACTORS = ['several garments worn by a person', 'no garment'];

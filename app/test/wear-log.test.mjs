@@ -276,13 +276,13 @@ test('a fresh outfit ranked below six recently worn ones still comes first; the 
 
   const quiet = await boot(await seeded({ ...extra, wears: [entry('w_old', '2025-01-01', owned(all[0]))] }));
   await quiet.click({ action: 'tab', tab: 'closet' });
-  assert.equal(/<div class="look-title">([^<]+)</.exec(quiet.body())[1], all[0].look.title, 'worn long ago: order unchanged');
+  assert.equal(/data-look-id="([^"]+)"/.exec(quiet.body())[1], all[0].look.id, 'worn long ago: order unchanged');
   assert.doesNotMatch(quiet.body(), /뒤로 보냈어요/, 'and no notice claims otherwise');
 
   const today = localDate();
   const busy = await boot(await seeded({ ...extra, wears: all.slice(0, 6).map((r, i) => entry(`w_${i}`, today, owned(r))) }));
   await busy.click({ action: 'tab', tab: 'closet' });
-  assert.equal(/<div class="look-title">([^<]+)</.exec(busy.body())[1], all[6].look.title, 'the seventh, not worn this week, comes first');
+  assert.equal(/data-look-id="([^"]+)"/.exec(busy.body())[1], all[6].look.id, 'the seventh, not worn this week, comes first');
   assert.match(busy.body(), /뒤로 보냈어요/);
 });
 
