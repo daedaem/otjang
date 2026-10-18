@@ -1296,7 +1296,7 @@ function renderSaved() {
     : '';
   const likedTotal = savedFilter === 'liked' && liked.length > 1
     ? `<div class="total"><span>관심 ${liked.length}개</span><b>${formatPrice(liked.reduce((sum, p) => sum + p.price, 0))}</b></div>` : '';
-  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="order-import-open">구매내역 가져오기 · 시험 중</button><button class="btn secondary small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
+  return `<section class="section purchase-journeys"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="order-import-open">구매내역 가져오기 · 시험 중</button><button class="btn secondary small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
     ${stampLedger()}${counts.all ? `<div class="closet-toolbar-tabs saved-filters" role="group" aria-label="구매 여정 보기">${SAVED_FILTERS.filter(([key]) => key === 'all' || counts[key]).map(([key, label]) => `<button data-action="saved-filter" data-filter="${key}" aria-pressed="${savedFilter === key}">${label} <span>${counts[key]}</span></button>`).join('')}</div>` : ''}
     ${retained}${empty}
     ${counts.all ? `<div class="journey-list">${shownLiked.map(likedRow).join('')}${shownJourneys.map(journeyRow).join('')}</div>${likedTotal}` : ''}
