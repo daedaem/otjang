@@ -62,6 +62,7 @@ import { storageLimits, removableJourneys, journeysWithout } from './record-clea
 import { keepDraft, loadDraft, dropDraft } from './draft-keeper.js';
 import { createPurchaseJourney, transitionPurchaseJourney, validatePurchaseCandidate } from './purchase-journey.js';
 import { closetItems, missingGarmentDetails } from './closet-view.js';
+import { parseOrderImport, importedOrderId, importedOrderInfo, planOrderImport, connectImportedOrder, ORDER_STATUS_LABELS } from './order-import.js';
 
 const KEY = 'eoul:v1';
 const BUDGETS = [
@@ -107,6 +108,7 @@ let claudeLatestPresent = false;
 let storageHealth = null, persistenceAsked = false, backupNudgeDismissed = false;
 let returnFocus = null, returnFocusSelector = null;
 let candidateDraft = null;
+let orderImportDraft = null;
 // 사진 여러 장: 고른 사진을 한 장씩 이어서 연다. 각 사진은 한 벌 등록과 똑같이 종류를 확인한 뒤에만
 // 저장한다(사진 추정이 확인 없이 사실로 저장되지 않게). 고른 파일은 메모리에만 두고 따로 저장하지 않는다.
 const PHOTO_QUEUE_MAX = 20;
@@ -1093,7 +1095,7 @@ function renderCloset() {
   if (closetFilter !== 'all' && !cats.some(([cat]) => cat === closetFilter)) closetFilter = 'all';
   const head = `<section class="section closet-toolbar">
     <div class="section-head"><div><span class="eyebrow">${state.demo ? '먼저 둘러보는 옷장' : '나의 스타일 아카이브'}</span><h2>내 옷장 <span class="closet-total">${items.length}</span></h2><div class="sub">${state.demo ? `예시 옷 ${items.length}벌` : `등록한 내 옷 ${items.length}벌`}</div>${items.some((i) => i.gender !== state.gender) ? `<p class="fine">코디 추천 기준: ${state.gender === 'F' ? '여성' : '남성'} · ${esc(styleLine())}. 다른 분류의 옷도 목록에 보관해요.</p>` : ''}</div>
-      <button class="btn small" data-action="add-start">${ICON.plus}옷 추가</button><button class="btn secondary small" data-action="candidate-start">살까 말까 비교</button></div>
+      <button class="btn small" data-action="add-start">${ICON.plus}옷 추가</button><button class="btn secondary small" data-action="order-import-open">구매내역 가져오기</button><button class="btn secondary small" data-action="candidate-start">살까 말까 비교</button></div>
     <form class="closet-controls" data-action="closet-search" role="search"><label class="closet-search-box">${ICON.search}<input id="closet-search" name="closetQuery" type="search" value="${esc(closetQuery)}" placeholder="이름, 브랜드, 색으로 찾기" aria-label="내 옷 검색"><button class="link" type="submit">찾기</button></label><select id="closet-sort" aria-label="옷장 정렬"><option value="recent"${closetSort === 'recent' ? ' selected' : ''}>최근 추가순</option><option value="oldest"${closetSort === 'oldest' ? ' selected' : ''}>먼저 추가순</option><option value="name"${closetSort === 'name' ? ' selected' : ''}>이름순</option></select></form>
     ${reviewCount || closetReviewOnly ? `<button class="closet-review chip" data-action="closet-review" aria-pressed="${closetReviewOnly}">종류·색 확인 필요 ${reviewCount}벌 ${ICON.arrow}</button>` : ''}
     <div class="closet-toolbar-tabs" role="group" aria-label="옷 종류"><button data-action="closet-filter" data-cat="all" aria-pressed="${closetFilter === 'all'}">전체 <span>${items.length}</span></button>${cats.map(([cat, label]) => `<button data-action="closet-filter" data-cat="${cat}" aria-pressed="${closetFilter === cat}">${label} <span>${items.filter((i) => slotForItem(i).cat === cat).length}</span></button>`).join('')}</div>
@@ -1195,7 +1197,7 @@ function renderSaved() {
   const decisions = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const liked = likedProducts();
   const journeys = [...state.journeys].reverse();
-  const inGroup = { liked: () => false, deciding: (j) => j.stage === 'candidate', owned: (j) => j.stage !== 'candidate', all: () => true };
+  const inGroup = { liked: () => false, deciding: (j) => j.stage === 'candidate' && !importedOrderInfo(j), owned: (j) => j.stage !== 'candidate' || !!importedOrderInfo(j), all: () => true };
   const counts = { all: journeys.length + liked.length, liked: liked.length, deciding: journeys.filter(inGroup.deciding).length, owned: journeys.filter(inGroup.owned).length };
   if (!counts[savedFilter]) savedFilter = 'all';
   const shownLiked = savedFilter === 'all' || savedFilter === 'liked' ? liked : [];
@@ -1204,14 +1206,17 @@ function renderSaved() {
   const retained = unavailable.length
     ? `<div class="notice"><b>현재 목록에 없는 찜 ${unavailable.length}개도 보관 중이에요</b><p>상품 정보가 없어 추천과 합계에서 제외했어요.</p><ul>${unavailable.map((id) => `<li><a href="https://www.musinsa.com/products/${id.slice(3)}" target="_blank" rel="noopener noreferrer">상품 ${id.slice(3)} 확인</a> <button class="link" data-action="save" data-id="${id}">찜 해제</button></li>`).join('')}</ul></div>`
     : '';
-  const journeyRow = (j) => `<button class="journey-row" data-action="open-journey" data-id="${esc(j.id)}">${candidatePicture(j.candidate)}${BRAND.stamps && j.decision ? `<span class="stamp-mark stamp-${j.decision}" aria-hidden="true">${esc(BRAND.stamps[j.decision])}</span>` : ''}<span><b>${esc(j.candidate.name || '가져온 상품')}</b><span>${esc(j.candidate.brand || new URL(j.candidate.url).hostname)}</span><span>${labels[j.stage]}${j.decision ? ` · ${decisions[j.decision]}` : ''}${j.wearCount ? ` · 착용 기록 ${j.wearCount}회` : ''}${j.candidate.productId && state.saved.includes(j.candidate.productId) ? ' · 관심' : ''}</span></span>${ICON.arrow}</button>`;
+  const journeyRow = (j) => {
+    const imported = importedOrderInfo(j);
+    return `<button class="journey-row" data-action="open-journey" data-id="${esc(j.id)}">${candidatePicture(j.candidate)}${BRAND.stamps && j.decision ? `<span class="stamp-mark stamp-${j.decision}" aria-hidden="true">${esc(BRAND.stamps[j.decision])}</span>` : ''}<span><b>${esc(j.candidate.name || '가져온 상품')}</b><span>${esc(j.candidate.brand || new URL(j.candidate.url).hostname)}</span><span>${imported && j.stage === 'candidate' ? `무신사 주문 · ${ORDER_STATUS_LABELS[imported.status]}` : labels[j.stage]}${j.decision ? ` · ${decisions[j.decision]}` : ''}${j.wearCount ? ` · 착용 기록 ${j.wearCount}회` : ''}${j.candidate.productId && state.saved.includes(j.candidate.productId) ? ' · 관심' : ''}</span>${imported ? `<span>${esc(imported.orderDate || '주문일 미확인')}${imported.amount === null ? '' : ` · 화면 표시 ${formatPrice(imported.amount)}`}</span>` : ''}</span>${ICON.arrow}</button>`;
+  };
   const likedRow = (p) => `<div class="journey-row liked-row"><button class="liked-open" data-action="open-item" data-id="${p.id}">${picture(p, SLOT_BY_ID[p.slot])}<span><b>${esc(p.name)}</b><span>${esc(p.brand)}</span><span>관심 · ${formatPrice(p.price)}</span></span></button><button class="chip" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교' : '내 옷과 비교'}</button></div>`;
   const empty = !counts.all
     ? '<div class="empty"><b>관심 상품과 구매 고민을 모아 보세요</b>상품의 ♡를 누르거나, 상품 링크·추천 상품에서 비교를 시작할 수 있어요.</div>'
     : '';
   const likedTotal = savedFilter === 'liked' && liked.length > 1
     ? `<div class="total"><span>관심 ${liked.length}개</span><b>${formatPrice(liked.reduce((sum, p) => sum + p.price, 0))}</b></div>` : '';
-  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
+  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="order-import-open">구매내역 가져오기</button><button class="btn secondary small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
     ${stampLedger()}${counts.all ? `<div class="closet-toolbar-tabs saved-filters" role="group" aria-label="구매 여정 보기">${SAVED_FILTERS.filter(([key]) => key === 'all' || counts[key]).map(([key, label]) => `<button data-action="saved-filter" data-filter="${key}" aria-pressed="${savedFilter === key}">${label} <span>${counts[key]}</span></button>`).join('')}</div>` : ''}
     ${retained}${empty}
     ${counts.all ? `<div class="journey-list">${shownLiked.map(likedRow).join('')}${shownJourneys.map(journeyRow).join('')}</div>${likedTotal}` : ''}
@@ -1315,17 +1320,21 @@ function candidateSheet() {
   const specific = c ? SLOTS.filter((s) => s.g === gender && s.shape === c.kind) : [];
   // 목록에 없는 링크는 상품 정보를 읽지 않으므로, 비교에 필요한 종류·색을 먼저 묻고 상품명은 뒤로 둔다.
   const linkOnly = c && c.source !== 'catalog';
+  const imported = d.journeyId && importedOrderInfo(state.journeys.find((j) => j.id === d.journeyId));
+  const orderMatches = d.orderConnect ? myCloset().filter((g) => g.source !== 'demo' && g.productId === c.productId) : [];
   const nameField = c ? `<label for="candidate-name">상품명 (선택)</label><input id="candidate-name" maxlength="160" value="${esc(c.name)}" placeholder="모르면 나중에 추가해도 돼요">` : '';
-  openSheet(`<h2>${d.journeyId ? '후보 정보 확인' : '살까 고민 중인 상품 가져오기'}</h2>
+  openSheet(`<h2>${d.orderConnect ? '지금 가진 옷 확인' : imported ? '가져온 상품 정보 확인' : d.journeyId ? '후보 정보 확인' : '살까 고민 중인 상품 가져오기'}</h2>
     ${!c ? `<form data-action="candidate-link"><label for="candidate-link">상품 주소</label><input id="candidate-link" name="link" type="text" inputmode="url" autocomplete="url" placeholder="https://… 또는 쇼핑 앱에서 공유한 글" value="${esc(d.link)}"><p class="sub">같은 상품을 가져와 비교해요. 공유 글을 그대로 붙여도 링크만 써요. 없는 상품을 다른 옷으로 바꾸지 않아요.</p><button class="btn" type="submit">이 상품 가져오기</button></form>` : `
-    ${candidatePicture(c, 'hero candidate-hero')}<p class="sub">${c.source === 'catalog' ? '저장된 상품 정보예요. 고른 색·옵션과 현재 판매 페이지를 확인해 주세요.' : '링크를 보관했어요. 아직 상품 정보는 자동으로 읽지 않았어요. 종류와 색만 고르면 내 옷과 비교할 수 있어요.'}</p>
+    ${candidatePicture(c, 'hero candidate-hero')}<p class="sub">${imported ? '주문에서 읽은 상품명·브랜드를 채워 두었어요. 종류만 고르면 되고, 색은 모르면 그대로 두세요.' : c.source === 'catalog' ? '저장된 상품 정보예요. 고른 색·옵션과 현재 판매 페이지를 확인해 주세요.' : '링크를 보관했어요. 아직 상품 정보는 자동으로 읽지 않았어요. 종류와 색만 고르면 내 옷과 비교할 수 있어요.'}</p>
     <a class="link candidate-url" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 상품 확인 ${ICON.arrow}</a>
     ${linkOnly ? '' : nameField}
     <div class="candidate-fields"><label>종류<select id="candidate-kind">${options([['', '아직 모름'], ...GARMENT_KINDS.filter((k) => SLOTS.some((s) => s.g === gender && s.shape === k.id)).map((k) => [k.id, k.name])], c.kind)}</select></label><label>고른 색<select id="candidate-color">${options([['', '아직 모름'], ...Object.entries(COLORS).map(([id, value]) => [id, value.label])], c.colorSource === 'image' ? null : c.color)}</select></label></div>
     ${specific.length ? `<label>세부 종류 (모르면 그대로 두세요)<select id="candidate-slot">${options([['', '아직 모름'], ...specific.map((s) => [s.id, s.name])], c.slot)}</select></label>` : ''}
     ${linkOnly ? nameField : ''}
     <details class="garment-name"><summary>브랜드·가격 추가 (선택)</summary><label for="candidate-brand">브랜드</label><input id="candidate-brand" maxlength="120" value="${esc(c.brand)}"><label for="candidate-price">직접 확인한 가격</label><input id="candidate-price" inputmode="numeric" type="number" min="0" max="1000000000" value="${c.price ?? ''}"><p class="fine">입력한 시점의 참고 가격이에요. 배송비·쿠폰·재고·최저가는 확인하지 않았어요.</p></details>
-    <button class="btn candidate-compare" data-action="candidate-save" ${d.saving ? 'disabled' : ''}>${d.saving ? '저장 중…' : '내 옷과 비교하기'}</button>`}
+    ${orderMatches.length ? `<label>같은 상품이 이미 있어요<select id="order-connect-existing"><option value="">기존 옷 연결 또는 새 한 벌 선택</option>${orderMatches.map((g) => `<option value="${esc(g.id)}"${d.orderLinkId === g.id ? ' selected' : ''}>${esc(garmentLabel(g))} · 기존 옷에 연결</option>`).join('')}<option value="new"${d.orderLinkId === 'new' ? ' selected' : ''}>별도로 가진 새 한 벌 추가</option></select></label>` : ''}
+    ${d.orderConnect ? '<p class="fine">다음 버튼은 지금 이 옷을 가지고 있다고 확인하는 동작이에요. 과거 주문·수령 날짜를 추측하지 않고 오늘 확인한 보유 기록으로 남겨요.</p>' : ''}
+    <button class="btn candidate-compare" data-action="candidate-save" ${d.saving ? 'disabled' : ''}>${d.saving ? '저장 중…' : d.orderConnect ? '확인한 옷을 내 옷장에 연결' : imported ? '확인하고 장부로 돌아가기' : '내 옷과 비교하기'}</button>`}
     ${d.error ? `<p class="editor-error" role="alert">${esc(d.error)}</p>${d.linkError ? '' : '<button class="chip" data-action="reload-wardrobe">입력 유지하고 다시 불러오기</button>'}` : ''}
     ${!c ? quickCheckSection(d) : ''}`, { key: `candidate:${d.id}` });
 }
@@ -1364,6 +1373,16 @@ async function saveCandidateDraft({ allowOptionCorrection = false } = {}) {
     validatePurchaseCandidate(d.candidate);
     const existing = d.journeyId && state.journeys.find((j) => j.id === d.journeyId);
     if (d.before && JSON.stringify(existing) !== d.before) throw new Error('이 구매 후보가 다른 화면에서 바뀌었어요. 최신 기록을 다시 확인해 주세요.');
+    if (d.orderConnect) {
+      if (d.orderContext !== wardrobeContext) throw new Error('옷장이나 계정이 바뀌었어요. 장부에서 다시 연결해 주세요.');
+      const matches = myCloset().filter((g) => g.source !== 'demo' && g.productId === existing?.candidate.productId);
+      if (matches.length && !d.orderLinkId) throw new Error('같은 상품이 있어요. 기존 옷에 연결할지 새 한 벌인지 골라 주세요.');
+      const connected = connectImportedOrder(storedWardrobe(state), existing.id, d.candidate, { garmentId: d.orderLinkId && d.orderLinkId !== 'new' ? d.orderLinkId : null });
+      await set({ journeys: connected.next.journeys, garments: connected.next.garments, demo: false, demoSelected: [], tab: 'closet' });
+      d.saving = false; journeyForms.delete(existing.id); closeSheet(); ownSheet(connected.garmentId);
+      toast('확인한 보유 옷을 연결했어요. 주문 원래 정보도 보관했어요');
+      return true;
+    }
     const changes = existing ? { ...pendingJourneyForm(existing.id, existing), candidate: structuredClone(d.candidate) } : null;
     const corrected = existing && allowOptionCorrection ? transitionPurchaseJourney(existing, 'correction', { changes }) : existing;
     const next = existing ? transitionPurchaseJourney(corrected, 'candidate-edit', { changes }) : createPurchaseJourney(d.candidate, { id: d.id });
@@ -1476,16 +1495,20 @@ function journeyHistory(journey) {
   const reasons = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '변심', other: '기타' };
   return `<details class="garment-name"><summary>내가 남긴 기록 ${journey.history.length}개</summary><ol class="journey-history">${[...journey.history].reverse().slice(0,12).map((event) => {
     const d = event.details;
-    return `<li><b>${labels[event.action] || '기록'}</b><time datetime="${esc(event.at)}">${esc(new Date(event.at).toLocaleString('ko-KR'))}</time>${d ? `<p>${[d.option ? `당시 옵션: ${esc(d.option)}` : '', d.reason ? `당시 이유: ${esc(d.reason)}` : '', d.feedback.fit ? `핏 기록: ${fit[d.feedback.fit]}` : '', d.feedback.returnReason ? `반품 사유: ${reasons[d.feedback.returnReason]}` : ''].filter(Boolean).join(' · ') || '추가 메모 없음'}</p>${event.action === 'candidate-edit' ? `<p class="fine">${esc(d.candidate.name || '상품명 미확인')} · ${esc(COLORS[d.candidate.color]?.label || '색 미확인')} · ${d.candidate.price === null ? '가격 미확인' : formatPrice(d.candidate.price)}</p>` : ''}` : '<p class="fine">구버전 기록 · 당시 옵션과 이유는 기록되지 않았어요.</p>'}</li>`;
+    return `<li><b>${event.action === 'imported' && importedOrderInfo(journey) ? '쇼핑몰 주문내역 가져옴' : labels[event.action] || '기록'}</b><time datetime="${esc(event.at)}">${esc(new Date(event.at).toLocaleString('ko-KR'))}</time>${d ? `<p>${[d.option ? `당시 옵션: ${esc(d.option)}` : '', d.reason ? `당시 이유: ${esc(d.reason)}` : '', d.feedback.fit ? `핏 기록: ${fit[d.feedback.fit]}` : '', d.feedback.returnReason ? `반품 사유: ${reasons[d.feedback.returnReason]}` : ''].filter(Boolean).join(' · ') || '추가 메모 없음'}</p>${event.action === 'candidate-edit' ? `<p class="fine">${esc(d.candidate.name || '상품명 미확인')} · ${esc(COLORS[d.candidate.color]?.label || '색 미확인')} · ${d.candidate.price === null ? '가격 미확인' : formatPrice(d.candidate.price)}</p>` : ''}` : '<p class="fine">구버전 기록 · 당시 옵션과 이유는 기록되지 않았어요.</p>'}</li>`;
   }).join('')}</ol>${journey.history.length > 12 ? '<p class="fine">화면에는 최근 12개를 보여줘요. 전체 기록은 사진 포함 백업에 보관돼요.</p>' : ''}</details>`;
 }
 function priorReturnEvidence(journey) {
   const candidate = journey.candidate;
+  const importedReturns = state.journeys.filter((j) => j.id !== journey.id &&
+    (candidate.productId ? j.candidate.productId === candidate.productId : j.candidate.url === candidate.url) &&
+    importedOrderInfo(j)?.status === 'returned').slice(-3);
+  const sourceEvidence = importedReturns.length ? `<div class="notice"><b>이 상품의 가져온 반품 내역이 있어요</b>${importedReturns.map((j) => `<p>${esc(importedOrderInfo(j).orderDate || '주문일 미확인')} 주문 · ${esc(j.history.find((entry) => entry.action === 'imported').details.option || '옵션 미확인')} · 반품 완료로 읽었어요. <button class="link" data-action="open-journey" data-id="${esc(j.id)}">기록 보기</button></p>`).join('')}<p class="fine">반품 사유·핏은 이 내역만으로 알 수 없어요. 현재 주문 상태도 자동 갱신하지 않아요.</p></div>` : '';
   const entries = state.journeys.filter((j) => j.id !== journey.id && (candidate.productId ? j.candidate.productId === candidate.productId : j.candidate.url === candidate.url))
     .map((j) => ({ j, event: [...j.history].reverse().find((e) => e.action === 'returned') })).filter((row) => row.event).slice(-3);
-  if (!entries.length) return '';
+  if (!entries.length) return sourceEvidence;
   const feedbackText = (feedback) => [feedback.fit ? `핏 직접 기록: ${{small:'작음',right:'맞음',large:'큼'}[feedback.fit]}` : '', feedback.returnReason ? `반품 사유: ${{size:'사이즈',color:'색',quality:'품질','change-of-mind':'변심',other:'기타'}[feedback.returnReason]}` : ''].filter(Boolean).join(' · ');
-  return `<div class="notice"><b>같은 상품 페이지의 반품 기록이 있어요</b>${entries.map(({j,event}) => {
+  return `${sourceEvidence}<div class="notice"><b>같은 상품 페이지의 반품 기록이 있어요</b>${entries.map(({j,event}) => {
     const d = event.details;
     const later = d && j.history.slice(j.history.indexOf(event) + 1).filter((e) => e.details && ['note','details-change'].includes(e.action) && e.details.option === d.option && e.details.candidate.url === d.candidate.url && e.details.candidate.kind === d.candidate.kind && e.details.candidate.slot === d.candidate.slot && e.details.candidate.color === d.candidate.color && JSON.stringify(e.details.feedback) !== JSON.stringify(d.feedback)).at(-1);
     return `<p>${d ? `${esc(d.option || '옵션 미기록')} · ${esc(d.reason || '상세 이유 미기록')}${feedbackText(d.feedback) ? ` · ${feedbackText(d.feedback)}` : ''}` : '구버전 반품 기록 · 당시 옵션·이유 미확인'} <button class="link" data-action="open-journey" data-id="${esc(j.id)}">기록 보기</button></p>${later ? `<p class="fine">같은 옵션으로 반품 후 저장한 정보: ${feedbackText(later.details.feedback) || '핏·사유 선택 해제'}. 반품 당시 기록은 위에 보관했어요.</p>` : ''}`;
@@ -1579,9 +1602,24 @@ async function saveJourneyGarmentCheck(id, itemId, color) {
   toast('이 옷의 색을 반영해 비교를 다시 계산했어요');
 }
 
+function importedOrderHTML(info) {
+  return `<dl class="order-facts"><div><dt>주문일</dt><dd>${esc(info.orderDate || '미확인')}</dd></div><div><dt>가져온 상태</dt><dd>${ORDER_STATUS_LABELS[info.status]}</dd></div><div><dt>주문 수량</dt><dd>${info.quantity ?? '미확인'}</dd></div><div><dt>주문 화면 금액</dt><dd>${info.amount === null ? '미확인' : formatPrice(info.amount)}</dd></div></dl><p class="fine">${esc(info.extractedAt.slice(0, 10))} 읽은 주문 화면 기준이에요. 금액은 현재 판매가격이나 쿠폰·배송비를 반영한 최종 결제금액과 다를 수 있어요. 이후 주문 상태는 자동 갱신하지 않아요.</p>`;
+}
+function importedOrderSheet(j, info) {
+  const inactive = ['cancelled', 'returning', 'returned', 'exchanging', 'unknown'].includes(info.status);
+  openSheet(`<span class="eyebrow">무신사에서 가져온 구매내역</span><h2>${esc(j.candidate.name)}</h2><p class="brand-name">${esc(j.candidate.brand || '브랜드 미확인')}</p><p>${esc(j.option || '옵션 미확인')}</p>${importedOrderHTML(info)}
+    <p class="notice">${inactive ? '이 내역은 장부에만 보관해요. 취소·반품·교환 또는 상태 미확인인 옷을 보유 옷으로 자동 추가하지 않아요.' : '배송 완료·구매 확정도 지금 보유 중이라는 뜻은 아니에요. 현재 가진 옷만 종류·색을 확인한 뒤 연결해 주세요.'}</p>
+    ${info.quantity > 1 ? '<p class="fine">여러 개 주문한 내역이에요. 이 구매 기록에는 한 벌만 연결할 수 있어요. 추가 수량은 각각 확인해 등록해 주세요.</p>' : ''}
+    ${!inactive ? `<button class="btn" data-action="order-import-connect" data-id="${esc(j.id)}">지금 가진 옷으로 연결하기</button>` : ''}
+    <button class="btn secondary" data-action="candidate-edit" data-id="${esc(j.id)}">상품명·브랜드·종류 확인</button>
+    <a class="link" href="${esc(j.candidate.url)}" target="_blank" rel="noopener noreferrer">상품 페이지 보기</a>
+    <details class="garment-name"><summary>가져오기 이력</summary>${journeyHistory(j)}</details>`, { key: `journey:${j.id}` });
+}
 function journeySheet(id) {
   const j = state.journeys.find((row) => row.id === id);
   if (!j) { toast('구매 기록을 다시 확인해 주세요'); return; }
+  const sourceOrder = importedOrderInfo(j);
+  if (sourceOrder && j.stage === 'candidate') return importedOrderSheet(j, sourceOrder);
   if (!journeyForms.has(id)) journeyForms.set(id, { before: JSON.stringify(j), option: j.option, reason: j.reason });
   const form = journeyForms.get(id), c = j.candidate;
   const comparison = compareCandidate(state, c, { absence: j.absence, intent: j.intent, replacementGarmentId: j.replacementGarmentId });
@@ -1624,6 +1662,7 @@ function journeySheet(id) {
   openSheet(`<div class="journey-overview"><div class="journey-product-photo">${candidatePicture(c, 'hero candidate-hero')}</div><div><span class="eyebrow">${labels[j.stage]}</span><p class="brand-name">${esc(c.brand || '')}</p><h2 class="detail-title">${esc(c.name || '가져온 상품')}</h2><p class="sub">${j.decision ? decisionLabels[j.decision] : '가진 옷과 먼저 비교해보세요'}</p>
     <div class="fine">${c.price === null ? '가격 미확인' : `${formatPrice(c.price)} · ${esc(c.checkedAt || '확인 날짜 없음')} ${c.priceSource === 'catalog' ? '수집일' : '직접 입력'} 기준 참고 가격`}</div>
     <p class="fine">고른 옵션의 현재 가격·배송비·품절 여부는 판매처에서 확인해 주세요.</p></div></div>
+    ${sourceOrder ? `<details class="garment-name"><summary>가져온 주문 원래 정보</summary>${importedOrderHTML(sourceOrder)}</details>` : ''}
     <section class="journey-verdict" aria-label="내 옷을 기준으로 비교"><span class="eyebrow">내 옷을 기준으로 비교</span><h3>${esc(verdict)}</h3>
     ${similarLine}${roughLine}
     ${pairContext ? `<p class="sub">${esc(shortName(pairContext.companionSlot))}${josa(shortName(pairContext.companionSlot), '을', '를')} 함께 더해야 ${esc(pairContext.pair.look.title)} 조합이 돼요. ${pairContext.pair.usesOwned.length}벌의 내 옷에 두 종류를 함께 더하는 코디 공식이에요.</p>` : ''}
@@ -1729,6 +1768,55 @@ async function recordJourneyAction(id, action, { allowOptionCorrection = false }
   toast(action === 'received' ? '수령 기록과 옷을 함께 보관했어요. 계속 입을지 정해 주세요' : action === 'kept' ? '내 옷장과 다음 추천에 반영했어요' : action === 'returned' ? '반품 기록을 남겼어요. 옷과 사진은 보관하고 추천에서 제외해요' : '기록을 저장했어요');
 }
 
+// Order drafts remain transient until one durable wardrobe commit succeeds.
+function beginOrderImport() {
+  orderImportDraft = { data: null, selected: new Set(), text: '', gender: state.gender || 'M', context: wardrobeContext, error: '', saving: false };
+  orderImportSheet();
+}
+function orderImportSheet() {
+  const d = orderImportDraft;
+  if (!d) return;
+  const existing = new Set(state.journeys.map((j) => j.id));
+  const rows = d.data?.items || [];
+  const count = rows.filter((row) => d.selected.has(row.key) && !existing.has(importedOrderId(row))).length;
+  openSheet(`<span class="eyebrow">무신사 주문내역</span><h2>산 옷을 한 번에 가져오세요</h2>
+    ${!d.data ? `<p class="sub">PC 확장프로그램으로 주문내역을 읽고, 선택한 내용을 붙여넣거나 받은 파일을 열어 주세요.</p><ol class="order-steps"><li>무신사에서 로그인 → 마이 → 주문 내역</li><li>구매내역 가져오기 확장프로그램 → 선택한 내역 복사</li><li>아래에 붙여넣고 확인</li></ol>
+    <label class="field" for="order-import-text">복사한 구매내역<textarea id="order-import-text" rows="4" maxlength="250000" placeholder="확장프로그램에서 복사한 내용을 붙여넣으세요">${esc(d.text)}</textarea></label>
+    <div class="opts"><button class="btn" data-action="order-import-parse">내역 확인하기</button><button class="chip" data-action="order-import-file">구매내역 파일 열기</button></div><p class="fine">현재 PC Chrome용 시험 기능이에요. 모바일 자동 연동과 모든 쇼핑몰 지원은 아직 없어요.</p>`
+    : `<p class="sub">${rows.length}개 중 원하는 내역만 고르세요. 먼저 장부에 저장하고, 지금 가진 옷은 나중에 옷장에 연결해요.</p><label class="field">옷 분류 기준<select id="order-import-gender"><option value="M"${d.gender === 'M' ? ' selected' : ''}>남성 옷</option><option value="F"${d.gender === 'F' ? ' selected' : ''}>여성 옷</option></select></label>
+    <ul class="plain-list order-import-list">${rows.map((row) => {
+      const duplicate = existing.has(importedOrderId(row));
+      const sameProduct = state.journeys.some((j) => j.candidate.productId === row.productId) || state.garments.some((g) => g.productId === row.productId);
+      return `<li><label class="order-import-row"><input type="checkbox" data-action="order-import-pick" data-key="${row.key}"${d.selected.has(row.key) && !duplicate ? ' checked' : ''}${duplicate || d.saving ? ' disabled' : ''}><span><b>${esc(row.name)}</b><span>${esc(row.brand || '브랜드 미확인')} · ${esc(row.option || '옵션 미확인')}</span><span>${esc(row.orderDate || '주문일 미확인')} · ${ORDER_STATUS_LABELS[row.status]} · 수량 ${row.quantity ?? '미확인'}</span><span>${row.amount === null ? '금액 미확인' : `주문 화면 ${formatPrice(row.amount)}`}</span>${duplicate ? '<small>이미 가져온 주문 · 추가하지 않아요. 이후 상태 변경은 기존 기록에서 확인해 주세요.</small>' : `${sameProduct ? '<small>같은 상품의 기록이 있어요. 다른 주문인지 확인해 주세요.</small>' : ''}${row.identity === 'page' ? '<small>주문번호 미확인 · 다시 읽으면 중복될 수 있어 직접 선택이 필요해요.</small>' : ''}`}</span></label></li>`;
+    }).join('')}</ul><button class="btn" data-action="order-import-save"${count && !d.saving ? '' : ' disabled'}>${d.saving ? '저장 확인 중…' : `선택한 ${count}개 장부에 추가`}</button><button class="link" data-action="order-import-open"${d.saving ? ' disabled' : ''}>다른 내역 가져오기</button>`}
+    ${d.error ? `<p class="notice" role="alert">${esc(d.error)}</p>` : ''}<p class="fine">기존 옷장·사진·구매 기록은 유지해요. 취소·반품을 보유 옷으로 자동 추가하지 않아요. ${storageLocationLine()}</p>`, { key: 'order-import' });
+}
+function reviewOrderImport(input) {
+  const d = orderImportDraft;
+  if (!d || d.saving) return;
+  try {
+    d.data = parseOrderImport(input);
+    const existing = new Set(state.journeys.map((j) => j.id));
+    d.selected = new Set(d.data.items.filter((row) => row.identity === 'order' && !existing.has(importedOrderId(row))).map((row) => row.key));
+    d.text = ''; d.error = '';
+  } catch (error) { d.error = error.message; }
+  orderImportSheet();
+}
+async function saveOrderImport() {
+  const d = orderImportDraft;
+  if (!d?.data || d.saving) return;
+  if (d.context !== wardrobeContext) { d.error = '옷장이나 계정이 바뀌었어요. 이 창을 닫고 새 옷장에서 다시 가져와 주세요.'; orderImportSheet(); return; }
+  d.saving = true; d.error = '';
+  orderImportSheet();
+  try {
+    const plan = planOrderImport(storedWardrobe(state), d.data, [...d.selected], { gender: d.gender });
+    if (!plan.added) { d.error = '새로 가져올 주문을 골라 주세요.'; return; }
+    await set({ journeys: plan.next.journeys, tab: 'saved' });
+    d.saving = false; closeSheet();
+    toast(`${plan.added}개를 장부에 저장했어요. 지금 가진 옷만 골라 연결해 주세요`);
+  } catch (error) { d.error = storageMessage(error); }
+  finally { d.saving = false; if (orderImportDraft === d) orderImportSheet(); }
+}
 function storageLocationLine() {
   return signedIn() ? '먼저 이 브라우저에 저장하고, 로그인한 계정과 동기화해요.' : '먼저 이 브라우저에 저장돼요. 계정을 연결하면 다른 기기에서도 이어갈 수 있어요.';
 }
@@ -1798,7 +1886,7 @@ function openSheet(html, { key = null } = {}) {
   return scroll;
 }
 function closeSheet() {
-  if (writeBusy || draft?.saving || candidateDraft?.saving) return;
+  if (writeBusy || draft?.saving || candidateDraft?.saving || orderImportDraft?.saving) return;
   if (photoQueue?.files.length) toast(`남은 사진 ${photoQueue.files.length}장은 넣지 않았어요`);
   photoQueue = null;
   releaseDraftPhotoAnalysis(draft);
@@ -1811,6 +1899,7 @@ function closeSheet() {
   document.body.style.overflow = '';
   draft = null;
   candidateDraft = null;
+  orderImportDraft = null;
   pendingOptionChange = null;
   candidateGarmentReview = null;
   if (!accountForm?.busy) accountForm = null;
@@ -3646,6 +3735,7 @@ async function reviewLegacyChanges() {
 document.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
+  if (orderImportDraft?.saving) { e.preventDefault(); return; }
   if (draft?.saving) { e.preventDefault(); return; }
   const a = el.dataset.action;
   if (erasingAll) {
@@ -3671,6 +3761,28 @@ document.addEventListener('click', async (e) => {
   }
   try {
     switch (a) {
+      case 'order-import-open':
+        beginOrderImport();
+        break;
+      case 'order-import-file':
+        document.getElementById('order-import-input')?.click();
+        break;
+      case 'order-import-parse':
+        if (orderImportDraft) {
+          orderImportDraft.text = $sheet.querySelector('#order-import-text')?.value || '';
+          reviewOrderImport(orderImportDraft.text);
+        }
+        break;
+      case 'order-import-save':
+        await saveOrderImport();
+        break;
+      case 'order-import-connect': {
+        const j = state.journeys.find((row) => row.id === el.dataset.id), info = importedOrderInfo(j);
+        if (!j || j.stage !== 'candidate' || !info || !['ordered', 'shipping', 'delivered', 'confirmed'].includes(info.status)) break;
+        candidateDraft = { id: j.id, journeyId: j.id, candidate: structuredClone(j.candidate), link: j.candidate.originalUrl, before: JSON.stringify(j), error: '', saving: false, orderConnect: true, orderLinkId: null, orderContext: wardrobeContext };
+        candidateSheet();
+        break;
+      }
       case 'candidate-start':
         beginCandidate();
         break;
@@ -5046,6 +5158,7 @@ document.addEventListener('click', async (e) => {
   }
 });
 document.addEventListener('input', (e) => {
+  if (e.target.id === 'order-import-text' && orderImportDraft) orderImportDraft.text = e.target.value;
   const id = e.target.id, value = e.target.value;
   if (communityView && id === 'community-name') communityView.joinName = value;
   if (shareDraft && id === 'community-caption') shareDraft.caption = value.slice(0, MAX_CAPTION);
@@ -5098,6 +5211,24 @@ document.addEventListener('input', (e) => {
   }
 });
 document.addEventListener('change', async (e) => {
+  if (e.target.id === 'order-connect-existing' && candidateDraft?.orderConnect) candidateDraft.orderLinkId = e.target.value;
+  if (e.target.dataset?.action === 'order-import-pick' && orderImportDraft && !orderImportDraft.saving) {
+    if (e.target.checked) orderImportDraft.selected.add(e.target.dataset.key);
+    else orderImportDraft.selected.delete(e.target.dataset.key);
+    orderImportSheet();
+  }
+  if (e.target.id === 'order-import-gender' && orderImportDraft && !orderImportDraft.saving) orderImportDraft.gender = e.target.value;
+  if (e.target.id === 'order-import-input' && e.target.files?.[0]) {
+    const file = e.target.files[0], d = orderImportDraft;
+    e.target.value = '';
+    if (d && !d.saving) {
+      if (file.size > 250000) { d.error = '구매내역은 250KB 이하로 나눠 가져와 주세요.'; orderImportSheet(); }
+      else {
+        try { const content = await file.text(); if (orderImportDraft === d && d.context === wardrobeContext && sheetKey === 'order-import') reviewOrderImport(content); }
+        catch { if (orderImportDraft === d) { d.error = '파일을 읽지 못했어요. 붙여넣기로 다시 시도해 주세요.'; orderImportSheet(); } }
+      }
+    }
+  }
   try {
     if (e.target.id === 'closet-sort') {
       closetSort = ['recent', 'oldest', 'name'].includes(e.target.value) ? e.target.value : 'recent';

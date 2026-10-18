@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>구매내역 가져오기</title><link rel="stylesheet" href="popup.css"></head>
+<body><main><span class="eyebrow">구매내역 → 내 옷장</span><h1>산 옷, 다시 입력하지 마세요</h1>
+<p>무신사에서 직접 로그인하고 주문 내역을 연 뒤 눌러 주세요. 현재 페이지에 표시된 상품만 읽어요.</p>
+<button id="read" type="button">현재 주문내역 읽기</button><p id="message" role="status" aria-live="polite"></p>
+<form id="selection" hidden><div id="rows"></div><button id="copy" type="submit">선택한 내역 복사</button>
+<button id="download" class="secondary" type="button">파일로 받기</button></form>
+<p class="fine">복사 후 앱의 ‘구매내역 가져오기’에 붙여넣으세요. 주소·연락처·결제수단·사진은 가져오지 않아요. 주문번호는 중복 확인용 해시로 바꿔요. 읽은 정보는 이 창을 닫으면 사라져요.</p>
+</main><script type="module" src="popup.js"></script></body></html>

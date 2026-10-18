@@ -5,6 +5,8 @@
 *.pem
 *.key
 /data/wardrobe.json
+/app/data/wardrobe.json
+/app/data/wardrobe-with-photos.json
 /private/
 
 # Dependencies and generated outputs

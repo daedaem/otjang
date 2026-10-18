@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "build": "node tools/build.mjs"
+    "build": "node tools/build.mjs",
+    "build:order-extension": "node tools/build-order-extension.mjs"
   },
   "devDependencies": {
     "fake-indexeddb": "6.2.5"
