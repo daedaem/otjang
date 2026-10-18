@@ -209,9 +209,20 @@ export function meetsCriteria(p, cr) {
 
 const wonLabel = (n) => (n % 10000 === 0 ? `${n / 10000}만원` : `${n.toLocaleString('ko-KR')}원`);
 // 검색 조건을 한 줄로: "10만원 이하 · 블랙 제외 · 밝은 색"
+// 상품 하나에 거는 조건만(가격·색·뺀 색·브랜드). 같은 종류의 대안을 걸러낼 때 쓴다.
+export function productCriteria(cr) {
+  if (!cr) return null;
+  const { occasion, occasionFromQuery, season, style, styles, excludedItems, excludeSlot, slotIds, ...rest } = cr;
+  return rest;
+}
 export function criteriaLine(cr) {
   if (!cr) return '';
+  const SEASONS = { spring: '봄', summer: '여름', fall: '가을', winter: '겨울' };
   return [
+    cr.occasion ? OCCASIONS[cr.occasion] || '' : '',
+    cr.season ? SEASONS[cr.season] || '' : '',
+    cr.style ? STYLES[cr.style]?.label || '' : '',
+    ...(cr.excludedItems || []).map((x) => `${x} 제외`),
     cr.minPrice != null ? `${wonLabel(cr.minPrice)} ${cr.minPriceExclusive ? '초과' : '이상'}` : '',
     cr.maxPrice != null ? `${wonLabel(cr.maxPrice)} ${cr.maxPriceExclusive ? '미만' : '이하'}` : '',
     cr.color ? COLORS[cr.color]?.label || '' : '',
@@ -398,6 +409,7 @@ export function fillLook(
     anchorColor = null,
     allowPendingPurchases = false,
     requestedPurchaseSlots = null,
+    excludeSlot = null,
   } = {},
 ) {
   const items = [],
@@ -409,8 +421,14 @@ export function fillLook(
     if (!r) continue;
     const optional = role === 'acc' || (role === 'inner' && ownedOnly);
     const anchorChoices = r.s.filter((id) => forceOwned.has(id));
-    const candidates =
+    let candidates =
       anchorChoices.length && !items.some((i) => anchorChoices.includes(i.slot.id)) ? anchorChoices : r.s;
+    // 검색에서 뺀 종류는 이 역할의 후보에서도 뺀다. 그 역할을 채울 종류가 없으면 이 공식은 쓰지 않는다.
+    if (excludeSlot) {
+      candidates = candidates.filter((id) => !excludeSlot(SLOT_BY_ID[id]));
+      if (!candidates.length && !optional) return null;
+      if (!candidates.length) continue;
+    }
     const inSeason = candidates.filter((id) => SLOT_BY_ID[id].seasons.includes(c.season));
     const current = items.map((i) => ({ color: i.color, cat: i.slot.cat }));
 
@@ -555,7 +573,10 @@ function rankLooks(results, c) {
 export function recommendLooks(
   state,
   { limit = 3, forceOwned = [], occasion, anchorItem = null, pinnedProduct = null, anchorColor = null,
-    allowPendingPurchases = false, requestedPurchaseSlots = null, anySeason = false, anyStyle = false } = {},
+    allowPendingPurchases = false, requestedPurchaseSlots = null, anySeason = false, anyStyle = false,
+    // strictOccasion: 상황에 맞는 공식이 없어도 상황 없는 공식으로 바꾸지 않는다(검색 조건을 몰래 풀지 않기).
+    // excludeSlot: 검색에서 뺀 종류("셔츠 말고")는 코디의 다른 자리에도 쓰지 않는다.
+    strictOccasion = false, excludeSlot = null } = {},
 ) {
   if (pinnedProduct && !productEligible(pinnedProduct)) return [];
   const base = ctx(state);
@@ -564,7 +585,7 @@ export function recommendLooks(
   const c = anyStyle ? { ...base, styles: Object.keys(STYLES).filter((k) => STYLES[k].g.includes(base.gender)) } : base;
   const force = new Set(forceOwned);
   let looks = matchingLooks(c, { occasion: occasion ?? c.occasion, anySeason });
-  if (!looks.length) looks = matchingLooks(c, { occasion: null, anySeason });
+  if (!looks.length && !strictOccasion) looks = matchingLooks(c, { occasion: null, anySeason });
   if (force.size) {
     const cats = [...new Set([...force].map((id) => SLOT_BY_ID[id]?.cat))];
     looks = looks.filter((l) =>
@@ -575,7 +596,7 @@ export function recommendLooks(
     looks = looks.filter((l) => slotsInLook(l).some((id) => garmentMatchesSlot(anchorItem, SLOT_BY_ID[id])));
   if (pinnedProduct) looks = looks.filter((l) => slotsInLook(l).includes(pinnedProduct.slot));
   return rankLooks(
-    looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem, pinnedProduct, anchorColor,
+    looks.map((look) => fillLook(look, c, { forceOwned: force, anchorItem, pinnedProduct, anchorColor, excludeSlot,
       allowPendingPurchases: allowPendingPurchases || !!pinnedProduct,
       requestedPurchaseSlots: requestedPurchaseSlots || (pinnedProduct ? new Set([pinnedProduct.slot]) : null) })),
     c,
@@ -815,8 +836,9 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
   );
 
   const items = results.slice(0, 16);
+  const outfitTried = !anchorUnavailable && !kindUnavailable && (anchors.length || c.occasion);
   const outfit =
-    !anchorUnavailable && !kindUnavailable && (anchors.length || c.occasion)
+    outfitTried
       ? recommendLooks(
           {
             ...state,
@@ -837,6 +859,8 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
             pinnedProduct: anchorProduct,
             anchorColor: q.anchorColor,
             allowPendingPurchases: q.slotNamed || !!anchorProduct,
+            strictOccasion: !!q.occasion,
+            excludeSlot: q.excludedItems.length ? q.excludeMatch : null,
             requestedPurchaseSlots: new Set([
               ...(q.slotNamed ? targets.map((slot) => slot.id) : []),
               ...(anchorProduct ? [anchorProduct.slot] : []),
@@ -847,9 +871,18 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
   if (!anchorProduct && !anchorItem && outfit && anchors.length)
     anchorProduct = outfit.items.find((i) => anchorIds.has(i.slot.id) && !i.owned)?.product || null;
   // 검색에서 상세·코디로 넘어가도 같은 조건을 쓴다.
+  // 상품 조건(종류·색·가격·브랜드·뺀 색)과 코디 전체 조건(상황·계절·스타일·뺀 종류)을 함께 담는다.
+  // 상세 화면은 같은 종류의 대안에 상품 조건을, 코디에 두 조건을 모두 쓴다.
   const criteria = {
     gender: c.gender,
     slotIds: q.slotNamed ? targets.map((s) => s.id) : null,
+    occasion: c.occasion,
+    occasionFromQuery: !!q.occasion,
+    season: q.season,
+    style: q.style,
+    styles: c.styles,
+    excludedItems: q.excludedItems,
+    excludeSlot: q.excludedItems.length ? q.excludeMatch : null,
     maxPrice: c.maxPrice,
     minPrice: c.minPrice,
     minPriceExclusive: c.minPriceExclusive,
@@ -860,7 +893,7 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
     tone: q.tone,
   };
   // 화면 칩: 실제로 적용한 조건만, 한 곳에서 만든다.
-  const priceLine = criteriaLine({ ...criteria, color: null, excludeColors: [], tone: null, brand: null });
+  const priceLine = criteriaLine({ maxPrice: criteria.maxPrice, minPrice: criteria.minPrice, minPriceExclusive: criteria.minPriceExclusive, maxPriceExclusive: criteria.maxPriceExclusive });
   const conds = [
     q.slotNamed ? { key: 'kind', label: q.targetLabels.join('·') } : null,
     c.occasion ? { key: 'occasion', label: OCCASIONS[c.occasion] || c.occasion, saved: !q.occasion } : null,
@@ -882,6 +915,7 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
     dropped: [...dropped],
     kindUnavailable,
     kindNowhere,
+    outfitTried: !!outfitTried,
     genderFromKind,
     understood,
     items,

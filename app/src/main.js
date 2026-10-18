@@ -25,6 +25,7 @@ import {
   exampleCloset,
   meetsCriteria,
   criteriaLine,
+  productCriteria,
 } from './engine.js';
 import { silhouetteSvg, ICON } from './icons.js';
 import { zipStore, unzipSingle } from './zip-store.js';
@@ -440,14 +441,32 @@ function tile(i) {
   }
   return `<div class="tile">${i.product.img ? productImg(i.product, i.slot) : swatch(i.slot, i.product.color)}</div>`;
 }
+// 코디 한 줄: 공식의 고정 설명이 아니라 실제로 배치된 옷 이름으로 쓴다.
+// "내 라이트 블루 옥스퍼드 셔츠 + 내 청바지 + 후보 로퍼"처럼, 내 옷과 후보를 구분한다.
+function lookLine(r) {
+  const own = state.demo ? '예시' : '내';
+  return r.items
+    .filter((i) => i.role !== 'acc')
+    .map((i) => {
+      const color = COLORS[i.color]?.label;
+      if (i.owned) {
+        const name = i.item ? garmentLabel(i.item) : shortName(i.slot);
+        return `${own} ${[i.certainty === 'uncertain' ? null : color, name].filter(Boolean).join(' ')}${i.certainty === 'uncertain' ? '(종류 확인 필요)' : ''}`;
+      }
+      return `후보 ${[color, shortName(i.slot)].filter(Boolean).join(' ')}`;
+    })
+    .join(' + ');
+}
 function lookCard(r, { wide = false } = {}) {
   const index = lastLooks.push(r) - 1;
-  const tiles = r.items.filter((i) => i.role !== 'acc' && i.role !== 'inner').slice(0, 4);
+  // 사진 칸은 4개까지. 이너는 뒤로 미루되, 지금 보고 있는 옷(focus)은 반드시 넣는다.
+  const shown = r.items.filter((i) => i.role !== 'acc');
+  const tiles = shown.length > 4 ? [...shown.filter((i) => i.role !== 'inner' || i.focus), ...shown.filter((i) => i.role === 'inner' && !i.focus)].slice(0, 4) : shown;
   return `<button class="look" data-action="open-look" data-index="${index}" ${wide ? 'style="width:100%"' : ''}>
     <div class="look-grid n${tiles.length}">${tiles.map(tile).join('')}</div>
     <div class="look-body">
       <div class="look-title">${esc(r.look.title)}</div>
-      <div class="look-note">${esc(r.look.note)}</div>
+      <div class="look-note">${esc(lookLine(r))}</div>
       <div class="look-meta">
         <span>${r.ownedCount ? `${state.demo ? '예시 옷' : '내 옷'} ${r.ownedCount}개${r.buyCount ? ` + 후보 ${r.buyCount}개` : ''}` : `구매 후보 ${r.buyCount}개`}</span>
         <b>${r.uncertainCount ? '옷 종류 확인 필요' : r.buyCount ? formatPrice(r.buyTotal) : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</b>
@@ -1056,12 +1075,15 @@ let searchCriteria = null;
 let searchDrop = [];
 // "더 싼 걸로"처럼 이전 검색을 이어서 고친 요청. 화면에 그렇게 했다고 알린다.
 let searchFollowUp = null;
-const FOLLOW_UP = /^\s*(?:좀\s*)?더\s*(싼|저렴한|저렴하게|싸게|비싼|비싸게|좋은)\s*(?:걸로|거|것|거로|걸|건)?\s*(?:없어|있어|보여\s*줘|줘|요)?[?.!]*\s*$/;
+const FOLLOW_UP = /^\s*(?:좀\s*)?더\s*(싼|저렴한|저렴하게|싸게|비싼|비싸게|좋은|나은|괜찮은)\s*(?:걸로|거|것|거로|걸|건)?\s*(?:없어|있어|보여\s*줘|줘|요)?[?.!]*\s*$/;
 function followUpQuery(text) {
   const m = query && !/낮은 가격순|높은 가격순/.test(query) ? text.match(FOLLOW_UP) : null;
   if (!m) return null;
-  const order = /비싼|비싸게|좋은/.test(m[1]) ? '높은 가격순' : '낮은 가격순';
-  return { query: `${query} ${order}`, follow: { said: text.trim(), order } };
+  // "더 좋은 걸로"는 비싼 순이 아니다. 품질 자료가 없으니 조건과 순서를 그대로 두고 그렇게 알린다.
+  if (/좋은|나은|괜찮은/.test(m[1]))
+    return { query: `${query} 좋은 거`, follow: { said: text.trim(), what: '품질을 비교할 자료가 없어서 조건과 순서는 그대로 뒀어요(평점·후기는 참고만)' } };
+  const order = /비싼|비싸게/.test(m[1]) ? '높은 가격순' : '낮은 가격순';
+  return { query: `${query} ${order}`, follow: { said: text.trim(), what: `${order}으로 다시 찾았어요` } };
 }
 function renderSearch() {
   ensureBackGuard();
@@ -1100,7 +1122,7 @@ function renderSearch() {
     ? '<p class="notice">착용감 자료는 없어요. 상품명에 ‘밴딩·이지·와이드’ 같은 표기가 있는 상품을 앞에, ‘생지·리지드’는 뒤에 뒀어요. 실제 착용감은 판매 페이지 후기로 확인해 주세요.</p>'
     : '';
   const followNote = searchFollowUp
-    ? `<p class="notice" role="status">‘${esc(searchFollowUp.said)}’는 이전 조건을 그대로 두고 ${esc(searchFollowUp.order)}으로 다시 찾았어요. 새로 찾으려면 종류까지 적어 주세요.</p>`
+    ? `<p class="notice" role="status">‘${esc(searchFollowUp.said)}’ → 이전 조건을 그대로 두고 ${esc(searchFollowUp.what)}. 새로 찾으려면 종류까지 적어 주세요.</p>`
     : '';
   const qualityNotice = r.query.qualityUnavailable
     ? '<p class="notice">품질을 비교할 자료는 없어요. 가격으로 품질을 판단하지 않고 평점·후기 등 인기 정보를 참고했어요.</p>'
@@ -1119,7 +1141,9 @@ function renderSearch() {
   // 코디는 상품 다음에. 예산은 상품 한 벌 기준이라 코디 합계와 다르다고 적는다.
   const outfit = r.outfit && !none
     ? `<section class="section"><div class="section-head"><div><h2>이 조건으로 한 벌 맞춰 보면</h2><div class="sub">${esc(r.outfit.look.title)}${r.criteria.maxPrice != null ? ' · 예산은 상품 한 벌 기준이에요(코디 합계 아님)' : ''}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
-    : '';
+    : r.outfitTried && !none && (r.criteria.occasionFromQuery || r.criteria.excludedItems.length)
+      ? `<p class="fine">검색 조건(${esc(criteriaLine({ occasion: r.criteria.occasion, season: r.criteria.season, style: r.criteria.style, excludedItems: r.criteria.excludedItems }))})을 지키는 코디 공식은 없어요. 조건을 풀지 않았어요.</p>`
+      : '';
   return head + followNote + genderNote + anchor + partial + comfortNotice + qualityNotice + items + outfit + footer();
 }
 
@@ -1965,11 +1989,20 @@ function itemSheet(id) {
   const sameBrand = SAFE_PRODUCTS.filter(
     (x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === productGender && x.slot !== p.slot && meetsCriteria(x, cr),
   ).slice(0, 8);
+  // 검색에서 왔으면 코디에도 검색 조건을 모두 쓴다: 상황·계절·스타일·뺀 종류(코디 전체), 가격·뺀 색(상품마다 같은 기준).
+  // 상황에 맞는 공식이 없으면 상황을 풀지 않고 "만들지 못했어요"로 둔다.
   const look = recommendLooks(
-    { ...state, closet: state.demo ? [] : state.closet, gender: productGender, styles: productStyles, budget: cr ? cr.maxPrice : null,
-      minPrice: cr?.minPrice ?? null, minPriceExclusive: !!cr?.minPriceExclusive, maxPriceExclusive: !!cr?.maxPriceExclusive },
-    { limit: 1, occasion: null, pinnedProduct: p },
+    { ...state, closet: state.demo ? [] : state.closet, gender: productGender,
+      styles: cr?.style ? [cr.style] : productStyles,
+      season: cr?.season || undefined,
+      budget: cr ? cr.maxPrice : null,
+      minPrice: cr?.minPrice ?? null, minPriceExclusive: !!cr?.minPriceExclusive, maxPriceExclusive: !!cr?.maxPriceExclusive,
+      hidden: [...(state.hidden || []), ...(cr?.excludeColors?.length ? SAFE_PRODUCTS.filter((x) => cr.excludeColors.includes(x.color)).map((x) => x.id) : [])] },
+    { limit: 1, occasion: cr?.occasion || null, strictOccasion: !!cr?.occasionFromQuery, excludeSlot: cr?.excludeSlot || null, pinnedProduct: p },
   )[0];
+  const keptLine = cr ? criteriaLine(cr) : '';
+  // 지금 보고 있는 상품은 코디 사진 칸에 꼭 나온다.
+  look?.items.forEach((i) => { i.focus = i.product?.id === p.id; });
   const noRealCloset = state.demo || !state.closet.some((i) => ['user', 'legacy'].includes(i.source));
   const owned = state.closet.some((i) => i.productId === p.id);
   const needsCheck =
@@ -1995,8 +2028,9 @@ function itemSheet(id) {
       <li>이렇게 입어요: ${esc(slot.tip)}</li><li>평점·후기·좋아요는 인기 기준입니다. 실제 색·사이즈·핏을 보장하지 않아요.</li>
     </ul></div>
     ${state.demo && BRAND.stamps ? demoThemeVerdict(p) : ''}
-    ${look ? `<h3 class="block">이 상품으로 만든 코디</h3>${lookRows(look)}` : ''}
-    ${alts.length ? `<h3 class="block">${cr ? '같은 조건, 다른 선택' : '같은 종류, 다른 선택'}</h3>${cr && outside ? `<p class="fine">검색 조건(${esc(criteriaLine(cr))})에 맞지 않는 같은 종류 ${outside}개는 뺐어요.</p>` : ''}<div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : cr ? '<p class="fine">검색 조건에 맞는 같은 종류의 다른 상품은 없어요.</p>' : ''}
+    ${look ? `<h3 class="block">이 상품으로 만든 코디</h3>${keptLine ? `<p class="fine">검색 조건(${esc(keptLine)})을 코디의 다른 옷에도 그대로 적용했어요. 예산은 옷 한 벌마다 같은 기준이에요.</p>` : ''}${lookRows(look)}`
+      : keptLine ? `<h3 class="block">이 상품으로 만든 코디</h3><p class="fine">검색 조건(${esc(keptLine)})을 지키면서 만들 수 있는 코디가 없어요. 조건을 풀지 않았어요.</p>` : ''}
+    ${alts.length ? `<h3 class="block">${cr ? '같은 조건, 다른 선택' : '같은 종류, 다른 선택'}</h3>${cr && outside ? `<p class="fine">검색 조건(${esc(criteriaLine(productCriteria(cr)))})에 맞지 않는 같은 종류 ${outside}개는 뺐어요.</p>` : ''}<div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : cr ? '<p class="fine">검색 조건에 맞는 같은 종류의 다른 상품은 없어요.</p>' : ''}
     ${sameBrand.length ? `<h3 class="block">${esc(p.brand)}의 다른 아이템</h3><div class="row-scroll">${sameBrand.map((a) => gridCard({ slot: SLOT_BY_ID[a.slot], product: a })).join('')}</div>` : ''}
     <div class="cta">
       <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
@@ -2021,7 +2055,8 @@ function lookSheet(index) {
   const buyIds = r.items.filter((i) => !i.owned).map((i) => i.product.id);
   openSheet(`
     <h2 class="detail-title" style="padding-right:48px">${esc(r.look.title)}</h2>
-    <p class="sub" style="margin:6px 0 10px;color:var(--ink-2)">${esc(r.look.note)}</p>
+    <p class="sub" style="margin:6px 0 4px;color:var(--ink-2)">${esc(lookLine(r))}</p>
+    ${r.look.note ? `<p class="fine" style="margin:0 0 10px">공식 설명: ${esc(r.look.note)}</p>` : ''}
     ${lookRows(r)}
     ${r.uncertainCount ? `<p class="notice">${r.uncertainCount}벌의 세부 종류를 확인해야 이 코디를 확정할 수 있어요. 확인 전에는 새 옷이 꼭 필요한지 판단하지 않습니다.</p>` : ''}
     <div class="total"><span>${r.uncertainCount ? `종류 확인 필요${r.buyCount ? ` · 구매 후보 ${r.buyCount}개` : ''}` : r.buyCount ? `구매 후보 ${r.buyCount}개` : state.demo ? '예시로 완성' : '가진 옷으로 완성'}</span><b>${r.buyCount ? formatPrice(r.buyTotal) : ''}</b></div>
@@ -2049,6 +2084,7 @@ function ownSheet(id) {
     { ...state, budget: null, occasion: null },
     { limit: 6, occasion: null, anchorItem: item },
   ) : [];
+  allLooks.forEach((r) => r.items.forEach((i) => { i.focus = i.item?.id === item.id; }));
   // 가진 옷만으로 완성되는 코디를 먼저, 한 벌을 더하면 완성되는 코디는 추천 가설로 따로 보여 준다.
   const ownedLooks = allLooks.filter((r) => !r.buyCount && !r.uncertainCount).slice(0, 2);
   const basicLooks = ownedLooks.length || !active ? [] : basicOutfits(state, { anchorItem: item, limit: 2 });

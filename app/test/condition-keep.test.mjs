@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { search, meetsCriteria, productsFor } from '../src/engine.js';
+import { search, meetsCriteria, productsFor, recommendLooks } from '../src/engine.js';
 import { newWardrobeState, wardrobeView } from '../src/wardrobe.js';
 
 // First visit: example closet, default gender M, nothing chosen yet.
@@ -102,4 +102,22 @@ for (const [text, every] of SENTENCES) {
 test('"티" in "꾸민 티 안 나게" is not a T-shirt', () => {
   const r = search(firstVisit(), '꾸민 티 안 나게 입을 옷');
   assert.ok(!r.items.some(({ slot }) => slot.shape === 'tee') || !r.understood);
+});
+
+test('excluded kinds and the occasion reach the outfit; no fallback to an occasion-less formula', () => {
+  const r = search(firstVisit(), '셔츠 말고 출근 니트');
+  assert.ok(r.items.length > 0);
+  assert.ok(r.items.every(({ slot }) => slot.shape === 'knit'));
+  assert.deepEqual(r.criteria.excludedItems, ['셔츠']);
+  assert.equal(r.criteria.occasion, 'work');
+  if (r.outfit) {
+    assert.ok(!r.outfit.items.some((i) => i.slot.shape === 'shirt'), 'an excluded shirt never fills the outfit');
+    assert.ok(r.outfit.look.occ.includes('work'), 'the outfit formula fits the asked occasion');
+  }
+});
+
+test('recommendLooks with strictOccasion never swaps in a formula for another occasion', () => {
+  const state = { ...firstVisit(), demo: false, closet: [] };
+  const strict = recommendLooks(state, { limit: 5, occasion: 'formal', strictOccasion: true });
+  assert.ok(strict.every((r) => r.look.occ.includes('formal')));
 });
