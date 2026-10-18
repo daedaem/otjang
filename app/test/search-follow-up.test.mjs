@@ -7,7 +7,7 @@ import { newWardrobeState, wardrobeView } from '../src/wardrobe.js';
 test('better quality never means a higher price or different search results', () => {
   const previous = '출근용 셔츠 10만원 이하';
   const state = wardrobeView(newWardrobeState());
-  for (const said of ['더 좋은 걸로', '좀 더 좋은 거 보여줘', '더 나은 걸로요']) {
+  for (const said of ['더 좋은 걸로', '좀 더 좋은 거 보여줘', '더 나은 걸로요', '더 괜찮은 걸로']) {
     const next = resolveSearchFollowUp(previous, said);
     assert.equal(next.query, previous);
     assert.match(next.follow.clarification, /판단하지 못했어요/);

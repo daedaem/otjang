@@ -25,6 +25,8 @@ import {
   exampleCloset,
   meetsCriteria,
   criteriaLine,
+  productCriteria,
+  productReasons,
 } from './engine.js';
 import { silhouetteSvg, ICON } from './icons.js';
 import { zipStore, unzipSingle } from './zip-store.js';
@@ -424,7 +426,11 @@ function ownedLine(product, slot, where) {
     : '';
   return text ? `<p class="owned-line${where === 'sheet' ? ' notice' : ''}">${esc(text)}</p>` : '';
 }
-function gridCard({ slot, product, reasons, ownership }) {
+function gridCard({ slot, product, reasons, ownership, traitLine }) {
+  // 두 번째 줄은 이 상품의 상품명에서 읽은 것(핏·소재·기장)이다. 종류 고정 문구가 아니다.
+  const fixed = productReasons(product, slot, reasons || []);
+  reasons = fixed.reasons;
+  traitLine = traitLine ?? fixed.traitLine;
   return `<article class="card">
     <button data-action="open-item" data-id="${product.id}" style="display:block;width:100%;text-align:left">
       ${picture(product, slot)}
@@ -432,6 +438,7 @@ function gridCard({ slot, product, reasons, ownership }) {
       <div class="name">${esc(product.name)}</div>
       <div class="price">${formatPrice(product.price)}</div>
       ${reasons?.[0] ? `<div class="reason">${esc(reasons[0].replace(/^가진 /, state.demo ? '예시 ' : '가진 '))}</div>` : ''}
+      ${traitLine && traitLine !== reasons?.[0] ? `<div class="reason trait">${esc(traitLine)}</div>` : ''}
       ${ownedLine(product, slot, 'card')}
       ${ownership === 'missing' && !state.demo ? '<p class="fine">등록 안 된 종류 · 이미 가진 옷일 수 있어요</p>' : ''}
     </button>
@@ -447,8 +454,12 @@ function tile(i) {
 }
 function lookCard(r, { wide = false } = {}) {
   const index = lastLooks.push(r) - 1;
-  const copy = outfitCopy(r);
-  const tiles = r.items.filter((i) => i.role !== 'acc' && i.role !== 'inner').slice(0, 4);
+  const copy = outfitCopy(r, { demo: state.demo });
+  // Keep the viewed garment visible, including an inner layer.
+  const shown = r.items.filter((i) => i.role !== 'acc');
+  const tiles = shown.length > 4 ? [...shown.filter((i) => i.role !== 'inner' || i.focus), ...shown.filter((i) => i.role === 'inner' && !i.focus)].slice(0, 4) : shown;
+  const focus = shown.find((i) => i.focus);
+  if (focus && !tiles.includes(focus)) tiles[tiles.length - 1] = focus;
   return `<button class="look" data-action="open-look" data-index="${index}" data-look-id="${esc(r.look.id)}" ${wide ? 'style="width:100%"' : ''}>
     <div class="look-grid n${tiles.length}">${tiles.map(tile).join('')}</div>
     <div class="look-body">
@@ -1121,7 +1132,9 @@ function renderSearch() {
   // 코디는 상품 다음에. 예산은 상품 한 벌 기준이라 코디 합계와 다르다고 적는다.
   const outfit = r.outfit && !none
     ? `<section class="section"><div class="section-head"><div><h2>이 조건으로 한 벌 맞춰 보면</h2><div class="sub">${esc(outfitCopy(r.outfit).title)}${r.criteria.maxPrice != null ? ' · 예산은 상품 한 벌 기준이에요(코디 합계 아님)' : ''}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
-    : '';
+    : r.outfitTried && !none && (r.criteria.occasionFromQuery || r.criteria.excludedItems.length)
+      ? `<p class="fine">검색 조건(${esc(criteriaLine({ occasion: r.criteria.occasion, season: r.criteria.season, style: r.criteria.style, excludedItems: r.criteria.excludedItems }))})을 지키는 코디 공식은 없어요. 조건을 풀지 않았어요.</p>`
+      : '';
   return head + followNote + genderNote + anchor + partial + comfortNotice + qualityNotice + items + outfit + footer();
 }
 
@@ -1324,7 +1337,8 @@ async function compareCatalogProduct(productId) {
   if (writeBusy || candidateDraft?.saving) return false;
   const product = PRODUCT_BY_ID[productId];
   if (!product) { toast('상품 정보를 다시 확인해 주세요'); return false; }
-  if (state.demo) { beginDraft(); addSheet(); return true; }
+  // 예시 옷장이면 실제 옷을 한 벌 넣게 하고, 저장되면 보던 이 상품의 비교로 돌아온다(상품을 잃지 않는다).
+  if (state.demo) { beginDraft(); draft.returnProductId = productId; addSheet(); return true; }
   let candidate;
   try { candidate = candidateFromProduct(product); }
   catch (error) { toast(error.message); return false; }
@@ -1742,7 +1756,9 @@ function journeySheet(id) {
     ${pairContext ? `<p class="sub">${esc(shortName(pairContext.companionSlot))}${josa(shortName(pairContext.companionSlot), '을', '를')} 함께 더해야 ${esc(pairContext.pair.look.title)} 조합이 돼요. ${pairContext.pair.usesOwned.length}벌의 내 옷에 두 종류를 함께 더하는 코디 공식이에요.</p>` : ''}
     ${firstLook && comparison.newFormulaCount ? `<p class="sub">등록한 옷 기준으로 새 코디 공식 ${comparison.newFormulaCount}개. 실제 핏·사이즈는 별도 확인이 필요해요.</p>` : ''}
     ${ownershipCheck ? `<p class="sub">${firstLook ? '어울리는 조합은 찾았어요. ' : ''}구매가 필요한지는 가진 옷을 한 번 더 확인해요.</p>` : ''}
-    ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>` : ''}</section>
+    ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>` : ''}
+    ${firstLook && comparison.newFormulaCount && j.stage === 'candidate' ? `<p class="fine">${esc(firstLook.look.title)} · 내 옷과 이 후보</p>${candidateLookRows(firstLook, c)}` : ''}
+</section>
     ${themeVerdict(comparison, c)}
     ${j.stage === 'candidate' && (needsOwnership || j.absence !== 'unknown') ? `<section class="journey-quick-check"><h3>${esc(questionKind)}${josa(questionKind, '이', '가')} 이미 있나요?</h3><div class="opts">${picks('absence', [['absent','없어요'],['present','있어요'],['unknown','아직 모름']]).replace('data-value="unknown" aria-pressed="true"', 'data-value="unknown" aria-pressed="false"')}</div>${j.absence === 'present' ? `<p class="sub">추가 구매인지 교체할 옷인지 아래에서 비교해 보세요.</p><button class="chip" data-action="journey-add-own" data-id="${esc(id)}">가진 옷 간단히 추가</button>` : ''}</section>` : ''}
     ${pairContext ? `<section class="journey-pair" aria-label="함께 필요한 다른 한 벌">${picture(pairContext.companion.product, pairContext.companionSlot)}<div><span class="eyebrow">함께 더할 한 벌</span><p class="brand-name">${esc(pairContext.companion.product.brand)}</p><b>${esc(pairContext.companion.product.name)}</b><p class="fine">${formatPrice(pairContext.companion.price.amount)} · ${esc(pairContext.companion.price.collectedOn)} 수집</p><button class="link" data-action="candidate-product" data-id="${esc(pairContext.companion.product.id)}">이 상품도 내 옷과 비교 ${ICON.arrow}</button>${!pairContext.selected.colorConfirmed || !pairContext.companion.colorConfirmed ? '<p class="fine">사진에서 추정한 상품 색은 확인이 필요해요.</p>' : ''}</div></section>` : ''}
@@ -1763,7 +1779,7 @@ function journeySheet(id) {
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
 
     ${j.decision === 'buy' && j.stage === 'candidate' ? '' : `<a class="btn secondary candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}`}
-    ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="open-offers" data-journey="${esc(id)}">판매처·배송비 포함 총액 비교</button>` : ''}
+    ${j.stage === 'candidate' ? `<button class="link candidate-compare" data-action="open-offers" data-journey="${esc(id)}">다른 판매처 가격 직접 기록·비교</button><p class="fine">지금 연결된 판매처는 ${esc(CATALOG.store)} 1곳이고 가격은 수집일 기준이에요. 다른 판매처 가격은 직접 적어야 비교돼요.</p>` : ''}
     <p class="fine">판매처 방문은 구매로 기록하지 않아요. 실제 결제·배송·반품은 판매처에서 처리해요.</p>
     ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="ordered">직접 주문했다고 기록</button>` : ''}
     ${j.stage === 'ordered' ? `<button class="btn candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="received">받았어요</button>` : ''}
@@ -2048,17 +2064,28 @@ function itemSheet(id) {
   const { reasons } = scoreSlot(slot, c);
   // 검색 결과에서 열었으면 검색 조건(예산·색·제외)을 대안과 코디에도 그대로 쓴다.
   const cr = query && searchCriteria ? searchCriteria : null;
+  const allowedReason = (text) => !(cr?.excludedItems || []).some((kind) => text.includes(kind));
   const sameKind = productsFor(slot.id).filter((x) => x.id !== p.id);
   const alts = sameKind.filter((x) => meetsCriteria(x, cr)).slice(0, 8);
   const outside = sameKind.length - sameKind.filter((x) => meetsCriteria(x, cr)).length;
   const sameBrand = SAFE_PRODUCTS.filter(
     (x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === productGender && x.slot !== p.slot && meetsCriteria(x, cr),
   ).slice(0, 8);
+  // 검색에서 왔으면 코디에도 검색 조건을 모두 쓴다: 상황·계절·스타일·뺀 종류(코디 전체), 가격·뺀 색(상품마다 같은 기준).
+  // 상황에 맞는 공식이 없으면 상황을 풀지 않고 "만들지 못했어요"로 둔다.
   const look = recommendLooks(
-    { ...state, closet: state.demo ? [] : state.closet, gender: productGender, styles: productStyles, budget: cr ? cr.maxPrice : null,
-      minPrice: cr?.minPrice ?? null, minPriceExclusive: !!cr?.minPriceExclusive, maxPriceExclusive: !!cr?.maxPriceExclusive },
-    { limit: 1, occasion: null, pinnedProduct: p },
+    { ...state, closet: state.demo ? [] : state.closet.filter((item) => !(cr?.excludeColors || []).includes(item.color)), gender: productGender,
+      styles: cr?.style ? [cr.style] : productStyles,
+      season: cr?.season || undefined,
+      budget: cr ? cr.maxPrice : null,
+      minPrice: cr?.minPrice ?? null, minPriceExclusive: !!cr?.minPriceExclusive, maxPriceExclusive: !!cr?.maxPriceExclusive,
+      hidden: [...(state.hidden || []), ...(cr?.excludeColors?.length ? SAFE_PRODUCTS.filter((x) => cr.excludeColors.includes(x.color)).map((x) => x.id) : [])] },
+    { limit: 1, occasion: cr?.occasion || null, strictOccasion: !!cr?.occasionFromQuery, excludeSlot: cr?.excludeSlot || null, pinnedProduct: p },
   )[0];
+  // Positive colour, tone and brand describe the requested garment, not every companion.
+  const keptLine = cr ? criteriaLine({ ...cr, color: null, tone: null, brand: null }) : '';
+  // 지금 보고 있는 상품은 코디 사진 칸에 꼭 나온다.
+  look?.items.forEach((i) => { i.focus = i.product?.id === p.id; });
   const noRealCloset = state.demo || !state.closet.some((i) => ['user', 'legacy'].includes(i.source));
   const owned = state.closet.some((i) => i.productId === p.id);
   const needsCheck =
@@ -2077,15 +2104,16 @@ function itemSheet(id) {
     ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
     ${productRecordLine(productRecord(state, p.id))}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>
-      ${[...new Set([slot.why, ...reasons])]
-        .slice(0, 3)
+      ${(() => { const f = productReasons(p, slot, [slot.why, ...reasons]); return [...new Set([...(f.traitLine ? [f.traitLine] : []), ...f.reasons])].filter(allowedReason); })()
+        .slice(0, 4)
         .map((r) => `<li>${esc(r.replace(/^가진 /, state.demo ? '예시 ' : '가진 '))}</li>`)
         .join('')}
-      <li>이렇게 입어요: ${esc(slot.tip)}</li><li>평점·후기·좋아요는 인기 기준입니다. 실제 색·사이즈·핏을 보장하지 않아요.</li>
+      ${allowedReason(slot.tip) ? `<li>이렇게 입어요: ${esc(slot.tip)}</li>` : ''}<li>평점·후기·좋아요는 인기 기준입니다. 실제 색·사이즈·핏을 보장하지 않아요.</li>
     </ul></div>
     ${state.demo && BRAND.stamps ? demoThemeVerdict(p) : ''}
-    ${look ? `<h3 class="block">이 상품으로 만든 코디</h3>${lookRows(look)}` : ''}
-    ${alts.length ? `<h3 class="block">${cr ? '같은 조건, 다른 선택' : '같은 종류, 다른 선택'}</h3>${cr && outside ? `<p class="fine">검색 조건(${esc(criteriaLine(cr))})에 맞지 않는 같은 종류 ${outside}개는 뺐어요.</p>` : ''}<div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : cr ? '<p class="fine">검색 조건에 맞는 같은 종류의 다른 상품은 없어요.</p>' : ''}
+    ${look ? `<h3 class="block">이 상품으로 만든 코디</h3>${keptLine ? `<p class="fine">검색 조건(${esc(keptLine)})을 코디의 다른 옷에도 그대로 적용했어요. 예산은 옷 한 벌마다 같은 기준이에요.</p>` : ''}${lookRows(look)}`
+      : keptLine ? `<h3 class="block">이 상품으로 만든 코디</h3><p class="fine">검색 조건(${esc(keptLine)})을 지키면서 만들 수 있는 코디가 없어요. 조건을 풀지 않았어요.</p>` : ''}
+    ${alts.length ? `<h3 class="block">${cr ? '같은 조건, 다른 선택' : '같은 종류, 다른 선택'}</h3>${cr && outside ? `<p class="fine">검색 조건(${esc(criteriaLine(productCriteria(cr)))})에 맞지 않는 같은 종류 ${outside}개는 뺐어요.</p>` : ''}<div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : cr ? '<p class="fine">검색 조건에 맞는 같은 종류의 다른 상품은 없어요.</p>' : ''}
     ${sameBrand.length ? `<h3 class="block">${esc(p.brand)}의 다른 아이템</h3><div class="row-scroll">${sameBrand.map((a) => gridCard({ slot: SLOT_BY_ID[a.slot], product: a })).join('')}</div>` : ''}
     <div class="cta">
       <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
@@ -2096,7 +2124,7 @@ function itemSheet(id) {
     ${noRealCloset
       ? `${affiliateNote(p.url)}<button class="btn secondary candidate-compare" data-action="candidate-product" data-id="${p.id}">내 옷 넣고 비교하기 (선택)</button>`
       : `<a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>${affiliateNote(p.url)}`}
-    <button class="btn secondary candidate-compare" data-action="open-offers" data-id="${p.id}">판매처·배송비 포함 총액 비교</button>
+    <button class="link candidate-compare" data-action="open-offers" data-id="${p.id}">다른 판매처 가격 직접 기록·비교</button>
     <div class="sheet-links">
       <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
       <button class="link" data-action="add-slot" data-slot="${slot.id}">비슷한 옷이 있어요</button>
@@ -2107,7 +2135,7 @@ function itemSheet(id) {
 function lookSheet(index) {
   const r = lastLooks[index];
   if (!r) return;
-  const copy = outfitCopy(r);
+  const copy = outfitCopy(r, { demo: state.demo });
   const buyIds = r.items.filter((i) => !i.owned).map((i) => i.product.id);
   openSheet(`
     <h2 class="detail-title" data-look-id="${esc(r.look.id)}" style="padding-right:48px">${esc(copy.title)}</h2>
@@ -2139,6 +2167,7 @@ function ownSheet(id) {
     { ...state, budget: null, occasion: null },
     { limit: 6, occasion: null, anchorItem: item },
   ) : [];
+  allLooks.forEach((r) => r.items.forEach((i) => { i.focus = i.item?.id === item.id; }));
   // 가진 옷만으로 완성되는 코디를 먼저, 한 벌을 더하면 완성되는 코디는 추천 가설로 따로 보여 준다.
   const ownedLooks = allLooks.filter((r) => !r.buyCount && !r.uncertainCount).slice(0, 2);
   const basicLooks = ownedLooks.length || !active ? [] : basicOutfits(state, { anchorItem: item, limit: 2 });
@@ -2845,7 +2874,9 @@ function addSheet() {
   const quickKinds = `<fieldset><legend>사진과 같은 종류를 골라주세요</legend><p class="sub">아래 사진은 종류를 고르는 참고용이에요.</p><div class="kind-grid quick-kinds">${quickSlots.map((slot) => `<button class="kind-pick" data-action="draft-quick-slot" data-slot="${slot.id}">${typePicture(slot)}<span>${esc(shortName(slot))}</span></button>`).join('')}</div><details class="manual-kinds"><summary>다른 종류 · 아직 잘 모르겠어요</summary>${manualKinds}</details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>여러 장도 한 번에</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   const analysisActive = draft.recognizing || draft.photoRecognition || draft.recognitionError || draft.photoReview;
-  openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2>${photoQueueBar()}<p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p>${!draft.before ? `<ol class="registration-progress" aria-label="등록 순서"><li${entry ? ' aria-current="step"' : ''}>1 사진 선택</li><li${!entry ? ' aria-current="step"' : ''}>2 정보 확인</li><li>3 옷장에 저장</li></ol>` : ''}<fieldset${draft.saving ? ' disabled' : ''}>
+  const back = draft.returnProductId ? PRODUCT_BY_ID[draft.returnProductId] : null;
+  const returnStrip = back ? `<div class="notice return-strip">${picture(back, SLOT_BY_ID[back.slot])}<div><b>${esc(back.name)}</b><p>이 상품과 비교하려면 실제 옷을 한 벌만 넣으면 돼요. 저장하면 비교로 돌아가요.</p></div></div>` : '';
+  openSheet(`<div class="garment-editor wardrobe-registration">${returnStrip}<h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2>${photoQueueBar()}<p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p>${!draft.before ? `<ol class="registration-progress" aria-label="등록 순서"><li${entry ? ' aria-current="step"' : ''}>1 사진 선택</li><li${!entry ? ' aria-current="step"' : ''}>2 정보 확인</li><li>3 옷장에 저장</li></ol>` : ''}<fieldset${draft.saving ? ' disabled' : ''}>
   ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP·HEIC(아이폰) 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `${`<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진${draft.crop ? ' (자른 영역)' : ''}">` : '<div class="photo-empty">사진은 선택</div>'}<details class="photo-tools"><summary>사진 고치기</summary><div class="photo-edit-actions">${photo ? `<button class="chip" data-action="crop-start"${draft.processing || draft.bgRunning ? ' disabled' : ''}>${draft.crop ? '자른 영역 다시 조정' : '옷만 자르기'}</button>${draft.bgBefore ? '<button class="chip" data-action="bg-restore">원래 배경으로</button>' : `<button class="chip" data-action="bg-remove"${draft.processing || draft.bgRunning ? ' disabled' : ''}>${draft.bgRunning ? '배경 지우는 중…' : '배경 지우기'}</button>`}` : ''}<button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></details></div>`}<button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
   ${draft.photoMissing ? '<p class="notice">이전 버전에서 저장되지 않은 사진이에요. 다시 고를 수 있어요.</p>' : ''}
   ${backgroundPanel()}
@@ -2968,7 +2999,7 @@ async function saveGarmentDraft() {
     closetReviewOnly = reviewLeft > 0;
     closetSort = 'recent';
     render();
-    const queue = photoQueue && !current.before && !current.returnJourneyId && !current.returnLookId ? photoQueue : null;
+    const queue = photoQueue && !current.before && !current.returnJourneyId && !current.returnLookId && !current.returnProductId ? photoQueue : null;
     if (queue) {
       queue.savedIds.push(item.id);
       if (queue.files.length) {
@@ -2980,6 +3011,11 @@ async function saveGarmentDraft() {
     }
     closeSheet();
     askPersistenceOnce();
+    if (current.returnProductId && PRODUCT_BY_ID[current.returnProductId]) {
+      toast('내 옷을 저장했어요 · 보던 상품과 비교해요');
+      await compareCatalogProduct(current.returnProductId);
+      return;
+    }
     if (current.returnJourneyId) {
       journeyForms.delete(current.returnJourneyId);
       journeySheet(current.returnJourneyId);
@@ -4557,10 +4593,14 @@ document.addEventListener('click', async (e) => {
       case 'open-own':
         ownSheet(el.dataset.id);
         break;
-      case 'close-sheet':
+      case 'close-sheet': {
+        // 판정 화면에서 연 하위 시트(판매처 가격)는 닫으면 판정 화면으로 돌아간다.
+        const backTo = sheetKey?.startsWith('offers:') && offerView?.journeyId && state.journeys.some((row) => row.id === offerView.journeyId) ? offerView.journeyId : null;
         closeSheet();
+        if (backTo) { journeySheet(backTo); break; }
         await closeComparison();
         break;
+      }
       case 'save': {
         e.stopPropagation();
         const id = el.dataset.id,

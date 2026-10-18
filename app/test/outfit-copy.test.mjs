@@ -23,6 +23,19 @@ test('unknown colours and subtypes are not invented for the copy', () => {
   ] };
   const copy = outfitCopy(result);
   assert.equal(copy.title, '셔츠');
-  assert.equal(copy.note, '셔츠 조합이에요.');
+  assert.equal(copy.note, '내 셔츠(종류 확인 필요) 조합이에요.');
   assert.doesNotMatch(copy.note, /흰|옥스퍼드|겨울/);
+});
+
+test('composition distinguishes actual, example and candidate clothes without inventing an uncertain colour', () => {
+  const result = { look: { title: '흰 셔츠 출근', note: '흰 셔츠와 생지' }, items: [
+    { role: 'top', slot: SLOT_BY_ID['m-oxford'], color: 'white', owned: true, certainty: 'uncertain', item: { kind: 'shirt', label: '직접 이름 붙인 셔츠' } },
+    { role: 'bottom', slot: SLOT_BY_ID['m-denim'], color: 'blue', owned: false },
+  ] };
+  const before = structuredClone(result);
+  assert.match(outfitCopy(result).note, /내 직접 이름 붙인 셔츠\(종류 확인 필요\)/);
+  assert.match(outfitCopy(result).note, /후보 라이트 블루 청바지/);
+  assert.match(outfitCopy(result, { demo: true }).note, /예시 직접 이름 붙인 셔츠/);
+  assert.doesNotMatch(outfitCopy(result).note, /화이트|옥스퍼드|흰 셔츠/);
+  assert.deepEqual(result, before);
 });

@@ -22,7 +22,7 @@ execFileSync(process.execPath, [path.join(appRoot, 'tools/build.mjs'), '--out', 
 const html = fs.readFileSync(output, 'utf8');
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(
   /\n\}\)\(\);\s*$/,
-  '\nglobalThis.testApp = { sharedReady: sharedLinkHandled, state: () => state, ready: appReady, store: wardrobeStore, candidateDraft: () => candidateDraft, draft: () => draft, pendingOptionChange: () => pendingOptionChange, candidateGarmentReview: () => candidateGarmentReview, beginCandidateGarmentReview, applyCandidateGarmentReview, beginCandidate, compareCatalogProduct, applySnapshot, candidateSheet, saveCandidateDraft, journeySheet, setJourneyField, recordJourneyAction, renderSaved, chooseWardrobeBackup, chooseGarmentPhoto, saveGarmentDraft, recommendLooks, search, itemSheet };\n})();',
+  '\nglobalThis.testApp = { sharedReady: sharedLinkHandled, state: () => state, ready: appReady, store: wardrobeStore, candidateDraft: () => candidateDraft, draft: () => draft, pendingOptionChange: () => pendingOptionChange, candidateGarmentReview: () => candidateGarmentReview, beginCandidateGarmentReview, applyCandidateGarmentReview, beginCandidate, compareCatalogProduct, applySnapshot, candidateSheet, saveCandidateDraft, journeySheet, setJourneyField, recordJourneyAction, renderSaved, chooseWardrobeBackup, chooseGarmentPhoto, saveGarmentDraft, recommendLooks, search, itemSheet, lookCard, lookSheet };\n})();',
 );
 
 // Run the actual bundled callbacks against IDB. These DOM, photo-decoding and
@@ -177,9 +177,55 @@ test('better-quality follow-up preserves the visible results, removed conditions
   assert.match(page.nodes.get('app').innerHTML, /낮은 가격순/);
   page.submitQuery('더 비싼 걸로');
   assert.match(page.nodes.get('app').innerHTML, /높은 가격순/);
+  const afterPrice = ids();
+  page.submitQuery('더 괜찮은 걸로');
+  assert.deepEqual(ids(), afterPrice, 'a quality follow-up after price sorting cannot reset the original search');
   assert.match(page.nodes.get('app').innerHTML, /셔츠/);
   assert.match(page.nodes.get('app').innerHTML, /블랙 제외/);
   assert.match(page.nodes.get('app').innerHTML, /뺀 조건 되돌리기/);
+});
+
+test('merged search and detail retain the excluded shirt and explain an unavailable outfit', async (t) => {
+  const page = await boot(); t.after(() => page.close());
+  const query = '셔츠 말고 출근 니트';
+  page.submitQuery(query);
+  const result = page.app.search(page.app.state(), query);
+  assert.ok(result.items.length);
+  assert.equal(result.outfit, null);
+  assert.match(page.nodes.get('app').innerHTML, /조건을 풀지 않았어요/);
+  page.app.itemSheet(result.items[0].product.id);
+  const sheet = page.nodes.get('sheet-root').innerHTML;
+  assert.match(sheet, /출근 · 셔츠 제외/);
+  assert.match(sheet, /코디가 없어요\. 조건을 풀지 않았어요/);
+  assert.doesNotMatch(sheet, /class="look-row"/);
+  const why = sheet.match(/<div class="why">([\s\S]*?)<\/ul><\/div>/)[1];
+  assert.doesNotMatch(why, /셔츠/, 'fixed styling tips must not recommend the explicitly excluded garment');
+});
+
+test('merged outfit cards keep the focused inner visible and share actual copy and identity with the detail', async (t) => {
+  const page = await boot(); t.after(() => page.close());
+  const kinds = [['outer', 'coat'], ['top', 'knit'], ['bottom', 'jeans'], ['shoes', 'loafer'], ['inner', 'shirt']];
+  const items = kinds.map(([role, kind]) => {
+    const product = PRODUCTS.find((p) => p.img && productEligible(p) && SLOT_BY_ID[p.slot]?.g === 'M' && SLOT_BY_ID[p.slot].shape === kind);
+    assert.ok(product, kind);
+    return { role, product, slot: SLOT_BY_ID[product.slot], owned: false, color: product.color, focus: role === 'inner' };
+  });
+  const result = { look: { id: 'merge-copy-fixture', title: '고정된 예시 제목', note: '현재 구성과 다른 공식 설명' }, items,
+    ownedCount: 0, buyCount: items.length, buyTotal: items.reduce((total, i) => total + i.product.price, 0) };
+  const card = page.app.lookCard(result);
+  const grid = card.split('<div class="look-body">')[0];
+  assert.equal((grid.match(/class="tile"/g) || []).length, 4);
+  assert.ok(grid.includes(items.at(-1).product.img), 'the opened shirt is still visible among four tiles');
+  assert.match(card, /data-look-id="merge-copy-fixture"/);
+  assert.doesNotMatch(card, /고정된 예시 제목|현재 구성과 다른 공식 설명/);
+  const title = card.match(/<div class="look-title">([^<]+)<\/div>/)[1];
+  const note = card.match(/<div class="look-note">([^<]+)<\/div>/)[1];
+  const index = Number(card.match(/data-index="(\d+)"/)[1]);
+  page.app.lookSheet(index);
+  const detail = page.nodes.get('sheet-root').innerHTML;
+  assert.ok(detail.includes(title) && detail.includes(note));
+  assert.match(detail, /data-look-id="merge-copy-fixture"/);
+  assert.doesNotMatch(detail, /고정된 예시 제목|현재 구성과 다른 공식 설명/);
 });
 
 test('manual, photo, quick comparison and pasted-link paths share kinds even without matching catalog slots', async (t) => {
