@@ -88,7 +88,7 @@ test('signed out, the operator section and policy links are in settings, and aff
   assert.ok(page.sheet().includes(`<a href="${operated}/terms" target="_blank" rel="noopener">이용약관</a>`));
   assert.match(page.sheet(), /운영자가 아직 확정하지 않은 초안이에요/, 'the repository template is still a draft');
   await page.click({ action: 'open-item', id: product.id });
-  assert.match(page.sheet(), /에서 보기 [\s\S]*?<\/a><span class="affiliate-note">제휴 링크 · 이 링크로 사면 어울이 수수료를 받을 수 있어요\. 가격은 같아요\.<\/span>/);
+  assert.match(page.sheet(), /에서 보기[\s\S]*?<\/a>(?:\s*<\/div>\s*)?<span class="affiliate-note">제휴 링크 · 이 링크로 사면 어울이 수수료를 받을 수 있어요\. 가격은 같아요\.<\/span>/);
 
   const other = await boot({ at: plain });
   await other.click({ action: 'open-item', id: product.id });

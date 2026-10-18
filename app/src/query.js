@@ -38,6 +38,11 @@ const COLOR_WORDS = [
   [/하늘|파란|블루|청색/, 'blue', '블루'],
   [/아이보리|크림|오트밀/, 'ivory', '아이보리'],
   [/초록|그린/, 'green', '그린'],
+  [/빨간|빨강|레드|버건디|와인색/, 'red', '레드·버건디'],
+  [/핑크|분홍/, 'pink', '핑크'],
+  [/노란|노랑|옐로/, 'yellow', '옐로'],
+  [/보라|퍼플/, 'purple', '퍼플'],
+  [/주황|오렌지/, 'orange', '오렌지'],
 ];
 
 // 아이템 단어 → 아이템 자리 판별 함수. 위에서부터 더 구체적인 단어를 먼저 본다.
@@ -55,10 +60,11 @@ const ITEM_WORDS = [
   [/베스트|조끼/, (s) => s.shape === 'vest', '베스트'],
   [/카디건|가디건/, (s) => s.shape === 'cardigan', '카디건'],
   [/니트|스웨터/, (s) => s.shape === 'knit', '니트'],
-  [/후드|후디/, (s) => ['m-hoodie', 'f-sweat'].includes(s.id), '후드'],
+  [/후드\s*(?:티|집업)?|후디/, (s) => ['m-hoodie', 'f-sweat'].includes(s.id), '후드'],
   [/맨투맨|스웻|스웨트/, (s) => ['m-sweat', 'f-sweat'].includes(s.id), '맨투맨'],
   [/긴팔|롱슬리브/, (s) => s.shape === 'longtee', '긴팔 티'],
-  [/티셔츠|반팔|(^|\s)티(\s|$)/, (s) => s.shape === 'tee' || s.shape === 'longtee', '티셔츠'],
+  // "꾸민 티 안 나게"의 '티'는 옷이 아니다.
+  [/티셔츠|반팔|(^|\s)티(?!\s*(?:안|나게|나는|내|낼))(?=\s|$)/, (s) => s.shape === 'tee' || s.shape === 'longtee', '티셔츠'],
   [/블레이저|정장\s*재킷|수트\s*재킷|자켓\s*정장/, (s) => s.shape === 'blazer', '블레이저'],
   [/트렌치/, (s) => /trench/.test(s.id), '트렌치 코트'],
   [/발마칸/, (s) => s.id === 'm-balmacaan', '발마칸 코트'],
@@ -83,6 +89,11 @@ const ITEM_WORDS = [
   [/슬랙스|정장\s*바지|트라우저/, (s) => /slacks/.test(s.id), '슬랙스'],
   [/퍼티그|베이커|페인터|카펜터|워크\s*팬츠|군복/, (s) => s.id === 'm-work-pants', '워크 팬츠'],
   [/카고/, (s) => s.id === 'm-cargo', '카고 팬츠'],
+  // 상품 목록에 아직 없는 종류: 다른 바지로 채우지 않고 "없어요"로 알린다.
+  [/반바지|숏\s*팬츠|쇼츠|하프\s*팬츠/, () => false, '반바지'],
+  [/조거\s*(?:팬츠|바지)?|트레이닝\s*(?:팬츠|바지|복)?|츄리닝|추리닝|트랙\s*팬츠|스웨트\s*팬츠/, () => false, '트레이닝·조거 팬츠'],
+  [/레깅스/, () => false, '레깅스'],
+  [/수영복|래시\s*가드|비키니/, () => false, '수영복'],
   [/바지|팬츠|하의/, (s) => s.cat === 'bottom' && s.shape !== 'skirt', '바지'],
   [/스커트|치마/, (s) => s.shape === 'skirt', '스커트'],
   [/원피스|드레스/, (s) => s.cat === 'dress', '원피스'],
@@ -297,6 +308,9 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
   for (const c of excludeColors) terms.push(`${c.label} 제외`);
   for (const i of excludeItems) terms.push(`${i.label} 제외`);
   const unsupported = UNSUPPORTED_WORDS.filter(([re]) => re.test(text)).map(([, label]) => label);
+  // "편한": 착용감 자료는 없다. 상품명의 밴딩·이지 같은 표기로 순서만 바꾸고 그렇게 알린다.
+  const comfort = /편한|편하게|편안|편히/.test(text);
+  if (comfort) terms.push('편한 표기 먼저');
   const anchorColor = firstMatch(COLOR_WORDS, anchorText);
   if (anchorColor) terms.push(`기준 색: ${anchorColor.label}`);
 
@@ -349,13 +363,14 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
   const brandWords = new Set(brands.flatMap((b) => [b, ...(BRAND_ALIASES[b] || [])]).flatMap((w) => w.toLowerCase().split(/\s+/)));
   const unknown = raw.toLowerCase().split(/[\s,.!?~]+/).map((w) => w.replace(/(?:으로|에서|에게|이랑|랑|하고|까지|부터|처럼|보다|이나|은|는|이|가|을|를|에|의|로|와|과|도|만|요)$/, ''))
     .filter((w) => w.length >= 2 && /[가-힣a-z]/.test(w) && !/\d/.test(w) && !FILLER.test(w) && !brandWords.has(w) &&
-      !known.some(([re]) => re.test(` ${w} `)) && !/여자|여성|남자|남성|여친|남친|저렴|가성비|싼|비싼|고급|명품|퀄리티|품질|최저|최고|순서|순|이하|이상|어울|맞는|매치|코디|받쳐|같이|함께/.test(w));
+      !known.some(([re]) => re.test(` ${w} `)) && !raw.toLowerCase().split(/[\s,.!?~]+/).some((o) => o.startsWith(w) && known.some(([re]) => re.test(` ${o} `))) && !/여자|여성|남자|남성|여친|남친|저렴|가성비|싼|비싼|고급|명품|퀄리티|품질|최저|최고|순서|순|이하|이상|어울|맞는|매치|코디|받쳐|같이|함께/.test(w));
 
   return {
     raw,
     summary,
     terms,
     tone: tone?.value || null,
+    comfort,
     excludeColors: excludeColors.map((c) => c.value),
     excludeMatch: (slot) => excludeItems.some((i) => i.fn(slot)),
     excludedItems: excludeItems.map((i) => i.label),
@@ -376,6 +391,7 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
     qualityUnavailable: premium,
     brand,
     slotNamed: targets.length > 0,
+    targetLabels: targets.map((t) => t.label),
     anchorMatch: (slot) => anchors.some((a) => a.fn(slot)),
     targetMatch: (slot) => targets.some((t) => t.fn(slot)),
   };

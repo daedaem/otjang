@@ -184,6 +184,43 @@ export function productsFor(
     .sort((a, b) => brands.has(b.brand) - brands.has(a.brand) || quality(b) - quality(a) || a.price - b.price);
 }
 
+// 상품명에 편하게 입는 표기가 있으면 1, 뻣뻣하다는 표기면 -1. 착용감을 보장하지 않는다.
+function comfortMark(p) {
+  const name = `${p.name}`;
+  if (/생지|리지드|rigid|셀비지|selvedge|raw/i.test(name)) return -1;
+  return /밴딩|이지|easy|조거|스웨트|릴렉스|relax|와이드|wide|원턱/i.test(name) ? 1 : 0;
+}
+
+// 검색 조건(search().criteria)에 상품이 맞는지. 종류는 보지 않는다(상세의 같은 종류 대안에 쓴다).
+export function meetsCriteria(p, cr) {
+  if (!cr) return true;
+  const { maxPrice = null, minPrice = null, minPriceExclusive = false, maxPriceExclusive = false } = cr;
+  if (maxPrice !== null && maxPrice !== undefined && (maxPriceExclusive ? p.price >= maxPrice : p.price > maxPrice)) return false;
+  if (minPrice !== null && minPrice !== undefined && (minPriceExclusive ? p.price <= minPrice : p.price < minPrice)) return false;
+  if (cr.color && evidenceColor(p) !== cr.color) return false;
+  if (cr.brand && p.brand !== cr.brand) return false;
+  if ((cr.excludeColors || []).includes(p.color)) return false;
+  if (cr.tone) {
+    const l = COLORS[p.color]?.light;
+    if (!Number.isFinite(l) || (cr.tone === 'light' ? l < 60 : l > 40)) return false;
+  }
+  return true;
+}
+
+const wonLabel = (n) => (n % 10000 === 0 ? `${n / 10000}만원` : `${n.toLocaleString('ko-KR')}원`);
+// 검색 조건을 한 줄로: "10만원 이하 · 블랙 제외 · 밝은 색"
+export function criteriaLine(cr) {
+  if (!cr) return '';
+  return [
+    cr.minPrice != null ? `${wonLabel(cr.minPrice)} ${cr.minPriceExclusive ? '초과' : '이상'}` : '',
+    cr.maxPrice != null ? `${wonLabel(cr.maxPrice)} ${cr.maxPriceExclusive ? '미만' : '이하'}` : '',
+    cr.color ? COLORS[cr.color]?.label || '' : '',
+    ...(cr.excludeColors || []).map((c) => `${COLORS[c]?.label || c} 제외`),
+    cr.tone ? (cr.tone === 'light' ? '밝은 색' : '어두운 색') : '',
+    cr.brand || '',
+  ].filter(Boolean).join(' · ');
+}
+
 function productOpts(c, extra = {}) {
   return {
     maxPrice: c.maxPrice,
@@ -594,19 +631,46 @@ export function essentials(state) {
 }
 
 // 한 줄 검색: "출근용 셔츠 10만원 이하", "청바지에 어울리는 신발", "폴로 니트"
-export function search(state, text, { anchorItemId = null } = {}) {
+// drop: 사용자가 칩의 ×로 직접 뺀 조건 키(occasion·season·style·color·price·exclude·tone·brand).
+// 자동으로 빼지 않는다. 뺀 조건은 결과의 dropped로 돌려줘 화면에 보인다.
+export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
   const brandNames = [...new Set(SAFE_PRODUCTS.map((p) => p.brand))];
-  const q = parseQuery(text, { brands: brandNames });
+  const dropped = new Set(drop);
+  const q = { ...parseQuery(text, { brands: brandNames }) };
+  if (dropped.has('occasion')) q.occasion = null;
+  if (dropped.has('season')) q.season = null;
+  if (dropped.has('style')) q.style = null;
+  if (dropped.has('color')) q.color = null;
+  if (dropped.has('tone')) q.tone = null;
+  if (dropped.has('brand')) q.brand = null;
+  if (dropped.has('comfort')) q.comfort = false;
+  if (dropped.has('exclude')) {
+    q.excludeColors = [];
+    q.excludedItems = [];
+    q.excludeMatch = () => false;
+  }
+  if (dropped.has('price')) {
+    q.maxPrice = null;
+    q.minPrice = null;
+    q.minPriceExclusive = false;
+    q.maxPriceExclusive = false;
+  }
+  // 말한 종류가 성별 기본값보다 먼저다. 성별을 말하지 않았고 그 종류가 다른 성별에만 있으면
+  // 그 성별에서 찾고 화면에 알린다(종류를 바꿔 채우지 않는다).
+  const baseGender = q.gender || state.gender || 'M';
+  const kindIn = (g) => SLOTS.some((s) => s.g === g && q.targetMatch(s) && !q.excludeMatch(s));
+  const otherGender = baseGender === 'M' ? 'F' : 'M';
+  const genderFromKind = q.slotNamed && !q.gender && !kindIn(baseGender) && kindIn(otherGender) ? otherGender : null;
   const c = ctx({
     ...state,
     // 예시 옷은 실제 보유 근거가 아니다: 검색에서는 옷장이 없는 것으로 본다.
     closet: state.demo ? [] : state.closet,
-    gender: q.gender || state.gender,
+    gender: genderFromKind || baseGender,
     // 이번 요청에서 말한 스타일이 저장된 취향보다 먼저다.
     styles: q.style ? [q.style] : state.styles,
-    occasion: q.occasion || state.occasion || null,
+    occasion: q.occasion || (dropped.has('occasion') ? null : state.occasion) || null,
     season: q.season || state.season,
-    budget: q.maxPrice ?? state.budget,
+    budget: q.maxPrice ?? (dropped.has('price') ? null : state.budget),
     minPrice: q.minPrice,
     minPriceExclusive: q.minPriceExclusive,
     maxPriceExclusive: q.maxPriceExclusive,
@@ -650,9 +714,13 @@ export function search(state, text, { anchorItemId = null } = {}) {
     }
   }
   let targets = genderSlots.filter((s) => q.targetMatch(s) && !q.excludeMatch(s));
-  if (!targets.length && anchors.length) targets = genderSlots.filter((s) => !anchors.some((a) => a.cat === s.cat));
+  // 종류를 말했는데 이 성별 상품에 그 종류가 없으면 다른 종류로 채우지 않고 0건으로 둔다.
+  const kindUnavailable = q.slotNamed && !targets.length ? q.targetLabels.join('·') : null;
+  const kindNowhere = !!kindUnavailable && !kindIn(otherGender);
+  if (!q.slotNamed && !targets.length && anchors.length)
+    targets = genderSlots.filter((s) => !anchors.some((a) => a.cat === s.cat));
   const understood = q.terms.length > 0 || !!anchorItem;
-  if (!targets.length) targets = genderSlots.filter((s) => !q.excludeMatch(s));
+  if (!q.slotNamed && !targets.length) targets = genderSlots.filter((s) => !q.excludeMatch(s));
   // 말한 스타일에 맞는 자리만 남긴다(맞는 자리가 하나도 없으면 그대로 둔다).
   if (q.style) {
     const styled = targets.filter((s) => (s.style[q.style] || 0) >= 2);
@@ -668,16 +736,30 @@ export function search(state, text, { anchorItemId = null } = {}) {
 
   const looks = LOOKS.filter((l) => l.g === c.gender);
   const anchorIds = new Set(anchors.map((a) => a.id));
+  // 카드 이유의 첫 줄은 이 요청에서 실제로 맞춘 조건이다(종류별 고정 문구는 둘째 줄).
+  const SEASONS = { spring: '봄', summer: '여름', fall: '가을', winter: '겨울' };
+  const matched = [
+    q.style ? STYLES[q.style]?.label : '',
+    c.occasion ? OCCASIONS[c.occasion] : '',
+    q.season ? SEASONS[q.season] : '',
+    criteriaLine({ maxPrice: c.maxPrice, minPrice: c.minPrice, minPriceExclusive: c.minPriceExclusive,
+      maxPriceExclusive: c.maxPriceExclusive, color: q.color, excludeColors: q.excludeColors, tone: q.tone, brand: q.brand }),
+  ].filter(Boolean).join(' · ');
   const results = [];
   for (const slot of targets) {
     if (anchorIds.has(slot.id)) continue;
     const base = scoreSlot(slot, { ...c, ownedSlots: c.ownedSlots }, matchingLooks(c, { occasion: null }));
     let score = base.score;
-    let reasons = [slot.why, ...base.reasons].slice(0, 2);
-    // 요청에서 말한 스타일이 이유의 첫 줄이고, 그 스타일에 더 가까운 아이템이 앞선다.
+    // "편한": 생지·리지드처럼 뻣뻣하다고 알려진 종류는 뒤로.
+    if (q.comfort && slot.id === 'm-denim-raw') score -= 4;
+    // 요청한 상황에 맞지 않는 종류는 따로 묶는다(섞어서 같은 줄에 보이지 않게).
+    const offOccasion = !!c.occasion && !slot.occ.includes(c.occasion);
+    let reasons = matched ? [`${matched}에 맞춰 골랐어요`, slot.why] : [slot.why, ...base.reasons].slice(0, 2);
+    if (offOccasion) reasons = [`${OCCASIONS[c.occasion]}보다 캐주얼한 종류예요`, slot.why];
+    // 요청에서 말한 스타일에 더 가까운 아이템이 앞선다.
     if (q.style) {
       score += (slot.style[q.style] || 0) * 1.5;
-      reasons = [`${STYLES[q.style].label} 코디에 쓰는 ${shortName(slot)}`, slot.why].slice(0, 2);
+      if (!matched) reasons = [`${STYLES[q.style].label} 코디에 쓰는 ${shortName(slot)}`, slot.why];
     }
     if (anchors.length) {
       const a = anchorItem
@@ -702,9 +784,11 @@ export function search(state, text, { anchorItemId = null } = {}) {
       season: q.season || (q.slotNamed ? null : c.season),
     });
     products = products.filter(toneOK);
+    if (q.comfort) products = [...products].sort((a, b) => comfortMark(b) - comfortMark(a));
     const selected = q.priceSort ? products : products.slice(0, q.brand ? 6 : 3);
     selected.forEach((product, i) => {
-      results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3, reasons });
+      const easy = q.comfort ? comfortMark(product) : 0;
+      results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3 + easy * 2, reasons, offOccasion });
     });
   }
   results.sort(
@@ -717,7 +801,7 @@ export function search(state, text, { anchorItemId = null } = {}) {
 
   const items = results.slice(0, 16);
   const outfit =
-    !anchorUnavailable && (anchors.length || c.occasion)
+    !anchorUnavailable && !kindUnavailable && (anchors.length || c.occasion)
       ? recommendLooks(
           {
             ...state,
@@ -747,8 +831,43 @@ export function search(state, text, { anchorItemId = null } = {}) {
       : null;
   if (!anchorProduct && !anchorItem && outfit && anchors.length)
     anchorProduct = outfit.items.find((i) => anchorIds.has(i.slot.id) && !i.owned)?.product || null;
+  // 검색에서 상세·코디로 넘어가도 같은 조건을 쓴다.
+  const criteria = {
+    gender: c.gender,
+    slotIds: q.slotNamed ? targets.map((s) => s.id) : null,
+    maxPrice: c.maxPrice,
+    minPrice: c.minPrice,
+    minPriceExclusive: c.minPriceExclusive,
+    maxPriceExclusive: c.maxPriceExclusive,
+    color: q.color,
+    brand: q.brand,
+    excludeColors: q.excludeColors,
+    tone: q.tone,
+  };
+  // 화면 칩: 실제로 적용한 조건만, 한 곳에서 만든다.
+  const priceLine = criteriaLine({ ...criteria, color: null, excludeColors: [], tone: null, brand: null });
+  const conds = [
+    q.slotNamed ? { key: 'kind', label: q.targetLabels.join('·') } : null,
+    c.occasion ? { key: 'occasion', label: OCCASIONS[c.occasion] || c.occasion, saved: !q.occasion } : null,
+    q.season ? { key: 'season', label: SEASONS[q.season] } : null,
+    q.style ? { key: 'style', label: STYLES[q.style]?.label || q.style } : null,
+    q.color ? { key: 'color', label: COLORS[q.color]?.label || q.color } : null,
+    q.tone ? { key: 'tone', label: q.tone === 'light' ? '밝은 색' : '어두운 색' } : null,
+    q.excludeColors.length || q.excludedItems.length
+      ? { key: 'exclude', label: [...q.excludeColors.map((x) => COLORS[x]?.label || x), ...q.excludedItems].map((x) => `${x} 제외`).join(' · ') }
+      : null,
+    priceLine ? { key: 'price', label: priceLine, saved: q.maxPrice == null && q.minPrice == null } : null,
+    q.brand ? { key: 'brand', label: q.brand } : null,
+    q.comfort ? { key: 'comfort', label: '편한 표기 먼저' } : null,
+  ].filter(Boolean);
   return {
     query: q,
+    criteria,
+    conds,
+    dropped: [...dropped],
+    kindUnavailable,
+    kindNowhere,
+    genderFromKind,
     understood,
     items,
     outfit,

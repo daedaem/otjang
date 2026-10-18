@@ -23,6 +23,8 @@ import {
   styleScore,
   lookalike,
   exampleCloset,
+  meetsCriteria,
+  criteriaLine,
 } from './engine.js';
 import { silhouetteSvg, ICON } from './icons.js';
 import { zipStore, unzipSingle } from './zip-store.js';
@@ -525,7 +527,7 @@ function homeHeader() {
       <button type="submit" class="ask-go">찾기</button>
     </form>
     <div class="suggest-pop" id="suggest" hidden><div class="sub">이렇게 물어보세요</div><div class="suggest">${EXAMPLES[state.gender].map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>
-    <details class="discovery-filters"${state.occasion || state.budget || state.brandOnly ? ' open' : ''}><summary>추천 조건 <span>${esc([state.occasion ? OCCASIONS[state.occasion] : '상황 전체', budgetLabel].join(' · '))}</span></summary><div class="chips" role="group" aria-label="상황과 예산">
+    ${query ? '' : `<details class="discovery-filters"${state.occasion || state.budget || state.brandOnly ? ' open' : ''}><summary>추천 조건 <span>${esc([state.occasion ? OCCASIONS[state.occasion] : '상황 전체', budgetLabel].join(' · '))}</span></summary><div class="chips" role="group" aria-label="상황과 예산">
       ${state.brands.length ? `<button class="chip" data-action="toggle-brand-only" aria-pressed="${state.brandOnly}">내 브랜드만</button>` : ''}
       ${Object.entries(OCCASIONS)
         .map(
@@ -535,7 +537,7 @@ function homeHeader() {
         .join('')}
       <button class="chip ghost" data-action="open-budget" aria-pressed="${!!state.budget}">${budgetLabel}${ICON.chevron}</button>
       <button class="chip ghost" data-action="open-profile">내 취향 바꾸기</button>
-    </div></details>
+    </div></details>`}
   </div>`;
 }
 
@@ -1029,34 +1031,77 @@ function planSheet() {
     <div class="why"><h3>계산 방법과 한계</h3><ul>${plan.limitations.map((line) => `<li>${esc(line)}</li>`).join('')}<li>가격은 현재 최저가가 아니에요. 같은 상품의 다른 판매처와 배송비는 아직 비교하지 않았어요.</li></ul></div></details>`, { key: 'plan' });
 }
 
+// 지금 보고 있는 검색의 조건. 검색 결과에서 연 상세도 같은 조건으로 대안을 고른다.
+let searchCriteria = null;
+// 칩의 ×로 사용자가 직접 뺀 조건. 새 검색을 하면 비운다.
+let searchDrop = [];
+// "더 싼 걸로"처럼 이전 검색을 이어서 고친 요청. 화면에 그렇게 했다고 알린다.
+let searchFollowUp = null;
+const FOLLOW_UP = /^\s*(?:좀\s*)?더\s*(싼|저렴한|저렴하게|싸게|비싼|비싸게|좋은)\s*(?:걸로|거|것|거로|걸|건)?\s*(?:없어|있어|보여\s*줘|줘|요)?[?.!]*\s*$/;
+function followUpQuery(text) {
+  const m = query && !/낮은 가격순|높은 가격순/.test(query) ? text.match(FOLLOW_UP) : null;
+  if (!m) return null;
+  const order = /비싼|비싸게|좋은/.test(m[1]) ? '높은 가격순' : '낮은 가격순';
+  return { query: `${query} ${order}`, follow: { said: text.trim(), order } };
+}
 function renderSearch() {
-  const r = search(state, query, { anchorItemId: searchAnchorId });
+  ensureBackGuard();
+  const r = search(state, query, { anchorItemId: searchAnchorId, drop: searchDrop });
+  searchCriteria = r.criteria;
   lastLooks = [];
-  const head = `<div class="result-head">
-    <h2>${r.query.summary ? esc(r.query.summary) : `‘${esc(query)}’`}</h2>
-    ${r.query.terms.length ? `<div class="terms">${r.query.terms.map((t) => `<span class="chip soft">${esc(t)}</span>`).join('')}</div>` : ''}
-  </div>`;
-  const notice = r.understood
-    ? ''
-    : `<div class="notice">아직 이해하지 못한 표현이에요. 대신 고른 스타일에 맞는 아이템을 보여 드릴게요.<div class="suggest">${EXAMPLES[state.gender].map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>`;
-  const outfit = r.outfit
-    ? `<section class="section"><div class="section-head"><div><h2>이렇게 입어 보세요</h2><div class="sub">${esc(r.outfit.look.title)}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
+  const examples = EXAMPLES[r.gender === 'F' ? 'F' : 'M'];
+  const exampleChips = `<div class="suggest">${examples.map((e) => `<button class="chip" data-action="example" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div>`;
+  // 이해하지 못한 요청에는 관계없는 상품을 채우지 않는다.
+  if (!r.understood)
+    return `<div class="result-head"><h2>‘${esc(query)}’는 아직 찾을 수 없어요</h2></div><div class="notice" role="status"><p>이 말에 맞는 조건을 찾지 못해서 상품을 고르지 않았어요. 옷 종류·상황·예산으로 다시 적어 주세요.</p>${exampleChips}</div>${footer()}`;
+  const none = !r.items.length;
+  // 칩으로 조건을 뺐으면 요청 원문 요약 대신 실제 남은 조건으로 제목을 쓴다.
+  const title = none ? '맞는 상품이 없어요'
+    : r.dropped.length ? `${r.conds.map((x) => x.label).join(' · ') || '조건 없이'} 조건으로 다시 골랐어요`
+    : r.query.summary || `‘${query}’ 결과`;
+  const chips = r.conds.length || r.dropped.length
+    ? `<div class="terms" aria-label="적용한 조건">${r.conds.map((cnd) => cnd.key === 'kind'
+        ? `<span class="chip soft">${esc(cnd.label)}</span>`
+        : `<button class="chip soft" data-action="drop-cond" data-key="${cnd.key}" aria-label="${esc(cnd.label)} 조건 빼고 다시 찾기">${esc(cnd.label)}${cnd.saved ? ' (내 설정)' : ''} ${ICON.close}</button>`).join('')}
+      ${r.dropped.length ? `<button class="link" data-action="undrop-cond">뺀 조건 되돌리기</button>` : ''}</div>`
     : '';
-  const items = r.items.length
-    ? `<section class="section"><div class="section-head"><div><h2>추천 아이템 ${r.items.length}개</h2><div class="sub">${r.query.priceSort ? `수집일 가격이 ${r.query.priceSort === 'desc' ? '높은' : '낮은'} 순서 · 옵션과 배송비는 판매 페이지에서 확인해요` : `${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요`}</div></div></div><div class="grid">${r.items.map(gridCard).join('')}</div></section>`
-    : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>${r.query.terms.length ? `<p>적용한 조건: ${esc(r.query.terms.join(' · '))}</p>` : ''}<p>조건을 자동으로 넓히지 않았어요. 예산이나 색 조건을 빼고 다시 적어 보세요.</p></div>`;
+  const head = `<div class="result-head"><h2>${esc(title)}</h2>${chips}${r.conds.length > 1 ? '<p class="fine">조건 칩의 ×를 누르면 그 조건만 빼고 다시 찾아요.</p>' : ''}</div>`;
+  const genderNote = r.genderFromKind
+    ? `<p class="notice" role="status">${esc(r.conds.find((x) => x.key === 'kind')?.label || '이 종류')}는 ${r.genderFromKind === 'F' ? '여성' : '남성'} 상품에만 있어서 ${r.genderFromKind === 'F' ? '여성' : '남성'} 상품에서 찾았어요.</p>`
+    : '';
   const anchor = r.anchorItem
     ? `<div class="notice search-anchor">${itemPicture(r.anchorItem)}<div><b>이 옷을 기준으로 찾아요</b><p>${esc(garmentLabel(r.anchorItem))} · ${esc(COLORS[r.anchorItem.color]?.label || '색 미확인')}</p></div><button class="link" data-action="clear-anchor">기준 해제</button></div>`
     : r.anchorUnavailable
       ? `<div class="notice" role="status">${esc(r.anchorUnavailable)} <button class="link" data-action="tab" data-tab="closet">내 옷 다시 고르기</button></div>`
       : '';
-  const partial = r.understood && (r.query.unsupported.length || r.query.unknown.length)
+  const partial = r.query.unsupported.length || r.query.unknown.length
     ? `<div class="notice" role="status">${r.query.unsupported.length ? `<p><b>반영하지 못한 조건:</b> ${esc(r.query.unsupported.join(', '))}. 상품 자료에 이 정보가 없어서 이 조건 없이 골랐어요. 판매 페이지에서 확인해 주세요.</p>` : ''}${r.query.unknown.length ? `<p><b>이해하지 못한 말:</b> ${esc(r.query.unknown.join(', '))}. 이 말은 빼고 골랐어요. 다른 말로 다시 적어 주셔도 돼요.</p>` : ''}</div>`
+    : '';
+  const comfortNotice = r.query.comfort
+    ? '<p class="notice">착용감 자료는 없어요. 상품명에 ‘밴딩·이지·와이드’ 같은 표기가 있는 상품을 앞에, ‘생지·리지드’는 뒤에 뒀어요. 실제 착용감은 판매 페이지 후기로 확인해 주세요.</p>'
+    : '';
+  const followNote = searchFollowUp
+    ? `<p class="notice" role="status">‘${esc(searchFollowUp.said)}’는 이전 조건을 그대로 두고 ${esc(searchFollowUp.order)}으로 다시 찾았어요. 새로 찾으려면 종류까지 적어 주세요.</p>`
     : '';
   const qualityNotice = r.query.qualityUnavailable
     ? '<p class="notice">품질을 비교할 자료는 없어요. 가격으로 품질을 판단하지 않고 평점·후기 등 인기 정보를 참고했어요.</p>'
     : '';
-  return head + anchor + notice + partial + qualityNotice + outfit + items + footer();
+  const fit = r.items.filter((x) => !x.offOccasion);
+  const off = r.items.filter((x) => x.offOccasion);
+  const occLabel = r.conds.find((x) => x.key === 'occasion')?.label || '';
+  const offSection = off.length
+    ? `<section class="section"><div class="section-head"><div><h2>${esc(occLabel)}에는 덜 맞는 대안 ${off.length}개</h2><div class="sub">요청한 종류·예산에는 맞지만 ${esc(occLabel)}보다 캐주얼한 종류예요.</div></div></div><div class="grid">${off.map(gridCard).join('')}</div></section>`
+    : '';
+  const items = !none
+    ? `${fit.length ? `<section class="section"><div class="section-head"><div><h2>상품 ${fit.length}개</h2><div class="sub">${r.query.priceSort ? `수집일 가격이 ${r.query.priceSort === 'desc' ? '높은' : '낮은'} 순서 · 옵션과 배송비는 판매 페이지에서 확인해요` : `${SEASON_LABEL[r.season]} 기준 · 평점과 후기 수를 함께 봤어요`}</div></div></div><div class="grid">${fit.map(gridCard).join('')}</div></section>` : ''}${offSection}`
+    : r.kindUnavailable
+      ? `<div class="empty"><b>${r.kindNowhere ? '상품 목록에 아직' : `${r.gender === 'F' ? '여성' : '남성'} 상품에는`} ${esc(r.kindUnavailable)}${josa(r.kindUnavailable, '이', '가')} 없어요</b><p>다른 종류로 바꿔 채우지 않았어요.</p></div>`
+      : `<div class="empty"><b>조건에 맞는 상품이 없어요</b>${r.conds.length ? `<p>적용한 조건: ${esc(r.conds.map((x) => x.label).join(' · '))}</p>` : ''}<p>조건을 자동으로 넓히지 않았어요. 위 조건 칩의 ×를 눌러 직접 빼고 다시 찾을 수 있어요.</p></div>`;
+  // 코디는 상품 다음에. 예산은 상품 한 벌 기준이라 코디 합계와 다르다고 적는다.
+  const outfit = r.outfit && !none
+    ? `<section class="section"><div class="section-head"><div><h2>이 조건으로 한 벌 맞춰 보면</h2><div class="sub">${esc(r.outfit.look.title)}${r.criteria.maxPrice != null ? ' · 예산은 상품 한 벌 기준이에요(코디 합계 아님)' : ''}</div></div></div>${lookCard(r.outfit, { wide: true })}</section>`
+    : '';
+  return head + followNote + genderNote + anchor + partial + comfortNotice + qualityNotice + items + outfit + footer();
 }
 
 // ── 내 옷장
@@ -1739,7 +1784,7 @@ function footer() {
 function nav() {
   const tabs = [
     ['home', '추천', ICON.sparkle, 0],
-    ['closet', '내 옷장', ICON.hanger, state.closet.length],
+    ['closet', '내 옷장', ICON.hanger, state.demo ? 0 : state.closet.length],
     ['saved', '구매 여정', ICON.heart, savedTabCount()],
   ];
   return `<nav class="nav" aria-label="주요 메뉴"><div class="nav-inner">${tabs.map(([k, label, icon, n]) => `<button data-action="tab" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">${icon}${label}${n ? `<span class="count">${n}</span>` : ''}</button>`).join('')}</div></nav>`;
@@ -1755,13 +1800,38 @@ function render() {
   const body = state.tab === 'closet' ? renderCloset() : state.tab === 'saved' ? renderSaved() : renderHome();
   // 저장·예시 안내도 본문 구역 안에 둔다(화면 낭독기로 본문에 바로 가도 안내와 복구 버튼을 지나치지 않게). 보이는 순서는 그대로다.
   $app.innerHTML =
-    `<main id="main-content" tabindex="-1"><h1 class="sr-only">${esc(BRAND.name)} ${TAB_TITLE[state.tab] || ''}</h1>${topBar()}${storageNotice()}${demoNotice()}${body}</main>` + nav();
+    `<main id="main-content" tabindex="-1"><h1 class="sr-only">${esc(BRAND.name)} ${TAB_TITLE[state.tab] || ''}</h1>${topBar()}${storageNotice()}${query && state.tab === 'home' ? '' : demoNotice()}${body}</main>` + nav();
 }
 
 // ── 시트
 // key가 같은 시트를 다시 그리면(고르기 등) 보던 위치와 누른 버튼의 포커스를 유지한다
 let sheetKey = null;
+// 안드로이드 뒤로가기: 시트나 검색 결과가 열려 있으면 앱을 떠나지 않고 한 단계 닫는다.
+// 열릴 때 기록 한 칸을 넣고(이미 있으면 그대로), 뒤로가기가 그 칸을 쓰면 시트 → 검색 순으로 닫는다.
+let backGuard = false;
+function ensureBackGuard() {
+  if (backGuard) return;
+  try { history.pushState({ eoulBack: 1 }, ''); backGuard = true; } catch {}
+}
+window.addEventListener?.('popstate', () => {
+  backGuard = false;
+  if ($sheet.innerHTML) {
+    closeSheet();
+    closeComparison?.();
+    // 저장 중이라 닫지 못했으면 다음 뒤로가기도 앱 안에서 받는다.
+  } else if (query) {
+    query = '';
+    searchDrop = [];
+    searchFollowUp = null;
+    searchAnchorId = null;
+    render();
+    window.scrollTo(0, 0);
+  }
+  if ($sheet.innerHTML || query) ensureBackGuard();
+});
+
 function openSheet(html, { key = null } = {}) {
+  ensureBackGuard();
   if (key !== 'offer-record-delete') offerDeleteReview = null;
   sheetRevision++;
   restoreDraft = null;
@@ -1847,7 +1917,8 @@ function itemSheet(id) {
   const productGender = slot.g;
   const compatibleStyles = state.styles.filter((k) => STYLES[k]?.g.includes(productGender));
   const productStyles = compatibleStyles.length ? compatibleStyles : stylesFor(productGender).slice(0, 1);
-  const productCloset = state.closet.filter((i) => i.gender === productGender);
+  // 예시 옷은 보유 근거가 아니라 이유 문장에도 쓰지 않는다.
+  const productCloset = state.demo ? [] : state.closet.filter((i) => i.gender === productGender);
   const c = {
     gender: productGender,
     styles: productStyles,
@@ -1857,16 +1928,20 @@ function itemSheet(id) {
     ownedSlots: new Set(productCloset.map((i) => i.slot)),
   };
   const { reasons } = scoreSlot(slot, c);
-  const alts = productsFor(slot.id)
-    .filter((x) => x.id !== p.id)
-    .slice(0, 8);
+  // 검색 결과에서 열었으면 검색 조건(예산·색·제외)을 대안과 코디에도 그대로 쓴다.
+  const cr = query && searchCriteria ? searchCriteria : null;
+  const sameKind = productsFor(slot.id).filter((x) => x.id !== p.id);
+  const alts = sameKind.filter((x) => meetsCriteria(x, cr)).slice(0, 8);
+  const outside = sameKind.length - sameKind.filter((x) => meetsCriteria(x, cr)).length;
   const sameBrand = SAFE_PRODUCTS.filter(
-    (x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === productGender && x.slot !== p.slot,
+    (x) => x.brand === p.brand && x.id !== p.id && SLOT_BY_ID[x.slot].g === productGender && x.slot !== p.slot && meetsCriteria(x, cr),
   ).slice(0, 8);
   const look = recommendLooks(
-    { ...state, gender: productGender, styles: productStyles, budget: null },
+    { ...state, closet: state.demo ? [] : state.closet, gender: productGender, styles: productStyles, budget: cr ? cr.maxPrice : null,
+      minPrice: cr?.minPrice ?? null, minPriceExclusive: !!cr?.minPriceExclusive, maxPriceExclusive: !!cr?.maxPriceExclusive },
     { limit: 1, occasion: null, pinnedProduct: p },
   )[0];
+  const noRealCloset = state.demo || !state.closet.some((i) => ['user', 'legacy'].includes(i.source));
   const owned = state.closet.some((i) => i.productId === p.id);
   const needsCheck =
     wardrobeSlotStatus(
@@ -1892,13 +1967,17 @@ function itemSheet(id) {
     </ul></div>
     ${state.demo && BRAND.stamps ? demoThemeVerdict(p) : ''}
     ${look ? `<h3 class="block">이 상품으로 만든 코디</h3>${lookRows(look)}` : ''}
-    ${alts.length ? `<h3 class="block">같은 종류, 다른 선택</h3><div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : ''}
+    ${alts.length ? `<h3 class="block">${cr ? '같은 조건, 다른 선택' : '같은 종류, 다른 선택'}</h3>${cr && outside ? `<p class="fine">검색 조건(${esc(criteriaLine(cr))})에 맞지 않는 같은 종류 ${outside}개는 뺐어요.</p>` : ''}<div class="row-scroll">${alts.map((a) => gridCard({ slot, product: a })).join('')}</div>` : cr ? '<p class="fine">검색 조건에 맞는 같은 종류의 다른 상품은 없어요.</p>' : ''}
     ${sameBrand.length ? `<h3 class="block">${esc(p.brand)}의 다른 아이템</h3><div class="row-scroll">${sameBrand.map((a) => gridCard({ slot: SLOT_BY_ID[a.slot], product: a })).join('')}</div>` : ''}
     <div class="cta">
       <button class="btn secondary" data-action="save" data-id="${p.id}" aria-pressed="${state.saved.includes(p.id)}" aria-label="찜하기" style="color:${state.saved.includes(p.id) ? 'var(--heart)' : 'inherit'}">${state.saved.includes(p.id) ? ICON.heartFill : ICON.heart}</button>
-      <button class="btn" data-action="candidate-product" data-id="${p.id}">${state.demo ? '내 옷 넣고 비교하기' : '내 옷과 비교하기'}</button>
+      ${noRealCloset
+        ? `<a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기</a>`
+        : `<button class="btn" data-action="candidate-product" data-id="${p.id}">내 옷과 비교하기</button>`}
     </div>
-    <a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>${affiliateNote(p.url)}
+    ${noRealCloset
+      ? `${affiliateNote(p.url)}<button class="btn secondary candidate-compare" data-action="candidate-product" data-id="${p.id}">내 옷 넣고 비교하기 (선택)</button>`
+      : `<a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>${affiliateNote(p.url)}`}
     <button class="btn secondary candidate-compare" data-action="open-offers" data-id="${p.id}">판매처·배송비 포함 총액 비교</button>
     <div class="sheet-links">
       <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
@@ -3976,13 +4055,25 @@ document.addEventListener('click', async (e) => {
       case 'erase-execute':
         await eraseAllWardrobe();
         break;
+      case 'drop-cond':
+        searchDrop = [...new Set([...searchDrop, el.dataset.key])];
+        render();
+        break;
+      case 'undrop-cond':
+        searchDrop = [];
+        render();
+        break;
       case 'clear-q':
         query = '';
+        searchDrop = [];
+        searchFollowUp = null;
         searchAnchorId = null;
         render();
         break;
       case 'example':
         searchAnchorId = null;
+        searchDrop = [];
+        searchFollowUp = null;
         query = el.dataset.q;
         render();
         break;
@@ -5251,8 +5342,13 @@ document.addEventListener('submit', (e) => {
     form.q.blur();
     return;
   }
-  searchAnchorId = null;
-  query = submitted;
+  const follow = followUpQuery(submitted);
+  searchFollowUp = follow ? follow.follow : null;
+  if (!follow) {
+    searchAnchorId = null;
+    searchDrop = [];
+  }
+  query = follow ? follow.query : submitted;
   form.q.blur();
   render();
   window.scrollTo(0, 0);

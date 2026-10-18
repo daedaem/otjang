@@ -5,7 +5,7 @@
 export const BRAND = {
   id: 'base',
   name: '어울',
-  tagline: '내 옷에서 시작하는 스타일',
+  tagline: '한 줄로 찾고, 내 옷과 비교해요',
   // Trusted markup from this file or a theme file, never user input.
   heroTitle: '내 옷과 어울리는<br>다음 한 벌.',
   // Closet tab shows the closet as a room (hung, folded, floor, drawer) with doors that open on entry.
