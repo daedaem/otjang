@@ -401,6 +401,24 @@ function itemCard({ slot, product, reasons, ownership }) {
     ${heartBtn(product)}
   </article>`;
 }
+// 내 옷장(실제 옷만)에 같은 상품이나 같은 종류·색이 있으면 카드와 상세에 같은 문장으로 알린다.
+function ownedFacts(product, slot) {
+  if (state.demo) return null;
+  const same = state.closet.filter((i) => i.productId === product.id && ['user', 'legacy'].includes(i.source));
+  const qc = quickCompare(state, { kind: slot.shape, color: product.colorSource === 'image' ? null : product.color, gender: slot.g });
+  return { same, sameColor: qc.sameColor.filter((i) => !same.includes(i)), otherColor: qc.otherColor, unknownColor: qc.unknownColor };
+}
+function ownedLine(product, slot, where) {
+  const f = ownedFacts(product, slot);
+  if (!f) return '';
+  const kind = GARMENT_KINDS.find((k) => k.id === slot.shape)?.name || shortName(slot);
+  const text = f.same.length ? '옷장에 있는 상품이에요'
+    : f.sameColor.length ? `옷장에 같은 종류·색 ${kind} ${f.sameColor.length}벌`
+    : where === 'sheet' && f.otherColor.length ? `옷장에 ${kind} ${f.otherColor.length}벌 · 색은 달라요`
+    : where === 'sheet' && f.unknownColor.length ? `옷장에 ${kind} ${f.unknownColor.length}벌 · 색 확인 필요`
+    : '';
+  return text ? `<p class="owned-line${where === 'sheet' ? ' notice' : ''}">${esc(text)}</p>` : '';
+}
 function gridCard({ slot, product, reasons, ownership }) {
   return `<article class="card">
     <button data-action="open-item" data-id="${product.id}" style="display:block;width:100%;text-align:left">
@@ -409,6 +427,7 @@ function gridCard({ slot, product, reasons, ownership }) {
       <div class="name">${esc(product.name)}</div>
       <div class="price">${formatPrice(product.price)}</div>
       ${reasons?.[0] ? `<div class="reason">${esc(reasons[0].replace(/^가진 /, state.demo ? '예시 ' : '가진 '))}</div>` : ''}
+      ${ownedLine(product, slot, 'card')}
       ${ownership === 'missing' && !state.demo ? '<p class="fine">등록 안 된 종류 · 이미 가진 옷일 수 있어요</p>' : ''}
     </button>
     ${heartBtn(product)}
@@ -1186,12 +1205,15 @@ function renderCloset() {
   const looks = closetLooks(state, { limit: 100 });
   const ordered = state.demo ? looks.ready : orderByRecentWear(looks.ready, state.wears || [], localDate());
   const ready = ordered.slice(0, 3);
+  // 코디 공식이 없어도 옷 상세와 같은 '가진 옷 기본 조합'을 보여 준다(화면마다 다른 말을 하지 않게).
+  const basics = !ready.length && !state.demo ? basicOutfits(state, { limit: 2 }) : [];
   const almost = looks.almost.slice(0, 3);
   // The notice appears only when recent wear actually changed the order.
   const reordered = ordered.some((r, i) => r.look.id !== looks.ready[i].look.id);
   const today = `<section class="section">
-    <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.demo ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : '가진 옷이 조금 더 있으면 옷장만으로 코디를 짜 드려요'}</div>${reordered ? `<p class="fine">최근 ${WEAR_RECENT_DAYS}일 안에 같은 옷끼리 입었다고 기록한 코디는 뒤로 보냈어요.</p>` : ''}</div>${!state.demo && state.garments.length ? '<button class="link" data-action="wear-open">착용 기록</button>' : ''}</div>
+    <div class="section-head"><div><h2>오늘 뭐 입지?</h2><div class="sub">${ready.length ? (state.demo ? '예시 옷만으로 만든 코디예요' : '가진 옷만으로 만든 코디예요') : basics.length ? '가진 옷으로 바로 입을 수 있는 기본 조합이에요. 스타일 코디 공식은 옷이 더 있으면 찾아 드려요.' : '상의·하의·신발이 한 벌씩 있으면 옷장만으로 코디를 짜 드려요'}</div>${reordered ? `<p class="fine">최근 ${WEAR_RECENT_DAYS}일 안에 같은 옷끼리 입었다고 기록한 코디는 뒤로 보냈어요.</p>` : ''}</div>${!state.demo && state.garments.length ? '<button class="link" data-action="wear-open">착용 기록</button>' : ''}</div>
     ${ready.length ? `<div class="looks">${ready.map((r) => lookCard(r)).join('')}</div>` : ''}
+    ${basics.length ? `<div class="looks">${basics.map((r) => lookCard(r)).join('')}</div>` : ''}
     ${almost.length ? `<h3 class="block">등록한 옷에 후보 한 벌 더하기</h3><div class="looks">${almost.map((r) => lookCard(r)).join('')}</div>` : ''}
   </section>`;
 
@@ -1629,7 +1651,10 @@ function journeySheet(id) {
   if (!j) { toast('구매 기록을 다시 확인해 주세요'); return; }
   if (!journeyForms.has(id)) journeyForms.set(id, { before: JSON.stringify(j), option: j.option, reason: j.reason });
   const form = journeyForms.get(id), c = j.candidate;
-  const comparison = compareCandidate(state, c, { absence: j.absence, intent: j.intent, replacementGarmentId: j.replacementGarmentId });
+  // 받은 뒤 옷장에 연결된 옷은 이 후보 자신이다. 자기 자신과 비교해 "이미 있어요"라고 하지 않는다.
+  const self = ['received', 'kept'].includes(j.stage) && j.garmentId;
+  const others = self ? { ...state, garments: state.garments.filter((g) => g.id !== j.garmentId), closet: state.closet.filter((g) => g.id !== j.garmentId) } : state;
+  const comparison = compareCandidate(others, c, { absence: j.absence, intent: j.intent, replacementGarmentId: j.replacementGarmentId });
   const labels = { candidate: '비교 중', ordered: '직접 기록한 주문', received: '받음 · 보유 미확정', kept: '계속 입는 내 옷', returned: '직접 기록한 반품' };
   const decisionLabels = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const picks = (field, entries) => entries.map(([value, label]) => `<button class="chip" data-action="journey-field" data-id="${esc(id)}" data-field="${field}" data-value="${value}" aria-pressed="${j[field] === value}">${label}</button>`).join('');
@@ -1652,7 +1677,9 @@ function journeySheet(id) {
   const unsureKind = comparison.kindMatch?.unknownColor || [];
   const roughOnly = !comparison.newFormulaCount && comparison.decision.kind === 'hold' && !state.demo &&
     comparison.actualGarmentIds.length && kindName;
-  const verdict = comparison.decision.kind === 'skip' ? '같은 상품이 이미 있어요'
+  const verdict = j.stage === 'kept' ? '계속 입는 내 옷이에요'
+    : j.stage === 'received' ? '받은 옷이에요 · 계속 입을지 정해 주세요'
+    : comparison.decision.kind === 'skip' ? '같은 상품이 이미 있어요'
     : similarHeld.length ? '비슷한 옷이 이미 있어요'
     : firstLook && comparison.newFormulaCount ? `${firstLook.look.title} 코디가 새로 연결돼요`
     : pairContext ? '이 옷 하나로는 새 코디가 생기지 않아요'
@@ -1661,12 +1688,14 @@ function journeySheet(id) {
     : roughOnly && otherKind.length ? `${kindName}${josa(kindName, '은', '는')} 이미 ${otherKind.length}벌 있어요 · 색은 달라요`
     : roughOnly ? `등록한 옷 중 ${kindName}${josa(kindName, '은', '는')} 아직 없어요`
     : '결정 전에 조금 더 확인해요';
+  // 진한 버튼은 판정 방향을 따른다: 이미 있으면 보류, 새 코디가 생기면 구매, 판단 근거가 부족하면 모두 같은 무게.
+  const lean = comparison.decision.kind === 'skip' || similarHeld.length ? 'hold' : comparison.newFormulaCount ? 'buy' : null;
   const similarLine = similarHeld.length ? `<p class="sub similar-held">${similarHeld.slice(0, 3).map((item) =>
     esc(`${COLORS[item.color]?.label || ''} ${garmentLabel(item)}`.trim())).join(', ')}${similarHeld.length > 3 ? ` 외 ${similarHeld.length - 3}벌` : ''} · 같은 종류·색이에요. 새로 더할 이유가 있는지 먼저 확인해 주세요.</p>` : '';
   const roughLine = roughOnly && !similarHeld.length && !pairContext
     ? `<p class="sub">종류·색으로 먼저 비교했어요. 확인 안 된 정보(세부 종류·색)를 채우면 어떤 코디가 생기는지도 알려 드려요.</p>` : '';
 
-  openSheet(`<div class="journey-overview"><div class="journey-product-photo">${candidatePicture(c, 'hero candidate-hero')}</div><div><span class="eyebrow">${labels[j.stage]}</span><p class="brand-name">${esc(c.brand || '')}</p><h2 class="detail-title">${esc(c.name || '가져온 상품')}</h2><p class="sub">${j.decision ? decisionLabels[j.decision] : '가진 옷과 먼저 비교해보세요'}</p>
+  openSheet(`<div class="journey-overview"><div class="journey-product-photo">${candidatePicture(c, 'hero candidate-hero')}</div><div><span class="eyebrow">${labels[j.stage]}</span><p class="brand-name">${esc(c.brand || '')}</p><h2 class="detail-title">${esc(c.name || '가져온 상품')}</h2><p class="sub">${j.decision ? decisionLabels[j.decision] : j.stage === 'candidate' ? verdict : labels[j.stage]}</p>
     <div class="fine">${c.price === null ? '가격 미확인' : `${formatPrice(c.price)} · ${esc(c.checkedAt || '확인 날짜 없음')} ${c.priceSource === 'catalog' ? '수집일' : '직접 입력'} 기준 참고 가격`}</div>
     <p class="fine">고른 옵션의 현재 가격·배송비·품절 여부는 판매처에서 확인해 주세요.</p></div></div>
     <section class="journey-verdict" aria-label="내 옷을 기준으로 비교"><span class="eyebrow">내 옷을 기준으로 비교</span><h3>${esc(verdict)}</h3>
@@ -1694,8 +1723,8 @@ function journeySheet(id) {
     <label for="journey-reason">판단·착용·반품 이유 (선택)</label><input id="journey-reason" data-journey="${esc(id)}" maxlength="500" value="${esc(form.reason)}" placeholder="예: 같은 용도의 재킷이 있어 보류">
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
 
-    <a class="btn${j.decision === 'buy' ? ' secondary' : ''} candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}
-    <button class="btn secondary candidate-compare" data-action="open-offers" data-journey="${esc(id)}">판매처·배송비 포함 총액 비교</button>
+    ${j.decision === 'buy' && j.stage === 'candidate' ? '' : `<a class="btn secondary candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}`}
+    ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="open-offers" data-journey="${esc(id)}">판매처·배송비 포함 총액 비교</button>` : ''}
     <p class="fine">판매처 방문은 구매로 기록하지 않아요. 실제 결제·배송·반품은 판매처에서 처리해요.</p>
     ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="ordered">직접 주문했다고 기록</button>` : ''}
     ${j.stage === 'ordered' ? `<button class="btn candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="received">받았어요</button>` : ''}
@@ -1711,7 +1740,7 @@ function journeySheet(id) {
     ${c.productId ? `<button class="link candidate-compare" data-action="journey-hide-product" data-id="${esc(id)}">${state.hidden.includes(c.productId) ? '이 상품 다시 추천받기' : '이 상품 다시 추천하지 않기'}</button>` : ''}
     <button class="chip candidate-compare" data-action="journey-fork" data-id="${esc(id)}">다른 사이즈·옵션 하나 더 기록</button>${j.forkedFrom && state.journeys.some((row) => row.id === j.forkedFrom) ? `<button class="link candidate-compare" data-action="open-journey" data-id="${esc(j.forkedFrom)}">처음 비교한 상품 기록으로 돌아가기</button>` : ''}
     <p class="fine">이 여정은 상품·옵션 한 개의 기록이에요. 여러 사이즈를 샀다면 각각 가져와 기록해 주세요. 구매와 반품은 판매처가 확인한 주문 데이터가 아닌 사용자 기록이에요.</p></details>
-    ${j.stage === 'candidate' ? `<div class="purchase-decisions" aria-label="내 구매 판단 기록">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${!j.decision && action === 'buy' ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}" aria-pressed="${j.decision === action}">${BRAND.stamps ? `<span class="stamp-word">${esc(BRAND.stamps[action])}</span> ` : ''}${j.decision === action ? `${decisionLabels[action]} ✓` : label}</button>`).join('')}${j.decision === 'buy' ? `<div class="fine"><a class="btn" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}</div>` : ''}<p class="fine" role="status">${j.decision ? `<strong>현재 기록: ${decisionLabels[j.decision]} · 저장됨</strong><br>` : untouchedComparisons.has(id) ? '고르면 구매 여정에 남아요. 그냥 닫으면 기록하지 않아요. ' : '판단만 기록해요. '}주문·결제는 실행하지 않아요.</p></div>` : ''}`, { key: `journey:${id}` });
+    ${j.stage === 'candidate' ? `<div class="purchase-decisions" aria-label="내 구매 판단 기록">${[['buy','사기로 할게요'],['hold','보류할게요'],['skip','안 살게요']].map(([action,label]) => `<button class="btn ${!j.decision && action === lean ? '' : 'secondary'}" data-action="journey-action" data-id="${esc(id)}" data-step="${action}" aria-pressed="${j.decision === action}">${BRAND.stamps ? `<span class="stamp-word">${esc(BRAND.stamps[action])}</span> ` : ''}${j.decision === action ? `${decisionLabels[action]} ✓` : label}</button>`).join('')}${j.decision === 'buy' ? `<div class="fine"><a class="btn" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}</div>` : ''}<p class="fine" role="status">${j.decision ? `<strong>현재 기록: ${decisionLabels[j.decision]} · 저장됨</strong><br>` : untouchedComparisons.has(id) ? '고르면 구매 여정에 남아요. 그냥 닫으면 기록하지 않아요. ' : '판단만 기록해요. '}주문·결제는 실행하지 않아요.</p></div>` : ''}`, { key: `journey:${id}` });
 }
 function pendingJourneyForm(id, journey) {
   const form = journeyForms.get(id);
@@ -1955,7 +1984,7 @@ function itemSheet(id) {
     <h2 class="detail-title">${esc(p.name)}</h2>
     <div class="detail-price">${formatPrice(p.price)}${stars(p)}</div>
     <div class="fine">${esc(p.store)} 판매가 · ${esc(p.checkedAt)} 확인${p.color ? ` · ${COLORS[p.color]?.label || ''} (${p.colorSource === 'image' ? '상품 사진 추정' : '상품명·편집 분류'})` : ''}</div>
-    ${!state.demo && !owned && !needsCheck ? '<p class="notice">등록한 옷 기준의 구매 후보예요. 실제로 없는 옷인지 먼저 확인해 주세요.</p>' : ''}
+    ${ownedLine(p, slot, 'sheet') || (!state.demo && !owned && !needsCheck ? '<p class="notice">등록한 옷 기준의 구매 후보예요. 같은 종류는 아직 등록하지 않았어요. 실제로 없는 옷인지 먼저 확인해 주세요.</p>' : '')}
     ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
     ${productRecordLine(productRecord(state, p.id))}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>

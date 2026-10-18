@@ -341,7 +341,8 @@ const CAT_LIMIT = { acc: 1 };
 export function recommendItems(state, { limit = 8 } = {}) {
   const c = ctx(state);
   const looks = matchingLooks(c);
-  const purchaseExcludedSlots = new Set([...c.ownedSlots, ...c.pendingSlots, ...c.ownershipCheckSlots]);
+  const purchaseExcludedSlots = new Set([...c.ownedSlots, ...c.pendingSlots, ...c.ownershipCheckSlots,
+    ...c.closet.filter((i) => realOwned(i) && i.slot).flatMap((i) => nearSame(i.slot))]);
   const ranked = SLOTS.filter((s) => s.g === c.gender && !purchaseExcludedSlots.has(s.id))
     .map((slot) => ({ slot, ...scoreSlot(slot, c, looks) }))
     .filter((r) => r.inSeason && r.score > 3)
@@ -376,6 +377,11 @@ export function recommendItems(state, { limit = 8 } = {}) {
   }
   return out;
 }
+
+// 세부 종류만 다르고 사실상 같은 옷(예: 생지 데님과 워시드 데님). 하나를 가졌으면 다른 하나를 사라고 하지 않고 가진 옷으로 채운다.
+const NEAR_SAME = [['m-denim', 'm-denim-raw']];
+const nearSame = (slotId) => NEAR_SAME.find((group) => group.includes(slotId))?.filter((id) => id !== slotId) || [];
+const realOwned = (i) => ['user', 'legacy'].includes(i.source) && !String(i.id).startsWith('demo_');
 
 // 코디 공식의 역할을 가진 옷과 상품으로 채운다
 // ownedOnly: 가진 옷만으로, maxBuy: 새로 살 아이템 수 한도.
@@ -475,6 +481,15 @@ export function fillLook(
         certainty: garmentSlotStatus(best, SLOT_BY_ID[best.matchedSlot]),
       });
       used.add(best.id);
+      continue;
+    }
+    // 비슷한 세부 종류를 가졌으면 그 옷으로 채운다(같은 옷을 또 사라고 하지 않는다).
+    const twin = c.closet.find((i) => !used.has(i.id) && realOwned(i) && i.slot &&
+      candidates.some((id) => nearSame(id).includes(i.slot)) &&
+      (!ownedOnly || garmentSlotStatus(i, SLOT_BY_ID[i.slot]) === 'confirmed'));
+    if (twin) {
+      items.push({ role, slot: SLOT_BY_ID[twin.slot], owned: true, item: twin, color: twin.color, certainty: garmentSlotStatus(twin, SLOT_BY_ID[twin.slot]) });
+      used.add(twin.id);
       continue;
     }
     if (!inSeason.length) continue; // 이 계절엔 필요 없는 역할(예: 여름 아우터)

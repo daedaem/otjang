@@ -466,7 +466,11 @@ test('buy and hold clicks show the durably saved decision and never show a rejec
     } else assert.doesNotMatch(footer, /<a\b/);
   };
   for (const step of ['buy', 'hold', 'skip']) assert.match(button(page, step), /aria-pressed="false"/);
-  assert.doesNotMatch(button(page, 'buy'), /class="[^"]*\bsecondary\b/, 'buy remains the initial primary action without claiming it is selected');
+  // The initial emphasis follows the verdict: buy only when a new outfit appears, hold when it is a duplicate, none otherwise.
+  const sheetHtml = page.nodes.get('sheet-root').innerHTML;
+  const lean = /이미 있어요/.test(sheetHtml.split('journey-verdict')[1] || '') ? 'hold' : /코디가 새로 연결돼요/.test(sheetHtml) ? 'buy' : null;
+  for (const step of ['buy', 'hold', 'skip'])
+    assert.equal(/class="[^"]*\bsecondary\b/.test(button(page, step)), step !== lean, `${step} emphasis follows the verdict`);
   assert.doesNotMatch(page.nodes.get('sheet-root').innerHTML, /현재 기록:.*저장됨/);
 
   await page.click({ action: 'journey-action', id: journey.id, step: 'buy' });
@@ -474,9 +478,8 @@ test('buy and hold clicks show the durably saved decision and never show a rejec
   assert.equal(bought.state.journeys.find((row) => row.id === journey.id).decision, 'buy');
   assertDecision(page, 'buy', '사기로 함');
   const sellerLinks = (page.nodes.get('sheet-root').innerHTML.match(/<a\b[^>]*>원래 판매처에서 확인/g) || []);
-  assert.equal(sellerLinks.length, 2);
-  assert.match(sellerLinks[0], /class="btn secondary candidate-compare"/, 'the body seller link yields priority to the sticky footer after choosing buy');
-  assert.match(sellerLinks[1], /class="btn"/);
+  assert.equal(sellerLinks.length, 1, 'after choosing buy the seller link appears once, in the sticky footer');
+  assert.match(sellerLinks[0], /class="btn"/);
 
   await withMetadataQuota(() => page.click({ action: 'journey-action', id: journey.id, step: 'hold' }));
   const rejected = await stored(page);
