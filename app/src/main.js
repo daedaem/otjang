@@ -26,6 +26,7 @@ import {
   meetsCriteria,
   criteriaLine,
   productCriteria,
+  productReasons,
 } from './engine.js';
 import { silhouetteSvg, ICON } from './icons.js';
 import { zipStore, unzipSingle } from './zip-store.js';
@@ -420,7 +421,11 @@ function ownedLine(product, slot, where) {
     : '';
   return text ? `<p class="owned-line${where === 'sheet' ? ' notice' : ''}">${esc(text)}</p>` : '';
 }
-function gridCard({ slot, product, reasons, ownership }) {
+function gridCard({ slot, product, reasons, ownership, traitLine }) {
+  // 두 번째 줄은 이 상품의 상품명에서 읽은 것(핏·소재·기장)이다. 종류 고정 문구가 아니다.
+  const fixed = productReasons(product, slot, reasons || []);
+  reasons = fixed.reasons;
+  traitLine = traitLine ?? fixed.traitLine;
   return `<article class="card">
     <button data-action="open-item" data-id="${product.id}" style="display:block;width:100%;text-align:left">
       ${picture(product, slot)}
@@ -428,6 +433,7 @@ function gridCard({ slot, product, reasons, ownership }) {
       <div class="name">${esc(product.name)}</div>
       <div class="price">${formatPrice(product.price)}</div>
       ${reasons?.[0] ? `<div class="reason">${esc(reasons[0].replace(/^가진 /, state.demo ? '예시 ' : '가진 '))}</div>` : ''}
+      ${traitLine && traitLine !== reasons?.[0] ? `<div class="reason trait">${esc(traitLine)}</div>` : ''}
       ${ownedLine(product, slot, 'card')}
       ${ownership === 'missing' && !state.demo ? '<p class="fine">등록 안 된 종류 · 이미 가진 옷일 수 있어요</p>' : ''}
     </button>
@@ -2021,8 +2027,8 @@ function itemSheet(id) {
     ${needsCheck ? `<p class="notice">비슷한 종류의 내 옷이 있어요. ${esc(shortName(slot))}인지 확인한 뒤 추가 구매를 판단해 주세요.</p>` : ''}
     ${productRecordLine(productRecord(state, p.id))}
     <div class="why"><h3>종류·스타일 규칙에 따른 추천</h3><ul>
-      ${[...new Set([slot.why, ...reasons])]
-        .slice(0, 3)
+      ${(() => { const f = productReasons(p, slot, [slot.why, ...reasons]); return [...new Set([...(f.traitLine ? [f.traitLine] : []), ...f.reasons])]; })()
+        .slice(0, 4)
         .map((r) => `<li>${esc(r.replace(/^가진 /, state.demo ? '예시 ' : '가진 '))}</li>`)
         .join('')}
       <li>이렇게 입어요: ${esc(slot.tip)}</li><li>평점·후기·좋아요는 인기 기준입니다. 실제 색·사이즈·핏을 보장하지 않아요.</li>

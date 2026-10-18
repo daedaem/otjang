@@ -80,3 +80,49 @@ export function productEligible(product) {
 export function evidenceColor(product) {
   return product.colorSource === 'image' ? null : product.color;
 }
+
+// 상품명에서 읽을 수 있는 것만 읽는다(핏·소재·기장·소매·기능성 표기). 상품명에 없는 속성은 만들지 않는다.
+// 결과는 "상품명 기준" 근거 줄에 쓰고, 종류별 고정 설명과 어긋날 때(짧은 코트 자리의 롱 코트) 고정 설명을 대신한다.
+const TRAITS = [
+  ['fit', /오버사이즈|오버\s*핏|over\s*size/i, '오버사이즈'],
+  ['fit', /릴렉스드?|relax/i, '릴렉스 핏'],
+  ['fit', /와이드|wide/i, '와이드'],
+  ['fit', /슬림|slim/i, '슬림'],
+  ['length', /크롭|crop/i, '크롭'],
+  ['length', /(^|[\s\[(])(롱|로브)(?![\s]*슬리브)|long(?!\s*sleeve)|maxi|맥시/i, '롱'],
+  ['length', /하프\s*(코트|팬츠)|half/i, '하프'],
+  ['length', /(^|[\s\[(])숏(?!\s*슬리브)|short(?!\s*sleeve)|미니(?!멀)/i, '숏'],
+  ['sleeve', /반팔|숏\s*슬리브|short\s*sleeve|half\s*sleeve/i, '반팔'],
+  ['sleeve', /긴팔|롱\s*슬리브|long\s*sleeve/i, '긴팔'],
+  ['material', /캐시미어|cashmere/i, '캐시미어'],
+  ['material', /알파카/i, '알파카'],
+  ['material', /램스울|메리노|울\s*블렌드|울\s*라이크|(^|[\s\[(])울(?=\s|$|[\])])|wool/i, '울'],
+  ['material', /린넨|리넨|linen/i, '린넨'],
+  ['material', /코듀로이|corduroy/i, '코듀로이'],
+  ['material', /플란넬|flannel/i, '플란넬'],
+  ['material', /스웨이드|suede/i, '스웨이드'],
+  ['material', /레더|가죽|leather/i, '레더'],
+  ['material', /데님|denim/i, '데님'],
+  ['material', /코튼|cotton|면/i, '코튼'],
+  ['material', /헤비웨이트|heavy/i, '헤비웨이트'],
+  ['material', /테리|terry/i, '테리'],
+  ['functional', /러닝|running|안정화|트레일|trail|키높이|고어텍스|gore/i, '기능성 표기'],
+];
+export function productTraits(product) {
+  const name = product?.name || '';
+  const seen = new Set();
+  const out = [];
+  for (const [kind, re, label] of TRAITS) {
+    if (seen.has(kind) && kind !== 'material') continue;
+    if (!re.test(name)) continue;
+    seen.add(kind);
+    out.push({ kind, label });
+  }
+  return out;
+}
+// 종류별 고정 설명이 이 상품에 틀리는지(기장만 본다: 짧은 코트 자리에 롱 코트, 긴 기장 설명에 숏 상품).
+export function whyConflicts(why, traits) {
+  const len = traits.find((t) => t.kind === 'length')?.label;
+  if (!len || !why) return false;
+  return (len === '롱' && /짧|숏|크롭/.test(why)) || ((len === '숏' || len === '크롭') && /롱|긴 기장/.test(why));
+}

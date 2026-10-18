@@ -176,6 +176,8 @@ export function wardrobePlan(state, { gapLimit = 3, productsPerGap = 3 } = {}) {
       const key = buys.map((slot) => slot.id).sort().join('+');
       if (seen.has(key) || buys.some((slot) => seen.has(slot.id))) continue;
       seen.add(key);
+      // 두 조합이 같은 종류(같은 상품)를 또 권하지 않는다. 상품 하나가 두 조합에 걸리면 비교 화면이 어느 조합인지 모호해진다.
+      buys.forEach((slot) => seen.add(slot.id));
       pairs.push({
         slots: buys,
         look: { title: look.title, note: look.note,

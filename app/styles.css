@@ -872,3 +872,4 @@ h1, h2, h3, h4, .detail-title { text-wrap: balance; }
 .ask .ask-go { flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--radius-xs); background: var(--ink); color: var(--bg); font: inherit; font-weight: 700; cursor: pointer; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; }
 .card .owned-line { font-size: var(--text-caption); padding-top: 4px; color: var(--ink-2); font-weight: 600; }
+.card .reason.trait { color: var(--ink-3, var(--ink-2)); font-weight: 400; }

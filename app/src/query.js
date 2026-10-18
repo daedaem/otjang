@@ -392,6 +392,7 @@ export function parseQuery(raw = '', { brands = [] } = {}) {
     brand,
     slotNamed: targets.length > 0,
     targetLabels: targets.map((t) => t.label),
+    anchorLabels: anchors.map((a) => a.label),
     anchorMatch: (slot) => anchors.some((a) => a.fn(slot)),
     targetMatch: (slot) => targets.some((t) => t.fn(slot)),
   };

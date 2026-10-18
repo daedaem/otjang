@@ -6,7 +6,7 @@ import { LOOKS, ROLE_ORDER } from './data/looks.js';
 import { PRODUCTS } from './data/products.js';
 import { parseQuery } from './query.js';
 import { garmentMatchesSlot, garmentLabel, garmentSlotStatus, wardrobeSlotStatus, slotForItem } from './wardrobe.js';
-import { productEligible, evidenceColor } from './catalog-policy.js';
+import { productEligible, evidenceColor, productTraits, whyConflicts } from './catalog-policy.js';
 import { inactivePurchaseGarmentIds } from './purchase-journey.js';
 export const SAFE_PRODUCTS = PRODUCTS.filter(productEligible);
 
@@ -181,7 +181,16 @@ export function productsFor(
         (!brandOnly || brands.has(p.brand)) &&
         (!season || season === 'summer' || !p.summer),
     )
-    .sort((a, b) => brands.has(b.brand) - brands.has(a.brand) || quality(b) - quality(a) || a.price - b.price);
+    .sort((a, b) => brands.has(b.brand) - brands.has(a.brand) || functional(a) - functional(b) || quality(b) - quality(a) || a.price - b.price);
+}
+// 러닝 안정화·키높이처럼 기능성 표기가 있는 상품은 스타일 추천에서 뒤로 보낸다(제외하지는 않는다).
+const functional = (p) => (productTraits(p).some((t) => t.kind === 'functional') ? 1 : 0);
+// 카드 이유: 종류 고정 설명이 상품명과 어긋나면(짧은 코트 자리의 롱 코트) 상품명 기준 줄로 바꾼다.
+export function productReasons(product, slot, reasons) {
+  const traits = productTraits(product);
+  const traitLine = traits.length ? `상품명 기준: ${traits.map((t) => t.label).join(' · ')}` : '';
+  const fixed = reasons.map((r) => (r === slot.why && whyConflicts(slot.why, traits) ? traitLine : r)).filter(Boolean);
+  return { reasons: [...new Set(fixed)], traitLine, traits };
 }
 
 // 상품명에 편하게 입는 표기가 있으면 1, 뻣뻣하다는 표기면 -1. 착용감을 보장하지 않는다.
@@ -523,7 +532,8 @@ export function fillLook(
       if (!explicitlyRequested && (c.pendingSlots?.has(id) || c.ownershipCheckSlots?.has(id))) return;
       for (const p of productsFor(id, productOpts(c)).slice(0, 10)) {
         const s =
-          quality(p) / 5 +
+          quality(p) / 5 -
+          functional(p) * 2 +
           (r.c.includes(evidenceColor(p)) ? 1.5 : 0) +
           harmony([...current, { color: evidenceColor(p), cat: SLOT_BY_ID[id].cat }], { tonal }) +
           (c.brands.has(p.brand) ? 2 : 0) -
@@ -800,7 +810,7 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
     if (anchors.length) {
       const a = anchorItem
         ? garmentLabel(anchorItem)
-        : `${q.anchorColor ? `${COLORS[q.anchorColor]?.label || q.anchorColor} ` : ''}${shortName(anchors[0])}`;
+        : `${q.anchorColor ? `${COLORS[q.anchorColor]?.label || q.anchorColor} ` : ''}${anchorProduct ? shortName(SLOT_BY_ID[anchorProduct.slot]) : q.anchorLabels[0] || shortName(anchors[0])}`;
       reasons = [`${a}${josa(a, '과', '와')} 잘 어울려요`, ...base.reasons.filter((r) => !r.startsWith('가진 '))].slice(
         0,
         2,
@@ -824,7 +834,8 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
     const selected = q.priceSort ? products : products.slice(0, q.brand ? 6 : 3);
     selected.forEach((product, i) => {
       const easy = q.comfort ? comfortMark(product) : 0;
-      results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3 + easy * 2, reasons, offOccasion });
+      const fixed = productReasons(product, slot, reasons);
+      results.push({ slot, product, score: score - i * 1.2 + quality(product) * 0.3 + easy * 2 - functional(product) * 3, reasons: fixed.reasons, traitLine: fixed.traitLine, offOccasion });
     });
   }
   results.sort(
