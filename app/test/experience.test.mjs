@@ -1430,3 +1430,13 @@ test('a picked basic may keep its color unknown and one garment is enough to sta
   assert.equal(item.color, null);
   assert.match(page.nodes.get('sheet-root').innerHTML, /색을 고르면/);
 });
+
+test('on the example closet, comparing a product opens registration that remembers the product to come back to', async () => {
+  const page = await boot();
+  assert.equal(page.state().demo, true);
+  const product = page.app.recommendItems(page.app.state())[0].product;
+  await page.click({ action: 'candidate-product', id: product.id });
+  assert.equal(page.app.draft()?.returnProductId, product.id);
+  assert.match(page.nodes.get('sheet-root').innerHTML, /이 상품과 비교하려면 실제 옷을 한 벌만 넣으면 돼요/);
+  assert.ok(page.nodes.get('sheet-root').innerHTML.includes(product.name.replace(/&/g, '&amp;')), 'the product being compared stays visible');
+});

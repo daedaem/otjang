@@ -1349,7 +1349,8 @@ async function compareCatalogProduct(productId) {
   if (writeBusy || candidateDraft?.saving) return false;
   const product = PRODUCT_BY_ID[productId];
   if (!product) { toast('상품 정보를 다시 확인해 주세요'); return false; }
-  if (state.demo) { beginDraft(); addSheet(); return true; }
+  // 예시 옷장이면 실제 옷을 한 벌 넣게 하고, 저장되면 보던 이 상품의 비교로 돌아온다(상품을 잃지 않는다).
+  if (state.demo) { beginDraft(); draft.returnProductId = productId; addSheet(); return true; }
   let candidate;
   try { candidate = candidateFromProduct(product); }
   catch (error) { toast(error.message); return false; }
@@ -1733,7 +1734,9 @@ function journeySheet(id) {
     ${pairContext ? `<p class="sub">${esc(shortName(pairContext.companionSlot))}${josa(shortName(pairContext.companionSlot), '을', '를')} 함께 더해야 ${esc(pairContext.pair.look.title)} 조합이 돼요. ${pairContext.pair.usesOwned.length}벌의 내 옷에 두 종류를 함께 더하는 코디 공식이에요.</p>` : ''}
     ${firstLook && comparison.newFormulaCount ? `<p class="sub">등록한 옷 기준으로 새 코디 공식 ${comparison.newFormulaCount}개. 실제 핏·사이즈는 별도 확인이 필요해요.</p>` : ''}
     ${ownershipCheck ? `<p class="sub">${firstLook ? '어울리는 조합은 찾았어요. ' : ''}구매가 필요한지는 가진 옷을 한 번 더 확인해요.</p>` : ''}
-    ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>` : ''}</section>
+    ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul>` : ''}
+    ${firstLook && comparison.newFormulaCount && j.stage === 'candidate' ? `<p class="fine">${esc(firstLook.look.title)} · 내 옷과 이 후보</p>${candidateLookRows(firstLook, c)}` : ''}
+</section>
     ${themeVerdict(comparison, c)}
     ${j.stage === 'candidate' && (needsOwnership || j.absence !== 'unknown') ? `<section class="journey-quick-check"><h3>${esc(questionKind)}${josa(questionKind, '이', '가')} 이미 있나요?</h3><div class="opts">${picks('absence', [['absent','없어요'],['present','있어요'],['unknown','아직 모름']]).replace('data-value="unknown" aria-pressed="true"', 'data-value="unknown" aria-pressed="false"')}</div>${j.absence === 'present' ? `<p class="sub">추가 구매인지 교체할 옷인지 아래에서 비교해 보세요.</p><button class="chip" data-action="journey-add-own" data-id="${esc(id)}">가진 옷 간단히 추가</button>` : ''}</section>` : ''}
     ${pairContext ? `<section class="journey-pair" aria-label="함께 필요한 다른 한 벌">${picture(pairContext.companion.product, pairContext.companionSlot)}<div><span class="eyebrow">함께 더할 한 벌</span><p class="brand-name">${esc(pairContext.companion.product.brand)}</p><b>${esc(pairContext.companion.product.name)}</b><p class="fine">${formatPrice(pairContext.companion.price.amount)} · ${esc(pairContext.companion.price.collectedOn)} 수집</p><button class="link" data-action="candidate-product" data-id="${esc(pairContext.companion.product.id)}">이 상품도 내 옷과 비교 ${ICON.arrow}</button>${!pairContext.selected.colorConfirmed || !pairContext.companion.colorConfirmed ? '<p class="fine">사진에서 추정한 상품 색은 확인이 필요해요.</p>' : ''}</div></section>` : ''}
@@ -1754,7 +1757,7 @@ function journeySheet(id) {
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
 
     ${j.decision === 'buy' && j.stage === 'candidate' ? '' : `<a class="btn secondary candidate-compare" href="${esc(c.originalUrl || c.url)}" target="_blank" rel="noopener noreferrer">원래 판매처에서 확인 ${ICON.arrow}</a>${affiliateNote(c.originalUrl || c.url)}`}
-    ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="open-offers" data-journey="${esc(id)}">판매처·배송비 포함 총액 비교</button>` : ''}
+    ${j.stage === 'candidate' ? `<button class="link candidate-compare" data-action="open-offers" data-journey="${esc(id)}">다른 판매처 가격 직접 기록·비교</button><p class="fine">지금 연결된 판매처는 ${esc(CATALOG.store)} 1곳이고 가격은 수집일 기준이에요. 다른 판매처 가격은 직접 적어야 비교돼요.</p>` : ''}
     <p class="fine">판매처 방문은 구매로 기록하지 않아요. 실제 결제·배송·반품은 판매처에서 처리해요.</p>
     ${j.stage === 'candidate' ? `<button class="btn secondary candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="ordered">직접 주문했다고 기록</button>` : ''}
     ${j.stage === 'ordered' ? `<button class="btn candidate-compare" data-action="journey-action" data-id="${esc(id)}" data-step="received">받았어요</button>` : ''}
@@ -2047,7 +2050,7 @@ function itemSheet(id) {
     ${noRealCloset
       ? `${affiliateNote(p.url)}<button class="btn secondary candidate-compare" data-action="candidate-product" data-id="${p.id}">내 옷 넣고 비교하기 (선택)</button>`
       : `<a class="btn secondary candidate-compare" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.store)}에서 보기 ${ICON.arrow}</a>${affiliateNote(p.url)}`}
-    <button class="btn secondary candidate-compare" data-action="open-offers" data-id="${p.id}">판매처·배송비 포함 총액 비교</button>
+    <button class="link candidate-compare" data-action="open-offers" data-id="${p.id}">다른 판매처 가격 직접 기록·비교</button>
     <div class="sheet-links">
       <button class="link" data-action="own-product" data-id="${p.id}">${owned ? '보유 옷 확인·추가' : '이 상품 있어요'}</button>
       <button class="link" data-action="add-slot" data-slot="${slot.id}">비슷한 옷이 있어요</button>
@@ -2799,7 +2802,9 @@ function addSheet() {
   const quickKinds = `<fieldset><legend>사진과 같은 종류를 골라주세요</legend><p class="sub">아래 사진은 종류를 고르는 참고용이에요.</p><div class="kind-grid quick-kinds">${quickSlots.map((slot) => `<button class="kind-pick" data-action="draft-quick-slot" data-slot="${slot.id}">${typePicture(slot)}<span>${esc(shortName(slot))}</span></button>`).join('')}</div><details class="manual-kinds"><summary>다른 종류 · 아직 잘 모르겠어요</summary>${manualKinds}</details></fieldset>`;
   const sourceChoices = `<div class="photo-sources"><button class="photo-source primary" data-action="add-photo">${ICON.image || ICON.camera}<b>앨범에서 선택</b><span>여러 장도 한 번에</span></button><button class="photo-source" data-action="add-camera">${ICON.camera}<b>카메라로 촬영</b><span>옷 한 벌을 크게</span></button></div><button class="link manual-entry" data-action="draft-manual">사진 없이 종류로 추가</button>`;
   const analysisActive = draft.recognizing || draft.photoRecognition || draft.recognitionError || draft.photoReview;
-  openSheet(`<div class="garment-editor wardrobe-registration"><h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2>${photoQueueBar()}<p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p>${!draft.before ? `<ol class="registration-progress" aria-label="등록 순서"><li${entry ? ' aria-current="step"' : ''}>1 사진 선택</li><li${!entry ? ' aria-current="step"' : ''}>2 정보 확인</li><li>3 옷장에 저장</li></ol>` : ''}<fieldset${draft.saving ? ' disabled' : ''}>
+  const back = draft.returnProductId ? PRODUCT_BY_ID[draft.returnProductId] : null;
+  const returnStrip = back ? `<div class="notice return-strip">${picture(back, SLOT_BY_ID[back.slot])}<div><b>${esc(back.name)}</b><p>이 상품과 비교하려면 실제 옷을 한 벌만 넣으면 돼요. 저장하면 비교로 돌아가요.</p></div></div>` : '';
+  openSheet(`<div class="garment-editor wardrobe-registration">${returnStrip}<h2 class="detail-title">${draft.before ? '내 옷 수정' : '옷 한 벌 추가'}</h2>${photoQueueBar()}<p class="sub">${entry ? '사진부터 골라 주세요. 브랜드·이름은 나중에 넣어도 돼요.' : '종류 하나만 확인하면 옷장에 넣을 수 있어요.'}</p>${!draft.before ? `<ol class="registration-progress" aria-label="등록 순서"><li${entry ? ' aria-current="step"' : ''}>1 사진 선택</li><li${!entry ? ' aria-current="step"' : ''}>2 정보 확인</li><li>3 옷장에 저장</li></ol>` : ''}<fieldset${draft.saving ? ' disabled' : ''}>
   ${entry ? `<div class="registration-entry">${sourceChoices}<p class="fine">JPG·PNG·WebP·HEIC(아이폰) 사진을 사용할 수 있어요.</p><button class="link" data-action="owned-catalog-start">상품 목록에서 찾아 추가</button></div>` : `${`<div class="photo-editor${photo ? ' has-photo' : ''}">${photo ? `<img class="photo-preview" src="${photo}" alt="내 옷 사진${draft.crop ? ' (자른 영역)' : ''}">` : '<div class="photo-empty">사진은 선택</div>'}<details class="photo-tools"><summary>사진 고치기</summary><div class="photo-edit-actions">${photo ? `<button class="chip" data-action="crop-start"${draft.processing || draft.bgRunning ? ' disabled' : ''}>${draft.crop ? '자른 영역 다시 조정' : '옷만 자르기'}</button>${draft.bgBefore ? '<button class="chip" data-action="bg-restore">원래 배경으로</button>' : `<button class="chip" data-action="bg-remove"${draft.processing || draft.bgRunning ? ' disabled' : ''}>${draft.bgRunning ? '배경 지우는 중…' : '배경 지우기'}</button>`}` : ''}<button class="chip" data-action="add-photo">${photo ? '사진 바꾸기' : '앨범에서 선택'}</button>${photo ? '<button class="link" data-action="clear-photo">사진 빼기</button>' : '<button class="chip" data-action="add-camera">카메라로 촬영</button>'}</div></details></div>`}<button class="link" data-action="owned-catalog-start">브랜드·상품을 찾아 확인</button>
   ${draft.photoMissing ? '<p class="notice">이전 버전에서 저장되지 않은 사진이에요. 다시 고를 수 있어요.</p>' : ''}
   ${backgroundPanel()}
@@ -2921,7 +2926,7 @@ async function saveGarmentDraft() {
     closetReviewOnly = reviewLeft > 0;
     closetSort = 'recent';
     render();
-    const queue = photoQueue && !current.before && !current.returnJourneyId && !current.returnLookId ? photoQueue : null;
+    const queue = photoQueue && !current.before && !current.returnJourneyId && !current.returnLookId && !current.returnProductId ? photoQueue : null;
     if (queue) {
       queue.savedIds.push(item.id);
       if (queue.files.length) {
@@ -2933,6 +2938,11 @@ async function saveGarmentDraft() {
     }
     closeSheet();
     askPersistenceOnce();
+    if (current.returnProductId && PRODUCT_BY_ID[current.returnProductId]) {
+      toast('내 옷을 저장했어요 · 보던 상품과 비교해요');
+      await compareCatalogProduct(current.returnProductId);
+      return;
+    }
     if (current.returnJourneyId) {
       journeyForms.delete(current.returnJourneyId);
       journeySheet(current.returnJourneyId);
@@ -4487,10 +4497,14 @@ document.addEventListener('click', async (e) => {
       case 'open-own':
         ownSheet(el.dataset.id);
         break;
-      case 'close-sheet':
+      case 'close-sheet': {
+        // 판정 화면에서 연 하위 시트(판매처 가격)는 닫으면 판정 화면으로 돌아간다.
+        const backTo = sheetKey?.startsWith('offers:') && offerView?.journeyId && state.journeys.some((row) => row.id === offerView.journeyId) ? offerView.journeyId : null;
         closeSheet();
+        if (backTo) { journeySheet(backTo); break; }
         await closeComparison();
         break;
+      }
       case 'save': {
         e.stopPropagation();
         const id = el.dataset.id,

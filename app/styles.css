@@ -873,3 +873,6 @@ h1, h2, h3, h4, .detail-title { text-wrap: balance; }
 .ask-examples { display: flex; flex-wrap: wrap; gap: 6px; }
 .card .owned-line { font-size: var(--text-caption); padding-top: 4px; color: var(--ink-2); font-weight: 600; }
 .card .reason.trait { color: var(--ink-3, var(--ink-2)); font-weight: 400; }
+.return-strip { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.return-strip img, .return-strip .swatch { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; flex: none; }
+.return-strip p { margin: 2px 0 0; font-size: var(--text-caption); }
