@@ -72,6 +72,24 @@ const data = (name = '합성 시험 셔츠') => ({ format: 'eoul-orders', versio
   brand: '검증용 브랜드', option: 'M', orderDate: '2024-05-12', status: 'returned', quantity: 1, amount: 12300,
 }] });
 
+test('experimental order import is labelled at both entry points and throughout review', async (t) => {
+  const page = await boot(); t.after(() => page.close());
+  for (const tab of ['closet', 'saved']) {
+    await page.click({ action: 'tab', tab });
+    assert.match(page.nodes.get('app').innerHTML, /data-action="order-import-open">구매내역 가져오기 · 시험 중<\/button>/);
+  }
+  await page.click({ action: 'order-import-open' });
+  const assertTrial = () => {
+    assert.match(page.sheet(), /<h2\b[^>]*>구매내역 가져오기 · 시험 중<\/h2>/);
+    assert.match(page.sheet(), /실제 무신사 주문내역 읽기와 Windows 실행은 아직 검증하지 않았어요/);
+    assert.match(page.sheet(), /모바일 자동 연동은 지원하지 않아요/);
+  };
+  assertTrial();
+  page.app.reviewOrderImport(JSON.stringify(data()));
+  assertTrial();
+  assert.match(page.sheet(), /선택한 1개 장부에 추가/);
+});
+
 test('review and cancellation do not write; selected orders save once and survive reload', async (t) => {
   let page = await boot(); t.after(() => page.close());
   const initial = await page.app.store.read();

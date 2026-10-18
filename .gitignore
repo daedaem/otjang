@@ -33,6 +33,7 @@ shots/
 # Self-hosted server data (accounts, wardrobes, photos)
 /server/data/
 /server/data-try/
+/server/data-phone-20261019/
 *.db
 *.db-shm
 *.db-wal

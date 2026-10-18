@@ -1172,7 +1172,7 @@ function renderCloset() {
   if (closetFilter !== 'all' && !cats.some(([cat]) => cat === closetFilter)) closetFilter = 'all';
   const head = `<section class="section closet-toolbar">
     <div class="section-head"><div><span class="eyebrow">${state.demo ? '먼저 둘러보는 옷장' : '나의 스타일 아카이브'}</span><h2>내 옷장 <span class="closet-total">${items.length}</span></h2><div class="sub">${state.demo ? `예시 옷 ${items.length}벌` : `등록한 내 옷 ${items.length}벌`}</div>${items.some((i) => i.gender !== state.gender) ? `<p class="fine">코디 추천 기준: ${state.gender === 'F' ? '여성' : '남성'} · ${esc(styleLine())}. 다른 분류의 옷도 목록에 보관해요.</p>` : ''}</div>
-      <button class="btn small" data-action="add-start">${ICON.plus}옷 추가</button><button class="btn secondary small" data-action="order-import-open">구매내역 가져오기</button><button class="btn secondary small" data-action="candidate-start">살까 말까 비교</button></div>
+      <button class="btn small" data-action="add-start">${ICON.plus}옷 추가</button><button class="btn secondary small" data-action="order-import-open">구매내역 가져오기 · 시험 중</button><button class="btn secondary small" data-action="candidate-start">살까 말까 비교</button></div>
     <form class="closet-controls" data-action="closet-search" role="search"><label class="closet-search-box">${ICON.search}<input id="closet-search" name="closetQuery" type="search" value="${esc(closetQuery)}" placeholder="이름, 브랜드, 색으로 찾기" aria-label="내 옷 검색"><button class="link" type="submit">찾기</button></label><select id="closet-sort" aria-label="옷장 정렬"><option value="recent"${closetSort === 'recent' ? ' selected' : ''}>최근 추가순</option><option value="oldest"${closetSort === 'oldest' ? ' selected' : ''}>먼저 추가순</option><option value="name"${closetSort === 'name' ? ' selected' : ''}>이름순</option></select></form>
     ${reviewCount || closetReviewOnly ? `<button class="closet-review chip" data-action="closet-review" aria-pressed="${closetReviewOnly}">종류·색 확인 필요 ${reviewCount}벌 ${ICON.arrow}</button>` : ''}
     <div class="closet-toolbar-tabs" role="group" aria-label="옷 종류"><button data-action="closet-filter" data-cat="all" aria-pressed="${closetFilter === 'all'}">전체 <span>${items.length}</span></button>${cats.map(([cat, label]) => `<button data-action="closet-filter" data-cat="${cat}" aria-pressed="${closetFilter === cat}">${label} <span>${items.filter((i) => slotForItem(i).cat === cat).length}</span></button>`).join('')}</div>
@@ -1296,7 +1296,7 @@ function renderSaved() {
     : '';
   const likedTotal = savedFilter === 'liked' && liked.length > 1
     ? `<div class="total"><span>관심 ${liked.length}개</span><b>${formatPrice(liked.reduce((sum, p) => sum + p.price, 0))}</b></div>` : '';
-  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="order-import-open">구매내역 가져오기</button><button class="btn secondary small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
+  return `<section class="section"><div class="section-head"><div><h2>구매 여정</h2><p class="sub">관심 있는 옷이 내 옷이 되기까지</p></div><button class="btn small" data-action="order-import-open">구매내역 가져오기 · 시험 중</button><button class="btn secondary small" data-action="candidate-start">${ICON.plus}상품 가져오기</button></div>
     ${stampLedger()}${counts.all ? `<div class="closet-toolbar-tabs saved-filters" role="group" aria-label="구매 여정 보기">${SAVED_FILTERS.filter(([key]) => key === 'all' || counts[key]).map(([key, label]) => `<button data-action="saved-filter" data-filter="${key}" aria-pressed="${savedFilter === key}">${label} <span>${counts[key]}</span></button>`).join('')}</div>` : ''}
     ${retained}${empty}
     ${counts.all ? `<div class="journey-list">${shownLiked.map(likedRow).join('')}${shownJourneys.map(journeyRow).join('')}</div>${likedTotal}` : ''}
@@ -1869,10 +1869,11 @@ function orderImportSheet() {
   const existing = new Set(state.journeys.map((j) => j.id));
   const rows = d.data?.items || [];
   const count = rows.filter((row) => d.selected.has(row.key) && !existing.has(importedOrderId(row))).length;
-  openSheet(`<span class="eyebrow">무신사 주문내역</span><h2>산 옷을 한 번에 가져오세요</h2>
-    ${!d.data ? `<p class="sub">PC 확장프로그램으로 주문내역을 읽고, 선택한 내용을 붙여넣거나 받은 파일을 열어 주세요.</p><ol class="order-steps"><li>무신사에서 로그인 → 마이 → 주문 내역</li><li>구매내역 가져오기 확장프로그램 → 선택한 내역 복사</li><li>아래에 붙여넣고 확인</li></ol>
+  openSheet(`<span class="eyebrow">무신사 주문내역</span><h2>구매내역 가져오기 · 시험 중</h2>
+    <p class="notice" role="status">시험 기능이에요. 실제 무신사 주문내역 읽기와 Windows 실행은 아직 검증하지 않았어요. 모바일 자동 연동은 지원하지 않아요.</p>
+    ${!d.data ? `<p class="sub">시험용 확장프로그램에서 복사한 내용이나 구매내역 파일을 검토할 수 있어요.</p><ol class="order-steps"><li>무신사에서 로그인 → 마이 → 주문 내역</li><li>구매내역 가져오기 확장프로그램 → 선택한 내역 복사</li><li>아래에 붙여넣고 확인</li></ol>
     <label class="field" for="order-import-text">복사한 구매내역<textarea id="order-import-text" rows="4" maxlength="250000" placeholder="확장프로그램에서 복사한 내용을 붙여넣으세요">${esc(d.text)}</textarea></label>
-    <div class="opts"><button class="btn" data-action="order-import-parse">내역 확인하기</button><button class="chip" data-action="order-import-file">구매내역 파일 열기</button></div><p class="fine">현재 PC Chrome용 시험 기능이에요. 모바일 자동 연동과 모든 쇼핑몰 지원은 아직 없어요.</p>`
+    <div class="opts"><button class="btn" data-action="order-import-parse">내역 확인하기</button><button class="chip" data-action="order-import-file">구매내역 파일 열기</button></div>`
     : `<p class="sub">${rows.length}개 중 원하는 내역만 고르세요. 먼저 장부에 저장하고, 지금 가진 옷은 나중에 옷장에 연결해요.</p><label class="field">옷 분류 기준<select id="order-import-gender"><option value="M"${d.gender === 'M' ? ' selected' : ''}>남성 옷</option><option value="F"${d.gender === 'F' ? ' selected' : ''}>여성 옷</option></select></label>
     <ul class="plain-list order-import-list">${rows.map((row) => {
       const duplicate = existing.has(importedOrderId(row));
