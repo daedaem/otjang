@@ -37,14 +37,14 @@
     },
     // 머리글
     hdr({ n, back = false, compare = 0, closet = 0, records = 0 } = {}) {
-      return `<header class="hdr">${back ? `<button class="ib" aria-label="뒤로" style="margin-left:-10px">${ico('back')}</button>` : ''}<span class="logo">어울</span><span class="mock">시안 ${n}</span><span class="sp"></span>
+      return `<header class="hdr">${back ? `<button class="ib" aria-label="뒤로" style="margin-left:-10px">${ico('back')}</button>` : ''}<span class="logo">가칭</span><span class="mock">시안 ${n}</span><span class="sp"></span>
         ${back ? '' : `<button class="ib" aria-label="검색">${ico('search')}<span>검색</span></button>`}
         <button class="ib" aria-label="비교 ${compare}개">${ico('compare')}<span>비교</span>${compare ? `<i class="badge">${compare}</i>` : ''}</button>
         <button class="ib" aria-label="옷장">${ico('closet')}<span>옷장</span>${closet ? `<i class="badge">${closet}</i>` : ''}</button>
         <button class="ib" aria-label="기록">${ico('records')}<span>기록</span>${records ? `<i class="badge">${records}</i>` : ''}</button></header>`;
     },
     hdrPc({ n, q = '', compare = 0 } = {}) {
-      return `<header class="hdr pc"><span class="logo">어울</span><span class="mock">시안 ${n}</span>${K.search(q)}<button class="tb">${ico('compare', 's')}비교 ${compare}</button><button class="tb">${ico('closet', 's')}옷장</button><button class="tb">${ico('records', 's')}기록</button></header>`;
+      return `<header class="hdr pc"><span class="logo">가칭</span><span class="mock">시안 ${n}</span>${K.search(q)}<button class="tb">${ico('compare', 's')}비교 ${compare}</button><button class="tb">${ico('closet', 's')}옷장</button><button class="tb">${ico('records', 's')}기록</button></header>`;
     },
     tabbar(on = 0) {
       const t = [['search', '찾기'], ['compare', '비교'], ['closet', '옷장'], ['records', '기록']];
@@ -89,7 +89,7 @@
     // C9
     newUsed(id) {
       const nu = M.newVsUsed(id); const links = nu.used.groups.flatMap((g) => g.links);
-      return `<div class="nu"><div><div class="h">새 상품</div><div class="v">${esc(nu.fresh.priceText)}</div><div class="s">${esc(nu.fresh.priceNote)} · 판매처 대표 사진</div></div><div><div class="h">중고</div><div class="v" style="font-size:14px">가격·상태는 매물마다 달라요</div><div class="s">어울은 확인하지 않았어요</div><div class="links">${links.slice(0, 4).map((l) => `<a>${esc(l.label)}</a>`).join('')}</div></div></div>`;
+      return `<div class="nu"><div><div class="h">새 상품</div><div class="v">${esc(nu.fresh.priceText)}</div><div class="s">${esc(nu.fresh.priceNote)} · 판매처 대표 사진</div></div><div><div class="h">중고</div><div class="v" style="font-size:14px">가격·상태는 매물마다 달라요</div><div class="s">이 앱은 확인하지 않았어요</div><div class="links">${links.slice(0, 4).map((l) => `<a>${esc(l.label)}</a>`).join('')}</div></div></div>`;
     },
     // C11
     viewer(d) { return `<div class="viewer"><div class="top"><button class="btn quiet sm" aria-label="닫기">${ico('close', 's')}</button></div><div class="ph">${ph(d, { fit: 'contain' })}</div><div class="cap">판매처 대표 사진</div></div>`; },

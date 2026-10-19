@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noimageindex">
-<title>어울 대표 디자인</title>
+<title>대표 디자인</title>
 <!-- 서체: Google Fonts SIL OFL(Inter: 라틴·숫자, Noto Sans KR: 한글). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="../shared/tokens.css">
 <link rel="stylesheet" href="kit.css">
 <style>
-  /* ── 어울 대표 디자인 토큰: 흑백 + 판정 의미색 2개, 가는 선과 여백으로 구획, 사진이 주인공 */
+  /* ── 대표 디자인 토큰: 흑백 + 판정 의미색 2개, 가는 선과 여백으로 구획, 사진이 주인공 */
   .fx {
     --ink: #111; --ink2: #3a3a3a; --sub: #707070; --mute: #9a9a9a; --hair: #e6e6e6; --field: #f3f2ef; --bg: #fff;
     --over: #9b3a28; --new: #1f5c45; --info: #1d3f6e;
@@ -156,11 +156,11 @@
 (() => {
   if (!window.K) return;
   const { M, esc, ico } = K;
-  K.board({ n: '대표', name: '어울 대표 디자인', idea: '사진이 주인공, 흑백과 가는 선, 절제된 글자. 그 위에 어울만의 ‘내 옷과’ 판정 층. 모든 상품 사진은 같은 바탕과 비율로 맞춰(화면에서 처리, 파일 가공 없음) 한 회사가 찍은 것처럼 보이게 했다.', refs: '기준 비교: 무신사·29CM·SSENSE 실제 화면(같은 과업). 따라 하지 않은 것: 할인율·쿠폰·배너·타임세일.', note: '서체 Inter·Noto Sans KR(SIL OFL).' });
+  K.board({ n: '대표', name: '대표 디자인(서비스 이름 미정)', idea: '사진이 주인공, 흑백과 가는 선, 절제된 글자. 그 위에 이 서비스만의 ‘내 옷과’ 판정 층. 모든 상품 사진은 같은 바탕과 비율로 맞춰(화면에서 처리, 파일 가공 없음) 한 회사가 찍은 것처럼 보이게 했다.', refs: '기준 비교: 무신사·29CM·SSENSE 실제 화면(같은 과업). 따라 하지 않은 것: 할인율·쿠폰·배너·타임세일.', note: '서체 Inter·Noto Sans KR(SIL OFL).' });
   const ph = (t, o) => `<div class="ph">${M.photoHtml(t, { eager: true, ...o })}</div>`;
   const { r, d } = K.data();
   const P = r.products;
-  const wm = '<span class="wm">EOUL</span>';
+  const wm = '<span class="wm">NAME</span>';
   const tabs = (on) => `<nav class="tabs">${[['search', '찾기'], ['compare', '비교'], ['closet', '옷장'], ['records', '기록']].map(([i, l], k) => `<a class="${k === on ? 'on' : ''}">${ico(i)}${l}</a>`).join('')}</nav>`;
   const own = (o) => !o || o.tone === 'none' || !o.label ? '' : `<div class="own ${o.tone === 'stop' ? 'over' : o.tone === 'new' ? 'new' : 'inf'}"><span class="dot"></span>${esc(o.label)}</div>`;
   const card = (p, on = false) => `<div class="card">${ph(p).replace('<div class="ph">', '<div class="ph">' + `<span class="add" aria-label="비교 담기">${on ? ico('ok', 's') : ico('plus', 's')}</span>`)}<div class="info"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}</div><div class="pr num">${esc(p.priceText)}</div>${own(p.owned)}</div></div>`;
