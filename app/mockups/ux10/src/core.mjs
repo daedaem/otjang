@@ -2,7 +2,7 @@
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
 // 시안은 화면만 다르게 만들고, 판단 문장과 규칙은 모두 여기서 온다(현재 앱의 구매 비교 화면과 같은 순서).
 // 저장은 이 브라우저에만, 앱과 다른 키로 한다. 앱 저장소·서버는 건드리지 않는다.
-import { CATALOG } from '../../../src/data/products.js';
+import { CATALOG, PRODUCTS } from '../../../src/data/products.js';
 import { SLOT_BY_ID, SLOTS, COLORS, STYLES } from '../../../src/data/slots.js';
 import { ROLE_LABEL, ROLE_ORDER } from '../../../src/data/looks.js';
 import {
@@ -20,7 +20,7 @@ import { garmentSvg } from '../../../src/icons.js';
 
 export const MOCK_API_VERSION = 1;
 
-export function createMock({ storage = null, key = 'eoul-mockup-ux10:v1', clock = () => new Date(), reset = false } = {}) {
+export function createMock({ storage = null, key = 'eoul-mockup-ux10:v1', clock = () => new Date(), reset = false, photos = false } = {}) {
   const DECISION_LABEL = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const RETURN_LABEL = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '마음이 바뀜', other: '기타' };
   const FINE = '종류·색과 코디 공식으로 비교했어요. 소재·핏·사이즈·현재 가격은 판매처에서 확인해요.';
@@ -588,8 +588,15 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10:v1', clock 
     art(target, { size = '100%', line = '#3a3a3a' } = {}) {
       const slot = SLOT_BY_ID[target?.slot] || { id: `k-${target?.kind || 'tee'}`, shape: target?.kind || target?.shape || 'tee' };
       const hex = target?.colorHex || colorHex(target?.color) || '#cfcfcf';
-      return garmentSvg(slot, { size, color: hex }).replace('var(--art-line)', `var(--art-line, ${line})`);
+      const svg = garmentSvg(slot, { size, color: hex }).replace('var(--art-line)', `var(--art-line, ${line})`);
+      // 비공개 시험 링크(?photos=1)에서만, 묶을 때 고른 몇 개 상품에 한해 판매처 사진을 겹친다.
+      // 사진을 못 불러오면 그림이 그대로 보인다. 공개 권리는 확인되지 않았다.
+      const pid = PRODUCT_BY_ID[target?.id] ? target.id : target?.product?.id || target?.productId || null;
+      const src = photos && pid ? PRODUCT_BY_ID[pid]?.img : null;
+      if (!src || !/^https:\/\/image\.msscdn\.net\//.test(src)) return svg;
+      return `<span style="position:relative;display:block;width:100%;height:100%">${svg}<img src="${src}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit"></span>`;
     },
+    photos: { on: !!photos, count: PRODUCTS.filter((p) => p.img).length, note: '사진 일부 · 권리 미확인 · 비공개 시험용' },
   };
 
   if (reset) { S = blank(); save(); } else S = load();

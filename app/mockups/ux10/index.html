@@ -132,6 +132,7 @@
       <button type="button" data-closet="none" aria-pressed="true">옷장 없이</button>
       <button type="button" data-closet="trial" aria-pressed="false">체험용 옷 8벌</button>
     </div>
+    <label class="pick" title="판매처 사진을 몇 개 상품에만 불러와요. 공개 권리 미확인 · 비공개 시험용"><input type="checkbox" id="photos"> 사진 몇 개(비공개 시험용)</label>
     <button type="button" class="btn primary" id="compare" disabled>나란히 보기 (0/2)</button>
   </div>
   <div class="wrap" style="padding-bottom:10px"><div class="chips" id="qchips" aria-label="요청 예시"></div></div>
@@ -201,7 +202,7 @@
   </div></section>
 </main>
 
-<footer><div class="wrap">어울 목업 · 기존 앱과 저장 데이터는 바꾸지 않았어요 · 외부 요청 없음(판매처·중고 링크는 누를 때만 이동)</div></footer>
+<footer><div class="wrap">어울 목업 · 기존 앱과 저장 데이터는 바꾸지 않았어요 · 기본은 외부 요청 없음(판매처·중고 링크는 누를 때만 이동) · ‘사진 몇 개’를 켜면 상품 12개에 한해 판매처 사진을 불러와요(공개 권리 미확인, 비공개 시험용)</div></footer>
 
 <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="시안 보기">
   <div class="bar">
@@ -228,7 +229,7 @@ const state = { closet: 'none', picked: [], device: 'phone', open: [] };
 const qInput = $('#q');
 function src(team) {
   const q = qInput.value.trim();
-  return `teams/${team.file}?reset=1${state.closet === 'trial' ? '&closet=trial' : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
+  return `teams/${team.file}?reset=1${state.closet === 'trial' ? '&closet=trial' : ''}${document.getElementById('photos')?.checked ? '&photos=1' : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
 }
 function renderChips() {
   $('#qchips').innerHTML = QUERIES.map((q) => `<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('');
@@ -333,6 +334,7 @@ document.addEventListener('click', (e) => {
   else if (t.id === 'viewer-close') closeViewer();
 });
 qInput.addEventListener('input', updateLinks);
+document.getElementById('photos').addEventListener('change', updateLinks);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#viewer').classList.contains('on')) closeViewer(); });
 window.addEventListener('resize', fit);
 renderChips(); renderRanking(); renderGrid(); updateLinks();
