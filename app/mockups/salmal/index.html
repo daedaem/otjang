@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>살까말까 목업</title>
+<style>
+  :root{
+    --paper:#f7f3ec; --card:#fffdf9; --ink:#1d1a16; --ink2:#5d574e; --ink3:#8d867b; --line:#e6dfd3;
+    --yes:#1f6b4a; --yes-bg:#e3f1e8; --hold:#9a6a00; --hold-bg:#fbefcf; --no:#a3342b; --no-bg:#f8e3df; --neu:#4e5a66; --neu-bg:#e7ebef;
+    --accent:#1d1a16; --radius:18px; --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  a{color:inherit}
+  .app{max-width:430px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative}
+  .mock{position:sticky;top:0;z-index:5;background:#1d1a16;color:#f7f3ec;font-size:12px;padding:7px 16px;display:flex;justify-content:space-between;align-items:center;letter-spacing:.01em}
+  .mock b{font-weight:700}
+  .mock button{color:#f7f3ec;text-decoration:underline;font-size:12px}
+  main{flex:1;padding:0 16px calc(96px + var(--safe-b))}
+  .screen{display:none}.screen.on{display:block}
+  h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;font-weight:800;margin:28px 0 8px}
+  h2{font-size:19px;font-weight:800;letter-spacing:-.01em;margin:26px 0 10px}
+  h3{font-size:15px;font-weight:700;margin:16px 0 6px}
+  p.sub{color:var(--ink2);font-size:15px}
+  .ask{margin-top:18px;background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);padding:8px 8px 8px 16px;display:flex;gap:8px;align-items:center}
+  .ask input{flex:1;border:0;background:none;font-size:17px;outline:none;min-width:0}
+  .ask button{background:var(--ink);color:#fff;border-radius:12px;padding:10px 14px;font-weight:700;font-size:15px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 13px;font-size:14px;color:var(--ink2)}
+  .chip.on{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .chip.x{padding-right:9px}
+  .note{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--ink2);margin-top:16px}
+  .note b{color:var(--ink)}
+  .toggle{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:14px}
+  .toggle .t{font-size:15px;font-weight:600}
+  .toggle .d{font-size:13px;color:var(--ink3)}
+  .sw{width:46px;height:28px;border-radius:999px;background:#d9d2c6;position:relative;flex:none;transition:background .15s}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s}
+  .sw.on{background:var(--yes)}.sw.on::after{left:21px}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:22px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;font-size:12px;color:var(--ink2);text-align:center}
+  .step b{display:block;font-size:14px;color:var(--ink);margin-bottom:2px}
+  .bar{display:flex;align-items:center;gap:10px;margin:14px 0 6px}
+  .back{width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);font-size:18px;flex:none}
+  .q{font-size:20px;font-weight:800;letter-spacing:-.01em;flex:1;min-width:0}
+  .meta{font-size:13px;color:var(--ink3);margin:8px 0 2px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-top:12px;display:block;width:100%;text-align:left}
+  .card:active{transform:scale(.995)}
+  .stamp{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:15px;border-radius:9px;padding:4px 10px;letter-spacing:-.01em}
+  .stamp.yes{color:var(--yes);background:var(--yes-bg)}.stamp.hold{color:var(--hold);background:var(--hold-bg)}
+  .stamp.no{color:var(--no);background:var(--no-bg)}.stamp.neu{color:var(--neu);background:var(--neu-bg)}
+  .stamp.big{font-size:26px;padding:8px 16px;border-radius:14px}
+  .why{font-size:15px;margin-top:8px;line-height:1.4}
+  .why.strong{font-weight:600}
+  .prod{display:flex;gap:12px;margin-top:12px;align-items:flex-start}
+  .sw2{width:56px;height:68px;border-radius:10px;border:1px solid rgba(0,0,0,.08);flex:none;display:flex;align-items:flex-end;justify-content:center;font-size:10px;color:rgba(0,0,0,.55);padding-bottom:4px}
+  .pname{font-size:15px;font-weight:600;line-height:1.3}
+  .pbrand{font-size:13px;color:var(--ink2)}
+  .price{font-size:15px;font-weight:700;margin-top:4px}
+  .price small{font-weight:500;color:var(--ink3);font-size:12px;margin-left:4px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tag{font-size:12px;color:var(--ink2);background:#efe9df;border-radius:6px;padding:3px 7px}
+  .tag.warn{background:var(--no-bg);color:var(--no)}
+  .tag.ok{background:var(--yes-bg);color:var(--yes)}
+  .empty{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;margin-top:12px;font-size:15px}
+  .empty b{display:block;font-size:17px;margin-bottom:6px}
+  .sec{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-top:12px}
+  .sec h3{margin:0 0 8px}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .row:first-of-type{border-top:0}
+  .row .k{color:var(--ink3)}
+  .mine{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .mine .dot{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.1);flex:none}
+  .mine .l{flex:1}
+  .mine .r{font-size:12px;font-weight:700}
+  .r.same{color:var(--no)}.r.other{color:var(--hold)}.r.none{color:var(--ink3)}
+  .decide{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+  .decide button{border-radius:14px;padding:14px 6px;font-weight:800;font-size:16px;border:1.5px solid var(--line);background:var(--card)}
+  .decide button.lean{border-color:currentColor}
+  .decide .b-yes{color:var(--yes)}.decide .b-hold{color:var(--hold)}.decide .b-no{color:var(--no)}
+  .decide button.lean.b-yes{background:var(--yes-bg)}.decide button.lean.b-hold{background:var(--hold-bg)}.decide button.lean.b-no{background:var(--no-bg)}
+  .decide .hint{grid-column:1/-1;font-size:12px;color:var(--ink3);text-align:center}
+  .link{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:12px;padding:13px;border-radius:14px;background:var(--ink);color:#fff;font-weight:700;text-decoration:none}
+  .link.sec2{background:var(--card);color:var(--ink);border:1.5px solid var(--ink)}
+  .fine{font-size:12px;color:var(--ink3);margin-top:10px;line-height:1.4}
+  .jour{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-top:12px}
+  .stage{display:flex;gap:4px;margin:10px 0}
+  .stage span{flex:1;height:6px;border-radius:3px;background:#e6dfd3}
+  .stage span.on{background:var(--ink)}
+  .stage span.ret{background:var(--no)}
+  .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .acts button{border:1.5px solid var(--ink);border-radius:999px;padding:9px 13px;font-weight:700;font-size:14px;background:var(--card)}
+  .acts button.ghost{border-color:var(--line);color:var(--ink2);font-weight:600}
+  .acts button.main{background:var(--ink);color:#fff}
+  .st{font-size:13px;color:var(--ink2);margin-top:6px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:rgba(255,253,249,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px 0 calc(8px + var(--safe-b))}
+  .tabs .in{max-width:430px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr}
+  .tabs button{padding:8px 0 2px;font-size:12px;color:var(--ink3);font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .tabs button .i{font-size:20px;line-height:1}
+  .tabs button.on{color:var(--ink)}
+  .badge{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--ink);color:#fff;font-size:11px;line-height:18px;text-align:center;padding:0 5px;margin-left:4px;vertical-align:2px}
+  .sheet-bg{position:fixed;inset:0;background:rgba(29,26,22,.45);z-index:20;display:none}
+  .sheet-bg.on{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:430px;margin:0 auto;background:var(--card);border-radius:22px 22px 0 0;padding:14px 16px calc(20px + var(--safe-b));transform:translateY(105%);transition:transform .2s}
+  .sheet.on{transform:none}
+  .sheet .grab{width:40px;height:4px;border-radius:2px;background:#d9d2c6;margin:0 auto 12px}
+  .opts{display:grid;gap:8px;margin-top:10px}
+  .opts button{border:1.5px solid var(--line);border-radius:12px;padding:12px;text-align:left;font-size:15px;background:var(--paper)}
+  .toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;white-space:nowrap}
+  .toast.on{opacity:1}
+  .about{font-size:13px;color:var(--ink2);line-height:1.5}
+  .about li{margin:6px 0 6px 16px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="mock"><span><b>목업</b> · 예시 자료 · 저장 안 됨 · 사진·계정 없음</span><button id="aboutBtn">이게 뭐예요?</button></div>
+  <main>
+    <!-- 묻기 -->
+    <section class="screen on" id="s-home">
+      <h1>살까, 말까.<br>대충 물어보세요.</h1>
+      <p class="sub">한 줄이면 돼요. 실제 상품을 찾아서, 내 옷과 겹치는지 보고, 살지 말지 답해 드려요.</p>
+      <form class="ask" id="askForm">
+        <input id="askInput" type="text" placeholder="예: 출근용 셔츠 10만원 이하" autocomplete="off" enterkeyhint="search">
+        <button type="submit">물어보기</button>
+      </form>
+      <div class="chips" id="homeChips"></div>
+      <div class="toggle" id="closetToggle">
+        <div><div class="t">예시 옷 3벌로 비교하기</div><div class="d" id="closetDesc"></div></div>
+        <div class="sw" id="closetSw"></div>
+      </div>
+      <div class="steps">
+        <div class="step"><b>①</b>대충 말하기</div>
+        <div class="step"><b>②</b>실제 상품</div>
+        <div class="step"><b>③</b>내 옷과 비교</div>
+        <div class="step"><b>④</b>살까·말까</div>
+      </div>
+      <div class="note">이 목업은 예시 요청 <b>4개</b>만 알아들어요. 상품·가격·링크는 2026년 10월 13일에 수집한 실제 값이고, 사진은 권리 확인 전이라 뺐어요. 옷장은 선택이에요. 없어도 답은 나오고, 있으면 겹침까지 봐요.</div>
+    </section>
+
+    <!-- 답 -->
+    <section class="screen" id="s-results">
+      <div class="bar"><button class="back" data-go="home" aria-label="뒤로">←</button><div class="q" id="rq"></div></div>
+      <div class="chips" id="rChips"></div>
+      <div class="meta" id="rMeta"></div>
+      <div id="rList"></div>
+      <div class="fine" id="rFine"></div>
+    </section>
+
+    <!-- 상세·판단 -->
+    <section class="screen" id="s-detail">
+      <div class="bar"><button class="back" data-go="results" aria-label="뒤로">←</button><div class="q">살까, 말까?</div></div>
+      <div id="dBody"></div>
+    </section>
+
+    <!-- 기록 -->
+    <section class="screen" id="s-journal">
+      <h1>기록</h1>
+      <p class="sub">사기로 한 뒤의 일을 적어요. 주문 → 받음 → 입음 또는 반품. 계속 입는 옷은 내 옷에 들어가요.</p>
+      <div id="jList"></div>
+    </section>
+
+    <!-- 옷장 -->
+    <section class="screen" id="s-closet">
+      <h1>내 옷</h1>
+      <p class="sub">옷장은 선택이에요. 넣을수록 겹침·색 판단이 정확해져요. 여기선 예시 3벌과 기록에서 계속 입기로 한 옷만 있어요.</p>
+      <div id="cList"></div>
+    </section>
+  </main>
+
+  <nav class="tabs"><div class="in">
+    <button data-tab="home" class="on"><span class="i">?</span>묻기</button>
+    <button data-tab="journal"><span class="i">✓</span>기록<span class="badge" id="jBadge" hidden>0</span></button>
+    <button data-tab="closet"><span class="i">▢</span>내 옷<span class="badge" id="cBadge" hidden>0</span></button>
+  </div></nav>
+
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ── 예시 자료: 어울 엔진 search()로 2026-10-19에 뽑은 실제 수집 상품(무신사, 10월 13일 수집가). 사진 없음.
+const COLOR = { white:['화이트','#F6F5F0'], blue:['라이트 블루','#9DB8DA'], grey:['그레이','#9A9A9A'], beige:['베이지','#D9C9A8'], navy:['네이비','#263556'], indigo:['인디고','#2E3F6E'], black:['블랙','#1d1a16'], ivory:['아이보리','#F2EBD8'], brown:['브라운','#6E4A2B'] };
+const P = (id,brand,name,price,color,kind,shape,g,url,reasons,off)=>({id,brand,name,price,checkedAt:'10월 13일',color,kind,shape,g,url,reasons,off:!!off});
+const SCENARIOS = [
+  { key:'shirt', q:'출근용 셔츠 10만원 이하', match:/셔츠/, total:12, conds:['셔츠','출근','10만원 이하'],
+    items:[
+      P('ms-728000','무신사 스탠다드','베이식 옥스포드 셔츠 [화이트]',33890,'white','옥스퍼드·베이직 셔츠','shirt','M','https://www.musinsa.com/products/728000',['출근 · 10만원 이하에 맞춰 골랐어요','블레이저·니트·치노 어디에나 붙는 셔츠']),
+      P('ms-854339','무신사 스탠다드','릴렉스 핏 옥스포드 셔츠 [블루]',33890,'blue','옥스퍼드·베이직 셔츠','shirt','M','https://www.musinsa.com/products/854339',['출근 · 10만원 이하에 맞춰 골랐어요','블레이저·니트·치노 어디에나 붙는 셔츠']),
+      P('ms-4982765','에잇세컨즈','클린 스트라이프 버튼다운 셔츠 스카이 블루',29900,'blue','스트라이프 셔츠','shirt','M','https://www.musinsa.com/products/4982765',['출근 · 10만원 이하에 맞춰 골랐어요','무지 옷만 있는 옷장에 리듬을 주는 줄무늬']),
+      P('ms-3879282','토마스모어','옥스포드 버튼다운 셔츠',50960,'blue','옥스퍼드·베이직 셔츠','shirt','M','https://www.musinsa.com/products/3879282',['출근 · 10만원 이하에 맞춰 골랐어요','블레이저·니트·치노 어디에나 붙는 셔츠']),
+    ]},
+  { key:'knit', q:'검정 말고 주말에 입을 편한 니트', match:/니트/, total:6, conds:['니트','주말·여행','블랙 제외','편한 표기 먼저'],
+    items:[
+      P('ms-4832838','브룩스 브라더스','코튼 케이블 폴로 반팔 스웨터 (그레이)',139300,'grey','케이블 니트','knit','M','https://www.musinsa.com/products/4832838',['주말·여행 · 블랙 제외에 맞춰 골랐어요','꽈배기 짜임 하나로 코디가 완성되는 겨울 니트']),
+      P('ms-1191521','테이크이지','램스울 크루넥 오버 니트 (베이지)',27000,'beige','크루넥 니트','knit','M','https://www.musinsa.com/products/1191521',['주말·여행보다 캐주얼한 종류예요','셔츠 위에 겹쳐 입는 가을·겨울 출근의 기본'],true),
+      P('ms-5327314','리','케이블 라운드 니트 네이비',99000,'navy','케이블 니트','knit','M','https://www.musinsa.com/products/5327314',['주말·여행 · 블랙 제외에 맞춰 골랐어요','꽈배기 짜임 하나로 코디가 완성되는 겨울 니트']),
+      P('ms-5589298','브룩스 브라더스','울 케이블 스웨터 (네이비)',233100,'navy','케이블 니트','knit','M','https://www.musinsa.com/products/5589298',['주말·여행 · 블랙 제외에 맞춰 골랐어요','꽈배기 짜임 하나로 코디가 완성되는 겨울 니트']),
+    ]},
+  { key:'dress', q:'여자 원피스 10만원 이하', match:/원피스|드레스/, total:3, conds:['원피스','10만원 이하'],
+    items:[
+      P('ms-6517881','무신사 스탠다드 우먼','우먼즈 플리츠 미디 드레스 [그레이]',79900,'grey','원피스','dress','F','https://www.musinsa.com/products/6517881',['10만원 이하에 맞춰 골랐어요','한 벌로 끝나는 출근·데이트 옷']),
+      P('ms-5065864','제로스트릿','소프트 셔츠 원피스',78000,'blue','원피스','dress','F','https://www.musinsa.com/products/5065864',['10만원 이하에 맞춰 골랐어요','한 벌로 끝나는 출근·데이트 옷']),
+      P('ms-5698178','무신사 스탠다드 우먼','우먼즈 슬림 플리츠 미니 드레스 [네이비]',69900,'navy','원피스','dress','F','https://www.musinsa.com/products/5698178',['10만원 이하에 맞춰 골랐어요','한 벌로 끝나는 출근·데이트 옷']),
+    ]},
+  { key:'coat', q:'겨울 코트 20만원 이하', match:/코트/, total:2, conds:['코트','겨울','20만원 이하'],
+    items:[
+      P('ms-5596303','무드인사이드','오버핏 울 발마칸 코트',89900,'beige','발마칸 코트','coat','M','https://www.musinsa.com/products/5596303',['겨울 · 20만원 이하에 맞춰 골랐어요','정장에도 니트에도 맞는 둥근 깃의 롱코트']),
+      P('ms-7122764','트릴리온','캐시미어 울 발마칸 롱 코트',179000,'beige','발마칸 코트','coat','M','https://www.musinsa.com/products/7122764',['겨울 · 20만원 이하에 맞춰 골랐어요','정장에도 니트에도 맞는 둥근 깃의 롱코트']),
+    ]},
+];
+const EXAMPLE_CLOSET = [
+  { id:'ex1', label:'흰 옥스퍼드 셔츠', shape:'shirt', kindName:'옥스퍼드·베이직 셔츠', color:'white', g:'M', example:true },
+  { id:'ex2', label:'인디고 데님', shape:'jeans', kindName:'워시드 데님', color:'indigo', g:'M', example:true },
+  { id:'ex3', label:'흰 스니커즈', shape:'sneaker', kindName:'화이트 스니커즈', color:'white', g:'M', example:true },
+];
+const SHAPE_KO = { shirt:'셔츠', knit:'니트', dress:'원피스', coat:'코트', jeans:'청바지', sneaker:'스니커즈' };
+
+// ── 상태 (메모리에만. 새로고침하면 사라져요)
+const S = { screen:'home', useCloset:false, scenario:null, product:null, closet:EXAMPLE_CLOSET.map(g=>({...g})), journal:[] };
+const $ = (s)=>document.querySelector(s);
+const esc = (s)=>String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const won = (n)=>n.toLocaleString('ko-KR')+'원';
+const colorName = (c)=>COLOR[c]?.[0]||c, colorHex=(c)=>COLOR[c]?.[1]||'#ccc';
+
+// ── 판정 규칙 (목업 규칙. 본 앱의 compareCandidate와는 다르며, 겹침·색·상황·반품 기록만 봐요)
+function verdict(p){
+  const returned = S.journal.filter(j=>j.stage==='returned' && (j.p.id===p.id || (j.p.brand===p.brand && j.p.shape===p.shape)));
+  if(!S.useCloset){
+    const r = { kind:'neu', word:'조건 맞음', why:'옷장이 없어서 겹침은 못 봤어요. 조건에는 맞아요.', facts:[] };
+    if(returned.length) r.facts.push({t:`${returned[0].p.id===p.id?'이 상품':'이 브랜드 '+SHAPE_KO[p.shape]}을(를) 반품한 적 있어요 (${returned[0].reason})`, w:true});
+    return r;
+  }
+  const sameGender = S.closet.filter(g=>g.g===p.g);
+  const mine = sameGender.filter(g=>g.shape===p.shape);
+  const same = mine.filter(g=>g.color===p.color && g.kindName===p.kind);
+  const sameColor = mine.filter(g=>g.color===p.color && g.kindName!==p.kind);
+  const other = mine.filter(g=>g.color!==p.color);
+  const facts = [];
+  let r;
+  const bought = S.closet.find(g=>g.productId===p.id);
+  if(!sameGender.length){
+    r = { kind:'neu', word:'비교 못 함', why:`내 옷 중 ${p.g==='F'?'여성':'남성'} 옷이 없어요. 조건에는 맞아요.`, facts:[] };
+    if(returned.length) r.facts.push({t:'반품 기록 있음', w:true});
+    return r;
+  }
+  if(bought){
+    r = { kind:'no', word:'말까', why:'이미 산 옷이에요. 기록에서 계속 입는 중이라 내 옷에 들어가 있어요.' };
+  } else if(same.length){
+    r = { kind:'no', word:'말까', why:`거의 같은 옷이 있어요. ${same.map(g=>g.label).join(', ')}. 한 벌 더 사는 이유가 분명하지 않으면 말아요.` };
+  } else if(sameColor.length){
+    r = { kind:'hold', word:'보류', why:`같은 색 ${SHAPE_KO[p.shape]}가 있어요(${sameColor.map(g=>g.label).join(', ')}). 종류는 달라서 겹침은 아니지만, 색이 늘진 않아요.` };
+  } else if(returned.length){
+    r = { kind:'hold', word:'보류', why:`${returned[0].p.id===p.id?'이 상품':'이 브랜드의 '+SHAPE_KO[p.shape]}을(를) 반품한 적 있어요(${returned[0].reason}). 같은 이유가 또 생길지 먼저 확인해요.` };
+  } else if(p.off){
+    r = { kind:'hold', word:'보류', why:`${p.reasons[0]}. 조건에 딱 맞진 않아서 바로 사자고는 못 해요.` };
+  } else if(other.length){
+    r = { kind:'hold', word:'보류', why:`${SHAPE_KO[p.shape]}는 이미 ${other.length}벌(${other.map(g=>colorName(g.color)).join('·')}). 색만 달라요. 추가인지 교체인지 정하고 사요.` };
+  } else {
+    r = { kind:'yes', word:'살까', why:`내 옷에 없는 종류이고 조건에 맞아요. ${SHAPE_KO[p.shape]} 한 벌이면 입을 폭이 넓어져요.` };
+  }
+  r.facts = facts;
+  if(mine.length) r.facts.push({t:`같은 종류 내 옷 ${mine.length}벌`});
+  else r.facts.push({t:'같은 종류 내 옷 없음', ok:true});
+  if(returned.length && r.kind!=='hold') r.facts.push({t:'반품 기록 있음', w:true});
+  return r;
+}
+
+// ── 화면 전환
+function go(screen){
+  S.screen = screen;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id==='s-'+screen));
+  const tab = screen==='results'||screen==='detail' ? 'home' : screen;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  window.scrollTo(0,0);
+  if(screen==='home') renderHome(); if(screen==='results') renderResults(); if(screen==='detail') renderDetail();
+  if(screen==='journal') renderJournal(); if(screen==='closet') renderCloset();
+}
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.tab)));
+
+// ── 묻기
+function renderHome(){
+  $('#homeChips').innerHTML = SCENARIOS.map(s=>`<button type="button" class="chip" data-q="${esc(s.q)}">${esc(s.q)}</button>`).join('');
+  $('#homeChips').querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>ask(c.dataset.q)));
+  $('#closetSw').classList.toggle('on', S.useCloset);
+  const n = S.closet.length;
+  $('#closetDesc').textContent = S.useCloset ? `켜짐 · ${S.closet.map(g=>g.label).join(', ')}` : `꺼짐 · 옷장 없이 물어봐요 (예시 ${n}벌은 내 옷 탭에 있어요)`;
+  updateBadges();
+}
+$('#closetToggle').addEventListener('click',()=>{ S.useCloset=!S.useCloset; renderHome(); toast(S.useCloset?'내 옷과 비교해서 답해요':'옷장 없이 답해요'); });
+$('#askForm').addEventListener('submit',(e)=>{ e.preventDefault(); ask($('#askInput').value); });
+function ask(text){
+  const t = (text||'').trim();
+  if(!t) return;
+  const sc = SCENARIOS.find(s=>s.match.test(t));
+  S.scenario = sc ? { ...sc, typed:t } : { key:'none', q:t, typed:t, conds:[], items:[], total:0, unknown:true };
+  $('#askInput').value='';
+  go('results');
+}
+
+// ── 답
+function card(p, r){
+  return `<button type="button" class="card" data-id="${esc(p.id)}">
+    <span class="stamp ${r.kind}">${esc(r.word)}</span>
+    <div class="why">${esc(r.why)}</div>
+    <div class="prod">
+      <div class="sw2" style="background:${colorHex(p.color)}">${esc(colorName(p.color))}</div>
+      <div style="min-width:0"><div class="pbrand">${esc(p.brand)} · ${esc(p.kind)}</div><div class="pname">${esc(p.name)}</div>
+      <div class="price">${won(p.price)}<small>${esc(p.checkedAt)} 수집가</small></div>
+      <div class="tags">${r.facts.map(f=>`<span class="tag${f.w?' warn':f.ok?' ok':''}">${esc(f.t)}</span>`).join('')}${p.off?'<span class="tag warn">상황과 안 맞음</span>':''}</div></div>
+    </div></button>`;
+}
+function renderResults(){
+  const sc = S.scenario; if(!sc) return go('home');
+  $('#rq').textContent = sc.typed;
+  if(sc.unknown){
+    $('#rChips').innerHTML=''; $('#rMeta').textContent='';
+    $('#rList').innerHTML = `<div class="empty"><b>이 목업은 그 말을 몰라요</b>실제 앱은 종류·상황·색·예산·제외를 규칙으로 읽고, 못 읽은 말은 "이해하지 못했어요"라고 보여줘요. 여기서는 예시 4개만 돼요.</div>
+      <div class="chips">${SCENARIOS.map(s=>`<button type="button" class="chip" data-q="${esc(s.q)}">${esc(s.q)}</button>`).join('')}</div>`;
+    $('#rList').querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>ask(c.dataset.q)));
+    $('#rFine').textContent=''; return;
+  }
+  $('#rChips').innerHTML = sc.conds.map(c=>`<span class="chip on">${esc(c)}</span>`).join('');
+  const basis = S.useCloset ? `내 옷 ${S.closet.length}벌과 비교함` : '옷장 없이 · 조건만 봄';
+  $('#rMeta').textContent = `${sc.total}개 중 ${sc.items.length}개 · ${basis} · 가격은 10월 13일 수집가`;
+  $('#rList').innerHTML = sc.items.map(p=>card(p, verdict(p))).join('') + (!S.useCloset ? `<div class="note"><b>옷장을 켜면</b> 겹치는 옷·색까지 보고 살까·말까를 답해요. 묻기 화면에서 "예시 옷 3벌로 비교하기"를 켜 보세요.</div>`:'');
+  $('#rList').querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>{ S.product = sc.items.find(p=>p.id===c.dataset.id); go('detail'); }));
+  $('#rFine').textContent = '조건은 몰래 풀지 않아요. 0개면 0개라고 말해요. 판정은 목업 규칙(겹침·색·상황·반품 기록)이에요.';
+}
+
+// ── 상세·판단
+function renderDetail(){
+  const p = S.product; if(!p) return go('results');
+  const r = verdict(p);
+  const mine = S.useCloset ? S.closet.filter(g=>g.g===p.g) : [];
+  const j = S.journal.find(x=>x.p.id===p.id);
+  const lean = r.kind==='yes'?'buy':r.kind==='no'?'skip':'hold';
+  $('#dBody').innerHTML = `
+    <div class="sec" style="margin-top:4px">
+      <span class="stamp ${r.kind} big">${esc(r.word)}</span>
+      <div class="why strong">${esc(r.why)}</div>
+      <div class="prod">
+        <div class="sw2" style="background:${colorHex(p.color)}">${esc(colorName(p.color))}</div>
+        <div><div class="pbrand">${esc(p.brand)} · ${esc(p.kind)}</div><div class="pname">${esc(p.name)}</div>
+        <div class="price">${won(p.price)}<small>${esc(p.checkedAt)} 수집가 · 쿠폰·배송비 제외</small></div></div>
+      </div>
+      <div class="decide">
+        <button class="b-yes ${lean==='buy'?'lean':''}" data-d="buy">사기로 함</button>
+        <button class="b-hold ${lean==='hold'?'lean':''}" data-d="hold">보류</button>
+        <button class="b-no ${lean==='skip'?'lean':''}" data-d="skip">안 살래</button>
+        <div class="hint">${j?`이미 "${{buy:'사기로 함',hold:'보류',skip:'안 살래'}[j.decision]}"으로 기록돼 있어요. 다시 누르면 바뀌어요.`:'판정은 참고예요. 결정은 직접 눌러요.'}</div>
+      </div>
+      <a class="link" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">판매처에서 보기 (무신사) ↗</a>
+      <div class="fine">링크는 판매처 상품 페이지로 바로 가요. 실제 가격·옵션·재고는 거기서 확인해요. 앱 안 결제는 없어요.</div>
+    </div>
+    <div class="sec"><h3>왜 골랐나</h3>${p.reasons.map(t=>`<div class="row"><span>${esc(t)}</span></div>`).join('')}</div>
+    <div class="sec"><h3>내 옷과 비교</h3>
+      ${S.useCloset ? (mine.length ? mine.map(g=>{ const rel = g.shape!==p.shape?'none':g.color===p.color?'same':'other'; return `<div class="mine"><span class="dot" style="background:${colorHex(g.color)}"></span><span class="l">${esc(g.label)}${g.example?' <small style="color:var(--ink3)">예시</small>':''}</span><span class="r ${rel}">${rel==='same'?'거의 같음':rel==='other'?'종류 같음·색 다름':'다른 종류'}</span></div>`; }).join('') : '<div class="st">비교할 내 옷이 없어요.</div>')
+        : `<div class="st">옷장 없이 물어봤어요. 조건만으로 답했고 겹침은 못 봤어요.</div><button type="button" class="link sec2" id="turnOn">예시 옷 3벌 켜고 다시 보기</button>`}
+      <div class="fine">코디 조합·가상 착용은 이 목업에 없어요. 본 앱은 코디 공식까지 비교해요.</div>
+    </div>`;
+  $('#dBody').querySelectorAll('[data-d]').forEach(b=>b.addEventListener('click',()=>decide(p,b.dataset.d)));
+  const on = $('#turnOn'); if(on) on.addEventListener('click',()=>{ S.useCloset=true; renderDetail(); toast('내 옷 3벌과 비교했어요'); });
+}
+function decide(p,d){
+  let j = S.journal.find(x=>x.p.id===p.id);
+  if(!j){ j={ p, decision:d, stage:'candidate', worn:0, reason:null, at:now() }; S.journal.unshift(j); } else { j.decision=d; if(d!=='buy'){ j.stage='candidate'; } }
+  updateBadges(); renderDetail();
+  toast({buy:'사기로 했어요. 기록에서 주문·수령을 이어가요',hold:'보류로 적었어요',skip:'안 사기로 적었어요'}[d]);
+}
+function now(){ const d=new Date(); return `${d.getMonth()+1}월 ${d.getDate()}일`; }
+
+// ── 기록
+const STAGES = ['candidate','ordered','received','kept'];
+function renderJournal(){
+  updateBadges();
+  if(!S.journal.length){ $('#jList').innerHTML = `<div class="empty"><b>아직 기록이 없어요</b>묻기에서 상품을 열고 "사기로 함·보류·안 살래"를 누르면 여기 쌓여요. 사기로 한 옷은 주문→받음→입음·반품까지 이어가요.</div>`; return; }
+  $('#jList').innerHTML = S.journal.map(j=>{
+    const p=j.p, dl={buy:'사기로 함',hold:'보류',skip:'안 살래'}[j.decision];
+    const idx = STAGES.indexOf(j.stage);
+    const bars = j.stage==='returned' ? '<span class="on"></span><span class="on"></span><span class="on"></span><span class="ret"></span>' : STAGES.map((s,i)=>`<span class="${i<=idx?'on':''}"></span>`).join('');
+    const st = {candidate:j.decision==='buy'?'사기로 함 · 아직 주문 전':dl, ordered:'직접 주문했다고 기록함', received:'받았어요 · 입어 보고 정해요', kept:`계속 입어요 · 내 옷에 들어감${j.worn?` · ${j.worn}번 입음`:''}`, returned:`반품함 · ${j.reason}`}[j.stage];
+    let acts='';
+    if(j.decision==='buy'){
+      if(j.stage==='candidate') acts=`<button class="main" data-a="ordered">주문했어요</button><button class="ghost" data-a="undo">사기로 함 취소</button>`;
+      else if(j.stage==='ordered') acts=`<button class="main" data-a="received">받았어요</button>`;
+      else if(j.stage==='received') acts=`<button class="main" data-a="kept">계속 입을게요</button><button data-a="returned">반품했어요</button>`;
+      else if(j.stage==='kept') acts=`<button data-a="worn">오늘 입었어요</button>`;
+      else if(j.stage==='returned') acts=`<button class="ghost" data-a="reask">같은 요청 다시 묻기</button>`;
+    } else acts=`<button class="ghost" data-a="open">다시 보기</button>`;
+    return `<div class="jour" data-id="${esc(p.id)}">
+      <div class="prod" style="margin-top:0"><div class="sw2" style="background:${colorHex(p.color)};height:52px;width:44px">${esc(colorName(p.color))}</div>
+        <div><div class="pbrand">${esc(p.brand)} · ${esc(p.kind)}</div><div class="pname">${esc(p.name)}</div><div class="price">${won(p.price)}<small>${esc(p.checkedAt)} 수집가</small></div></div></div>
+      ${j.decision==='buy'?`<div class="stage">${bars}</div>`:''}
+      <div class="st"><b>${esc(st)}</b> · ${esc(j.at)}</div>
+      <div class="acts">${acts}</div>
+    </div>`;
+  }).join('');
+  $('#jList').querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>act(b.closest('.jour').dataset.id,b.dataset.a)));
+}
+function act(id,a){
+  const j = S.journal.find(x=>x.p.id===id); if(!j) return;
+  if(a==='undo'){ j.decision='hold'; toast('보류로 바꿨어요'); }
+  else if(a==='ordered'){ j.stage='ordered'; toast('주문 기록은 직접 적은 거예요. 확인된 주문은 아니에요'); }
+  else if(a==='received'){ j.stage='received'; }
+  else if(a==='kept'){ j.stage='kept'; S.closet.push({ id:'own-'+id, label:`${colorName(j.p.color)} ${j.p.kind}`, shape:j.p.shape, kindName:j.p.kind, color:j.p.color, g:j.p.g, productId:id }); toast('내 옷에 들어갔어요. 다음 답부터 반영돼요'); }
+  else if(a==='worn'){ j.worn++; toast('착용 기록 +1'); }
+  else if(a==='returned'){ openSheet(`<h2 style="margin-top:0">왜 반품했나요?</h2><p class="sub">사유는 다음 판정에 "반품한 적 있어요"로 돌아와요. 추측은 안 해요.</p><div class="opts">${['사이즈','색이 달라서','품질','마음이 바뀜','기타'].map(r=>`<button data-r="${r}">${r}</button>`).join('')}</div>`, (el)=>{ el.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>{ j.stage='returned'; j.reason=b.dataset.r; S.closet=S.closet.filter(g=>g.productId!==id); closeSheet(); renderJournal(); toast('반품 기록. 같은 브랜드·종류 판정에 경고로 보여요'); })); }); return; }
+  else if(a==='reask'){ S.scenario = SCENARIOS.find(s=>s.items.some(p=>p.id===id)); S.scenario={...S.scenario, typed:S.scenario.q}; return go('results'); }
+  else if(a==='open'){ S.product=j.p; S.scenario = SCENARIOS.find(s=>s.items.some(p=>p.id===id)); S.scenario={...S.scenario, typed:S.scenario.q}; return go('detail'); }
+  renderJournal();
+}
+
+// ── 내 옷
+function renderCloset(){
+  updateBadges();
+  $('#cList').innerHTML = `<div class="sec"><h3>내 옷 ${S.closet.length}벌 ${S.useCloset?'<span class="tag ok">답에 반영 중</span>':'<span class="tag">지금은 옷장 없이 답함</span>'}</h3>
+    ${S.closet.map(g=>`<div class="mine"><span class="dot" style="background:${colorHex(g.color)}"></span><span class="l">${esc(g.label)} <small style="color:var(--ink3)">${esc(g.kindName)}${g.example?' · 예시':' · 기록에서'}</small></span><button class="r none" data-rm="${esc(g.id)}">빼기</button></div>`).join('')||'<div class="st">비어 있어요.</div>'}
+    <div class="fine">본 앱에서는 사진·종류·색으로 내 옷을 넣고 기기 안에만 저장해요. 이 목업은 사진·저장이 없어요.</div></div>
+    <button type="button" class="link sec2" id="cSw">${S.useCloset?'옷장 없이 답하기로 바꾸기':'내 옷과 비교해서 답하기'}</button>
+    ${S.closet.length<EXAMPLE_CLOSET.length?'<button type="button" class="link sec2" id="cReset">예시 3벌 되돌리기</button>':''}`;
+  $('#cList').querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{ S.closet=S.closet.filter(g=>g.id!==b.dataset.rm); renderCloset(); }));
+  $('#cSw').addEventListener('click',()=>{ S.useCloset=!S.useCloset; renderCloset(); });
+  const rs=$('#cReset'); if(rs) rs.addEventListener('click',()=>{ for(const g of EXAMPLE_CLOSET) if(!S.closet.some(x=>x.id===g.id)) S.closet.push({...g}); renderCloset(); });
+}
+
+// ── 공통
+function updateBadges(){ const jb=$('#jBadge'), cb=$('#cBadge'); jb.hidden=!S.journal.length; jb.textContent=S.journal.length; cb.hidden=!S.closet.length; cb.textContent=S.closet.length; }
+let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2200); }
+function openSheet(html, bind){ $('#sheetBody').innerHTML=html; if(bind) bind($('#sheetBody')); $('#sheetBg').classList.add('on'); $('#sheet').classList.add('on'); }
+function closeSheet(){ $('#sheetBg').classList.remove('on'); $('#sheet').classList.remove('on'); }
+$('#sheetBg').addEventListener('click',closeSheet);
+$('#aboutBtn').addEventListener('click',()=>openSheet(`<h2 style="margin-top:0">살까말까 목업</h2><ul class="about">
+  <li><b>무엇:</b> "대충 말해도 나에게 맞는 옷을 정확히 골라 주는 원스톱" 정의를 <b>살까·말까</b>라는 한 가지 답으로 보여 주는 눌러 보는 시안이에요. 기존 앱(어울)은 그대로예요.</li>
+  <li><b>진짜인 것:</b> 상품 이름·브랜드·가격·링크는 2026년 10월 13일 수집한 실제 값. 추천 이유도 본 앱 엔진이 낸 문장이에요.</li>
+  <li><b>가짜인 것:</b> 요청 해석은 예시 4개 고정. 판정은 겹침·색·상황·반품 기록만 보는 목업 규칙. 코디·가상 착용·실시간 가격 없음.</li>
+  <li><b>없는 것:</b> 사진, 계정, 저장(새로고침하면 사라짐), 외부 전송. 상품 사진은 권리 확인 전이라 뺐어요.</li>
+  <li><b>가격 표기:</b> "수집가"예요. 현재가·최저가가 아니에요.</li></ul>
+  <button type="button" class="link" id="aboutClose" style="margin-top:14px">닫기</button>`, (el)=>el.querySelector('#aboutClose').addEventListener('click',closeSheet)));
+renderHome();
+</script>
+</body>
+</html>
