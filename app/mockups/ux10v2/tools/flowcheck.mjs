@@ -328,7 +328,8 @@ async function screenStats(page) {
     const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
     const controls = [...document.querySelectorAll('button, a[href], input, select, [role="button"]')].filter(vis);
     const unnamed = controls.filter((el) => !(el.getAttribute('aria-label') || el.innerText.trim() || el.getAttribute('title') || el.value || el.labels?.length || el.getAttribute('placeholder') || el.querySelector('img[alt]:not([alt=""])')));
-    const small = controls.filter((el) => { const r = el.getBoundingClientRect(); return r.width < 24 || r.height < 24; });
+    // 1px 이하로 숨긴 요소(건너뛰기 링크 등, 포커스 때만 보임)는 누르는 곳으로 세지 않는다.
+    const small = controls.filter((el) => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && (r.width < 24 || r.height < 24); });
     const under44 = controls.filter((el) => { const r = el.getBoundingClientRect(); return r.width < 40 || r.height < 40; });
     const tiny = [...document.querySelectorAll('body *')].filter((el) => vis(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(el).fontSize) < 12);
     const imgsNoAlt = [...document.querySelectorAll('img')].filter((i) => vis(i) && !i.hasAttribute('alt')).length;

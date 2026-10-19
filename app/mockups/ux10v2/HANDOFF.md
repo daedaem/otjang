@@ -18,7 +18,7 @@ Claude 사용량 소진 대비 저장(2026-10-19). Codex는 이 상태에서 이
 ## 미완성
 | 파일 | 상태 | 다음 할 일 |
 |---|---|---|
-| `teams/03-compare.html`, `teams/08-rail.html`, `teams/09-editorial.html` | 팀 작업 도중 중단(사용량). 끝까지 쓰인 파일이지만 자체 검사·수정 전 | 흐름 검사 결과(아래) 문제 고치기 → `--offline` → 360px → 팀 카드 |
+| `teams/03-compare.html`, `teams/08-rail.html`, `teams/09-editorial.html` | 팀 작업 도중 중단(사용량). 흐름 검사(온라인)로 같은 과업은 셋 다 끝까지 통과: 상세 사진 폭 100%·크게 보기·수집가 표기·중고 정직·옷 추가 후 같은 상품 복귀·후보 둘 비교·보류 기록·뒤로가기 위치 복원, 과업 동작 10. 남은 문제: 03·08은 24px 미만 누르는 곳 1개(과업 마지막 화면, 기록이 있는 상태에서 확인 필요), 09는 숨긴 건너뛰기 링크 오탐(검사 도구 수정함). 09 결과 첫 화면은 1열 큰 카드 1개(기사형 의도) | 03·08 작은 누르는 곳 고치기 → `--offline` → 360px → 시각 점검(화면 `.flowcheck` 폴더) → 팀 카드(`research/team-brief.md` 5번 형식) |
 | `teams/01, 02, 04, 05, 06, 07, 10` | 파일 없음(시작 전 중단) | `research/team-brief.md` + 각 팀 방향(아래)으로 제작 |
 | `index.html` + `tools/make-gallery-data.mjs` | 갤러리 틀(실시간 미리보기 iframe, 스크린샷 저장 안 함). `data/teams.json`·`data/bench.json`·`data/refs.json`·`data/notes.json` 아직 없음 → `gallery-data.js` 미생성 | 팀 카드 모아 `data/` 작성 → `node tools/make-gallery-data.mjs --flow <흐름 결과 폴더>` |
 | `wip/bench-reference-sites.mjs` | 무신사·29CM·Zalando·SSENSE 같은 과업 측정 스크립트(중간 저장, 결과 없음). 헤드리스 Chromium + iPhone UA로 네 곳 접속 가능, curl은 403 | 측정 → `data/bench.json`(숫자만). 타사 스크린샷은 커밋하지 않음 |
