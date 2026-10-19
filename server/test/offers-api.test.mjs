@@ -29,6 +29,10 @@ test('offers: signed in only, checked input, sources with their status in health
   assert.deepEqual(unlisted.offers, [], 'an unlisted product gets no catalog price and no substitute');
   const health = await (await fetch(`${s.base}/v1/health`)).json();
   assert.equal(health.features.offers, true);
+  const retired = health.supply.find((source) => source.id === 'naver-shopping');
+  assert.equal(retired.stoppedAt, '2026-07-31');
+  assert.match(retired.note, /기존 키로도 호출하지 않아요/);
+  assert.equal(retired.noticeUrl, 'https://developers.naver.com/notice/article/32564');
   assert.ok(health.supply.find((source) => source.id === 'musinsa').needs.length);
 });
 

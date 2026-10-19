@@ -179,7 +179,7 @@ export function renderProductsModule(list) {
   return `// 자동 생성 파일: app/tools/catalog/make-products.mjs 로 다시 만든다. 직접 고치지 않는다.
 // 상품명·브랜드·가격·평점·후기 수·이미지는 무신사 상품 페이지와 브랜드 목록 화면에서 읽은 값이다.
 // 가격은 확인 시점의 판매가이며 쿠폰·회원 할인·배송비는 반영하지 않는다. 색 일부는 상품 사진에서 짐작한 값이다.
-export const CATALOG = ${JSON.stringify({ store: '무신사', checkedAt: last, checkedLabel: first === last ? label(last) : `${label(first)}~${label(last).replace(/^\d+년 /, '')}`, count: list.length })};
+export const CATALOG = ${JSON.stringify({ store: '무신사', rights: 'unverified', rightsEvidence: null, checkedAt: last, checkedLabel: first === last ? label(last) : `${label(first)}~${label(last).replace(/^\d+년 /, '')}`, count: list.length })};
 
 export const PRODUCTS = ${JSON.stringify(list.map(({ picked, ...p }) => p))};
 `;

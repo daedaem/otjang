@@ -235,7 +235,7 @@ ${link}
       signup: { inviteRequired: !!config.inviteCode },
       providers: { email: true, kakao: false, google: false },
       features: { photoMask: !!maskService, offers: !!supply, email: !!mail.enabled, community: !!config.community },
-      supply: supply ? supply.sources().map(({ id, name, status, needs = [] }) => ({ id, name, status, needs })) : [],
+      supply: supply ? supply.sources().map(({ id, name, status, needs = [], note, stoppedAt, noticeUrl }) => ({ id, name, status, needs, note, stoppedAt, noticeUrl })) : [],
       operator: operatorInfo(),
       policy: { privacy: '/privacy', terms: '/terms', draft: policyDraft() },
       affiliateHosts: config.affiliateHosts || [],

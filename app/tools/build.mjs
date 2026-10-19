@@ -9,6 +9,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CATALOG } from '../src/data/products.js';
+
+// This only prevents accidentally publishing unverified catalog material.
+// A recorded approval is not a technical guarantee of public-service readiness.
+if (process.env.EOUL_PUBLIC_BUILD === '1' &&
+    (CATALOG.rights !== 'verified-public' || !CATALOG.rightsEvidence?.trim()))
+  throw new Error(`공개 빌드 중단: ${CATALOG.store || '이름 없는 카탈로그'} 자료의 공개 사용 권리와 근거가 확인되지 않았어요. 승인된 자료로 교체해 주세요. 개인 시험 빌드는 유지됩니다.`);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);

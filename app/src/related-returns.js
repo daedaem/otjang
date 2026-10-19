@@ -13,7 +13,7 @@ export function relatedReturnRecords(journeys, candidate, excludeId = null) {
     // A later edit cannot rewrite the product, option or feedback at return time.
     const details = event?.details, past = details?.candidate;
     if (!past || brandKey(past.brand) !== brand || kindKey(past) !== kind) return [];
-    if ((candidate.productId && past.productId === candidate.productId) || past.url === candidate.url) return [];
+    if ((candidate.productId && past.productId === candidate.productId) || (past.url && past.url === candidate.url)) return [];
     return [{ journeyId: journey.id, at: event.at, name: past.name || '상품명 미기록',
       option: details.option || null, fit: details.feedback?.fit || null,
       returnReason: details.feedback?.returnReason || null }];

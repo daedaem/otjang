@@ -25,6 +25,10 @@ test('a legacy return without a snapshot does not borrow the current product or 
   const journey = old('old'); journey.history[0].details = null;
   assert.deepEqual(relatedReturnRecords([journey], candidate), []);
 });
+test('two missing URLs are not evidence of the same product', () => {
+  const journey = old('old', { url: null });
+  assert.equal(relatedReturnRecords([journey], { ...candidate, url: null }).length, 1);
+});
 test('the latest three related returns are shown and missing feedback remains unknown', () => {
   const journeys = [1, 2, 3, 4].map((day) => { const j = old(`old-${day}`); j.history[0].at = `2026-10-0${day}T00:00:00.000Z`; j.history[0].details.feedback = {}; return j; });
   const rows = relatedReturnRecords(journeys, candidate);
