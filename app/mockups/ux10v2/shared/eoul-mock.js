@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 b7b835f) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 fe77f1a) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 891개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -4550,6 +4550,15 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
     },
     clearRecent() { commit(() => { S.recent = []; }); },
 
+    // 가진 옷만으로 입을 수 있는 조합 수(코디 공식 + 종류·색 기본 조합). 옷장을 채우는 재미의 보상 숫자.
+    // 구매 추천이 아니다. 체험용 옷도 포함하므로 화면에서 '체험용 포함'을 밝힌다.
+    closetOutfits({ limit = 60 } = {}) {
+      const st = engineState();
+      const formulas = closetLooks(st, { limit }).ready.length;
+      const basic = basicOutfits(st, { limit }).length;
+      return { formulas, basic, total: formulas + basic, note: '가진 옷으로 입을 수 있는 조합 수예요(종류·색 기준, 핏·소재는 따지지 않았어요).' };
+    },
+
     // 빈 결과·좁은 결과의 다음 선택: 조건을 하나씩 뺐을 때의 결과 수와 사진 미리보기.
     // 자동으로 적용하지 않는다(대표 원칙: 조건 보존. 대안이 하나뿐이어도 사용자가 고른다).
     relax(result, { limit = 3, preview = 3 } = {}) {
@@ -4762,6 +4771,6 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
 if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "b7b835f" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "fe77f1a" };
 window.EoulMock = mock;
 })();

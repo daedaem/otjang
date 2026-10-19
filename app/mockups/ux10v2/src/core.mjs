@@ -10,7 +10,7 @@ import { SLOT_BY_ID, SLOTS, COLORS, STYLES } from '../../../src/data/slots.js';
 import { ROLE_LABEL, ROLE_ORDER } from '../../../src/data/looks.js';
 import {
   search, recommendLooks, recommendItems, formatPrice, josa, PRODUCT_BY_ID, productsFor, meetsCriteria,
-  productCriteria, criteriaLine, productReasons, scoreSlot, seasonOf, SEASON_LABEL, SAFE_PRODUCTS, lookalike,
+  productCriteria, criteriaLine, productReasons, scoreSlot, seasonOf, SEASON_LABEL, SAFE_PRODUCTS, lookalike, closetLooks, basicOutfits,
 } from '../../../src/engine.js';
 import { newWardrobeState, wardrobeView, makeGarment, garmentKindChoices, garmentKindName, garmentLabel, GARMENT_KINDS } from '../../../src/wardrobe.js';
 import { candidateFromProduct, compareCandidate, quickCompare } from '../../../src/purchase-candidate.js';
@@ -615,6 +615,15 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       return rows.filter((r) => !seen.has(r.q) && seen.add(r.q)).slice(0, limit);
     },
     clearRecent() { commit(() => { S.recent = []; }); },
+
+    // 가진 옷만으로 입을 수 있는 조합 수(코디 공식 + 종류·색 기본 조합). 옷장을 채우는 재미의 보상 숫자.
+    // 구매 추천이 아니다. 체험용 옷도 포함하므로 화면에서 '체험용 포함'을 밝힌다.
+    closetOutfits({ limit = 60 } = {}) {
+      const st = engineState();
+      const formulas = closetLooks(st, { limit }).ready.length;
+      const basic = basicOutfits(st, { limit }).length;
+      return { formulas, basic, total: formulas + basic, note: '가진 옷으로 입을 수 있는 조합 수예요(종류·색 기준, 핏·소재는 따지지 않았어요).' };
+    },
 
     // 빈 결과·좁은 결과의 다음 선택: 조건을 하나씩 뺐을 때의 결과 수와 사진 미리보기.
     // 자동으로 적용하지 않는다(대표 원칙: 조건 보존. 대안이 하나뿐이어도 사용자가 고른다).

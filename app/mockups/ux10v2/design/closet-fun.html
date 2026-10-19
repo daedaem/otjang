@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>옷장 채우기</title>
+<!-- 창작안 D '옷장 채우기' — 눌러 보는 시안. 가진 옷을 걸수록 코디가 늘어나는 재미. 서비스 이름 미정.
+     원칙: 옷장은 가진 옷 등록으로만 채운다(사서 채우게 하지 않음). 후보는 반투명 '대 보기'로만 걸고, 받은 뒤에야 옷장에 들어간다. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Gothic+A1:wght@500;700;800;900&family=Inter:wght@500;600;700&display=swap">
+<script src="../shared/eoul-mock.js"></script>
+<style>
+  :root { --wood: #a8825b; --wood2: #8a6744; --wall: #f4ede3; --wall2: #ebe1d3; --ink: #2b231c; --sub: #7d6f60; --leaf: #3f6b45; --warn: #a33d27; --card: #fffaf2; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #d9d2c7; font-family: "Gowun Dodum", "Gothic A1", sans-serif; color: var(--ink); display: flex; justify-content: center; }
+  .app { position: relative; width: 100%; max-width: 430px; min-height: 100vh; background: linear-gradient(180deg, var(--wall) 0%, var(--wall2) 100%); overflow: hidden; }
+  .top { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 6px; }
+  .wm { font: 900 19px "Gothic A1", sans-serif; letter-spacing: -.03em; } .wm small { font: 500 10px "Gothic A1", sans-serif; color: var(--sub); margin-left: 6px; }
+  .info-btn { border: 1px solid #cdbfac; background: transparent; border-radius: 999px; height: 32px; padding: 0 12px; font: 600 12px "Gothic A1", sans-serif; color: var(--sub); }
+  .stat { padding: 8px 18px 0; display: flex; gap: 8px; }
+  .stat div { flex: 1; background: var(--card); border-radius: 16px; padding: 10px 12px; }
+  .stat b { display: block; font: 800 24px "Inter", sans-serif; letter-spacing: -.02em; } .stat span { font-size: 12px; color: var(--sub); }
+  .stat .pop { animation: pop .6s ease; }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); color: var(--leaf); } 100% { transform: scale(1); } }
+  /* 옷걸이 봉과 칸 */
+  .zone { margin: 18px 0 0; }
+  .zone .h { display: flex; justify-content: space-between; padding: 0 18px; font-size: 14px; font-weight: 700; } .zone .h span { font-size: 12px; color: var(--sub); font-weight: 400; }
+  .rod { position: relative; margin: 10px 12px 0; padding-top: 14px; }
+  .rod::before { content: ''; position: absolute; left: 0; right: 0; top: 6px; height: 8px; border-radius: 4px; background: linear-gradient(var(--wood), var(--wood2)); box-shadow: 0 3px 6px rgba(80,50,20,.25); }
+  .hangers { display: flex; gap: 8px; overflow-x: auto; padding: 0 6px 12px; scrollbar-width: none; min-height: 150px; }
+  .hanger { position: relative; flex: none; width: 92px; transform-origin: 50% -8px; }
+  .hanger::before { content: ''; position: absolute; left: 50%; top: -12px; width: 14px; height: 16px; margin-left: -7px; border: 2px solid #6b5640; border-bottom: 0; border-radius: 8px 8px 0 0; }
+  .hanger .ph { width: 92px; aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 6px 14px rgba(70,45,20,.18); }
+  .hanger .ph .eo-ph { border-radius: 14px !important; } .hanger .ph img { mix-blend-mode: multiply; }
+  .hanger .lb { font-size: 11px; text-align: center; margin-top: 6px; color: var(--ink); line-height: 1.3; }
+  .hanger.empty .ph { background: transparent; border: 2px dashed #c7b59d; box-shadow: none; display: grid; place-items: center; color: #a8957c; font-size: 26px; cursor: pointer; }
+  .hanger.new { animation: swing 1.4s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes swing { 0% { transform: translateY(-60px) rotate(-14deg); opacity: 0; } 30% { opacity: 1; } 55% { transform: translateY(0) rotate(9deg); } 75% { transform: rotate(-5deg); } 90% { transform: rotate(2deg); } 100% { transform: rotate(0); } }
+  .hanger.ghost .ph { opacity: .62; outline: 2px dashed var(--ink); outline-offset: 2px; }
+  .hanger.hit .ph { box-shadow: 0 0 0 3px var(--warn), 0 8px 18px rgba(163,61,39,.25); }
+  .hanger.hit .lb { color: var(--warn); font-weight: 700; }
+  .hanger.pair .ph { box-shadow: 0 0 0 3px var(--leaf), 0 8px 18px rgba(63,107,69,.25); }
+  .hanger.pair .lb { color: var(--leaf); font-weight: 700; }
+  /* 아래 행동 */
+  .cta { position: sticky; bottom: 0; padding: 14px 18px 22px; background: linear-gradient(transparent, var(--wall2) 30%); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { height: 56px; border-radius: 18px; border: 0; font: 800 15px "Gothic A1", sans-serif; cursor: pointer; }
+  .btn.dark { background: var(--ink); color: #fff; } .btn.light { background: var(--card); color: var(--ink); border: 1.5px solid #d8c9b4; }
+  .note { margin: 14px 18px 0; padding: 12px 14px; border-radius: 14px; background: var(--card); font-size: 13px; line-height: 1.55; color: var(--sub); }
+  .note b { color: var(--ink); }
+  /* 시트 */
+  .scrim { position: fixed; inset: 0; background: rgba(40,28,15,.35); z-index: 10; }
+  .sheet { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 430px; z-index: 11; background: var(--card); border-radius: 24px 24px 0 0; padding: 12px 18px 24px; max-height: 86vh; overflow: auto; animation: up .28s ease; }
+  @keyframes up { from { transform: translate(-50%, 40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: #d8c9b4; margin: 0 auto 14px; }
+  .sheet h3 { margin: 0; font: 800 19px "Gothic A1", sans-serif; letter-spacing: -.03em; } .sheet .d { font-size: 13px; color: var(--sub); margin-top: 6px; }
+  .kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .kind { border: 0; background: #fff; border-radius: 16px; padding: 6px 6px 10px; cursor: pointer; box-shadow: 0 2px 6px rgba(70,45,20,.08); font: 700 13px "Gothic A1", sans-serif; color: var(--ink); }
+  .kind .ph { aspect-ratio: 1; border-radius: 12px; overflow: hidden; margin-bottom: 6px; } .kind .ph img { mix-blend-mode: multiply; } .kind .ph .eo-ph { aspect-ratio: 1 !important; }
+  .kind.on { outline: 2.5px solid var(--ink); }
+  .cols { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 6px; margin-top: 16px; }
+  .col { border: 0; background: none; display: grid; justify-items: center; gap: 4px; font: 600 11px "Gothic A1", sans-serif; color: var(--ink); cursor: pointer; }
+  .col i { width: 44px; height: 44px; border-radius: 22px; border: 1px solid rgba(0,0,0,.12); display: block; }
+  .col.on i { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink); }
+  .preview { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; margin-top: 18px; padding: 10px; border-radius: 16px; background: #fff; }
+  .preview .ph { width: 72px; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; } .preview .ph img { mix-blend-mode: multiply; }
+  .preview small { display: block; color: var(--sub); font-size: 11px; margin-top: 2px; }
+  .sheet .btn { width: 100%; margin-top: 16px; } .sheet .btn[disabled] { opacity: .35; }
+  /* 대 보기 카드 */
+  .cand { margin: 16px 18px 0; padding: 14px; border-radius: 20px; background: var(--card); display: grid; grid-template-columns: 84px 1fr; gap: 12px; }
+  .cand .ph { width: 84px; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; } .cand .ph img { mix-blend-mode: multiply; }
+  .cand .b { font-size: 11px; color: var(--sub); } .cand .n { font-size: 14px; font-weight: 700; margin-top: 2px; line-height: 1.35; } .cand .p { font: 700 15px "Inter", sans-serif; margin-top: 4px; }
+  .cand .v { margin-top: 8px; font: 800 15px "Gothic A1", sans-serif; } .cand .v.stop { color: var(--warn); } .cand .v.go { color: var(--leaf); }
+  .cand .dec { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; }
+  .cand .dec button { height: 46px; border-radius: 14px; border: 1.5px solid #d8c9b4; background: #fff; font: 700 14px "Gothic A1", sans-serif; cursor: pointer; }
+  .cand .dec button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 14px; font: 700 14px "Gothic A1", sans-serif; z-index: 20; animation: up .25s ease; white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) { .hanger.new, .stat .pop, .sheet, .toast { animation: none; } }
+</style>
+</head>
+<body>
+<main class="app" id="app"></main>
+<script>
+(() => {
+  const M = window.EoulMock;
+  if (!M.boot.preview && !M.boot.reset) { location.replace(`${location.pathname}?reset=1`); return; }
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ph = (t) => `<div class="ph">${M.photoHtml(t, { eager: true, caption: false })}</div>`;
+  const $ = (s) => document.querySelector(s);
+  const ZONES = [['top', '상의', ['shirt', 'tee', 'knit', 'sweat']], ['bottom', '하의', ['pants', 'jeans', 'skirt']], ['outer', '아우터', ['jacket', 'coat', 'blazer', 'cardigan', 'down']], ['shoes', '신발', ['sneaker', 'loafer', 'boot']]];
+  const KINDS = M.kindChoices().filter((k) => ZONES.some((z) => z[2].includes(k.id))).slice(0, 9);
+  const S = { newId: null, candidate: null, lastLooks: 0 };
+  const looksCount = () => M.closetOutfits().total;
+  // 다음 한 벌 힌트: 상의·하의·신발 중 비어 있는 칸(가진 옷을 걸라는 뜻, 사라는 뜻이 아니다)
+  const nextHint = (st) => {
+    const has = (key) => st.closet.some((g) => ZONES.find((z) => z[0] === key)[2].includes(g.kind));
+    const miss = [['top', '상의'], ['bottom', '하의'], ['shoes', '신발']].filter(([k]) => !has(k));
+    if (!st.closetCount) return '';
+    if (miss.length) return `가진 ${miss.map((m) => m[1]).join('·')}${miss.length === 1 ? '만' : '을'} 걸면 첫 조합이 생겨요`;
+    return '아우터를 걸면 겉옷까지 갖춘 조합이 늘어요';
+  };
+  function render({ pop = false } = {}) {
+    const st = M.getState();
+    const looks = looksCount();
+    const cand = S.candidate ? M.product(S.candidate) : null;
+    const v = cand?.verdict;
+    const hitIds = new Set((v?.owned || []).map((o) => o.id));
+    const pairIds = new Set((v?.looks?.[0]?.pieces || []).filter((x) => x.owned).map((x) => x.photo?.src));
+    const zone = ([key, name, kinds]) => {
+      const items = st.closet.filter((g) => kinds.includes(g.kind));
+      const ghost = cand && kinds.includes(cand.kind);
+      const empties = Math.max(0, 3 - items.length - (ghost ? 1 : 0));
+      return `<section class="zone"><div class="h">${name}<span>${items.length}벌</span></div><div class="rod"><div class="hangers">
+        ${ghost ? `<div class="hanger ghost"><div>${ph(cand)}</div><div class="lb">대 보는 중<br>${esc(cand.brand)}</div></div>` : ''}
+        ${items.map((g) => `<div class="hanger ${g.id === S.newId ? 'new' : ''} ${hitIds.has(g.id) ? 'hit' : ''} ${!hitIds.has(g.id) && pairIds.has(g.photo?.src) ? 'pair' : ''}">${ph(g)}<div class="lb">${hitIds.has(g.id) ? '겹쳐요 · ' : !hitIds.has(g.id) && pairIds.has(g.photo?.src) ? '코디 짝 · ' : ''}${esc(g.label)}</div></div>`).join('')}
+        ${Array.from({ length: empties }, () => `<div class="hanger empty" data-add="${key}"><div class="ph">+</div><div class="lb">가진 ${name} 걸기</div></div>`).join('')}
+      </div></div></section>`;
+    };
+    $('#app').innerHTML = `<div class="top"><span class="wm">이름 미정<small>가칭 · 시안 D</small></span><button class="info-btn" id="info">시안 정보</button></div>
+      <div class="stat"><div><b class="${pop ? 'pop' : ''}">${st.closetCount}</b><span>내 옷장</span></div><div><b class="${pop ? 'pop' : ''}">${looks}</b><span>입을 수 있는 조합</span></div><div><b>${st.records.length}</b><span>기록</span></div></div>
+      ${st.closetCount && !cand ? `<div class="note"><b>다음 한 벌</b> · ${esc(nextHint(st))}</div>` : ''}
+      ${st.closetCount ? '' : '<div class="note"><b>가진 옷을 한 벌씩 걸어 보세요.</b> 사진 없이 종류와 색만 고르면 돼요. 옷이 늘수록 만들 수 있는 코디가 늘고, 사기 전에 겹치는 옷을 미리 알려 드려요.</div>'}
+      ${cand ? `<div class="cand">${ph(cand)}<div><div class="b">대 보는 중 · ${esc(cand.brand)}</div><div class="n">${esc(cand.name)}</div><div class="p">${esc(cand.priceText)} <span style="font:400 11px 'Gothic A1';color:var(--sub)">${esc(cand.priceShort)}</span></div><div class="v ${esc(v.tone)}">${esc(v.title)}</div></div><div class="dec">${[['hold', '보류'], ['skip', '안 살래'], ['buy', '사기로 함']].map(([k, l]) => `<button data-dec="${k}" class="${v.record?.decision === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>` : ''}
+      ${ZONES.map(zone).join('')}
+      <div class="cta"><button class="btn light" id="add">+ 가진 옷 걸기</button><button class="btn dark" id="try">${cand ? '다른 후보 대 보기' : '살 옷 대 보기'}</button></div>`;
+    S.newId = null;
+    $('#add').onclick = () => openAdd();
+    $('#try').onclick = () => tryOn();
+    $('#info').onclick = () => M.openDisclosure();
+    document.querySelectorAll('[data-add]').forEach((el) => { el.onclick = () => openAdd(el.dataset.add); });
+    document.querySelectorAll('[data-dec]').forEach((el) => { el.onclick = () => { M.decide(S.candidate, el.dataset.dec); toast(el.dataset.dec === 'buy' ? '사기로 했어요 · 받은 뒤에 옷장에 걸려요' : el.dataset.dec === 'hold' ? '보류했어요' : '안 사기로 했어요'); render(); }; });
+  }
+  function openAdd(zoneKey = null) {
+    const kinds = zoneKey ? KINDS.filter((k) => ZONES.find((z) => z[0] === zoneKey)[2].includes(k.id)) : KINDS;
+    let kind = kinds[0]?.id, color = null;
+    const kindPhoto = (k) => { const r = M.ask(k.name); return r.products[0] ? `<div class="ph">${M.photoHtml(r.products[0], { eager: true, caption: false })}</div>` : '<div class="ph"></div>'; };
+    const wrap = document.createElement('div');
+    const draw = () => {
+      const slot = M.slotChoices(kind)[0]?.id || null;
+      const previewTarget = color && slot ? { slot, color } : null;
+      wrap.innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-label="가진 옷 걸기"><div class="grab"></div><h3>가진 옷 한 벌 걸기</h3><div class="d">사진 없이 종류와 색만 골라요. 걸린 사진은 비슷한 상품 사진이에요.</div>
+        <div class="kinds">${kinds.map((k) => `<button class="kind ${k.id === kind ? 'on' : ''}" data-kind="${k.id}">${kindPhoto(k)}${esc(k.name)}</button>`).join('')}</div>
+        <div class="cols">${M.colorChoices().slice(0, 15).map((c) => `<button class="col ${c.id === color ? 'on' : ''}" data-color="${c.id}"><i style="background:${c.hex}"></i>${esc(c.label)}</button>`).join('')}</div>
+        ${previewTarget ? `<div class="preview">${ph(previewTarget)}<div><b>${esc(M.colorChoices().find((c) => c.id === color).label)} ${esc(kinds.find((k) => k.id === kind).name)}</b><small>비슷한 상품 사진으로 걸려요 · 나중에 내 사진으로 바꿀 수 있어요</small></div></div>` : ''}
+        <button class="btn dark" id="hang" ${color ? '' : 'disabled'}>옷장에 걸기</button></div>`;
+      wrap.querySelectorAll('[data-kind]').forEach((b) => { b.onclick = () => { kind = b.dataset.kind; draw(); }; });
+      wrap.querySelectorAll('[data-color]').forEach((b) => { b.onclick = () => { color = b.dataset.color; draw(); }; });
+      wrap.querySelector('[data-close]').onclick = () => wrap.remove();
+      wrap.querySelector('#hang').onclick = () => {
+        const before = looksCount();
+        const g = M.addGarment({ kind, slot: M.slotChoices(kind)[0]?.id || null, color });
+        S.newId = g.id; wrap.remove();
+        const after = looksCount();
+        render({ pop: true });
+        toast(after > before ? `걸었어요 · 입을 수 있는 조합 +${after - before}` : '걸었어요');
+      };
+    };
+    draw(); document.body.appendChild(wrap);
+  }
+  function tryOn() {
+    const r = M.ask('출근용 셔츠 10만원 이하');
+    const ids = r.products.map((p) => p.id);
+    S.candidate = ids[(ids.indexOf(S.candidate) + 1) % ids.length] || ids[0];
+    render();
+    document.querySelector('.cand')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  let tt; function toast(t) { document.querySelector('.toast')?.remove(); const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = t; document.body.appendChild(el); clearTimeout(tt); tt = setTimeout(() => el.remove(), 2200); }
+  render();
+})();
+</script>
+</body>
+</html>
