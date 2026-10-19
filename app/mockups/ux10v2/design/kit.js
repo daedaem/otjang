@@ -121,6 +121,9 @@
     // C18
     closetTile(g) { return `<div class="g"><div class="ph">${ph(g)}</div><div class="n">${esc(g.label)}</div><div class="s">${esc(g.sourceLabel)}</div></div>`; },
   };
+  // 표준 상품 상세(휴대폰·PC). 시안마다 결정 바 대신 다른 부품을 쓰면 dbar: false로 끄고 extra로 덧붙인다.
+  K.pdpMobile = (d, { n, before = null, extra = '', dbar = true, cmp = 0 } = {}) => `${K.hdr({ n, back: true, compare: cmp, closet: M.getState().closetCount })}${K.pdpPhoto(d)}${K.pdpInfo(d)}${K.verdict(d.verdict, { before })}<div class="sec"><div class="decide-inline">${dbar ? '' : K.decide(d.verdict)}</div><h2>새 상품과 중고</h2>${K.newUsed(d.id)}</div><div class="sec">${K.seller()}</div><div class="sec"><h2>같은 조건 다른 선택</h2><div class="grid2">${d.alternatives.slice(0, 4).map((x) => K.card(x, { cmp: true })).join('')}</div></div><div style="height:96px"></div>${dbar ? K.dbar(d.verdict) : ''}${extra}`;
+  K.pdpPc = (d, { n, q = K.Q, cmp = 0 } = {}) => `${K.hdrPc({ n, q, compare: cmp })}<div style="display:grid;grid-template-columns:7fr 5fr;gap:40px;padding:24px 32px 0;max-width:1280px;margin:0 auto"><div>${K.pdpPhoto(d)}</div><div class="pc-info">${K.pdpInfo(d).replace('class="pdp-info"', 'class="pdp-info" style="padding:0"')}${K.verdict(d.verdict).replace('class="verdict"', 'class="verdict" style="margin:16px 0 0"')}<div style="margin-top:16px">${K.decide(d.verdict)}</div><div style="margin-top:12px">${K.seller()}</div><div style="margin-top:20px">${K.newUsed(d.id)}</div></div></div>`;
   // 자주 쓰는 데이터
   K.Q = '출근용 셔츠 10만원 이하';
   K.data = () => {

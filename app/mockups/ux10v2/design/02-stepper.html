@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko" data-team="02">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>디자인 보드 02 세 번 탭</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 02 고유 부품: 질문 화면, 사진 타일, 글자 타일, 진행 레일 */
+  .q-top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-top: 8px; font-size: 14px; }
+  .q-top .back { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+  .q-top .step { color: var(--sub); font-variant-numeric: tabular-nums; }
+  .or { margin: 20px 0 4px; font-size: 13px; color: var(--sub); }
+  .q-h { margin: 4px 0 14px; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+  .ptiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ptile { border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; background: var(--bg); }
+  .ptile .ph { aspect-ratio: 4 / 3; }
+  .ptile .ph .eo-ph { aspect-ratio: auto !important; height: 100%; }
+  .ptile .l { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 12px; font-size: 16px; font-weight: 700; }
+  .ptile.on { border: 2px solid var(--ink); }
+  .any { margin-top: 10px; width: 100%; }
+  .ttiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ttile { height: 64px; border: 1px solid var(--line-2); border-radius: var(--r-card); display: flex; align-items: center; padding: 0 16px; font-size: 16px; font-weight: 700; background: var(--bg); }
+  .ttile.on { border: 2px solid var(--ink); background: var(--soft); }
+  .ttile small { display: block; font-size: 12px; font-weight: 400; color: var(--sub); }
+  .learned { margin: 12px var(--gut) 0; padding: 12px 14px; border-radius: var(--r-card); background: var(--soft); }
+  .learned .k { font-size: 12px; color: var(--sub); } .learned .s { font-size: 17px; font-weight: 700; margin: 2px 0; } .learned .h { font-size: 12px; color: var(--sub); }
+  .rail { position: sticky; top: 88px; display: grid; gap: 6px; }
+  .rail .st { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center; min-height: 56px; padding: 8px 12px; border-radius: var(--r-control); }
+  .rail .st.on { background: var(--soft); font-weight: 700; }
+  .rail .st i { width: 28px; height: 28px; border-radius: 14px; border: 1.5px solid var(--ink); display: grid; place-items: center; font-style: normal; font-size: 13px; font-weight: 700; }
+  .rail .st.done i { background: var(--ink); color: var(--bg); }
+  .rail .st small { display: block; font-weight: 400; font-size: 13px; color: var(--sub); }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico, ph } = K;
+  K.board({ n: '02', name: '세 번 탭', idea: '타이핑 없이 무엇 → 언제 → 얼마를 한 화면에 하나씩 묻고, 고르자마자 다음으로. 결과 위에 고른 답을 문장으로 보여 줘 다음엔 말로 찾게 한다. 검색칸은 늘 첫 화면에.', refs: 'govuk-question-pages · govuk-one-thing-per-page · wcag22-3.3.7 · 토스 최소 입력 글' });
+  const kinds = ['셔츠', '니트', '티셔츠', '슬랙스', '코트', '스니커즈'];
+  const tile = (k, on = false) => { const r = M.ask(k); const p = r.products[0]; return `<div class="ptile${on ? ' on' : ''}"><div class="ph">${p ? ph(p, { caption: false }) : ''}</div><div class="l">${esc(k)}${on ? ico('ok', 's') : ''}</div></div>`; };
+  const start = (on) => `${K.hdr({ n: '02' })}<div class="pad">${K.search('')}<div class="or">또는 눌러서 찾기</div><div class="q-top"><span></span><span class="step">1 / 3</span></div><div class="q-h">무엇을 찾나요?</div><div class="ptiles">${kinds.map((k) => tile(k, k === on)).join('')}</div><button class="btn quiet any">상관없음</button></div><div style="height:72px"></div>${K.tabbar(0)}`;
+  const ask2 = `${K.hdr({ n: '02' })}<div class="pad"><div class="q-top"><span class="back">${ico('back', 's')}이전</span><span class="step">2 / 3</span></div><div class="f13 sub">셔츠</div><div class="q-h">언제 입나요?</div><div class="ttiles">${['출근', '데이트', '주말', '하객', '여행'].map((x, i) => `<div class="ttile${i === 0 ? ' on' : ''}">${x}</div>`).join('')}<div class="ttile">상관없음</div></div></div>${K.tabbar(0)}`;
+  const ask3 = `${K.hdr({ n: '02' })}<div class="pad"><div class="q-top"><span class="back">${ico('back', 's')}이전</span><span class="step">3 / 3</span></div><div class="f13 sub">셔츠 · 출근</div><div class="q-h">얼마까지 쓸까요?</div><div class="ttiles">${[['5만원 이하', '한 벌 기준'], ['10만원 이하', '한 벌 기준'], ['20만원 이하', '한 벌 기준'], ['상관없음', '']].map(([a, b], i) => `<div class="ttile${i === 1 ? ' on' : ''}"><span>${a}<small>${b}</small></span></div>`).join('')}</div></div>${K.tabbar(0)}`;
+  const { r, d } = K.data();
+  const results = `${K.hdr({ n: '02' })}<div class="pad">${K.search(K.Q)}</div><div class="learned"><div class="k">이렇게 찾았어요</div><div class="s">출근용 셔츠 10만원 이하</div><div class="h">다음엔 이 말로 적어도 돼요 · 칩을 누르면 그 질문으로 돌아가요</div></div><div class="pad">${K.chips(r)}${K.meta(r)}<div class="grid2" style="margin-top:14px">${r.products.slice(0, 6).map((x) => K.card(x, { cmp: true })).join('')}</div></div>${K.tabbar(0)}`;
+  K.row(K.phone('시작 · 1단계 무엇', start(''), { notes: ['검색칸이 맨 위(말로 찾는 길은 늘 열림)', '타일 사진은 그 종류 1위 상품 사진, 이름 16/700, 타일 높이 ≥ 200', '고르면 바로 2단계(계속 버튼 없음)'] })
+    + K.phone('2단계 언제', ask2, { clip: true, notes: ['#/start?step=when&kind=셔츠', '뒤로가기·이전 = 1단계, 고른 타일이 선택된 채 남음'] })
+    + K.phone('3단계 얼마', ask3, { clip: true, notes: ['고르면 #/search?q=출근용 셔츠 10만원 이하로 이동'] })
+    + K.phone('결과', results, { notes: ['‘이렇게 찾았어요’ 문장 + 칩. 칩을 누르면 그 질문 단계로(다른 답 유지)'] }));
+  K.row(K.phone('상품 상세', K.pdpMobile(d, { n: '02' })) + K.phone('뒤로가기로 돌아온 1단계(선택 유지)', start('셔츠'), { clip: true }));
+  const pcStart = `${K.hdrPc({ n: '02', q: '' })}<div style="display:grid;grid-template-columns:3fr 9fr;gap:32px;padding:24px 32px 0;max-width:1280px;margin:0 auto"><div class="rail"><div class="st on"><i>1</i><span>무엇<small>고르는 중</small></span></div><div class="st"><i>2</i><span>언제</span></div><div class="st"><i>3</i><span>얼마</span></div></div><div><div class="q-h" style="font-size:28px">무엇을 찾나요?</div><div class="ptiles" style="grid-template-columns:repeat(3,minmax(0,1fr))">${kinds.map((k) => tile(k)).join('')}</div><button class="btn quiet any" style="max-width:320px">상관없음</button></div></div>`;
+  const pcRes = `${K.hdrPc({ n: '02', q: K.Q })}<div style="display:grid;grid-template-columns:3fr 9fr;gap:32px;padding:24px 32px 0;max-width:1280px;margin:0 auto"><div class="rail"><div class="st done"><i>1</i><span>무엇<small>셔츠</small></span></div><div class="st done"><i>2</i><span>언제<small>출근</small></span></div><div class="st done"><i>3</i><span>얼마<small>10만원 이하</small></span></div></div><div><div class="learned" style="margin:0 0 12px"><div class="k">이렇게 찾았어요</div><div class="s">출근용 셔츠 10만원 이하</div></div>${K.chips(r)}${K.meta(r)}<div class="grid4" style="margin-top:16px">${r.products.slice(0, 8).map((x) => K.card(x, { cmp: true })).join('')}</div></div></div>`;
+  K.row(K.pc('PC 시작', pcStart, { clip: true, notes: ['왼쪽 3열 진행 레일(고른 답 표시, 누르면 그 단계로), 오른쪽 질문 타일 3열'] }));
+  K.row(K.pc('PC 결과', pcRes, { clip: true }));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko" data-team="06">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>디자인 보드 06 한 화면</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 06 고유 부품: 고정 검색 영역, 옷장 요약 줄, 결과 시트(3단 높이), PC 목록-상세-보조 창 */
+  .fixed-top { position: relative; z-index: 5; padding: 10px var(--gut) 10px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .closet-sum { padding: 14px var(--gut); background: var(--soft); min-height: 300px; }
+  .closet-sum .h { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+  .closet-sum .strip { display: flex; gap: 8px; margin-top: 10px; }
+  .closet-sum .strip .ph { width: 56px; height: 70px; border-radius: 4px; overflow: hidden; flex: none; }
+  .closet-sum .empty-c { margin-top: 8px; font-size: 14px; color: var(--sub); }
+  .rsheet { position: absolute; left: 0; right: 0; z-index: 10; background: var(--bg); border-radius: var(--r-sheet) var(--r-sheet) 0 0; box-shadow: var(--shadow-sheet); }
+  .rsheet .hd { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 8px var(--gut) 8px; }
+  .rsheet .hd .grab { grid-column: 1 / -1; width: 36px; height: 4px; border-radius: 2px; background: var(--line-2); margin: 0 auto 8px; }
+  .rsheet .hd b { font-size: 16px; }
+  .rsheet .hd .hb { display: flex; gap: 4px; }
+  .rsheet .hd .hb span { height: 36px; padding: 0 10px; border-radius: var(--r-pill); border: 1px solid var(--line-2); display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; }
+  .rsheet .body { padding: 4px var(--gut) 0; }
+  .pane { border-left: 1px solid var(--line); padding: 16px; }
+  .pane .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .pane .tabs span { height: 36px; padding: 0 12px; border-radius: var(--r-pill); display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; border: 1px solid var(--line-2); }
+  .pane .tabs span.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico, ph } = K;
+  K.board({ n: '06', name: '한 화면', idea: '지도 앱처럼 검색과 범위는 늘 위, 결과는 아래에서 올라오는 시트 1장(높이 3단, 버튼으로도 조절). 상품 상세는 페이지로 열고, 옷 넣기만 시트로 겹쳐 같은 상품에 돌아온다. PC는 목록 | 상세 | 보조 창.', refs: 'nng-bottom-sheets · m3-bottom-sheets · m3-canonical-layouts · Apple HIG Sheets' });
+  const { r, d } = K.data();
+  const top = `${K.hdr({ n: '06' })}<div class="fixed-top">${K.search(K.Q)}<div style="margin-top:10px">${K.chips(r)}</div></div>`;
+  const closetSum = (st) => `<div class="closet-sum"><div class="h"><span>내 옷장 ${st.closetCount}벌</span><span class="f13 sub">옷장 열기 ›</span></div>${st.closetCount ? `<div class="strip">${st.closet.slice(0, 6).map((g) => `<div class="ph">${ph(g, { caption: false })}</div>`).join('')}</div>` : '<div class="empty-c">옷장 없이도 찾을 수 있어요. 가진 옷을 넣으면 겹치는지 알려 드려요.</div>'}</div>`;
+  const sheet = (topPx, { full = false } = {}) => `<div class="rsheet" style="top:${topPx}px;bottom:0"><div class="hd"><div class="grab"></div><b>결과 ${r.total}개<span class="f12 sub" style="display:block;font-weight:400">가격: 10/13 수집가</span></b><span class="hb"><span>${ico('up', 's')}크게</span><span>${ico('down', 's')}작게</span></span></div><div class="body"><div class="grid2">${r.products.slice(0, full ? 6 : 4).map((x) => K.card(x, { cmp: true })).join('')}</div></div></div>`;
+  const st0 = M.getState();
+  K.row(K.phone('결과 시트 · 중간(50%)', `${top}${closetSum(st0)}${sheet(422)}`, { clip: true, notes: ['위 검색·칩 고정(약 170), 아래는 내 옷장 요약', '시트 3단: 접힘 96 / 중간 50% / 전체. ‘크게·작게’ 버튼으로도 조절(드래그만 금지)', '시트는 한 번에 1장'] })
+    + K.phone('결과 시트 · 전체', `${top}${sheet(178, { full: true })}`, { clip: true, notes: ['전체일 때 시트 위 경계는 칩 줄 바로 아래'] })
+    + K.phone('결과 시트 · 접힘(96)', `${top}${closetSum(st0)}${sheet(748)}`, { clip: true, notes: ['접힘이면 옷장 요약을 크게 볼 수 있다'] }));
+  const add = K.pdpMobile(d, { n: '06', extra: K.addSheet(d.verdict) });
+  K.row(K.phone('상품 상세(페이지)', K.pdpMobile(d, { n: '06' }), { notes: ['상세는 시트가 아닌 페이지(#/p/id). 뒤로가기 = 결과 시트 그 높이로 복귀'] })
+    + K.phone('옷 넣기 시트(상세 위 1장)', `<div style="height:844px;overflow:hidden;position:relative">${add}</div>`, { clip: true, fold: false, notes: ['기기 뒤로가기 = 시트만 닫기'] }));
+  M.addGarment({ kind: d.verdict.addSuggestion.kind, slot: d.verdict.addSuggestion.slot, color: 'white' });
+  const r2 = M.ask(K.Q); const d2 = M.product(r2.products[0].id); const st = M.getState();
+  M.compareAdd(r2.products[0].id); M.compareAdd(r2.products[1].id);
+  const pc = `${K.hdrPc({ n: '06', q: K.Q, compare: 2 })}<div style="display:grid;grid-template-columns:4fr 5fr 3fr;height:736px">
+    <div style="padding:16px 16px 0 32px;overflow:hidden">${K.chips(r2)}${K.meta(r2)}<div class="grid2" style="margin-top:12px">${r2.products.slice(0, 6).map((x) => K.card(x, { cmp: true, cmpOn: M.compareHas(x.id) })).join('')}</div></div>
+    <div style="padding:16px 20px 0;border-left:1px solid var(--line);overflow:hidden">${K.pdpPhoto(d2)}${K.pdpInfo(d2).replace('class="pdp-info"', 'class="pdp-info" style="padding:16px 0 0"')}<div style="margin-top:12px">${K.decide(d2.verdict)}</div></div>
+    <div class="pane"><div class="tabs"><span class="on">내 옷장 ${st.closetCount}</span><span>비교 2</span></div>${st.closet.map((g) => `<div style="display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;margin-bottom:8px"><div style="width:48px;height:60px;border-radius:4px;overflow:hidden">${ph(g, { caption: false })}</div><div class="f14">${esc(g.label)}<div class="f12 sub">${esc(g.sourceLabel)} · 비슷한 상품 사진</div></div></div>`).join('')}${K.verdict(d2.verdict, { add: false }).replace('class="verdict"', 'class="verdict" style="margin:12px 0 0"')}</div></div>`;
+  K.row(K.pc('PC · 목록 4 | 상세 5 | 보조 창 3 (M3 목록-상세)', pc, { clip: true, notes: ['세 칸이 따로 스크롤, 상세 주소는 그대로 #/p/id, 보조 창은 ✕로 닫기(내 옷장·비교 탭)'] }));
+})();
+</script>
+</body>
+</html>

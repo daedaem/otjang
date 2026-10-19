@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>시안 2판 디자인 보드</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  body { margin: 0; background: #f4f3f0; color: var(--ink); font: 16px/1.55 var(--font); }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -.02em; }
+  p { color: #444; margin: 0 0 12px; }
+  ol { list-style: none; padding: 0; display: grid; gap: 10px; margin: 20px 0; }
+  li { background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  li a { font-weight: 700; color: var(--ink); } li span { display: block; font-size: 14px; color: #555; }
+  code { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>시안 2판 디자인 보드</h1>
+  <p>Codex가 구현할 화면 디자인입니다. 실제 상품 사진과 공통 코어의 실제 판정으로 그렸고, 빨간 점선은 첫 화면 끝입니다. 값은 <code>../shared/tokens.css</code>, 부품은 <code>kit.css</code>·<code>kit.js</code>(C1~C18), 설명은 <code>docs/ux10v2-design-spec-20261019.md</code>.</p>
+  <p>목표·품질 기준은 세계 최고 수준의 UX/UI이지만 달성 검증은 아닙니다. AI 역할 설계이며 실제 수상 디자이너가 참여하지 않았습니다. 상품 사진 사용 권리는 확인되지 않았습니다.</p>
+  <ol>
+    <li><a href="01-answer.html">01 답 먼저</a><span>결과 맨 위 답 카드(사진·판정·결정) + 아래 2열 후보, 검색 제안, 상세, 사진 크게, 옷 넣기 시트, 복귀, 빈 결과, PC</span></li>
+    <li><a href="02-stepper.html">02 세 번 탭</a><span>한 화면 한 질문(사진 타일 → 글자 타일), ‘이렇게 찾았어요’ 결과, PC 진행 레일</span></li>
+    <li><a href="../teams/03-compare.html?reset=1">03 비교함</a><span>실행 파일이 디자인. 수정 사항은 디자인 명세 6장(상세 첫 화면 판정 요약, 작은 버튼, 색만으로 구분 금지, 사진 위 비교 버튼, 토큰 연결)</span></li>
+    <li><a href="04-deck.html">04 한 장씩</a><span>카드 한 장 + 같은 크기 결정 3개, 5초 되돌리기, 목록 전환, 정리 카드, PC 3칸</span></li>
+    <li><a href="05-lookbook.html">05 코디 먼저</a><span>실제 사진 코디 보드, 주인공 판정·결정, 같이 입을 옷/비슷한 다른 옷, 체험용 옷장 보드, PC</span></li>
+    <li><a href="06-sheets.html">06 한 화면</a><span>결과 시트 3단 높이(버튼으로도), 상세는 페이지, 옷 넣기 시트 1장, PC 목록·상세·보조 창</span></li>
+    <li><a href="07-ledger.html">07 장부</a><span>사진 120 후보 줄, 상세 전표, 장부·합계·빈 장부, PC 정렬 표</span></li>
+    <li><a href="../teams/08-rail.html?reset=1">08 옷장 레일</a><span>실행 파일이 디자인. 수정 사항은 디자인 명세 6장(비교 아이콘 이름·크기, PC 판매처 버튼 강조 낮추기, 토스트 위치, 사진 비율 4:5)</span></li>
+    <li><a href="../teams/09-editorial.html?reset=1">09 읽는 결과</a><span>실행 파일이 디자인. 수정 사항은 디자인 명세 6장(결과 첫 화면 상품 3개 이상, 소제목, 가격 기준 한 줄)</span></li>
+    <li><a href="10-thumb.html">10 엄지 하나</a><span>가운데 상품 + 아래 명령 바, 고대비·글자 크게, 결정 서랍(≤ 50%), PC 가운데 단</span></li>
+  </ol>
+</main>
+</body>
+</html>
