@@ -338,6 +338,9 @@ img { display: block; max-width: 100%; }
 .way svg { grid-row: span 2; color: var(--accent); }
 .way b { font-size: var(--text-body); }
 .way span { font-size: var(--text-label); color: var(--ink-3); }
+.home-optional { padding-top: 12px; }
+.home-more { margin-top: 12px; border-top: 1px solid var(--line); }
+.home-more > summary { min-height: 48px; padding: 14px var(--gutter); font-size: var(--text-body-s); font-weight: var(--weight-medium); cursor: pointer; }
 .closet-toolbar { padding-top: 18px; }
 .closet-toolbar .section-head { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; margin-bottom: 8px; }
 .closet-toolbar .section-head > div { grid-column: 1 / -1; min-width: 0; margin-bottom: 4px; }

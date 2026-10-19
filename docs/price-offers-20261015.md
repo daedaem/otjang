@@ -1,3 +1,5 @@
+> 2026-10-19 정정: 네이버 쇼핑 검색 API 종료를 [공식 공지](https://developers.naver.com/notice/article/32564)로 확인했다. 키 유무와 무관하게 `discontinued`이며 호출하지 않는다. 아래 키 연결·정상 응답 설명과 검사 수는 이전 구현 기록이다. 과거 가격 자료는 보존한다. 현재 경계는 [후속 구현 기록](onestop-implementation-20261019.md)을 따른다.
+
 # 판매처·총액 비교와 가격 출처 (2026-10-15, Claude)
 
 ## 요청

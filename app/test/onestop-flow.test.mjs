@@ -1760,3 +1760,77 @@ test('several basics can be picked at once and saved without colour, then offer 
   assert.match(page.nodes.get('toast').innerHTML, /확인할 옷을 모두 확인했어요/);
   page.close();
 });
+
+
+for (const hasCloset of [false, true]) {
+  test(`complete request-to-return flow preserves identity and wardrobe (${hasCloset ? 'three owned garments' : 'no wardrobe'})`, async (t) => {
+    let page;
+    if (hasCloset) {
+      ({ page } = await personalPage([
+        makeGarment({ id: 'flow_jacket', slot: 'm-harrington', kind: 'jacket', color: 'navy', gender: 'M' }),
+        makeGarment({ id: 'flow_chino', slot: 'm-chino', kind: 'pants', color: 'beige', gender: 'M' }),
+      ]));
+    } else {
+      const db = new IDBFactory(), store = createWardrobeStore({ indexedDB: db });
+      const first = await store.load();
+      await store.commit({ ...newWardrobeState(), demo: false, demoSelected: [], garments: [] }, first.revision, [], first.epoch);
+      store.close(); page = await boot(db);
+    }
+    t.after(() => page.close());
+    const original = plain(page.state().garments);
+    page.submitQuery('출근용 셔츠 10만원 이하');
+    const found = page.app.search(page.app.state(), '출근용 셔츠 10만원 이하').items[0].product;
+    assert.match(page.nodes.get('app').innerHTML, new RegExp(`data-id="${found.id}"`));
+    await page.click({ action: 'candidate-product', id: found.id });
+    const journey = page.state().journeys.at(-1);
+    assert.equal(journey.candidate.productId, found.id);
+    assert.ok(hasSheetAction(page, 'journey-action', { step: 'buy' }));
+    await page.app.recordJourneyAction(journey.id, 'buy');
+    await page.app.recordJourneyAction(journey.id, 'ordered');
+    await page.app.recordJourneyAction(journey.id, 'received');
+    const received = page.state().journeys.find((j) => j.id === journey.id);
+    assert.ok(received.garmentId);
+    assert.ok(!page.app.state().closet.some((g) => g.id === received.garmentId), 'receipt alone is not ownership');
+    await page.app.recordJourneyAction(journey.id, 'kept');
+    assert.ok(page.app.state().closet.some((g) => g.id === received.garmentId));
+    await page.app.recordJourneyAction(journey.id, 'worn');
+    await page.app.recordJourneyAction(journey.id, 'returned');
+    const returned = page.state().journeys.find((j) => j.id === journey.id);
+    assert.equal(returned.candidate.productId, found.id);
+    assert.equal(returned.stage, 'returned');
+    assert.equal(returned.wearCount, 1);
+    assert.ok(!page.app.state().closet.some((g) => g.id === received.garmentId));
+    assert.deepEqual(page.state().garments.filter((g) => original.some((old) => old.id === g.id)), original);
+    const idb = page.indexedDB; page.close(); page = await boot(idb);
+    assert.equal(page.state().journeys.find((j) => j.id === journey.id).stage, 'returned');
+    assert.ok(!page.app.state().closet.some((g) => g.id === received.garmentId));
+  });
+}
+
+
+test('comparison surfaces a related-brand return using the historical snapshot, without predicting this option', async (t) => {
+  const products = PRODUCTS.filter((p) => productEligible(p) && p.color && p.colorSource !== 'image' && SLOT_BY_ID[p.slot]?.g === 'M');
+  let pair;
+  for (const first of products) {
+    const second = products.find((p) => p.id !== first.id && p.brand === first.brand && SLOT_BY_ID[p.slot].shape === SLOT_BY_ID[first.slot].shape);
+    if (second) { pair = [first, second]; break; }
+  }
+  assert.ok(pair);
+  const { page } = await personalPage(); t.after(() => page.close());
+  await page.app.compareCatalogProduct(pair[0].id);
+  const original = page.state().journeys.at(-1);
+  page.input('journey-option', 'M', original.id);
+  await page.app.recordJourneyAction(original.id, 'ordered');
+  await page.app.recordJourneyAction(original.id, 'received');
+  await page.app.setJourneyField(original.id, 'feedback', { fit: 'small', returnReason: 'size' });
+  await page.app.recordJourneyAction(original.id, 'returned');
+  await page.app.setJourneyField(original.id, 'feedback', { fit: 'large', returnReason: 'color' });
+  await page.app.compareCatalogProduct(pair[1].id);
+  const notice = page.nodes.get('sheet-root').innerHTML.match(/<section class="notice related-returns">([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(notice, 'the related-product warning is visible outside the collapsed comparison details');
+  assert.match(notice, /당시 옵션 M/);
+  assert.match(notice, /당시 핏 기록: 작음/);
+  assert.doesNotMatch(notice, /핏 기록: 큼/);
+  assert.match(notice, /사이즈·핏을 예측하거나 추천 순서를 바꾸지 않아요/);
+  assert.equal(page.state().journeys.find((j) => j.id === original.id).stage, 'returned');
+});

@@ -97,41 +97,23 @@ test('price records live per product on this device, capped, and broken entries 
   assert.equal(writeOffers(full, ref, { requested: {}, offers: [] }), false, 'a refused write is reported, not hidden');
 });
 
-test('supply: the collected catalog price, sources that are not connected with what they need, and a failing source', async () => {
+test('supply: discontinued Naver stays disabled even with keys, and collected prices remain dated', async () => {
   const product = PRODUCT_BY_ID['ms-3323583'];
-  const plain = createSupply({ env: {}, now: () => now.getTime() });
-  const sources = plain.sources();
-  assert.equal(sources.find((s) => s.id === 'naver-shopping').status, 'not-connected');
-  assert.deepEqual(sources.find((s) => s.id === 'naver-shopping').needs.slice(1), ['EOUL_NAVER_CLIENT_ID', 'EOUL_NAVER_CLIENT_SECRET']);
-  assert.match(sources.find((s) => s.id === 'naver-shopping').note, /2026-07-31/, 'the reported shutdown is shown before asking for keys');
-  assert.equal(sources.find((s) => s.id === 'musinsa').status, 'not-connected');
-  const base = await plain.lookup({ productId: product.id });
-  assert.equal(base.offers.length, 1);
-  assert.deepEqual([base.offers[0].source, base.offers[0].price, base.offers[0].checkedAt, base.offers[0].shipping], ['catalog', product.price, `${product.checkedAt}T00:00:00.000Z`, null]);
-
-  const calls = [];
-  const fakeFetch = async (url, init) => {
-    calls.push({ url, headers: init.headers });
-    return new Response(JSON.stringify({ items: [
-      { title: '<b>코튼</b> 해링턴 재킷', link: 'https://smartstore.naver.com/x/products/1', lprice: '89000', mallName: '어느 스토어' },
-      { title: 'bad', link: 'javascript:alert(1)', lprice: '1', mallName: 'x' },
-    ] }), { status: 200 });
-  };
-  const naver = createSupply({ env: { EOUL_NAVER_CLIENT_ID: 'id', EOUL_NAVER_CLIENT_SECRET: 'secret' }, fetchImpl: fakeFetch, now: () => now.getTime() });
-  const found = await naver.lookup({ productId: product.id });
-  assert.match(calls[0].url, /^https:\/\/openapi\.naver\.com\/v1\/search\/shop\.json\?query=/);
-  assert.equal(calls[0].headers['X-Naver-Client-Id'], 'id');
-  const searched = found.offers.filter((o) => o.source === 'naver-shopping');
-  assert.equal(searched.length, 1, 'a non-https link is dropped');
-  assert.deepEqual([searched[0].title, searched[0].sameProduct, searched[0].shipping, searched[0].price], ['코튼 해링턴 재킷', 'unconfirmed', null, 89000]);
-  await naver.lookup({ productId: product.id });
-  assert.equal(calls.length, 1, 'a successful lookup is cached for a few minutes');
-
-  const failing = createSupply({ env: { EOUL_NAVER_CLIENT_ID: 'id', EOUL_NAVER_CLIENT_SECRET: 'secret' }, fetchImpl: async () => new Response('', { status: 429 }), now: () => now.getTime() });
-  const failed = await failing.lookup({ productId: product.id });
-  assert.equal(failed.sources.find((s) => s.id === 'naver-shopping').status, 'failed');
-  assert.match(failed.sources.find((s) => s.id === 'naver-shopping').message, /429/);
-  assert.equal(failed.offers.length, 1, 'the catalog price is still there');
+  for (const env of [{}, { EOUL_NAVER_CLIENT_ID: 'old-id', EOUL_NAVER_CLIENT_SECRET: 'old-secret' }]) {
+    let calls = 0;
+    const supply = createSupply({ env, fetchImpl: async () => { calls++; throw new Error('must not call retired API'); }, now: () => now.getTime() });
+    const source = supply.sources().find((row) => row.id === 'naver-shopping');
+    assert.equal(source.status, 'discontinued');
+    assert.equal(source.stoppedAt, '2026-07-31');
+    assert.equal(source.noticeUrl, 'https://developers.naver.com/notice/article/32564');
+    assert.deepEqual(source.needs, []);
+    const result = await supply.lookup({ productId: product.id });
+    await supply.lookup({ query: '새 셔츠' });
+    assert.equal(calls, 0);
+    assert.equal(result.offers.length, 1);
+    assert.deepEqual([result.offers[0].source, result.offers[0].price, result.offers[0].checkedAt, result.offers[0].shipping],
+      ['catalog', product.price, `${product.checkedAt}T00:00:00.000Z`, null]);
+  }
 });
 
 // ── the real bundled screen

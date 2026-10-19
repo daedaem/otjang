@@ -24,7 +24,7 @@ test('offers: signed in only, checked input, sources with their status in health
   assert.equal((await get('/v1/offers')).status, 400);
   const ok = await (await get('/v1/offers?productId=ms-3323583')).json();
   assert.equal(ok.offers[0].source, 'catalog');
-  assert.ok(ok.sources.some((source) => source.id === 'naver-shopping' && source.status === 'not-connected'));
+  assert.ok(ok.sources.some((source) => source.id === 'naver-shopping' && source.status === 'discontinued'));
   const unlisted = await (await get('/v1/offers?productId=ms-5755268&q=%EB%B8%8C%EB%9E%9C%EB%93%9C')).json();
   assert.deepEqual(unlisted.offers, [], 'an unlisted product gets no catalog price and no substitute');
   const health = await (await fetch(`${s.base}/v1/health`)).json();

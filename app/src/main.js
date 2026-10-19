@@ -1,5 +1,6 @@
 import { SLOTS, SLOT_BY_ID, STYLES, OCCASIONS, CATS, COLORS, stylesFor } from './data/slots.js';
 import { BRAND } from './brand.js';
+import { relatedReturnRecords } from './related-returns.js';
 import { ROLE_LABEL, LOOKS } from './data/looks.js';
 import { PRODUCTS, CATALOG } from './data/products.js';
 import {
@@ -650,14 +651,15 @@ function renderHome() {
   const deck = BRAND.deck ? homeDeck(plan, items) : '';
   return `
     ${askHero()}
-    ${closetStart()}
+    <section class="section home-optional"><details class="home-diagnostics"><summary>내 옷장을 넣으면 더 정확해져요 · 선택</summary>${closetStart()}</details></section>
+    <section class="section home-shortcuts" aria-label="바로 시작"><button data-action="add-start">${ICON.plus}<span><b>내 옷 추가</b><small>사진 한 장으로 시작</small></span>${ICON.arrow}</button><button data-action="candidate-start">${ICON.search}<span><b>살까 말까?</b><small>상품 링크로 내 옷과 비교</small></span>${ICON.arrow}</button></section>
+    <details class="home-more"><summary>옷장 추천·코디·구매 후보 더 보기</summary>
     <section class="section page-intro"><span class="eyebrow">${esc(SEASON_LABEL[season])} · ${esc(styleLine())}</span><h2>${BRAND.heroTitle}</h2><p class="sub">${state.demo ? '예시 옷장으로 먼저 둘러보세요.' : ownedCount ? `내 옷 ${ownedCount}벌을 바탕으로 골랐어요.` : '옷 한 벌을 넣고, 함께 입을 조합부터 찾아보세요.'}</p></section>
     <div class="home-lead">
       <section class="section home-next">${deck || nextPick}</section>
       <section class="section home-feature"><div class="section-head"><div><h2>${readyLooks.length ? '옷장 속 오늘의 코디' : '이런 조합은 어때요?'}</h2><div class="sub">${esc(ctxLine)}${ownedCount ? ` · ${ownLabel} ${ownedCount}벌 반영` : ''}</div></div><button class="link" data-action="tab" data-tab="closet">옷장 보기 ${ICON.arrow}</button></div>
       ${looks.length ? `<div class="looks">${looks.map((r) => lookCard(r)).join('')}</div>` : '<div class="empty"><b>이 조건에 맞는 코디가 없어요</b><p>아래 추천 조건을 넓혀보세요.</p></div>'}</section>
     </div>
-    <section class="section home-shortcuts" aria-label="바로 시작"><button data-action="add-start">${ICON.plus}<span><b>내 옷 추가</b><small>사진 한 장으로 시작</small></span>${ICON.arrow}</button><button data-action="candidate-start">${ICON.search}<span><b>살까 말까?</b><small>상품 링크로 내 옷과 비교</small></span>${ICON.arrow}</button></section>
     <section class="section">
       <div class="section-head"><div><h2>내 옷과 비교할 구매 후보</h2><div class="sub">${ownedCount ? (state.demo ? '예시 옷과 연결되는 종류 순서예요' : '등록한 옷과 코디 공식으로 고른 순서예요') : '고른 스타일의 기본부터 골랐어요'}${state.brandOnly ? ' · 내 브랜드만' : ''}</div></div></div>
       ${!state.demo ? '<p class="sub">등록하지 않은 옷이 없다는 뜻은 아니에요. 이미 비슷한 옷이 있다면 상품에서 알려 주세요.</p>' : ''}
@@ -666,6 +668,7 @@ function renderHome() {
     <section class="section"><details class="home-diagnostics"><summary>옷장 분석 · 부족한 종류와 겹치는 옷</summary>${planSection()}</details></section>
     ${myBrandRow()}
     ${communitySection()}
+    </details>
     ${footer()}`;
 }
 
@@ -785,7 +788,7 @@ function offerSheet() {
   const canRefresh = signedIn() && accountHealth?.features?.offers;
   const refreshInfo = data.refresh ? `<p class="fine">마지막 갱신 ${offerTime(data.refresh.at)} · ${data.refresh.ok ? '성공' : `실패: ${esc(data.refresh.message || '')} (이전 기록은 그대로 두었어요)`}</p>` : '';
   const sources = `<details class="garment-name"><summary>가격 출처 연결 상태</summary><ul class="plain-list">${supply.length
-    ? supply.map((source) => `<li><b>${esc(source.name)}</b>: ${source.status === 'connected' ? '연결됨' : source.status === 'collected' ? '수집가(현재 가격 아님)' : `미연동${source.note ? ` · ${esc(source.note)}` : ''}${source.needs?.length ? ` · 필요: ${esc(source.needs.join(', '))}` : ''}`}</li>`).join('')
+    ? supply.map((source) => `<li><b>${esc(source.name)}</b>: ${source.status === 'connected' ? '연결됨' : source.status === 'collected' ? '수집가(현재 가격 아님)' : `${source.status === 'discontinued' ? '서비스 종료' : '미연동'}${source.note ? ` · ${esc(source.note)}` : ''}${source.needs?.length ? ` · 필요: ${esc(source.needs.join(', '))}` : ''}${source.id === 'naver-shopping' && source.status === 'discontinued' ? ' · <a href="https://developers.naver.com/notice/article/32564" target="_blank" rel="noopener noreferrer">공식 종료 공지</a>' : ''}`}</li>`).join('')
     : '<li>이 앱에는 아직 실시간 가격 연동이 없어요. 판매처 가격은 직접 기록하거나, 운영자 서버에 가격 출처를 연결하면 갱신할 수 있어요.</li>'}</ul></details>`;
   const f = v.form;
   const form = f ? `<form data-action="offer" class="account-form offer-form">
@@ -1596,6 +1599,14 @@ function priorReturnEvidence(journey) {
   }).join('')}<p class="fine">직접 남긴 과거 기록이에요. 이번 옵션의 사이즈·핏을 예측하지 않아요.</p></div>`;
 }
 
+function relatedReturnNotice(journey) {
+  const rows = relatedReturnRecords(state.journeys, journey.candidate, journey.id);
+  if (!rows.length) return '';
+  const fits = { small: '작음', right: '맞음', large: '큼' };
+  const reasons = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '변심', other: '기타' };
+  return `<section class="notice related-returns"><b>같은 브랜드·종류의 다른 상품을 반품한 기록이 있어요</b>${rows.map((row) => `<p>${esc(row.name)} · 당시 옵션 ${esc(row.option || '미기록')}${row.fit ? ` · 당시 핏 기록: ${esc(fits[row.fit] || row.fit)}` : ''}${row.returnReason ? ` · 반품 사유: ${esc(reasons[row.returnReason] || row.returnReason)}` : ''} <button class="link" data-action="open-journey" data-id="${esc(row.journeyId)}">과거 기록 보기</button></p>`).join('')}<p class="fine">다른 상품의 과거 기록이에요. 이번 옷의 사이즈·핏을 예측하거나 추천 순서를 바꾸지 않아요.</p></section>`;
+}
+
 function showJourneyOptionChange(journey, action) {
   const form = journeyForms.get(journey.id);
   if (journey.stage === 'candidate' || !form || form.option === journey.option) return false;
@@ -1774,6 +1785,7 @@ function journeySheet(id) {
     <p class="fine">종류·색과 코디 공식의 비교예요. 사진 속 소재·핏·사이즈를 분석하거나 몸에 합성하지 않았어요.</p>
     ${priorReturnEvidence(j)}
     </details>
+    ${relatedReturnNotice(j)}
     <details class="garment-name"><summary>옵션·판단 이유 기록 (선택)</summary><label for="journey-option">고른 색·사이즈 등 옵션 (선택)</label><input id="journey-option" data-journey="${esc(id)}" maxlength="160" value="${esc(form.option)}" placeholder="예: 베이지 / M / 수량 1">
     <label for="journey-reason">판단·착용·반품 이유 (선택)</label><input id="journey-reason" data-journey="${esc(id)}" maxlength="500" value="${esc(form.reason)}" placeholder="예: 같은 용도의 재킷이 있어 보류">
     <button class="link" data-action="journey-note" data-id="${esc(id)}">옵션·이유 저장</button></details>
@@ -1926,6 +1938,8 @@ function nav() {
 
 const TAB_TITLE = { home: '추천', closet: '내 옷장', saved: '구매 여정' };
 function render() {
+  const homeOptionalWasOpen = document.querySelector('.home-optional details')?.open;
+  const homeMoreWasOpen = document.querySelector('details.home-more')?.open;
   if (tastePicking || !state.onboarded || !state.gender || !myStyles().length) {
     $app.innerHTML = `<main id="main-content" tabindex="-1"><h1 class="sr-only">${esc(BRAND.name)} 시작하기</h1>${storageNotice()}${renderOnboarding()}</main>`;
     return;
@@ -1935,6 +1949,9 @@ function render() {
   // 저장·예시 안내도 본문 구역 안에 둔다(화면 낭독기로 본문에 바로 가도 안내와 복구 버튼을 지나치지 않게). 보이는 순서는 그대로다.
   $app.innerHTML =
     `<main id="main-content" tabindex="-1"><h1 class="sr-only">${esc(BRAND.name)} ${TAB_TITLE[state.tab] || ''}</h1>${topBar()}${storageNotice()}${query && state.tab === 'home' ? '' : demoNotice()}${body}</main>` + nav();
+  // 옷·색 선택으로 다시 그려도 사용자가 펼친 구역을 닫지 않는다.
+  if (homeOptionalWasOpen) { const section = document.querySelector('.home-optional details'); if (section) section.open = true; }
+  if (homeMoreWasOpen) { const section = document.querySelector('details.home-more'); if (section) section.open = true; }
 }
 
 // ── 시트
@@ -1978,6 +1995,8 @@ function openSheet(html, { key = null } = {}) {
   }
   $app.inert = true;
   const same = !!key && key === sheetKey && !!$sheet.innerHTML;
+  const openSections = same ? new Set([...$sheet.querySelectorAll('details[open]')]
+    .map((section) => section.querySelector('summary')?.textContent)) : new Set();
   const scroll = $sheet.querySelector('.sheet')?.scrollTop;
   const focusId = same ? document.activeElement?.id : null;
   const pressed = same ? document.activeElement?.dataset : null;
@@ -1992,6 +2011,8 @@ function openSheet(html, { key = null } = {}) {
   const titled = html.replace(/<h2(?![^>]*\sid=)/, '<h2 id="sheet-title"');
   $sheet.innerHTML = `<div class="scrim" data-action="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true"${titled === html ? '' : ' aria-labelledby="sheet-title"'}><div class="grabber"></div><button class="sheet-close" data-action="close-sheet" aria-label="닫기">${ICON.close}</button>${titled}</div>`;
   sheetKey = key;
+  for (const section of $sheet.querySelectorAll('details'))
+    if (openSections.has(section.querySelector('summary')?.textContent)) section.open = true;
   rememberDraft();
   const sheet = $sheet.querySelector('.sheet');
   if (same && sheet && scroll) sheet.scrollTop = scroll;

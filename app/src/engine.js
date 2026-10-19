@@ -208,6 +208,7 @@ export function meetsCriteria(p, cr) {
   if (minPrice !== null && minPrice !== undefined && (minPriceExclusive ? p.price <= minPrice : p.price < minPrice)) return false;
   if (cr.color && evidenceColor(p) !== cr.color) return false;
   if (cr.brand && p.brand !== cr.brand) return false;
+  if (cr.hoodOnly && !/후드|후디|hood/i.test(p.name)) return false;
   if ((cr.excludeColors || []).includes(p.color)) return false;
   if (cr.tone) {
     const l = COLORS[p.color]?.light;
@@ -830,6 +831,8 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
       season: q.season || (q.slotNamed ? null : c.season),
     });
     products = products.filter(toneOK);
+    // The women's sweatshirt slot also contains hoodless garments.
+    if (q.targetLabels.includes('후드')) products = products.filter((p) => /후드|후디|hood/i.test(p.name));
     if (q.comfort) products = [...products].sort((a, b) => comfortMark(b) - comfortMark(a));
     const selected = q.priceSort ? products : products.slice(0, q.brand ? 6 : 3);
     selected.forEach((product, i) => {
@@ -846,8 +849,8 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
       : (a, b) => b.score - a.score,
   );
 
-  const items = results.slice(0, 16);
-  const outfitTried = !anchorUnavailable && !kindUnavailable && (anchors.length || c.occasion);
+  const items = understood ? results.slice(0, 16) : [];
+  const outfitTried = understood && !anchorUnavailable && !kindUnavailable && (anchors.length || c.occasion);
   const outfit =
     outfitTried && !q.excludeColors.includes(anchorItem?.color)
       ? recommendLooks(
@@ -901,6 +904,7 @@ export function search(state, text, { anchorItemId = null, drop = [] } = {}) {
     maxPriceExclusive: c.maxPriceExclusive,
     color: q.color,
     brand: q.brand,
+    hoodOnly: q.targetLabels.includes('후드'),
     excludeColors: q.excludeColors,
     tone: q.tone,
   };

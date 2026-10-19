@@ -181,10 +181,11 @@ test('한 줄 요청: 브랜드와 스타일', () => {
   assert.equal(parseQuery('아메카지 재킷').style, 'amekaji');
 });
 
-test('이해하지 못한 요청도 추천을 돌려주고, 같은 입력이면 같은 결과', () => {
+test('이해하지 못한 요청은 빈 결과로 유지하고, 같은 입력이면 같은 결과', () => {
   const r = search(base, '아무거나 멋있는 거');
   assert.equal(r.understood, false);
-  assert.ok(r.items.length > 0);
+  assert.deepEqual(r.items, []);
+  assert.deepEqual(search(base, '아무거나 멋있는 거').items, r.items);
   assert.deepEqual(
     recommendItems(base).map((i) => i.product.id),
     recommendItems(base).map((i) => i.product.id),
