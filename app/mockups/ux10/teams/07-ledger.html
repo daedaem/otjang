@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>어울 시안 07 · 장부</title>
+<meta name="description" content="목업 · AI 역할 시안. 후보·판정·결정·기록을 장부 줄과 전표로 정리한 어울 UX 시안 07.">
+<!--
+  시안 07 「장부」 — AI가 핀테크 경험의 프로덕트 디자이너(리드)·정보 디자이너·프론트엔드 개발자 역할을 맡아 만든 목업이다(실제 전문가 아님).
+  가설: 돈을 쓰는 결정은 숫자가 한 줄로 정리돼 보이면 쉬워진다. 결과·판정·결정·기록을 모두 장부 줄로 보여 준다.
+  판정 문장·조건·안내는 모두 window.EoulMock(공통 코어)이 돌려준 그대로 쓴다.
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --desk: #E8E5DE;
+    --desk-2: #DEDAD1;
+    --paper: #FBFAF6;
+    --paper-2: #F4F2EC;
+    --ink: #171615;
+    --sub: #55514B;
+    --line: #D3CEC4;
+    --line-strong: #8C877E;
+    --red: #B0261B;
+    --red-soft: #F7E6E2;
+    --focus: #1F4FD1;
+    --art-line: #2B2A28;
+    --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans CJK KR", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--desk); color: var(--ink); font: 15px/1.55 var(--sans); word-break: keep-all; overflow-wrap: anywhere; }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .fine { color: var(--sub); font-size: 13px; line-height: 1.5; margin: 6px 0; }
+  h1, h2, h3, h4, h5 { margin: 0; line-height: 1.35; }
+
+  /* 목업 띠 */
+  .mock { background: var(--ink); color: #fff; font-size: 13px; padding: 4px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+  .mock .mock-t { flex: 1 1 220px; }
+  .mock .mock-t b { font-weight: 700; }
+  .mock .mock-a { display: flex; gap: 6px; }
+  .mock a, .mock button { min-height: 40px; min-width: 40px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #77736C; border-radius: 6px; background: transparent; color: #fff; text-decoration: none; font-size: 13px; cursor: pointer; }
+  .mock a:focus-visible, .mock button:focus-visible { outline-color: #9DB7FF; }
+
+  /* 머리 */
+  .top { max-width: 1280px; margin: 0 auto; padding: 10px 16px 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
+  .brand b { font-size: 19px; letter-spacing: -0.02em; }
+  .brand span { font-size: 13px; color: var(--sub); }
+  .tabs { display: flex; gap: 4px; }
+  .tab { min-height: 44px; padding: 0 12px; border: 1px solid transparent; background: transparent; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+  .tab .num { font-size: 13px; color: var(--sub); font-weight: 600; }
+  .tab[aria-current="page"] { background: var(--paper); border-color: var(--line-strong); }
+
+  /* 결정 장부 요약 줄 */
+  .sumbar { max-width: 1280px; margin: 0 auto 8px; padding: 0 16px; }
+  .sum { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)) auto; align-items: stretch; }
+  .sum > * { padding: 8px 12px; border-left: 1px dashed var(--line-strong); min-width: 0; }
+  .sum > :first-child { border-left: 0; }
+  .sum .s-h { font-weight: 700; display: flex; flex-direction: column; justify-content: center; }
+  .sum .s-h small { font-weight: 400; color: var(--sub); font-size: 12px; }
+  .sum .s-k { font-size: 12px; color: var(--sub); display: block; }
+  .sum .s-v { font-size: 15px; font-weight: 700; display: block; }
+  .sum .s-v.red { color: var(--red); }
+  .sum .s-go { display: flex; align-items: center; }
+  .linkbtn { min-height: 44px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 8px; background: var(--paper); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; text-decoration: none; }
+
+  /* 레이아웃 */
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px 40px; }
+  .cols { display: block; }
+  .sheet { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 16px; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+  @media (min-width: 1024px) {
+    .cols { display: grid; grid-template-columns: minmax(0, 1fr) 432px; gap: 20px; align-items: start; }
+    .aside { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; padding: 2px 6px 6px 2px; scrollbar-gutter: stable; }
+    .sheet { padding: 20px 24px; }
+  }
+
+  /* 요청 */
+  .askf { display: flex; gap: 8px; }
+  .askf input { flex: 1; min-width: 0; min-height: 48px; padding: 10px 14px; font-size: 16px; border: 1.5px solid var(--ink); border-radius: 8px; background: #fff; }
+  .askf input::placeholder { color: #6B675F; }
+  .primary { min-height: 48px; padding: 0 18px; border-radius: 8px; border: 1.5px solid var(--ink); background: var(--ink); color: #fff; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .primary[disabled] { background: #8C877E; border-color: #8C877E; cursor: not-allowed; }
+  .ghost { min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--paper); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-align: left; }
+  .row-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  /* 첫 화면 */
+  .home h1 { font-size: 24px; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .home .lead { color: var(--sub); margin: 0 0 14px; }
+  .exlist { list-style: none; margin: 14px 0 0; padding: 0; border-top: 3px double var(--ink); }
+  .exlist li { border-bottom: 1px solid var(--line); }
+  .exbtn { width: 100%; min-height: 48px; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 4px 4px; background: transparent; border: 0; cursor: pointer; text-align: left; }
+  .exbtn:hover { background: var(--paper-2); }
+  .exbtn .num { color: var(--red); font-size: 13px; }
+  .exbtn .go { color: var(--sub); font-size: 13px; }
+  .edge { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .edge button { min-height: 40px; padding: 0 12px; border: 1px dashed var(--line-strong); background: transparent; border-radius: 999px; cursor: pointer; }
+  .h-sec { font-size: 13px; font-weight: 700; color: var(--sub); margin: 18px 0 6px; letter-spacing: .02em; }
+  .legend { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .legend th, .legend td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .legend th { white-space: nowrap; width: 76px; }
+  @media (min-width: 1024px) { .home-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; } }
+
+  /* 결과 머리 */
+  .rhead h2 { font-size: 19px; letter-spacing: -0.02em; margin: 14px 0 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; align-items: center; }
+  .chip { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ink); background: var(--paper); font-size: 14px; cursor: pointer; }
+  .chip.fixed { cursor: default; background: var(--paper-2); border-color: var(--line); }
+  .chip .x { font-weight: 700; }
+  .chips .k { font-size: 12px; color: var(--sub); margin-right: 2px; }
+  .notices { list-style: none; padding: 0; margin: 8px 0; }
+  .notices li { padding: 8px 10px; border-left: 3px solid var(--ink); background: var(--paper-2); margin-bottom: 6px; font-size: 14px; }
+  .notices li.warn { border-left-color: var(--red); background: var(--red-soft); }
+  .budget { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 8px 0; border-top: 1px dashed var(--line-strong); border-bottom: 1px dashed var(--line-strong); margin: 10px 0 4px; font-size: 14px; }
+  .budget b { font-weight: 700; }
+  .budget .fine { margin: 0; }
+
+  /* 장부 표 */
+  .ledger { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .ledger caption { text-align: left; padding: 6px 0 8px; caption-side: top; }
+  .ledger caption .ct { font-weight: 700; margin-right: 8px; }
+  .ledger caption .fine { margin: 0; display: inline; }
+  .ledger thead th { font-size: 12px; font-weight: 700; color: var(--sub); text-align: left; padding: 6px 8px; border-bottom: 3px double var(--ink); white-space: nowrap; }
+  .ledger th.c-price, .ledger td.c-price { text-align: right; }
+  .ledger > tbody > tr > td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .ledger .c-no { width: 44px; color: var(--red); font-size: 13px; border-right: 1px solid #E3B9B3; }
+  .ledger .c-price { width: 124px; }
+  .ledger .c-own { width: 136px; }
+  .c-verdict .stampmini { display: table; margin-bottom: 4px; }
+  .ledger .c-verdict { width: 25%; }
+  .vr { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .ledger tr.row { cursor: pointer; }
+  .ledger tr.row:hover > td { background: var(--paper-2); }
+  .ledger tr.row.is-sel > td { background: #EFEBE2; }
+  .ledger tr.row.is-sel .c-no { box-shadow: inset 4px 0 0 var(--red); }
+  .ledger tr.group th { text-align: left; font-size: 13px; padding: 14px 8px 6px; border-bottom: 1px solid var(--ink); }
+  .rowbtn { width: 100%; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; min-height: 48px; padding: 2px 0; text-align: left; background: transparent; border: 0; cursor: pointer; }
+  .art { display: block; width: 40px; height: 40px; }
+  .art svg { width: 100%; height: 100%; display: block; }
+  .pt { display: flex; flex-direction: column; min-width: 0; }
+  .pt .b { font-size: 12px; color: var(--sub); }
+  .pt .n { font-size: 14px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pt .m { font-size: 12px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price { font-size: 15px; font-weight: 700; display: block; white-space: nowrap; }
+  .pnote { font-size: 12px; color: var(--sub); display: block; white-space: nowrap; }
+  .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 1px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; border: 1px solid var(--ink); }
+  .tag.t-none { border-style: dashed; border-color: var(--line-strong); color: var(--sub); font-weight: 600; }
+  .tag.t-stop { border-color: var(--red); color: var(--red); }
+  .tag.t-new { background: var(--ink); color: #fff; }
+  .owntext { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .vt { font-size: 13px; line-height: 1.4; }
+  .vt.t-stop { color: var(--red); font-weight: 600; }
+  .vt.t-go { font-weight: 700; }
+  .stampmini { display: inline-block; font-size: 12px; font-weight: 800; color: var(--red); border: 1.5px solid var(--red); border-radius: 4px; padding: 0 6px; margin: 0 6px 2px 0; transform: rotate(-2deg); white-space: nowrap; }
+  .tfoot-note { margin-top: 10px; }
+
+  /* 휴대폰: 줄을 2단으로 접는다 */
+  @media (max-width: 719px) {
+    .ledger thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); }
+    .ledger, .ledger tbody { display: block; }
+    .ledger caption { display: block; }
+    .ledger tr.row { display: grid; grid-template-columns: 30px auto minmax(0, 1fr) auto; grid-template-areas: "no prod prod price" "no own own own" "no verd verd verd"; border-bottom: 1px solid var(--line); scroll-margin-top: 8px; }
+    .ledger tr.row > td { border-bottom: 0; padding: 6px 4px; display: block; width: auto; }
+    .ledger tr.row .c-no { grid-area: no; padding-top: 18px; border-right: 1px solid #E3B9B3; }
+    .ledger tr.row .c-prod { grid-area: prod; padding-bottom: 0; }
+    .ledger tr.row .c-price { grid-area: price; padding-top: 12px; }
+    .ledger tr.row .c-own { grid-area: own; padding-top: 2px; padding-bottom: 0; }
+    .ledger tr.row .c-own .owntext { display: none; }
+    .ledger tr.row .c-verdict { grid-area: verd; padding-top: 2px; padding-bottom: 10px; }
+    .ledger tr.group { display: block; }
+    .ledger tr.group th { display: block; }
+    .ledger tr.slip-tr { display: block; }
+    .ledger tr.slip-tr > td { display: block; padding: 10px 0 14px; border-bottom: 1px solid var(--line); }
+    .pnote { font-size: 12px; }
+    .ledger tr.row .pt .m, .ledger tr.row .vr { display: none; }
+    .ledger tr.row .c-own.is-none { display: none; }
+    .mock .mock-long { display: none; }
+    .mock .mock-t { flex: 1 1 0; min-width: 140px; }
+    .mock a, .mock button { padding: 0 10px; }
+    .budget .sep { display: none; }
+    .mock { padding: 4px 12px; }
+    .sheet { padding: 14px 12px; }
+  }
+  @media (min-width: 720px) and (max-width: 1023px) {
+    .ledger tr.slip-tr > td { padding: 12px 8px 16px; background: var(--desk); }
+  }
+  .ledger tr.slip-tr > td { background: var(--desk); }
+  @media (max-width: 719px) { .ledger tr.slip-tr > td { background: var(--desk); margin: 0 -12px; padding-left: 8px; padding-right: 8px; } }
+
+  /* 전표 */
+  .slip { --z: 8px; background: var(--paper); padding: calc(var(--z) + 12px) 16px calc(var(--z) + 14px); position: relative;
+    -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 16px 51% repeat-x, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 16px 51% repeat-x;
+            mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 16px 51% repeat-x, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 16px 51% repeat-x; }
+  .slip-empty { background: var(--paper); border: 1px dashed var(--line-strong); border-radius: 6px; padding: 18px; color: var(--sub); }
+  .slip-empty b { color: var(--ink); }
+  .slip-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sub); text-transform: none; }
+  .slip-head .mono { font-size: 13px; color: var(--ink); font-weight: 700; letter-spacing: .04em; }
+  .slip-head .sp { margin-left: auto; }
+  .slip-head > span:nth-child(2) { min-width: 0; }
+  .slip-head .mono { white-space: nowrap; }
+  .slip-head button { flex: none; white-space: nowrap; min-height: 40px; padding: 0 12px; border: 1px solid var(--line-strong); background: transparent; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--ink); }
+  .slip-prod { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 8px; }
+  .slip-prod .art { width: 56px; height: 56px; }
+  .slip-prod h3 { font-size: 16px; line-height: 1.4; }
+  .slip-prod h3:focus { outline: none; }
+  .slip-prod h3:focus-visible { outline: 3px solid var(--focus); }
+  .slip-prod .b { font-size: 13px; color: var(--sub); }
+  .slip-prod .m { font-size: 12px; color: var(--sub); }
+  .bigprice { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .bigprice .price { font-size: 22px; }
+  .cut { border: 0; border-top: 2px dashed var(--line-strong); margin: 14px -16px; position: relative; overflow: visible; }
+  .cut::before { content: "✂"; position: absolute; left: 8px; top: -12px; font-size: 13px; color: var(--sub); background: var(--paper); padding: 0 4px; line-height: 1.6; }
+  .sec-h { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: var(--sub); margin: 0 0 6px; }
+  .basis { font-size: 12px; color: var(--sub); margin: 0 0 4px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .basis .tag { font-weight: 700; }
+  .vtitle { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.4; margin: 2px 0 6px; }
+  .vtitle.t-stop { color: var(--red); }
+  .vlines { list-style: none; margin: 0; padding: 0; }
+  .vlines li { font-weight: 600; font-size: 14px; padding: 3px 0; }
+  .recalc { font-size: 13px; margin: 0 0 6px; padding: 6px 8px; background: var(--red-soft); border-left: 3px solid var(--red); }
+  .recalc s { color: var(--sub); }
+  .caution { color: var(--red); font-size: 14px; font-weight: 600; margin: 6px 0; padding-left: 10px; border-left: 3px solid var(--red); }
+  .items { list-style: none; margin: 0; padding: 0; counter-reset: it; }
+  .items li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px; padding: 5px 0; border-bottom: 1px dotted var(--line-strong); font-size: 14px; counter-increment: it; }
+  .items li::before { content: counter(it, decimal-leading-zero); font-family: var(--mono); color: var(--red); font-size: 12px; padding-top: 2px; }
+  .items li.k-reason::after { content: ""; }
+  .lbl { font-size: 12px; color: var(--sub); margin-left: 4px; white-space: nowrap; }
+
+  .addline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); margin-top: 12px; }
+  .addline .t { font-weight: 700; }
+  .addline .fine { margin: 0; }
+  .addform { margin-top: 10px; padding: 12px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; }
+  .step-h { font-size: 13px; font-weight: 700; margin: 10px 0 6px; display: flex; gap: 6px; align-items: baseline; }
+  .step-h:first-child { margin-top: 0; }
+  .step-h .num { color: var(--red); }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opt { min-height: 40px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+  .opt[aria-pressed="true"] { border: 2px solid var(--ink); font-weight: 700; background: #fff; }
+  .sw { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); flex: none; }
+  .trialtag { font-size: 12px; font-weight: 800; color: var(--red); border: 1px solid var(--red); border-radius: 4px; padding: 0 5px; }
+
+  .askq { margin-top: 12px; padding: 10px; border: 1px dashed var(--line-strong); border-radius: 6px; }
+  .askq p { margin: 0 0 6px; font-weight: 700; }
+  .owned { list-style: none; margin: 8px 0 0; padding: 0; }
+  .owned li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dotted var(--line-strong); font-size: 14px; }
+  .owned li span:last-child { color: var(--sub); font-size: 13px; text-align: right; }
+
+  .stamps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .stamp { min-height: 56px; border: 2px solid var(--line-strong); border-radius: 8px; background: transparent; color: var(--sub); font-weight: 800; font-size: 15px; letter-spacing: .04em; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; padding: 4px; }
+  .stamp.lean { border-color: var(--ink); color: var(--ink); }
+  .decide { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ink); }
+  .stamp[aria-pressed="true"] { border: 3px double var(--red); color: var(--red); background: var(--red-soft); transform: rotate(-3deg); }
+  .stamp small { font-size: 12px; font-weight: 600; letter-spacing: 0; }
+  .stamp:hover { background: var(--paper-2); }
+  .recline { margin-top: 10px; padding: 10px; background: var(--paper-2); border-radius: 6px; font-size: 14px; }
+  .recline .row-btns { margin-top: 6px; }
+
+  .lines-t { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .lines-t caption { text-align: left; font-size: 12px; font-weight: 800; letter-spacing: .08em; color: var(--sub); padding-bottom: 4px; }
+  .lines-t th, .lines-t td { padding: 7px 0; border-bottom: 1px dotted var(--line-strong); vertical-align: top; text-align: left; font-weight: 400; }
+  .lines-t th { padding-right: 8px; }
+  .lines-t td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
+  .lines-t tr.total th, .lines-t tr.total td { border-top: 2px solid var(--ink); border-bottom: 3px double var(--ink); font-weight: 800; }
+  .lines-t .role { display: block; font-size: 12px; color: var(--sub); }
+  .lines-t .own0 { color: var(--sub); }
+  .look + .look { margin-top: 14px; }
+  .look-h { font-weight: 700; font-size: 14px; margin: 0 0 2px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .seller { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px dotted var(--line-strong); }
+  .seller .t b { display: block; }
+  .seller a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 8px; border: 1.5px solid var(--ink); text-decoration: none; font-weight: 700; white-space: nowrap; background: #fff; }
+  summary.usedrow { cursor: pointer; min-height: 44px; list-style: none; }
+  summary.usedrow::-webkit-details-marker { display: none; }
+  .usedrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px 0 4px; align-items: baseline; }
+  .usedrow .r { text-align: right; }
+  .usedrow .dash { font-size: 18px; font-weight: 700; }
+  .usedrow .r small { display: block; font-size: 12px; color: var(--sub); }
+  .usedlinks .region { font-size: 12px; font-weight: 700; color: var(--sub); margin: 8px 0 4px; }
+  .usedlinks ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .usedlinks a { min-height: 44px; display: flex; flex-direction: column; justify-content: center; padding: 4px 10px; border: 1px dashed var(--line-strong); border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; }
+  .usedlinks a small { font-size: 12px; font-weight: 400; color: var(--sub); }
+  .alts { list-style: none; margin: 0; padding: 0; }
+  .alts li { border-bottom: 1px dotted var(--line-strong); }
+  .alts button { width: 100%; min-height: 44px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; background: transparent; border: 0; padding: 4px 0; cursor: pointer; text-align: left; font-size: 14px; }
+  .alts .price { font-size: 14px; }
+
+  /* 결정 장부 화면 */
+  .reclist { list-style: none; margin: 8px 0 0; padding: 0; border-top: 3px double var(--ink); }
+  .rec { border-bottom: 1px solid var(--line); padding: 10px 0; scroll-margin-top: 8px; }
+  .rec.is-sel { background: #EFEBE2; }
+  .rec-main { display: grid; grid-template-columns: 30px 40px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .rec-main .num.no { color: var(--red); font-size: 13px; }
+  .trail { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0 38px; }
+  .trail span { font-size: 12px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--sub); }
+  .trail span.done { border-color: var(--ink); color: var(--ink); font-weight: 700; }
+  .trail span.now { border: 1.5px solid var(--red); color: var(--red); font-weight: 800; }
+  .rec .row-btns { margin-left: 38px; }
+  .bigsum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); margin: 10px 0; }
+  .bigsum > div { padding: 10px 8px; border-left: 1px dashed var(--line-strong); }
+  .bigsum > div:first-child { border-left: 0; }
+  .bigsum .k { font-size: 12px; color: var(--sub); display: block; }
+  .bigsum .v { font-size: 17px; font-weight: 800; display: block; }
+  .bigsum .v.red { color: var(--red); }
+  .bigsum .c { font-size: 13px; display: block; }
+
+  /* 내 옷 */
+  .garments { list-style: none; margin: 6px 0 0; padding: 0; }
+  .garments li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .garments .g-t b { display: block; font-size: 14px; }
+  .garments .g-t span { font-size: 12px; color: var(--sub); }
+  .src { font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--sub); margin-left: 4px; white-space: nowrap; }
+  .src.trial { border-color: var(--red); color: var(--red); }
+  .src.bought { border-color: var(--ink); color: var(--ink); }
+  .msg { padding: 8px 10px; background: var(--red-soft); border-left: 3px solid var(--red); font-size: 14px; margin: 8px 0; }
+  .msg.ok { background: var(--paper-2); border-left-color: var(--ink); }
+
+  .outsum { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 4px; }
+  .outsum summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; font-size: 14px; flex-wrap: wrap; }
+
+  footer { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; color: var(--sub); font-size: 13px; }
+  footer p { margin: 4px 0; }
+  footer details { margin-top: 8px; }
+  footer summary { min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--ink); }
+  footer ul { margin: 4px 0; padding-left: 18px; }
+  @media (max-width: 719px) {
+    .sum { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .sum .s-h { grid-column: 1 / -1; flex-direction: row; gap: 8px; align-items: baseline; flex-wrap: wrap; border-bottom: 1px dashed var(--line-strong); }
+    .sum > :nth-child(2) { border-left: 0; }
+    .sum .s-go { display: none; }
+    .sum > * { padding: 6px 10px; }
+    .home h1 { font-size: 21px; }
+    .usedlinks ul { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: no-preference) { .stamp { transition: transform .15s ease; } }
+</style>
+</head>
+<body>
+<div class="mock" data-flow="mock-label" role="note" aria-label="목업 안내">
+  <span class="mock-t"><b>목업 · 시안 07 장부 · AI 역할 시안</b><span class="mock-long"> — 실제 전문가가 아니라 AI가 디자이너·프론트 개발자 역할로 만든 시안이에요. 저장은 이 브라우저에만.</span></span>
+  <span class="mock-a"><a href="../index.html">갤러리로</a><button type="button" data-flow="reset">처음부터</button></span>
+</div>
+<div id="live" class="sr" aria-live="polite" role="status"></div>
+<div id="root"></div>
+<footer id="foot"></footer>
+<script src="../shared/eoul-mock.js"></script>
+<script>
+(function () {
+  'use strict';
+  var M = window.EoulMock;
+  var root = document.getElementById('root');
+  var wideMq = window.matchMedia('(min-width: 1024px)');
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var won = function (n) { return M.formatPrice(n); };
+
+  // 화면 상태: V는 주소 기록(history)에 남는 것, ui는 그 자리의 작은 상태.
+  var V = { v: 'home', said: '', drop: [], prev: null, sel: null };
+  var R = null;
+  var ui = { autoSel: null, adding: null, allKinds: false, recalc: null, returnFor: null, msg: null, focusTo: null, scrollTo: null };
+
+  function refresh() {
+    if (V.v === 'result' && V.said) R = M.ask(V.said, { drop: V.drop || [], previous: V.prev || null });
+    else if (V.v === 'result') R = null;
+  }
+  function hashFor(s) { return '#' + s.v + (s.sel ? '/' + s.sel : ''); }
+  function go(next, opt) {
+    opt = opt || {};
+    var prevSel = V.sel;
+    V = Object.assign({ v: 'home', said: '', drop: [], prev: null, sel: null }, next);
+    if (!opt.keepResult) refresh();
+    var auto = null;
+    if (V.v === 'result' && opt.autoSelect && wideMq.matches && R && R.products.concat(R.offOccasion).length && !V.sel) { V.sel = R.products.concat(R.offOccasion)[0].id; auto = V.sel; }
+    if (V.sel !== prevSel || auto) { ui.autoSel = auto; ui.recalc = null; ui.adding = null; ui.allKinds = false; ui.returnFor = null; }
+    try { history[opt.replace ? 'replaceState' : 'pushState'](V, '', hashFor(V)); } catch (e) { /* file:// 등에서 막혀도 화면은 동작 */ }
+    render();
+  }
+  function runAsk(said, opts) {
+    opts = opts || {};
+    ui.msg = null; ui.adding = null;
+    go({ v: 'result', said: said, drop: opts.drop || [], prev: opts.prev || null, sel: null }, { autoSelect: true });
+    ui.focusTo = null;
+  }
+
+  // ── 결정 장부 합계(수집가 기준)
+  function ledgerTotals() {
+    var recs = M.getState().records;
+    var t = { buy: { n: 0, sum: 0, returned: 0 }, hold: { n: 0, sum: 0 }, skip: { n: 0, sum: 0 }, all: recs.length };
+    recs.forEach(function (r) {
+      var k = r.decision; if (!t[k]) return;
+      t[k].n++;
+      if (k === 'buy' && r.stage === 'returned') t.buy.returned++;
+      else if (k === 'buy') t.buy.sum += (r.product && r.product.price) || 0;
+    });
+    return t;
+  }
+  function sumBar() {
+    var t = ledgerTotals();
+    if (!t.all || V.v === 'records') return '';
+    return '<div class="sumbar"><div class="sum" role="group" aria-label="결정 기록 요약">' +
+      '<div class="s-h">결정 기록 <small>직접 남긴 기록 · 확인된 거래 아님</small></div>' +
+      '<div><span class="s-k">사기로 함 ' + t.buy.n + '건' + (t.buy.returned ? ' (반품 ' + t.buy.returned + '건 제외)' : '') + '</span><span class="s-v num">' + won(t.buy.sum) + '</span><span class="s-k">사기로 한 상품 수집가 합(결제 금액 아님)</span></div>' +
+      '<div><span class="s-k">보류</span><span class="s-v num">' + t.hold.n + '건</span></div>' +
+      '<div><span class="s-k">안 삼</span><span class="s-v num">' + t.skip.n + '건</span></div>' +
+      '<div class="s-go"><button type="button" class="linkbtn" data-go="records">기록 열기</button></div>' +
+      '</div></div>';
+  }
+
+  // ── 머리
+  function header() {
+    var s = M.getState();
+    var tab = function (flow, v, label, n) {
+      return '<button type="button" class="tab" data-flow="' + flow + '"' + (V.v === v || (v === 'ask' && (V.v === 'home' || V.v === 'result')) ? ' aria-current="page"' : '') + '>' + label + (n != null ? ' <span class="num">' + n + '</span>' : '') + '</button>';
+    };
+    return '<header class="top"><div class="brand"><b>어울</b><span>후보 장부</span></div>' +
+      '<nav class="tabs" aria-label="화면">' + tab('nav-ask', 'ask', '찾기') + tab('nav-closet', 'closet', '내 옷', s.closetCount) + tab('nav-records', 'records', '기록', s.records.length) + '</nav></header>';
+  }
+  function askForm(value) {
+    return '<form class="askf" id="askf" role="search" aria-label="옷 찾기">' +
+      '<label class="sr" for="q">찾을 옷을 한 줄로</label>' +
+      '<input id="q" name="q" data-flow="ask-input" autocomplete="off" enterkeyhint="search" value="' + esc(value || '') + '" placeholder="예: 출근용 셔츠 10만원 이하">' +
+      '<button class="primary" type="submit" data-flow="ask-submit">찾기</button></form>';
+  }
+
+  // ── 첫 화면
+  function homeView() {
+    var ex = M.examples().map(function (q, i) {
+      return '<li><button type="button" class="exbtn" data-flow="example" data-q="' + esc(q) + '"><span class="num">' + pad(i + 1) + '</span><span>' + esc(q) + '</span><span class="go" aria-hidden="true">장부로 →</span></button></li>';
+    }).join('');
+    var edge = M.edgeExamples().map(function (q) { return '<button type="button" data-flow="example" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('');
+    return '<div class="wrap"><div class="home-grid">' +
+      '<section class="sheet home" aria-labelledby="home-h"><h1 id="home-h">무엇을 살지 한 줄로 적어 주세요</h1>' +
+      '<p class="lead">옷장 없이 바로 시작해요. 후보를 장부 한 줄씩(수집가 · 내 옷과 · 고른 이유) 정리하고, 줄을 누르면 전표로 따져 봐요.</p>' +
+      askForm('') + '<p class="fine">' + esc(M.note.rules) + '</p>' +
+      '<h2 class="h-sec">예시 요청</h2><ul class="exlist">' + ex + '</ul>' +
+      '<h2 class="h-sec">정직한 답 보기 — 없는 종류·못 읽는 말</h2><div class="edge">' + edge + '</div></section>' +
+      '<section class="sheet" aria-labelledby="how-h" style="margin-top:16px"><h2 id="how-h" style="font-size:16px">장부 읽는 법</h2>' +
+      '<table class="legend"><caption class="sr">장부의 칸</caption><tbody>' +
+      '<tr><th scope="row">No.</th><td>후보 번호. 줄을 누르면 전표가 열려요.</td></tr>' +
+      '<tr><th scope="row">상품</th><td>브랜드·상품명. 사진 대신 종류·색 그림이에요.</td></tr>' +
+      '<tr><th scope="row">수집가</th><td>수집일 가격. 현재가·최저가가 아니에요.</td></tr>' +
+      '<tr><th scope="row">내 옷과</th><td>가진 옷과 겹치는지. 옷장이 없으면 ‘옷장 없이’.</td></tr>' +
+      '<tr><th scope="row">이유</th><td>조건에 맞춰 고른 이유. 판정은 줄을 눌러 연 전표에서 계산해요.</td></tr>' +
+      '<tr><th scope="row">도장</th><td>사기로 함 · 보류 · 안 살래. 찍으면 기록에 쌓이고 주문→받음→계속 입음/반품으로 이어져요. 직접 남긴 기록이에요.</td></tr>' +
+      '</tbody></table><p class="fine">' + esc(M.note.price) + '</p></section>' +
+      '</div></div>';
+  }
+
+  // ── 결과
+  function allRows() { return R ? R.products.concat(R.offOccasion) : []; }
+  function tone(t) { return t === 'stop' ? 't-stop' : t === 'new' ? 't-new' : t === 'none' ? 't-none' : 't-info'; }
+  function rowHTML(p, i, wide) {
+    var sel = V.sel === p.id;
+    var rec = p.record;
+    var tr = '<tr class="row' + (sel ? ' is-sel' : '') + '" role="row" data-row="' + esc(p.id) + '">' +
+      '<td role="cell" class="c-no num">' + pad(i + 1) + '</td>' +
+      '<td role="cell" class="c-prod"><button type="button" class="rowbtn" data-flow="result" data-product-id="' + esc(p.id) + '" aria-expanded="' + sel + '" aria-controls="slip">' +
+        '<span class="art" aria-hidden="true">' + M.art(p) + '</span><span class="pt"><span class="b">' + esc(p.brand) + '</span><span class="n">' + esc(p.name) + '</span><span class="m">' + esc(p.colorLabel) + ' · ' + esc(p.slotName) + '</span></span></button></td>' +
+      '<td role="cell" class="c-price"><span class="price num">' + esc(p.priceText) + '</span><span class="pnote">' + esc(p.priceNote) + '</span></td>' +
+      '<td role="cell" class="c-own' + (p.owned.tone === 'none' ? ' is-none' : '') + '"><span class="tag ' + tone(p.owned.tone) + '">' + esc(p.owned.label) + '</span>' + (p.owned.text ? '<span class="owntext">' + esc(p.owned.text) + '</span>' : '') + '</td>' +
+      '<td role="cell" class="c-verdict">' + (rec ? '<span class="stampmini">' + esc(rec.stageLabel) + '</span>' : '') + '<span class="vt">' + esc(p.reason) + '</span>' + (p.traitLine ? '<span class="vr">' + esc(p.traitLine) + '</span>' : '') + '</td></tr>';
+    if (sel && !wide) tr += '<tr class="slip-tr"><td colspan="5">' + slipHTML(p.id, i + 1) + '</td></tr>';
+    return tr;
+  }
+  function resultView() {
+    var wide = wideMq.matches;
+    if (!R) return homeView();
+    var rows = allRows();
+    var warnKinds = { 'not-understood': 1, 'kind-unavailable': 1, empty: 1, error: 1, 'follow-missing': 1 };
+    var chips = R.conditions.map(function (c) {
+      return c.removable
+        ? '<button type="button" class="chip" data-flow="condition-remove" data-key="' + esc(c.key) + '" aria-label="조건 빼기: ' + esc(c.label) + '">' + esc(c.label) + ' <span class="x" aria-hidden="true">×</span></button>'
+        : '<span class="chip fixed"><span class="k">종류</span>' + esc(c.label) + '</span>';
+    }).join('');
+    var notices = R.notices.length ? '<ul class="notices">' + R.notices.map(function (n) { return '<li class="' + (warnKinds[n.kind] ? 'warn' : '') + '">' + esc(n.text) + '</li>'; }).join('') + '</ul>' : '';
+    var head = '<div class="rhead">' + askForm(R.said) +
+      '<h2 id="r-title">' + esc(R.title) + '</h2>' +
+      (chips ? '<div class="chips" aria-label="읽은 조건"><span class="k">읽은 조건</span>' + chips + '</div>' : '') + notices + '</div>';
+    var body = '';
+    if (!rows.length) {
+      body = '<p class="fine">상품 줄을 만들지 않았어요.</p><h3 class="h-sec">이렇게 적어 보세요</h3><div class="edge">' +
+        (R.examples || M.examples()).map(function (q) { return '<button type="button" data-flow="example" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>';
+    } else {
+      var prices = rows.map(function (p) { return p.price; });
+      var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+      var priceCond = R.conditions.filter(function (c) { return c.key === 'price'; })[0];
+      body = '<div class="budget">' +
+        (priceCond ? '<b>예산 ' + esc(priceCond.label) + '(한 벌 기준)</b><span class="sep">·</span>' : '') +
+        '<span>이 목록 수집가 범위 <b class="num">' + won(min) + '~' + won(max) + '</b></span>' +
+        '<button type="button" class="ghost" data-act="cheaper" style="margin-left:auto">더 싼 걸로 이어 묻기</button></div>' +
+        (priceCond ? '<p class="fine">예산은 한 벌 기준이에요(코디 합계에는 쓰지 않아요).</p>' : '') +
+        '<table class="ledger" role="table"><caption><span class="ct">후보 장부 ' + rows.length + '줄</span><span class="fine">' + esc(R.listNote) + '</span></caption>' +
+        '<thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col" class="c-no">No.</th><th role="columnheader" scope="col">상품</th><th role="columnheader" scope="col" class="c-price">수집가</th><th role="columnheader" scope="col" class="c-own">내 옷과</th><th role="columnheader" scope="col" class="c-verdict">고른 이유 · 기록</th></tr></thead>' +
+        '<tbody>' + R.products.map(function (p, i) { return rowHTML(p, i, wide); }).join('') + '</tbody>' +
+        (R.offOccasion.length ? '<tbody><tr class="group"><th scope="rowgroup" colspan="5">' + esc(R.offOccasionTitle) + '</th></tr>' + R.offOccasion.map(function (p, i) { return rowHTML(p, R.products.length + i, wide); }).join('') + '</tbody>' : '') +
+        '</table>' + outfitSummary() +
+        '<p class="fine tfoot-note">' + esc(M.note.catalog) + ' ' + esc(M.note.price) + '</p>';
+    }
+    var solo = '';
+    if (V.sel && !wide && !rows.some(function (p) { return p.id === V.sel; })) solo = '<div style="margin:10px 0">' + slipHTML(V.sel, null) + '</div>';
+    var left = '<section class="sheet" aria-labelledby="r-title">' + head + solo + body + '</section>';
+    return '<div class="wrap"><div class="cols">' + left + (wide ? '<aside class="aside" aria-label="전표">' + (V.sel ? slipHTML(V.sel, rowNo(V.sel)) : emptySlip(rows.length)) + '</aside>' : '') + '</div></div>';
+  }
+  function rowNo(id) { var i = allRows().findIndex(function (p) { return p.id === id; }); return i < 0 ? null : i + 1; }
+  function emptySlip(n) {
+    return '<div class="slip-empty"><b>전표</b><p>' + (n ? '왼쪽 장부에서 줄을 누르면 이 자리에 전표가 열려요.' : '상품 줄이 없어서 열 전표가 없어요.') + '</p><p class="fine">' + esc(M.note.rules) + '</p></div>';
+  }
+  function outfitSummary() {
+    var o = R.outfit;
+    if (!o && !R.outfitNote) return '';
+    if (!o) return '<p class="fine">' + esc(R.outfitNote) + '</p>';
+    return '<details class="outsum"><summary>이 요청으로 만든 코디 · ' + esc(o.title) + ' · 새로 살 것 ' + o.buyCount + '벌 <span class="num">' + esc(o.buyTotalText || '0원') + '</span></summary>' +
+      lookTable(o, '코디 품목표 · ' + (o.formula || o.title)) + '<p class="fine">' + esc(o.note) + '</p>' + (R.outfitNote ? '<p class="fine">' + esc(R.outfitNote) + '</p>' : '') + '</details>';
+  }
+
+  // 코디 품목표: 내 옷 0원 / 후보 수집가 / 합계 buyTotalText
+  function lookTable(o, cap) {
+    var inclFocus = o.pieces.some(function (x) { return x.focus && !x.owned && !x.candidate && x.product; });
+    var rows = o.pieces.map(function (x) {
+      var price, label = esc(x.label);
+      if (x.owned) price = x.trial ? '<span class="own0">체험용 · 가격 없음</span>' : '<span class="own0">내 옷 · 살 필요 없음</span>';
+      else if (x.product) price = '<span class="num">' + esc(x.product.priceText) + '</span>' + (x.candidate || x.focus ? '<span class="lbl">이 후보</span>' : '<span class="lbl">후보</span>');
+      else price = '<span class="lbl">미정</span>';
+      return '<tr><th scope="row"><span class="role">' + esc(x.roleLabel) + ' · ' + esc(x.colorLabel) + ' ' + esc(x.kindName) + (x.uncertain ? ' · 확인 필요' : '') + '</span>' + label + '</th><td class="r">' + price + '</td></tr>';
+    }).join('');
+    var totalLabel = o.buyCount ? '새로 살 것 ' + o.buyCount + '벌 합계' + (inclFocus ? ' (이 후보 포함)' : ' (이 후보 제외)') : '더 살 옷 없음';
+    return '<table class="lines-t"><caption>' + esc(cap) + '</caption><tbody>' + rows +
+      '<tr class="total"><th scope="row">' + totalLabel + '</th><td class="r num">' + esc(o.buyTotalText || '0원') + '</td></tr></tbody></table>' +
+      (o.uncertainCount ? '<p class="fine">확인이 필요한 옷 ' + o.uncertainCount + '벌이 있어요.</p>' : '');
+  }
+
+  // ── 전표
+  function slipHTML(id, no) {
+    var d = M.product(id);
+    if (!d) return '';
+    var v = d.verdict;
+    var used = M.usedSearch(id);
+    var rec = v.record;
+    var h = [];
+    h.push('<article class="slip" id="slip" aria-labelledby="slip-h">');
+    h.push('<div class="slip-head"><span class="mono">전표 ' + (no ? 'No.' + pad(no) : '목록 밖') + '</span><span>' + esc(d.store) + ' · ' + esc(d.priceNote) + '</span><span class="sp"></span><button type="button" data-act="close-slip">' + (wideMq.matches ? '닫기' : '접기') + '</button></div>');
+    h.push('<div class="slip-prod"><span class="art" aria-hidden="true">' + M.art(d) + '</span><div><span class="b">' + esc(d.brand) + '</span><h3 id="slip-h" tabindex="-1">' + esc(d.name) + '</h3><span class="m">' + esc(d.colorLabel) + ' · ' + esc(d.slotName) + ' · ' + esc(d.colorNote) + '</span></div></div>');
+    h.push('<div class="bigprice"><span class="fine" style="margin:0">수집가 <span class="sr">(' + esc(M.note.price) + ')</span></span><span class="price num">' + esc(d.priceText) + '</span></div>');
+    h.push('<hr class="cut" aria-hidden="true">');
+    // 판정
+    h.push('<section aria-label="판정"><p class="sec-h">판정</p><p class="basis"><span class="tag ' + (v.basis === 'none' ? 't-none' : '') + '">' + esc(v.basisLabel) + '</span>' + (v.basis === 'trial' || v.basis === 'mixed' ? '<span class="trialtag">체험용 포함</span>' : '') + '</p>');
+    if (ui.recalc && ui.recalc.id === id && ui.recalc.before !== v.title) h.push('<p class="recalc">다시 계산했어요 · 이전 판정 <s>' + esc(ui.recalc.before) + '</s></p>');
+    h.push('<h4 class="vtitle ' + (v.tone === 'stop' ? 't-stop' : '') + '" id="slip-v" tabindex="-1"><span data-flow="verdict">' + esc(v.title) + '</span></h4>');
+    if ((v.lines || []).length) h.push('<ul class="vlines">' + v.lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>');
+    (v.cautions || []).forEach(function (c) { h.push('<p class="caution">주의 · ' + esc(c) + '</p>'); });
+    if ((v.owned || []).length) h.push('<ul class="owned" aria-label="겹치는 내 옷">' + v.owned.map(function (g) { return '<li><span>' + esc(g.label) + ' <span class="lbl">' + esc(g.colorLabel) + '</span>' + (g.trial ? ' <span class="trialtag">체험용</span>' : '') + '</span><span>' + esc(g.relationLabel) + '</span></li>'; }).join('') + '</ul>');
+    if (v.companion) h.push('<p class="fine">함께 더할 후보 · ' + esc(v.companion.brand) + ' ' + esc(v.companion.name) + ' <span class="num">' + esc(v.companion.priceText) + '</span> (' + esc(v.companion.pairTitle) + ')</p>');
+    h.push('</section>');
+    // 결정 도장
+    var lab = { buy: '사기로 함', hold: '보류', skip: '안 살래' };
+    h.push('<section aria-label="결정" class="decide"><p class="sec-h">결정 도장</p><p class="fine" style="margin:0 0 4px">' + esc(M.note.records) + '</p><div class="stamps">' + ['buy', 'hold', 'skip'].map(function (k) {
+      var on = rec && rec.decision === k;
+      return '<button type="button" class="stamp' + (v.lean === k ? ' lean' : '') + '" data-flow="decide-' + k + '" data-product-id="' + esc(id) + '" aria-pressed="' + !!on + '">' + lab[k] + (on ? '<small>찍음</small>' : v.lean === k ? '<small>판정 쪽</small>' : '') + '</button>';
+    }).join('') + '</div>');
+    h.push('<p class="fine">' + (v.lean ? '‘판정 쪽’ 표시는 판정이 기운 쪽이에요. 결정은 직접 골라요.' : '판정이 어느 쪽으로도 기울지 않았어요. 결정은 직접 골라요.') + '</p>');
+    if (rec) h.push('<div class="recline"><b>기록에 남김</b> · ' + esc(rec.stageLabel) + recordSteps(rec) + '</div>');
+    h.push('</section>');
+    // 근거(품목 줄)
+    var items = [];
+    (v.reasons || []).forEach(function (x) { items.push({ t: x, k: '판정 근거' }); });
+    d.why.forEach(function (x) { if (!items.some(function (y) { return y.t === x; })) items.push({ t: x, k: '고른 이유' }); });
+    if (items.length || d.tip || d.popularity) {
+      h.push('<section aria-label="근거" style="margin-top:12px"><p class="sec-h">근거 품목</p><ol class="items">' + items.map(function (x) { return '<li><span>' + esc(x.t) + ' <span class="lbl">' + x.k + '</span></span></li>'; }).join('') + '</ol>' +
+        (d.tip ? '<p class="fine">' + esc(d.tip) + '</p>' : '') + (d.popularity ? '<p class="fine">' + esc(d.popularity) + '</p>' : '') + '</section>');
+    }
+    // 가진 옷 넣고 다시 계산
+    h.push(addBlock(id, v));
+    // 이미 있나요?
+    if (v.ask) {
+      h.push('<div class="askq" role="group" aria-label="' + esc(v.ask.question) + '"><p>' + esc(v.ask.question) + '</p><div class="opts">' +
+        v.ask.choices.map(function (c) { return '<button type="button" class="opt" data-own="' + c.id + '" data-product-id="' + esc(id) + '" aria-pressed="' + (v.ask.value === c.id) + '">' + esc(c.label) + '</button>'; }).join('') +
+        '</div>' + (v.ask.hint ? '<p class="fine">' + esc(v.ask.hint) + '</p>' : '') + '</div>');
+    }
+    h.push('<hr class="cut" aria-hidden="true">');
+    // 판매처 줄
+    h.push('<div class="seller"><span class="t"><b>판매처 · ' + esc(d.store) + '</b><span class="fine" style="margin:0">' + '현재 가격·사이즈는 판매처에서 확인</span></span>' +
+      '<a data-flow="seller-link" href="' + esc(d.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(d.store) + '에서 보기 (새 창)">' + esc(d.store) + '에서 보기</a></div>');
+    // 중고 줄
+    if (used) {
+      h.push('<details class="usedlinks" data-flow="used-search"' + (wideMq.matches ? ' open' : '') + '><summary class="usedrow"><span><b>중고 · 연동 전 · 외부 검색 결과로 이동</b><small class="fine" style="display:block;margin:0">검색 링크 ' + used.groups.reduce(function (n, g) { return n + g.links.length; }, 0) + '곳 펼치기</small></span><span class="r"><span class="dash num" aria-label="가격 없음">—</span><small>앱이 확인하지 않음</small></span></summary><div role="group" aria-label="중고 검색 링크"><p class="fine">' + esc(used.note) + ' ' + esc(used.exactNote) + '</p>' +
+        used.groups.map(function (g) { return '<p class="region">' + esc(g.region) + '</p><ul>' + g.links.map(function (l) { return '<li><a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(l.label) + ' 검색 결과 (새 창)">' + esc(l.label) + ' 검색 ↗' + (l.note ? '<small>' + esc(l.note) + '</small>' : '') + '</a></li>'; }).join('') + '</ul>'; }).join('') +
+        '<p class="fine">' + esc(used.abroadNote) + '</p></div></details>');
+    }
+    h.push('<hr class="cut" aria-hidden="true">');
+    // 코디 품목표
+    h.push('<section aria-label="코디">');
+    if ((v.looks || []).length) {
+      v.looks.slice(0, 2).forEach(function (l) {
+        h.push('<div class="look"><p class="look-h">' + esc(l.formula || l.title) + (l.new ? ' <span class="tag t-new">새 코디</span>' : '') + '</p>' + lookTable(l, '내 옷으로 만든 코디 품목표') + '<p class="fine">' + esc(l.note) + '</p></div>');
+      });
+    } else if (d.outfit) {
+      h.push('<div class="look"><p class="look-h">' + esc(d.outfit.formula || d.outfit.title) + '</p>' + lookTable(d.outfit, '이 상품으로 만든 코디 품목표') + '<p class="fine">' + esc(d.outfit.note) + '</p></div>');
+    }
+    if (d.outfitNote) h.push('<p class="fine">' + esc(d.outfitNote) + '</p>');
+    h.push('</section>');
+    // 대안
+    if (d.alternatives.length || d.alternativesNote) {
+      h.push('<section aria-label="같은 종류 다른 선택" style="margin-top:12px"><p class="sec-h">같은 조건의 다른 선택</p><ul class="alts">' +
+        d.alternatives.slice(0, 3).map(function (a) { return '<li><button type="button" data-open="' + esc(a.id) + '"><span><span class="fine" style="margin:0">' + esc(a.brand) + '</span><br>' + esc(a.name) + '</span><span class="price num">' + esc(a.priceText) + '</span></button></li>'; }).join('') +
+        '</ul>' + (d.alternativesNote ? '<p class="fine">' + esc(d.alternativesNote) + '</p>' : '') + '</section>');
+    }
+    h.push('<p class="fine">' + esc(v.fine) + '</p>');
+    h.push('</article>');
+    return h.join('');
+  }
+  function addBlock(id, v) {
+    var a = ui.adding && ui.adding.ctx === 'slip' && ui.adding.forId === id ? ui.adding : null;
+    var s = v.addSuggestion || {};
+    var line;
+    if (v.basis === 'none') {
+      line = '<div class="addline"><span><span class="t">가진 옷 넣고 다시 계산</span><p class="fine">가진 ' + esc(s.kindName || '옷') + '을(를) 종류·색만 넣으면 이 전표가 바로 바뀌어요. 사진은 필요 없어요.</p></span>' +
+        (a ? '' : '<button type="button" class="primary" data-flow="closet-add" data-kind="' + esc(s.kind || '') + '" data-product-id="' + esc(id) + '">이 옷 넣고 다시 계산</button>') + '</div>';
+      if (!a) line += '<div class="row-btns"><button type="button" class="ghost" data-flow="trial-closet" data-product-id="' + esc(id) + '">체험용 예시 옷으로 계산 <span class="trialtag">체험용</span></button></div>';
+    } else {
+      line = a ? '<div class="addline"><span class="t">옷 한 벌 더 넣고 다시 계산</span></div>'
+        : '<div class="row-btns"><button type="button" class="ghost" data-flow="closet-add" data-kind="' + esc(s.kind || '') + '" data-product-id="' + esc(id) + '">옷 한 벌 더 넣고 다시 계산</button></div>';
+    }
+    return line + (a ? addForm(a) : '');
+  }
+  function addForm(a) {
+    var kinds = M.kindChoices();
+    var showKinds = a.kind && !ui.allKinds ? kinds.filter(function (k) { return k.id === a.kind; }) : kinds;
+    var h = '<div class="addform" role="group" aria-label="가진 옷 넣기">';
+    h += '<p class="step-h"><span class="num">1</span> 종류</p><div class="opts">' + showKinds.map(function (k) { return '<button type="button" class="opt" data-flow="kind-option" data-kind="' + k.id + '" aria-pressed="' + (a.kind === k.id) + '">' + esc(k.name) + '</button>'; }).join('') +
+      (a.kind && !ui.allKinds ? '<button type="button" class="opt" data-act="all-kinds">다른 종류</button>' : '') + '</div>';
+    if (a.kind) {
+      h += '<p class="step-h"><span class="num">2</span> 색</p><div class="opts">' + M.colorChoices().map(function (c) { return '<button type="button" class="opt" data-flow="color-option" data-color="' + c.id + '" aria-pressed="' + (a.color === c.id) + '"><span class="sw" style="background:' + c.hex + '" aria-hidden="true"></span>' + esc(c.label) + '</button>'; }).join('') + '</div>';
+      var slots = M.slotChoices(a.kind);
+      if (slots.length) h += '<p class="step-h"><span class="num">3</span> 세부 종류 <span class="fine" style="margin:0">선택 · 모르면 건너뛰어요</span></p><div class="opts">' + slots.map(function (sl) { return '<button type="button" class="opt" data-flow="slot-option" data-slot="' + sl.id + '" aria-pressed="' + (a.slot === sl.id) + '">' + esc(sl.name) + '</button>'; }).join('') + '</div>';
+    }
+    h += '<div class="row-btns"><button type="button" class="primary" data-flow="closet-save"' + (a.kind && a.color ? '' : ' disabled') + '>' + (a.ctx === 'slip' ? '넣고 다시 계산' : '넣기') + '</button><button type="button" class="ghost" data-act="cancel-add">그만두기</button></div>';
+    if (!(a.kind && a.color)) h += '<p class="fine">종류와 색을 고르면 넣을 수 있어요.</p>';
+    return h + '</div>';
+  }
+  function recordSteps(rec) {
+    var h = '';
+    if (ui.returnFor === rec.productId) {
+      h += '<p class="fine" style="margin-top:8px">반품 사유를 골라 주세요</p><div class="opts">' + M.returnReasons.map(function (r) { return '<button type="button" class="opt" data-reason="' + r.id + '" data-product-id="' + esc(rec.productId) + '">' + esc(r.label) + '</button>'; }).join('') + '<button type="button" class="opt" data-act="cancel-return">취소</button></div>';
+      return h;
+    }
+    if (rec.next.length) h += '<div class="row-btns">' + rec.next.map(function (n) { return '<button type="button" class="ghost" data-flow="record-step" data-step="' + n.step + '" data-product-id="' + esc(rec.productId) + '">' + esc(n.label) + '</button>'; }).join('') + '</div>';
+    return h;
+  }
+
+  // ── 결정 장부(기록)
+  function trail(r) {
+    var order = ['candidate', 'ordered', 'received', 'end'];
+    var idx = { candidate: 0, ordered: 1, received: 2, kept: 3, returned: 3 }[r.stage];
+    var labels = [r.decisionLabel, '주문', '받음', r.stage === 'returned' ? '반품' + (r.returnReasonLabel ? '(' + r.returnReasonLabel + ')' : '') : '계속 입음'];
+    return '<div class="trail" aria-label="진행: ' + esc(r.stageLabel) + '">' + order.map(function (_, i) {
+      return '<span class="' + (i < idx ? 'done' : i === idx ? 'now' : '') + '">' + esc(labels[i]) + (i <= idx ? ' ✓' : '') + '</span>';
+    }).join('') + (r.wearCount ? '<span class="done">입은 기록 ' + r.wearCount + '회</span>' : '') + '</div>';
+  }
+  function recordsView() {
+    var wide = wideMq.matches;
+    var s = M.getState();
+    var t = ledgerTotals();
+    var list = s.records.map(function (r, i) {
+      var p = r.product || {};
+      var sel = V.sel === r.productId;
+      var h = '<li class="rec' + (sel ? ' is-sel' : '') + '" data-flow="record" data-product-id="' + esc(r.productId) + '"><div class="rec-main"><span class="num no">' + pad(i + 1) + '</span><span class="art" aria-hidden="true">' + M.art(p) + '</span>' +
+        '<span class="pt"><span class="b">' + esc(p.brand) + '</span><span class="n">' + esc(p.name) + '</span><span class="m">' + esc(r.stageLabel) + '</span></span>' +
+        '<span style="text-align:right"><span class="price num">' + esc(p.priceText) + '</span><span class="pnote">수집가</span></span></div>' + trail(r) +
+        '<div class="row-btns">' + (ui.returnFor === r.productId ? '' : r.next.map(function (n) { return '<button type="button" class="ghost" data-flow="record-step" data-step="' + n.step + '" data-product-id="' + esc(r.productId) + '">' + esc(n.label) + '</button>'; }).join('')) +
+        '<button type="button" class="ghost" data-open="' + esc(r.productId) + '" aria-expanded="' + sel + '">' + (sel ? '전표 닫기' : '전표 보기') + '</button>' +
+        (r.stage === 'candidate' ? '<button type="button" class="ghost" data-act="remove-record" data-product-id="' + esc(r.productId) + '">기록에서 지우기</button>' : '') + '</div>' +
+        (ui.returnFor === r.productId ? '<div style="margin-left:38px">' + recordSteps(r) + '</div>' : '') +
+        (sel && !wide ? '<div style="margin-top:10px">' + slipHTML(r.productId, null) + '</div>' : '') + '</li>';
+      return h;
+    }).join('');
+    var left = '<section class="sheet" aria-labelledby="rec-h"><h2 id="rec-h" style="font-size:19px">결정 기록</h2>' +
+      '<p class="fine">전표에서 찍은 도장이 한 줄씩 쌓여요. 주문 → 받음 → 계속 입음 또는 반품까지 같은 줄에서 이어 적어요.</p>' +
+      '<div class="bigsum" role="group" aria-label="결정 건수"><div><span class="k">사기로 함</span><span class="v num">' + t.buy.n + '건</span></div>' +
+      '<div><span class="k">보류</span><span class="v num">' + t.hold.n + '건</span></div>' +
+      '<div><span class="k">안 삼</span><span class="v num">' + t.skip.n + '건</span></div></div>' +
+      '<p class="fine">사기로 한 상품 수집가 합(결제 금액 아님) <b class="num">' + won(t.buy.sum) + '</b>' + (t.buy.returned ? ' · 반품 기록 ' + t.buy.returned + '건은 뺐어요' : '') + '. 수집일 가격이라 현재가·최저가가 아니고 쿠폰·배송비도 빠져 있어요.</p>' +
+      (list ? '<ol class="reclist">' + list + '</ol>' : '<p>아직 남긴 결정이 없어요. 후보 전표에서 도장을 찍으면 여기에 한 줄씩 쌓여요.</p><div class="row-btns"><button type="button" class="primary" data-go="ask">찾으러 가기</button></div>') +
+      '<p class="fine">' + esc(M.note.records) + '</p></section>';
+    return '<div class="wrap"><div class="cols">' + left + (wide ? '<aside class="aside" aria-label="전표">' + (V.sel ? slipHTML(V.sel, null) : '<div class="slip-empty"><b>전표</b><p>기록 줄의 ‘전표 보기’를 누르면 이 자리에 판정과 근거가 열려요.</p></div>') + '</aside>' : '') + '</div></div>';
+  }
+
+  // ── 내 옷
+  function closetView() {
+    var s = M.getState();
+    var groups = [['체험용', function (g) { return g.trial; }], ['내 옷', function (g) { return !g.trial && !g.bought; }], ['기록에서 산 옷', function (g) { return !g.trial && g.bought; }]];
+    var a = ui.adding && ui.adding.ctx === 'closet' ? ui.adding : null;
+    var body = groups.map(function (gr) {
+      var rows = s.closet.filter(gr[1]);
+      if (!rows.length) return '';
+      return '<h3 class="h-sec">' + gr[0] + ' ' + rows.length + '벌</h3><ul class="garments">' + rows.map(function (g) {
+        return '<li><span class="art" aria-hidden="true">' + M.art(g) + '</span><span class="g-t"><b>' + esc(g.label) + ' <span class="src ' + (g.trial ? 'trial' : g.bought ? 'bought' : '') + '">' + esc(g.sourceLabel) + '</span></b><span>' + esc(g.colorLabel) + ' · ' + esc(g.slotName || g.kindName) + (g.detailMissing ? ' · ' + esc(g.detailMissing) : '') + '</span></span>' +
+          '<button type="button" class="ghost" data-remove="' + esc(g.id) + '" aria-label="' + esc(g.label) + ' 빼기">빼기</button></li>';
+      }).join('') + '</ul>';
+    }).join('');
+    return '<div class="wrap"><section class="sheet" style="max-width:880px;margin:0 auto" aria-labelledby="cl-h"><h2 id="cl-h" style="font-size:19px">내 옷 ' + s.closetCount + '벌</h2>' +
+      '<p class="fine">없어도 찾기는 돼요. 넣으면 모든 전표의 ‘내 옷과’와 판정이 이 옷들 기준으로 다시 계산돼요. 체험용 ' + s.trialCount + ' · 내 옷·산 옷 ' + s.mineCount + '</p>' +
+      '<div class="row-btns">' + (a ? '' : '<button type="button" class="primary" data-flow="closet-add">옷 한 벌 넣기</button>') +
+      '<button type="button" class="ghost" data-flow="trial-closet">' + (s.trialCount ? '체험용 옷 다시 넣기' : '체험용 옷 넣기') + ' <span class="trialtag">체험용</span></button>' +
+      (s.trialCount ? '<button type="button" class="ghost" data-act="clear-trial">체험용 옷 빼기</button>' : '') + '</div>' +
+      (a ? addForm(a) : '') + (body || '<p>아직 넣은 옷이 없어요. 사진 없이 종류와 색만 고르면 돼요.</p>') + '</section></div>';
+  }
+
+  function footer() {
+    return '<p>' + esc(M.note.catalog) + '</p><p>' + esc(M.note.price) + ' ' + esc(M.note.rules) + '</p><p>' + esc(M.note.ai) + '</p>' +
+      '<details><summary>시안 메모 · 가설과 참고</summary><ul>' +
+      '<li>역할(AI): 핀테크 경험의 프로덕트 디자이너(리드) · 정보 디자이너 · 프론트엔드 개발자. 실제 사람 전문가가 아니에요.</li>' +
+      '<li>가설: 돈을 쓰는 결정은 숫자가 한 줄로 정리돼 보이면 쉬워진다. 결과·판정·결정·기록을 모두 장부 줄로 보여 줘요.</li>' +
+      '<li>참고 실서비스(수상 여부 미확인): 가계부·소비 분석 앱의 거래 목록 패턴 — 한 줄에 금액을 오른쪽 정렬, 합계를 위에.</li>' +
+      '<li>Polène(Awwwards E-commerce Honors 2024): 흑백 위주의 절제된 화면.</li>' +
+      '<li>29CM(Red Dot 2014 · iF 2017): 색과 선을 최소로 쓰는 정리 방식.</li>' +
+      '<li>다른 서비스의 로고·상표·화면은 쓰지 않고 패턴만 참고했어요.</li></ul></details>';
+  }
+
+  // ── 그리기(포커스 유지)
+  var FK = ['flow', 'act', 'productId', 'kind', 'color', 'slot', 'step', 'key', 'q', 'reason', 'own', 'go', 'open', 'remove'];
+  var kebab = function (k) { return k.replace(/[A-Z]/g, function (c) { return '-' + c.toLowerCase(); }); };
+  function focusKey(el) {
+    if (!el || el === document.body || !el.dataset) return null;
+    if (el.id === 'q') return '#q';
+    var sel = FK.filter(function (k) { return el.dataset[k] != null; }).map(function (k) { return '[data-' + kebab(k) + '="' + CSS.escape(el.dataset[k]) + '"]'; }).join('');
+    return sel || null;
+  }
+  function render() {
+    var key = root.contains(document.activeElement) ? focusKey(document.activeElement) : null;
+    var main = V.v === 'closet' ? closetView() : V.v === 'records' ? recordsView() : V.v === 'result' ? resultView() : homeView();
+    root.innerHTML = header() + sumBar() + (ui.msg ? '<div class="wrap" style="padding-bottom:0"><p class="msg ' + (ui.msg.ok ? 'ok' : '') + '" role="status">' + esc(ui.msg.text) + '</p></div>' : '') + '<main id="main">' + main + '</main>';
+    var target = null;
+    if (ui.focusTo) { target = root.querySelector(ui.focusTo); ui.focusTo = null; }
+    else if (key) target = root.querySelector(key);
+    if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
+    if (ui.scrollTo) { var el = root.querySelector(ui.scrollTo); ui.scrollTo = null; if (el) el.scrollIntoView({ block: 'start' }); }
+  }
+
+  function openSlip(id) {
+    if (V.sel === id && ui.autoSel === id) { ui.autoSel = null; ui.focusTo = '#slip-h'; render(); return; }
+    var same = V.sel === id;
+    go(Object.assign({}, V, { sel: same ? null : id }), { keepResult: true, replace: same });
+    if (!same) {
+      if (!wideMq.matches) ui.scrollTo = V.v === 'records' ? 'li.rec[data-product-id="' + CSS.escape(id) + '"]' : (root.querySelector('tr.row[data-row="' + CSS.escape(id) + '"]') ? 'tr.row[data-row="' + CSS.escape(id) + '"]' : '#slip');
+      ui.focusTo = '#slip-h';
+      render();
+    }
+  }
+  var liveEl = document.getElementById('live');
+  function say(text) { liveEl.textContent = ''; setTimeout(function () { liveEl.textContent = text; }, 30); }
+  function act(fn) {
+    try { fn(); } catch (err) { ui.msg = { text: err && err.message ? err.message : String(err) }; }
+    refresh(); render();
+  }
+
+  // ── 이벤트
+  root.addEventListener('submit', function (e) {
+    if (e.target.id !== 'askf') return;
+    e.preventDefault();
+    var q = new FormData(e.target).get('q');
+    runAsk(String(q || ''), { prev: R && R.understood ? R.text : null });
+  });
+  root.addEventListener('click', function (e) {
+    var t = e.target.closest('button, a');
+    if (!t) {
+      var tr = e.target.closest('tr.row');
+      if (tr) openSlip(tr.dataset.row);
+      return;
+    }
+    var f = t.dataset.flow, d = t.dataset;
+    if (f === 'nav-ask') { ui.msg = null; return go(R && V.said ? { v: 'result', said: V.said, drop: V.drop, prev: V.prev } : { v: 'home' }); }
+    if (f === 'nav-closet') { ui.adding = null; ui.msg = null; return go({ v: 'closet', said: V.said, drop: V.drop, prev: V.prev }, { keepResult: true }); }
+    if (f === 'nav-records') { ui.msg = null; return go({ v: 'records', said: V.said, drop: V.drop, prev: V.prev }, { keepResult: true }); }
+    if (d.go === 'records') return go({ v: 'records', said: V.said, drop: V.drop, prev: V.prev }, { keepResult: true });
+    if (d.go === 'ask') return go({ v: 'home' });
+    if (f === 'example') return runAsk(d.q, { prev: d.q === '더 싼 걸로' && R && R.understood ? R.text : null });
+    if (d.act === 'cheaper') return runAsk('더 싼 걸로', { prev: R.text });
+    if (f === 'condition-remove') {
+      ui.msg = null;
+      return go({ v: 'result', said: R.text, drop: R.dropped.concat([d.key]), prev: null, sel: null }, { autoSelect: true });
+    }
+    if (f === 'result') return openSlip(d.productId);
+    if (d.open) return openSlip(d.open);
+    if (d.act === 'close-slip') { var was = V.sel; go(Object.assign({}, V, { sel: null }), { keepResult: true, replace: true }); var b = root.querySelector('[data-product-id="' + CSS.escape(was) + '"][data-flow="result"], [data-open="' + CSS.escape(was) + '"]'); if (b) b.focus(); return; }
+    if (f && f.indexOf('decide-') === 0) return act(function () { var r = M.decide(d.productId, f.slice(7)); say('‘' + t.textContent.replace(/판정 쪽|찍음/g, '').trim() + '’으로 기록에 남겼어요 · ' + r.stageLabel + '. 직접 남긴 기록이에요.'); });
+    if (d.own) return act(function () { M.setOwnership(d.productId, d.own); });
+    if (f === 'closet-add') {
+      ui.adding = { ctx: d.productId ? 'slip' : 'closet', forId: d.productId || null, kind: d.kind || null, color: null, slot: null };
+      ui.allKinds = !d.kind; ui.msg = null; ui.focusTo = d.kind ? '[data-flow="kind-option"][aria-pressed="true"]' : '[data-flow="kind-option"]';
+      return render();
+    }
+    if (d.act === 'all-kinds') { ui.allKinds = true; ui.focusTo = '[data-flow="kind-option"][aria-pressed="true"]'; return render(); }
+    if (f === 'kind-option') { if (ui.adding.kind !== d.kind) { ui.adding.kind = d.kind; ui.adding.slot = null; } ui.allKinds = false; return render(); }
+    if (f === 'color-option') { ui.adding.color = d.color; return render(); }
+    if (f === 'slot-option') { ui.adding.slot = ui.adding.slot === d.slot ? null : d.slot; return render(); }
+    if (d.act === 'cancel-add') { ui.adding = null; return render(); }
+    if (f === 'closet-save') {
+      var a = ui.adding; if (!a || !a.kind || !a.color) return;
+      var before = a.forId ? M.judge(a.forId).title : null;
+      ui.adding = null;
+      if (a.forId) { ui.recalc = { id: a.forId, before: before }; ui.focusTo = '#slip-v'; }
+      return act(function () {
+        var g = M.addGarment({ kind: a.kind, color: a.color, slot: a.slot });
+        if (a.forId) say('넣고 다시 계산했어요 · ' + M.judge(a.forId).title);
+        if (!a.forId) ui.msg = { ok: true, text: '넣었어요 · ' + g.colorLabel + ' ' + g.label };
+      });
+    }
+    if (f === 'trial-closet') {
+      if (d.productId) { ui.recalc = { id: d.productId, before: M.judge(d.productId).title }; ui.focusTo = '#slip-v'; }
+      return act(function () { M.loadTrialCloset(); if (!d.productId) ui.msg = { ok: true, text: '체험용 옷 ' + M.getState().trialCount + '벌을 넣었어요. 내 옷이 아니라 체험용이에요.' }; });
+    }
+    if (d.act === 'clear-trial') return act(function () { M.clearTrialCloset(); ui.msg = { ok: true, text: '체험용 옷을 뺐어요.' }; });
+    if (d.remove) return act(function () { M.removeGarment(d.remove); ui.msg = { ok: true, text: '뺐어요.' }; });
+    if (f === 'record-step') {
+      if (d.step === 'returned') { ui.returnFor = d.productId; ui.focusTo = '[data-reason]'; return render(); }
+      return act(function () { var r = M.advance(d.productId, d.step); say('기록했어요 · ' + r.stageLabel); });
+    }
+    if (d.reason) { ui.returnFor = null; return act(function () { var r = M.advance(d.productId, 'returned', { reason: d.reason }); say('기록했어요 · ' + r.stageLabel); }); }
+    if (d.act === 'cancel-return') { ui.returnFor = null; return render(); }
+    if (d.act === 'remove-record') return act(function () { M.removeRecord(d.productId); if (V.sel === d.productId) V.sel = null; });
+  });
+  document.querySelector('.mock').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-flow="reset"]');
+    if (!t) return;
+    M.reset();
+    R = null; ui = { adding: null, allKinds: false, recalc: null, returnFor: null, msg: null, focusTo: '#q', scrollTo: null };
+    go({ v: 'home' });
+  });
+  window.addEventListener('popstate', function (e) {
+    var s = e.state && e.state.v ? e.state : { v: 'home' };
+    V = Object.assign({ v: 'home', said: '', drop: [], prev: null, sel: null }, s);
+    ui.adding = null; ui.returnFor = null; ui.recalc = null;
+    refresh(); render();
+  });
+  var mqChange = function () { render(); };
+  if (wideMq.addEventListener) wideMq.addEventListener('change', mqChange); else wideMq.addListener(mqChange);
+  M.subscribe(function () { refresh(); render(); });
+
+  // ── 시작: ?q=가 있으면 바로 결과
+  document.getElementById('foot').innerHTML = footer();
+  var hs = history.state;
+  if (M.boot.q) go({ v: 'result', said: M.boot.q }, { replace: true, autoSelect: true });
+  else if (hs && hs.v && !M.boot.reset) { V = Object.assign({ v: 'home', said: '', drop: [], prev: null, sel: null }, hs); refresh(); render(); }
+  else go({ v: 'home' }, { replace: true });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>어울 시안 08 · 옷장 레일</title>
+<!-- 시안 08 「옷장 레일」: 가진 옷이 늘 보이는 가로(휴대폰)·세로(PC) 레일. AI 역할 시안이며 실제 전문가가 만든 결과가 아니다. -->
+<style>
+  :root {
+    --bg: #F4EFE8; --paper: #FFFCF7; --paper2: #FBF6EF; --ink: #2B241F; --sub: #5E5349; --line: #DCD2C6; --line2: #C9BCAD;
+    --accent: #3B2E27; --accent-ink: #FFFFFF; --metal-a: #D4CDC5; --metal-b: #8C8379; --focus: #1F5FBF;
+    --red: #B3261E; --red-bg: #FBE4E0; --red-ink: #7E1A13;
+    --yel: #B88A00; --yel-bg: #FFF0BF; --yel-ink: #5C4300;
+    --grn: #2E7D4F; --grn-bg: #DCF0E2; --grn-ink: #1B5232;
+    --l0: #2E7D4F; --l1: #2F5E9E; --l2: #9A5B12;
+    --art-line: #3a3a3a; --radius: 14px; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font: 15px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; color: var(--ink); background: var(--bg); overflow-x: hidden; }
+  h1, h2, h3, h4, p { margin: 0; }
+  button, a.btn { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 10px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .fine { font-size: 13px; color: var(--sub); line-height: 1.5; }
+  .btn, .chip, .seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line2); background: var(--paper); color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.3; text-align: center; }
+  .chip { min-height: 40px; padding: 6px 12px; font-size: 14px; }
+  .chip[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .primary, a.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* 목업 띠와 머리 */
+  .mock { display: flex; align-items: center; gap: 8px; justify-content: space-between; padding: 4px 12px; background: #231C18; color: #F4EFE8; font-size: 12px; }
+  .mock span { line-height: 1.35; }
+  .mock .mk-act { display: flex; gap: 6px; flex: none; }
+  .mock a, .mock button { display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #6B5F55; color: #F4EFE8; background: none; font-size: 12px; text-decoration: none; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; }
+  .logo { display: flex; align-items: baseline; gap: 8px; }
+  .logo b { font-size: 20px; letter-spacing: -0.02em; }
+  .logo span { font-size: 13px; color: var(--sub); }
+  .bar nav { display: flex; gap: 6px; }
+  .bar nav button { min-height: 44px; min-width: 56px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--line2); background: var(--paper); font-size: 14px; }
+  .bar nav button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  /* 옷장 레일 */
+  .rail { position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: 0 6px 12px -10px rgba(43,36,31,.35); }
+  .rail-head { padding: 6px 16px 0; font-size: 12.5px; color: var(--sub); line-height: 1.4; min-height: 24px; }
+  .rail-head b { color: var(--ink); }
+  .rail-head .m { font-weight: 700; }
+  .rail-scroll { overflow-x: auto; overflow-y: hidden; padding: 0 12px 8px; scrollbar-width: none; }
+  .rail-scroll::-webkit-scrollbar { display: none; }
+  .rail-track { position: relative; display: flex; gap: 6px; padding-top: 14px; width: max-content; min-width: 100%; }
+  .rail-track::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 3px; border-radius: 3px; background: linear-gradient(var(--metal-a), var(--metal-b)); }
+  .rg { display: flex; gap: 6px; }
+  .rg-name { display: none; }
+  .tile { position: relative; width: 66px; min-height: 84px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 4px; border: 2px solid var(--line); border-radius: var(--radius); background: var(--paper); text-align: center; flex: none; }
+  .tile::before { content: ""; position: absolute; top: -11px; left: 50%; width: 10px; height: 9px; border: 2px solid var(--metal-b); border-bottom: 0; border-radius: 10px 10px 0 0; transform: translateX(-50%); }
+  .tile .art { width: 32px; height: 32px; display: block; flex: none; }
+  .tile .art svg { width: 100%; height: 100%; display: block; }
+  .tile .tt { display: flex; flex-direction: column; min-width: 0; }
+  .tile .t1 { font-size: 12px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
+  .tile .t2 { font-size: 12px; color: var(--sub); line-height: 1.3; }
+  .tile.trial { border-style: dashed; }
+  .tile.new { animation: pop .6s ease-out; }
+  .tile.r-dup { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-bg); }
+  .tile.r-alt { border-color: var(--yel); box-shadow: 0 0 0 2px var(--yel-bg); }
+  .tile.pair { background: #F3FAF5; }
+  .mark { position: absolute; top: -4px; left: 50%; transform: translateX(-50%); padding: 0 6px; border-radius: 999px; font-size: 12px; line-height: 18px; font-weight: 700; white-space: nowrap; z-index: 1; }
+  .imark { display: block; margin-top: 2px; padding: 1px 3px; border-radius: 6px; font-size: 12px; line-height: 1.25; font-weight: 700; }
+  .imark.dup { background: var(--red-bg); color: var(--red-ink); }
+  .imark.alt { background: var(--yel-bg); color: var(--yel-ink); }
+  .tile.pair .pairmark ~ .tt .mark { top: 14px; }
+  .rail.thin { position: static; box-shadow: none; }
+  .rail-thin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 6px 16px 8px; font-size: 13px; color: var(--sub); }
+  .rail-thin b { color: var(--ink); }
+  .thin-a { display: flex; gap: 6px; }
+  .rail-track.empty .slot-empty { min-height: 58px; }
+  .rail-track.empty .slot-empty .t2 { display: none; }
+  .rail-track.empty .trialbtn { min-height: 58px; }
+  .rail-track.empty .trialbtn .badge { display: none; }
+  .mark.dup { background: var(--red); color: #fff; }
+  .mark.alt { background: var(--yel-bg); color: var(--yel-ink); border: 1px solid var(--yel); }
+  .pairmark { position: absolute; top: -4px; left: -4px; padding: 0 5px 0 4px; border-radius: 999px; font-size: 12px; line-height: 18px; font-weight: 700; background: var(--grn-bg); color: var(--grn-ink); border: 1px solid var(--grn); white-space: nowrap; }
+  .pairmark::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--grn); margin-right: 3px; vertical-align: 1px; }
+  .slot-empty { border: 2px dashed var(--line2); background: transparent; color: var(--sub); width: 62px; justify-content: center; }
+  .slot-empty .plus { font-size: 20px; line-height: 1; color: var(--ink); }
+  .slot-empty .t1 { color: var(--ink); font-weight: 600; }
+  .slot-empty.call { width: 84px; border-color: var(--accent); background: var(--paper); animation: callme 1.2s ease-in-out infinite; }
+  .rail-end { display: flex; gap: 6px; padding-left: 4px; }
+  .trialbtn { width: 92px; border-style: dashed; background: var(--paper2); }
+  .trialbtn .badge { font-size: 12px; padding: 0 6px; border-radius: 999px; background: #EDE3D6; color: var(--ink); }
+  @keyframes callme { 0%,100% { box-shadow: 0 0 0 0 rgba(59,46,39,.0); } 50% { box-shadow: 0 0 0 4px rgba(59,46,39,.22); } }
+  @keyframes pop { 0% { transform: translateY(-10px) rotate(-4deg); } 60% { transform: translateY(2px) rotate(2deg); } 100% { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .slot-empty.call, .tile.new { animation: none; } }
+
+  /* 레일 패널(옷 걸기·고치기) */
+  #railpanel { padding: 0 16px; }
+  #railpanel, .panel, #verdictbox, #vtitle, #restitle { scroll-margin-top: calc(var(--railh, 140px) + 10px); }
+  .panel { margin: 10px 0 4px; padding: 14px; background: var(--paper); border: 1.5px solid var(--line2); border-radius: 18px; }
+  .panel-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 8px; }
+  .panel-h b { font-size: 16px; }
+  .step { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+  .step span { font-weight: 400; color: var(--sub); }
+  .colors .chip { padding-left: 8px; }
+  .sw { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.25); flex: none; }
+  .panel-f { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 12px; }
+  .preview { display: flex; align-items: center; gap: 8px; margin-right: auto; font-size: 14px; }
+  .preview .art { width: 40px; height: 40px; }
+  .preview .art svg { width: 100%; height: 100%; }
+  .msg { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--yel-bg); color: var(--yel-ink); font-size: 14px; }
+
+  /* 가운데: 요청과 결과 */
+  #center, #side { padding: 0 16px; }
+  .hero { padding: 18px 0 6px; }
+  .hero h1 { font-size: 24px; line-height: 1.3; letter-spacing: -0.02em; }
+  .hero p { margin-top: 6px; color: var(--sub); }
+  .ask { display: flex; gap: 8px; margin: 12px 0; }
+  .ask input { flex: 1; min-width: 0; min-height: 50px; font: inherit; font-size: 16px; padding: 10px 14px; border-radius: 14px; border: 1.5px solid var(--line2); background: var(--paper); color: var(--ink); }
+  .ask input:focus-visible { outline-offset: 0; }
+  .ask button { min-height: 50px; padding: 0 18px; border-radius: 14px; }
+  .lbl { font-size: 13px; font-weight: 700; color: var(--sub); margin: 14px 0 6px; }
+  .seg { display: inline-flex; gap: 6px; }
+  .res-h { padding: 6px 0 4px; }
+  .res-h h2 { font-size: 19px; line-height: 1.35; letter-spacing: -0.01em; }
+  .res-h .fine { margin-top: 2px; }
+  .conds { margin: 8px 0; }
+  .cond { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 4px 6px 4px 12px; border-radius: 999px; border: 1.5px solid var(--line2); background: var(--paper); font-size: 14px; }
+  .cond.fixed { padding-right: 12px; background: var(--paper2); }
+  .cond button { min-width: 40px; min-height: 36px; border: 0; border-radius: 999px; background: #EDE3D6; font-size: 13px; }
+  .notice { margin: 6px 0; padding: 9px 12px; border-radius: 12px; background: var(--paper); border-left: 4px solid var(--line2); font-size: 14px; }
+  .notice.strong { border-left-color: var(--accent); }
+  .cards { display: grid; gap: 8px; margin: 10px 0; }
+  .card { position: relative; background: var(--paper); border: 2px solid transparent; border-radius: 16px; box-shadow: 0 1px 0 var(--line); transition: border-color .15s; }
+  .card.active { border-color: var(--accent); }
+  .card.sel { border-color: var(--accent); background: #FFF8EE; }
+  .c-open { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; width: 100%; padding: 10px 10px 44px; border: 0; background: none; text-align: left; border-radius: 16px; }
+  .c-art { width: 64px; height: 64px; border-radius: 12px; background: var(--paper2); padding: 6px; }
+  .c-art svg { width: 100%; height: 100%; display: block; }
+  .c-body { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  .c-brand { font-size: 13px; color: var(--sub); }
+  .c-name { font-size: 15px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .c-price { font-size: 15px; }
+  .c-price small, .price small { font-size: 12.5px; color: var(--sub); font-weight: 400; }
+  .c-reason { font-size: 13px; color: var(--sub); line-height: 1.4; }
+  .c-foot { position: absolute; right: 8px; bottom: 4px; display: flex; justify-content: flex-end; }
+  .c-tags { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; margin-top: 4px; }
+  .c-tags .tag { flex: none; }
+  .tag { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; line-height: 20px; background: #EDE3D6; color: var(--ink); max-width: 100%; }
+  .tag.dup { background: var(--red-bg); color: var(--red-ink); }
+  .tag.alt { background: var(--yel-bg); color: var(--yel-ink); }
+  .tag.go { background: var(--grn-bg); color: var(--grn-ink); }
+  .tag.rec { background: #E3E8F3; color: #23365E; }
+  .c-shop { flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; border-radius: 999px; font-size: 13px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .more { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+  .outfit { margin: 14px 0; padding: 14px; background: var(--paper); border-radius: 18px; }
+  .outfit h3 { font-size: 16px; }
+  .pieces { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 2px; }
+  .piece { flex: none; width: 104px; font-size: 12.5px; line-height: 1.35; }
+  .piece .art { display: block; width: 52px; height: 52px; padding: 4px; border-radius: 12px; background: var(--paper2); margin-bottom: 4px; }
+  .piece .art svg { width: 100%; height: 100%; }
+  .piece .who { font-size: 12px; font-weight: 700; }
+  .foot { margin: 18px 0 28px; display: grid; gap: 6px; }
+
+  /* 판정 */
+  .back { margin: 8px 0 0; min-height: 40px; padding: 4px 12px; font-size: 13.5px; }
+  .v-head { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 8px 0 8px; align-items: start; }
+  .v-head .art { width: 64px; height: 64px; padding: 8px; border-radius: 16px; background: var(--paper); }
+  .v-head .art svg { width: 100%; height: 100%; }
+  .v-head h2 { font-size: 17px; line-height: 1.35; }
+  .price { font-size: 16px; margin-top: 2px; }
+  .verdict { padding: 14px; border-radius: 18px; background: var(--paper); border: 2px solid var(--line); }
+  .verdict.tone-go { border-color: var(--grn); }
+  .verdict.tone-stop { border-color: var(--red); }
+  .verdict.tone-none { border-style: dashed; border-color: var(--line2); }
+  .basis { display: inline-flex; padding: 2px 10px; border-radius: 999px; background: #EDE3D6; font-size: 12.5px; font-weight: 600; }
+  .verdict h3 { font-size: 20px; line-height: 1.35; margin: 8px 0 6px; letter-spacing: -0.01em; }
+  .verdict ul { margin: 6px 0 0; padding-left: 20px; }
+  .verdict li, .verdict .line { font-size: 14.5px; margin: 3px 0; }
+  .changed { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--grn-bg); color: var(--grn-ink); font-size: 13.5px; }
+  .changed s { color: var(--sub); }
+  .caution { margin: 6px 0; padding: 8px 10px; border-radius: 10px; background: var(--red-bg); color: var(--red-ink); font-size: 14px; }
+  .askq { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line2); }
+  .askq p { font-weight: 700; font-size: 14.5px; margin-bottom: 6px; }
+  .cta-add { margin-top: 12px; width: 100%; }
+  .sect { margin: 16px 0; }
+  .sect h4 { font-size: 15px; margin-bottom: 6px; }
+  .ins { background: var(--paper); border-radius: 18px; padding: 12px; }
+  .ins-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .ins-wrap { position: relative; width: max-content; min-width: 100%; }
+  .ins-svg { display: block; }
+  .ins-row { position: relative; display: flex; gap: 8px; padding-left: 24px; }
+  .ins-row::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 3px; border-radius: 3px; background: linear-gradient(var(--metal-a), var(--metal-b)); }
+  .itile { position: relative; width: 76px; word-break: keep-all; margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 3px; border-radius: 12px; border: 2px solid var(--line); background: var(--paper2); text-align: center; font-size: 12px; line-height: 1.25; }
+  .itile::before { content: ""; position: absolute; top: -12px; left: 50%; width: 10px; height: 9px; border: 2px solid var(--metal-b); border-bottom: 0; border-radius: 10px 10px 0 0; transform: translateX(-50%); }
+  .itile .art { width: 30px; height: 30px; }
+  .itile .art svg { width: 100%; height: 100%; }
+  .itile .who { font-size: 12px; color: var(--sub); }
+  .itile.cand { border-color: var(--accent); background: #FFF3E0; transform: translateY(-3px); }
+  .itile.cand .who { color: var(--ink); font-weight: 700; }
+  .itile.buy { border-style: dashed; background: transparent; }
+  .itile.r-dup { border-color: var(--red); }
+  .itile.r-alt { border-color: var(--yel); }
+  .looks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+  .looks li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 6px; font-size: 14px; }
+  .lk { width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .lk0 { background: var(--l0); } .lk1 { background: var(--l1); } .lk2 { background: var(--l2); }
+  .decide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .decide button { min-height: 50px; border-radius: 14px; border: 1.5px solid var(--line2); background: var(--paper); font-size: 15px; font-weight: 600; padding: 4px 6px; }
+  .decide button.lean { border: 3px solid var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+  .leantag { display: block; font-size: 12px; font-weight: 700; color: var(--sub); margin-top: 2px; }
+  .decide button[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--focus); }
+  .decide button[aria-pressed="true"]::after { content: " ✓"; }
+  .recline { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #E9EDF5; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .shop { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .shop .btn { flex: 1 1 160px; }
+  .used { margin-top: 10px; padding: 12px; border-radius: 14px; background: var(--paper); border: 1.5px dashed var(--line2); }
+  .used h5 { margin: 8px 0 4px; font-size: 13px; }
+  .used .chips a { min-height: 40px; }
+  .why { margin: 0; padding-left: 20px; font-size: 14.5px; }
+  .alts { display: grid; gap: 6px; }
+  .altbtn { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 8px; align-items: center; min-height: 52px; padding: 6px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--paper); text-align: left; font-size: 13.5px; width: 100%; }
+  .altbtn .art { width: 40px; height: 40px; }
+  .altbtn .art svg { width: 100%; height: 100%; }
+  .guide { padding: 20px; margin-top: 12px; border-radius: 18px; border: 2px dashed var(--line2); color: var(--sub); }
+  .guide b { color: var(--ink); }
+
+  /* 기록 */
+  .rec { display: grid; grid-template-columns: 56px minmax(0,1fr); gap: 10px; padding: 12px; margin: 8px 0; border-radius: 16px; background: var(--paper); }
+  .rec .art { width: 56px; height: 56px; padding: 4px; border-radius: 12px; background: var(--paper2); }
+  .rec .art svg { width: 100%; height: 100%; }
+  .rec .st { font-size: 14px; margin: 2px 0 8px; }
+  .rec .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* 화면 전환(휴대폰) */
+  .left { display: contents; }
+  @media (max-width: 1023px) {
+    .shell[data-screen="home"] #side, .shell[data-screen="results"] #side, .shell[data-screen="records"] #side { display: none; }
+    .shell[data-screen="verdict"] #center { display: none; }
+    .pc-only { display: none !important; }
+  }
+  /* PC: 왼쪽 세로 옷장 · 가운데 결과 · 오른쪽 판정 */
+  @media (min-width: 1024px) {
+    body { font-size: 15px; }
+    .bar { max-width: 1440px; margin: 0 auto; padding: 10px 20px; }
+    .shell { display: grid; grid-template-columns: 264px minmax(0, 1fr) 400px; gap: 20px; max-width: 1440px; margin: 0 auto; padding: 0 20px 20px; align-items: start; }
+    .left { display: block; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; background: var(--paper2); border-radius: 20px; border: 1px solid var(--line); }
+    #side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; padding: 0 2px 16px; }
+    #center { padding: 0; }
+    .shell[data-screen="records"] #center { grid-column: 2 / 4; }
+    .shell[data-screen="records"] #side { display: none; }
+    .m-only { display: none !important; }
+    .rail { position: static; background: none; border: 0; box-shadow: none; }
+    .rail-head { padding: 14px 14px 4px; font-size: 13px; }
+    .rail-scroll { overflow: visible; padding: 0 12px 12px; }
+    .rail-track { flex-direction: column; gap: 10px; padding: 4px 0 4px 20px; width: auto; }
+    .rail-track::before { left: 6px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
+    .rg { flex-direction: column; gap: 6px; }
+    .rg-name { display: block; font-size: 12.5px; font-weight: 700; color: var(--sub); margin-left: 2px; }
+    .tile { width: auto; min-height: 54px; flex-direction: row; align-items: center; gap: 10px; padding: 6px 10px; text-align: left; }
+    .tile::before { top: 50%; left: -15px; width: 13px; height: 0; border: 0; border-top: 2px solid var(--metal-b); border-radius: 0; transform: none; }
+    .tile .art { width: 38px; height: 38px; }
+    .tile .t1 { -webkit-line-clamp: 1; font-size: 13.5px; }
+    .tile .mark { position: static; transform: none; align-self: flex-start; margin-bottom: 2px; white-space: normal; }
+    .slot-empty { width: auto; justify-content: flex-start; }
+    .slot-empty .plus { width: 38px; text-align: center; }
+    .rail-end { flex-direction: column; padding-left: 0; }
+    .trialbtn { width: auto; }
+    #railpanel { padding: 0 12px 12px; }
+    .panel { margin: 0; }
+    .cards { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+    .hero { padding-top: 24px; }
+    .verdict h3 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+<div class="mock" data-flow="mock-label">
+  <span>목업 · 시안 08 옷장 레일 · AI 역할 시안 · 저장은 이 브라우저에만</span>
+  <span class="mk-act"><a href="../index.html">갤러리로</a><button type="button" data-flow="reset">처음부터</button></span>
+</div>
+<header class="bar">
+  <div class="logo"><b>어울</b><span>옷장 레일</span></div>
+  <nav aria-label="화면" id="nav"></nav>
+</header>
+<div class="shell" id="shell" data-screen="home">
+  <div class="left">
+    <aside class="rail" id="rail" aria-label="내 옷장 레일"></aside>
+    <div id="railpanel"></div>
+  </div>
+  <main id="center"></main>
+  <section id="side" aria-label="판정"></section>
+</div>
+<div id="live" class="sr" aria-live="polite"></div>
+<script src="../shared/eoul-mock.js"></script>
+<script>
+(function () {
+  'use strict';
+  const M = window.EoulMock;
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pcQuery = window.matchMedia('(min-width: 1024px)');
+  const isPC = () => pcQuery.matches;
+
+  // 레일 묶음: 종류 이름과 순서는 코어의 kindChoices()를 그대로 쓰고, 묶음만 화면에서 나눈다.
+  const GROUPS = [
+    { id: 'top', name: '상의', kinds: ['shirt', 'tee', 'knit', 'vest', 'cardigan', 'longtee', 'sweat', 'polo'] },
+    { id: 'bottom', name: '하의', kinds: ['pants', 'jeans', 'skirt', 'dress'] },
+    { id: 'outer', name: '아우터', kinds: ['jacket', 'blazer', 'coat', 'down'] },
+    { id: 'shoes', name: '신발', kinds: ['sneaker', 'loafer', 'boot'] },
+    { id: 'etc', name: '소품', kinds: ['bag', 'cap', 'beanie', 'belt'] },
+  ];
+  const groupOf = (kind) => (GROUPS.find((g) => g.kinds.includes(kind)) || GROUPS[4]).id;
+  const groupIndex = (kind) => GROUPS.findIndex((g) => g.id === groupOf(kind));
+  function groupsWithKinds() {
+    const all = M.kindChoices();
+    return GROUPS.map((g) => ({ ...g, list: all.filter((k) => groupOf(k.id) === g.id) }));
+  }
+  // 색 테두리 구분만 시안이 정한다. 붙는 글자는 코어 judge().owned[].relationLabel 그대로.
+  const REL = {
+    'same-product': { cls: 'dup', tile: 'r-dup' },
+    'same-color': { cls: 'dup', tile: 'r-dup' },
+    'other-color': { cls: 'alt', tile: 'r-alt' },
+    'unknown-color': { cls: 'alt', tile: 'r-alt' },
+  };
+
+  const blankUi = () => ({ screen: 'home', entry: null, productId: null, adding: null, editing: null, hoverId: null, centerId: null, usedOpen: false, offOpen: false, returning: null, flash: null, changed: null, msg: null });
+  let ui = blankUi();
+  const cardIndex = new Map();
+  let memo = { key: null, r: null };
+  let busy = false;
+
+  function currentResult() {
+    if (!ui.entry) return null;
+    const key = JSON.stringify(ui.entry) + '|' + M.version();
+    if (memo.key !== key) {
+      memo = { key, r: M.ask(ui.entry.said, { drop: ui.entry.dropped || [], previous: ui.entry.prev || null }) };
+      for (const p of [...memo.r.products, ...memo.r.offOccasion]) cardIndex.set(p.id, p);
+    }
+    return memo.r;
+  }
+  // judge 결과를 상태 버전마다 한 번만 받아 카드·레일·판정에서 함께 쓴다.
+  let jmemo = { v: -1, map: new Map() };
+  function J(id) {
+    if (!id) return null;
+    if (jmemo.v !== M.version()) jmemo = { v: M.version(), map: new Map() };
+    if (!jmemo.map.has(id)) jmemo.map.set(id, M.judge(id));
+    return jmemo.map.get(id);
+  }
+  function selectedId(r) {
+    if (ui.productId) return ui.productId;
+    if (isPC() && r && (ui.screen === 'results' || ui.screen === 'verdict')) return (r.products[0] || r.offOccasion[0])?.id || null;
+    return null;
+  }
+  function activeId(r) {
+    if (ui.hoverId) return ui.hoverId;
+    if (ui.screen === 'results' && !isPC() && ui.centerId) return ui.centerId;
+    if (ui.screen === 'verdict' || isPC()) return selectedId(r);
+    return null;
+  }
+  function matchGarment(p, closet) {
+    return closet.find((g) => g.label === p.label && g.color === p.color && (!p.slot || !g.slot || g.slot === p.slot))
+      || closet.find((g) => g.label === p.label)
+      || closet.find((g) => g.slot && g.slot === p.slot && g.color === p.color) || null;
+  }
+  // 레일 강조는 judge(id)의 owned·looks에서만 만든다(시안이 판정을 만들지 않음).
+  function railMarks(id) {
+    if (!id) return null;
+    const v = J(id);
+    if (!v) return null;
+    const closet = M.getState().closet;
+    const marks = new Map();
+    for (const o of v.owned) marks.set(o.id, { rel: o.relation, relLabel: o.relationLabel, pair: false });
+    v.looks.forEach((l) => l.pieces.forEach((p) => {
+      if (!p.owned) return;
+      const g = matchGarment(p, closet);
+      if (!g) return;
+      const m = marks.get(g.id) || { rel: null, pair: false };
+      m.pair = true;
+      marks.set(g.id, m);
+    }));
+    return { v, marks };
+  }
+
+  // ── 머리(화면 이동)
+  function renderNav() {
+    const n = M.getState().records.length;
+    $('#nav').innerHTML = `<button type="button" data-flow="nav-ask" ${ui.screen !== 'records' ? 'aria-current="page"' : ''}>찾기</button>
+      <button type="button" data-flow="nav-records" ${ui.screen === 'records' ? 'aria-current="page"' : ''} aria-label="기록 ${n}건">기록 ${n}</button>`;
+  }
+
+  // ── 옷장 레일
+  function tileHtml(g, mark) {
+    const rel = mark?.rel ? REL[mark.rel] : null;
+    const cls = ['tile', g.trial ? 'trial' : '', rel ? rel.tile : '', mark?.pair ? 'pair' : '', ui.flash === g.id ? 'new' : ''].join(' ');
+    const src = g.trial ? '체험용' : g.bought ? '기록에서 산 옷' : '내 옷';
+    const label = `${g.colorLabel} ${g.kindName}`;
+    const say = [`${label}`, g.sourceLabel, g.slotName || '세부 종류 미확인', rel ? mark.relLabel : '', mark?.pair ? '이 후보와 코디 짝' : ''].filter(Boolean).join(', ');
+    // 관계 글자가 길면(코어 문구) 휴대폰 타일만 가로로 넓힌다. 세로 높이는 그대로라 고정 레일이 출렁이지 않는다.
+    const wide = rel && !isPC() ? ` style="width:${Math.max(66, Math.min(150, Math.round([...mark.relLabel].length * 9.5 + 16)))}px"` : '';
+    return `<button type="button" class="${cls}"${wide} data-act="tile" data-id="${esc(g.id)}" aria-label="${esc(say)}. 눌러서 색 고치기나 빼기" title="${esc(g.label)}">
+      ${mark?.pair ? '<span class="pairmark" aria-hidden="true">코디</span>' : ''}
+      <span class="art" aria-hidden="true">${M.art(g)}</span>
+      <span class="tt">${rel ? `<span class="mark ${rel.cls}" aria-hidden="true">${esc(mark.relLabel)}</span>` : ''}<span class="t1">${esc(label)}</span><span class="t2">${src}</span></span>
+    </button>`;
+  }
+  function emptySlotHtml(group, callKind) {
+    const call = callKind && groupOf(callKind) === group.id;
+    const kindName = call ? (M.kindChoices().find((k) => k.id === callKind)?.name || group.name) : '';
+    return `<button type="button" class="tile slot-empty ${call ? 'call' : ''}" data-flow="closet-add" data-group="${group.id}" ${call ? `data-kind="${esc(callKind)}"` : ''} aria-label="${call ? `가진 ${esc(kindName)} 걸고 비교` : `${group.name} 빈칸 · 가진 ${group.name} 걸기`}">
+      <span class="plus" aria-hidden="true">+</span>
+      <span class="tt"><span class="t1">${call ? esc(kindName) : group.name}</span><span class="t2">${call ? '걸고 비교' : '걸기'}</span></span>
+    </button>`;
+  }
+  function renderRail() {
+    const r = currentResult();
+    const st = M.getState();
+    const id = activeId(r);
+    const rm = railMarks(id);
+    const v = rm?.v;
+    const callKind = v && v.basis === 'none' && (ui.screen === 'verdict' || isPC()) && id === selectedId(r) ? v.addSuggestion?.kind : null;
+    const byGroup = new Map(GROUPS.map((g) => [g.id, []]));
+    for (const g of st.closet) byGroup.get(groupOf(g.kind)).push(g);
+    const shownGroups = GROUPS.filter((g) => g.id !== 'etc' || byGroup.get('etc').length);
+    let head;
+    const p = id ? cardIndex.get(id) : null;
+    const who = p ? `${esc(p.brand)} ${esc(p.kindName)}` : '이 후보';
+    if (!st.closetCount) head = rm && v.basis === 'none' ? '<b>옷장 레일</b> · 한 벌만 걸면 겹치는지 보여요' : '<b>옷장 레일</b> · 비어 있어도 찾을 수 있어요';
+    else if (rm && v.basis !== 'none') {
+      const vals = [...rm.marks.values()];
+      const counts = new Map();
+      for (const m of vals) if (m.relLabel) counts.set(m.relLabel, (counts.get(m.relLabel) || 0) + 1);
+      const pair = vals.filter((m) => m.pair).length;
+      head = `<b>${who}</b> 기준 · ${[...counts].map(([k, n]) => `<span class="m">${esc(k)} ${n}</span> · `).join('')}<span class="m">코디 짝 ${pair}</span>`;
+    } else head = `<b>옷장 레일 ${st.closetCount}벌</b> · ${isPC() ? '카드에 올리면' : '카드가 가운데 오면'} 겹치는 옷과 코디 짝이 표시돼요`;
+    const groupsHtml = shownGroups.map((g) => {
+      const list = byGroup.get(g.id);
+      const tiles = list.length ? list.map((x) => tileHtml(x, rm?.marks.get(x.id))).join('') : emptySlotHtml(g, callKind);
+      return `<div class="rg"><span class="rg-name">${g.name}${list.length ? ` ${list.length}` : ''}</span>${tiles}</div>`;
+    }).join('');
+    const end = `<div class="rail-end">
+      ${st.closetCount ? `<button type="button" class="tile slot-empty" data-flow="closet-add" aria-label="가진 옷 한 벌 더 걸기"><span class="plus" aria-hidden="true">+</span><span class="tt"><span class="t1">한 벌</span><span class="t2">더 걸기</span></span></button>` : ''}
+      ${st.trialCount ? `<button type="button" class="tile trialbtn" data-act="clear-trial" aria-label="체험용 옷 ${st.trialCount}벌 내리기"><span class="tt"><span class="t1">체험용 옷 내리기</span><span class="badge">체험용</span></span></button>`
+        : `<button type="button" class="tile trialbtn" data-flow="trial-closet" aria-label="체험용 옷 걸어 보기 (예시 옷, 내 옷 아님)"><span class="tt"><span class="t1">체험용 옷 걸어 보기</span><span class="badge">체험용</span></span></button>`}
+    </div>`;
+    if (!isPC() && ui.screen === 'home') {
+      // 첫 화면(결과 전): 레일을 한 줄로 얇게. 옷장부터 채워야 하는 것처럼 보이지 않게 한다.
+      $('#rail').innerHTML = `<div class="rail-thin"><span class="thin-t"><b>옷장 레일</b> ${st.closetCount ? `${st.closetCount}벌` : '(선택)'} · 비어 있어도 찾을 수 있어요</span>
+        <span class="thin-a"><button type="button" class="chip" data-flow="closet-add" aria-label="가진 옷 걸기">+ 옷 걸기</button>
+        ${st.trialCount ? `<button type="button" class="chip" data-act="clear-trial">체험용 내리기</button>` : `<button type="button" class="chip" data-flow="trial-closet" aria-label="체험용 옷 걸어 보기 (예시 옷, 내 옷 아님)">체험용 옷</button>`}</span></div>`;
+      $('#rail').classList.add('thin');
+    } else {
+      $('#rail').classList.remove('thin');
+      $('#rail').innerHTML = `<div class="rail-head" id="railhead">${head}</div>
+      <div class="rail-scroll"><div class="rail-track ${st.closetCount ? '' : 'empty'}">${groupsHtml}${end}</div></div>`;
+    }
+    const h = $('#rail').offsetHeight;
+    if (!isPC() && h) document.documentElement.style.setProperty('--railh', `${h}px`);
+  }
+
+  // ── 레일 패널: 옷 걸기(종류→색→선택 세부 종류) / 레일의 옷 고치기
+  function addPanelHtml(a) {
+    const groups = groupsWithKinds();
+    const g = groups.find((x) => x.id === a.group) || groups[0];
+    const colors = M.colorChoices();
+    const slots = a.kind ? M.slotChoices(a.kind) : [];
+    const kindName = a.kind ? (M.kindChoices().find((k) => k.id === a.kind)?.name || '') : '';
+    const color = colors.find((c) => c.id === a.color);
+    return `<div class="panel" id="addpanel" role="region" aria-label="가진 옷 걸기">
+      <div class="panel-h"><b>${esc(g.name)} 걸기</b><span class="fine">사진 없이 종류·색만 골라요. 세부 종류는 선택이에요.</span></div>
+      <div class="chips" role="group" aria-label="묶음">${groups.map((x) => `<button type="button" class="chip" data-act="add-group" data-group="${x.id}" aria-pressed="${x.id === g.id}">${x.name}</button>`).join('')}</div>
+      <p class="step">1 종류</p>
+      <div class="chips">${g.list.map((k) => `<button type="button" class="chip" data-flow="kind-option" data-kind="${k.id}" aria-pressed="${a.kind === k.id}">${esc(k.name)}</button>`).join('')}</div>
+      ${a.kind ? `<p class="step">2 색</p>
+      <div class="chips colors">${colors.map((c) => `<button type="button" class="chip" data-flow="color-option" data-color="${c.id}" aria-pressed="${a.color === c.id}"><i class="sw" style="background:${c.hex}" aria-hidden="true"></i>${esc(c.label)}</button>`).join('')}</div>` : ''}
+      ${a.kind && a.color && slots.length ? `<p class="step">3 세부 종류 <span>(선택 · 안 골라도 걸 수 있어요)</span></p>
+      <div class="chips">${slots.map((s) => `<button type="button" class="chip" data-flow="slot-option" data-slot="${s.id}" aria-pressed="${a.slot === s.id}">${esc(s.name)}</button>`).join('')}</div>` : ''}
+      <div class="panel-f">
+        ${a.kind && a.color ? `<span class="preview"><span class="art" aria-hidden="true">${M.art({ kind: a.kind, slot: a.slot, colorHex: color?.hex })}</span>${esc(color?.label)} ${esc(kindName)}</span>` : ''}
+        <button type="button" class="btn" data-act="add-cancel">닫기</button>
+        ${a.kind && a.color ? '<button type="button" class="btn primary" data-flow="closet-save">레일에 걸기</button>' : ''}
+      </div>
+      ${ui.msg ? `<p class="msg" role="alert">${esc(ui.msg)}</p>` : ''}
+    </div>`;
+  }
+  function editPanelHtml(g) {
+    const colors = M.colorChoices();
+    const slots = M.slotChoices(g.kind, g.gender);
+    return `<div class="panel" id="editpanel" role="region" aria-label="레일의 옷 고치기">
+      <div class="panel-h"><b>${esc(g.colorLabel)} ${esc(g.kindName)}</b><span class="fine">${esc(g.sourceLabel)}${g.slotName ? ` · ${esc(g.slotName)}` : ' · 세부 종류 미확인'}</span></div>
+      <p class="step">색 고치기</p>
+      <div class="chips colors">${colors.map((c) => `<button type="button" class="chip" data-act="edit-color" data-color="${c.id}" aria-pressed="${g.color === c.id}"><i class="sw" style="background:${c.hex}" aria-hidden="true"></i>${esc(c.label)}</button>`).join('')}</div>
+      ${slots.length ? `<p class="step">세부 종류 <span>(선택)</span></p><div class="chips">${slots.map((s) => `<button type="button" class="chip" data-act="edit-slot" data-slot="${s.id}" aria-pressed="${g.slot === s.id}">${esc(s.name)}</button>`).join('')}</div>` : ''}
+      <div class="panel-f">
+        <button type="button" class="btn" data-act="edit-remove">레일에서 빼기</button>
+        <button type="button" class="btn primary" data-act="edit-close">다 됐어요</button>
+      </div>
+      ${ui.msg ? `<p class="msg" role="alert">${esc(ui.msg)}</p>` : ''}
+    </div>`;
+  }
+  function renderRailPanel() {
+    let html = '';
+    if (ui.adding && ui.adding.origin === 'rail') html = addPanelHtml(ui.adding);
+    else if (ui.editing) {
+      const g = M.getState().closet.find((x) => x.id === ui.editing);
+      if (g) html = editPanelHtml(g); else ui.editing = null;
+    }
+    $('#railpanel').innerHTML = html;
+  }
+
+  // ── 가운데: 요청과 결과
+  function askForm(r) {
+    return `<form class="ask" id="askform" role="search">
+      <label class="sr" for="q">찾을 옷을 한 줄로</label>
+      <input id="q" name="q" data-flow="ask-input" value="${esc(r?.said || '')}" placeholder="예: 출근용 셔츠 10만원 이하" autocomplete="off" enterkeyhint="search">
+      <button type="submit" class="btn primary" data-flow="ask-submit">찾기</button>
+    </form>`;
+  }
+  function notesHtml() {
+    return `<div class="foot">
+      <p class="fine">${esc(M.note.catalog)}</p>
+      <p class="fine">${esc(M.note.price)}</p>
+      <p class="fine">${esc(M.note.rules)}</p>
+      <p class="fine">${esc(M.note.ai)} 참고한 패턴: 옷장 앱의 옷 목록(Acloset 등, 참고 실서비스 · 수상 여부 미확인), s.Oliver 앱의 개인화 홈(Red Dot 2018). 로고·화면은 따라 하지 않았어요.</p>
+    </div>`;
+  }
+  function homeHtml() {
+    const g = M.getState().gender;
+    return `<div class="hero">
+      <h1>대충 한 줄이면 돼요</h1>
+      <p>옷장은 비어 있어도 찾을 수 있어요. 가진 옷을 레일에 걸면 겹치는지 그림으로 보여 드려요(선택).</p>
+    </div>
+    ${askForm(null)}
+    <p class="lbl">이렇게 적어 보세요</p>
+    <div class="chips">${M.examples().map((q) => `<button type="button" class="chip" data-flow="example" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <p class="lbl">못 찾는 말도 솔직하게 답해요</p>
+    <div class="chips">${M.edgeExamples().map((q) => `<button type="button" class="chip" data-flow="example" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <p class="lbl">상품 범위</p>
+    <div class="seg" role="group" aria-label="상품 범위"><button type="button" data-act="gender" data-g="M" aria-pressed="${g === 'M'}">남성 상품</button><button type="button" data-act="gender" data-g="F" aria-pressed="${g === 'F'}">여성 상품</button></div>
+    ${notesHtml()}`;
+  }
+  function cardTags(p) {
+    const tags = [];
+    const v = J(p.id); // 카드 한 장당 한 번만 부른다.
+    if (p.owned && p.owned.tone !== 'none') {
+      const cls = p.owned.tone === 'stop' ? 'dup' : p.owned.tone === 'info' ? 'alt' : '';
+      tags.push(`<span class="tag ${cls}">${esc(p.owned.label)}</span>`);
+    }
+    if (v && v.newLookCount) tags.push(`<span class="tag go">새 코디 ${v.newLookCount}</span>`);
+    if (p.offOccasion) tags.push('<span class="tag">상황 덜 맞음</span>');
+    if (p.record) tags.push(`<span class="tag rec">${esc(p.record.decisionLabel)}</span>`);
+    return tags.join('');
+  }
+  function cardHtml(p, sel) {
+    const tags = cardTags(p);
+    return `<article class="card ${sel === p.id ? 'sel' : ''}" data-card="${esc(p.id)}">
+      <button type="button" class="c-open" data-flow="result" data-product-id="${esc(p.id)}" aria-label="${esc(`${p.brand} ${p.name}, ${p.priceText} ${p.priceNote}. ${p.reason}. ${p.owned?.text || ''} 판정 보기`)}">
+        <span class="c-art" aria-hidden="true">${M.art(p)}</span>
+        <span class="c-body">
+          <span class="c-brand">${esc(p.brand)} · ${esc(p.colorLabel)} ${esc(p.kindName)}</span>
+          <span class="c-name">${esc(p.name)}</span>
+          <span class="c-price"><b>${esc(p.priceText)}</b> <small>${esc(p.priceNote)}</small></span>
+          <span class="c-reason">${esc(p.reason)}</span>
+          ${tags ? `<span class="c-tags">${tags}</span>` : ''}
+        </span>
+      </button>
+      <div class="c-foot"><a class="c-shop" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(p.store)}에서 보기 (새 창) · ${esc(p.name)}">${esc(p.store)}에서 보기</a></div>
+    </article>`;
+  }
+  function outfitHtml(o, note, title) {
+    if (!o) return note ? `<p class="notice">${esc(note)}</p>` : '';
+    const hasFocus = o.pieces.some((p) => p.focus || p.candidate);
+    const others = o.pieces.filter((p) => !p.owned && p.product && !p.focus && !p.candidate);
+    return `<section class="outfit" aria-label="${esc(title)}">
+      <h3>${esc(title)}</h3>
+      <p class="fine">${esc(o.formula ? `${o.formula} · ` : '')}${esc(o.title)}</p>
+      <div class="pieces">${o.pieces.map((p) => `<div class="piece"><span class="art" aria-hidden="true">${M.art(p)}</span>
+        <span class="who">${esc(p.roleLabel)} · ${p.owned ? (p.trial ? '체험용 옷' : '내 옷') : p.focus || p.candidate ? '이 상품' : '상품'}</span><br>${esc(p.label)}${p.product && !p.focus && !p.candidate ? `<br><b>${esc(p.product.priceText)}</b> <span class="fine">수집가</span>` : ''}</div>`).join('')}</div>
+      ${o.note ? `<p class="fine">${esc(o.note)}</p>` : ''}
+      ${others.length ? `<p class="fine">함께 고른 후보${hasFocus ? '(이 상품 제외)' : ''} ${others.length}벌 · 수집가 합계 ${esc(M.formatPrice(others.reduce((sum, p) => sum + (p.product.price || 0), 0)))}</p>` : ''}
+      ${note ? `<p class="fine">${esc(note)}</p>` : ''}
+    </section>`;
+  }
+  function resultsHtml(r) {
+    const sel = isPC() ? selectedId(r) : null;
+    const none = !r.products.length && !r.offOccasion.length;
+    const conds = r.conditions.map((c) => c.removable
+      ? `<span class="cond">${esc(c.label)}<button type="button" data-flow="condition-remove" data-key="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">빼기 ×</button></span>`
+      : `<span class="cond fixed">${esc(c.label)}</span>`).join('');
+    return `${askForm(r)}
+      <div class="res-h">
+        <h2 id="restitle" tabindex="-1">${esc(r.title)}</h2>
+        ${!none ? `<p class="fine">${r.total}개 · ${esc(r.listNote)}</p>` : ''}
+      </div>
+      ${conds ? `<div class="conds chips" aria-label="조건">${conds}</div>` : ''}
+      ${r.notices.map((n) => `<p class="notice ${['not-understood', 'kind-unavailable', 'empty'].includes(n.kind) ? 'strong' : ''}">${esc(n.text)}</p>`).join('')}
+      ${none ? `<p class="lbl">이렇게 적어 보세요</p><div class="chips">${(r.examples || M.examples()).map((q) => `<button type="button" class="chip" data-flow="example" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : ''}
+      ${r.products.length ? `<div class="cards">${r.products.map((p) => cardHtml(p, sel)).join('')}</div>` : ''}
+      ${r.understood && r.products.length ? `<div class="more"><button type="button" class="chip" data-act="cheaper">더 싼 걸로</button></div>` : ''}
+      ${r.offOccasion.length ? `<button type="button" class="btn" data-act="toggle-off" aria-expanded="${ui.offOpen || !r.products.length}">${esc(r.offOccasionTitle)} ${ui.offOpen || !r.products.length ? '접기' : '보기'}</button>
+        ${ui.offOpen || !r.products.length ? `<div class="cards">${r.offOccasion.map((p) => cardHtml(p, sel)).join('')}</div>` : ''}` : ''}
+      ${!none ? outfitHtml(r.outfit, r.outfitNote, '이 요청으로 만든 코디') : ''}
+      ${notesHtml()}`;
+  }
+  function recordsHtml() {
+    const recs = M.getState().records;
+    return `<div class="res-h" style="padding-top:14px"><h2 id="rectitle" tabindex="-1">구매 기록</h2><p class="fine">${esc(M.note.records)}</p></div>
+      ${recs.length ? recs.map((r) => `<article class="rec" data-flow="record" data-product-id="${esc(r.productId)}">
+        <span class="art" aria-hidden="true">${r.product ? M.art(r.product) : ''}</span>
+        <div>
+          <p class="fine">${esc(r.product?.brand)} · ${esc(r.product?.priceText)} <span>(수집가)</span></p>
+          <b>${esc(r.product?.name)}</b>
+          <p class="st">${esc(r.decisionLabel)} · ${esc(r.stageLabel)}${r.wearCount ? ` · ${r.wearCount}번 입음` : ''}${r.returnReasonLabel ? ` · 반품 사유: ${esc(r.returnReasonLabel)}` : ''}${r.stage === 'kept' || r.stage === 'received' ? ' · 레일에 ‘기록에서 산 옷’으로 걸렸어요' : ''}</p>
+          <div class="acts">
+            ${r.next.map((n) => `<button type="button" class="btn ${n.step === 'returned' ? '' : 'primary'}" data-flow="record-step" data-step="${n.step}" data-product-id="${esc(r.productId)}">${esc(n.label)}</button>`).join('')}
+            <button type="button" class="btn" data-act="open" data-id="${esc(r.productId)}">판정 다시 보기</button>
+            ${r.stage === 'candidate' ? `<button type="button" class="btn" data-act="rm-record" data-id="${esc(r.productId)}">기록 지우기</button>` : ''}
+          </div>
+          ${ui.returning === r.productId ? returnReasonsHtml(r.productId) : ''}
+        </div>
+      </article>`).join('') : '<p class="guide">아직 기록이 없어요. 판정 화면에서 ‘사기로 함·보류·안 살래’를 고르면 여기에 남아요.</p>'}`;
+  }
+  function returnReasonsHtml(pid) {
+    return `<div style="margin-top:8px"><p class="step">반품 사유</p><div class="chips">${M.returnReasons.map((x) => `<button type="button" class="chip" data-act="return-reason" data-reason="${x.id}" data-product-id="${esc(pid)}">${esc(x.label)}</button>`).join('')}
+      <button type="button" class="chip" data-act="return-cancel">취소</button></div></div>`;
+  }
+  function renderCenter(r) {
+    let html;
+    if (ui.screen === 'records') html = recordsHtml();
+    else if (r) html = resultsHtml(r);
+    else html = homeHtml();
+    $('#center').innerHTML = html;
+  }
+
+  // ── 판정
+  function insertHtml(v, d) {
+    const closet = M.getState().closet;
+    const tiles = new Map();
+    const add = (key, t) => { if (!tiles.has(key)) tiles.set(key, { ...t, looks: new Set() }); return tiles.get(key); };
+    add('cand', { type: 'cand', gi: groupIndex(d.kind), target: d, label: `${d.colorLabel} ${d.kindName}`, who: '후보' });
+    for (const o of v.owned) add(o.id, { type: 'own', gi: groupIndex(o.kind), target: o, label: `${o.colorLabel} ${o.kindName}`, who: o.trial ? '체험용' : o.bought ? '기록에서 산 옷' : '내 옷', rel: o.relation, relLabel: o.relationLabel });
+    v.looks.forEach((l, li) => l.pieces.forEach((p) => {
+      if (p.candidate) { tiles.get('cand').looks.add(li); return; }
+      if (p.owned) {
+        const g = matchGarment(p, closet);
+        const kind = g?.kind || '';
+        add(g ? g.id : `own:${p.label}`, { type: 'own', gi: g ? groupIndex(kind) : 4, target: g || p, label: g ? `${g.colorLabel} ${g.kindName}` : p.label, who: p.trial ? '체험용' : '내 옷' }).looks.add(li);
+      } else if (p.product) {
+        add(`buy:${p.product.id}`, { type: 'buy', gi: 9, target: p, label: p.kindName, who: '함께 고른 후보' }).looks.add(li);
+      }
+    }));
+    const list = [...tiles.values()].sort((a, b) => (a.type === 'cand' ? -1 : b.type === 'cand' ? 1 : a.gi - b.gi));
+    const W = 84, PAD = 24, LH = 14;
+    const n = list.length, L = v.looks.length;
+    const H = L ? 8 + L * LH : 0;
+    const xs = (i) => PAD + i * W + 38;
+    let svg = '';
+    if (L) {
+      const cols = ['var(--l0)', 'var(--l1)', 'var(--l2)'];
+      const parts = [];
+      v.looks.forEach((l, li) => {
+        const idx = list.map((t, i) => (t.looks.has(li) ? i : -1)).filter((i) => i >= 0);
+        if (!idx.length) return;
+        const y = 8 + li * LH;
+        const dash = li === 1 ? ' stroke-dasharray="6 3"' : li === 2 ? ' stroke-dasharray="2 3"' : '';
+        parts.push(`<text x="4" y="${y + 4}" font-size="12" font-weight="700" fill="${cols[li]}">${li + 1}</text>`);
+        parts.push(`<line x1="${xs(idx[0])}" y1="${y}" x2="${xs(idx[idx.length - 1])}" y2="${y}" stroke="${cols[li]}" stroke-width="3" stroke-linecap="round"${dash}/>`);
+        for (const i of idx) parts.push(`<line x1="${xs(i) + (li - 1) * 6}" y1="${y}" x2="${xs(i) + (li - 1) * 6}" y2="${H + 4}" stroke="${cols[li]}" stroke-width="2"${dash}/><circle cx="${xs(i) + (li - 1) * 6}" cy="${y}" r="4" fill="${cols[li]}"/>`);
+      });
+      svg = `<svg class="ins-svg" width="${PAD + n * W}" height="${H + 4}" viewBox="0 0 ${PAD + n * W} ${H + 4}" aria-hidden="true">${parts.join('')}</svg>`;
+    }
+    const row = list.map((t) => {
+      const rel = t.rel ? REL[t.rel] : null;
+      return `<div class="itile ${t.type} ${rel ? rel.tile : ''}">
+        <span class="art" aria-hidden="true">${M.art(t.target)}</span>
+        <span>${esc(t.label)}</span><span class="who">${esc(t.who)}${t.looks.size ? ` · ${[...t.looks].map((x) => x + 1).join('·')}` : ''}</span>
+        ${rel ? `<span class="imark ${rel.cls}">${esc(t.relLabel)}</span>` : ''}
+      </div>`;
+    }).join('');
+    const legend = v.looks.length ? `<ol class="looks">${v.looks.map((l, li) => `<li><span class="lk lk${li}" aria-hidden="true">${li + 1}</span><span><b>${esc(l.formula || l.title)}</b> ${l.new ? '<span class="tag go">새 코디</span>' : '<span class="tag">이미 되는 코디</span>'}<br><span class="fine">${esc(l.title)}${l.buyCount ? ` · 함께 고른 후보(이 상품 제외) ${l.buyCount}벌 · 수집가 합계 ${esc(l.buyTotalText)}` : ''}</span></span></li>`).join('')}</ol>` : '';
+    const empty = v.basis === 'none'
+      ? `<p class="fine" style="margin-top:8px">레일이 비어 있어서 이어 볼 옷이 없어요. 가진 ${esc(v.addSuggestion?.kindName || '옷')}${v.addSuggestion ? '' : ''} 한 벌만 걸어도 여기서 선이 이어져요.</p>`
+      : !v.looks.length ? '<p class="fine" style="margin-top:8px">이 후보와 이어지는 코디는 아직 없어요.</p>' : '';
+    const others = closet.length - [...tiles.keys()].filter((k) => !k.startsWith('buy:') && k !== 'cand').length;
+    return `<section class="sect" aria-label="이 옷이 들어가면">
+      <h4>이 옷이 들어가면</h4>
+      <div class="ins">
+        <div class="ins-scroll"><div class="ins-wrap">${svg}<div class="ins-row">${row}</div></div></div>
+        ${legend}${empty}
+        ${others > 0 && v.basis !== 'none' ? `<p class="fine" style="margin-top:6px">이어지지 않는 옷 ${others}벌은 접어 뒀어요.</p>` : ''}
+      </div>
+    </section>`;
+  }
+  function usedHtml(id) {
+    const u = M.usedSearch(id);
+    if (!u) return '';
+    return `<div class="used" data-flow="used-search" role="region" aria-label="중고 검색 링크">
+      <p><b>중고 검색 링크</b> · 연동 전</p>
+      <p class="fine">${esc(u.note)}</p>
+      <p class="fine">${esc(u.exactNote)}</p>
+      ${u.groups.map((g) => `<h5>${esc(g.region)}</h5><div class="chips">${g.links.map((l) => `<a class="btn chip" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(l.label)}에서 검색 결과 보기 (새 창)">${esc(l.label)} 검색 ↗${l.note ? ` <span class="fine">${esc(l.note)}</span>` : ''}</a>`).join('')}</div>`).join('')}
+      <p class="fine" style="margin-top:8px">${esc(u.abroadNote)}</p>
+    </div>`;
+  }
+  function verdictHtml(id, r) {
+    const d = M.product(id);
+    if (!d) return '<p class="guide">상품을 찾지 못했어요.</p>';
+    const v = d.verdict;
+    if (jmemo.v === M.version()) jmemo.map.set(id, v); else jmemo = { v: M.version(), map: new Map([[id, v]]) };
+    const rec = v.record;
+    const changed = ui.changed && ui.changed.id === id && ui.changed.before !== v.title ? `<p class="changed" role="status">방금 옷을 걸기 전: <s>${esc(ui.changed.before)}</s> → 판정이 바뀌었어요</p>` : '';
+    const leanTxt = v.lean ? `<p class="fine" style="margin-top:6px">‘판정 쪽’은 판정 문장이 가리키는 방향일 뿐이에요. 결정은 직접 해요.</p>` : '';
+    const dec = (k, label) => `<button type="button" data-flow="decide-${k}" class="${v.lean === k ? 'lean' : ''}" aria-pressed="${rec?.decision === k}">${label}${v.lean === k ? '<span class="leantag">판정 쪽</span>' : ''}</button>`;
+    const n = r ? r.products.length + r.offOccasion.length : 0;
+    return `${r ? `<button type="button" class="btn back m-only" data-act="back">← 결과 ${n}개로</button>` : ''}
+      <div class="v-head">
+        <span class="art" aria-hidden="true">${M.art(d)}</span>
+        <div>
+          <p class="fine">${esc(d.brand)} · ${esc(d.slotName)} · ${esc(d.colorLabel)}</p>
+          <h2>${esc(d.name)}</h2>
+          <p class="price"><b>${esc(d.priceText)}</b> <small>${esc(d.priceNote)}</small></p>
+        </div>
+      </div>
+      <section class="verdict tone-${esc(v.tone)}" id="verdictbox">
+        ${changed}
+        <span class="basis">${esc(v.basisLabel)}</span>
+        <h3 id="vtitle" tabindex="-1"><span data-flow="verdict">${esc(v.title)}</span></h3>
+        ${v.lines.map((l) => `<p class="line">${esc(l)}</p>`).join('')}
+        ${v.cautions.map((c) => `<p class="caution">${esc(c)}</p>`).join('')}
+        ${v.reasons && v.reasons.length ? `<ul>${v.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+        ${v.ask ? `<div class="askq"><p>${esc(v.ask.question)}</p><div class="chips">${v.ask.choices.map((c) => `<button type="button" class="chip" data-act="own" data-v="${c.id}" aria-pressed="${v.ask.value === c.id}">${esc(c.label)}</button>`).join('')}</div>${v.ask.hint ? `<p class="fine" style="margin-top:6px">${esc(v.ask.hint)}</p>` : ''}</div>` : ''}
+        ${v.basis === 'none' && v.addSuggestion ? `<button type="button" class="btn primary cta-add" data-flow="closet-add" data-kind="${esc(v.addSuggestion.kind)}">가진 ${esc(v.addSuggestion.kindName)} 걸고 비교</button>` : ''}
+        ${ui.adding && ui.adding.origin === 'verdict' ? addPanelHtml(ui.adding) : ''}
+        ${v.companion ? `<p class="line" style="margin-top:8px">함께 더하면: <button type="button" class="btn chip" data-act="open" data-id="${esc(v.companion.id)}">${esc(v.companion.slotName)} · ${esc(v.companion.brand)} ${esc(v.companion.priceText)}</button> → ${esc(v.companion.pairTitle)}</p>` : ''}
+      </section>
+      ${v.basis === 'none' ? '' : insertHtml(v, d)}
+      <section class="sect" aria-label="결정">
+        <h4>결정</h4>
+        <div class="decide">${dec('buy', '사기로 함')}${dec('hold', '보류')}${dec('skip', '안 살래')}</div>
+        ${leanTxt}
+        ${rec ? `<div class="recline" data-flow="record" data-product-id="${esc(id)}"><span>기록: <b>${esc(rec.stageLabel)}</b></span>
+          ${rec.next.map((x) => `<button type="button" class="btn" data-flow="record-step" data-step="${x.step}" data-product-id="${esc(id)}">${esc(x.label)}</button>`).join('')}
+          <button type="button" class="btn" data-flow="nav-records">기록 모두 보기</button>
+          ${ui.returning === id ? returnReasonsHtml(id) : ''}</div>` : ''}
+        <div class="shop">
+          <a class="btn primary" data-flow="seller-link" href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(d.store)}에서 보기 (새 창)">${esc(d.store)}에서 보기</a>
+          <button type="button" class="btn" data-act="used" aria-expanded="${ui.usedOpen}">중고로도 찾아보기</button>
+        </div>
+        ${ui.usedOpen ? usedHtml(id) : ''}
+      </section>
+      <section class="sect" aria-label="고른 이유">
+        <h4>고른 이유</h4>
+        <ul class="why">${d.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>
+        ${d.tip ? `<p class="fine" style="margin-top:6px">${esc(d.tip)}</p>` : ''}
+        ${d.popularity ? `<p class="fine">${esc(d.popularity)}</p>` : ''}
+        <p class="fine">${esc(d.colorNote)}</p>
+      </section>
+      ${outfitHtml(d.outfit, d.outfitNote, '이 상품으로 만든 코디')}
+      ${d.alternatives.length || d.alternativesNote ? `<section class="sect" aria-label="같은 종류 다른 선택">
+        <h4>같은 종류 다른 선택</h4>
+        ${d.alternativesNote ? `<p class="fine" style="margin-bottom:6px">${esc(d.alternativesNote)}</p>` : ''}
+        <div class="alts">${d.alternatives.slice(0, 4).map((a) => `<button type="button" class="altbtn" data-act="open" data-id="${esc(a.id)}"><span class="art" aria-hidden="true">${M.art(a)}</span><span><b>${esc(a.brand)}</b> ${esc(a.name)}<br>${esc(a.priceText)} <span class="fine">${esc(a.priceNote)}</span></span></button>`).join('')}</div>
+      </section>` : ''}
+      <p class="fine" style="margin:8px 0 24px">${esc(v.fine)} ${esc(M.note.price)}</p>`;
+  }
+  function renderSide(r) {
+    const side = $('#side');
+    if (ui.screen === 'records') { side.innerHTML = ''; return; }
+    const id = selectedId(r);
+    if (id) {
+      for (const p of [...(r?.products || []), ...(r?.offOccasion || [])]) cardIndex.set(p.id, p);
+      side.innerHTML = verdictHtml(id, r);
+      return;
+    }
+    side.innerHTML = `<div class="guide pc-only"><b>판정은 여기에 나와요.</b><br>한 줄로 요청하면 후보가 가운데 나오고, 카드에 마우스를 올리면 왼쪽 레일의 옷이 반응해요.<br><br><span class="fine">빨간 테두리 ‘겹쳐요’ = 같은 종류·색 · 노란 테두리 ‘색 다름’ = 같은 종류 다른 색 · 초록 ‘코디’ = 함께 입을 짝</span></div>`;
+  }
+
+  // ── 그리기
+  function render() {
+    const r = currentResult();
+    $('#shell').dataset.screen = ui.screen;
+    if (ui.productId === null && r) for (const p of [...r.products, ...r.offOccasion]) cardIndex.set(p.id, p);
+    renderNav();
+    renderSide(r);
+    renderCenter(r);
+    renderRail();
+    renderRailPanel();
+    observeCards();
+  }
+  let io = null;
+  function observeCards() {
+    if (io) { io.disconnect(); io = null; }
+    if (isPC() || ui.screen !== 'results' || !('IntersectionObserver' in window)) return;
+    io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const id = e.target.dataset.card;
+        if (ui.centerId === id) continue;
+        ui.centerId = id;
+        document.querySelectorAll('.card.active').forEach((c) => c.classList.remove('active'));
+        e.target.classList.add('active');
+        renderRail();
+      }
+    }, { rootMargin: '-46% 0px -46% 0px' });
+    document.querySelectorAll('.card[data-card]').forEach((c) => io.observe(c));
+  }
+  function say(text) { const l = $('#live'); l.textContent = ''; setTimeout(() => { l.textContent = text; }, 30); }
+
+  // ── 화면 이동(history)
+  function go(next, { replace = false, keepScroll = false } = {}) {
+    const prevScreen = ui.screen, prevEntry = ui.entry;
+    ui = { ...ui, ...next, adding: null, editing: null, returning: null, usedOpen: false, changed: null, hoverId: null, centerId: null, msg: null };
+    if (next.entry !== undefined && next.entry !== prevEntry) ui.offOpen = false;
+    const st = { screen: ui.screen, entry: ui.entry, productId: ui.productId };
+    try { history[replace ? 'replaceState' : 'pushState'](st, ''); } catch { /* file:// 등에서 막혀도 화면은 동작 */ }
+    render();
+    const onlyProduct = prevScreen !== 'records' && ui.screen !== 'records' && prevEntry === ui.entry && isPC();
+    if (!keepScroll && !onlyProduct) window.scrollTo(0, 0);
+    if (isPC()) $('#side').scrollTo(0, 0);
+    focusTitle();
+  }
+  // 화면이 바뀌면 포커스를 그 화면의 제목으로 옮긴다(body로 사라지지 않게).
+  function focusTitle() {
+    const sel = ui.screen === 'verdict' ? '#vtitle' : ui.screen === 'records' ? '#rectitle' : ui.screen === 'results' ? '#restitle' : '#q';
+    const el = $(sel);
+    if (el && el.offsetParent !== null) el.focus({ preventScroll: true });
+  }
+  // 다시 그려서 누른 버튼이 사라졌으면 같은 버튼을 찾아 포커스를 돌려 놓는다.
+  const KEEP = ['flow', 'act', 'key', 'id', 'kind', 'color', 'slot', 'step', 'productId', 'v', 'g', 'group', 'reason'];
+  function refocus(t, box) {
+    if (t.isConnected && document.activeElement && document.activeElement !== document.body) return;
+    if (document.activeElement && document.activeElement !== document.body && document.activeElement.isConnected) return;
+    const attrs = KEEP.filter((k) => t.dataset[k] != null).map((k) => `[data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}="${CSS.escape(t.dataset[k])}"]`).join('');
+    const cands = attrs ? [...document.querySelectorAll(attrs)].filter((el) => el.offsetParent !== null) : [];
+    const same = cands.find((el) => box && el.closest(box)) || cands[0];
+    if (same) same.focus({ preventScroll: true });
+  }
+  window.addEventListener('popstate', (e) => {
+    const s = e.state || { screen: 'home', entry: null, productId: null };
+    ui = { ...blankUi(), offOpen: ui.offOpen, screen: s.screen || 'home', entry: s.entry || null, productId: s.productId || null };
+    render();
+    focusTitle();
+  });
+  function askText(text) {
+    const r = currentResult();
+    const prev = r && r.understood ? r.text : null;
+    go({ screen: 'results', entry: { said: String(text || ''), prev, dropped: [] }, productId: null });
+  }
+  function openProduct(id) {
+    go({ screen: 'verdict', productId: id });
+  }
+  function judgeTitle(id) { try { return id ? J(id)?.title : null; } catch { return null; } }
+  function contextId() {
+    const r = currentResult();
+    return (ui.screen === 'verdict' || isPC()) ? selectedId(r) : null;
+  }
+
+  // ── 입력
+  document.addEventListener('submit', (e) => {
+    if (e.target.id !== 'askform') return;
+    e.preventDefault();
+    const text = new FormData(e.target).get('q');
+    askText(text);
+  });
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-flow], [data-act]');
+    if (!t || t.tagName === 'A' && !t.dataset.act) return;
+    if (t.tagName === 'SPAN' || t.tagName === 'DIV' && !t.dataset.act) return;
+    const flow = t.dataset.flow, act = t.dataset.act;
+    busy = true;
+    const box = t.closest('#side') ? '#side' : t.closest('#center') ? '#center' : t.closest('#rail') ? '#rail' : t.closest('#railpanel') ? '#railpanel' : null;
+    try { handle(t, flow, act); }
+    catch (error) { ui.msg = error.message || '다시 시도해 주세요.'; render(); say(ui.msg); }
+    finally { busy = false; }
+    refocus(t, box);
+  });
+  function handle(t, flow, act) {
+    const r = currentResult();
+    if (flow === 'example') return askText(t.dataset.q);
+    if (flow === 'condition-remove') return go({ screen: 'results', entry: { said: r.text, prev: null, dropped: [...r.dropped, t.dataset.key] }, productId: null });
+    if (act === 'cheaper') return go({ screen: 'results', entry: { said: '더 싼 걸로', prev: r.text, dropped: [] }, productId: null });
+    if (act === 'toggle-off') { ui.offOpen = !ui.offOpen; return render(); }
+    if (flow === 'result') return openProduct(t.dataset.productId);
+    if (act === 'open') return openProduct(t.dataset.id);
+    if (act === 'back') { if (history.state && history.state.screen === 'verdict' && history.length > 1 && ui.entry) return history.back(); return go({ screen: ui.entry ? 'results' : 'home', productId: null }); }
+    if (flow && flow.startsWith('decide-')) {
+      const id = contextId();
+      const rec = M.decide(id, flow.slice(7));
+      say(`기록했어요: ${rec.stageLabel}`);
+      return render();
+    }
+    if (act === 'used') { ui.usedOpen = !ui.usedOpen; return render(); }
+    if (act === 'own') { M.setOwnership(contextId(), t.dataset.v); return render(); }
+    if (act === 'gender') { M.setGender(t.dataset.g); return render(); }
+
+    // 가진 옷 걸기
+    if (flow === 'closet-add') {
+      const origin = t.closest('#side') ? 'verdict' : 'rail';
+      const cid = contextId();
+      const v = cid ? J(cid) : null;
+      const kind = t.dataset.kind || null;
+      const group = t.dataset.group || (kind ? groupOf(kind) : (v?.addSuggestion ? groupOf(v.addSuggestion.kind) : 'top'));
+      const suggested = v?.basis === 'none' && v.addSuggestion && groupOf(v.addSuggestion.kind) === group ? v.addSuggestion.kind : null;
+      ui.editing = null; ui.msg = null;
+      ui.adding = { origin, group, kind: kind || suggested, color: null, slot: null, returnTo: cid, before: judgeTitle(cid) };
+      render();
+      const panel = $('#addpanel');
+      if (panel) {
+        if (isPC() && origin === 'rail') panel.scrollIntoView({ block: 'nearest' });
+        else panel.scrollIntoView({ block: 'start' });
+        panel.querySelector('[aria-pressed="true"][data-flow="kind-option"], [data-flow="kind-option"]')?.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (act === 'add-group') { ui.adding = { ...ui.adding, group: t.dataset.group, kind: null, color: null, slot: null }; return render(); }
+    if (flow === 'kind-option') { ui.adding = { ...ui.adding, kind: t.dataset.kind, slot: null }; render(); $('#addpanel [data-flow="color-option"]')?.focus({ preventScroll: true }); return; }
+    if (flow === 'color-option') { ui.adding = { ...ui.adding, color: t.dataset.color }; render(); $('#addpanel [data-flow="closet-save"]')?.focus({ preventScroll: true }); return; }
+    if (flow === 'slot-option') { ui.adding = { ...ui.adding, slot: ui.adding.slot === t.dataset.slot ? null : t.dataset.slot }; return render(); }
+    if (act === 'add-cancel') { ui.adding = null; ui.msg = null; return render(); }
+    if (flow === 'closet-save') {
+      const a = ui.adding;
+      const g = M.addGarment({ kind: a.kind, color: a.color, slot: a.slot });
+      ui.adding = null; ui.flash = g.id; ui.msg = null;
+      if (a.returnTo) ui.changed = { id: a.returnTo, before: a.before };
+      render();
+      say(`${g.colorLabel} ${g.kindName}을 레일에 걸었어요.`);
+      if (a.returnTo && (ui.screen === 'verdict' || isPC())) { $('#verdictbox')?.scrollIntoView({ block: 'start' }); $('#vtitle')?.focus({ preventScroll: true }); }
+      else $(`[data-act="tile"][data-id="${CSS.escape(g.id)}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+    if (flow === 'trial-closet') {
+      const cid = contextId();
+      const before = judgeTitle(cid);
+      M.loadTrialCloset();
+      if (cid) ui.changed = { id: cid, before };
+      ui.adding = null; ui.editing = null;
+      render();
+      say('체험용 옷을 레일에 걸었어요. 내 옷이 아니라 예시 옷이에요.');
+      return;
+    }
+    if (act === 'clear-trial') { M.clearTrialCloset(); ui.editing = null; return render(); }
+    if (act === 'tile') { ui.adding = null; ui.msg = null; ui.editing = ui.editing === t.dataset.id ? null : t.dataset.id; render(); $('#editpanel')?.scrollIntoView({ block: isPC() ? 'nearest' : 'start' }); return; }
+    if (act === 'edit-color') { M.updateGarment(ui.editing, { color: t.dataset.color }); return render(); }
+    if (act === 'edit-slot') { const g = M.getState().closet.find((x) => x.id === ui.editing); M.updateGarment(ui.editing, { slot: g && g.slot === t.dataset.slot ? null : t.dataset.slot }); return render(); }
+    if (act === 'edit-remove') { M.removeGarment(ui.editing); ui.editing = null; ui.msg = null; say('레일에서 뺐어요.'); return render(); }
+    if (act === 'edit-close') { ui.editing = null; ui.msg = null; return render(); }
+
+    // 기록
+    if (flow === 'record-step') {
+      const pid = t.dataset.productId;
+      if (t.dataset.step === 'returned') { ui.returning = pid; return render(); }
+      const rec = M.advance(pid, t.dataset.step);
+      say(`기록했어요: ${rec.stageLabel}`);
+      return render();
+    }
+    if (act === 'return-reason') { const rec = M.advance(t.dataset.productId, 'returned', { reason: t.dataset.reason }); ui.returning = null; say(`기록했어요: ${rec.stageLabel}`); return render(); }
+    if (act === 'return-cancel') { ui.returning = null; return render(); }
+    if (act === 'rm-record') { M.removeRecord(t.dataset.id); return render(); }
+
+    // 화면
+    if (flow === 'nav-ask') { go({ screen: ui.entry ? 'results' : 'home', productId: null }); $('#q')?.focus({ preventScroll: true }); return; }
+    if (flow === 'nav-records') return go({ screen: 'records' });
+    if (flow === 'reset') {
+      M.reset();
+      ui = blankUi(); memo = { key: null, r: null }; cardIndex.clear();
+      try { history.replaceState({ screen: 'home', entry: null, productId: null }, '', location.pathname); } catch { /* 무시 */ }
+      render(); window.scrollTo(0, 0);
+      say('처음 상태로 돌렸어요.');
+    }
+  }
+  // PC: 카드에 마우스를 올리면 왼쪽 레일이 반응
+  document.addEventListener('mouseover', (e) => {
+    if (!isPC()) return;
+    const c = e.target.closest('.card[data-card]');
+    const id = c ? c.dataset.card : null;
+    if (id === ui.hoverId) return;
+    ui.hoverId = id;
+    renderRail();
+  });
+  document.addEventListener('focusin', (e) => {
+    const c = e.target.closest('.card[data-card]');
+    if (!c || ui.hoverId === c.dataset.card) return;
+    ui.hoverId = c.dataset.card;
+    renderRail();
+  });
+  pcQuery.addEventListener('change', () => render());
+  M.subscribe(() => { if (!busy) render(); });
+
+  // ── 시작
+  if (M.boot.q) ui = { ...ui, screen: 'results', entry: { said: M.boot.q, prev: null, dropped: [] } };
+  try { history.replaceState({ screen: ui.screen, entry: ui.entry, productId: ui.productId }, ''); } catch { /* 무시 */ }
+  render();
+})();
+</script>
+</body>
+</html>

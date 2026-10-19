@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>어울 시안 06 · 한 화면</title>
+<!-- 목업 · 시안 06 「한 화면」 · AI 역할 시안(실제 전문가 참여 아님).
+     가설: 화면을 바꾸지 않으면 길을 잃지 않는다. 요청·조건은 늘 위에, 결과·판정은 위로 겹쳐 올라오는 시트로만 바뀐다.
+     판정·조건·안내 문장은 모두 window.EoulMock(공통 코어)이 돌려준 것을 그대로 쓴다. -->
+<style>
+  :root {
+    --bg: #e7e9ec; --bg-2: #dde0e4; --surface: #ffffff; --surface-2: #f5f6f8; --surface-3: #eef0f3;
+    --ink: #16181b; --sub: #4b5159; --line: #dadde2; --line-2: #c3c8cf;
+    --dark: #1e2226; --dark-ink: #f4f5f7; --focus: #1f5fd6;
+    --go-bg: #e3f1ea; --go-ink: #1a5a3d; --stop-bg: #fbece3; --stop-ink: #84360f;
+    --info-bg: #e7edf6; --info-ink: #284670; --none-bg: #eceef1; --none-ink: #353a41;
+    --r-sheet: 20px; --r-card: 14px;
+    --sh-1: 0 1px 2px rgba(16, 20, 26, .06), 0 2px 8px rgba(16, 20, 26, .05);
+    --sh-float: 0 1px 2px rgba(16, 20, 26, .08), 0 6px 18px rgba(16, 20, 26, .10);
+    --sh-sheet: 0 -1px 0 rgba(16, 20, 26, .05), 0 -8px 28px rgba(16, 20, 26, .12);
+    --sh-sheet-2: 0 -1px 0 rgba(16, 20, 26, .06), 0 -14px 44px rgba(16, 20, 26, .22);
+    --art-line: #3a3a3a;
+    --head: 148px; --base-h: 120px;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    -webkit-text-size-adjust: 100%; word-break: keep-all; overflow-wrap: anywhere;
+  }
+  button, input, a { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  small { font-size: 12px; }
+  h1, h2, h3, h4, p { margin: 0; }
+  ul, ol { margin: 0; padding: 0; list-style: none; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  [hidden] { display: none !important; }
+
+  /* ── 공통 부품 */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 14px;
+    border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink);
+    text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.25; text-align: center;
+  }
+  .btn.sm { min-height: 40px; padding: 6px 12px; font-size: 14px; border-radius: 10px; }
+  .btn.dark { background: var(--dark); color: var(--dark-ink); border-color: var(--dark); }
+  .btn.ghost { border-color: transparent; background: transparent; }
+  .btn.tint { background: var(--surface-3); border-color: transparent; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .btn.wide { width: 100%; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--line-2); background: var(--surface); font-size: 14px; font-weight: 500; white-space: nowrap; line-height: 1.2;
+  }
+  .chip[aria-pressed="true"] { background: var(--dark); color: var(--dark-ink); border-color: var(--dark); }
+  .chip .x { font-size: 16px; line-height: 1; color: var(--sub); }
+  .chip.fixed { background: var(--surface-3); border-color: transparent; cursor: default; }
+  .chip.follow { border-style: dashed; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--none-ink); line-height: 1.5; white-space: nowrap; }
+  .badge.trial { background: #f3ead2; color: #5b4510; }
+  .tone-go { background: var(--go-bg); color: var(--go-ink); }
+  .tone-own { background: var(--go-bg); color: var(--go-ink); }
+  .tone-stop { background: var(--stop-bg); color: var(--stop-ink); }
+  .tone-info, .tone-think, .tone-pair, .tone-new { background: var(--info-bg); color: var(--info-ink); }
+  .tone-none { background: var(--none-bg); color: var(--none-ink); }
+  .fine { font-size: 13px; color: var(--sub); line-height: 1.5; }
+  .mini { font-size: 13px; font-weight: 700; color: var(--sub); letter-spacing: .01em; }
+  .eyebrow { font-size: 13px; font-weight: 600; color: var(--sub); }
+  .art { display: block; flex: none; width: 56px; height: 56px; padding: 6px; border-radius: 12px; background: var(--surface-2); }
+  .art svg { display: block; }
+  .art.sm { width: 40px; height: 40px; padding: 4px; border-radius: 10px; }
+  .art.lg { width: 72px; height: 72px; }
+  .notice { padding: 10px 12px; border-radius: 12px; background: var(--surface-3); font-size: 14px; line-height: 1.5; }
+  .notice.warn { background: var(--stop-bg); color: var(--stop-ink); }
+  .notice + .notice { margin-top: 8px; }
+
+  /* ── 목업 띠 */
+  .mock {
+    position: fixed; top: 0; left: 0; right: 0; height: 44px; z-index: 130; display: flex; align-items: center; gap: 4px;
+    padding: 0 6px 0 12px; background: #24272c; color: #eef0f3; font-size: 12px; line-height: 1.3;
+  }
+  .mock .ml { flex: 1; min-width: 0; }
+  .mock a, .mock button {
+    min-height: 40px; min-width: 40px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 8px;
+    border: 1px solid #555b63; background: transparent; color: #fff; font-size: 12px; text-decoration: none; white-space: nowrap;
+  }
+
+  /* ── 위쪽 고정 영역: 요청과 조건 */
+  .top { position: fixed; top: 44px; left: 0; right: 0; z-index: 100; padding: 8px 12px 6px; background: var(--bg); }
+  .brandrow { display: none; }
+  .askrow { display: flex; gap: 6px; align-items: center; max-width: 640px; margin: 0 auto; }
+  .ask {
+    flex: 1; min-width: 0; display: flex; align-items: center; background: var(--surface); border-radius: 16px;
+    box-shadow: var(--sh-float); padding: 2px 2px 2px 14px; min-height: 48px;
+  }
+  .ask input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 16px; padding: 10px 4px; outline: none; }
+  .ask input::-webkit-search-cancel-button { display: none; }
+  .ask:focus-within { box-shadow: 0 0 0 3px var(--focus), var(--sh-float); }
+  .ask-go { min-height: 44px; min-width: 56px; border: 0; border-radius: 13px; background: var(--dark); color: var(--dark-ink); font-weight: 700; padding: 0 14px; }
+  .navbtn {
+    flex: none; min-width: 52px; min-height: 48px; border: 0; border-radius: 14px; background: var(--surface); box-shadow: var(--sh-float);
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px 6px; font-size: 12px; font-weight: 600; line-height: 1.2;
+  }
+  .navbtn b { font-size: 14px; }
+  .chiprow { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 8px 0 2px; max-width: 640px; margin: 0 auto; }
+  .chiprow::-webkit-scrollbar { display: none; }
+  .chiprow.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); }
+  .askview { display: none; flex: 1; min-width: 0; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border-radius: 16px; background: var(--surface); box-shadow: var(--sh-1); font-size: 15px; }
+  .askview span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .askview small { flex: none; color: var(--sub); font-weight: 600; }
+  body.m-layer .ask { display: none; }
+  body.m-layer .askview { display: flex; }
+  .lh .navask { min-width: 0; }
+  .chiprow .chip { flex: none; box-shadow: var(--sh-1); border-color: transparent; }
+  .chiprow .chip.fixed { box-shadow: none; background: var(--bg-2); }
+  .chiprow:empty { display: none; }
+  .left-extra { display: none; }
+
+  /* ── 바탕 면(지도 자리): 시작 안내 또는 이 요청으로 만든 코디 */
+  .canvas {
+    position: fixed; top: var(--head); left: 0; right: 0; bottom: 0; overflow: auto; overscroll-behavior: contain;
+    padding: 10px 16px calc(var(--base-h) + 24px);
+  }
+  .canvas > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+  .canvas.covered { visibility: hidden; }
+  .start h1 { font-size: 22px; line-height: 1.3; margin: 4px 0 6px; letter-spacing: -.01em; }
+  .start .lead { color: var(--sub); font-size: 14px; margin-bottom: 14px; }
+  .start .mini { margin: 14px 0 8px; }
+  .start .chip { box-shadow: var(--sh-1); border-color: transparent; }
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 0 12px; counter-reset: how; }
+  .how li { background: var(--surface); border-radius: 14px; padding: 10px; font-size: 13px; line-height: 1.4; box-shadow: var(--sh-1); }
+  .how li b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .how li::before { counter-increment: how; content: counter(how); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--dark); color: #fff; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .seg { display: inline-flex; background: var(--bg-2); border-radius: 12px; padding: 3px; gap: 3px; margin-top: 4px; }
+  .seg button { min-height: 40px; border: 0; border-radius: 9px; background: transparent; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--sub); }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--sh-1); }
+  .board { padding-top: 2px; }
+  .board h2 { font-size: 19px; line-height: 1.3; margin: 2px 0 2px; }
+  .board .sub { font-size: 14px; color: var(--sub); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; margin: 10px 0 8px; }
+  .tile {
+    width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px 8px; border-radius: 14px;
+    background: var(--surface); border: 1px solid transparent; box-shadow: var(--sh-1); text-align: center; font-size: 12px; line-height: 1.3; min-height: 40px;
+  }
+  button.tile:hover { border-color: var(--line-2); }
+  .tile .art { width: 46px; height: 46px; padding: 3px; background: transparent; }
+  .tile .role { color: var(--sub); }
+  .tile .tl { font-weight: 600; font-size: 13px; }
+  .tile .tag { color: var(--sub); white-space: nowrap; letter-spacing: -.01em; }
+  .tile .tag.own { color: var(--go-ink); font-weight: 600; }
+  .tile .tag.me { color: var(--ink); font-weight: 700; }
+
+  /* ── 시트 */
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column;
+    background: var(--surface); border-radius: var(--r-sheet) var(--r-sheet) 0 0; box-shadow: var(--sh-sheet); overflow: hidden;
+    transition: height .3s var(--ease), transform .3s var(--ease), filter .3s var(--ease);
+  }
+  .sheet.base { z-index: 10; height: 120px; }
+  .sheet.dragging { transition: none; }
+  .sheet.enter { transform: translateY(105%); }
+  .layer { box-shadow: var(--sh-sheet-2); }
+  .layer.add { max-height: calc(100% - var(--head) - 24px); }
+  .sheet.behind { filter: saturate(.9); }
+  .grip { flex: none; display: flex; justify-content: center; touch-action: none; cursor: grab; }
+  .handle { width: 128px; height: 40px; border: 0; background: none; display: grid; place-items: center; cursor: grab; touch-action: none; border-radius: 12px; }
+  .handle::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: #a9afb8; }
+  .sheet-head { flex: none; padding: 0 16px 10px; touch-action: none; }
+  .sheet-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 16px 20px; }
+  .sheet.covered .sheet-body, .sheet.covered .sheet-foot { visibility: hidden; }
+  .sheet.covered .sheet-head { visibility: hidden; }
+  .sheet-foot { flex: none; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); }
+  .sheet-foot:empty { display: none; }
+  .scrim { position: fixed; inset: 0; background: rgba(22, 24, 28, .32); border: 0; padding: 0; width: 100%; cursor: default; transition: opacity .25s; }
+
+  .rh { display: flex; align-items: flex-start; gap: 8px; }
+  .rh h2 { flex: 1; min-width: 0; font-size: 18px; line-height: 1.35; letter-spacing: -.01em; outline-offset: 4px; }
+  .rh .btn { flex: none; }
+  .rsub { font-size: 13px; color: var(--sub); margin-top: 2px; }
+  .cmpbar { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--surface-3); font-size: 14px; }
+  .cmpbar span { flex: 1; }
+
+  .rows { margin-top: 4px; }
+  .row { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row-main { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 12px 4px 12px 0; background: none; border: 0; min-height: 44px; border-radius: 12px; }
+  .row.sel .row-main { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--dark); padding-left: 8px; }
+  .row-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .brand { font-size: 13px; color: var(--sub); font-weight: 600; }
+  .name { font-size: 15px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .price { font-weight: 700; font-size: 15px; }
+  .price small { font-weight: 500; color: var(--sub); margin-left: 4px; }
+  .why { font-size: 13px; color: var(--sub); line-height: 1.4; }
+  .row .badge, .cmpgrid .badge { align-self: flex-start; margin-top: 2px; white-space: normal; }
+  .cmp { flex: none; width: 56px; min-height: 48px; padding: 2px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); font-size: 12px; font-weight: 600; line-height: 1.25; }
+  .cmp[aria-pressed="true"] { background: var(--dark); color: var(--dark-ink); border-color: var(--dark); }
+  .sect { margin-top: 18px; }
+  .sect > h3, .sect > h4 { font-size: 15px; margin-bottom: 8px; }
+  .notes { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+
+  /* 판정 시트 */
+  .lh { display: flex; align-items: center; gap: 6px; margin-top: -4px; }
+  .lh .lt { flex: 1; font-size: 13px; font-weight: 700; color: var(--sub); text-align: center; }
+  .lh .btn { min-width: 64px; }
+  .pmini { display: flex; gap: 12px; align-items: center; margin-top: 6px; }
+  .pmini .name { -webkit-line-clamp: 2; font-weight: 600; }
+  .vcard { border-radius: 16px; padding: 14px; margin-top: 2px; }
+  .vcard .basis { display: inline-flex; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, .7); color: inherit; }
+  .vcard h3 { font-size: 20px; line-height: 1.35; margin: 8px 0 6px; letter-spacing: -.01em; }
+  .vcard p { font-size: 14px; line-height: 1.55; }
+  .vcard p + p { margin-top: 4px; }
+  .vcard .was { font-size: 13px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 0, 0, .1); }
+  .vcard .acts { display: grid; gap: 8px; margin-top: 12px; }
+  .vcard .acts .btn { background: var(--surface); border-color: transparent; color: var(--ink); }
+  .vcard .acts .btn.dark { background: var(--dark); color: var(--dark-ink); }
+  .askq { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(0, 0, 0, .1); }
+  .askq p { font-weight: 700; margin-bottom: 6px; }
+  .cautions { margin-top: 10px; display: grid; gap: 6px; }
+  .bullets li { position: relative; padding-left: 14px; font-size: 14px; line-height: 1.5; margin-top: 4px; }
+  .bullets li::before { content: ""; position: absolute; left: 2px; top: .65em; width: 5px; height: 5px; border-radius: 50%; background: var(--line-2); }
+  .owned li { display: flex; gap: 10px; align-items: center; padding: 6px 0; font-size: 14px; }
+  .look { border: 1px solid var(--line); border-radius: 16px; padding: 12px; background: var(--surface-2); }
+  .look + .look { margin-top: 10px; }
+  .look .tiles { margin-bottom: 4px; }
+  .look h4 { font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .alts li { border-bottom: 1px solid var(--line); }
+  .alts li:last-child { border-bottom: 0; }
+  .alts button { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; border: 0; background: none; padding: 8px 0; min-height: 44px; }
+  .used { border-radius: 16px; background: var(--surface-2); padding: 12px; }
+  .used summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; list-style: none; }
+  .used summary::-webkit-details-marker { display: none; }
+  .used summary::after { content: "펼치기"; margin-left: auto; font-size: 13px; color: var(--sub); font-weight: 600; }
+  .used[open] summary::after { content: "접기"; }
+  .used .region { font-size: 13px; font-weight: 700; color: var(--sub); margin: 12px 0 6px; }
+  .used .links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .used .links a { min-height: 48px; display: flex; flex-direction: column; justify-content: center; padding: 6px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-2); text-decoration: none; font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .used .links a small { font-weight: 400; color: var(--sub); }
+  .seller { display: flex; flex-direction: column; gap: 6px; }
+  .rec-strip { margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface-3); font-size: 14px; }
+  .rec-strip.tone-go { background: var(--go-bg); color: var(--go-ink); }
+  .rec-strip.tone-stop { background: var(--stop-bg); color: var(--stop-ink); }
+  .rec-strip .btns, .rec .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .decide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .decide .btn { min-height: 48px; padding: 6px 8px; }
+  .decide .btn { flex-direction: column; gap: 0; }
+  .decide .btn.lean { border: 3px solid var(--ink); }
+  .decide .btn .lean-tag { font-size: 12px; font-weight: 600; color: var(--sub); line-height: 1.2; }
+  .decide .btn[aria-pressed="true"] { background: var(--dark); color: var(--dark-ink); border-color: var(--dark); }
+  .decide .btn[aria-pressed="true"] .lean-tag { color: var(--dark-ink); }
+  .decide-note { font-size: 12px; color: var(--sub); margin-top: 6px; text-align: center; }
+  .decide-note button { min-height: 40px; border: 0; background: none; text-decoration: underline; font-size: 13px; font-weight: 600; padding: 0 6px; }
+
+  /* 옷 넣기 시트 */
+  .step { margin-top: 14px; }
+  .step:first-child { margin-top: 2px; }
+  .step h3 { font-size: 15px; margin-bottom: 8px; display: flex; gap: 6px; align-items: baseline; }
+  .step h3 small { color: var(--sub); font-weight: 500; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .25); flex: none; }
+  .sugg { font-size: 12px; font-weight: 600; color: var(--sub); }
+  .chip[aria-pressed="true"] .sugg { color: inherit; }
+
+  /* 내 옷·기록 시트 */
+  .glist li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .glist li:last-child { border-bottom: 0; }
+  .glist .gt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; }
+  .rec { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .rec:last-child { border-bottom: 0; }
+  .rec .rt { display: flex; gap: 10px; align-items: flex-start; }
+  .rec .stage { display: inline-flex; margin-top: 4px; }
+
+  /* 비교 시트 */
+  .cmpgrid { display: grid; gap: 0 10px; overflow-x: auto; padding-bottom: 6px; }
+  .cmpgrid .lab { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--sub); padding: 10px 0 4px; border-top: 1px solid var(--line); }
+  .cmpgrid .lab:first-child { border-top: 0; padding-top: 0; }
+  .cmpgrid .cell { font-size: 14px; line-height: 1.45; min-width: 0; }
+  .cmpgrid .cell .btn { width: 100%; margin-top: 4px; }
+  .cmpgrid .price small { display: block; margin: 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: var(--toast-b, 16px); transform: translateX(-50%); z-index: 140; max-width: calc(100% - 32px); width: max-content;
+    background: var(--dark); color: var(--dark-ink); padding: 10px 16px; border-radius: 14px; font-size: 14px; box-shadow: var(--sh-float);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.on { opacity: 1; }
+
+  /* ── PC: 메일 앱처럼 3분할 */
+  @media (min-width: 1024px) {
+    .mock { padding-left: 20px; font-size: 13px; }
+    .mock a, .mock button { font-size: 13px; }
+    .top { top: 44px; bottom: 0; right: auto; width: 360px; overflow: auto; padding: 16px 16px 28px; background: var(--surface-2); border-right: 1px solid var(--line); z-index: 5; }
+    .brandrow { display: flex; align-items: baseline; gap: 8px; margin: 0 0 12px; }
+    .brandrow b { font-size: 20px; letter-spacing: -.02em; }
+    .brandrow span { font-size: 13px; color: var(--sub); }
+    .askrow { flex-wrap: wrap; max-width: none; }
+    .ask { flex-basis: 100%; order: 2; box-shadow: 0 0 0 1px var(--line-2); }
+    .ask:focus-within { box-shadow: 0 0 0 3px var(--focus); }
+    .navbtn { order: 1; flex: 1; flex-direction: row; gap: 6px; min-height: 44px; font-size: 14px; box-shadow: 0 0 0 1px var(--line); }
+    .chiprow { flex-wrap: wrap; overflow: visible; max-width: none; padding-top: 10px; }
+    .chiprow .chip { box-shadow: 0 0 0 1px var(--line); }
+    .left-extra { display: block; margin-top: 16px; }
+    .side { background: var(--surface); border-radius: 16px; padding: 14px; box-shadow: 0 0 0 1px var(--line); }
+    .side + .side { margin-top: 12px; }
+    .side h2 { font-size: 15px; margin-bottom: 4px; }
+    .side .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .side .glist li { padding: 6px 0; }
+    .canvas { top: 44px; left: 360px; padding: 32px 40px; }
+    .canvas > * { max-width: 760px; margin-left: 0; }
+    body.has-result .canvas { left: auto; width: 480px; padding: 24px 24px; background: var(--bg); border-left: 1px solid var(--line); }
+    body.pane-open .canvas { display: none; }
+    .start h1 { font-size: 30px; }
+    .start .lead { font-size: 16px; max-width: 620px; }
+    .how { max-width: 680px; }
+    .how li { padding: 14px; font-size: 14px; }
+    .sheet { max-width: none; margin: 0; transition: none; }
+    .sheet.base { top: 44px; left: 360px; right: 480px; height: auto !important; border-radius: 0; box-shadow: none; }
+    body:not(.has-result) .sheet.base { display: none; }
+    .sheet .grip { display: none; }
+    .sheet-head { padding-top: 18px; }
+    .sheet-body { padding: 0 20px 28px; }
+    .sheet-head { padding-left: 20px; padding-right: 20px; }
+    .layer.pane { top: 44px; left: auto; right: 0; width: 480px; height: auto !important; border-radius: 0; box-shadow: -1px 0 0 var(--line), -10px 0 30px rgba(16, 20, 26, .06); }
+    .layer.drawer { top: 44px; left: auto; right: 0; width: 440px; height: auto !important; border-radius: 20px 0 0 0; }
+    .layer.add { top: 64px; bottom: auto; left: auto; right: 24px; width: 440px; height: auto !important; max-height: calc(100% - 88px); border-radius: 20px; }
+    .lh { margin-top: 0; }
+    .sheet.enter { transform: none; }
+    .toast { bottom: 28px; }
+    .rh [data-act="size"] { display: none; }
+    .used .links { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<div class="mock" data-flow="mock-label">
+  <span class="ml">목업 · 시안 06 한 화면 · AI 역할 시안</span>
+  <a href="../index.html">갤러리로</a>
+  <button type="button" data-flow="reset" data-act="reset">처음부터</button>
+</div>
+
+<header class="top" id="top">
+  <div class="brandrow"><b>어울</b><span>한 화면에서 찾고, 비교하고, 정해요</span></div>
+  <div class="askrow">
+    <form class="ask" id="ask-form" role="search" autocomplete="off">
+      <label class="sr" for="q">찾을 옷을 한 줄로 적기</label>
+      <input id="q" data-flow="ask-input" type="search" enterkeyhint="search" placeholder="예: 겨울 데이트 코트" maxlength="200">
+      <button class="ask-go" type="submit" data-flow="ask-submit">찾기</button>
+    </form>
+    <p class="askview" id="askview"><small>요청</small><span id="askview-text"></span></p>
+    <button type="button" class="navbtn" data-flow="nav-closet" data-act="open-closet" data-k="nav-closet" aria-label="내 옷 시트 열기"><span>내 옷</span><b id="n-closet">0</b></button>
+    <button type="button" class="navbtn" data-flow="nav-records" data-act="open-records" data-k="nav-records" aria-label="기록 시트 열기"><span>기록</span><b id="n-records">0</b></button>
+  </div>
+  <div class="chiprow" id="chips" aria-label="조건"></div>
+  <div class="left-extra" id="left-extra"></div>
+</header>
+
+<main class="canvas" id="canvas" aria-label="바탕 면"></main>
+
+<section class="sheet base" id="sheet-results" role="dialog" aria-modal="false" aria-label="결과 시트">
+  <div class="grip"><button type="button" class="handle" data-act="handle" aria-label="결과 시트 높이 바꾸기"></button></div>
+  <div class="sheet-head" id="res-head"></div>
+  <div class="sheet-body" id="res-body"></div>
+</section>
+
+<button type="button" class="scrim" id="scrim" hidden tabindex="-1" aria-label="위 시트 닫기"></button>
+<div id="layers"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr" id="sr-live" aria-live="polite"></div>
+
+<script src="../shared/eoul-mock.js"></script>
+<script>
+(function () {
+  'use strict';
+  var M = window.EoulMock;
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var $$ = function (s, el) { return Array.prototype.slice.call((el || document).querySelectorAll(s)); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var mqPC = window.matchMedia('(min-width: 1024px)');
+  var mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var isPC = function () { return mqPC.matches; };
+  var SNAP_NAME = { peek: '살짝', half: '절반', full: '전체' };
+  var BASE_SNAPS = ['peek', 'half', 'full'];
+  var LAYER_SNAPS = ['half', 'full'];
+  var PANE = { product: 1, compare: 1 };
+  var MODAL = { add: 1, closet: 1, records: 1 };
+
+  var view = {
+    result: null, seq: 0, stack: [], resSnap: 'peek', picks: [], showOff: false,
+    shown: {}, changed: {}, returning: null, msg: null,
+  };
+
+  // ── 작은 도구
+  function art(t, cls) { return '<span class="art' + (cls ? ' ' + cls : '') + '" aria-hidden="true">' + M.art(t) + '</span>'; }
+  function price(p) { return '<span class="price">' + esc(p.priceText) + (p.priceNote ? '<small>' + esc(p.priceNote) + '</small>' : '') + '</span>'; }
+  function toast(text) {
+    var el = $('#toast');
+    el.textContent = text;
+    el.classList.add('on');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(function () { el.classList.remove('on'); }, 2600);
+  }
+  function say(text) { var el = $('#sr-live'); el.textContent = ''; setTimeout(function () { el.textContent = text; }, 30); }
+  function topLayer() { return view.stack[view.stack.length - 1] || null; }
+  function layerEl(i) { return $('#layers').children[i] || null; }
+  function findCard(id) {
+    var r = view.result;
+    if (!r) return null;
+    return r.products.concat(r.offOccasion).filter(function (p) { return p.id === id; })[0] || null;
+  }
+  function genderName() { return M.getState().gender === 'F' ? '여성' : '남성'; }
+
+  // ── 요청
+  function doAsk(text, opts) {
+    var r = M.ask(text, opts || {});
+    view.result = r;
+    view.seq++;
+    view.picks = [];
+    view.showOff = false;
+    view.returning = null;
+    view.shown = {}; view.changed = {};
+    var hadStack = view.stack.length > 0;
+    view.stack = [];
+    safeHistory('replace');
+    view.resSnap = 'half';
+    $('#q').value = r.said || '';
+    renderAll();
+    if (hadStack) $('#layers').innerHTML = '';
+    var body = $('#res-body'); if (body) body.scrollTop = 0;
+    var c = $('#canvas'); if (c) c.scrollTop = 0;
+    var h = $('#res-title'); if (h) h.focus({ preventScroll: true });
+    toast(r.products.length ? r.title + ' · 후보 ' + (r.products.length + r.offOccasion.length) + '개' : r.title);
+  }
+  function refreshResult() {
+    var old = view.result;
+    if (!old || !old.understood) return;
+    var r = M.ask(old.text, { drop: old.dropped });
+    var keep = old.notices.filter(function (n) { return n.kind === 'follow' || n.kind === 'follow-missing'; });
+    r.notices = keep.concat(r.notices.filter(function (n) { return !keep.some(function (k) { return k.text === n.text; }); }));
+    r.said = old.said;
+    view.result = r;
+  }
+
+  // ── 시트 쌓기와 뒤로가기
+  function safeHistory(mode) {
+    var st = { eoul: 6, seq: view.seq, stack: view.stack };
+    try {
+      if (mode === 'push') history.pushState(st, '');
+      else history.replaceState(st, '');
+    } catch (e) { /* file:// 등에서 막히면 화면 안에서만 쌓는다 */ }
+  }
+  function setStack(next, mode) {
+    var prev = view.stack;
+    var removed = prev.filter(function (L) { return next.indexOf(L) < 0; });
+    removed.forEach(function (L) { if (L.t === 'product') { delete view.shown[L.id]; delete view.changed[L.id]; } });
+    view.stack = next;
+    if (mode === 'push' || mode === 'replace') safeHistory(mode);
+    if (removed.some(function (L) { return L.t === 'records'; })) view.returning = null;
+    renderAll();
+    if (next.length > prev.length || (next.length && next[next.length - 1] !== prev[prev.length - 1] && next.length >= prev.length)) {
+      var el = layerEl(next.length - 1);
+      if (el) { var f = $('[data-autofocus]', el) || el; f.focus({ preventScroll: true }); }
+    } else if (next.length < prev.length && view.focusAsk && !next.length) {
+      view.focusAsk = false;
+      $('#q').focus({ preventScroll: true });
+    } else if (next.length < prev.length) {
+      var gone = prev[prev.length - 1];
+      var target = gone && gone.ret ? $$('[data-k="' + gone.ret + '"]').filter(function (x) { return !x.closest('[inert]') && x.offsetParent !== null; })[0] : null;
+      if (!target) {
+        var topEl = layerEl(next.length - 1);
+        target = topEl ? ($('[data-autofocus]', topEl) || topEl) : ($('#res-title') || $('#q'));
+      }
+      if (target) target.focus({ preventScroll: true });
+    }
+  }
+  function pushLayer(L, opener) {
+    L.ret = opener && opener.dataset ? opener.dataset.k || null : null;
+    var top = topLayer();
+    // 같은 서랍(내 옷·기록)이 맨 위에 있으면 바꿔 끼운다.
+    if (top && (top.t === 'closet' || top.t === 'records') && (L.t === 'closet' || L.t === 'records')) {
+      if (top.t === L.t) return;
+      L.ret = top.ret;
+      return setStack(view.stack.slice(0, -1).concat([L]), 'replace');
+    }
+    setStack(view.stack.concat([L]), 'push');
+  }
+  function closeTop() {
+    if (!view.stack.length) return;
+    var hs = null;
+    try { hs = history.state; } catch (e) { hs = null; }
+    if (hs && hs.eoul && hs.seq === view.seq && hs.stack && hs.stack.length === view.stack.length) {
+      history.back();
+    } else {
+      setStack(view.stack.slice(0, -1), 'replace');
+    }
+  }
+  function closeAll() {
+    var n = view.stack.length;
+    if (!n) return;
+    var hs = null;
+    try { hs = history.state; } catch (e) { hs = null; }
+    if (hs && hs.eoul && hs.seq === view.seq && hs.stack && hs.stack.length === n && n > 0) {
+      // 쌓을 때마다 기록을 하나씩 남겼으므로, 맨 아래(층 없음)까지 되돌아간다.
+      history.go(-n);
+      return;
+    }
+    setStack([], 'replace');
+  }
+  window.addEventListener('popstate', function (e) {
+    var st = e.state;
+    var next = st && st.eoul && st.seq === view.seq && Array.isArray(st.stack) ? st.stack : [];
+    // 기록에 남은 쌓임을 지금 화면의 같은 층과 이어 붙인다(같은 층이면 같은 객체를 써서 스크롤을 지킨다).
+    var merged = next.map(function (L, i) {
+      var cur = view.stack[i];
+      return cur && cur.t === L.t && cur.id === L.id ? cur : L;
+    });
+    setStack(merged, 'pop');
+  });
+
+  function openProduct(id, opener) {
+    var L = { t: 'product', id: id, snap: 'full' };
+    if (isPC()) {
+      L.ret = opener && opener.dataset ? opener.dataset.k || null : null;
+      var inLayer = opener && opener.closest && opener.closest('.layer');
+      var only = view.stack.length === 1 && PANE[view.stack[0].t];
+      if (!inLayer && only) return setStack([L], 'replace');
+      if (inLayer && inLayer.classList.contains('drawer')) return setStack([L], 'push');
+      if (!inLayer && !view.stack.length) return setStack([L], 'push');
+    }
+    pushLayer(L, opener);
+  }
+
+  // ── 그리기
+  function renderAll() {
+    renderTop();
+    renderCanvas();
+    renderResults();
+    renderLayers();
+    applyLayout();
+  }
+
+  function renderTop() {
+    var s = M.getState();
+    $('#n-closet').textContent = s.closetCount;
+    $('#n-records').textContent = s.records.length;
+    var r = view.result;
+    var chips = '';
+    if (r && r.conditions.length) {
+      chips += r.conditions.map(function (c) {
+        return c.removable
+          ? '<button type="button" class="chip" data-flow="condition-remove" data-key="' + esc(c.key) + '" data-k="cond-' + esc(c.key) + '" aria-label="' + esc(c.label) + ' 조건 빼고 다시 찾기">' + esc(c.label) + ' <span class="x" aria-hidden="true">×</span></button>'
+          : '<span class="chip fixed" title="종류는 빼지 않아요">' + esc(c.label) + '</span>';
+      }).join('');
+    }
+    if (r && r.understood && r.products.length) chips += '<button type="button" class="chip follow" data-act="cheaper" data-k="cheaper">이어서 · 더 싼 걸로</button>';
+    $('#chips').innerHTML = chips;
+    $('#left-extra').innerHTML = leftExtra(s);
+  }
+
+  function leftExtra(s) {
+    var groups = s.closet.slice(0, 5).map(function (g) {
+      return '<li>' + art(g, 'sm') + '<span class="gt">' + esc(g.label) + '<br><small>' + esc(g.colorLabel) + '</small></span><span class="badge' + (g.trial ? ' trial' : '') + '">' + esc(g.sourceLabel) + '</span></li>';
+    }).join('');
+    var recs = s.records.slice(0, 3).map(function (rec) {
+      return '<li>' + (rec.product ? art(rec.product, 'sm') : '') + '<span class="gt">' + esc(rec.product ? rec.product.name : rec.productId) + '<br><small>' + esc(rec.stageLabel) + '</small></span></li>';
+    }).join('');
+    var r = view.result;
+    return '<section class="side" aria-label="내 옷 요약"><h2>내 옷 ' + s.closetCount + '벌</h2>'
+      + '<p class="fine">' + (s.closetCount ? (s.trialCount ? '체험용 ' + s.trialCount + '벌 · ' : '') + '내 옷 ' + s.mineCount + '벌 · 판정에 바로 반영돼요' : '옷장 없이도 찾을 수 있어요. 넣으면 판정이 겹침·새 코디까지 알려 줘요.') + '</p>'
+      + (groups ? '<ul class="glist">' + groups + '</ul>' + (s.closetCount > 5 ? '<p class="fine">외 ' + (s.closetCount - 5) + '벌</p>' : '') : '')
+      + '<div class="btns"><button type="button" class="btn sm" data-act="add-side" data-k="side-add">옷 한 벌 넣기</button>'
+      + (s.closetCount ? '<button type="button" class="btn sm" data-act="open-closet" data-k="side-closet">내 옷 모두</button>' : '')
+      + (!s.trialCount ? '<button type="button" class="btn sm tint" data-act="trial" data-k="side-trial">체험용 옷 넣기 <span class="badge trial">체험용</span></button>' : '')
+      + '</div></section>'
+      + '<section class="side" aria-label="기록 요약"><h2>기록 ' + s.records.length + '건</h2>'
+      + (recs ? '<ul class="glist">' + recs + '</ul>' : '<p class="fine">판정에서 사기로 함·보류·안 살래를 누르면 여기 남아요.</p>')
+      + '<div class="btns"><button type="button" class="btn sm" data-act="open-records" data-k="side-records">기록 서랍 열기</button></div></section>'
+      + (r ? '<section class="side" aria-label="다른 요청"><h2>다른 요청</h2><div class="chips" style="margin-top:8px">' + M.examples().map(function (q) { return '<button type="button" class="chip" data-act="example" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div></section>' : '')
+      + '<div class="notes"><p class="fine">' + esc(M.note.rules) + '</p><p class="fine">' + esc(M.note.ai) + '</p></div>';
+  }
+
+  function startView() {
+    var s = M.getState();
+    var ex = M.examples().map(function (q) { return '<button type="button" class="chip" data-flow="example" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('');
+    var edge = M.edgeExamples().map(function (q) { return '<button type="button" class="chip" data-flow="example" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('');
+    return '<div class="start">'
+      + '<p class="eyebrow">옷장 없이 바로 시작</p>'
+      + '<h1>찾는 옷을 한 줄로 적어 보세요</h1>'
+      + '<p class="lead">' + (isPC() ? '대충 적어도 돼요. 조건은 왼쪽에 칩으로 남고, 후보는 가운데, 판정과 결정은 오른쪽 칸에 열려요. 화면은 바뀌지 않아요.' : '대충 적어도 돼요. 조건은 위에 칩으로 남고, 후보와 판정은 아래에서 시트로 겹쳐 올라와요. 화면은 바뀌지 않아요.') + '</p>'
+      + '<div class="seg" role="group" aria-label="상품 성별"><button type="button" data-act="gender" data-g="M" aria-pressed="' + (s.gender === 'M') + '">남성 상품</button><button type="button" data-act="gender" data-g="F" aria-pressed="' + (s.gender === 'F') + '">여성 상품</button></div>'
+      + '<h2 class="mini">예시 요청</h2><div class="chips">' + ex + '</div>'
+      + '<h2 class="mini">못 찾는 요청도 솔직하게</h2><div class="chips">' + edge + '</div>'
+      + (isPC() ? '<ol class="how"><li><b>한 줄 요청</b>조건은 왼쪽 칩으로</li><li><b>후보 목록</b>가운데 칸, 비교 담기</li><li><b>판정·결정</b>오른쪽 칸에서 바로 기록</li></ol>'
+        : '<ol class="how"><li><b>한 줄 요청</b>조건은 위 칩으로</li><li><b>후보·판정</b>아래 시트에 겹쳐서</li><li><b>결정·기록</b>판정 시트 아래에서 바로</li></ol>')
+      + '<p class="fine">' + esc(M.note.rules) + '</p>'
+      + '</div>';
+  }
+
+  function tiles(outfit, ctx) {
+    return '<ul class="tiles">' + outfit.pieces.map(function (p) {
+      var me = p.focus || p.candidate;
+      var tag = p.owned ? (p.trial ? '체험용' : '내 옷') : me ? '이 상품' : p.product ? p.product.priceText : '';
+      var inner = art(p) + '<span class="role">' + esc(p.roleLabel) + '</span><span class="tl">' + esc((p.colorLabel && p.colorLabel !== '색 미확인' ? p.colorLabel + ' ' : '') + p.kindName) + '</span><span class="tag' + (p.owned ? ' own' : me ? ' me' : '') + '">' + esc(tag) + '</span>'
+        + (!p.owned && !me && p.product ? '<span class="tag">수집가</span>' : '');
+      var canOpen = p.product && !me && !p.owned;
+      return '<li>' + (canOpen
+        ? '<button type="button" class="tile" data-act="open-product" data-id="' + esc(p.product.id) + '" data-k="' + ctx + '-' + esc(p.product.id) + '" aria-label="' + esc(p.roleLabel + ' ' + p.label + ' ' + p.product.priceText + ' 판정 열기') + '">' + inner + '</button>'
+        : '<div class="tile" title="' + esc(p.label) + '">' + inner + '<span class="sr">' + esc(p.label) + '</span></div>') + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  function renderCanvas() {
+    var r = view.result;
+    var c = $('#canvas');
+    if (!r || !r.products.length && !r.offOccasion.length) { c.innerHTML = startView(); return; }
+    var o = r.outfit;
+    var hint = isPC() ? '가운데 목록에서 상품을 고르면 이 자리에 판정이 열려요.' : '목록에서 상품을 누르면 판정 시트가 위로 겹쳐 올라와요.';
+    if (!o) {
+      c.innerHTML = '<div class="board"><p class="eyebrow">이 요청으로 만든 코디</p><h2>코디를 만들지 않았어요</h2>'
+        + (r.outfitNote ? '<p class="notice" style="margin-top:10px">' + esc(r.outfitNote) + '</p>' : '<p class="sub">이 요청에 맞는 코디 공식을 찾지 못했어요.</p>')
+        + '<p class="fine" style="margin-top:10px">' + esc(hint) + '</p></div>';
+      return;
+    }
+    c.innerHTML = '<div class="board"><p class="eyebrow">이 요청으로 만든 코디</p>'
+      + '<h2>' + esc(o.formula || o.title) + '</h2><p class="sub">' + esc(o.title) + '</p>'
+      + tiles(o, 'b')
+      + (o.buyCount ? '<p class="fine">함께 고른 후보 ' + o.buyCount + '벌 · 수집가 합계 ' + esc(o.buyTotalText) + '</p>' : '')
+      + (r.outfitNote ? '<p class="fine">' + esc(r.outfitNote) + '</p>' : '')
+      + '<p class="fine">' + esc(o.note) + '</p>'
+      + '<p class="fine" style="margin-top:8px"><b>' + esc(hint) + '</b></p></div>';
+  }
+
+  function row(p) {
+    var picked = view.picks.indexOf(p.id) >= 0;
+    var top = topLayer();
+    var sel = isPC() && top && top.t === 'product' && top.id === p.id;
+    return '<li class="row' + (sel ? ' sel' : '') + '">'
+      + '<button type="button" class="row-main" data-flow="result" data-product-id="' + esc(p.id) + '" data-k="r-' + esc(p.id) + '"' + (sel ? ' aria-current="true"' : '') + '>'
+      + art(p)
+      + '<span class="row-text"><span class="brand">' + esc(p.brand) + ' · ' + esc(p.slotName) + '</span>'
+      + '<span class="name">' + esc(p.name) + '</span>' + price(p)
+      + '<span class="why">' + esc(p.reason) + (p.traitLine ? ' · ' + esc(p.traitLine) : '') + '</span>'
+      + (p.owned && p.owned.text ? '<span class="badge tone-' + esc(p.owned.tone) + '">' + esc(p.owned.label) + ' · ' + esc(p.owned.text) + '</span>' : '')
+      + (p.record ? '<span class="badge">기록: ' + esc(p.record.stageLabel) + '</span>' : '')
+      + '</span></button>'
+      + '<button type="button" class="cmp" data-act="pick" data-id="' + esc(p.id) + '" data-k="pick-' + esc(p.id) + '" aria-pressed="' + picked + '" aria-label="' + esc(p.brand + ' ' + p.name) + ' 나란히 보기에 ' + (picked ? '담김, 빼기' : '담기') + '">' + (picked ? '담음 ✓' : '나란히<br>담기') + '</button>'
+      + '</li>';
+  }
+
+  function renderResults() {
+    var head = $('#res-head'), body = $('#res-body');
+    var keep = body.scrollTop;
+    var r = view.result;
+    var sheet = $('#sheet-results');
+    var handle = $('.handle', sheet);
+    var cur = view.resSnap, nxt = BASE_SNAPS[(BASE_SNAPS.indexOf(cur) + 1) % 3];
+    handle.setAttribute('aria-label', '결과 시트 높이: 지금 ' + SNAP_NAME[cur] + '. 누르면 ' + SNAP_NAME[nxt] + ', 위아래 화살표로도 바꿔요');
+    if (!r) {
+      head.innerHTML = '<div class="rh"><h2 id="res-title" tabindex="-1">후보는 이 시트로 올라와요</h2></div><p class="rsub">요청하면 손잡이를 끌어 살짝·절반·전체로 볼 수 있어요.</p>';
+      body.innerHTML = '';
+      return;
+    }
+    var n = r.products.length + r.offOccasion.length;
+    head.innerHTML = '<div class="rh"><h2 id="res-title" tabindex="-1">' + esc(r.title) + '</h2>'
+      + '<button type="button" class="btn sm tint" data-act="size" data-k="size" aria-label="결과 시트를 ' + SNAP_NAME[nxt] + ' 높이로">' + SNAP_NAME[nxt] + (nxt === 'peek' ? '으로 ↓' : '로 ↑') + '</button></div>'
+      + '<p class="rsub">' + (n ? '후보 ' + n + '개 · ' + esc(r.listNote) : r.understood ? '상품 없이 안내만 보여요' : '상품을 고르지 않았어요') + '</p>'
+      + (view.picks.length ? '<div class="cmpbar"><span>나란히 보기에 ' + view.picks.length + '개 담음' + (view.picks.length < 2 ? ' · 하나 더 담아요' : '') + '</span>'
+        + '<button type="button" class="btn sm" data-act="clear-picks">비우기</button>'
+        + '<button type="button" class="btn sm dark" data-act="open-compare" data-k="open-compare"' + (view.picks.length < 2 ? ' disabled' : '') + '>나란히 보기</button></div>' : '');
+    var notices = r.notices.map(function (x) { return '<p class="notice' + (/empty|unavailable|not-understood|error/.test(x.kind) ? ' warn' : '') + '">' + esc(x.text) + '</p>'; }).join('');
+    var html = notices ? '<div class="sect" style="margin-top:4px">' + notices + '</div>' : '';
+    if (!n) {
+      html += '<div class="sect"><h3>이렇게 다시 적어 보세요</h3><div class="chips">' + (r.examples || M.examples()).slice(0, 4).map(function (q) { return '<button type="button" class="chip" data-act="example" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>'
+        + (r.conditions.some(function (c) { return c.removable; }) ? '<p class="fine" style="margin-top:8px">위쪽 조건 칩의 ×를 눌러 조건을 직접 뺄 수 있어요.</p>' : '') + '</div>';
+    } else {
+      html += '<ul class="rows" aria-label="후보 목록">' + r.products.map(row).join('') + '</ul>';
+      if (r.offOccasion.length) {
+        html += '<div class="sect"><button type="button" class="btn sm wide tint" data-act="toggle-off" aria-expanded="' + view.showOff + '">' + esc(r.offOccasionTitle) + ' ' + (view.showOff ? '접기' : '보기') + '</button>'
+          + (view.showOff ? '<ul class="rows">' + r.offOccasion.map(row).join('') + '</ul>' : '') + '</div>';
+      }
+    }
+    html += '<div class="notes"><p class="fine">' + esc(M.note.price) + '</p><p class="fine">' + esc(M.note.catalog) + '</p><p class="fine">' + esc(M.note.rules) + '</p></div>';
+    body.innerHTML = html;
+    body.scrollTop = keep;
+  }
+
+  // ── 위로 겹치는 층
+  function renderLayers() {
+    var host = $('#layers');
+    while (host.children.length > view.stack.length) {
+      var gone = host.lastElementChild;
+      leave(gone);
+    }
+    view.stack.forEach(function (L, i) {
+      var el = host.children[i];
+      var key = L.t + ':' + (L.id || '');
+      if (!el || el.dataset.key !== key) {
+        var n = document.createElement('section');
+        n.className = 'sheet layer';
+        n.setAttribute('role', 'dialog');
+        n.setAttribute('aria-modal', 'false');
+        n.tabIndex = -1;
+        n.innerHTML = '<div class="grip"><button type="button" class="handle" data-act="handle"></button></div><div class="sheet-head"></div><div class="sheet-body"></div><div class="sheet-foot"></div>';
+        n.dataset.key = key;
+        if (!isPC() && !mqReduce.matches) n.classList.add('enter');
+        if (el) { leave(el, n); } else host.appendChild(n);
+        el = n;
+      }
+      fillLayer(el, L, i);
+    });
+    $$('.layer.enter', host).forEach(function (el) {
+      el.getBoundingClientRect();
+      requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.remove('enter'); }); });
+    });
+  }
+  // 닫히는 시트는 표시(data-flow)를 지운 복제본으로만 잠깐 내려보낸다.
+  function leave(el, replacement) {
+    if (replacement) el.parentNode.replaceChild(replacement, el); else el.remove();
+    if (isPC() || mqReduce.matches) return;
+    var ghost = el;
+    $$('[data-flow]', ghost).forEach(function (x) { x.removeAttribute('data-flow'); });
+    $$('[data-k]', ghost).forEach(function (x) { x.removeAttribute('data-k'); });
+    ghost.inert = true;
+    ghost.removeAttribute('role');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.pointerEvents = 'none';
+    document.body.appendChild(ghost);
+    requestAnimationFrame(function () { ghost.style.transform = 'translateY(105%)'; });
+    setTimeout(function () { ghost.remove(); }, 320);
+  }
+
+  function fillLayer(el, L, i) {
+    var parts;
+    if (L.t === 'product') parts = productLayer(L, i);
+    else if (L.t === 'compare') parts = compareLayer(L, i);
+    else if (L.t === 'add') parts = addLayer(L, i);
+    else if (L.t === 'closet') parts = closetLayer(L, i);
+    else parts = recordsLayer(L, i);
+    el.dataset.type = L.t;
+    el.dataset.depth = i;
+    if (L.id) el.dataset.pid = L.id; else delete el.dataset.pid;
+    el.classList.toggle('pane', !!PANE[L.t]);
+    el.classList.toggle('drawer', L.t === 'closet' || L.t === 'records');
+    el.classList.toggle('add', L.t === 'add');
+    el.setAttribute('aria-label', parts.label);
+    var handle = $('.handle', el);
+    if (L.t === 'add') handle.setAttribute('aria-label', parts.label + ' · 아래로 끌거나 누르면 닫혀요');
+    else {
+      var nx = L.snap === 'full' ? 'half' : 'full';
+      handle.setAttribute('aria-label', parts.label + ' 높이: 지금 ' + SNAP_NAME[L.snap] + '. 누르면 ' + SNAP_NAME[nx] + ', 아래로 끌면 닫혀요');
+    }
+    var body = $('.sheet-body', el);
+    var keep = body.scrollTop;
+    var active = document.activeElement && el.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+    $('.sheet-head', el).innerHTML = parts.head;
+    body.innerHTML = parts.body;
+    $('.sheet-foot', el).innerHTML = parts.foot || '';
+    body.scrollTop = keep;
+    if (active) { var again = $('[data-k="' + active + '"]', el); if (again) again.focus({ preventScroll: true }); }
+  }
+
+  function layerHead(title, i, extra) {
+    var pc = isPC();
+    return '<div class="lh"><button type="button" class="btn sm ghost" data-act="close" data-k="close-' + i + '" aria-label="' + esc(title) + ' 닫기">' + (pc ? '닫기' : '← 닫기') + '</button>'
+      + '<h2 class="lt" tabindex="-1" data-autofocus>' + esc(title) + '</h2>'
+      + (pc ? (extra || '<span style="min-width:64px"></span>') : '<button type="button" class="btn sm ghost navask" data-flow="nav-ask" data-act="nav-ask" aria-label="시트를 모두 닫고 요청 고치기">요청 고치기</button>') + '</div>';
+  }
+
+  function recordStrip(rec, where) {
+    if (!rec) return '';
+    var steps = rec.next.map(function (n) {
+      return '<button type="button" class="btn sm" data-flow="record-step" data-step="' + esc(n.step) + '" data-product-id="' + esc(rec.productId) + '" data-k="step-' + where + '-' + esc(rec.productId) + '-' + esc(n.step) + '">' + esc(n.label) + '</button>';
+    }).join('');
+    var reasons = view.returning === rec.productId
+      ? '<div class="btns" role="group" aria-label="반품 사유 고르기"><span class="fine" style="width:100%">반품 사유를 골라 주세요</span>' + M.returnReasons.map(function (x) {
+        return '<button type="button" class="chip" data-act="return-reason" data-reason="' + esc(x.id) + '" data-id="' + esc(rec.productId) + '" data-k="rr-' + where + '-' + esc(x.id) + '">' + esc(x.label) + '</button>';
+      }).join('') + '<button type="button" class="chip" data-act="return-cancel" data-k="rr-cancel-' + where + '">취소</button></div>'
+      : '';
+    var stage = rec.stageLabel.indexOf(rec.decisionLabel) === 0 ? '<b>' + esc(rec.stageLabel) + '</b>' : '<b>' + esc(rec.decisionLabel) + '</b> · ' + esc(rec.stageLabel);
+    return '<p>' + stage + (rec.returnReasonLabel ? ' (' + esc(rec.returnReasonLabel) + ')' : '') + (rec.wearCount ? ' · ' + rec.wearCount + '번 입음' : '') + '</p>'
+      + (steps && !reasons ? '<div class="btns">' + steps + '</div>' : '') + reasons;
+  }
+
+  function productLayer(L, i) {
+    var d = M.product(L.id);
+    if (!d) return { label: '상품', head: layerHead('판정', i), body: '<p class="notice">상품을 찾지 못했어요.</p>', foot: '' };
+    var v = d.verdict;
+    var was = view.shown[L.id];
+    if (was && was !== v.title) view.changed[L.id] = was;
+    view.shown[L.id] = v.title;
+    var changedFrom = view.changed[L.id];
+    var head = layerHead('판정', i, '<a class="btn sm ghost" href="' + esc(d.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(d.store) + '에서 이 상품 보기, 새 창">' + esc(d.store) + ' ↗</a>')
+      + '<div class="pmini">' + art(d, 'lg') + '<div class="row-text"><span class="brand">' + esc(d.brand) + ' · ' + esc(d.slotName) + ' · ' + esc(d.colorLabel) + '</span><span class="name">' + esc(d.name) + '</span>' + price(d) + '</div></div>';
+
+    var b = '';
+    // 1) 판정
+    b += '<div class="vcard tone-' + esc(v.tone) + '">';
+    b += '<span class="basis">' + esc(v.basisLabel) + '</span>';
+    b += '<h3><span data-flow="verdict">' + esc(v.title) + '</span></h3>';
+    b += v.lines.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('');
+    if (changedFrom) b += '<p class="was">방금 판정이 바뀌었어요 · 바뀌기 전: ‘' + esc(changedFrom) + '’</p>';
+    if (v.cautions.length) b += '<div class="cautions">' + v.cautions.map(function (x) { return '<p class="notice warn">' + esc(x) + '</p>'; }).join('') + '</div>';
+    if (v.ask) {
+      b += '<div class="askq" role="group" aria-label="' + esc(v.ask.question) + '"><p>' + esc(v.ask.question) + '</p><div class="chips">'
+        + v.ask.choices.map(function (c) { return '<button type="button" class="chip" data-act="ownership" data-v="' + esc(c.id) + '" data-k="own-' + esc(c.id) + '" aria-pressed="' + (v.ask.value === c.id) + '">' + esc(c.label) + '</button>'; }).join('')
+        + '</div>' + (v.ask.hint ? '<p class="fine" style="margin-top:6px;font-weight:400">' + esc(v.ask.hint) + '</p>' : '') + '</div>';
+    }
+    if (v.addSuggestion && v.basis === 'none') {
+      b += '<div class="acts"><button type="button" class="btn dark" data-flow="closet-add" data-kind="' + esc(v.addSuggestion.kind) + '" data-k="v-add">가진 ' + esc(v.addSuggestion.kindName) + ' 넣고 비교</button>'
+        + '<button type="button" class="btn" data-flow="trial-closet" data-k="v-trial">체험용 예시 옷으로 비교 <span class="badge trial">체험용</span></button></div>';
+    } else if (v.addSuggestion) {
+      b += '<div class="acts"><button type="button" class="btn sm" data-flow="closet-add" data-kind="' + esc(v.addSuggestion.kind) + '" data-k="v-add">가진 옷 한 벌 더 넣기</button></div>';
+    }
+    b += '</div>';
+    if (v.record) b += '<div class="rec-strip">' + recordStrip(v.record, 'v') + '<div class="btns"><button type="button" class="btn sm ghost" data-act="open-records" data-k="v-records">기록 모두 보기</button></div></div>';
+
+    // 2) 비교한 내 옷
+    if (v.owned && v.owned.length) {
+      b += '<div class="sect"><h3>비교한 가진 옷</h3><ul class="owned">' + v.owned.map(function (g) {
+        return '<li>' + art(g, 'sm') + '<span style="flex:1">' + esc(g.label) + '<br><small>' + esc(g.colorLabel + ' · ' + g.relationLabel) + '</small></span><span class="badge' + (g.trial ? ' trial' : '') + '">' + esc(g.sourceLabel) + '</span></li>';
+      }).join('') + '</ul></div>';
+    }
+    // 3) 이유
+    var why = (v.reasons || []).concat(d.why || []);
+    var seen = {};
+    why = why.filter(function (x) { if (seen[x]) return false; seen[x] = 1; return true; });
+    b += '<div class="sect"><h3>이유</h3><ul class="bullets">' + why.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('')
+      + (d.tip ? '<li>' + esc(d.tip) + '</li>' : '') + '</ul>'
+      + (d.popularity ? '<p class="fine" style="margin-top:6px">' + esc(d.popularity) + '</p>' : '')
+      + '<p class="fine">' + esc(d.colorNote) + '</p></div>';
+    // 4) 코디
+    b += '<div class="sect"><h3>이 상품으로 만든 코디</h3>';
+    if (v.looks && v.looks.length) {
+      b += v.looks.map(function (lk) {
+        return '<div class="look"><h4>' + esc(lk.formula || lk.title) + (lk.new ? ' <span class="badge tone-go">새 코디</span>' : ' <span class="badge">이미 가능한 코디</span>') + '</h4>'
+          + tiles(lk, 'lk') + '<p class="fine">' + esc(lk.note) + '</p></div>';
+      }).join('');
+    } else if (d.outfit) {
+      b += '<div class="look"><h4>' + esc(d.outfit.formula || d.outfit.title) + '</h4>' + tiles(d.outfit, 'po')
+        + (d.outfit.buyCount ? '<p class="fine">함께 고른 후보(이 상품 제외) ' + d.outfit.buyCount + '벌 · 수집가 합계 ' + esc(d.outfit.buyTotalText) + '</p>' : '')
+        + '<p class="fine">' + esc(d.outfit.note) + '</p></div>';
+    } else {
+      b += '<p class="fine">이 상품으로 만든 코디가 없어요.</p>';
+    }
+    if (d.outfitNote) b += '<p class="fine" style="margin-top:6px">' + esc(d.outfitNote) + '</p>';
+    if (v.companion) {
+      var cp = v.companion;
+      b += '<div class="look" style="margin-top:10px"><h4>함께 더하면 · ' + esc(cp.pairTitle) + '</h4><ul class="alts"><li><button type="button" data-act="open-product" data-id="' + esc(cp.id) + '" data-k="cp-' + esc(cp.id) + '">' + art(cp, 'sm') + '<span class="row-text"><span class="brand">' + esc(cp.brand) + ' · ' + esc(cp.slotName) + '</span><span class="name">' + esc(cp.name) + '</span>' + price(cp) + '</span></button></li></ul></div>';
+    }
+    b += '</div>';
+    // 5) 판매처
+    b += '<div class="sect seller"><h3>판매처</h3><a class="btn dark wide" data-flow="seller-link" href="' + esc(d.url) + '" target="_blank" rel="noopener noreferrer">' + esc(d.store) + '에서 보기 · 새 창</a>'
+      + '<p class="fine">' + esc(d.priceText) + ' · ' + esc(d.priceNote) + '. ' + esc(M.note.price) + '</p></div>';
+    // 6) 같은 조건의 다른 선택
+    if (d.alternatives.length || d.alternativesNote) {
+      b += '<div class="sect"><h3>같은 종류의 다른 선택</h3>'
+        + (d.alternativesNote ? '<p class="fine" style="margin-bottom:6px">' + esc(d.alternativesNote) + '</p>' : '')
+        + '<ul class="alts">' + d.alternatives.slice(0, 4).map(function (a) {
+          return '<li><button type="button" data-act="open-product" data-id="' + esc(a.id) + '" data-k="alt-' + esc(a.id) + '">' + art(a, 'sm') + '<span class="row-text"><span class="brand">' + esc(a.brand) + '</span><span class="name">' + esc(a.name) + '</span>' + price(a) + '</span></button></li>';
+        }).join('') + '</ul></div>';
+    }
+    // 7) 중고
+    var u = M.usedSearch(L.id);
+    if (u) {
+      b += '<div class="sect"><details class="used" data-flow="used-search"><summary>중고로도 찾아보기 <span class="badge">연동 전 · 검색 링크만</span></summary>'
+        + '<p class="fine" style="margin-top:4px"><b>' + esc(u.note) + '</b></p><p class="fine">' + esc(u.exactNote) + '</p>'
+        + u.groups.map(function (g) {
+          return '<p class="region">' + esc(g.region) + '</p><div class="links">' + g.links.map(function (k) {
+            return '<a href="' + esc(k.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(k.label) + '에서 ‘' + esc(k.query) + '’ 검색, 새 창">' + esc(k.label) + ' 검색 ↗' + (k.note ? '<small>' + esc(k.note) + '</small>' : '') + '</a>';
+          }).join('') + '</div>';
+        }).join('')
+        + '<p class="fine" style="margin-top:10px">' + esc(u.abroadNote) + '</p></details></div>';
+    }
+    b += '<div class="notes"><p class="fine">' + esc(v.fine) + '</p><p class="fine">' + esc(M.note.catalog) + '</p></div>';
+
+    // 결정(시트 아래 고정)
+    var cur = v.record ? v.record.decision : null;
+    var dec = function (k, label) {
+      return '<button type="button" class="btn' + (v.lean === k ? ' lean' : '') + '" data-flow="decide-' + k + '" data-k="decide-' + k + '" aria-pressed="' + (cur === k) + '"><span>' + (cur === k ? '✓ ' : '') + label + '</span>' + (v.lean === k ? '<span class="lean-tag">판정 쪽</span>' : '') + '</button>';
+    };
+    var foot = '<div class="decide" role="group" aria-label="구매 결정">' + dec('buy', '사기로 함') + dec('hold', '보류') + dec('skip', '안 살래') + '</div>'
+      + '<p class="decide-note">' + (cur ? '‘' + esc(v.record.decisionLabel) + '’로 기록했어요 <button type="button" data-act="open-records" data-k="foot-records">기록 보기</button>'
+        : v.lean ? '굵은 테두리의 ‘판정 쪽’은 판정이 기운 방향이에요 · 고르는 건 직접 해요' : '판정이 한쪽으로 기울지 않았어요 · 직접 골라요') + '</p>';
+    return { label: d.brand + ' ' + d.name + ' 판정 시트', head: head, body: b, foot: foot };
+  }
+
+  function compareLayer(L, i) {
+    var ids = view.picks.slice(0, 3);
+    var cols = ids.map(function (id) {
+      var c = findCard(id) || M.product(id);
+      return { c: c, v: M.judge(id) };
+    }).filter(function (x) { return x.c; });
+    var n = cols.length || 1;
+    var cell = function (fn) { return cols.map(function (x) { return '<div class="cell">' + fn(x) + '</div>'; }).join(''); };
+    var lab = function (t) { return '<div class="lab">' + esc(t) + '</div>'; };
+    var grid = '<div class="cmpgrid" style="grid-template-columns:repeat(' + n + ', minmax(148px, 1fr))">'
+      + lab('상품') + cell(function (x) { return art(x.c) + '<span class="brand">' + esc(x.c.brand) + '</span><br>' + esc(x.c.name); })
+      + lab('수집가') + cell(function (x) { return price(x.c); })
+      + lab('색 · 세부 종류') + cell(function (x) { return esc(x.c.colorLabel + ' · ' + x.c.slotName); })
+      + lab('고른 이유') + cell(function (x) { return esc(x.c.reason) + (x.c.traitLine ? '<br><small>' + esc(x.c.traitLine) + '</small>' : ''); })
+      + lab('가진 옷과') + cell(function (x) { return x.c.owned && x.c.owned.text ? '<span class="badge tone-' + esc(x.c.owned.tone) + '">' + esc(x.c.owned.label) + '</span><br><small>' + esc(x.c.owned.text) + '</small>' : '<span class="badge">옷장 없이</span>'; })
+      + lab('판정') + cell(function (x) { return '<small>' + esc(x.v.basisLabel) + '</small><br><b>' + esc(x.v.title) + '</b>'; })
+      + lab('') + cell(function (x) { return '<button type="button" class="btn sm dark" data-act="open-product" data-id="' + esc(x.c.id) + '" data-k="c-' + esc(x.c.id) + '">판정 열기</button><button type="button" class="btn sm" data-act="unpick" data-id="' + esc(x.c.id) + '" data-k="cu-' + esc(x.c.id) + '">비교에서 빼기</button>'; })
+      + '</div>';
+    var body = (cols.length < 2 ? '<p class="notice">비교할 후보를 두 개 이상 담아 주세요.</p>' : '')
+      + grid + '<div class="notes"><p class="fine">판정 문장은 각 상품의 판정을 그대로 옮겼어요. 결정은 판정 시트에서 해요.</p><p class="fine">' + esc(M.note.price) + '</p></div>';
+    return { label: '후보 ' + cols.length + '개 나란히 보기', head: layerHead('후보 ' + cols.length + '개 나란히', i), body: body, foot: '' };
+  }
+
+  function addLayer(L, i) {
+    var kinds = M.kindChoices();
+    var colors = M.colorChoices();
+    var slots = L.kind ? M.slotChoices(L.kind) : [];
+    var kindName = (kinds.filter(function (k) { return k.id === L.kind; })[0] || {}).name || '';
+    var b = '<p class="fine" style="margin-bottom:6px">사진 없이 종류·색만 골라요. 넣으면 ' + (L.from === 'product' ? '보던 판정으로 돌아가 바로 다시 비교해요.' : '모든 판정에 바로 반영돼요.') + '</p>';
+    b += '<div class="step"><h3>1. 종류</h3><div class="chips" role="group" aria-label="옷 종류">' + kinds.map(function (k) {
+      return '<button type="button" class="chip" data-flow="kind-option" data-kind="' + esc(k.id) + '" data-k="kind-' + esc(k.id) + '" aria-pressed="' + (L.kind === k.id) + '">' + esc(k.name) + (L.suggest === k.id ? ' <span class="sugg">· 이 상품과 같은 종류</span>' : '') + '</button>';
+    }).join('') + '</div></div>';
+    if (L.kind) {
+      b += '<div class="step"><h3>2. 색 <small>모르면 건너뛰어요</small></h3><div class="chips" role="group" aria-label="색">' + colors.map(function (c) {
+        return '<button type="button" class="chip" data-flow="color-option" data-color="' + esc(c.id) + '" data-k="color-' + esc(c.id) + '" aria-pressed="' + (L.color === c.id) + '"><span class="dot" style="background:' + esc(c.hex) + '" aria-hidden="true"></span>' + esc(c.label) + '</button>';
+      }).join('') + '</div></div>';
+      if (slots.length) {
+        b += '<div class="step"><h3>3. 세부 종류 <small>선택 · 채우면 코디까지 정확해져요</small></h3><div class="chips" role="group" aria-label="세부 종류">' + slots.map(function (s) {
+          return '<button type="button" class="chip" data-flow="slot-option" data-slot="' + esc(s.id) + '" data-k="slot-' + esc(s.id) + '" aria-pressed="' + (L.slot === s.id) + '">' + esc(s.name) + '</button>';
+        }).join('') + '</div></div>';
+      }
+    }
+    b += '<div class="sect"><p class="fine">하나씩 넣기 번거로우면 체험용 예시 옷으로 먼저 비교해 볼 수 있어요. 체험용 옷은 목록·판정에 ‘체험용’으로 표시돼요.</p>'
+      + '<button type="button" class="btn sm tint" style="margin-top:6px" data-flow="trial-closet" data-k="add-trial">체험용 옷 넣기 <span class="badge trial">체험용</span></button></div>';
+    var colorLabel = (colors.filter(function (c) { return c.id === L.color; })[0] || {}).label;
+    var foot = '<button type="button" class="btn dark wide" data-flow="closet-save" data-k="save"' + (L.kind ? '' : ' disabled') + '>'
+      + (L.kind ? esc((colorLabel ? colorLabel + ' ' : '') + kindName) + ' 넣기' : '종류를 먼저 골라요') + (L.from === 'product' && L.kind ? ' · 판정 다시 보기' : '') + '</button>';
+    return { label: '가진 옷 한 벌 넣기 시트', head: layerHead('가진 옷 한 벌 넣기', i), body: b, foot: foot };
+  }
+
+  function closetLayer(L, i) {
+    var s = M.getState();
+    var order = ['내 옷', '기록에서 산 옷', '체험용'];
+    var b = '<p class="fine">사진 없이 종류·색으로 넣어요. 넣은 옷은 모든 판정에 바로 반영돼요.</p>'
+      + '<div class="chips" style="margin-top:10px"><button type="button" class="btn sm dark" data-flow="closet-add" data-k="cl-add">옷 한 벌 넣기</button>'
+      + (s.trialCount ? '<button type="button" class="btn sm" data-act="clear-trial" data-k="cl-clear">체험용 옷 빼기</button>' : '<button type="button" class="btn sm tint" data-flow="trial-closet" data-k="cl-trial">체험용 옷 넣기 <span class="badge trial">체험용</span></button>')
+      + '</div>';
+    if (view.msg) b += '<p class="notice warn" style="margin-top:10px" role="alert">' + esc(view.msg) + '</p>';
+    if (!s.closet.length) b += '<p class="notice" style="margin-top:12px">아직 넣은 옷이 없어요. 옷장 없이도 찾고 판정을 볼 수 있어요.</p>';
+    order.forEach(function (label) {
+      var rows = s.closet.filter(function (g) { return g.sourceLabel === label; });
+      if (!rows.length) return;
+      b += '<div class="sect"><h3>' + esc(label) + ' ' + rows.length + '벌</h3><ul class="glist">' + rows.map(function (g) {
+        return '<li>' + art(g, 'sm') + '<span class="gt">' + esc(g.label) + '<br><small>' + esc(g.colorLabel) + ' · ' + esc(g.slotName || g.kindName) + (g.detailMissing ? ' · ' + esc(g.detailMissing) : '') + '</small></span>'
+          + '<span class="badge' + (g.trial ? ' trial' : '') + '">' + esc(g.sourceLabel) + '</span>'
+          + '<button type="button" class="btn sm" data-act="remove-garment" data-id="' + esc(g.id) + '" data-k="rm-' + esc(g.id) + '" aria-label="' + esc(g.label) + ' 빼기">빼기</button></li>';
+      }).join('') + '</ul></div>';
+    });
+    return { label: '내 옷 시트', head: layerHead('내 옷 ' + s.closetCount + '벌', i), body: b, foot: '' };
+  }
+
+  function recordsLayer(L, i) {
+    var s = M.getState();
+    var b = '<p class="fine">' + esc(M.note.records) + '</p>';
+    if (!s.records.length) b += '<p class="notice" style="margin-top:12px">아직 기록이 없어요. 판정 시트 아래의 사기로 함·보류·안 살래를 누르면 여기 남아요.</p>';
+    b += '<ul style="margin-top:6px">' + s.records.map(function (rec) {
+      var p = rec.product;
+      return '<li class="rec" data-flow="record" data-product-id="' + esc(rec.productId) + '"><div class="rt">' + (p ? art(p, 'sm') : '')
+        + '<div class="row-text" style="flex:1"><span class="brand">' + esc(p ? p.brand + ' · ' + p.kindName : '') + '</span><span class="name">' + esc(p ? p.name : rec.productId) + '</span>'
+        + (p ? '<span class="fine">' + esc(p.priceText) + ' · 수집가</span>' : '')
+        + '</div></div>'
+        + '<div class="rec-strip' + (rec.stage === 'kept' ? ' tone-go' : rec.stage === 'returned' ? ' tone-stop' : '') + '">' + recordStrip(rec, 'r')
+        + '<div class="btns"><button type="button" class="btn sm ghost" data-act="open-product" data-id="' + esc(rec.productId) + '" data-k="rec-' + esc(rec.productId) + '">판정 보기</button>'
+        + (rec.stage === 'candidate' ? '<button type="button" class="btn sm ghost" data-act="remove-record" data-id="' + esc(rec.productId) + '" data-k="rmrec-' + esc(rec.productId) + '">기록 지우기</button>' : '') + '</div></div></li>';
+    }).join('') + '</ul>';
+    return { label: '기록 시트', head: layerHead('기록 ' + s.records.length + '건', i), body: b, foot: '' };
+  }
+
+  // ── 배치: 층 깊이, 가려진 층 잠그기, 높이
+  function chipFade() {
+    var c = $('#chips');
+    c.classList.toggle('more', !isPC() && c.scrollWidth - c.clientWidth - c.scrollLeft > 4);
+  }
+  function setInert(el, on) { if (!el) return; el.inert = !!on; if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden'); }
+  function applyLayout() {
+    var pc = isPC();
+    var stack = view.stack;
+    document.body.classList.toggle('has-result', !!view.result && (view.result.products.length + view.result.offOccasion.length > 0 || pc));
+    var topPane = -1;
+    stack.forEach(function (L, i) { if (PANE[L.t]) topPane = i; });
+    document.body.classList.toggle('pane-open', pc && topPane >= 0);
+    var block = -1;
+    for (var i = stack.length - 1; i >= 0; i--) { if (!pc || MODAL[stack[i].t]) { block = i; break; } }
+    $$('#layers > .layer').forEach(function (el, j) {
+      var L = stack[j];
+      el.style.zIndex = String(20 + j * 2);
+      el.hidden = pc && !!PANE[L.t] && j !== topPane;
+      setInert(el, j < block);
+      el.classList.toggle('behind', j < block);
+      // 가려진 층은 내용까지 숨긴다(휴대폰: 맨 위 아래 모두, PC: 서랍·옷 넣기 아래 판정 칸).
+      el.classList.toggle('covered', pc ? j < block : j < stack.length - 1);
+    });
+    var baseLocked = block >= 0;
+    setInert($('#sheet-results'), baseLocked);
+    setInert($('#canvas'), baseLocked);
+    setInert($('#top'), baseLocked);
+    setInert($('.mock'), baseLocked);
+    document.body.classList.toggle('m-layer', !pc && stack.length > 0);
+    var said = view.result ? view.result.said : '';
+    $('#askview-text').textContent = said || '요청 전';
+    $$('#layers > .layer').forEach(function (el, j) { el.setAttribute('aria-modal', String(j === block)); });
+    chipFade();
+    var topEl = layerEl(stack.length - 1), foot = topEl ? $('.sheet-foot', topEl) : null;
+    document.documentElement.style.setProperty('--toast-b', (!pc && foot && foot.offsetHeight ? foot.offsetHeight + 12 : 16) + 'px');
+    var scrim = $('#scrim');
+    scrim.hidden = block < 0;
+    if (block >= 0) scrim.style.zIndex = String(20 + block * 2 - 1);
+    var under = !pc && stack.length > 0;
+    $('#sheet-results').classList.toggle('covered', under);
+    $('#canvas').classList.toggle('covered', under);
+    applyHeights();
+  }
+  function metrics() {
+    var head = $('#top').getBoundingClientRect().bottom;
+    var avail = window.innerHeight - head;
+    return {
+      head: head, avail: avail,
+      peek: Math.min(150, Math.round(avail * 0.3)), half: Math.round(avail * 0.56), full: Math.round(avail - 4),
+      lhalf: Math.round(avail * 0.62), lfull: Math.round(avail - 16),
+    };
+  }
+  function baseHeight(m, snap) {
+    if (!view.result) return Math.min(118, m.peek);
+    return m[snap];
+  }
+  function applyHeights() {
+    var base = $('#sheet-results');
+    if (isPC()) {
+      base.style.height = '';
+      $$('#layers > .layer').forEach(function (el) { el.style.height = ''; el.style.maxHeight = ''; });
+      return;
+    }
+    var m = metrics();
+    document.documentElement.style.setProperty('--head', m.head + 'px');
+    var bh = baseHeight(m, view.resSnap);
+    if (!base.classList.contains('dragging')) base.style.height = bh + 'px';
+    document.documentElement.style.setProperty('--base-h', bh + 'px');
+    $$('#layers > .layer').forEach(function (el, j) {
+      var L = view.stack[j];
+      if (!L || el.classList.contains('dragging')) return;
+      if (L.t === 'add') { el.style.height = ''; el.style.maxHeight = (m.avail - 24) + 'px'; }
+      else el.style.height = (L.snap === 'half' ? m.lhalf : m.lfull - Math.min(j, 3) * 10) + 'px';
+    });
+  }
+  function setSnap(sheet, snap) {
+    if (sheet.id === 'sheet-results') {
+      view.resSnap = snap;
+      renderResults();
+    } else {
+      var j = Number(sheet.dataset.depth);
+      var L = view.stack[j];
+      if (!L) return;
+      L.snap = snap;
+      safeHistory('replace');
+      fillLayer(sheet, L, j);
+    }
+    applyLayout();
+  }
+  function cycle(sheet, dir) {
+    var isBase = sheet.id === 'sheet-results';
+    if (!isBase && sheet.dataset.type === 'add') { if (dir !== 1) closeTop(); return; }
+    var snaps = isBase ? BASE_SNAPS : LAYER_SNAPS;
+    var cur = isBase ? view.resSnap : view.stack[Number(sheet.dataset.depth)].snap;
+    var k = snaps.indexOf(cur);
+    if (dir === 0) k = (k + 1) % snaps.length;
+    else k = k + dir;
+    if (k < 0) { if (!isBase) closeTop(); return; }
+    k = Math.min(snaps.length - 1, k);
+    setSnap(sheet, snaps[k]);
+    say('시트 높이: ' + SNAP_NAME[snaps[k]]);
+  }
+
+  // ── 끌기(pointer events)
+  var drag = null, suppressClick = false;
+  document.addEventListener('pointerdown', function (e) {
+    if (isPC() || e.button > 0) return;
+    var zone = e.target.closest('.grip, .sheet-head');
+    if (!zone) return;
+    if (e.target.closest('button:not(.handle), a, input, summary')) return;
+    var sheet = zone.closest('.sheet');
+    if (!sheet || sheet.inert || (sheet.id === 'sheet-results' && !view.result)) return;
+    drag = { sheet: sheet, zone: zone, y0: e.clientY, h0: sheet.getBoundingClientRect().height, moved: false, id: e.pointerId, ly: e.clientY, lt: performance.now(), v: 0 };
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var dy = e.clientY - drag.y0;
+    if (!drag.moved && Math.abs(dy) < 6) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      drag.sheet.classList.add('dragging');
+      // 실제로 끌기 시작한 뒤에만 포인터를 붙잡는다(그냥 누르면 손잡이 버튼의 click이 그대로 간다).
+      try { drag.zone.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+    }
+    var m = metrics();
+    var h = Math.max(48, Math.min(m.avail - 4, drag.h0 - dy));
+    drag.sheet.style.height = h + 'px';
+    var now = performance.now();
+    drag.v = (e.clientY - drag.ly) / Math.max(1, now - drag.lt);
+    drag.ly = e.clientY; drag.lt = now;
+    e.preventDefault();
+  }, { passive: false });
+  function endDrag(e) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    var d = drag; drag = null;
+    if (!d.moved) return;
+    suppressClick = true;
+    setTimeout(function () { suppressClick = false; }, 60);
+    d.sheet.classList.remove('dragging');
+    var m = metrics();
+    var h = d.sheet.getBoundingClientRect().height;
+    var projected = h - d.v * 180;
+    var isBase = d.sheet.id === 'sheet-results';
+    var type = d.sheet.dataset.type;
+    if (!isBase && type === 'add') {
+      if (projected < d.h0 * 0.6) closeTop(); else applyHeights();
+      return;
+    }
+    var snaps = isBase ? BASE_SNAPS : LAYER_SNAPS;
+    var hs = snaps.map(function (s) { return isBase ? m[s] : (s === 'half' ? m.lhalf : m.lfull); });
+    if (!isBase && projected < hs[0] * 0.6) { closeTop(); return; }
+    var best = 0;
+    hs.forEach(function (x, k) { if (Math.abs(x - projected) < Math.abs(hs[best] - projected)) best = k; });
+    setSnap(d.sheet, snaps[best]);
+  }
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+
+  // ── 누르기
+  document.addEventListener('click', function (e) {
+    if (e.target === $('#scrim')) { closeTop(); return; }
+    var t = e.target.closest('button');
+    if (!t || t.disabled) return;
+    if (suppressClick && t.classList.contains('handle')) { e.preventDefault(); return; }
+    try { act(t); } catch (err) { console.warn(err); toast(err && err.message ? err.message : '다시 시도해 주세요.'); }
+  });
+  function layerOf(t) { var el = t.closest('.layer'); return el ? view.stack[Number(el.dataset.depth)] : null; }
+  function pidOf(t) { var el = t.closest('.layer'); return t.dataset.productId || t.dataset.id || (el && el.dataset.pid) || null; }
+
+  function act(t) {
+    var f = t.dataset.flow || '', a = t.dataset.act || '';
+    if (f === 'example' || a === 'example') return doAsk(t.dataset.q);
+    if (f === 'condition-remove') { var r = view.result; var said = r.said; doAsk(r.text, { drop: r.dropped.concat([t.dataset.key]) }); view.result.said = said; $('#q').value = said; return; }
+    if (a === 'cheaper') return doAsk('더 싼 걸로', { previous: view.result });
+    if (f === 'result' || a === 'open-product') return openProduct(t.dataset.productId || t.dataset.id, t);
+    if (f.indexOf('decide-') === 0) {
+      var k = f.slice(7); var id = pidOf(t);
+      M.decide(id, k);
+      toast((k === 'buy' ? '사기로 함' : k === 'hold' ? '보류' : '안 살래') + ' · 기록에 남겼어요');
+      return;
+    }
+    if (f === 'closet-add' || a === 'add-side') {
+      var from = t.closest('.layer') ? t.closest('.layer').dataset.type : 'side';
+      var kind = t.dataset.kind || null;
+      return pushLayer({ t: 'add', kind: kind, suggest: kind, color: null, slot: null, from: from }, t);
+    }
+    if (f === 'kind-option' || f === 'color-option' || f === 'slot-option') {
+      var L = layerOf(t);
+      if (!L) return;
+      if (f === 'kind-option') { L.kind = t.dataset.kind; L.slot = null; }
+      if (f === 'color-option') L.color = L.color === t.dataset.color ? null : t.dataset.color;
+      if (f === 'slot-option') L.slot = L.slot === t.dataset.slot ? null : t.dataset.slot;
+      safeHistory('replace');
+      fillLayer(t.closest('.layer'), L, Number(t.closest('.layer').dataset.depth));
+      return;
+    }
+    if (f === 'closet-save') {
+      var A = layerOf(t);
+      if (!A || !A.kind) return;
+      var g = M.addGarment({ kind: A.kind, color: A.color, slot: A.slot });
+      closeTop();
+      toast(g.colorLabel + ' ' + g.kindName + ' 넣음 · ' + (A.from === 'product' ? '판정을 다시 비교했어요' : '판정에 반영돼요'));
+      return;
+    }
+    if (f === 'trial-closet' || a === 'trial') {
+      var top = topLayer();
+      M.loadTrialCloset();
+      if (top && top.t === 'add' && t.closest('.layer.add')) closeTop();
+      toast('체험용 옷을 넣었어요 · ‘체험용’으로 표시돼요');
+      return;
+    }
+    if (a === 'clear-trial') { M.clearTrialCloset(); toast('체험용 옷을 뺐어요'); return; }
+    if (a === 'remove-garment') {
+      try { M.removeGarment(t.dataset.id); view.msg = null; toast('뺐어요'); }
+      catch (err) { view.msg = err.message; renderAll(); }
+      return;
+    }
+    if (f === 'record-step') {
+      var pid = t.dataset.productId;
+      if (t.dataset.step === 'returned') { view.returning = pid; renderAll(); return; }
+      M.advance(pid, t.dataset.step);
+      toast(t.textContent.trim() + ' · 기록했어요');
+      return;
+    }
+    if (a === 'return-reason') { var rid = t.dataset.id; view.returning = null; M.advance(rid, 'returned', { reason: t.dataset.reason }); toast('반품했다고 기록했어요'); return; }
+    if (a === 'return-cancel') { view.returning = null; renderAll(); return; }
+    if (a === 'remove-record') { M.removeRecord(t.dataset.id); toast('기록을 지웠어요'); return; }
+    if (f === 'nav-closet' || a === 'open-closet') { view.msg = null; return pushLayer({ t: 'closet', snap: 'full' }, t); }
+    if (f === 'nav-records' || a === 'open-records') return pushLayer({ t: 'records', snap: 'full' }, t);
+    if (a === 'close') return closeTop();
+    if (a === 'nav-ask') { view.focusAsk = true; return closeAll(); }
+    if (a === 'handle') return cycle(t.closest('.sheet'), 0);
+    if (a === 'size') return cycle($('#sheet-results'), 0);
+    if (a === 'pick' || a === 'unpick') {
+      var pk = t.dataset.id, at = view.picks.indexOf(pk);
+      if (at >= 0) view.picks.splice(at, 1);
+      else { if (view.picks.length >= 3) { toast('비교는 3개까지 담아요'); return; } view.picks.push(pk); }
+      var tl = topLayer();
+      if (tl && tl.t === 'compare' && view.picks.length < 2) { closeTop(); return; }
+      renderAll();
+      return;
+    }
+    if (a === 'clear-picks') { view.picks = []; renderAll(); return; }
+    if (a === 'open-compare') {
+      var L2 = { t: 'compare', snap: 'full' };
+      if (isPC() && view.stack.length === 1 && PANE[view.stack[0].t]) { L2.ret = t.dataset.k; return setStack([L2], 'replace'); }
+      return pushLayer(L2, t);
+    }
+    if (a === 'toggle-off') { view.showOff = !view.showOff; renderResults(); applyLayout(); return; }
+    if (a === 'ownership') { M.setOwnership(pidOf(t), t.dataset.v); return; }
+    if (a === 'gender') { M.setGender(t.dataset.g); return; }
+    if (a === 'reset' || f === 'reset') {
+      M.reset();
+      view = { result: null, seq: view.seq + 1, stack: [], resSnap: 'peek', picks: [], showOff: false, shown: {}, changed: {}, returning: null, msg: null };
+      safeHistory('replace');
+      $('#q').value = '';
+      $('#layers').innerHTML = '';
+      renderAll();
+      $('#q').focus();
+      toast('처음 상태로 돌렸어요');
+      return;
+    }
+  }
+
+  $('#ask-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    doAsk($('#q').value, { previous: view.result });
+  });
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (t.classList && t.classList.contains('handle')) {
+      var sheet = t.closest('.sheet');
+      if (e.key === 'ArrowUp') { e.preventDefault(); cycle(sheet, 1); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); cycle(sheet, -1); return; }
+    }
+    if (e.key === 'Escape' && view.stack.length) { e.preventDefault(); closeTop(); }
+  });
+
+  M.subscribe(function () { refreshResult(); renderAll(); });
+  $('#chips').addEventListener('scroll', chipFade, { passive: true });
+  var resizeT;
+  window.addEventListener('resize', function () { clearTimeout(resizeT); resizeT = setTimeout(renderAll, 60); });
+  if (mqPC.addEventListener) mqPC.addEventListener('change', renderAll);
+  if (window.ResizeObserver) new ResizeObserver(function () { applyHeights(); }).observe($('#top'));
+
+  // ── 시작
+  safeHistory('replace');
+  if (M.boot.q) {
+    view.result = M.ask(M.boot.q);
+    view.resSnap = 'half';
+    $('#q').value = view.result.said || M.boot.q;
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>
