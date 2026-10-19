@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="theme-color" content="#ffffff">
+<title>어울 · 옷장 레일</title>
+<!-- 시안 08 2판 「옷장 레일」. 내 옷장이 늘 레일로 보이고 후보가 거기에 반응한다(겹쳐요·색만 달라요·새 코디). 빈 옷장으로 시작. 검토용 설명은 시안 표시(고지)에만 둔다. -->
+<script src="../shared/eoul-mock.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #151515; --ink2: #333; --sub: #666; --line: #e8e6e2; --soft: #f5f4f1; --bg: #fff;
+    --rail: #f3f1ec; --rod: #d2cbc0; --dash: #9a9387;
+    --dup: #b42318; --dup-bg: #fdeceb; --alt: #8f5300; --alt-bg: #fff1cf; --pair: #0f6b3f; --pair-bg: #e2f3e9; --rec: #284a7e; --rec-bg: #e7eef9; --new: #3d3d3d; --new-bg: #eeece8;
+    --focus: #1f5fbf;
+    --bar: 56px; --rail-full: 94px; --rail-mini: 46px; --rail-empty: 58px;
+    --eo-ratio: 5/6;
+    --font: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--bar) + var(--rail-rest, 0px) + 12px); scroll-padding-bottom: 96px; }
+  body { margin: 0; font: 15px/1.5 var(--font); color: var(--ink); background: var(--bg); padding-top: calc(var(--bar) + var(--rail-rest, 0px)); padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  h1, h2, h3, p, figure, ul, dl { margin: 0; }
+  ul { padding: 0; list-style: none; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ic { display: block; flex: none; }
+  .eo-cap { font-size: 12px !important; }
+  html.lock { overflow: hidden; }
+
+  /* ── 머리글 */
+  .appbar { position: fixed; z-index: 40; top: 0; left: 0; right: 0; height: var(--bar); background: rgba(255,255,255,.97); border-bottom: 1px solid var(--line); }
+  .ab-in { height: 100%; max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 16px; }
+  .logo { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding-right: 4px; font-size: 21px; font-weight: 800; letter-spacing: -.04em; text-decoration: none; }
+  .ib { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--ink); text-decoration: none; position: relative; }
+  .search { position: relative; flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; border-radius: 10px; background: var(--soft); }
+  .search:focus-within { background: #fff; box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .search input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; padding: 0 0 0 12px; font-size: 16px; outline: none; }
+  .search input::placeholder { color: #767676; }
+  .search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  .s-go { flex: none; width: 44px; height: 40px; border: 0; background: none; display: grid; place-items: center; }
+  .ab-title { display: none; flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity .2s; }
+  .ab-title.on { opacity: 1; }
+  .ab-nav { display: flex; align-items: center; gap: 2px; flex: none; }
+  .ab-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 15px; font-weight: 600; }
+  .ab-link[aria-current="page"] { background: var(--soft); }
+  .cnt { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
+  .cnt.zero { background: var(--soft); color: var(--sub); }
+  .ib .cnt { position: absolute; top: 3px; right: 1px; min-width: 18px; height: 18px; padding: 0 4px; }
+  .mock { flex: none; min-height: 36px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--sub); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .ab-back, .ab-search, .ab-cmp, .ab-title { display: none; }
+  .pc-nav { display: none; }
+  /* 휴대폰 상세: 뒤로 · 제목 · 검색 · 비교 */
+  body[data-screen="pdp"] .ab-back, body[data-screen="pdp"] .ab-search, body[data-screen="pdp"] .ab-cmp, body[data-screen="pdp"] .ab-title { display: grid; }
+  body[data-screen="pdp"] .ab-title { display: block; }
+  body[data-screen="pdp"] .logo, body[data-screen="pdp"] .search { display: none; }
+
+  .sugs { position: fixed; z-index: 60; left: 8px; right: 8px; top: calc(var(--bar) + 4px); max-height: 70vh; overflow: auto; padding: 6px; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.16); }
+  .sg-h { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 12px; color: var(--sub); }
+  .sg { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 0 10px; border: 0; border-radius: 10px; background: none; text-align: left; font-size: 15px; }
+  .sg:hover, .sg:focus-visible { background: var(--soft); }
+  .sg-k { flex: none; min-width: 34px; font-size: 12px; color: var(--sub); }
+  .link { border: 0; background: none; padding: 0 4px; min-height: 32px; font-size: 13px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ── 아래 탭바(휴대폰) */
+  .tabbar { position: fixed; z-index: 38; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); height: calc(60px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255,255,255,.98); border-top: 1px solid var(--line); }
+  .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: none; text-decoration: none; font-size: 12px; font-weight: 600; color: var(--sub); position: relative; }
+  .tab[aria-current="page"] { color: var(--ink); }
+  .tab .cnt { position: absolute; top: 5px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 4px; }
+  body[data-screen="pdp"] .tabbar { display: none; }
+
+  /* ── 옷장 레일(휴대폰: 위 고정, 스크롤하면 접힘) */
+  .rail { position: fixed; z-index: 30; top: var(--bar); left: 0; right: 0; height: var(--rail-h, var(--rail-full)); background: var(--rail); border-bottom: 1px solid var(--line); overflow: hidden; transition: height .22s ease, box-shadow .2s; }
+  .rail::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--rod); opacity: .7; }
+  .rail[data-state="full"] { --rail-h: var(--rail-full); }
+  .rail[data-state="mini"] { --rail-h: var(--rail-mini); }
+  .rail[data-state="empty"] { --rail-h: var(--rail-empty); }
+  .rail[data-state="empty"]::before { display: none; }
+  .rail.over { box-shadow: 0 10px 24px -12px rgba(0,0,0,.35); }
+  body[data-screen="closet"] .rail { display: none; }
+  .rail-head, .rg-h, .rail-pc { display: none; }
+  .rail-track { position: relative; display: flex; align-items: flex-start; gap: 8px; height: 100%; padding: 12px 16px 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .rail-track::-webkit-scrollbar { display: none; }
+  .rg { display: flex; gap: 8px; flex: none; }
+  .rg + .rg { padding-left: 8px; border-left: 1px solid rgba(0,0,0,.08); }
+  .rl { flex: none; width: 66px; height: 62px; display: flex; flex-direction: column; justify-content: center; text-decoration: none; font-size: 12px; line-height: 15px; color: var(--ink2); }
+  .rl b { font-size: 13px; color: var(--ink); }
+  .rl .rl-n { font-weight: 700; color: var(--ink); }
+  .rl .rl-sub { margin-top: 3px; color: var(--sub); }
+  .tile { flex: none; width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0; border: 0; background: none; text-align: center; }
+  .tph { position: relative; display: block; width: 62px; height: 62px; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08); --eo-ratio: 1; transition: width .22s, height .22s, border-radius .22s, box-shadow .2s; }
+  .tile.trial .tph { outline: 1.5px dashed var(--dash); outline-offset: 1px; }
+  .tile.r-dup .tph { box-shadow: 0 0 0 2.5px var(--dup); }
+  .tile.r-alt .tph { box-shadow: 0 0 0 2.5px #c98a12; }
+  .tile.r-pair .tph { box-shadow: 0 0 0 2.5px var(--pair); }
+  .tt { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 66px; }
+  .tcap { max-width: 66px; font-size: 12px; line-height: 16px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tsub { display: none; }
+  .trel { font-size: 12px; line-height: 16px; font-weight: 700; padding: 0 4px; border-radius: 4px; white-space: nowrap; }
+  .tile.has-rel .tcap { display: none; }
+  .pill, .trel { background: var(--new-bg); color: var(--new); }
+  .dup { background: var(--dup-bg); color: var(--dup); }
+  .alt { background: var(--alt-bg); color: var(--alt); }
+  .pair { background: var(--pair-bg); color: var(--pair); }
+  .rec { background: var(--rec-bg); color: var(--rec); }
+  .sim { position: absolute; right: 3px; top: 3px; width: 18px; height: 18px; border-radius: 9px; background: rgba(255,255,255,.94); color: var(--ink2); font-size: 12px; line-height: 18px; font-weight: 700; text-align: center; }
+  .bdg { position: absolute; left: 3px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: var(--rec); color: #fff; font-size: 12px; line-height: 16px; font-weight: 700; }
+  .tile.pending .tph { outline: 1.5px dashed var(--rec); outline-offset: 1px; opacity: .85; }
+  .tile-add .tph { display: grid; place-items: center; background: transparent; box-shadow: none; outline: 1.5px dashed var(--dash); outline-offset: -1.5px; color: var(--ink); }
+  .tile.flash .tph { animation: hang .75s ease-out; transform-origin: 50% 0; }
+  @keyframes hang { 0% { transform: translateY(-16px) rotate(-7deg); opacity: 0; } 55% { transform: translateY(2px) rotate(2deg); opacity: 1; } 100% { transform: none; } }
+  .rail-expand { display: none; }
+  .rail[data-state="mini"] .rail-track { align-items: center; gap: 6px; padding: 9px 56px 7px 16px; }
+  .rail[data-state="mini"] .rg { gap: 6px; }
+  .rail[data-state="mini"] .rg + .rg { padding-left: 6px; }
+  .rail[data-state="mini"] .tile { width: 30px; }
+  .rail[data-state="mini"] .tph { width: 30px; height: 30px; border-radius: 50%; }
+  .rail[data-state="mini"] .tt, .rail[data-state="mini"] .sim, .rail[data-state="mini"] .bdg, .rail[data-state="mini"] .rl-sub, .rail[data-state="mini"] .rail-end { display: none; }
+  .rail[data-state="mini"] .eo-tile { color: transparent !important; }
+  .rail[data-state="mini"] .rl { width: auto; height: 30px; flex-direction: row; align-items: center; gap: 4px; padding-right: 4px; }
+  .rail[data-state="mini"] .rail-expand { display: grid; place-items: center; position: absolute; inset: 0; z-index: 2; width: 100%; border: 0; background: linear-gradient(90deg, transparent calc(100% - 64px), var(--rail) calc(100% - 48px)); justify-items: end; padding-right: 12px; color: var(--ink); }
+  .rail-empty { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 12px 0 16px; }
+  .rail-empty .t { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--ink2); }
+  .rail-empty .t b { display: block; color: var(--ink); font-size: 13px; }
+  .btn-s { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ink); background: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; text-decoration: none; }
+  .btn-s.ghost { border-color: var(--line); }
+  .rail-end { display: flex; gap: 8px; flex: none; }
+
+  /* ── 공통 페이지 */
+  .shell { display: block; }
+  main { display: block; max-width: 1440px; margin: 0 auto; padding: 16px 16px 24px; min-width: 0; outline: none; }
+  .page-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .page-h h1 { font-size: 20px; letter-spacing: -.02em; }
+  .sub { font-size: 13px; color: var(--sub); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 14px; white-space: nowrap; text-decoration: none; }
+  .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--ink); }
+  .btn.dark { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .btn.line { border-color: var(--ink); }
+  .btn.sm { min-height: 40px; padding: 0 12px; font-size: 14px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .grow { flex: 1; }
+  .sec { margin-top: 32px; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .sec-h h2 { font-size: 17px; letter-spacing: -.01em; }
+  .fine { font-size: 12px; color: var(--sub); line-height: 1.5; }
+  .pill { display: inline-flex; align-items: center; font-size: 12px; line-height: 20px; padding: 0 6px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+
+  /* ── 상품 카드(결과) */
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 10px; }
+  .card { position: relative; min-width: 0; }
+  .card-open { display: block; text-decoration: none; color: inherit; border-radius: 6px; }
+  .cph { display: block; border-radius: 6px; overflow: hidden; background: var(--soft); }
+  .cb { display: block; margin-top: 10px; font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 14px; line-height: 1.4; color: var(--ink2); word-break: keep-all; overflow-wrap: anywhere; }
+  .cp { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; margin-top: 4px; }
+  .cp b { font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+  .cp small { font-size: 12px; color: var(--sub); }
+  .cw { display: block; margin-top: 4px; font-size: 12px; color: var(--sub); line-height: 1.4; }
+  .ctags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .cmp-ic { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; padding: 0; }
+  .cmp-ic > span { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+  .cmp-ic[aria-pressed="true"] > span { background: var(--ink); color: #fff; }
+
+  /* ── 결과 */
+  .res-h h1 { font-size: 17px; line-height: 1.4; letter-spacing: -.01em; }
+  .res-meta { margin-top: 2px; font-size: 13px; color: var(--sub); }
+  .scope { display: flex; gap: 6px; overflow-x: auto; margin: 12px -16px 0; padding: 0 16px 2px; scrollbar-width: none; }
+  .scope::-webkit-scrollbar { display: none; }
+  .cond { flex: none; padding: 0 8px 0 14px; }
+  .cond.fixed { padding: 0 14px; background: var(--soft); border-color: var(--soft); font-weight: 600; }
+  .cond.dropped { border-style: dashed; color: var(--sub); padding: 0 14px; }
+  .rules { flex: none; align-self: center; font-size: 12px; color: var(--sub); padding: 0 4px; white-space: nowrap; }
+  .closet-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--rail); font-size: 13px; }
+  .closet-sum b { font-weight: 700; }
+  .notice { display: flex; gap: 8px; margin-top: 10px; font-size: 14px; color: var(--ink2); line-height: 1.45; }
+  .notice .ic { margin-top: 2px; color: var(--sub); }
+  .results { margin-top: 18px; }
+  .more-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .empty { margin-top: 20px; padding: 24px 16px; border-radius: 14px; background: var(--soft); }
+  .empty h2 { font-size: 17px; margin-bottom: 6px; }
+  .empty p { font-size: 14px; color: var(--ink2); }
+  .empty .chips { margin-top: 14px; }
+  .empty .act-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+  /* ── 코디 사진 줄 */
+  .look-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+  .lp { min-width: 0; text-decoration: none; color: inherit; display: block; }
+  .lp .ph { display: block; border-radius: 6px; overflow: hidden; background: var(--soft); }
+  .lp.me .ph { box-shadow: 0 0 0 2px var(--ink); }
+  .lp.own .ph { box-shadow: 0 0 0 2px var(--pair); }
+  .lp .r { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; }
+  .lp .s { display: block; font-size: 12px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── 상품 상세 */
+  main.pdp-main { padding-top: 0; }
+  .pdp-media { margin: 0 -16px; }
+  .hero { position: relative; display: block; width: 100%; padding: 0; border: 0; background: var(--soft); cursor: zoom-in; }
+  .zoom-badge { position: absolute; right: 12px; bottom: 12px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .buy { padding-top: 16px; }
+  .p-brand { font-size: 13px; font-weight: 700; }
+  .p-name { margin: 4px 0 10px; font-size: 18px; font-weight: 500; line-height: 1.4; letter-spacing: -.01em; word-break: keep-all; overflow-wrap: anywhere; }
+  .p-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+  .p-price b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+  .p-price span { font-size: 12px; color: var(--sub); }
+  .p-why { margin-top: 10px; font-size: 14px; color: var(--ink2); }
+  .p-meta { margin-top: 4px; font-size: 13px; color: var(--sub); }
+  .p-links { display: flex; gap: 8px; margin-top: 16px; }
+  .p-size { margin-top: 8px; font-size: 12px; color: var(--sub); }
+  .decide { position: fixed; z-index: 35; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 56px repeat(3, minmax(0, 1fr)); gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.98); border-top: 1px solid var(--line); }
+  .decide button { min-height: 48px; padding: 0 4px; border-radius: 10px; border: 1px solid #cfccc6; background: #fff; font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+  .decide button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .decide .d-cmp { flex-direction: column; gap: 0; font-size: 12px; font-weight: 600; border-color: var(--line); }
+  .decide .d-cmp[aria-pressed="true"] { background: var(--soft); color: var(--ink); border-color: var(--ink); }
+  .rec-line { margin-top: 12px; font-size: 13px; color: var(--ink2); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rec-line a { min-height: 32px; display: inline-flex; align-items: center; }
+
+  .sbs { margin-top: 28px; padding: 16px; border-radius: 16px; background: var(--rail); }
+  .sbs .sec-h { margin-bottom: 6px; }
+  .sbs .sec-h h2 { font-size: 15px; }
+  .verdict { font-size: 19px; font-weight: 800; line-height: 1.35; letter-spacing: -.02em; margin-bottom: 12px; word-break: keep-all; }
+  .changed { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 4px 10px; border-radius: 999px; background: #fff; font-size: 12px; color: var(--ink2); }
+  .changed s { color: var(--sub); }
+  .sbs-row { display: flex; align-items: flex-start; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 6px; scrollbar-width: none; }
+  .sbs-row::-webkit-scrollbar { display: none; }
+  .cand, .own { flex: none; }
+  .cand { width: 124px; }
+  .own { width: 100px; }
+  .cand .ph, .own .ph { display: block; border-radius: 8px; overflow: hidden; background: #fff; }
+  .cand .ph { box-shadow: 0 0 0 2px var(--ink); }
+  .own .ph { box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .own.trial .ph { outline: 1.5px dashed var(--dash); outline-offset: 2px; }
+  .own.r-dup .ph { box-shadow: 0 0 0 2.5px var(--dup); }
+  .own.r-alt .ph { box-shadow: 0 0 0 2.5px #c98a12; }
+  .own.r-pair .ph { box-shadow: 0 0 0 2.5px var(--pair); }
+  .cand figcaption, .own figcaption { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 8px; font-size: 12px; line-height: 1.35; }
+  .cand figcaption b { font-size: 13px; }
+  .own .on { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .own .os { color: var(--sub); }
+  .sbs-div { flex: none; align-self: stretch; width: 1px; margin: 0 2px; background: rgba(0,0,0,.12); position: relative; }
+  .sbs-lab { flex: none; writing-mode: vertical-rl; font-size: 12px; color: var(--sub); align-self: center; letter-spacing: .1em; }
+  .slot-empty { flex: none; width: 100px; aspect-ratio: 5/6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1.5px dashed var(--dash); border-radius: 8px; background: rgba(255,255,255,.6); font-size: 13px; font-weight: 700; line-height: 1.3; text-align: center; padding: 6px; }
+  .noover { flex: none; width: 140px; align-self: center; font-size: 13px; color: var(--ink2); line-height: 1.45; }
+  .v-lines { margin-top: 10px; }
+  .v-lines p { font-size: 14px; color: var(--ink2); margin-top: 6px; line-height: 1.5; }
+  .caution { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--dup-bg); color: var(--dup); font-size: 13px; }
+  .askq { margin-top: 12px; }
+  .askq p { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .companion { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px; border-radius: 10px; background: #fff; text-decoration: none; }
+  .companion .ph { flex: none; width: 52px; border-radius: 6px; overflow: hidden; }
+  .companion span { font-size: 13px; line-height: 1.4; }
+  .looks { margin-top: 14px; display: grid; gap: 14px; }
+  .look-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
+  .sbs-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+  .nu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .nu-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+  .nu-col h3 { font-size: 15px; }
+  .nu-top { display: flex; align-items: center; gap: 10px; }
+  .nu-ph { flex: none; width: 48px; border-radius: 6px; overflow: hidden; }
+  .nu-none { flex: none; width: 48px; aspect-ratio: 5/6; display: grid; place-items: center; border-radius: 6px; border: 1.5px dashed var(--line); color: var(--sub); }
+  .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; font-size: 13px; line-height: 1.4; }
+  .kv dt { color: var(--sub); white-space: nowrap; }
+  .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .kv dd b { font-size: 15px; }
+  .ulinks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ulinks a { display: inline-flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .ureg { font-size: 12px; color: var(--sub); font-weight: 600; }
+
+  .hscroll { display: grid; grid-auto-flow: column; grid-auto-columns: 42%; gap: 12px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scroll-snap-type: x proximity; scrollbar-width: none; }
+  .hscroll::-webkit-scrollbar { display: none; }
+  .hscroll > * { scroll-snap-align: start; }
+  .pdp-more .fine { margin-top: 8px; }
+
+  /* ── 사진 크게 보기 */
+  .viewer { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; background: #fff; }
+  .v-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 56px; padding: 0 6px 0 16px; border-bottom: 1px solid var(--line); }
+  .v-top span { min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #f7f7f5; }
+  .v-img { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+  .v-img .eo-ph, .v-img .eo-tile { aspect-ratio: auto !important; height: 100% !important; background: transparent !important; }
+  .v-img img { transition: transform .25s ease; transform-origin: var(--ox, 50%) var(--oy, 50%); }
+  .viewer.zoomed .v-img { cursor: zoom-out; }
+  .viewer.zoomed .v-img img { transform: scale(2.2); }
+  .v-hint { flex: none; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); text-align: center; font-size: 13px; color: var(--sub); }
+
+  /* ── 겹친 화면(옷 넣기·고치기) */
+  .scrim { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.42); }
+  .sheet { position: fixed; z-index: 81; left: 0; right: 0; bottom: 0; max-height: 88vh; overflow: auto; padding: 8px 16px 0; background: #fff; border-radius: 18px 18px 0 0; box-shadow: 0 -10px 34px rgba(0,0,0,.2); }
+  .grab { width: 40px; height: 4px; margin: 4px auto 12px; border-radius: 2px; background: #d5d2cc; }
+  .sheet h2 { font-size: 19px; letter-spacing: -.02em; }
+  .sh-sub { margin-top: 6px; font-size: 14px; color: var(--ink2); }
+  .sh-step { margin: 18px 0 8px; font-size: 13px; font-weight: 700; color: var(--sub); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 4px; }
+  .sw { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 66px; padding: 7px 2px 5px; border: 1.5px solid transparent; border-radius: 12px; background: none; font-size: 12px; line-height: 1.25; }
+  .sw i { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.16); }
+  .sw i.unk { display: grid; place-items: center; background: repeating-linear-gradient(45deg, #eee 0 4px, #fafafa 4px 8px); font-style: normal; font-size: 13px; font-weight: 700; color: var(--sub); }
+  .sw[aria-pressed="true"] { border-color: var(--ink); background: var(--soft); }
+  .sw em { position: absolute; top: 2px; right: 2px; font-style: normal; font-size: 12px; line-height: 16px; padding: 0 4px; border-radius: 4px; background: var(--ink); color: #fff; }
+  .sh-prev { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 10px; border-radius: 12px; background: var(--rail); }
+  .sh-prev .ph { flex: none; width: 56px; border-radius: 8px; overflow: hidden; --eo-ratio: 1; }
+  .sh-prev b { display: block; font-size: 14px; }
+  .sh-prev span { font-size: 12px; color: var(--sub); }
+  .sheet-foot { position: sticky; bottom: 0; display: flex; gap: 8px; margin: 16px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); }
+  .warn { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--alt-bg); color: var(--alt); font-size: 13px; }
+
+  /* ── 비교 */
+  .cmp-scroll { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+  .cmp-in { min-width: calc(var(--n) * 150px + (var(--n) - 1) * 10px); }
+  .cmp-cols, .crow .vals { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; }
+  .cmp-item { position: relative; min-width: 0; }
+  .cmp-item .ci-link { display: block; text-decoration: none; color: inherit; }
+  .cmp-item .ph { display: block; border-radius: 8px; overflow: hidden; background: var(--soft); }
+  .ci-x { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; padding: 0; }
+  .ci-x > span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+  .cmp-dec { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+  .cmp-dec button { min-height: 44px; padding: 0 2px; border-radius: 8px; border: 1px solid #cfccc6; background: #fff; font-size: 13px; font-weight: 700; }
+  .cmp-dec button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .crow { padding: 12px 0; border-top: 1px solid var(--line); }
+  .crow h3 { margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--sub); }
+  .crow .vals { font-size: 14px; line-height: 1.45; }
+  .crow .vals > div { min-width: 0; overflow-wrap: anywhere; }
+  .crow.same .vals { color: var(--sub); }
+  .cmp-rows { margin-top: 20px; }
+
+  /* ── 기록 */
+  .recs { display: grid; gap: 0; }
+  .recrow { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .rec-ph { display: block; border-radius: 6px; overflow: hidden; background: var(--soft); }
+  .rec-n { display: block; margin-top: 2px; font-size: 14px; line-height: 1.4; color: var(--ink2); text-decoration: none; }
+  .rec-stage { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; color: var(--sub); }
+  .rec-note { margin-top: 6px; font-size: 13px; color: var(--ink2); }
+  .rec-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .empty-page { padding: 32px 16px; text-align: center; border-radius: 14px; background: var(--soft); font-size: 14px; color: var(--ink2); }
+  .empty-page .btn { margin-top: 14px; }
+
+  /* ── 옷장 화면 */
+  .closet-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; }
+  .ct { display: block; min-width: 0; padding: 0; border: 0; background: none; text-align: left; }
+  .ct .ph { display: block; border-radius: 8px; overflow: hidden; background: var(--soft); }
+  .ct.trial .ph { outline: 1.5px dashed var(--dash); outline-offset: 2px; }
+  .ct .n { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ct .s { display: block; font-size: 12px; color: var(--sub); line-height: 1.35; }
+  .cgroup + .cgroup { margin-top: 24px; }
+  .cgroup h2 { font-size: 15px; margin-bottom: 10px; }
+  .danger { color: var(--dup); border-color: #efc5c1; }
+
+  /* ── 홈 */
+  .home-h { font-size: 22px; line-height: 1.35; letter-spacing: -.03em; }
+  .home-sub { margin-top: 4px; font-size: 14px; color: var(--sub); }
+  .home .chips { margin-top: 14px; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--soft); margin-top: 16px; }
+  .seg button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: none; font-size: 14px; font-weight: 600; color: var(--sub); }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+  /* ── 알림 */
+  .toast { position: fixed; z-index: 70; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); width: min(460px, calc(100% - 24px)); display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px; border-radius: 12px; background: #1c1c1c; color: #fff; font-size: 14px; line-height: 1.4; box-shadow: 0 10px 30px rgba(0,0,0,.25); transform: translate(-50%, 16px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, transform .2s, visibility .2s; }
+  .toast.on { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+  .toast span { flex: 1; min-width: 0; }
+  .toast button { pointer-events: auto; flex: none; min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: rgba(255,255,255,.16); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  body[data-screen="pdp"] .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+  @media (min-width: 600px) and (max-width: 1023px) {
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .hscroll { grid-auto-columns: 28%; }
+    .pdp-media { margin: 0 -16px; }
+  }
+
+  /* ── PC: 위 내비 + 왼쪽 세로 옷장 + 넓은 그리드 */
+  @media (min-width: 1024px) {
+    body { padding-top: var(--bar); padding-bottom: 32px; --rail-rest: 0px; }
+    :root { --bar: 64px; }
+    .ab-in { padding: 0 24px; gap: 12px; }
+    .logo { font-size: 23px; width: 248px; }
+    .search { max-width: 560px; height: 44px; }
+    .pc-nav { display: flex; margin-left: auto; }
+    .sugs { position: absolute; left: 0; right: 0; top: calc(100% + 6px); }
+    .tabbar { display: none; }
+    body[data-screen="pdp"] .ab-back, body[data-screen="pdp"] .ab-search, body[data-screen="pdp"] .ab-cmp, body[data-screen="pdp"] .ab-title { display: none; }
+    body[data-screen="pdp"] .logo, body[data-screen="pdp"] .search { display: flex; }
+    .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 32px; max-width: 1440px; margin: 0 auto; padding: 0 24px; align-items: start; }
+    main { padding: 24px 0 40px; max-width: none; }
+    main.pdp-main { padding-top: 24px; }
+    body[data-screen="closet"] .rail { display: block; }
+
+    .rail { position: sticky; top: calc(var(--bar) + 20px); margin-top: 20px; height: auto; max-height: calc(100vh - var(--bar) - 40px); overflow: auto; border: 0; border-radius: 16px; background: var(--rail); scrollbar-width: thin; }
+    .rail::before { display: none; }
+    .rail-head { display: block; padding: 16px 16px 8px; }
+    .rail-head h2 { display: flex; align-items: baseline; justify-content: space-between; font-size: 16px; }
+    .rail-head h2 a { font-size: 13px; font-weight: 600; color: var(--sub); text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+    .rail-head p { margin-top: 2px; font-size: 12px; color: var(--sub); line-height: 1.45; }
+    .rail-head .ctx { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: #fff; font-size: 13px; color: var(--ink2); }
+    .rail-head .ctx b { color: var(--ink); }
+    .rl { display: none; }
+    .rail-track { flex-direction: column; align-items: stretch; gap: 2px; height: auto; padding: 0 8px 8px; overflow: visible; }
+    .rg { flex-direction: column; gap: 2px; }
+    .rg + .rg { padding-left: 0; border-left: 0; margin-top: 8px; }
+    .rg-h { display: block; padding: 4px 8px; font-size: 12px; font-weight: 700; color: var(--sub); }
+    .tile { width: auto; flex-direction: row; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; text-align: left; }
+    .tile:hover { background: rgba(255,255,255,.75); }
+    .tph { width: 44px; height: 53px; border-radius: 6px; --eo-ratio: 5/6; }
+    .tt { align-items: flex-start; max-width: none; flex: 1; }
+    .tcap { max-width: 150px; font-size: 13px; font-weight: 600; color: var(--ink); }
+    .tile.has-rel .tcap { display: block; }
+    .tsub { display: block; font-size: 12px; line-height: 1.35; color: var(--sub); }
+    .trel { margin-top: 2px; }
+    .rail-end { flex-direction: column; margin-top: 8px; }
+    .tile-add { display: none; }
+    .rail-pc { display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 12px; }
+    .rail-pc .btn-s { justify-content: center; min-height: 40px; }
+    .rail[data-state] .rail-expand { display: none; }
+    .rail-empty { flex-direction: column; align-items: stretch; height: auto; padding: 16px; gap: 10px; }
+    .rail-empty .t { font-size: 14px; }
+    .rail-empty .t b { font-size: 16px; margin-bottom: 4px; }
+    .rail-empty .btn-s { justify-content: center; }
+
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 16px; }
+    .scope { margin: 12px 0 0; padding: 0; flex-wrap: wrap; overflow: visible; }
+    .res-h h1 { font-size: 20px; }
+
+    .pdp-top { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+    .pdp-media { margin: 0; position: sticky; top: calc(var(--bar) + 24px); }
+    .hero { border-radius: 8px; overflow: hidden; }
+    .buy { padding-top: 4px; }
+    .p-name { font-size: 22px; }
+    .p-price b { font-size: 28px; }
+    .decide { position: static; padding: 0; margin-top: 12px; border: 0; background: none; grid-template-columns: repeat(3, minmax(0, 1fr)) 64px; }
+    .decide .d-cmp { order: 4; }
+    .sbs-row { margin: 0; padding: 4px 2px 6px; }
+    .hscroll { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-columns: auto; margin: 0; padding: 0; overflow: visible; gap: 32px 16px; }
+    .cgrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .cmp-scroll { margin: 0; padding: 0; }
+    .cmp-in { max-width: calc(var(--n) * 260px); }
+    .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: 520px; max-height: 86vh; border-radius: 18px; transform: translate(-50%, -50%); }
+    .grab { display: none; }
+    .sheet h2 { margin-top: 8px; }
+    .toast { bottom: 24px; }
+    body[data-screen="pdp"] .toast { bottom: 24px; }
+    .viewer .v-stage { margin: 0 auto; width: 100%; }
+    .look-row { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+  }
+  @media (min-width: 1180px) {
+    .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body data-screen="home">
+<header class="appbar">
+  <div class="ab-in">
+    <button class="ib ab-back" type="button" data-act="back" aria-label="뒤로"></button>
+    <a class="logo" href="#/" aria-label="어울 홈">어울</a>
+    <form class="search" id="searchForm" role="search" autocomplete="off">
+      <label class="sr" for="q">찾을 옷</label>
+      <input id="q" name="q" type="search" data-flow="ask-input" placeholder="예: 출근용 셔츠 10만원 이하" enterkeyhint="search" aria-controls="sugs" aria-expanded="false">
+      <button class="s-go" type="submit" data-flow="ask-submit" aria-label="찾기"></button>
+      <div class="sugs" id="sugs" hidden></div>
+    </form>
+    <span class="ab-title" id="abTitle" aria-hidden="true"></span>
+    <div class="ab-nav">
+      <button class="ib ab-search" type="button" data-flow="nav-ask" aria-label="검색"></button>
+      <a class="ib ab-cmp" href="#/compare" data-flow="compare-open" aria-label="비교함"></a>
+      <nav class="pc-nav" aria-label="주요 화면">
+        <a class="ab-link" href="#/compare" data-flow="compare-open" data-nav="compare">비교 <span class="cnt" data-cnt="cmp">0</span></a>
+        <a class="ab-link" href="#/closet" data-flow="nav-closet" data-nav="closet">옷장</a>
+        <a class="ab-link" href="#/records" data-flow="nav-records" data-nav="records">기록 <span class="cnt" data-cnt="rec">0</span></a>
+      </nav>
+    </div>
+    <button class="mock" type="button" data-flow="mock-label" aria-haspopup="dialog">시안 08</button>
+  </div>
+</header>
+<div class="shell">
+  <aside class="rail" id="rail" aria-label="내 옷장 레일" data-state="empty"></aside>
+  <main id="app" tabindex="-1"></main>
+</div>
+<nav class="tabbar" id="tabbar" aria-label="화면">
+  <button class="tab" type="button" data-flow="nav-ask" data-nav="search"><span data-icon="search"></span>찾기</button>
+  <a class="tab" href="#/compare" data-flow="compare-open" data-nav="compare"><span data-icon="compare"></span>비교<span class="cnt" data-cnt="cmp">0</span></a>
+  <a class="tab" href="#/closet" data-flow="nav-closet" data-nav="closet"><span data-icon="hanger"></span>옷장</a>
+  <a class="tab" href="#/records" data-flow="nav-records" data-nav="records"><span data-icon="list"></span>기록<span class="cnt" data-cnt="rec">0</span></a>
+</nav>
+<div id="overlay"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button type="button" id="toastAct" hidden></button></div>
+<script>
+(function () {
+  'use strict';
+  const M = window.EoulMock;
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const mqPC = window.matchMedia('(min-width: 1024px)');
+  const isPC = () => mqPC.matches;
+  const josa = (w, a, b) => { const c = String(w || '').trim().slice(-1).charCodeAt(0); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; };
+
+  const ICON = {
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    compare: '<rect x="3.5" y="4.5" width="7" height="15" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.5"/>',
+    hanger: '<path d="M10 5.6a2 2 0 1 1 2 2v1.2"/><path d="M12 8.8 3.7 15.3a1.2 1.2 0 0 0 .8 2.2h15a1.2 1.2 0 0 0 .8-2.2L12 8.8"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    zoom: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>',
+    check: '<path d="M5 12.5 9.5 17 19 7"/>',
+    out: '<path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
+    down: '<path d="M6 9l6 6 6-6"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  };
+  const ic = (name, size = 22) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+
+  const GROUPS = [
+    { id: 'top', name: '상의', kinds: ['shirt', 'tee', 'knit', 'vest', 'cardigan', 'longtee', 'sweat', 'polo'] },
+    { id: 'bottom', name: '하의', kinds: ['pants', 'jeans', 'skirt', 'dress'] },
+    { id: 'outer', name: '아우터', kinds: ['jacket', 'blazer', 'coat', 'down'] },
+    { id: 'shoes', name: '신발', kinds: ['sneaker', 'loafer', 'boot'] },
+    { id: 'etc', name: '소품', kinds: ['bag', 'cap', 'beanie', 'belt'] },
+  ];
+  const groupOf = (kind) => (GROUPS.find((g) => g.kinds.includes(kind)) || GROUPS[4]).id;
+  // 관계의 판단과 문장은 코어(judge)가 정한다. 시안은 색 구분과 레일용 짧은 이름만 정한다.
+  const REL = {
+    'same-product': { cls: 'dup', short: '같은 상품' },
+    'same-color': { cls: 'dup', short: '겹쳐요' },
+    'other-color': { cls: 'alt', short: '색만 달라요' },
+    'unknown-color': { cls: 'alt', short: '색 확인' },
+  };
+  const TONE = { stop: 'dup', info: 'alt', new: 'new' };
+  const KEY_LABEL = { occasion: '상황', season: '계절', style: '스타일', color: '색', tone: '톤', exclude: '제외 조건', price: '예산', brand: '브랜드', comfort: '편한 표기' };
+  const OVERLAY = ['view', 'add', 'edit'];
+
+  let screen = 'home', curId = null, lastBase = null, pushedOverlay = false, visits = 0;
+  let hoverId = null, resultIds = [], lastSearch = null, offOpen = false;
+  let sheet = null, changed = null, flashId = null, railPeek = false, railOpen = false, peekTimer = null, openScrollY = 0;
+  let returning = null, resetArmed = false, opener = null;
+  const scrollMemo = new Map();
+
+  const st = () => M.getState();
+  const judge = (id) => { try { return id ? M.judge(id) : null; } catch { return null; } };
+  const photo = (t, o) => M.photoHtml(t, { caption: false, ...(o || {}) });
+  const gName = (g) => (g.color ? `${g.colorLabel} ${g.kindName}` : `${g.kindName} · 색 미확인`);
+  const gSource = (g) => `${g.sourceLabel}${g.photo?.similar ? ' · 비슷한 상품 사진' : !g.photo ? ' · 색 카드' : ''}`;
+
+  // ── 주소(#/...)와 겹친 화면
+  const baseOf = (r) => { const p = { ...r.params }; OVERLAY.forEach((k) => delete p[k]); return M.route.href(r.path, p); };
+  const go = (path, params = {}, opt = {}) => M.route.go(path, params, opt);
+  function openOverlay(key, val = '1') {
+    const r = M.route.current();
+    opener = document.activeElement;
+    pushedOverlay = true;
+    go(r.path, { ...r.params, [key]: val });
+  }
+  function closeOverlay() {
+    const r = M.route.current();
+    if (!OVERLAY.some((k) => k in r.params)) return;
+    if (pushedOverlay) { pushedOverlay = false; history.back(); return; }
+    const p = { ...r.params }; OVERLAY.forEach((k) => delete p[k]);
+    go(r.path, p, { replace: true });
+  }
+  function onRoute() {
+    const r = M.route.current();
+    const base = baseOf(r);
+    const hasOverlay = OVERLAY.some((k) => k in r.params);
+    if (!hasOverlay) pushedOverlay = false;
+    if (base !== lastBase) {
+      if (lastBase !== null) scrollMemo.set(lastBase, window.scrollY);
+      lastBase = base;
+      visits++;
+      hoverId = null; returning = null; resetArmed = false; railOpen = false;
+      renderPage(r);
+      const y = scrollMemo.get(base) || 0;
+      window.scrollTo(0, y);
+      requestAnimationFrame(() => { window.scrollTo(0, y); syncRail(); syncTitle(); });
+      if (!hasOverlay && visits > 1) { const h = $('#app h1'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } }
+    }
+    renderOverlay(r);
+  }
+
+  // ── 그리기
+  function capture() {
+    const a = document.activeElement;
+    const keys = ['flow', 'act', 'productId', 'id', 'key', 'color', 'kind', 'slot', 'step', 'g'];
+    const sel = a && a !== document.body && a.closest('#app, #rail') ? keys.filter((k) => a.dataset[k] != null).map((k) => `[data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}="${CSS.escape(a.dataset[k])}"]`).join('') : '';
+    const scrolls = $$('[data-keep]').map((el) => [el.dataset.keep, el.scrollLeft]);
+    return { sel, scrolls };
+  }
+  function restore(c) {
+    for (const [k, x] of c.scrolls) { const el = $(`[data-keep="${k}"]`); if (el) el.scrollLeft = x; }
+    if (c.sel && (!document.activeElement || document.activeElement === document.body)) { const el = $(c.sel); if (el) el.focus({ preventScroll: true }); }
+  }
+  function renderPage(r = M.route.current()) {
+    const parts = r.path.split('/');
+    const a = parts[1] || '', b = parts[2] || '';
+    screen = a === 'search' ? 'search' : a === 'p' && b ? 'pdp' : ['compare', 'records', 'closet'].includes(a) ? a : 'home';
+    document.body.dataset.screen = screen;
+    curId = screen === 'pdp' ? decodeURIComponent(b) : null;
+    const keep = capture();
+    let html;
+    if (screen === 'search') html = searchView(r.params);
+    else if (screen === 'pdp') html = pdpView(curId);
+    else if (screen === 'compare') html = compareView();
+    else if (screen === 'records') html = recordsView();
+    else if (screen === 'closet') html = closetView();
+    else html = homeView();
+    const app = $('#app');
+    app.className = screen === 'pdp' ? 'pdp-main' : '';
+    app.innerHTML = html;
+    restore(keep);
+    chrome(r);
+    renderRail();
+  }
+  const refresh = () => renderPage(M.route.current());
+
+  function chrome(r) {
+    const s = st();
+    const n = M.compareList().length;
+    $$('[data-cnt="cmp"]').forEach((el) => { el.textContent = n; el.classList.toggle('zero', !n); });
+    $$('[data-cnt="rec"]').forEach((el) => { el.textContent = s.records.length; el.classList.toggle('zero', !s.records.length); });
+    const cmpBtn = $('.ab-cmp');
+    cmpBtn.innerHTML = `${ic('compare')}${n ? `<span class="cnt">${n}</span>` : ''}`;
+    cmpBtn.setAttribute('aria-label', `비교함 ${n}개`);
+    const cur = screen === 'search' || screen === 'home' ? 'search' : screen;
+    $$('[data-nav]').forEach((el) => { if (el.dataset.nav === cur) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); });
+    const q = $('#q');
+    if (document.activeElement !== q) q.value = screen === 'search' ? (lastSearch?.text || r.params.q || '') : '';
+    const t = $('#abTitle');
+    t.textContent = screen === 'pdp' ? (M.product(curId)?.brand || '') : '';
+  }
+  function syncTitle() {
+    const t = $('#abTitle');
+    t.classList.toggle('on', screen === 'pdp' && window.scrollY > 380);
+  }
+
+  // ── 옷장 레일
+  function matchGarment(piece, closet) {
+    return closet.find((g) => g.slot && g.slot === piece.slot && g.color === piece.color && g.label === piece.label)
+      || closet.find((g) => g.slot && g.slot === piece.slot && g.color === piece.color)
+      || closet.find((g) => g.label === piece.label) || null;
+  }
+  function pairIds(v, closet) {
+    const ids = new Set();
+    for (const l of v?.looks || []) for (const p of l.pieces) if (p.owned) { const g = matchGarment(p, closet); if (g) ids.add(g.id); }
+    return [...ids];
+  }
+  function relOne(id, closet) {
+    const v = judge(id);
+    const out = new Map();
+    if (!v || v.basis === 'none') return { v, out };
+    for (const o of v.owned) out.set(o.id, { rel: o.relation });
+    for (const gid of pairIds(v, closet)) { const m = out.get(gid) || {}; m.pair = 1; out.set(gid, m); }
+    return { v, out };
+  }
+  function relMany(ids, closet) {
+    const out = new Map();
+    for (const id of ids) {
+      const v = judge(id);
+      if (!v || v.basis === 'none') continue;
+      for (const o of v.owned) {
+        const m = out.get(o.id) || {};
+        const k = o.relation === 'unknown-color' ? 'unk' : REL[o.relation]?.cls === 'dup' ? 'dup' : 'alt';
+        m[k] = (m[k] || 0) + 1;
+        out.set(o.id, m);
+      }
+      for (const gid of pairIds(v, closet)) { const m = out.get(gid) || {}; m.pair = (m.pair || 0) + 1; out.set(gid, m); }
+    }
+    return out;
+  }
+  function tileRel(m, mode) {
+    if (!m) return null;
+    if (mode === 'one') {
+      if (m.rel) return { cls: REL[m.rel].cls, text: REL[m.rel].short };
+      if (m.pair) return { cls: 'pair', text: '코디 짝' };
+      return null;
+    }
+    if (m.dup) return { cls: 'dup', text: `겹침 ${m.dup}` };
+    if (m.alt) return { cls: 'alt', text: `색 다름 ${m.alt}` };
+    if (m.unk) return { cls: 'alt', text: `색 확인 ${m.unk}` };
+    if (m.pair) return { cls: 'pair', text: `코디 ${m.pair}` };
+    return null;
+  }
+  function railCtx() {
+    if (hoverId) return { one: hoverId };
+    if (screen === 'pdp' && curId) return { one: curId };
+    if (screen === 'search' && resultIds.length) return { many: resultIds };
+    if (screen === 'compare' && M.compareList().length) return { many: M.compareList() };
+    return null;
+  }
+  function renderRail() {
+    const s = st();
+    const closet = s.closet;
+    const pending = s.records.filter((x) => x.stage === 'received');
+    const rail = $('#rail');
+    const pdpKind = screen === 'pdp' && curId ? judge(curId)?.addSuggestion?.kindName : null;
+    if (!closet.length && !pending.length) {
+      rail.innerHTML = `<div class="rail-empty">
+        <p class="t"><b>내 옷장</b>${pdpKind ? `가진 ${esc(pdpKind)}${josa(pdpKind, '을', '를')} 넣으면 겹치는지 보여요` : '비어 있어도 찾을 수 있어요'}</p>
+        <button class="btn-s" type="button" data-flow="closet-add">${ic('plus', 16)}${pdpKind ? `가진 ${esc(pdpKind)}` : '가진 옷'}</button>
+        <button class="btn-s ghost" type="button" data-flow="trial-closet" aria-label="체험용 옷 걸어 보기(예시 옷, 내 옷 아님)">체험용 옷</button>
+      </div>`;
+      syncRail();
+      return;
+    }
+    const ctx = railCtx();
+    let marks = new Map(), mode = null, ctxLine = '';
+    if (ctx?.one) {
+      const { v, out } = relOne(ctx.one, closet);
+      if (v && v.basis !== 'none') { marks = out; mode = 'one'; }
+      const counts = new Map();
+      for (const m of out.values()) { const t = tileRel(m, 'one'); if (t) counts.set(t.text, (counts.get(t.text) || 0) + 1); }
+      const p = M.product(ctx.one);
+      ctxLine = `<b>${esc(p?.brand || '')} ${esc(p?.kindName || '')}</b> 기준 · ${counts.size ? [...counts].map(([k, n]) => `${esc(k)} ${n}`).join(' · ') : '겹치는 옷 없음'}`;
+    } else if (ctx?.many) {
+      marks = relMany(ctx.many, closet); mode = 'many';
+      ctxLine = `${screen === 'compare' ? '비교 후보' : '결과'} <b>${ctx.many.length}개</b>와 견줘 본 수예요`;
+    }
+    const anySim = closet.some((g) => g.photo?.similar);
+    const byGroup = new Map(GROUPS.map((g) => [g.id, []]));
+    for (const g of closet) byGroup.get(groupOf(g.kind)).push(g);
+    const tile = (g) => {
+      const t = tileRel(marks.get(g.id), mode);
+      const cls = ['tile', g.trial ? 'trial' : '', t ? `has-rel r-${t.cls}` : '', flashId === g.id ? 'flash' : ''].join(' ');
+      const say = [gName(g), g.sourceLabel, g.photo?.similar ? '비슷한 상품 사진' : '사진 없음', t ? t.text : ''].filter(Boolean).join(', ');
+      return `<button class="${cls}" type="button" data-act="tile" data-id="${esc(g.id)}" aria-label="${esc(say)}. 눌러서 고치기">
+        <span class="tph">${photo(g)}${g.photo?.similar ? '<span class="sim" aria-hidden="true">≈</span>' : ''}${g.bought ? '<span class="bdg" aria-hidden="true">산 옷</span>' : ''}</span>
+        <span class="tt"><span class="tcap">${esc(gName(g))}</span><span class="tsub">${esc(gSource(g))}</span>${t ? `<span class="trel ${t.cls}">${esc(t.text)}</span>` : ''}</span>
+      </button>`;
+    };
+    const groups = GROUPS.filter((g) => byGroup.get(g.id).length).map((g) => `<div class="rg"><h3 class="rg-h">${g.name} ${byGroup.get(g.id).length}</h3>${byGroup.get(g.id).map(tile).join('')}</div>`).join('');
+    const pend = pending.length ? `<div class="rg"><h3 class="rg-h">받은 옷 ${pending.length}</h3>${pending.map((r) => `<a class="tile pending" href="#/records" aria-label="${esc(r.product?.name)}, 받은 옷. 계속 입을지 정하면 옷장에 걸려요">
+        <span class="tph">${photo(r.product || r)}</span><span class="tt"><span class="tcap">받은 옷</span><span class="tsub">계속 입을지 정해 주세요</span></span></a>`).join('')}</div>` : '';
+    const mineN = s.mineCount, trialN = s.trialCount;
+    const basis = trialN && mineN ? `내 옷 ${mineN} · 체험용 ${trialN}` : trialN ? `체험용 옷 ${trialN}벌` : `내 옷 ${mineN}벌`;
+    rail.innerHTML = `
+      <div class="rail-head"><h2>내 옷장 <a href="#/closet">모두 보기</a></h2><p>${esc(basis)}${anySim ? ' · ≈ 비슷한 상품 사진' : ''}</p>${ctxLine ? `<p class="ctx">${ctxLine}</p>` : ''}</div>
+      <div class="rail-track" data-keep="rail">
+        <a class="rl" href="#/closet" aria-label="내 옷장 ${s.closetCount}벌 모두 보기"><b>내 옷장</b><span class="rl-n">${s.closetCount}벌 ›</span>${anySim ? '<span class="rl-sub">≈ 비슷한 상품 사진</span>' : trialN ? '<span class="rl-sub">점선 체험용</span>' : ''}</a>
+        ${groups}${pend}
+        <div class="rail-end"><button class="tile tile-add" type="button" data-flow="closet-add" aria-label="가진 옷 한 벌 더 넣기"><span class="tph">${ic('plus')}</span><span class="tt"><span class="tcap">넣기</span></span></button></div>
+      </div>
+      <div class="rail-pc">
+        <button class="btn-s" type="button" data-flow="closet-add">${ic('plus', 16)}가진 옷 넣기</button>
+        ${trialN ? '<button class="btn-s ghost" type="button" data-act="trial-off">체험용 옷 내리기</button>' : '<button class="btn-s ghost" type="button" data-flow="trial-closet" aria-label="체험용 옷 걸어 보기(예시 옷, 내 옷 아님)">체험용 옷 걸어 보기</button>'}
+      </div>
+      <button class="rail-expand" type="button" data-act="rail-open" aria-label="내 옷장 레일 펼치기" aria-expanded="false">${ic('down', 20)}</button>`;
+    if (flashId) { const el = $(`.tile[data-id="${CSS.escape(flashId)}"]`, rail); if (el) { const tr = $('.rail-track', rail); if (tr && !isPC()) tr.scrollLeft = Math.max(0, el.offsetLeft - 90); } setTimeout(() => { flashId = null; }, 900); }
+    syncRail();
+  }
+  function railRest(s = st()) {
+    if (isPC() || screen === 'closet') return 0;
+    const any = s.closetCount + s.records.filter((x) => x.stage === 'received').length;
+    if (!any) return 58;
+    return screen === 'pdp' ? 46 : 94;
+  }
+  function syncRail() {
+    const rail = $('#rail');
+    const s = st();
+    document.body.style.setProperty('--rail-rest', `${railRest(s)}px`);
+    if (isPC()) { rail.dataset.state = 'pc'; rail.classList.remove('over'); return; }
+    const any = s.closetCount + s.records.filter((x) => x.stage === 'received').length;
+    let state;
+    if (!any) state = 'empty';
+    else if (railPeek || railOpen) state = 'full';
+    else if (screen === 'pdp') state = 'mini';
+    else state = window.scrollY > 28 ? 'mini' : 'full';
+    rail.dataset.state = state;
+    rail.classList.toggle('over', state === 'full' && (railPeek || railOpen || window.scrollY > 28));
+    const ex = $('.rail-expand', rail);
+    if (ex) ex.setAttribute('aria-expanded', String(state === 'full'));
+  }
+  function peekRail() {
+    railPeek = true; syncRail();
+    clearTimeout(peekTimer);
+    peekTimer = setTimeout(() => { railPeek = false; syncRail(); }, 2800);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      if (railOpen && Math.abs(window.scrollY - openScrollY) > 60) railOpen = false;
+      syncRail(); syncTitle();
+    });
+  }, { passive: true });
+
+  // ── 카드
+  function tagsFor(p) {
+    const s = st();
+    if (!s.closetCount && !p.record) return '';
+    const tags = [];
+    if (p.owned && p.owned.tone !== 'none') tags.push(`<span class="pill ${TONE[p.owned.tone] || ''}">${esc(p.owned.label === '없는 종류' ? '옷장에 없는 종류' : p.owned.label)}</span>`);
+    const v = s.closetCount ? judge(p.id) : null;
+    if (v && v.newLookCount) tags.push(`<span class="pill pair">새 코디 ${v.newLookCount}</span>`);
+    if (p.record) tags.push(`<span class="pill rec">${esc(p.record.decisionLabel)}</span>`);
+    return tags.length ? `<span class="ctags">${tags.join('')}</span>` : '';
+  }
+  function card(p, { result = false, why = null } = {}) {
+    const inCmp = M.compareHas(p.id);
+    return `<article class="card" data-card="${esc(p.id)}">
+      <a class="card-open" href="#/p/${encodeURIComponent(p.id)}"${result ? ` data-flow="result" data-product-id="${esc(p.id)}"` : ''}>
+        <span class="cph">${photo(p)}</span>
+        <span class="cb">${esc(p.brand)}</span>
+        <span class="cn">${esc(p.name)}</span>
+        <span class="cp"><b>${esc(p.priceText)}</b><small>${esc(p.priceShort)}</small></span>
+        ${why ? `<span class="cw">${esc(why)}</span>` : ''}
+        ${tagsFor(p)}
+      </a>
+      <button class="cmp-ic" type="button" data-flow="compare-add" data-product-id="${esc(p.id)}" aria-pressed="${inCmp}" aria-label="${esc(p.brand)} ${esc(p.name)} ${inCmp ? '비교함에서 빼기' : '비교함에 담기'}"><span>${ic(inCmp ? 'check' : 'compare', 18)}</span></button>
+    </article>`;
+  }
+
+  // ── 홈: 옷장 유무에 따라 바뀌는 첫 화면
+  function homeView() {
+    const s = st();
+    const sg = M.suggest({ limit: 4 });
+    const sugs = M.searchSuggestions('', { limit: 6 });
+    return `<section class="home">
+      <h1 class="home-h">어떤 옷을 찾고 있나요?</h1>
+      <p class="home-sub">${s.closetCount ? `옷장 ${s.closetCount}벌과 겹치는지 함께 보여 드려요` : '옷장이 비어 있어도 바로 찾을 수 있어요'}</p>
+      <div class="chips">${sugs.map((x) => `<button class="chip" type="button" data-flow="example" data-q="${esc(x.q)}">${x.kind === 'recent' ? ic('clock', 16) : ''}${esc(x.q)}</button>`).join('')}</div>
+      <div class="seg" role="group" aria-label="상품 범위"><button type="button" data-act="gender" data-g="M" aria-pressed="${s.gender === 'M'}">남성 상품</button><button type="button" data-act="gender" data-g="F" aria-pressed="${s.gender === 'F'}">여성 상품</button></div>
+      <section class="sec"><div class="sec-h"><h2>${esc(sg.title)}</h2>${s.closetCount ? '' : '<span class="sub">옷장을 채우면 바뀌어요</span>'}</div>
+        <div class="grid">${sg.items.map((p) => card(p, { why: p.why })).join('')}</div></section>
+    </section>`;
+  }
+
+  // ── 검색 결과
+  function searchView(params) {
+    const q = params.q || '';
+    const drop = params.drop ? params.drop.split(',').filter(Boolean) : [];
+    const r = M.ask(q, { drop, previous: params.prev || null });
+    if (r.understood) lastSearch = { text: r.text, q, params: { ...params } };
+    if (baseOf(M.route.current()) !== lastBase) offOpen = false;
+    const all = [...r.products, ...r.offOccasion];
+    resultIds = all.map((p) => p.id);
+    const none = !all.length;
+    const s = st();
+    const dropTo = (keys) => ({ q, drop: keys.join(','), ...(params.prev ? { prev: params.prev } : {}) });
+    const conds = r.conditions.map((c) => c.removable
+      ? `<button class="chip cond" type="button" data-flow="condition-remove" data-key="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}${ic('close', 16)}</button>`
+      : `<span class="chip cond fixed">${esc(c.label)}</span>`).join('')
+      + r.dropped.map((k) => `<button class="chip cond dropped" type="button" data-act="readd" data-key="${esc(k)}" aria-label="${esc(KEY_LABEL[k] || k)} 조건 다시 넣기">+ ${esc(KEY_LABEL[k] || k)}</button>`).join('');
+    let sum = '';
+    if (s.closetCount && !none) {
+      const c = { dup: 0, alt: 0, unk: 0, new: 0 };
+      let looks = 0;
+      for (const p of all) { if (p.owned.tone === 'stop') c.dup++; else if (p.owned.tone === 'info') (p.owned.label.startsWith('색 확인') ? c.unk++ : c.alt++); else if (p.owned.tone === 'new') c.new++; if (judge(p.id)?.newLookCount) looks++; }
+      const parts = [c.dup && `<span class="pill dup">겹쳐요 ${c.dup}</span>`, c.alt && `<span class="pill alt">색만 달라요 ${c.alt}</span>`, c.unk && `<span class="pill alt">색 확인 ${c.unk}</span>`, c.new && `<span class="pill">옷장에 없는 종류 ${c.new}</span>`, looks && `<span class="pill pair">새 코디 ${looks}</span>`].filter(Boolean);
+      sum = `<div class="closet-sum"><b>내 옷장과</b>${parts.join('')}</div>`;
+    }
+    const notices = r.notices.filter((n) => !['not-understood', 'kind-unavailable', 'empty'].includes(n.kind)).map((n) => `<p class="notice">${ic('info', 18)}<span>${esc(n.text)}</span></p>`).join('');
+    let empty = '';
+    if (none) {
+      const main = r.notices.find((n) => ['not-understood', 'kind-unavailable', 'empty', 'error', 'empty-input'].includes(n.kind));
+      const acts = [];
+      const una = r.notices.find((n) => n.kind === 'kind-unavailable');
+      const kindLabel = r.conditions.find((c) => c.key === 'kind')?.label;
+      if (una && /남성 상품에는/.test(una.text) && kindLabel) acts.push(`<button class="btn sm line" type="button" data-flow="empty-action" data-act="gender-search" data-g="F" data-q="${esc(kindLabel)}">여성 상품에서 ${esc(kindLabel)} 찾기</button>`);
+      if (una && /여성 상품에는/.test(una.text) && kindLabel) acts.push(`<button class="btn sm line" type="button" data-flow="empty-action" data-act="gender-search" data-g="M" data-q="${esc(kindLabel)}">남성 상품에서 ${esc(kindLabel)} 찾기</button>`);
+      for (const c of r.conditions.filter((x) => x.removable)) acts.push(`<button class="btn sm line" type="button" data-flow="empty-action" data-act="drop-one" data-key="${esc(c.key)}">‘${esc(c.label)}’ 빼고 다시 찾기</button>`);
+      empty = `<div class="empty" role="status">
+        <h2>${esc(r.title)}</h2>
+        ${main ? `<p>${esc(main.text)}</p>` : ''}
+        ${acts.length ? `<div class="act-row">${acts.join('')}</div>` : ''}
+        <p class="sub" style="margin-top:16px">이렇게 적어 보세요</p>
+        <div class="chips">${(r.examples || M.examples()).slice(0, 6).map((x) => `<button class="chip" type="button" data-flow="example" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+      </div>`;
+    }
+    const outfit = !none && r.outfit ? `<section class="sec"><div class="sec-h"><h2>이 요청으로 만든 코디</h2></div>${lookRow(r.outfit.pieces)}<p class="fine" style="margin-top:8px">${esc(r.outfit.title)}${r.outfitNote ? ` · ${esc(r.outfitNote)}` : ''}</p></section>` : '';
+    return `<section aria-labelledby="resT">
+      <div class="res-h">
+        <h1 id="resT">${esc(r.understood && !none ? r.title : (r.understood ? `‘${r.said}’` : r.title))}</h1>
+        ${!none ? `<p class="res-meta">${r.total}개 · ${esc(r.listNote)}</p>` : ''}
+      </div>
+      ${conds ? `<div class="scope" aria-label="검색 범위">${conds}<span class="rules">${esc(M.note.short.rules)}</span></div>` : ''}
+      ${sum}${notices}${empty}
+      ${r.products.length ? `<div class="grid results">${r.products.map((p) => card(p, { result: true })).join('')}</div>` : ''}
+      ${r.offOccasion.length ? `<div class="more-row"><button class="btn sm" type="button" data-act="toggle-off" aria-expanded="${offOpen || !r.products.length}">${esc(r.offOccasionTitle)} ${offOpen || !r.products.length ? '접기' : '보기'}</button></div>
+        ${offOpen || !r.products.length ? `<div class="grid results">${r.offOccasion.map((p) => card(p, { result: true })).join('')}</div>` : ''}` : ''}
+      ${r.understood && r.products.length ? `<div class="more-row"><button class="chip" type="button" data-act="cheaper" data-q="${esc(r.text)}">더 싼 걸로</button></div>` : ''}
+      ${outfit}
+    </section>`;
+  }
+  void dropToUnused;
+  function dropToUnused() {}
+
+  function lookRow(pieces, { me = null } = {}) {
+    return `<div class="look-row">${pieces.map((p) => {
+      const isMe = p.candidate || p.focus || (me && p.product?.id === me);
+      const who = p.owned ? (p.trial ? '체험용 옷' : '내 옷') : isMe ? '이 상품' : p.product ? p.product.priceText : '';
+      const inner = `<span class="ph">${photo(p)}</span><span class="r">${esc(p.roleLabel)}</span><span class="s">${esc(who)}</span>`;
+      const cls = `lp ${isMe ? 'me' : p.owned ? 'own' : ''}`;
+      return p.product && !isMe ? `<a class="${cls}" href="#/p/${encodeURIComponent(p.product.id)}" aria-label="${esc(p.roleLabel)} ${esc(p.label)} ${esc(p.product.priceText)}">${inner}</a>` : `<div class="${cls}" aria-label="${esc(p.roleLabel)} ${esc(p.label)} ${esc(who)}">${inner}</div>`;
+    }).join('')}</div>`;
+  }
+
+  // ── 상품 상세
+  function pdpView(id) {
+    const d = M.product(id);
+    if (!d) return `<div class="empty-page" style="margin-top:16px"><h1 style="font-size:18px">상품을 찾지 못했어요</h1><a class="btn" href="#/">처음으로</a></div>`;
+    const v = d.verdict;
+    const inCmp = M.compareHas(id);
+    const rec = v.record;
+    const dec = (k, label) => `<button type="button" data-flow="decide-${k}" data-product-id="${esc(id)}" aria-pressed="${rec?.decision === k}">${rec?.decision === k ? ic('check', 16) : ''}${label}</button>`;
+    return `<article class="pdp" data-flow="pdp" aria-labelledby="pName">
+      <div class="pdp-top">
+        <div class="pdp-media"><button class="hero" type="button" data-flow="photo-zoom" aria-label="사진 크게 보기">${photo(d, { eager: true })}<span class="zoom-badge" aria-hidden="true">${ic('zoom', 20)}</span></button></div>
+        <div class="pdp-info">
+          <div class="buy">
+            <div class="p-brand" data-flow="pdp-brand">${esc(d.brand)}</div>
+            <h1 class="p-name" id="pName" data-flow="pdp-name">${esc(d.name)}</h1>
+            <div class="p-price"><b data-flow="pdp-price">${esc(d.priceText)}</b><span>${esc(d.priceShort)}</span></div>
+            <p class="p-why">${esc(d.why[0] || d.reason)}</p>
+            <p class="p-meta">${esc(d.colorLabel)} · ${esc(d.slotName)}${d.rating ? ` · ${esc(d.store)} 평점 ${esc(d.rating)} · 후기 ${Number(d.reviews || 0).toLocaleString('ko-KR')}` : ''}</p>
+            <div class="p-links"><a class="btn dark grow" data-flow="seller-link" href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">무신사에서 보기 ${ic('out', 18)}</a></div>
+            <p class="p-size">사이즈·실착 사진은 무신사에서 확인해요</p>
+            <div class="decide" role="group" aria-label="이 상품 결정">
+              <button class="d-cmp" type="button" data-flow="compare-add" data-product-id="${esc(id)}" aria-pressed="${inCmp}" aria-label="${inCmp ? '비교함에서 빼기' : '비교함에 담기'}">${ic(inCmp ? 'check' : 'compare', 20)}<span>${inCmp ? '담김' : '비교'}</span></button>
+              ${dec('hold', '보류')}${dec('skip', '안 살래')}${dec('buy', '사기로 함')}
+            </div>
+            ${rec ? `<p class="rec-line">${ic('check', 16)}<span>기록: <b>${esc(rec.stageLabel)}</b></span><a href="#/records">기록 보기</a></p>` : ''}
+          </div>
+          ${sbsView(d, v)}
+          <section class="sec" aria-labelledby="nuH">
+            <div class="sec-h"><h2 id="nuH">새 상품과 중고</h2></div>
+            ${nuView(d)}
+          </section>
+        </div>
+      </div>
+      <div class="pdp-more">
+        <section class="sec" aria-labelledby="altH">
+          <div class="sec-h"><h2 id="altH">같은 조건 다른 선택</h2>${d.alternatives.length ? `<span class="sub">${d.alternatives.length}개</span>` : ''}</div>
+          ${d.alternatives.length ? `<div class="hscroll" data-keep="alts">${d.alternatives.slice(0, 8).map((p) => card(p)).join('')}</div>` : '<p class="sub">같은 조건의 다른 상품이 없어요.</p>'}
+          ${d.alternativesNote ? `<p class="fine">${esc(d.alternativesNote)}</p>` : ''}
+        </section>
+        ${d.outfit ? `<section class="sec" aria-labelledby="lookH"><div class="sec-h"><h2 id="lookH">이 상품으로 만든 코디</h2></div>${lookRow(d.outfit.pieces, { me: id })}<p class="fine">${esc(d.outfit.title)}${d.outfitNote ? ` · ${esc(d.outfitNote)}` : ''}</p></section>` : ''}
+        <p class="fine" style="margin-top:28px">${esc(v.fine)}</p>
+      </div>
+    </article>`;
+  }
+  function sbsView(d, v) {
+    const s = st();
+    const kindName = v.addSuggestion?.kindName || d.kindName;
+    const owned = v.owned || [];
+    const ownedIds = new Set(owned.map((o) => o.id));
+    const pairs = pairIds(v, s.closet).filter((gid) => !ownedIds.has(gid)).map((gid) => s.closet.find((g) => g.id === gid)).filter(Boolean);
+    const chg = changed && changed.id === d.id && changed.before && changed.before !== v.title ? `<p class="changed" role="status">${ic('check', 14)}방금 넣은 옷으로 다시 봤어요 · <s>${esc(changed.before)}</s></p>` : '';
+    const cand = `<figure class="cand"><span class="ph">${photo(d)}</span><figcaption><b>이 상품</b><span>${esc(d.colorLabel)} ${esc(d.kindName)}</span></figcaption></figure>`;
+    const fig = (g, rel, cls) => `<figure class="own ${g.trial ? 'trial' : ''} r-${cls}"><span class="ph">${photo(g)}</span><figcaption><span class="pill ${cls}">${esc(rel)}</span><span class="on">${esc(gName(g))}</span><span class="os">${esc(gSource(g))}</span></figcaption></figure>`;
+    let right;
+    if (v.basis === 'none') right = `<button class="slot-empty" type="button" data-flow="closet-add">${ic('plus')}가진 ${esc(kindName)}<br>넣기</button>`;
+    else {
+      const list = [...owned.map((o) => fig(o, REL[o.relation]?.short || o.relationLabel, REL[o.relation]?.cls || 'alt')), ...pairs.map((g) => fig(g, '코디 짝', 'pair'))];
+      right = list.length ? list.slice(0, 8).join('') : `<p class="noover">옷장 ${s.closetCount}벌 중 겹치는 ${esc(kindName)}${josa(kindName, '이', '가')} 없어요</p>`;
+    }
+    const lines = (v.basis === 'none' ? v.lines.slice(0, 1) : v.lines).map((l) => `<p>${esc(l)}</p>`).join('');
+    const reasons = v.basis !== 'none' && v.reasons?.length ? v.reasons.slice(0, 2).map((x) => `<p class="fine">${esc(x)}</p>`).join('') : '';
+    const looks = v.looks?.length ? `<div class="looks">${v.looks.map((l) => `<div><p class="look-h">${esc(l.formula || l.title)} <span class="pill ${l.new ? 'pair' : ''}">${l.new ? '새 코디' : '이미 되는 코디'}</span></p>${lookRow(l.pieces, { me: d.id })}</div>`).join('')}</div>` : '';
+    const comp = v.companion ? `<a class="companion" href="#/p/${encodeURIComponent(v.companion.id)}"><span class="ph">${photo(v.companion)}</span><span>함께 더하면 <b>${esc(v.companion.pairTitle)}</b><br>${esc(v.companion.slotName)} · ${esc(v.companion.brand)} ${esc(v.companion.priceText)}</span></a>` : '';
+    const ask = v.ask ? `<div class="askq"><p>${esc(v.ask.question)}</p><div class="chips">${v.ask.choices.map((c) => `<button class="chip" type="button" data-act="own" data-v="${esc(c.id)}" aria-pressed="${v.ask.value === c.id}">${esc(c.label)}</button>`).join('')}</div>${v.ask.hint ? `<p class="fine" style="margin-top:6px">${esc(v.ask.hint)}</p>` : ''}</div>` : '';
+    return `<section class="sbs" id="sbs" aria-labelledby="sbsH">
+      <div class="sec-h"><h2 id="sbsH">내 옷장과 나란히</h2><span class="sub">${esc(v.basisLabel)}</span></div>
+      ${chg}
+      <p class="verdict"><span data-flow="verdict">${esc(v.title)}</span></p>
+      <div class="sbs-row" data-keep="sbs">${cand}<span class="sbs-div" aria-hidden="true"></span>${right}</div>
+      <div class="v-lines">${lines}${reasons}</div>
+      ${v.cautions.map((c) => `<p class="caution">${esc(c)}</p>`).join('')}
+      ${ask}${comp}${looks}
+      <div class="sbs-act">${v.basis === 'none'
+        ? `<button class="btn line grow" type="button" data-flow="closet-add">${ic('plus', 18)}가진 ${esc(kindName)} 넣고 비교</button>`
+        : `<button class="btn sm" type="button" data-flow="closet-add">${ic('plus', 16)}다른 ${esc(kindName)}도 넣기</button>`}</div>
+    </section>`;
+  }
+  function nuView(d) {
+    const nu = M.newVsUsed(d.id);
+    const links = (g) => `<p class="ureg">${esc(g.region)}</p><div class="ulinks">${g.links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(l.label)}에서 중고 검색(새 창)${l.note ? `, ${esc(l.note)}` : ''}">${esc(l.label)}${ic('out', 14)}</a>`).join('')}</div>`;
+    return `<div class="nu-grid">
+      <div class="nu-col">
+        <div class="nu-top"><span class="nu-ph">${photo(d)}</span><h3>새 상품</h3></div>
+        <dl class="kv"><dt>가격</dt><dd><b>${esc(nu.fresh.priceText)}</b><br><span class="sub">${esc(nu.fresh.priceNote)}</span></dd><dt>상태</dt><dd>새 상품</dd><dt>사진</dt><dd>${esc(nu.fresh.photoNote)}</dd></dl>
+        <a class="btn sm" data-flow="seller-link" href="${esc(nu.fresh.url)}" target="_blank" rel="noopener noreferrer">무신사에서 보기</a>
+      </div>
+      <div class="nu-col" data-flow="used-search">
+        <div class="nu-top"><span class="nu-none" aria-hidden="true">${ic('search', 18)}</span><h3>중고</h3></div>
+        <dl class="kv"><dt>가격</dt><dd>${esc(nu.used.priceNote)}</dd><dt>상태</dt><dd>상태 등급 없음</dd><dt>사진</dt><dd>${esc(nu.used.photoNote)}</dd></dl>
+        <p class="fine">${esc(M.note.short.used)}</p>
+        ${nu.used.groups.map(links).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── 비교
+  function compareView() {
+    const ids = M.compareList();
+    const c = M.compareRows(ids);
+    const n = Math.max(2, c.items.length);
+    const back = lastSearch ? `<a class="btn sm" href="${esc(M.route.href('/search', lastSearch.params))}">결과로 돌아가기</a>` : '<a class="btn sm" href="#/">찾으러 가기</a>';
+    const item = (p) => {
+      const v = judge(p.id);
+      const rec = v?.record;
+      const dec = (k, label) => `<button type="button" data-flow="decide-${k}" data-product-id="${esc(p.id)}" aria-pressed="${rec?.decision === k}">${label}</button>`;
+      return `<div class="cmp-item" data-flow="compare-item" data-product-id="${esc(p.id)}">
+        <a class="ci-link" href="#/p/${encodeURIComponent(p.id)}"><span class="ph">${photo(p)}</span><span class="cb">${esc(p.brand)}</span><span class="cn">${esc(p.name)}</span><span class="cp"><b>${esc(p.priceText)}</b><small>${esc(p.priceShort)}</small></span></a>
+        <button class="ci-x" type="button" data-act="cmp-remove" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 비교함에서 빼기"><span>${ic('close', 16)}</span></button>
+        <div class="cmp-dec" role="group" aria-label="${esc(p.brand)} 결정">${dec('hold', '보류')}${dec('skip', '안 살래')}${dec('buy', '사기로 함')}</div>
+      </div>`;
+    };
+    return `<section data-flow="compare-view" aria-labelledby="cmpT">
+      <div class="page-h"><h1 id="cmpT">후보 비교 ${c.items.length}</h1>${c.items.length ? '<button class="link" type="button" data-act="cmp-clear">비우기</button>' : ''}</div>
+      ${c.items.length < 2 ? `<div class="empty-page" style="margin-bottom:16px">${c.items.length ? '하나 더 담으면 나란히 비교해요.' : '상품 사진 오른쪽 위의 비교 버튼으로 후보를 담아 주세요.'}<br>${back}</div>` : ''}
+      ${c.items.length ? `<div class="cmp-scroll" data-keep="cmp"><div class="cmp-in" style="--n:${n}">
+        <div class="cmp-cols">${c.items.map(item).join('')}</div>
+        ${c.items.length > 1 ? `<div class="cmp-rows">${c.rows.map((row) => `<div class="crow ${row.same ? 'same' : ''}"><h3>${esc(row.label)}${row.same ? ' · 같음' : ''}</h3><div class="vals">${row.values.map((x) => `<div>${esc(x)}</div>`).join('')}</div></div>`).join('')}</div>` : ''}
+      </div></div>
+      <p class="fine" style="margin-top:12px">${esc(c.note)}</p>` : ''}
+    </section>`;
+  }
+
+  // ── 기록
+  function recordsView() {
+    const recs = st().records;
+    const reasons = (pid) => `<div style="margin-top:10px"><p class="sub" style="margin-bottom:6px">반품 사유</p><div class="chips">${M.returnReasons.map((x) => `<button class="chip" type="button" data-act="return-reason" data-reason="${esc(x.id)}" data-product-id="${esc(pid)}">${esc(x.label)}</button>`).join('')}<button class="chip" type="button" data-act="return-cancel">취소</button></div></div>`;
+    const row = (r) => {
+      const p = r.product || {};
+      const note = r.stage === 'kept' ? '옷장 레일에 ‘기록에서 산 옷’으로 걸려 있어요' : r.stage === 'received' ? '계속 입기로 하면 옷장 레일에 ‘기록에서 산 옷’으로 걸려요' : '';
+      return `<li class="recrow" data-flow="record" data-product-id="${esc(r.productId)}">
+        <a class="rec-ph" href="#/p/${encodeURIComponent(r.productId)}" aria-label="${esc(p.brand)} ${esc(p.name)} 상세 보기">${photo(r.product || r)}</a>
+        <div>
+          <span class="cb" style="margin-top:0">${esc(p.brand)}</span>
+          <a class="rec-n" href="#/p/${encodeURIComponent(r.productId)}">${esc(p.name)}</a>
+          <span class="cp"><b>${esc(p.priceText)}</b><small>수집가</small></span>
+          <div class="rec-stage"><span class="pill rec">${esc(r.stageLabel)}</span>${r.wearCount ? `<span>${r.wearCount}번 입음</span>` : ''}${r.returnReasonLabel ? `<span>사유: ${esc(r.returnReasonLabel)}</span>` : ''}</div>
+          ${note ? `<p class="rec-note">${esc(note)}</p>` : ''}
+          <div class="rec-acts">${r.next.map((x) => `<button class="btn sm ${x.step === 'returned' ? '' : 'line'}" type="button" data-flow="record-step" data-step="${esc(x.step)}" data-product-id="${esc(r.productId)}">${esc(x.label)}</button>`).join('')}${r.stage === 'candidate' ? `<button class="btn sm" type="button" data-act="rm-record" data-id="${esc(r.productId)}">기록 지우기</button>` : ''}</div>
+          ${returning === r.productId ? reasons(r.productId) : ''}
+        </div>
+      </li>`;
+    };
+    return `<section aria-labelledby="recT">
+      <div class="page-h"><h1 id="recT">기록</h1><span class="sub">${esc(M.note.short.records)}</span></div>
+      ${recs.length ? `<ul class="recs">${recs.map(row).join('')}</ul>` : `<div class="empty-page">상품 상세에서 ‘보류·안 살래·사기로 함’을 누르면 여기에 남아요.<br><a class="btn" href="${lastSearch ? esc(M.route.href('/search', lastSearch.params)) : '#/'}">찾으러 가기</a></div>`}
+    </section>`;
+  }
+
+  // ── 옷장 화면
+  function closetView() {
+    const s = st();
+    const pending = s.records.filter((x) => x.stage === 'received');
+    const byGroup = GROUPS.map((g) => ({ ...g, list: s.closet.filter((x) => groupOf(x.kind) === g.id) })).filter((g) => g.list.length);
+    const ct = (g) => `<button class="ct ${g.trial ? 'trial' : ''}" type="button" data-act="tile" data-id="${esc(g.id)}" aria-label="${esc(gName(g))}, ${esc(gSource(g))}. 눌러서 고치기"><span class="ph">${photo(g)}</span><span class="n">${esc(gName(g))}</span><span class="s">${esc(gSource(g))}</span></button>`;
+    return `<section aria-labelledby="clT">
+      <div class="page-h"><h1 id="clT">내 옷장 ${s.closetCount}벌</h1><span class="sub">${s.trialCount ? `체험용 ${s.trialCount}벌 포함 · 점선은 예시 옷` : '사진 없이 종류·색으로 넣어요'}</span></div>
+      <div class="closet-acts">
+        <button class="btn dark" type="button" data-flow="closet-add">${ic('plus', 18)}가진 옷 넣기</button>
+        ${s.trialCount ? '<button class="btn" type="button" data-act="trial-off">체험용 옷 내리기</button>' : '<button class="btn" type="button" data-flow="trial-closet" aria-label="체험용 옷 걸어 보기(예시 옷, 내 옷 아님)">체험용 옷 걸어 보기</button>'}
+      </div>
+      ${s.closetCount ? `<div class="sec">${byGroup.map((g) => `<div class="cgroup"><h2>${g.name} ${g.list.length}</h2><div class="cgrid">${g.list.map(ct).join('')}</div></div>`).join('')}</div>` : `<div class="empty-page sec">옷장이 비어 있어도 찾고 비교할 수 있어요.<br>가진 옷을 넣으면 후보가 겹치는지 레일에서 바로 보여요.</div>`}
+      ${pending.length ? `<div class="sec cgroup"><h2>받은 옷 ${pending.length}</h2><p class="sub" style="margin-bottom:10px">계속 입기로 하면 ‘기록에서 산 옷’으로 옷장에 걸려요</p><div class="cgrid">${pending.map((r) => `<a class="ct" href="#/records"><span class="ph">${photo(r.product || r)}</span><span class="n">${esc(r.product?.name)}</span><span class="s">받음 · 기록에서 정하기</span></a>`).join('')}</div></div>` : ''}
+      <div class="sec"><p class="fine">${esc(M.note.similar)}</p>
+        <button class="btn sm danger" type="button" data-flow="reset" style="margin-top:12px">${resetArmed ? '한 번 더 누르면 옷장·기록·비교함을 모두 지워요' : '처음 상태로 돌리기'}</button></div>
+    </section>`;
+  }
+
+  // ── 겹친 화면
+  function renderOverlay(r) {
+    const box = $('#overlay');
+    const was = box.innerHTML !== '';
+    let html = '';
+    if (r.params.view === 'photo' && screen === 'pdp') html = viewerHtml(curId);
+    else if (r.params.add) { if (!sheet) initSheet(); html = addSheetHtml(); }
+    else if (r.params.edit) html = editSheetHtml(r.params.edit);
+    if (!r.params.add) sheet = null;
+    box.innerHTML = html;
+    document.documentElement.classList.toggle('lock', !!html);
+    if (html) {
+      const f = $('[data-autofocus]', box) || $('button, a[href], input', box);
+      if (f && !box.contains(document.activeElement)) f.focus({ preventScroll: true });
+    } else if (was && opener && opener.isConnected) { opener.focus({ preventScroll: true }); opener = null; }
+  }
+  function viewerHtml(id) {
+    const d = M.product(id);
+    if (!d) return '';
+    return `<div class="viewer" data-flow="photo-viewer" role="dialog" aria-modal="true" aria-label="사진 크게 보기">
+      <div class="v-top"><span>${esc(d.brand)} · ${esc(d.name)}</span><button class="ib" type="button" data-act="close-overlay" aria-label="닫기" data-autofocus>${ic('close')}</button></div>
+      <div class="v-stage"><button class="v-img" type="button" data-act="zoom-toggle" aria-label="두 배로 확대하기">${M.photoHtml(d, { fit: 'contain', eager: true, caption: false })}</button></div>
+      <p class="v-hint">사진을 누르면 확대돼요 · 판매처 대표 사진</p>
+    </div>`;
+  }
+  function initSheet() {
+    const v = screen === 'pdp' && curId ? judge(curId) : null;
+    if (v?.addSuggestion) {
+      const a = v.addSuggestion;
+      sheet = { from: curId, kind: a.kind, slot: a.slot, color: null, showKinds: false, group: groupOf(a.kind), hint: a.color, base: { kind: a.kind, slot: a.slot } };
+    } else sheet = { from: null, kind: null, slot: null, color: null, showKinds: true, group: 'top', hint: null, base: null };
+  }
+  function addSheetHtml() {
+    const s = sheet;
+    const kinds = M.kindChoices();
+    const kindName = kinds.find((k) => k.id === s.kind)?.name || '';
+    const slots = s.kind ? M.slotChoices(s.kind) : [];
+    const slotName = slots.find((x) => x.id === s.slot)?.name || '';
+    const colors = M.colorChoices();
+    const groupKinds = kinds.filter((k) => groupOf(k.id) === s.group);
+    const kindsBlock = s.showKinds ? `
+      <h3 class="sh-step">종류</h3>
+      <div class="chips" role="group" aria-label="묶음">${GROUPS.map((g) => `<button class="chip" type="button" data-act="sheet-group" data-id="${g.id}" aria-pressed="${s.group === g.id}">${g.name}</button>`).join('')}</div>
+      <div class="chips" style="margin-top:8px">${groupKinds.map((k) => `<button class="chip" type="button" data-flow="kind-option" data-kind="${esc(k.id)}" aria-pressed="${s.kind === k.id}">${esc(k.name)}</button>`).join('')}</div>
+      ${slots.length ? `<h3 class="sh-step">세부 종류 <span style="font-weight:400">(고르면 비슷한 상품 사진으로 보여요)</span></h3><div class="chips">${slots.map((x) => `<button class="chip" type="button" data-flow="slot-option" data-slot="${esc(x.id)}" aria-pressed="${s.slot === x.id}">${esc(x.name)}</button>`).join('')}</div>` : ''}` : '';
+    const ready = s.kind && s.color;
+    const col = s.color && s.color !== 'none' ? s.color : null;
+    let prev = '';
+    if (ready) {
+      const target = { kind: s.kind, kindName, slot: s.slot, color: col };
+      const has = !!(s.slot && col && M.photo({ slot: s.slot, color: col }));
+      prev = `<div class="sh-prev"><span class="ph">${photo(target)}</span><div><b>${esc(col ? colors.find((c) => c.id === col)?.label : '색 미확인')} ${esc(slotName || kindName)}</b><span>${has ? '옷장에는 비슷한 상품 사진으로 보여요. 실제 옷과 다를 수 있어요.' : '사진 없이 색 카드로 보여요.'}</span></div></div>`;
+    }
+    const title = s.from && !s.showKinds ? `가진 ${esc(kindName)}, 색만 골라 주세요` : '가진 옷 넣기';
+    return `<div class="scrim" data-act="close-overlay"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shT">
+      <div class="grab" aria-hidden="true"></div>
+      <h2 id="shT">${title}</h2>
+      <p class="sh-sub">${s.from && !s.showKinds ? `종류는 이 상품과 같은 <b>${esc(slotName || kindName)}</b>로 넣어요. <button class="link" type="button" data-act="sheet-kinds" aria-expanded="false">종류 바꾸기</button>` : '사진 없이 종류와 색만 골라요. 이 브라우저에만 저장돼요.'}</p>
+      ${kindsBlock}
+      ${s.kind ? `<h3 class="sh-step">색</h3>
+      <div class="swatches" role="group" aria-label="색">${colors.map((c) => `<button class="sw" type="button" data-flow="color-option" data-color="${esc(c.id)}" aria-pressed="${s.color === c.id}"${s.color === null && c.id === 'white' ? ' data-autofocus' : ''}><i style="background:${esc(c.hex)}"></i>${esc(c.label)}${s.hint === c.id ? '<em>이 상품</em>' : ''}</button>`).join('')}
+        <button class="sw" type="button" data-flow="color-option" data-color="none" aria-pressed="${s.color === 'none'}"><i class="unk">?</i>잘 몰라요</button></div>` : '<p class="sub" style="margin-top:12px">종류를 고르면 색을 고를 수 있어요.</p>'}
+      ${prev}
+      ${s.msg ? `<p class="warn" role="alert">${esc(s.msg)}</p>` : ''}
+      <div class="sheet-foot">
+        <button class="btn" type="button" data-act="close-overlay">닫기</button>
+        <button class="btn dark grow" type="button" data-flow="closet-save"${ready ? '' : ' aria-disabled="true"'}>${s.from ? '옷장에 걸고 이 상품으로' : '옷장에 걸기'}</button>
+      </div>
+    </div>`;
+  }
+  function editSheetHtml(gid) {
+    const s = st();
+    const g = s.closet.find((x) => x.id === gid);
+    if (!g) return '';
+    const colors = M.colorChoices();
+    const slots = M.slotChoices(g.kind, g.gender);
+    return `<div class="scrim" data-act="close-overlay"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edT">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sh-prev" style="margin-top:0"><span class="ph">${photo(g)}</span><div><b id="edT">${esc(gName(g))}</b><span>${esc(gSource(g))}${g.slotName ? ` · ${esc(g.slotName)}` : ' · 세부 종류 미확인'}</span></div></div>
+      <h3 class="sh-step">색 고치기</h3>
+      <div class="swatches">${colors.map((c) => `<button class="sw" type="button" data-act="edit-color" data-id="${esc(g.id)}" data-color="${esc(c.id)}" aria-pressed="${g.color === c.id}"><i style="background:${esc(c.hex)}"></i>${esc(c.label)}</button>`).join('')}</div>
+      ${slots.length ? `<h3 class="sh-step">세부 종류 <span style="font-weight:400">(선택)</span></h3><div class="chips">${slots.map((x) => `<button class="chip" type="button" data-act="edit-slot" data-id="${esc(g.id)}" data-slot="${esc(x.id)}" aria-pressed="${g.slot === x.id}">${esc(x.name)}</button>`).join('')}</div>` : ''}
+      ${g.bought ? '<p class="fine" style="margin-top:12px">기록에서 산 옷은 기록 화면에서 반품으로 정리해요.</p>' : ''}
+      <div class="sheet-foot">
+        ${g.bought ? '' : `<button class="btn danger" type="button" data-act="edit-remove" data-id="${esc(g.id)}">옷장에서 빼기</button>`}
+        <button class="btn dark grow" type="button" data-act="close-overlay" data-autofocus>다 됐어요</button>
+      </div>
+    </div>`;
+  }
+  const rerenderSheet = () => { const r = M.route.current(); const keep = document.activeElement?.dataset || {}; renderOverlay(r); const sel = keep.flow ? `[data-flow="${keep.flow}"]${keep.color ? `[data-color="${keep.color}"]` : ''}${keep.kind ? `[data-kind="${keep.kind}"]` : ''}${keep.slot ? `[data-slot="${keep.slot}"]` : ''}` : keep.act ? `[data-act="${keep.act}"]${keep.id ? `[data-id="${CSS.escape(keep.id)}"]` : ''}${keep.color ? `[data-color="${keep.color}"]` : ''}${keep.slot ? `[data-slot="${keep.slot}"]` : ''}` : ''; const el = sel && $(`#overlay ${sel}`); if (el) el.focus({ preventScroll: true }); };
+
+  // ── 알림
+  let toastTimer = null, toastFn = null;
+  function toast(text, action = null) {
+    const t = $('#toast');
+    $('#toastText').textContent = text;
+    const b = $('#toastAct');
+    toastFn = action?.fn || null;
+    b.hidden = !action; b.textContent = action?.label || '';
+    t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('on'), action ? 5000 : 3200);
+  }
+  $('#toastAct').addEventListener('click', () => { const fn = toastFn; toastFn = null; $('#toast').classList.remove('on'); try { fn?.(); } catch (e) { toast(e.message || '다시 시도해 주세요.'); } });
+
+  // ── 동작
+  function toggleCompare(id) {
+    if (M.compareHas(id)) {
+      M.compareRemove(id);
+      toast('비교함에서 뺐어요', { label: '되돌리기', fn: () => { M.compareAdd(id); refresh(); } });
+    } else {
+      try { M.compareAdd(id); } catch (e) { toast(e.message); return; }
+      const n = M.compareList().length;
+      toast(`비교함에 담았어요 · ${n}개`, n >= 2 ? { label: '비교 보기', fn: () => go('/compare') } : null);
+    }
+    refresh();
+  }
+  function decide(id, k) {
+    const prev = judge(id)?.record || null;
+    let rec;
+    try { rec = M.decide(id, k); } catch (e) { toast(e.message); return; }
+    toast(`기록했어요 · ${rec.stageLabel}`, { label: '되돌리기', fn: () => { if (!prev) M.removeRecord(id); else if (prev.decision && prev.stage === 'candidate') M.decide(id, prev.decision); refresh(); } });
+    refresh();
+  }
+  function saveSheet() {
+    const s = sheet;
+    if (!s || !s.kind || !s.color) { if (s) { s.msg = s.kind ? '색을 골라 주세요. 모르면 ‘잘 몰라요’를 눌러요.' : '종류를 골라 주세요.'; rerenderSheet(); } return; }
+    const before = s.from ? judge(s.from)?.title : null;
+    let g;
+    try { g = M.addGarment({ kind: s.kind, slot: s.slot, color: s.color === 'none' ? null : s.color }); } catch (e) { s.msg = e.message; rerenderSheet(); return; }
+    flashId = g.id;
+    if (s.from) changed = { id: s.from, before };
+    sheet = null;
+    opener = null;
+    closeOverlay();
+    refresh();
+    peekRail();
+    const nm = gName(g);
+    const after = s.from ? judge(s.from)?.title : null;
+    toast(`${nm}${josa(nm, '을', '를')} 옷장에 걸었어요${after ? ` · ${after}` : ''}`, { label: '되돌리기', fn: () => { M.removeGarment(g.id); changed = null; refresh(); } });
+  }
+  function navAsk() {
+    if (screen === 'search' || screen === 'home') { const q = $('#q'); q.focus(); showSugs(); return; }
+    if (lastSearch) go('/search', lastSearch.params); else go('/');
+    setTimeout(() => { if (!isPC()) return; $('#q')?.focus(); }, 50);
+  }
+
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-flow], [data-act]');
+    if (!t) return;
+    const flow = t.dataset.flow, act = t.dataset.act;
+    if (t.tagName === 'A' && !act && flow !== 'nav-ask') {
+      if (flow === 'compare-open' && screen === 'compare') e.preventDefault();
+      return; // 주소 이동은 링크 그대로
+    }
+    if (t.matches('form, div:not([data-act]), section, article, li, figure')) return;
+    try { handle(e, t, flow, act); } catch (err) { console.error(err); toast(err.message || '다시 시도해 주세요.'); }
+  });
+  function handle(e, t, flow, act) {
+    const pid = t.dataset.productId || curId;
+    if (flow === 'mock-label') return M.openDisclosure();
+    if (flow === 'example') { hideSugs(); $('#q').blur(); return go('/search', { q: t.dataset.q }); }
+    if (flow === 'condition-remove') { const p = M.route.current().params; const d = (p.drop ? p.drop.split(',') : []).concat(t.dataset.key); return go('/search', { ...p, drop: d.join(',') }); }
+    if (act === 'readd') { const p = M.route.current().params; const d = (p.drop ? p.drop.split(',') : []).filter((k) => k !== t.dataset.key); return go('/search', { ...p, drop: d.join(',') }); }
+    if (act === 'drop-one') { const p = M.route.current().params; const d = (p.drop ? p.drop.split(',') : []).concat(t.dataset.key); return go('/search', { ...p, drop: d.join(',') }); }
+    if (act === 'gender-search') { M.setGender(t.dataset.g); return go('/search', { q: t.dataset.q }); }
+    if (act === 'cheaper') return go('/search', { q: '더 싼 걸로', prev: t.dataset.q });
+    if (act === 'toggle-off') { offOpen = !offOpen; return refresh(); }
+    if (flow === 'compare-add') return toggleCompare(t.dataset.productId);
+    if (flow === 'compare-open') return go('/compare');
+    if (act === 'cmp-remove') { const id = t.dataset.id; M.compareRemove(id); toast('비교함에서 뺐어요', { label: '되돌리기', fn: () => { M.compareAdd(id); refresh(); } }); return refresh(); }
+    if (act === 'cmp-clear') { const keep = M.compareList(); M.compareClear(); toast('비교함을 비웠어요', { label: '되돌리기', fn: () => { keep.forEach((x) => { try { M.compareAdd(x); } catch { /* 무시 */ } }); refresh(); } }); return refresh(); }
+    if (flow && flow.startsWith('decide-')) return decide(pid, flow.slice(7));
+    if (act === 'own') { M.setOwnership(curId, t.dataset.v); return refresh(); }
+    if (act === 'gender') { M.setGender(t.dataset.g); return refresh(); }
+    if (flow === 'photo-zoom') return openOverlay('view', 'photo');
+    if (act === 'zoom-toggle') {
+      const v = t.closest('.viewer');
+      const r = t.getBoundingClientRect();
+      if (!v.classList.contains('zoomed') && e.clientX) { t.style.setProperty('--ox', `${((e.clientX - r.left) / r.width) * 100}%`); t.style.setProperty('--oy', `${((e.clientY - r.top) / r.height) * 100}%`); }
+      v.classList.toggle('zoomed');
+      t.setAttribute('aria-label', v.classList.contains('zoomed') ? '원래 크기로' : '두 배로 확대하기');
+      return;
+    }
+    if (act === 'close-overlay') return closeOverlay();
+    if (act === 'back') { if (visits > 1) return history.back(); return go(lastSearch ? '/search' : '/', lastSearch ? lastSearch.params : {}); }
+    if (flow === 'nav-ask') return navAsk();
+    if (act === 'rail-open') { railOpen = true; openScrollY = window.scrollY; syncRail(); $('#rail .tile')?.focus({ preventScroll: true }); return; }
+
+    // 옷 넣기(상세에서는 이 상품 종류를 미리 고르고 색만 묻는다)
+    if (flow === 'closet-add') { sheet = null; return openOverlay('add', '1'); }
+    if (act === 'sheet-kinds') { sheet.showKinds = true; return rerenderSheet(); }
+    if (act === 'sheet-group') { sheet.group = t.dataset.id; return rerenderSheet(); }
+    if (flow === 'kind-option') { const k = t.dataset.kind; sheet.kind = k; sheet.slot = sheet.base && sheet.base.kind === k ? sheet.base.slot : null; sheet.group = groupOf(k); sheet.msg = null; return rerenderSheet(); }
+    if (flow === 'slot-option') { sheet.slot = sheet.slot === t.dataset.slot ? null : t.dataset.slot; return rerenderSheet(); }
+    if (flow === 'color-option') { sheet.color = t.dataset.color; sheet.msg = null; return rerenderSheet(); }
+    if (flow === 'closet-save') return saveSheet();
+    if (flow === 'trial-closet') {
+      M.loadTrialCloset();
+      refresh(); if (!isPC()) peekRail();
+      return toast(`체험용 옷 ${st().trialCount}벌을 걸었어요 · 내 옷이 아니에요`, { label: '내리기', fn: () => { M.clearTrialCloset(); refresh(); } });
+    }
+    if (act === 'trial-off') { M.clearTrialCloset(); refresh(); return toast('체험용 옷을 내렸어요'); }
+    if (act === 'tile') return openOverlay('edit', t.dataset.id);
+    if (act === 'edit-color') { M.updateGarment(t.dataset.id, { color: t.dataset.color }); refresh(); return rerenderSheet(); }
+    if (act === 'edit-slot') { const g = st().closet.find((x) => x.id === t.dataset.id); M.updateGarment(t.dataset.id, { slot: g && g.slot === t.dataset.slot ? null : t.dataset.slot }); refresh(); return rerenderSheet(); }
+    if (act === 'edit-remove') {
+      const g = st().closet.find((x) => x.id === t.dataset.id);
+      try { M.removeGarment(t.dataset.id); } catch (err) { return toast(err.message); }
+      closeOverlay(); refresh();
+      return toast(`${gName(g)}${josa(gName(g), '을', '를')} 옷장에서 뺐어요`, { label: '되돌리기', fn: () => { M.addGarment({ kind: g.kind, slot: g.slot, color: g.color, label: g.label, trial: g.trial }); refresh(); } });
+    }
+
+    // 기록
+    if (flow === 'record-step') {
+      const id = t.dataset.productId;
+      if (t.dataset.step === 'returned') { returning = id; return refresh(); }
+      const rec = M.advance(id, t.dataset.step);
+      if (t.dataset.step === 'kept') {
+        const g = st().closet.find((x) => x.productId === id);
+        if (g) { flashId = g.id; refresh(); if (!isPC()) peekRail(); return toast('옷장 레일에 ‘기록에서 산 옷’으로 걸었어요', { label: '옷장 보기', fn: () => go('/closet') }); }
+      }
+      refresh();
+      return toast(t.dataset.step === 'received' ? '받았다고 기록했어요 · 계속 입을지 정하면 옷장에 걸려요' : `기록했어요 · ${rec.stageLabel}`);
+    }
+    if (act === 'return-reason') { const rec = M.advance(t.dataset.productId, 'returned', { reason: t.dataset.reason }); returning = null; refresh(); return toast(`기록했어요 · ${rec.stageLabel}`); }
+    if (act === 'return-cancel') { returning = null; return refresh(); }
+    if (act === 'rm-record') {
+      const id = t.dataset.id; const prev = judge(id)?.record;
+      try { M.removeRecord(id); } catch (err) { return toast(err.message); }
+      refresh();
+      return toast('기록을 지웠어요', prev?.decision ? { label: '되돌리기', fn: () => { M.decide(id, prev.decision); refresh(); } } : null);
+    }
+    if (flow === 'reset') {
+      if (!resetArmed) { resetArmed = true; return refresh(); }
+      M.reset(); resetArmed = false; lastSearch = null; changed = null;
+      toast('처음 상태로 돌렸어요');
+      return go('/', {}, { replace: true });
+    }
+    if (act === 'clear-recent') { M.clearRecent(); return showSugs(); }
+  }
+
+  // ── 검색칸: 한 곳, 입력 중 제안(최근·예시·종류)
+  const qEl = $('#q');
+  function showSugs() {
+    const list = M.searchSuggestions(qEl.value, { limit: 6 });
+    const box = $('#sugs');
+    if (!list.length) { hideSugs(); return; }
+    const hasRecent = list.some((x) => x.kind === 'recent');
+    box.innerHTML = `<div class="sg-h"><span>${qEl.value.trim() ? '이어지는 요청' : '최근·예시'}</span>${hasRecent ? '<button class="link" type="button" data-act="clear-recent">최근 지우기</button>' : ''}</div>
+      ${list.map((x) => `<button class="sg" type="button" data-flow="example" data-q="${esc(x.q)}"><span class="sg-k">${esc(x.label)}</span><span>${esc(x.q)}</span></button>`).join('')}`;
+    box.hidden = false;
+    qEl.setAttribute('aria-expanded', 'true');
+  }
+  function hideSugs() { $('#sugs').hidden = true; qEl.setAttribute('aria-expanded', 'false'); }
+  qEl.addEventListener('focus', showSugs);
+  qEl.addEventListener('input', showSugs);
+  document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#searchForm')) hideSugs(); });
+  $('#searchForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = qEl.value.trim();
+    if (!q) { qEl.focus(); showSugs(); return; }
+    hideSugs(); qEl.blur();
+    go('/search', { q });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (document.querySelector('#eo-disclosure[open]')) return;
+    if (!$('#sugs').hidden) { hideSugs(); return; }
+    if (railOpen) { railOpen = false; syncRail(); return; }
+    if ($('#overlay').innerHTML) closeOverlay();
+  });
+
+  // PC: 카드에 올리면 왼쪽 옷장이 그 후보 기준으로 반응
+  function setHover(id) {
+    if (id === hoverId) return;
+    hoverId = id;
+    renderRail();
+  }
+  document.addEventListener('mouseover', (e) => {
+    if (!isPC() || !['search', 'home', 'compare'].includes(screen)) return;
+    const c = e.target.closest('.card[data-card], .cmp-item[data-product-id]');
+    setHover(c ? (c.dataset.card || c.dataset.productId) : null);
+  });
+  document.addEventListener('focusin', (e) => {
+    if (!isPC() || !['search', 'home', 'compare'].includes(screen)) return;
+    const c = e.target.closest('.card[data-card], .cmp-item[data-product-id]');
+    if (c) setHover(c.dataset.card || c.dataset.productId);
+  });
+
+  // 아이콘 채우기
+  $('.ab-back').innerHTML = ic('back');
+  $('.s-go').innerHTML = ic('search');
+  $('.ab-search').innerHTML = ic('search');
+  $$('[data-icon]').forEach((el) => { el.outerHTML = ic(el.dataset.icon, 22); });
+
+  mqPC.addEventListener('change', () => { refresh(); });
+  M.subscribe(() => { /* 다른 창에서 바뀐 경우 */ });
+  window.addEventListener('storage', () => setTimeout(refresh, 0));
+
+  // ── 시작
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  if (M.boot.q && !location.hash) history.replaceState(null, '', M.route.href('/search', { q: M.boot.q }));
+  window.addEventListener('hashchange', onRoute);
+  onRoute();
+})();
+</script>
+</body>
+</html>
