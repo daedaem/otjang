@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 fe77f1a) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 1af0f8e) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 891개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -4157,6 +4157,7 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
         const color = row.owned ? row.item?.color ?? row.color : product?.color ?? row.color;
         return {
           role: row.role, roleLabel: ROLE_LABEL[row.role] || '',
+          garmentId: row.owned ? row.item?.id ?? null : null,
           owned: !!row.owned, trial: !!(row.owned && row.item && isTrial(row.item.id)),
           candidate: !!isCandidate || (!!product && product.id === candidateId),
           focus: !!product && product.id === focusId,
@@ -4552,11 +4553,21 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
 
     // 가진 옷만으로 입을 수 있는 조합 수(코디 공식 + 종류·색 기본 조합). 옷장을 채우는 재미의 보상 숫자.
     // 구매 추천이 아니다. 체험용 옷도 포함하므로 화면에서 '체험용 포함'을 밝힌다.
-    closetOutfits({ limit = 60 } = {}) {
+    // detail: true면 조합 목록(list)도 준다. key는 조합에 든 옷 id를 이은 값, baseKey는 겉옷을 뺀 값이다.
+    // 기본 조합은 겉옷만 다른 조합을 하나로 묶으므로 '새로 생긴 조합'은 baseKey로 가린다.
+    closetOutfits({ limit = 60, detail = false } = {}) {
       const st = engineState();
-      const formulas = closetLooks(st, { limit }).ready.length;
-      const basic = basicOutfits(st, { limit }).length;
-      return { formulas, basic, total: formulas + basic, note: '가진 옷으로 입을 수 있는 조합 수예요(종류·색 기준, 핏·소재는 따지지 않았어요).' };
+      const ready = closetLooks(st, { limit }).ready;
+      const basics = basicOutfits(st, { limit });
+      const out = { formulas: ready.length, basic: basics.length, total: ready.length + basics.length, note: '가진 옷으로 입을 수 있는 조합 수예요(종류·색 기준, 핏·소재는 따지지 않았어요).' };
+      if (detail) {
+        out.list = [...ready, ...basics].map((r) => {
+          const v = outfitView(r);
+          const ids = (pieces) => pieces.map((p) => p.garmentId).filter(Boolean).sort().join('|');
+          return { ...v, formulaLook: !r.basic, key: ids(v.pieces), baseKey: ids(v.pieces.filter((p) => p.role !== 'outer')) };
+        });
+      }
+      return out;
     },
 
     // 빈 결과·좁은 결과의 다음 선택: 조건을 하나씩 뺐을 때의 결과 수와 사진 미리보기.
@@ -4771,6 +4782,6 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
 if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "fe77f1a" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "1af0f8e" };
 window.EoulMock = mock;
 })();
