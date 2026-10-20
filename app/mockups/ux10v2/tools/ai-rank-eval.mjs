@@ -1,7 +1,8 @@
 // AI 순위 품질 시험: 링크 시안과 같은 프롬프트·검증(links/shared/ai-rank.js)을 실제 Claude API로 돌려 모델별 순위·이유를 비교한다.
 // 키는 환경 변수 ANTHROPIC_API_KEY에서만 읽는다(저장소·채팅에 두지 않는다). 비용 상한(--max-usd, 기본 1달러)에 닿으면 멈춘다.
 // 준비: app 폴더에서 `npm install --no-save @anthropic-ai/sdk` (package.json은 바꾸지 않는다).
-// 실행: node mockups/ux10v2/tools/ai-rank-eval.mjs [--models haiku,sonnet] [--max-usd 1] [--queries 8] [--out ai-rank-eval.md] [--dry]
+// 실행: node mockups/ux10v2/tools/ai-rank-eval.mjs [--models haiku,sonnet] [--max-usd 1] [--queries 8] [--effort low] [--out ai-rank-eval.md] [--dry]
+// --effort를 주면 두 모델의 생각량을 같게 고정한다(안 주면 모델 기본값: Haiku 5.5는 medium, Sonnet 5.5는 high).
 // --dry는 키 없이 가짜 응답으로 흐름만 확인한다(비용 0).
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -15,6 +16,7 @@ const DRY = process.argv.includes('--dry');
 const MAX_USD = Number(arg('max-usd', '1'));
 const OUT = arg('out', 'ai-rank-eval.md');
 const QUERY_LIMIT = Number(arg('queries', '8'));
+const EFFORT = arg('effort', '');
 // 요금(달러/백만 토큰, 2026-10 공식 요금표 기준). 출력 토큰에는 생각(thinking) 토큰이 포함된다.
 const MODELS = {
   haiku: { id: 'claude-haiku-5-5', in: 0.1, out: 0.5 },
@@ -77,7 +79,7 @@ async function makeSample(key) {
       const t0 = Date.now();
       let res;
       try {
-        res = await client.messages.create({ model: m.id, max_tokens: 8000, messages: [{ role: 'user', content: prompt }] });
+        res = await client.messages.create({ model: m.id, max_tokens: 8000, ...(EFFORT ? { output_config: { effort: EFFORT } } : {}), messages: [{ role: 'user', content: prompt }] });
       } catch (e) {
         if (e instanceof Anthropic.AuthenticationError) {
           console.error('키가 거절됐어요(401). 환경 변수 ANTHROPIC_API_KEY를 확인해 주세요.');
@@ -158,7 +160,7 @@ for (const [gender, text] of QUERIES) {
   if (spent >= MAX_USD) { out(`**비용 상한 ${MAX_USD}달러에 닿아 멈췄어요.**`); break; }
 }
 
-const head = [`# AI 순위 품질 시험 (${new Date().toISOString().slice(0, 10)}${DRY ? ', 가짜 응답' : ''})`, '', '| 모델 | 호출 | 성공 | 평균 응답 | 입력 토큰 | 출력 토큰 | 비용(달러) | 점검 걸린 줄 | 실패 |', '|---|---|---|---|---|---|---|---|---|'];
+const head = [`# AI 순위 품질 시험 (${new Date().toISOString().slice(0, 10)}${DRY ? ', 가짜 응답' : ''}, effort ${EFFORT || '모델 기본값'})`, '', '| 모델 | 호출 | 성공 | 평균 응답 | 입력 토큰 | 출력 토큰 | 비용(달러) | 점검 걸린 줄 | 실패 |', '|---|---|---|---|---|---|---|---|---|'];
 for (const key of picked) {
   const u = usage[key] || { calls: 0, ok: 0, in: 0, out: 0, usd: 0, ms: 0, errors: {} };
   const flagged = rows.filter((r) => r.key === key).reduce((s, r) => s + r.flags.length, 0);

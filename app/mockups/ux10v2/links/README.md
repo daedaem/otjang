@@ -26,15 +26,18 @@
 
 ## AI 순위 품질 시험 (실제 Claude API)
 
-새 세션에서 "AI 순위 품질 시험 돌려줘"라고 하면 아래를 실행한다. 키는 클라우드 환경 설정의 `ANTHROPIC_API_KEY`에서만 읽는다(채팅·저장소에 두지 않는다).
+새 세션에서 "AI 순위 품질 시험 돌려줘"라고 하면 아래를 실행한다. 키는 클라우드 환경 설정의 **환경 변수** `ANTHROPIC_API_KEY`에서만 읽는다(채팅·저장소에 두지 않는다). Network secrets는 쓰지 않는다: 이 환경에서 api.anthropic.com은 네트워크 프록시를 거치지 않아(프록시 상태의 noProxy 목록) 프록시가 끼워 넣는 비밀값이 닿지 않을 것으로 본다(추론).
 
 ```bash
 cd app
 npm install --no-save @anthropic-ai/sdk   # package.json·lock은 바꾸지 않는다
-node mockups/ux10v2/tools/ai-rank-eval.mjs --models haiku,sonnet --max-usd 1 --out <스크래치 폴더>/ai-rank-eval.md
+# 1) 작게 먼저: 검색 2개(4건 × 모델 2개), 두 모델 생각량 동일
+node mockups/ux10v2/tools/ai-rank-eval.mjs --queries 2 --effort low --max-usd 0.3 --out <스크래치 폴더>/ai-rank-eval-small.md
+# 2) 결과 형식·이유가 괜찮으면 전체
+node mockups/ux10v2/tools/ai-rank-eval.mjs --effort low --max-usd 2 --out <스크래치 폴더>/ai-rank-eval.md
 ```
 
-- 시안과 같은 프롬프트·검증(`shared/ai-rank.js`)을 그대로 쓴다. 검색 8개 × (빈 옷장, 체험용 옷장) × 모델 2개 = 32번 호출, 예상 비용 1달러 미만(추정). `--max-usd`에 닿으면 멈춘다.
+- 시안과 같은 프롬프트·검증(`shared/ai-rank.js`)을 그대로 쓴다. 검색 8개 × (빈 옷장, 체험용 옷장) × 모델 2개 = 32번 호출, 예상 비용 0.3~1달러(추정, 생각 토큰에 따라 달라짐). `--max-usd`에 닿으면 멈춘다.
 - 결과 파일: 모델별 성공 수·응답 시간·토큰·비용, 검색마다 순위·판단·이유 표, 자동 점검(이유 45자 초과, 자료에 없는 소재·핏 등 언급, 빠뜨린 후보, 옷장과 같은 옷의 평균 순위와 '겹쳐요' 표시).
 - 키 없이 흐름만 볼 때: `--dry`(가짜 응답, 비용 0).
 - 대표의 API 크레딧(무료 US$100)은 2026-10-23에 만료된다. 결제 수단이 없어 크레딧을 넘는 청구는 없다(콘솔 화면 기준).
