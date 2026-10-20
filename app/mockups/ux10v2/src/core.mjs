@@ -138,7 +138,9 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
   // 상품: 판매처 사진. 산 옷: 그 상품 사진. 종류·색만 아는 옷: 같은 세부 종류·색의 비슷한 상품 사진(표시 필수).
   // 세부 종류나 색을 모르는 옷: 특정 상품처럼 보이지 않게 사진 없이 색 카드.
   const PHOTO_HOST = /^https:\/\/image\.msscdn\.net\//;
-  const productPhoto = (p) => (photos && p?.img && PHOTO_HOST.test(p.img) ? { src: p.img, similar: false, alt: `${p.brand} ${p.name}`, caption: '' } : null);
+  // 외부 사진 서버를 막는 곳(예: 공유 링크 페이지)에서는 window.EOUL_PHOTO_BASE에 함께 올린 사진 폴더를 적는다(파일 이름은 상품 id.jpg).
+  const photoSrc = (p) => (typeof window !== 'undefined' && window.EOUL_PHOTO_BASE ? `${window.EOUL_PHOTO_BASE}${p.id}.jpg` : p.img);
+  const productPhoto = (p) => (photos && p?.img && PHOTO_HOST.test(p.img) ? { src: photoSrc(p), similar: false, alt: `${p.brand} ${p.name}`, caption: '' } : null);
   function garmentPhoto(g) {
     if (!photos) return null;
     if (g.productId && PRODUCT_BY_ID[g.productId]) return productPhoto(PRODUCT_BY_ID[g.productId]);
@@ -511,7 +513,8 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
         : cmp.decision.kind === 'skip' || similarHeld.length ? 'stop'
         : cmp.newFormulaCount ? 'go' : pair ? 'pair' : cmp.decision.kind === 'consider' ? 'think' : roughOnly ? 'info' : 'think';
       const lean = cmp.decision.kind === 'skip' || similarHeld.length ? 'hold' : cmp.newFormulaCount ? 'buy' : null;
-      const name = (g) => `${colorLabel(g.color)} ${garmentLabel(g)}`.trim();
+      // 직접 붙인 이름(예: '흰 옥스퍼드 셔츠')에는 이미 색이 들어 있으니 색을 다시 붙이지 않는다.
+      const name = (g) => (g.label ? g.label : `${colorLabel(g.color)} ${garmentLabel(g)}`.trim());
       const lines = [];
       if (similarHeld.length) lines.push(`${similarHeld.slice(0, 3).map(name).join(', ')}${similarHeld.length > 3 ? ` 외 ${similarHeld.length - 3}벌` : ''} · 같은 종류·색이에요. 새로 더할 이유가 있는지 먼저 확인해 주세요.`);
       if (roughOnly && !similarHeld.length && !pair) lines.push('종류·색으로 먼저 비교했어요. 내 옷의 세부 종류·색을 채우면 어떤 코디가 생기는지도 알려 드려요.');
@@ -693,12 +696,12 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       return {
         fresh: { label: '새 상품', priceText: formatPrice(p.price), priceNote: card(p).priceShort, store: p.store, url: p.url, condition: '새 상품', photoNote: '판매처 대표 사진' },
         used: { label: '중고', priceText: null, priceNote: '매물마다 달라요', condition: '매물마다 달라요 · 상태 등급 없음', photoNote: '매물 사진은 각 사이트에서', note: used.note, groups: used.groups },
-        diff: ['가격: 새 상품은 수집가가 있어요. 중고 가격은 어울이 확인하지 않았어요.', '상태: 중고는 매물마다 달라요. 판매자 설명과 사진을 확인해 주세요.', '사진: 위 사진은 판매처 대표 사진이에요. 중고 매물의 실제 사진이 아니에요.'],
+        diff: ['가격: 새 상품은 수집가가 있어요. 중고 가격은 이 앱이 확인하지 않았어요.', '상태: 중고는 매물마다 달라요. 판매자 설명과 사진을 확인해 주세요.', '사진: 위 사진은 판매처 대표 사진이에요. 중고 매물의 실제 사진이 아니에요.'],
       };
     },
 
     // 중고 매물: 앱 안 통합이 아니라 외부 사이트의 공개 검색 결과로 보내는 링크다.
-    // 어울은 매물·가격·재고·판매 상태를 읽거나 저장하지 않는다(공식 연동 전).
+    // 이 앱은 매물·가격·재고·판매 상태를 읽거나 저장하지 않는다(공식 연동 전).
     usedSearch(target) {
       const p = typeof target === 'string' ? PRODUCT_BY_ID[target] : target?.id ? PRODUCT_BY_ID[target.id] : null;
       const text = typeof target === 'object' && target?.text ? String(target.text).slice(0, 80) : null;
@@ -726,7 +729,7 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       ] : [];
       return {
         kind: 'search-links',
-        note: '외부 사이트의 검색 결과로 이동해요. 어울은 매물·가격·재고·상태를 확인하지 않았어요.',
+        note: '외부 사이트의 검색 결과로 이동해요. 이 앱은 매물·가격·재고·상태를 확인하지 않았어요.',
         exactNote: p ? `국내는 ‘${ko}’로 같은 상품을, 해외는 비슷한 종류·색을 찾아요.` : `‘${ko}’로 찾아요.`,
         abroadNote: '해외 매물은 배송대행·관세·반품 조건이 따로 있어요. 결제 전 판매처에서 확인해 주세요.',
         groups: [{ region: '국내 중고', links: domestic }, ...(abroad.length ? [{ region: '해외 중고', links: abroad }] : [])],
