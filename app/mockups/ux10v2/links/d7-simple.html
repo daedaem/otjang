@@ -101,6 +101,9 @@ a { color: inherit; text-decoration: none; }
 .ph-box .eo-ph, .ph-box .eo-tile { position: absolute; inset: 0; aspect-ratio: auto !important; border-radius: 0 !important; }
 .ph-box .swatch { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-size: 13px; color: var(--ink2); }
 .ph-box .swatch i { width: 40%; aspect-ratio: 1; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.closet-card .stack .swatch { font-size: 0; gap: 0; } /* 44px 겹친 칸에서는 이름이 잘리므로 색 동그라미만 보인다 */
+.closet-card .stack .ph-box { width: 100%; height: 100%; }
+.closet-card .stack .swatch i { width: 24px; height: 24px; flex: none; }
 .ph-box .tag { position: absolute; left: 10px; top: 10px; height: 26px; padding: 0 10px; border-radius: 8px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; background: rgba(25, 31, 40, .82); color: #fff; }
 .ph-box.dark-safe { background: #f2f4f6; }
 
