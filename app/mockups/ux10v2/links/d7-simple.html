@@ -8,6 +8,7 @@
 <script src="shared/cutouts.js"></script>
 <script src="shared/photo-kinds.js"></script>
 <script src="shared/kit.js"></script>
+<script src="shared/ai-rank.js"></script>
 <style>
 /* 한 화면에 한 가지: 큰 제목 하나, 꼭 필요한 정보, 주 버튼 하나. 글자 크기는 28 · 22 · 17 · 15 · 13 다섯 단계만 쓴다. */
 :root {
@@ -117,6 +118,21 @@ a { color: inherit; text-decoration: none; }
 .card .p { margin-top: 4px; font-size: 17px; font-weight: 700; }
 .card .p small { font-size: 13px; font-weight: 400; color: var(--ink3); margin-left: 4px; }
 .empty { margin-top: 48px; }
+.ai { margin-top: 20px; padding: 14px 16px; border-radius: var(--r); background: var(--blue-soft); color: var(--ink); font-size: 15px; line-height: 22px; display: flex; gap: 10px; align-items: flex-start; }
+.ai i { color: var(--blue); font-size: 20px; margin-top: 1px; }
+.ai.wait { background: var(--well); color: var(--ink2); }
+.ai.wait i { animation: spin 1.2s linear infinite; color: var(--ink3); }
+.ai.off { background: var(--well); color: var(--ink2); }
+.ai small { display: block; font-size: 13px; color: var(--ink3); margin-top: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.rank { position: absolute; left: 10px; bottom: 10px; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.card .why { margin-top: 6px; font-size: 13px; line-height: 19px; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card .why b { color: var(--blue); font-weight: 600; }
+.card .why b.warn { color: var(--ink); }
+.grid.moving .card { transition: transform 420ms var(--spring, ease); }
+.ai-why { margin-top: 32px; padding: 20px; border-radius: 20px; border: 1px solid var(--line); }
+.ai-why .label { font-size: 13px; color: var(--blue); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.ai-why p { margin: 8px 0 0; font-size: 17px; line-height: 26px; font-weight: 600; }
 
 /* 상세 */
 .pdp-photo { margin: 0 calc(-1 * var(--gut)); aspect-ratio: 4 / 5; border-radius: 0; }
@@ -241,6 +257,12 @@ a { color: inherit; text-decoration: none; }
     return garmentPic({ kind: p.kind, kindName: p.kindName, color: p.color, colorHex: p.colorHex, colorLabel: p.colorLabel });
   };
 
+  function cardHtml(p, ai) {
+    const fit = ai?.fit === '겹쳐요' ? '<b class="warn">겹쳐요</b> · ' : ai?.fit === '추천' ? '<b>추천</b> · ' : '';
+    return `<button class="card" data-pid="${p.id}">${productPic(p.id, { tag: p.owned?.tone === 'stop' ? '비슷한 옷 있어요' : '' }).replace(/<\/span>$/, ai ? `<span class="rank num">${ai.rank}</span></span>` : '</span>')}
+      <div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div>${ai?.reason ? `<div class="why">${fit}${esc(ai.reason)}</div>` : ''}</button>`;
+  }
+
   // ── 화면
   function render(view, params, dir) {
     const app = $('#app');
@@ -285,15 +307,17 @@ a { color: inherit; text-decoration: none; }
           <p class="sub t5" style="margin-top:6px">${r.understood ? '조건을 하나 빼 볼까요?' : '종류를 넣어 다시 말해 주세요. 예: 셔츠, 코트, 운동화'}</p>
           ${rel.map((x) => `<button class="row" data-relax='${esc(JSON.stringify(x.drop))}'><span class="grow t5">${esc(x.title)}</span><i class="ph ph-caret-right arr"></i></button>`).join('')}</div>`;
       }
+      S.result = r;
       return `${top()}<h1 class="t2 res-h">${esc(q)}</h1><p class="t5 sub" style="margin-top:2px">${r.total}개 찾았어요</p>
         ${chips ? `<div class="chips">${chips}</div>` : ''}
-        <div class="grid">${r.products.slice(0, 24).map((p) => `<button class="card" data-pid="${p.id}">${productPic(p.id, { tag: p.owned?.tone === 'stop' ? '비슷한 옷 있어요' : '' })}
-          <div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>`).join('')}</div>
-        <p class="t6" style="margin-top:32px">가격은 수집한 날의 판매가예요. 정해 둔 규칙으로 골랐어요.</p>`;
+        <div class="ai wait" id="ai" role="status"><i class="ph ph-circle-notch"></i><span>AI가 내 옷장을 보고 순위를 매기는 중이에요</span></div>
+        <div class="grid" id="grid">${r.products.slice(0, 12).map((p) => cardHtml(p)).join('')}</div>
+        <p class="t6" style="margin-top:32px">후보는 조건에 맞는 상품을 규칙으로 골랐고, 순위와 이유는 AI(Claude)가 상품 정보·평점·후기·내 옷장만 보고 정했어요. 가격은 수집한 날의 판매가예요.</p>`;
     },
 
     detail({ id }) {
       const p = M.product(id);
+      const ai = S.ai?.[id];
       const v = p.verdict;
       const same = (v.owned || []).filter((o) => ['same-product', 'same-color'].includes(o.relation));
       const look = (v.looks || []).find((l) => l.pieces.some((x) => x.candidate));
@@ -307,6 +331,7 @@ a { color: inherit; text-decoration: none; }
         <div class="pdp">${productPic(id).replace('class="ph-box', 'class="ph-box pdp-photo')}
         <div class="pdp-head"><div class="t6">${esc(p.brand)}</div><h1 class="t2" style="margin-top:2px">${esc(p.name)}</h1>
           <div class="price num">${esc(p.priceText)}<small>${esc(p.priceNote)}</small></div></div>
+        ${ai?.reason ? `<section class="ai-why" aria-label="AI 추천 이유"><div class="label"><i class="ph-fill ph-sparkle"></i>AI 추천 ${ai.rank}위</div><p>${esc(ai.reason)}</p></section>` : ''}
         <section class="verdict ${cls}" aria-label="내 옷과 비교"><div class="label">내 옷과 비교</div>
           <h2 class="t2">${head}</h2><p class="why">${esc(why)}</p>
           ${same.length ? `<div class="owned">${same.map((o) => `<div class="o">${garmentPic(o)}<div class="t6">${esc(o.colorLabel)} ${esc(o.kindName)}${o.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : ''}
@@ -359,9 +384,26 @@ a { color: inherit; text-decoration: none; }
       $('#sf').onsubmit = (e) => { e.preventDefault(); const q = $('#q').value.trim(); if (q) K.go('results', { q }); else $('#q').focus(); };
       $$('[data-q]').forEach((b) => { b.onclick = () => K.go('results', { q: b.dataset.q }); });
     },
-    results({ q, drop = [] }) {
+    async results({ q, drop = [] }) {
       $$('[data-drop]').forEach((b) => { b.onclick = () => K.go('results', { q, drop: [...drop, b.dataset.drop] }, { replace: true }); });
       $$('[data-relax]').forEach((b) => { b.onclick = () => K.go('results', { q, drop: JSON.parse(b.dataset.relax) }, { replace: true }); });
+      const r = S.result;
+      const box = $('#ai');
+      if (r?.products?.length && box) {
+        const res = await AIRank.rank(q, r, { limit: 12 });
+        if (!document.body.contains(box)) return;
+        if (res.ok) {
+          S.ai = Object.fromEntries(res.order.map((o) => [o.id, o]));
+          const byId = Object.fromEntries(r.products.map((p) => [p.id, p]));
+          const grid = $('#grid');
+          const first = new Map($$('.card', grid).map((c) => [c.dataset.pid, c.getBoundingClientRect()]));
+          grid.innerHTML = res.order.map((o) => cardHtml(byId[o.id], o)).join('');
+          if (!K.reduce) $$('.card', grid).forEach((c) => { const a = first.get(c.dataset.pid), b = c.getBoundingClientRect(); if (a) c.animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px)` }, { transform: 'none' }], { duration: 520, easing: K.SPRING.css }); });
+          box.className = 'ai'; box.innerHTML = `<i class="ph-fill ph-sparkle"></i><span>${esc(res.summary || 'AI가 내 옷장을 보고 순위를 매겼어요')}<small>AI 순위 · 상품 정보와 내 옷장만 보고 판단했어요</small></span>`;
+        } else {
+          box.className = 'ai off'; box.innerHTML = `<i class="ph ph-info"></i><span>${esc(AIRank.whyText(res.why))}</span>`;
+        }
+      } else if (box) box.remove();
     },
     detail({ id }) {
       const v = M.product(id).verdict;

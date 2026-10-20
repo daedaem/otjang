@@ -639,6 +639,39 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       return out;
     },
 
+    // 순위와 순위별 이유: 같은 결과 안에서 이 상품이 다른 상품과 무엇이 다른지를 규칙으로 계산한다(대화형 AI가 아니다).
+    // 순서는 엔진이 정한 그대로다(종류가 요청·옷장에 맞는 정도 + 평점·후기 + 같은 종류 안 순서). 지어낸 말은 넣지 않는다.
+    rankReasons(result, { limit = 24 } = {}) {
+      const list = (result?.products || []).slice(0, limit);
+      if (!list.length) return { basis: '', items: [] };
+      const prices = list.map((p) => p.price);
+      const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+      const minPrice = Math.min(...prices);
+      const maxReviews = Math.max(...list.map((p) => p.reviews || 0));
+      const rated = list.filter((p) => (p.reviews || 0) >= 100 && p.rating);
+      const maxRating = rated.length ? Math.max(...rated.map((p) => p.rating)) : null;
+      const n = (v) => Number(v).toLocaleString('ko-KR');
+      const items = list.map((p, i) => {
+        const v = api.judge(p.id);
+        const same = (v?.owned || []).filter((o) => ['same-product', 'same-color'].includes(o.relation)).length;
+        const facts = [];
+        if (v?.basis !== 'none' && v?.newLookCount) facts.push({ kind: 'closet', good: true, text: `가진 옷과 새 조합 ${v.newLookCount}개가 생겨요` });
+        if (same) facts.push({ kind: 'closet', good: false, text: `옷장에 비슷한 옷이 ${same}벌 있어요` });
+        if (list.length > 1 && (p.reviews || 0) === maxReviews && maxReviews >= 100) facts.push({ kind: 'reviews', good: true, text: `이 중 후기가 가장 많아요 (${n(p.reviews)}개)` });
+        else if ((p.reviews || 0) >= 1000) facts.push({ kind: 'reviews', good: true, text: `후기 ${n(p.reviews)}개` });
+        if (maxRating && rated.length > 1 && p.rating === maxRating && (p.reviews || 0) >= 100) facts.push({ kind: 'rating', good: true, text: `후기 100개 이상 중 평점이 가장 높아요 (${p.rating})` });
+        if (list.length > 1 && p.price === minPrice) facts.push({ kind: 'price', good: true, text: '이 중 가장 저렴해요' });
+        else if (p.price < avg * 0.85) facts.push({ kind: 'price', good: true, text: `평균보다 ${Math.round((1 - p.price / avg) * 100)}% 저렴해요` });
+        if (p.traitLine) facts.push({ kind: 'trait', good: true, text: p.traitLine });
+        const kindWhy = (p.reasons || []).find((r) => !/맞춰 골랐어요$/.test(r));
+        if (kindWhy) facts.push({ kind: 'why', good: true, text: kindWhy });
+        const head = facts.find((f) => f.kind === 'closet') || facts.find((f) => f.kind === 'reviews' && f.text.startsWith('이 중'))
+          || facts.find((f) => f.kind === 'rating') || facts.find((f) => f.kind === 'price') || facts[0] || { text: p.reason };
+        return { id: p.id, rank: i + 1, headline: head.text, caution: head.good === false, facts: facts.slice(0, 4), matched: (p.reasons || [])[0] || '' };
+      });
+      return { basis: '순위는 요청한 조건과 내 옷장에 맞는 정도, 평점·후기, 가격을 정해 둔 규칙으로 계산했어요. 평점·후기는 판매처 정보예요.', items };
+    },
+
     // 빈 결과·좁은 결과의 다음 선택: 조건을 하나씩 뺐을 때의 결과 수와 사진 미리보기.
     // 자동으로 적용하지 않는다(대표 원칙: 조건 보존. 대안이 하나뿐이어도 사용자가 고른다).
     relax(result, { limit = 3, preview = 3 } = {}) {
