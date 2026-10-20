@@ -15,6 +15,7 @@
 | d8-apple.html | 애플식: 큰 제목, 묶음 목록, 순위 목록/사진 전환. AI 순위 | https://claude.ai/artifact/5h4UAJEwq3WK598VmaHLhy |
 | d9-shop.html | 쇼핑앱식: 둘러보기 먼저, AI추천순·낮은가격순·후기순 정렬, 옷장과 겹치는 옷 빼기, 2·3열 전환. AI 순위 | https://claude.ai/artifact/EKw5tiSgn9DCMqJRunj3wG |
 | d10-deck.html | 한 장씩: AI 순서대로 한 장씩 보며 살게요·고민·안 살래요, 되돌리기. AI 순위 | https://claude.ai/artifact/TugSNNjxCNdRNGv6TyZBZd |
+| **d11-rail.html** | **걸어 보고 사기**: 장바구니 대신 내 옷걸이 레일에 걸어 보고 판단(새 코디 +n·비슷한 옷), 살게요·보류·안 살래요 → 주문·받음 → 옷걸이, 옷·코디 전용 AI 상담 탭. AI 순위 | https://claude.ai/artifact/HAjvfwd3SYmniCyoAQfokg |
 | d6-merged.html | 통합 시안(대표 피드백: 별로): 진열 바탕 + 숫자 판정(숫자) + 기본 옷 24칸 채우기(도감) + 옷장 통계(여권), 사진 기준 적용 | https://claude.ai/artifact/5VejkndVXBtaV7xdNaMxRt |
 
 - 페이지는 링크 페이지용 본문 조각이다(`<!doctype>`·`<head>` 없음). 게시할 때 뼈대가 씌워진다. 개발용으로는 `node wrap.mjs d1-showroom.html`로 감싼 `_dev_` 파일을 만들어 HTTP 서버로 연다.
