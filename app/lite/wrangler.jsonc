@@ -1,0 +1,13 @@
+// Cloudflare Workers 배포 설정(대시보드에서 Workers로 저장소를 연결했을 때). 이름은 Workers Builds가 대시보드의 Worker 이름으로 덮어쓴다.
+// API 키는 여기에 적지 않는다: 대시보드 Settings → Variables and Secrets에 비밀 값(Secret) ANTHROPIC_API_KEY로 넣는다.
+{
+  "name": "otjang-lite",
+  "main": "./worker.js",
+  "compatibility_date": "2026-10-01",
+  "keep_vars": true,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  }
+}

@@ -32,6 +32,15 @@ https://dash.cloudflare.com/sign-up 에서 이메일로 가입한다. 결제 수
    - 이름 `ANTHROPIC_API_KEY`, 값에 키, **Encrypt** 선택 → **Save**
 3. **Deployments** 탭에서 가장 최근 배포의 메뉴(⋯)에서 다시 배포(Retry deployment)를 누른다(메뉴 이름은 화면에 따라 다를 수 있다). 비밀 값은 다시 배포해야 반영된다.
 
+### Workers로 만들어진 경우 (배포 명령이 `npx wrangler deploy`로 보일 때)
+최근 Cloudflare 화면은 저장소를 연결하면 Pages 대신 Workers 프로젝트를 만들기도 한다. 이 경우에도 그대로 쓸 수 있게 `app/lite/wrangler.jsonc`와 `worker.js`를 넣어 두었다(2026-10-20).
+1. **Settings → Build**: 분기(Branch)를 `claude/fashn-vton-m1-test-3ox240`로, 루트 디렉터리 `app/lite`, 빌드 명령 `npm run build`, 배포 명령 `npx wrangler deploy`
+   - 분기가 `master`면 "root directory not found"로 실패한다(master에는 `app/lite`가 없다).
+2. **API 키는 빌드 변수가 아니라 실행용 비밀 값으로**: 빌드 변수(Build variables)에 넣은 `ANTHROPIC_API_KEY`는 지우고, **Settings → Variables and Secrets → Add → 유형 Secret**으로 `ANTHROPIC_API_KEY`를 넣는다. 빌드 변수는 앱이 실행될 때 보이지 않는다.
+3. **빌드 다시 시도**.
+- Worker 이름은 Workers Builds가 대시보드 이름으로 덮어쓴다(설정 파일의 `otjang-lite`와 달라도 된다).
+- Workers 쪽에서 하루 상한(KV)을 쓰려면 `wrangler.jsonc`에 KV 연결을 적어야 한다(대시보드에서만 연결하면 다음 배포 때 빠진다).
+
 ### 4. 아이폰에 설치
 1. **Safari**로 `https://이름.pages.dev`를 연다(다른 브라우저 말고 Safari).
 2. 아래 **공유** 버튼 → **홈 화면에 추가** → **추가**
