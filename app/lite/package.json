@@ -1,0 +1,17 @@
+{
+  "name": "eoul-lite",
+  "private": true,
+  "type": "module",
+  "description": "토스식 쉬운 시안(d7)을 아이폰 홈 화면에 설치해 쓰는 가벼운 앱. Cloudflare Pages(화면) + Pages Functions(AI 순위).",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test checks/rank.check.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.135.0"
+  },
+  "devDependencies": {
+    "@phosphor-icons/web": "2.1.2",
+    "pretendard": "1.3.9"
+  }
+}

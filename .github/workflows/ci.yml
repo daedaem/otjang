@@ -43,6 +43,9 @@ jobs:
         run: npm test
       - name: Build the standalone app
         run: npm run build
+      - name: Check and build the installable lite app
+        working-directory: app/lite
+        run: npm ci && npm test && npm run build
       - name: Record validation scope
         if: always()
         run: |
