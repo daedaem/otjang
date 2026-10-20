@@ -11,7 +11,8 @@
 | d3-collection.html | 도감: 가진 옷을 도감처럼 채우는 놀이형 | https://claude.ai/artifact/HZBQWph7BKX4iogKDmLvkg |
 | d4-editorial.html | 매거진: 결과·상세를 잡지 기사처럼 | https://claude.ai/artifact/KXCDnAnhFng9m6SCemBdK4 |
 | d5-passport.html | 여권: 옷장 통계와 안내판형 판정, 어두운 화면 우선 | https://claude.ai/artifact/XaaMoFZULukHx7Axgt7Zeo |
-| **d6-merged.html** | **통합 시안(추천안)**: 진열 바탕 + 숫자 판정(숫자) + 기본 옷 24칸 채우기(도감) + 옷장 통계(여권), 사진 기준 적용 | https://claude.ai/artifact/5VejkndVXBtaV7xdNaMxRt |
+| **d7-simple.html** | **쉬운 시안(현재 추천안)**: 대표 피드백("토스처럼 직관적이거나 애플처럼 심플")에 맞춰 다시 만든 안. 한 화면 한 가지, 글자 28·22·17·15·13, 주 버튼 하나, 안내 문장 최소 | https://claude.ai/artifact/BoQDPhoN8H9xqnwS2etqH1 |
+| d6-merged.html | 통합 시안(대표 피드백: 별로): 진열 바탕 + 숫자 판정(숫자) + 기본 옷 24칸 채우기(도감) + 옷장 통계(여권), 사진 기준 적용 | https://claude.ai/artifact/5VejkndVXBtaV7xdNaMxRt |
 
 - 페이지는 링크 페이지용 본문 조각이다(`<!doctype>`·`<head>` 없음). 게시할 때 뼈대가 씌워진다. 개발용으로는 `node wrap.mjs d1-showroom.html`로 감싼 `_dev_` 파일을 만들어 HTTP 서버로 연다.
 - 링크 페이지는 외부 이미지 서버를 막으므로, 게시본에는 상품 사진 사본(480px, 419장)과 그 사진이 있는 상품만 남긴 코어를 함께 올렸다(`build-pub.mjs`). **사진·글꼴 파일은 저장소에 넣지 않았다.** 상품 사진은 무신사 상품 이미지이며 사용 권리를 확인하지 않았다. 링크를 외부에 공유하지 않는다.
