@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 9717221) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 462b34c) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 891개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -4807,7 +4807,9 @@ try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2
 const bootPhotos = bootParams.get('photos') !== '0';
 // ?preview=1: 갤러리 미리보기. 저장하지 않고 메모리에서만 동작해 다른 창의 기록과 섞이지 않는다.
 const bootPreview = bootParams.get('preview') === '1';
-const mock = createMock({ storage: bootPreview ? null : bootStorage, reset: bootParams.get('reset') === '1' || bootPreview, photos: bootPhotos });
+// 한 주소에서 여러 시안을 열 때 기록이 섞이지 않게, 페이지가 코어보다 먼저 window.EOUL_MOCK_KEY를 적으면 그 이름으로 저장한다.
+const bootKey = typeof window !== 'undefined' && typeof window.EOUL_MOCK_KEY === 'string' && window.EOUL_MOCK_KEY ? window.EOUL_MOCK_KEY : undefined;
+const mock = createMock({ storage: bootPreview ? null : bootStorage, key: bootKey, reset: bootParams.get('reset') === '1' || bootPreview, photos: bootPhotos });
 // 검색 엔진에 실리지 않게 한다(접근 통제는 아니다. 링크를 아는 사람은 열 수 있다).
 if (typeof document !== 'undefined' && document.head && !document.querySelector('meta[name="robots"]')) {
   const meta = document.createElement('meta');
@@ -4818,6 +4820,6 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
 if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "9717221" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "462b34c" };
 window.EoulMock = mock;
 })();

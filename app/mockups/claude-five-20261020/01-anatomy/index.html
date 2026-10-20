@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="theme-color" content="#fbfbf9">
+<title>착장 도면 · 시안 01</title>
+<!-- 시안 01 「착장 해부도」: 검색 결과를 실제 상품으로 그린 착장 도면으로 연다. AI가 디자인·프론트 팀 역할로 만든 시안(사람 수상 디자이너 참여 없음). -->
+<link rel="stylesheet" href="app.css">
+<script>window.EOUL_MOCK_KEY = 'eoul-five-01:v1'; // 시안마다 저장을 따로 둔다(한 주소에서 열어도 기록이 섞이지 않게).</script>
+<script src="../../ux10v2/shared/eoul-mock.js"></script>
+<script src="../../ux10v2/links/shared/photo-kinds.js"></script>
+</head>
+<body>
+<a class="skip" href="#app">본문으로 건너뛰기</a>
+<header class="top">
+  <a class="logo" href="#/" aria-label="착장 도면 처음 화면"><span class="logo-mark" aria-hidden="true">⌖</span><span>착장 도면</span></a>
+  <button class="mock" type="button" data-flow="mock-label" onclick="EoulMock.openDisclosure()">시안 01 · 정보</button>
+  <a class="cmp-link" href="#/compare" data-flow="compare-open" aria-label="대조표 열기"><span>대조</span><b id="cmpn">0</b></a>
+  <nav class="tabs" aria-label="화면 이동">
+    <a href="#/" data-flow="nav-ask" data-tab="ask"><span class="ti" aria-hidden="true">⌕</span><span>찾기</span></a>
+    <a href="#/closet" data-flow="nav-closet" data-tab="closet"><span class="ti" aria-hidden="true">▤</span><span>옷장</span></a>
+    <a href="#/records" data-flow="nav-records" data-tab="records"><span class="ti" aria-hidden="true">≡</span><span>기록</span></a>
+  </nav>
+</header>
+<main id="app" tabindex="-1"></main>
+<div id="overlay"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
