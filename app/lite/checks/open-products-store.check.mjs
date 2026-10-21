@@ -12,7 +12,7 @@ function fakeD1() {
     raw: db,
     prepare(sql) {
       let args = [];
-      const st = { bind(...a) { args = a; return st; },
+      const st = { bind(...a) { assert.ok(a.length <= 100, 'D1 Free parameter limit'); args = a; return st; },
         async first() { return db.prepare(sql).get(...args) ?? null; },
         async all() { return { results: db.prepare(sql).all(...args) }; },
         execute() { const r = db.prepare(sql).run(...args); return { success: true, meta: { changes: Number(r.changes) } }; },

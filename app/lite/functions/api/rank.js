@@ -127,6 +127,21 @@ function providerMetadata(res, secret) {
   if (typeof res._request_id === 'string' && /^req_[A-Za-z0-9_-]{1,124}$/.test(res._request_id) && !containsSecret(res._request_id)) ai.providerRequestId = res._request_id;
   return ai;
 }
+// Classify only known failure patterns; never return the provider message/body/headers.
+export function providerFailureCode(error) {
+  const status = error?.status;
+  const message = String(error?.error?.error?.message || error?.error?.message || error?.message || '').toLowerCase();
+  if (status === 400 && message.includes('credit balance')) return 'credit_unavailable';
+  if (status === 404) return 'model_unavailable';
+  if (status === 403) return 'provider_access_denied';
+  if (status === 400 && message.includes('effort')) return 'effort_unsupported';
+  if (status === 400 && message.includes('output_config')) return 'output_config_invalid';
+  if (status === 400) return 'provider_request_rejected';
+  if (error?.name === 'APIConnectionTimeoutError') return 'provider_timeout';
+  if (error?.name === 'APIConnectionError') return 'provider_unavailable';
+  if (typeof status === 'number' && status >= 500) return 'provider_unavailable';
+  return 'error';
+}
 // Injection hooks below are used only by local tests, never derived from an HTTP request.
 export async function handle(request, env, { client, authorize = authorizePrivateRequest, reserve = reserveRankBudget, openFacts = openProductFacts } = {}) {
   if (request.method !== 'POST') return fail(405, 'bad_request');
@@ -153,7 +168,7 @@ export async function handle(request, env, { client, authorize = authorizePrivat
   } catch (e) {
     if (e instanceof Anthropic.RateLimitError) return fail(429, 'rate_limited');
     if (e instanceof Anthropic.AuthenticationError) return fail(503, 'not_configured');
-    return fail(502, 'error');
+    return fail(502, providerFailureCode(e));
   }
   if (res?.stop_reason !== 'end_turn' || !Array.isArray(res?.content)) return fail(502, 'error');
   const text = res.content.filter((b) => b.type === 'text').map((b) => b.text).join('');

@@ -592,6 +592,7 @@ a { color: inherit; text-decoration: none; }
     return text && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel data-adpick-q="${esc(text)}"><h2 class="h3">국내 쇼핑몰 상품</h2><p class="t6">애드픽 제휴 광고 · 입력한 단어로 찾아요. 예산·핏·코디 조건은 적용하지 않아요.</p><div data-adpick-results aria-live="polite"><p class="t6" role="status">국내 상품을 찾고 있어요…</p></div></section>` : '';
   };
   const shoppingLinks = (q) => adpickLink(q) + rakutenLink(q);
+  const searchSources = (q) => adpickLink(q) + (window.EOUL_OPEN_PRODUCT_SEARCH ? '<section class="section" data-open-recommendations aria-live="polite"></section>' : '') + rakutenLink(q);
   const crowd = () => (window.EOUL_CROWD && typeof window.EOUL_CROWD.submit === 'function' ? window.EOUL_CROWD : null);
   // 등록 상태 한 줄: 서버가 답하면 그 숫자, 아니면 이 기기 숫자.
   const crowdLine = (c) => {
@@ -1031,6 +1032,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const chips = (r.conditions || []).map((c) => c.removable ? `<button class="chip" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="chip on">${esc(c.label)}</span>`).join('');
       const head = top({ mid: `<button class="qbox" data-edit="${esc(q)}" aria-label="다시 찾기: ${esc(q)}"><i class="ph ph-magnifying-glass"></i><span>${esc(q)}</span></button>` });
       S.result = null;
+      if (partial.length && (window.EOUL_ADPICK || window.EOUL_OPEN_PRODUCT_SEARCH)) {
+        return `${head}${searchSources(q)}<details class="ai-info"><summary>기존 상품 목록에서 찾지 못한 이유</summary><p class="t6">${esc(r.notices[0].text)}</p></details>`;
+      }
       if (!r.understood || !r.products.length) {
         const rel = r.understood ? M.relax(r) : [];
         const note = (r.notices || []).find((n) => n.text)?.text;
@@ -1046,7 +1050,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           <p class="sub t5" style="margin-top:6px">${esc(note || (r.understood ? '다른 옷으로 바꿔 채우지 않았어요.' : '종류를 넣어 다시 말해 주세요. 예: 셔츠, 코트, 운동화'))}</p>
           ${rel.length ? `<div style="margin-top:12px">${rel.map((x) => `<button class="row" data-relax='${esc(JSON.stringify(x.drop))}'><span class="grow t5">${esc(x.title)}</span><i class="ph ph-caret-right arr"></i></button>`).join('')}</div>` : ''}
           ${alts.length ? `<p class="t6" style="margin-top:20px">대신 이렇게 볼 수도 있어요</p><div class="chips">${alts.map((a) => `<button class="chip ex" data-q="${esc(a.q)}">${esc(a.label)}</button>`).join('')}</div>` : ''}
-          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${shoppingLinks(q)}${window.EOUL_OPEN_PRODUCT_SEARCH ? '<section class="section" data-open-recommendations aria-live="polite"></section>' : ''}`;
+          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${searchSources(q)}`;
       }
       S.result = r;
       const basis = M.judge(r.products[0].id)?.basisLabel || '';
@@ -1058,7 +1062,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         <div class="chips scroll" aria-label="조건"><span class="cnt num">${r.products.length}개 · ${esc(basis.replace(' 판단했어요', ''))}</span>${chips}</div>
         <div class="ai ${order ? '' : 'wait'}" id="ai" role="status">${order ? `<i class="ph-fill ph-sparkle"></i><span>${esc(S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요')}</span>` : '<i class="ph ph-circle-notch"></i><span>AI가 후보 순서를 정하는 중이에요</span>'}</div>
         <div class="grid" id="grid">${gridHtml(sorted)}</div>
-        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}${shoppingLinks(q)}${window.EOUL_OPEN_PRODUCT_SEARCH ? '<section class="section" data-open-recommendations aria-live="polite"></section>' : ''}`;
+        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}${searchSources(q)}`;
     },
 
     consult() {
@@ -1637,11 +1641,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     try {
       const data = await window.EOUL_OPEN_PRODUCT_SEARCH(query);
       if (box !== $('[data-open-recommendations]')) return;
-      const draw = (items, reasons = new Map(), summary = '') => {
+      const draw = (items, reasons = new Map(), summary = '', ai = null) => {
         box.innerHTML = `<h2 class="h3">공개 상품 후보 <span class="t6">${items.length}개</span></h2><p class="t6">가격·재고·구매처 없는 상품 정보예요. 예산·핏 조건 충족 여부는 확인할 수 없어요.</p>
           ${summary ? `<p class="t5" role="status">${esc(summary)}</p>` : ''}
           ${items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer"><span class="grow"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span>${reasons.has(p.code) ? `<span class="m">${esc(reasons.get(p.code))}</span>` : ''}</span><i class="ph ph-arrow-up-right"></i></a>`).join('')}
-          <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a> · ${esc(data.fetchedAt.slice(0, 10))} 기준 · <a href="/api/open-products/export" download>사용한 DB 내려받기</a></p>`;
+          <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a> · ${esc(data.fetchedAt.slice(0, 10))} 기준 · <a href="/api/open-products/export" download>사용한 DB 내려받기</a></p>${ai ? `<details class="ai-info"><summary>AI 응답 정보</summary><p class="t6">${esc(ai.model)} · 입력 ${esc(ai.inputTokens)} / 출력 ${esc(ai.outputTokens)} 토큰<br>${esc(ai.requestId)}</p></details>` : ''}`;
       };
       if (!data.items.length) { draw([], new Map(), '이 공개 DB에는 일치하는 후보가 없어요.'); return; }
       draw(data.items, new Map(), data.items.length > 1 && window.EOUL_SERVER_AI ? 'AI가 이름·브랜드·분류 기준으로 비교하고 있어요…' : '상품 정보 확인용 후보예요.');
@@ -1650,8 +1654,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         const ranked = await window.EOUL_SERVER_AI({ task: 'open_rank', query, items: data.items.map((p) => p.code) });
         if (box !== $('[data-open-recommendations]')) return;
         const byId = new Map(data.items.map((p) => [p.code, p]));
-        draw(ranked.ranking.map((r) => byId.get(r.id)), new Map(ranked.ranking.map((r) => [r.id, r.reason])), `AI 후보 비교 · ${ranked.summary}`);
-      } catch { if (box === $('[data-open-recommendations]')) draw(data.items, new Map(), 'AI 비교를 완료하지 못해 상품 코드 순서로 보여드려요.'); }
+        draw(ranked.ranking.map((r) => byId.get(r.id)), new Map(ranked.ranking.map((r) => [r.id, r.reason])), `AI 후보 비교 · ${ranked.summary}`, ranked.ai);
+      } catch (error) {
+        const code = error.code || (error.name === 'TypeError' ? 'screen_error' : 'error');
+        const failures = { credit_unavailable: 'API 크레딧을 확인해 주세요.', model_unavailable: '설정된 AI 모델에 연결하지 못했어요.', provider_access_denied: 'API 사용 권한을 확인해 주세요.', effort_unsupported: '모델의 추론 옵션을 확인하고 있어요.', output_config_invalid: '모델 응답 옵션을 확인하고 있어요.', provider_request_rejected: 'AI 서버가 요청 형식을 거절했어요.', provider_timeout: 'AI 서버 응답 시간이 길어졌어요.', provider_unavailable: 'AI 제공자 연결이 원활하지 않아요.', screen_error: '후보 비교 화면을 확인하고 있어요.' };
+        if (box === $('[data-open-recommendations]')) draw(data.items, new Map(), `AI 비교를 완료하지 못해 상품 코드 순서로 보여드려요. ${failures[code] || AIRank.whyText(code)} (${code})`);
+      }
     } catch { if (box === $('[data-open-recommendations]')) box.innerHTML = '<p class="t6" role="status">공개 상품 DB에 연결하지 못했어요. 다시 검색해 주세요.</p>'; }
   }
   async function searchAdpick(button) {
