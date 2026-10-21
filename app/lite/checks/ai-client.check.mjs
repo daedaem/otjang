@@ -21,9 +21,10 @@ const runLite = (fetcher, extra = {}) => {
   vm.runInNewContext(lite, { window, fetch: fetcher, AbortController, setTimeout, clearTimeout, localStorage: storage(), navigator: {}, ...extra });
   return window;
 };
-const runConsult = (window) => {
-  const context = { window, M: engine(), K: { refresh() {} }, $: () => null, localStorage: storage(), curView: 'consult' };
-  vm.runInNewContext(`${consult}\nglobalThis.chatTest = { C, askConsult, CHAT_ERR };`, context);
+const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const runConsult = (window, local = storage()) => {
+  const context = { window, M: engine(), K: { refresh() {} }, $: () => null, localStorage: local, curView: 'consult', esc: escape, recCard: () => '<span>추천 상품</span>' };
+  vm.runInNewContext(`${consult}\nglobalThis.chatTest = { C, askConsult, CHAT_ERR, aiResponseInfo, aiInfoHtml, chatTurnHtml };`, context);
   return context.chatTest;
 };
 
@@ -137,4 +138,91 @@ test('링크 상담도 현재 질문을 sample 메시지에 한 번만 포함한
   await chat.askConsult(query);
   assert.equal(JSON.stringify(messages).split(query).length - 1, 1);
   assert.equal(chat.C.turns.at(-1).refused, true);
+});
+
+const responseFacts = () => ({
+  provider: 'anthropic', model: 'claude-haiku-5-5', requestId: 'msg_synthetic_response_123',
+  inputTokens: 1200, outputTokens: 90, cacheCreationInputTokens: 0, cacheReadInputTokens: 500,
+  providerRequestId: 'req_synthetic_request_456',
+});
+
+test('서버가 보낸 실제 응답 정보의 허용 필드만 상담 이력에 저장하고 다시 열어 접어서 보여 준다', async () => {
+  const local = storage();
+  const facts = responseFacts();
+  const chat = runConsult({ EOUL_SERVER_AI: async () => ({
+    on_topic: true, answer: '흰 셔츠를 살펴보세요. <img src=x onerror=alert(1)>', product_ids: ['ms-1'],
+    ai: { ...facts, unexpected: 'DO_NOT_STORE_UNKNOWN_PROVIDER_FIELD' },
+  }) }, local);
+  await chat.askConsult('흰 셔츠에 어울리는 바지는?');
+  assert.deepEqual(plain(chat.C.turns.at(-1).ai), facts);
+  const saved = JSON.parse(local.getItem('eoul-d12-hang:consult'));
+  assert.deepEqual(Object.keys(saved).sort(), ['cur', 'threads']);
+  assert.deepEqual(saved.threads[0].turns.at(-1).ai, facts);
+  assert.ok(!JSON.stringify(saved).includes('DO_NOT_STORE_UNKNOWN_PROVIDER_FIELD'));
+  const restored = runConsult({}, local);
+  assert.deepEqual(plain(restored.C.turns.at(-1).ai), facts);
+  const html = restored.chatTurnHtml(restored.C.turns.at(-1));
+  assert.match(html, /<details class="ai-info"><summary>AI 응답 정보<\/summary>/);
+  assert.doesNotMatch(html, /<details[^>]*\bopen\b/);
+  for (const expected of ['claude-haiku-5-5', '입력 토큰', '1200', '출력 토큰', '90', '캐시 생성 입력 토큰', '캐시 읽기 입력 토큰', '응답 ID', facts.requestId, '요청 ID', facts.providerRequestId]) assert.ok(html.includes(expected));
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(html, /<img|onerror="|DO_NOT_STORE/);
+});
+
+test('정보가 없거나 잘못된 응답은 모델·토큰 수를 추정하지 않고 안내를 숨긴다', async () => {
+  const valid = responseFacts();
+  const invalid = [
+    undefined, null, [], {},
+    ...[
+      ['provider', 'other'], ['model', '<img src=x>'], ['model', 'claude-' + 'x'.repeat(121)],
+      ['requestId', 'msg_\"><script>bad()</script>'], ['requestId', 'not-a-provider-id'],
+      ['inputTokens', undefined], ['inputTokens', '1200'], ['inputTokens', -1],
+      ['inputTokens', NaN], ['outputTokens', Infinity], ['outputTokens', 10_000_001],
+    ].map(([key, value]) => ({ ...valid, [key]: value })),
+  ];
+  for (const ai of invalid) {
+    const chat = runConsult({ EOUL_SERVER_AI: async () => ({ on_topic: true, answer: '패션 일반 조언이에요.', product_ids: [], ai }) });
+    await chat.askConsult('코디를 알려주세요');
+    const turn = chat.C.turns.at(-1);
+    assert.equal(turn.ai, undefined);
+    assert.equal(chat.aiResponseInfo(ai), null);
+    assert.ok(!chat.chatTurnHtml({ ...turn, ai }).includes('AI 응답 정보'));
+  }
+  const optional = runConsult({}).aiResponseInfo({ ...valid,
+    providerRequestId: '<script>bad()</script>', cacheCreationInputTokens: '0', cacheReadInputTokens: -1,
+  });
+  assert.deepEqual(plain(optional), {
+    provider: valid.provider, model: valid.model, requestId: valid.requestId,
+    inputTokens: valid.inputTokens, outputTokens: valid.outputTokens,
+  });
+});
+
+test('기존 상담 이력·거절·사용자 말과 sample JSON에는 서버 응답 정보를 붙이지 않는다', async () => {
+  const local = storage();
+  const old = { threads: [{ id: 'legacy', title: '이전 상담', at: '2026-10-20T00:00:00Z', turns: [{ role: 'assistant', text: '이전에 저장한 조언이에요.', ids: [] }] }], cur: 'legacy' };
+  local.setItem('eoul-d12-hang:consult', JSON.stringify(old));
+  const restored = runConsult({}, local);
+  assert.equal(restored.C.turns.at(-1).text, old.threads[0].turns[0].text);
+  assert.ok(!restored.chatTurnHtml(restored.C.turns.at(-1)).includes('AI 응답 정보'));
+  assert.deepEqual(JSON.parse(local.getItem('eoul-d12-hang:consult')), old);
+  const facts = responseFacts();
+  for (const turn of [
+    { role: 'user', text: '사용자 말', ai: facts },
+    { role: 'note', text: '오류', ai: facts },
+    { role: 'assistant', refused: true, text: '상담 범위 밖', ai: facts },
+  ]) assert.ok(!restored.chatTurnHtml(turn).includes('AI 응답 정보'));
+  const sample = runConsult({ claude: { use: async () => ({ json: async () => ({ on_topic: true, answer: 'sample의 조언이에요.', ai: facts }) }) } });
+  await sample.askConsult('상의 추천해주세요');
+  assert.equal(sample.C.turns.at(-1).ai, undefined);
+  const refused = runConsult({ EOUL_SERVER_AI: async () => ({ on_topic: false, ai: facts }) });
+  await refused.askConsult('상담 범위 밖 질문');
+  assert.equal(refused.C.turns.at(-1).ai, undefined);
+});
+
+test('잘못된 상담 요청 오류는 질문 길이를 탓하지 않고 새로고침을 안내한다', async () => {
+  const chat = runConsult({ EOUL_SERVER_AI: async () => { throw Object.assign(Error('bad_request'), { code: 'bad_request' }); } });
+  await chat.askConsult('흰 셔츠');
+  assert.equal(chat.C.turns.at(-1).kind, 'err');
+  assert.equal(chat.C.turns.at(-1).text, '상담 요청 형식이 맞지 않아요. 앱을 새로고침하고 다시 시도해 주세요.');
+  assert.doesNotMatch(chat.C.turns.at(-1).text, /짧게|길이|300자/);
 });

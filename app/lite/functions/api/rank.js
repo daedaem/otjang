@@ -83,6 +83,26 @@ function output(v, out) {
   if (!out.on_topic) return { on_topic: false, answer: '', product_ids: [] };
   return out.answer.trim() ? { on_topic: true, answer: out.answer, product_ids: out.product_ids } : null;
 }
+
+function providerMetadata(res, secret) {
+  const count = (n) => Number.isSafeInteger(n) && n >= 0 && n <= 10_000_000;
+  const containsSecret = (s) => typeof secret === 'string' && secret.length > 0 && s.includes(secret);
+  if (typeof res?.model !== 'string' || !/^claude-[a-z0-9][a-z0-9.-]{0,119}$/.test(res.model) || containsSecret(res.model) ||
+    typeof res.id !== 'string' || !/^msg_[A-Za-z0-9_-]{1,124}$/.test(res.id) || containsSecret(res.id) ||
+    !count(res.usage?.input_tokens) || !count(res.usage?.output_tokens)) return null;
+  // Facts from this SDK response only. Missing fields do not become a fabricated
+  // model name, request ID or zero usage, and no upstream error/header dump is sent.
+  const ai = {
+    provider: 'anthropic', model: res.model, requestId: res.id,
+    inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens,
+  };
+  for (const [source, target] of [
+    ['cache_creation_input_tokens', 'cacheCreationInputTokens'],
+    ['cache_read_input_tokens', 'cacheReadInputTokens'],
+  ]) if (count(res.usage[source])) ai[target] = res.usage[source];
+  if (typeof res._request_id === 'string' && /^req_[A-Za-z0-9_-]{1,124}$/.test(res._request_id) && !containsSecret(res._request_id)) ai.providerRequestId = res._request_id;
+  return ai;
+}
 // Injection hooks below are used only by local tests, never derived from an HTTP request.
 export async function handle(request, env, { client, authorize = authorizePrivateRequest, reserve = reserveRankBudget } = {}) {
   if (request.method !== 'POST') return fail(405, 'bad_request');
@@ -109,6 +129,8 @@ export async function handle(request, env, { client, authorize = authorizePrivat
   if (res?.stop_reason !== 'end_turn' || !Array.isArray(res?.content)) return fail(502, 'error');
   const text = res.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
   const out = output(value, parse(text));
-  return out ? reply(200, out) : fail(502, 'parse');
+  if (!out) return fail(502, 'parse');
+  const ai = providerMetadata(res, env.ANTHROPIC_API_KEY);
+  return reply(200, ai ? { ...out, ai } : out);
 }
 export const onRequestPost = ({ request, env }) => handle(request, env);
