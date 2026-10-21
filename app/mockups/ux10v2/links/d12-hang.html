@@ -1165,7 +1165,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
     // 옷장 넣기: 브랜드·품명으로 찾아 ‘가지고 있어요’. 목록(이 앱이 아는 상품) 밖이면 직접 등록(브랜드·상품명·종류·색).
     add({ q = '' } = {}) {
-      return `${top({ mid: `<form class="qform" id="af" role="search"><input id="aq" value="${esc(q)}" enterkeyhint="search" autocomplete="off" placeholder="브랜드나 상품명으로 찾기 · ${esc(M.catalog.store)} ${M.catalog.count}개" aria-label="브랜드나 상품명"></form>` })}
+      return `${top({ mid: `<form class="qform" id="af" role="search" style="display:flex;align-items:center"><input id="aq" style="flex:1;min-width:0" value="${esc(q)}" enterkeyhint="search" autocomplete="off" placeholder="브랜드나 상품명으로 찾기" aria-label="브랜드나 상품명"><button type="submit" class="icon" aria-label="상품 검색"><i class="ph ph-magnifying-glass"></i></button></form>` })}
         <div id="ares"></div><div id="adom"></div><div id="aopen" aria-live="polite"></div>
         <button class="row" data-reg-open style="margin-top:8px"><span class="grow"><span class="t5">목록에 없어요 → 직접 등록</span><span class="t6" style="display:block">브랜드·상품명·종류·색만 적어요</span></span><i class="ph ph-caret-right arr"></i></button>`;
     },
