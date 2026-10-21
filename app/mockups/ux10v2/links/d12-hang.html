@@ -114,7 +114,8 @@ a { color: inherit; text-decoration: none; }
 .ph-box .tag { position: absolute; left: 6px; top: 6px; max-width: calc(100% - 56px); height: 24px; padding: 0 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(27, 27, 25, .82); color: #fff; }
 .ph-box .tag.go { background: var(--btn-bg); color: var(--btn-fg); }
 .ph-box .tag.ok { background: rgba(255, 255, 255, .92); color: #1b1b19; }
-.ph-box .rank { position: absolute; left: 6px; bottom: 6px; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: rgba(27, 27, 25, .8); color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.hslot .rank { position: absolute; left: 6px; bottom: 6px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; background: rgba(27, 27, 25, .82); color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; gap: 3px; pointer-events: none; }
+.hslot .rank i { font-size: 12px; color: var(--acc); }
 /* 걸기 토글: 사진 모서리의 옷걸이. 누르는 곳은 44px, 보이는 동그라미는 32px. */
 .hangt { position: absolute; right: 0; top: 0; width: 44px; height: 44px; display: grid; place-items: center; }
 .hangt span { width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #1b1b19; display: grid; place-items: center; font-size: 19px; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); transition: transform 160ms var(--spring, ease), background 160ms ease; }
@@ -138,6 +139,7 @@ a { color: inherit; text-decoration: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: calc(-1 * var(--gutL)); margin-right: calc(-1 * var(--gutR)); padding: 0 var(--gutR) 0 var(--gutL); }
 .chips.scroll::-webkit-scrollbar { display: none; }
+.chips.scroll::after { content: ""; flex: none; width: 28px; }
 .chips.scroll.fade { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
 .chip { min-height: 38px; padding: 0 13px; border-radius: 999px; background: var(--well); font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; color: var(--ink2); white-space: nowrap; flex: none; }
 .chip i { font-size: 14px; color: var(--ink3); }
@@ -270,7 +272,7 @@ a { color: inherit; text-decoration: none; }
 .cmp thead .ph-box { border-radius: 8px; }
 .cmp thead .n { margin-top: 6px; font-size: 13px; line-height: 18px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cmp thead .rm { margin-top: 2px; min-height: 36px; font-size: 13px; color: var(--ink3); text-decoration: underline; text-underline-offset: 3px; }
-.cmp tbody th { width: 64px; font-size: 13px; color: var(--ink3); font-weight: 600; }
+.cmp tbody th { font-size: 13px; color: var(--ink3); font-weight: 600; }
 .cmp tr.same td { color: var(--ink3); }
 .cmp tr.same th::after { content: " · 같음"; font-weight: 400; }
 
@@ -456,7 +458,7 @@ a { color: inherit; text-decoration: none; }
     if (v.ask && v.ask.value === 'unknown') return null;
     const other = (v.owned || []).filter((o) => ['other-color', 'unknown-color'].includes(o.relation)).length;
     if (other) return { text: `${p.kindName} ${other}벌 있음 · 색 달라요`, short: '색 달라요', cls: 'ok', tone: 'info' };
-    return { text: v.title, short: '비교함', cls: 'ok', tone: 'info' };
+    return { text: v.title, short: '옷과 비교함', cls: 'ok', tone: 'info' };
   }
   function stripText() {
     const ids = hung();
@@ -473,7 +475,7 @@ a { color: inherit; text-decoration: none; }
   function cardHtml(p, ai) {
     const isHung = M.compareHas(p.id);
     const d = isHung ? delta(p.id) : null;
-    const extra = `${ai ? `<span class="rank num">${ai.rank}</span>` : ''}${hangToggle(p.id)}`;
+    const extra = `${ai ? `<span class="rank num" aria-label="AI 순위 ${ai.rank}위"><i class="ph-fill ph-sparkle"></i>${ai.rank}</span>` : ''}${hangToggle(p.id)}`;
     const dl = d ? `걸어 봄 · ${d.text}` : isHung ? '걸어 봄' : '';
     const body = `<button class="open-p" data-pid="${p.id}"><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div>${dl ? `<div class="d ${d?.tone === 'stop' ? 'stop' : ''}">${esc(dl)}</div>` : ''}<div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>`;
     return `<div class="card${dl ? ' has-d' : ''}" data-card="${p.id}"><button class="open-p" data-pid="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)}">${productPic(p.id, { tag: d ? esc(d.short) : '', tagCls: d?.cls || '' })}</button><span class="hslot">${extra}</span>${body}</div>`;
@@ -481,14 +483,19 @@ a { color: inherit; text-decoration: none; }
   // 결과 격자: 걸린 카드에 한 번 묻기나 안내가 필요하면 그 카드가 든 줄 바로 아래에 두 칸짜리 줄을 끼운다.
   const cols = () => (matchMedia('(min-width: 900px)').matches ? 4 : 2);
   function gridHtml(list) {
-    const n = cols(); let out = '';
+    const n = cols(); let out = ''; const askedKeys = new Set();
+    const aiOn = !!(S.curQ && S.aiOrder[S.curQ]);
     list.forEach((p, i) => {
-      out += cardHtml(p, S.ai[p.id]);
+      out += cardHtml(p, aiOn ? S.ai[p.id] : null);
       if (i % n === n - 1 || i === list.length - 1) {
         const row = list.slice(i - (i % n), i + 1);
         row.forEach((q) => {
           if (S.note?.id === q.id) out += `<div class="qrow note" role="alert" data-for="${q.id}"><i class="ph ph-info"></i><span class="qq" style="font-weight:600">${esc(S.note.text)}</span></div>`;
-          else if (M.compareHas(q.id) && needAsk(q.id)) out += `<div class="qrow" role="group" aria-label="${esc(askText(q))}" data-for="${q.id}"><span class="qq">${esc(askText(q))}<small>${esc(q.brand)} ${esc(q.name)} · 답하면 겹치는지 바로 알려 드려요</small></span><button data-own="yes" data-for="${q.id}">있어요</button><button class="no" data-own="no" data-for="${q.id}">없어요</button></div>`;
+          else if (M.compareHas(q.id) && needAsk(q.id) && !askedKeys.has(ownKey(q))) {
+            askedKeys.add(ownKey(q));
+            const twins = hung().filter((id) => id !== q.id && needAsk(id) && ownKey(M.product(id)) === ownKey(q)).length;
+            out += `<div class="qrow" role="group" aria-label="${esc(askText(q))}" data-for="${q.id}"><span class="qq">${esc(askText(q))}<small>${twins ? `걸어 본 ${twins + 1}벌에 같이 적용돼요 · ` : `${esc(q.brand)} ${esc(q.name)} · `}답하면 겹치는지 바로 알려 드려요</small></span><button data-own="yes" data-for="${q.id}">있어요</button><button class="no" data-own="no" data-for="${q.id}">없어요</button></div>`;
+          }
         });
       }
     });
@@ -670,7 +677,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const list = r.products.slice(0, 12);
       const order = S.aiOrder[q];
       const sorted = order ? [...list].sort((a, b) => (order[a.id] ?? 99) - (order[b.id] ?? 99)) : list;
-      S.shown = { main: sorted, off: (r.offOccasion || []).slice(0, 6) };
+      S.shown = { main: sorted, off: (r.offOccasion || []).slice(0, 6) }; S.curQ = q;
       return `${head}
         <div class="chips scroll" aria-label="조건"><span class="cnt num">${r.products.length}개 · ${esc(basis.replace(' 판단했어요', ''))}</span>${chips}</div>
         <div class="ai ${order ? '' : 'wait'}" id="ai" role="status">${order ? `<i class="ph-fill ph-sparkle"></i><span>${esc(S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요')}</span>` : '<i class="ph ph-circle-notch"></i><span>AI가 후보 순서를 정하는 중이에요</span>'}</div>
@@ -745,7 +752,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const nSame = c.rows.filter((r) => r.same).length;
       const ordered = [...c.rows.filter((r) => !r.same), ...c.rows.filter((r) => r.same)];
       return `${top()}<h1 class="h2" style="margin-top:8px">걸어 본 ${ids.length}벌</h1><p class="t6" style="margin-top:4px">${esc(c.note)}</p>
-        <div class="cmp" id="cmp"><table><thead><tr><th scope="col"><span class="t6">항목</span></th>${head}</tr></thead><tbody>${rows(ordered)}</tbody></table></div>
+        <div class="cmp" id="cmp"><table><colgroup><col style="width:68px">${c.items.map(() => '<col>').join('')}</colgroup><thead><tr><th scope="col"><span class="t6">항목</span></th>${head}</tr></thead><tbody>${rows(ordered)}</tbody></table></div>
         ${nSame ? `<button class="quiet sametog" data-sametog aria-expanded="false"><i class="ph ph-caret-down"></i>같은 항목 ${nSame}개 보기</button>` : ''}`;
     },
 
@@ -785,7 +792,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       return `${top({ back: false })}
         <h1 class="h1" style="margin-top:12px">${decided.length ? `<span class="num">${decided.length}</span>벌을 정했어요` : holds.length ? `보류 <span class="num">${holds.length}</span>벌 · 아직 정하지 않았어요` : '아직 정한 옷이 없어요'}</h1>
         <p class="t5 sub" style="margin-top:4px">${all.length ? '직접 남긴 기록이에요. 보류는 정한 것으로 세지 않아요.' : '걸어 본 옷을 살지 정하면 여기에 남아요. 직접 남긴 기록이에요.'}</p>
-        ${all.length ? `<div class="sum"><div class="c"><div class="k">살게요</div><div class="v num">${buy.length}</div><div class="t6 num nw" style="font-size:12px">${won(sum)} 수집가</div></div><div class="c"><div class="k">보류</div><div class="v num">${holds.length}</div></div><div class="c"><div class="k">안 살래요</div><div class="v num">${all.length - buy.length - holds.length}</div></div></div>` : ''}
+        ${all.length ? `<div class="sum"><div class="c"><div class="k">살게요</div><div class="v num">${buy.length}</div>${sum ? `<div class="t6 num nw" style="font-size:12px">${won(sum)} 수집가</div>` : ''}</div><div class="c"><div class="k">보류</div><div class="v num">${holds.length}</div></div><div class="c"><div class="k">안 살래요</div><div class="v num">${all.length - buy.length - holds.length}</div></div></div>` : ''}
         ${waiting.length ? `<section class="section"><div class="h"><h2 class="h3">사기로 한 옷</h2><span class="t6">받고 계속 입으면 옷걸이에 걸려요</span></div>
           ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span>${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? '계속 입을게요 · 걸기' : esc(nx.label)}</button>` : ''}</div>`; }).join('')}</section>` : ''}
         <div class="tl">${[...byDay.entries()].map(([d, rs]) => `<div class="day">${esc(d)}</div>${rs.map((r) => `<button class="rec" data-pid="${r.productId}">${productPic(r.productId)}<span class="grow"><span class="n">${esc(r.product?.name || '')}</span><span class="t6"><span class="pill ${r.decision === 'buy' ? 'buy' : ''}">${DEC[r.decision]}</span>${stage(r) ? ` ${esc(stage(r))}` : ''}</span></span><span class="pr num">${esc(r.product?.priceText || '')}</span></button>`).join('')}`).join('') || '<button class="btn soft wide" data-tabgo="home" style="margin-top:20px">옷 찾으러 가기</button>'}</div>`;
@@ -848,7 +855,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       $$('[data-g]').forEach((b) => { b.onclick = () => garmentSheet(b.dataset.g); });
     },
     records() {
-      $$('[data-adv]').forEach((b) => { b.onclick = () => { try { M.advance(b.dataset.adv, b.dataset.step); K.refresh(); } catch (e) { K.toast(e.message, { bottom: 60 }); } }; });
+      $$('[data-adv]').forEach((b) => { b.onclick = () => { try { M.advance(b.dataset.adv, b.dataset.step); K.refresh(); } catch (e) { K.toast(e.message, { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); } }; });
     },
   };
 
@@ -936,7 +943,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // 안내는 겹치지 않게: 결과에서는 그 줄 아래 두 칸짜리 줄로, 다른 곳에서는 카드 아래에 붙인다.
   function showCardNote(id, btn, text) {
     clearTimeout(S.noteT);
-    if (curView === 'results') { S.note = { id, text }; redrawGrids(); S.noteT = setTimeout(() => { S.note = null; redrawGrids(); }, 3200); return; }
+    if (curView === 'results') { S.note = { id, text }; redrawGrids(); $(`.qrow.note[data-for="${id}"]`)?.scrollIntoView({ behavior: K.reduce ? 'auto' : 'smooth', block: 'center' }); S.noteT = setTimeout(() => { S.note = null; redrawGrids(); }, 4000); return; }
     const host = btn.closest('.rc, .g, .pdp-photo') || btn.parentElement;
     $('.card-note', host)?.remove();
     const n = document.createElement('div'); n.className = 'card-note t6'; n.setAttribute('role', 'alert'); n.textContent = text; n.style.cssText = 'margin-top:6px;color:var(--acc-text);font-weight:700';
@@ -964,9 +971,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   function answerOwn(id, yes) {
     const p = M.product(id); if (!p) return;
     const v = p.verdict;
+    const twins = hung().filter((x) => ownKey(M.product(x) || {}) === ownKey(p));
     if (!yes) {
       if (v.basis === 'none') { S.ui.absent[ownKey(p)] = 1; saveUi(); }
-      else { try { M.setOwnership(id, 'absent'); } catch {} }
+      else { [id, ...twins].forEach((x) => { try { M.setOwnership(x, 'absent'); } catch {} }); }
       S.asking = null;
       refreshAfterOwn(id);
       return;
@@ -975,7 +983,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const sh = sheet(`<h2 class="h2">가진 ${esc(add.kindName)}${josa(add.kindName, '은', '는')} 무슨 색이에요?</h2><p class="t6 sub">이 옷과 같은 색이면 맨 앞을 누르세요. 다른 색이어도 돼요.</p>${colorGrid(add.color)}`);
     $$('[data-c]', sh.s).forEach((b) => { b.onclick = async () => {
       M.addGarment({ kind: add.kind, color: b.dataset.c, slot: add.slot, gender: add.gender });
-      try { M.setOwnership(id, 'present'); } catch {}
+      [id, ...twins].forEach((x) => { try { M.setOwnership(x, 'present'); } catch {} });
       S.asking = null;
       await sh.close();
       refreshAfterOwn(id);
