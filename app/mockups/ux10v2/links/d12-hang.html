@@ -1611,7 +1611,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       if (!box.isConnected) return;
       if (!data?.on_topic) { box.innerHTML = '<p class="t6" role="status">찾는 옷이나 브랜드를 말해 주세요.</p>'; return; }
       if (typeof data.keyword !== 'string' || !Array.isArray(data.notes)) throw Error('검색어를 만들지 못했어요. 다시 시도해 주세요.');
-      box.innerHTML = `<label class="t6">AI가 제안한 일본어 검색어<input class="input" data-rakuten-keyword maxlength="80" value="${esc(data.keyword)}"></label><p class="t6">검색어 제안이며 상품 추천·번역이 아니에요. 예산·핏·코디 조건은 적용하지 않아요.${data.notes.map((n) => ` ${esc(n)}`).join('')}</p><button class="btn line sm" data-rakuten-search data-rakuten-confirmed>이 검색어로 찾아보기</button>`;
+      box.innerHTML = `<div class="field"><label>AI가 제안한 일본어 검색어<input data-rakuten-keyword maxlength="80" value="${esc(data.keyword)}"></label></div><details class="ai-info"><summary>미적용 조건: 예산·핏·코디</summary><p class="t6">검색어 제안이며 상품별 추천이나 상품명 번역은 아니에요. 예산·핏·코디 조건은 적용하지 않아요.${data.notes.map((n) => ` ${esc(n)}`).join('')}</p></details><button class="btn line sm" data-rakuten-search data-rakuten-confirmed>이 검색어로 찾아보기</button>`;
       $('[data-rakuten-results]', panel).innerHTML = '';
     } catch (error) {
       if (box.isConnected) box.innerHTML = `<p class="t6" role="status">${esc(error.code === 'bad_request' ? '앱을 새로고침하고 다시 시도해 주세요.' : 'AI 검색어를 만들지 못했어요. 입력한 말로 검색할 수 있어요.')}</p>`;
