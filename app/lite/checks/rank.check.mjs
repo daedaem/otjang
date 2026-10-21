@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Anthropic from '@anthropic-ai/sdk';
-import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS } from '../functions/api/rank.js';
+import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode } from '../functions/api/rank.js';
 import { PRODUCTS } from '../../src/data/products.js';
 const p = PRODUCTS[0];
 const post = (body, headers = {}) => new Request('https://x.test/api/rank', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
@@ -15,6 +15,22 @@ const fake = (out = ranked, extra = {}) => {
 const allow = async () => ({ ok: true });
 const opts = (client, extra = {}) => ({ client, authorize: allow, reserve: allow, ...extra });
 const result = async (body, client = fake(), extra = {}) => { const res = await handle(post(body), {}, opts(client, extra)); return { status: res.status, body: await res.json() }; };
+
+test('provider diagnostics classify fixed failure codes without returning messages, credentials or headers', () => {
+  const secret = 'synthetic-secret-do-not-reflect';
+  for (const [error, expected] of [
+    [{ status: 400, error: { error: { message: `credit balance too low ${secret}` } } }, 'credit_unavailable'],
+    [{ status: 404, message: secret }, 'model_unavailable'],
+    [{ status: 403, message: secret }, 'provider_access_denied'],
+    [{ status: 400, error: { message: `effort unsupported ${secret}` } }, 'effort_unsupported'],
+    [{ status: 400, message: `output_config invalid ${secret}` }, 'output_config_invalid'],
+    [{ status: 400, message: secret }, 'provider_request_rejected'],
+    [{ name: 'APIConnectionTimeoutError', message: secret }, 'provider_timeout'],
+    [{ name: 'APIConnectionError', message: secret }, 'provider_unavailable'],
+    [{ status: 529, message: secret }, 'provider_unavailable'],
+    [{ message: secret }, 'error'],
+  ]) { const code = providerFailureCode(error); assert.equal(code, expected); assert.ok(!code.includes(secret)); }
+});
 
 test('key/access/shared budget absent: fail closed and make zero provider calls', async () => {
   assert.equal((await handle(post(input()), {})).status, 503);
