@@ -1,5 +1,6 @@
 // Access is the private proxy gate; a caller-supplied header alone is not authentication.
 // Validate RS256 with only this configured team's authoritative keys. No tokens/IPs are retained.
+import { authorizeSession } from './private-session.js';
 const TTL = 5 * 60 * 1000;
 const REFRESH_GAP = 30 * 1000;
 const MAX_BODY = 64 * 1024;
@@ -114,6 +115,10 @@ async function keysFor(issuer, kid, fetchImpl, ms) {
 }
 
 export async function authorizePrivateRequest(request, env, { fetchImpl = fetch, now = Date.now } = {}) {
+  // Session mode is an explicit owner-only alternative. Never silently fall back from
+  // a missing or failed Access configuration, and reject mistyped modes closed.
+  if (env?.PRIVATE_AUTH_MODE === 'session') return authorizeSession(request, env, { now });
+  if (env?.PRIVATE_AUTH_MODE !== undefined && env.PRIVATE_AUTH_MODE !== 'access') return unconfigured();
   const config = configuration(env);
   if (!config) return unconfigured();
   try {

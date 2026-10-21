@@ -17,7 +17,7 @@ const product = (id) => ({ id, brand: '브랜드', name: '셔츠', price: 10000,
 const engine = (closet = []) => ({ getState: () => ({ closet }), judge: () => ({ basis: 'none' }), ask: () => ({ understood: true, products: [product('ms-1')] }) });
 const runRank = (window) => { vm.runInNewContext(rank, { window }); return window.AIRank; };
 const runLite = (fetcher, extra = {}) => {
-  const window = {};
+  const window = extra.window || {};
   vm.runInNewContext(lite, { window, fetch: fetcher, AbortController, setTimeout, clearTimeout, localStorage: storage(), navigator: {}, ...extra });
   return window;
 };
@@ -59,6 +59,22 @@ test('서버의 권한·월 한도·예산 오류 코드를 보존하고 20초 �
   await assert.rejects(window.EOUL_SERVER_AI({ task: 'rank' }), (error) => error.code === 'timeout');
   assert.equal(delay, 20000);
   assert.equal(aborted, true);
+});
+
+test('세션 만료는 고정 로그인 경로로 돌아가며 옷장 자료를 지우거나 외부 주소로 이동하지 않는다', async () => {
+  const redirects = [];
+  const local = storage();
+  local.setItem('wardrobe', 'preserved');
+  for (const login of ['/_private/login', 'https://invalid.test/login', null]) {
+    const window = runLite(async () => new Response(JSON.stringify({ code: 'unauthorized', login }), { status: 401 }), {
+      window: { location: { replace: (path) => redirects.push(path) } }, localStorage: local,
+    });
+    await assert.rejects(window.EOUL_SERVER_AI({ task: 'rank' }), (error) => error.code === 'unauthorized');
+    await window.EOUL_CROWD.search('셔츠');
+    await window.EOUL_WEATHER();
+  }
+  assert.deepEqual(redirects, Array(3).fill('/_private/login'));
+  assert.equal(local.getItem('wardrobe'), 'preserved');
 });
 
 test('sample 없이 서버 순위를 사용하고 후보 id·옷장 비교 외 상품 사실은 보내지 않는다', async () => {
