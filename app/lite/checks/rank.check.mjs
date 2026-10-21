@@ -90,3 +90,68 @@ test('provider errors/refusal/truncation are safe fallbacks; reservation not ref
   assert.equal((await result(input(), client, { reserve })).body.code, 'rate_limited');
   assert.equal(reserved, 3);
 });
+
+test('successful rank and consult append only actual validated SDK metadata with no extra provider calls', async () => {
+  const metadata = {
+    model: 'claude-haiku-5-5-20261007', id: 'msg_syntheticOnly123', _request_id: 'req_syntheticOnly456',
+    usage: { input_tokens: 731, output_tokens: 93, cache_creation_input_tokens: 120, cache_read_input_tokens: 34 },
+  };
+  for (const task of ['rank', 'consult']) {
+    const out = task === 'rank' ? ranked : { on_topic: true, answer: '일반적인 코디 조언이에요.', product_ids: [p.id] };
+    const client = fake(out, metadata);
+    const response = await result(input({ task }), client);
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body, { ...out, ai: {
+      provider: 'anthropic', model: metadata.model, requestId: metadata.id,
+      inputTokens: 731, outputTokens: 93, cacheCreationInputTokens: 120, cacheReadInputTokens: 34,
+      providerRequestId: metadata._request_id,
+    } });
+    assert.equal(client.calls.length, 1);
+  }
+});
+
+test('missing or malformed provider metadata is never filled using model defaults, client claims or invented zero tokens', async () => {
+  const metadata = { model: MODEL, id: 'msg_syntheticOnly123', usage: { input_tokens: 731, output_tokens: 93 } };
+  const invalid = [
+    {}, { ...metadata, model: undefined }, { ...metadata, model: '<script>bad</script>' }, { ...metadata, model: 'claude-' + 'a'.repeat(121) },
+    { ...metadata, id: undefined }, { ...metadata, id: 'not-a-provider-message' }, { ...metadata, id: 'msg_' + 'a'.repeat(125) },
+    { ...metadata, usage: undefined }, { ...metadata, usage: { output_tokens: 93 } },
+    ...[-1, '731', NaN, Infinity, 1.5, 10_000_001, Number.MAX_SAFE_INTEGER + 1].flatMap((n) => [
+      { ...metadata, usage: { ...metadata.usage, input_tokens: n } },
+      { ...metadata, usage: { ...metadata.usage, output_tokens: n } },
+    ]),
+  ];
+  for (const meta of invalid) {
+    const client = fake(ranked, meta);
+    const response = await result(input(), client);
+    assert.equal(response.status, 200);
+    assert.equal(Object.hasOwn(response.body, 'ai'), false);
+    assert.equal(client.calls.length, 1);
+  }
+  const zero = await result(input(), fake(ranked, { ...metadata, usage: { input_tokens: 0, output_tokens: 0 } }));
+  assert.equal(zero.body.ai.inputTokens, 0);
+  assert.equal(zero.body.ai.outputTokens, 0);
+});
+
+test('optional metadata is individually validated and configured API key cannot be reflected through metadata', async () => {
+  const SYNTHETIC_SECRET = 'sk-ant-api03-synthetic-test-only';
+  const metadata = { model: MODEL, id: 'msg_syntheticOnly123', _request_id: '<unsafe>', usage: {
+    input_tokens: 731, output_tokens: 93, cache_creation_input_tokens: -1, cache_read_input_tokens: '34',
+  } };
+  const response = await handle(post(input()), { ANTHROPIC_API_KEY: SYNTHETIC_SECRET }, opts(fake(ranked, metadata)));
+  const body = await response.json();
+  assert.deepEqual(body.ai, { provider: 'anthropic', model: MODEL, requestId: metadata.id, inputTokens: 731, outputTokens: 93 });
+  for (const meta of [
+    { ...metadata, model: `claude-${SYNTHETIC_SECRET}` },
+    { ...metadata, id: `msg_${SYNTHETIC_SECRET}` },
+  ]) {
+    const result = await handle(post(input()), { ANTHROPIC_API_KEY: SYNTHETIC_SECRET }, opts(fake(ranked, meta)));
+    const text = await result.text();
+    assert.ok(!text.includes(SYNTHETIC_SECRET));
+    assert.equal(Object.hasOwn(JSON.parse(text), 'ai'), false);
+  }
+  const optionalSecret = await handle(post(input()), { ANTHROPIC_API_KEY: SYNTHETIC_SECRET }, opts(fake(ranked, { ...metadata, _request_id: `req_${SYNTHETIC_SECRET}` })));
+  const text = await optionalSecret.text();
+  assert.ok(!text.includes(SYNTHETIC_SECRET));
+  assert.equal(Object.hasOwn(JSON.parse(text).ai, 'providerRequestId'), false);
+});

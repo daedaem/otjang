@@ -437,6 +437,10 @@ a { color: inherit; text-decoration: none; }
 .msg.refuse { background: var(--surface); border: 1px dashed var(--ink3); color: var(--ink2); }
 .msg.err { background: var(--surface); border: 1px solid var(--line); color: var(--ink2); }
 .msg .who { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--acc-text); margin-bottom: 4px; white-space: nowrap; min-width: 0; }
+.msg .ai-info { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--ink2); white-space: normal; }
+.ai-info summary { cursor: pointer; min-height: 28px; }
+.ai-info dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 4px 0 0; }
+.ai-info dd { margin: 0; overflow-wrap: anywhere; }
 .msg.wait i { animation: spin 1.2s linear infinite; }
 .recs { justify-self: stretch; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: -2px calc(-1 * var(--gutR)) 0 calc(-1 * var(--gutL)); padding: 0 var(--gutR) 0 var(--gutL); }
 .recs::-webkit-scrollbar { display: none; }
@@ -752,6 +756,32 @@ a { color: inherit; text-decoration: none; }
   // 상담 이력은 이 페이지의 저장 이름(eoul-d12-hang:consult)으로 이 브라우저에만 남는다. 묶음 30개, 묶음마다 40턴까지.
   const CHAT_KEY = 'eoul-d12-hang:consult';
   const CHAT_EX = ['네이비 블레이저에 어울리는 바지는?', '하객룩 뭐 입을까요?', '내 옷장으로 출근 코디 짜 줘'];
+  // Only the server can attach provider response facts. Never infer a model or token
+  // count from answer text, or accept an arbitrary object from saved chat history.
+  function aiResponseInfo(value) {
+    const tokenCount = (n) => Number.isSafeInteger(n) && n >= 0 && n <= 10_000_000;
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.provider !== 'anthropic' ||
+      typeof value.model !== 'string' || !/^claude-[a-z0-9][a-z0-9.-]{0,119}$/.test(value.model) ||
+      typeof value.requestId !== 'string' || !/^msg_[A-Za-z0-9_-]{1,124}$/.test(value.requestId) ||
+      !tokenCount(value.inputTokens) || !tokenCount(value.outputTokens)) return null;
+    const info = { provider: 'anthropic', model: value.model, requestId: value.requestId,
+      inputTokens: value.inputTokens, outputTokens: value.outputTokens };
+    for (const key of ['cacheCreationInputTokens', 'cacheReadInputTokens']) {
+      if (tokenCount(value[key])) info[key] = value[key];
+    }
+    if (typeof value.providerRequestId === 'string' && /^req_[A-Za-z0-9_-]{1,124}$/.test(value.providerRequestId)) info.providerRequestId = value.providerRequestId;
+    return info;
+  }
+  function aiInfoHtml(value) {
+    const info = aiResponseInfo(value);
+    if (!info) return '';
+    const rows = [['모델', info.model], ['입력 토큰', info.inputTokens], ['출력 토큰', info.outputTokens]];
+    if (info.cacheCreationInputTokens !== undefined) rows.push(['캐시 생성 입력 토큰', info.cacheCreationInputTokens]);
+    if (info.cacheReadInputTokens !== undefined) rows.push(['캐시 읽기 입력 토큰', info.cacheReadInputTokens]);
+    rows.push(['응답 ID', info.requestId]);
+    if (info.providerRequestId) rows.push(['요청 ID', info.providerRequestId]);
+    return `<details class="ai-info"><summary>AI 응답 정보</summary><dl>${rows.map(([label, value]) => `<dt>${esc(label)}</dt><dd>${esc(String(value))}</dd>`).join('')}</dl></details>`;
+  }
   const C = { threads: [], cur: null, busy: false, get turns() { return this.thread()?.turns || []; }, thread() { return this.threads.find((t) => t.id === this.cur) || null; } };
   try { const v = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}'); C.threads = Array.isArray(v.threads) ? v.threads : []; C.cur = C.threads.some((t) => t.id === v.cur) ? v.cur : null; } catch { C.threads = []; C.cur = null; }
   const saveChat = () => { try { C.threads.forEach((t) => { t.turns = t.turns.slice(-40); }); C.threads = C.threads.slice(-30); localStorage.setItem(CHAT_KEY, JSON.stringify({ threads: C.threads, cur: C.cur })); } catch {} };
@@ -770,7 +800,7 @@ a { color: inherit; text-decoration: none; }
     daily_limit: '오늘 AI 사용 한도에 도달했어요. 내일 다시 물어봐 주세요.',
     monthly_limit: '이번 달 AI 사용 한도에 도달했어요.',
     budget_unavailable: 'AI 사용량을 확인할 수 없어 상담을 잠시 멈췄어요.',
-    bad_request: '질문과 최근 대화를 처리할 수 없어요. 짧게 다시 물어봐 주세요.',
+    bad_request: '상담 요청 형식이 맞지 않아요. 앱을 새로고침하고 다시 시도해 주세요.',
     timeout: 'AI 응답이 늦어요. 잠시 뒤에 다시 물어봐 주세요.',
     offline: '연결이 없어요. 연결한 뒤 다시 물어봐 주세요.',
   };
@@ -813,7 +843,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     let turn;
     try {
       let out;
-      if (typeof window.EOUL_SERVER_AI === 'function') {
+      const fromServer = typeof window.EOUL_SERVER_AI === 'function';
+      if (fromServer) {
         out = await window.EOUL_SERVER_AI({ task: 'consult', query: q, items: data.cands.map((p) => ({ id: p.id, closet: String(p.closet || '').slice(0, 120) })), closet: data.closet, history });
       } else {
         const sample = await getSampler();
@@ -825,12 +856,20 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         const ok = new Set(data.cands.map((c) => c.id));
         const ids = [...new Set((Array.isArray(out.product_ids) ? out.product_ids : []).map(String))].filter((id) => ok.has(id)).slice(0, 4);
         turn = { role: 'assistant', text: out.answer.trim().slice(0, 700), ids };
+        const ai = fromServer ? aiResponseInfo(out.ai) : null;
+        if (ai) turn.ai = ai;
       }
     } catch (e) {
       turn = { role: 'note', kind: 'err', text: CHAT_ERR[e?.code] || '답을 받지 못했어요. 잠시 뒤에 다시 물어봐 주세요.' };
     }
     C.busy = false; pushTurn(turn);
     if (curView === 'consult') K.refresh();
+  }
+  function chatTurnHtml(x) {
+    if (x.role === 'user') return `<div class="msg me">${esc(x.text)}</div>`;
+    if (x.role === 'note') return `<div class="msg err" role="status">${esc(x.text)}</div>`;
+    if (x.refused) return `<div class="msg bot refuse"><span class="who"><i class="ph ph-hand"></i>상담 범위 밖이에요</span>${esc(x.text)}</div>`;
+    return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}${x.role === 'assistant' ? aiInfoHtml(x.ai) : ''}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}`;
   }
   const recCard = (id) => { const p = M.product(id); if (!p) return ''; return `<div class="rc" data-card="${id}"><button class="open-p" data-pid="${id}">${productPic(id)}<div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>${hangToggle(id)}</div>`; };
 
@@ -1015,12 +1054,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           ${list.length ? `<section class="section"><div class="h"><h2 class="h3">이전 상담 <span class="t6 num">${list.length}</span></h2></div>
             <div class="hist">${list.map((t) => `<div class="hrow"><button class="grow" data-thread="${t.id}"><span class="n">${esc(t.title)}</span><span class="t6">${esc(whenText(t.at))} · 주고받은 말 ${t.turns.filter((x) => x.role !== 'note').length}개</span></button><button class="icon" data-delthread="${t.id}" aria-label="이 상담 지우기"><i class="ph ph-trash"></i></button></div>`).join('')}</div></section>` : ''}`;
       }
-      const body = th.turns.map((x) => {
-        if (x.role === 'user') return `<div class="msg me">${esc(x.text)}</div>`;
-        if (x.role === 'note') return `<div class="msg err" role="status">${esc(x.text)}</div>`;
-        if (x.refused) return `<div class="msg bot refuse"><span class="who"><i class="ph ph-hand"></i>상담 범위 밖이에요</span>${esc(x.text)}</div>`;
-        return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}`;
-      }).join('');
+      const body = th.turns.map(chatTurnHtml).join('');
       return `${top({ back: false, right: '<button class="tbtn" data-chatlist><i class="ph ph-list-bullets"></i>이전 상담</button><button class="tbtn" data-newchat>새 상담</button>' })}
         <div class="ttl"><i class="ph ph-chats-circle"></i><span class="grow">${esc(th.title)}</span><span class="t6 nw">${esc(whenText(th.at))}</span></div>
         <div class="thread" id="thread" aria-live="polite">${body}${C.busy ? '<div class="msg bot wait" role="status"><span class="who"><i class="ph ph-circle-notch"></i>생각하는 중이에요</span></div>' : ''}</div>`;
