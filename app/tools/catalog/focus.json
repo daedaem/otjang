@@ -1,0 +1,21 @@
+{
+  "_note": "대표 관심 브랜드(2026-10-21 요청): 브랜드·종류별 상한을 늘리고, 이름 규칙이 놓친 상품을 편집자가 사진을 보고 종류·색을 정해 넣는다. raw.json(10-13~14 수집분)에 있는 상품만 쓴다(새 수집 없음).",
+  "brands": { "포터리": 12, "브론슨": 12, "리바이스": 12 },
+  "items": {
+    "4241149": ["m-tee", "white"], "6037234": ["m-tee", "black"], "6037468": ["m-tee", "white"],
+    "6037249": ["m-tee", "grey"], "6037425": ["m-tee", "white"], "6037463": ["m-tee", "grey"], "6037280": ["m-tee", "ivory"],
+    "7266196": ["f-denim", "blue"], "7252852": ["f-bag", "brown"], "7252816": ["f-slacks", "beige"],
+    "7252710": ["f-denim", "indigo"], "7141257": ["f-denim", "black"], "6981021": ["f-denim", "indigo"],
+    "6981018": ["f-denim", "blue"], "6625840": ["f-denim", "blue"], "6418058": ["f-denim", "blue"],
+    "4871606": ["m-denim", "blue"], "6831758": ["m-denim", "blue"], "7470743": ["m-field", "olive"],
+    "7151470": ["m-trucker", "blue"], "7470731": ["m-trucker", "blue"], "7266117": ["m-trucker", "indigo"],
+    "7266152": ["m-denim", "black"], "7266172": ["m-denim", "blue"], "7266187": ["m-denim-raw", "indigo"],
+    "7266162": ["m-denim", "blue"], "7252427": ["m-oxford", "green"], "7049660": ["m-oxford", "olive"],
+    "6262231": ["m-chambray", "blue"], "5249756": ["m-oxford", "white"], "4871205": ["m-vest", "black"],
+    "6269061": ["f-denim", "indigo"], "6262445": ["f-denim", "blue"], "5980136": ["f-denim", "blue"],
+    "5980118": ["f-denim", "black"], "5980114": ["f-denim", "blue"], "5875521": ["f-shirt", "yellow"],
+    "5826761": ["f-denim", "blue"], "5417802": ["f-shirt", "white"], "5321135": ["f-denim", "indigo"],
+    "4981004": ["f-denim", "blue"], "4751959": ["f-denim", "blue"], "4676855": ["f-denim", "black"],
+    "4676850": ["f-denim", "blue"], "2824424": ["f-jacket", "blue"]
+  }
+}

@@ -4,16 +4,18 @@ import fs from 'node:fs';
 import { PRODUCTS, CATALOG } from '../src/data/products.js';
 import { productEligible, productExclusionReason } from '../src/catalog-policy.js';
 import { classify } from '../tools/catalog/classify.mjs';
-import { buildProducts, renderProductsModule, selectBrandProducts } from '../tools/catalog/make-products.mjs';
+import { buildProducts, renderProductsModule, selectBrandProducts, focusProducts } from '../tools/catalog/make-products.mjs';
+import { parseCard } from '../tools/catalog/classify.mjs';
 
 const read = (file) => JSON.parse(fs.readFileSync(new URL(`../tools/catalog/${file}`, import.meta.url), 'utf8'));
 const source = {
   curation: read('curation.json'),
   snapshot: read('snapshot.json'),
-  brandProducts: read('brands.json'),
+  brandProducts: [...read('brands.json'), ...focusProducts(read('focus.json'), read('raw.json'), parseCard)],
   imageColors: read('image-colors.json'),
   exclude: read('exclude.json'),
   fixes: read('fixes.json'),
+  focusCaps: read('focus.json').brands,
 };
 const verified = [
   ['6894812', 'm-downvest', null],

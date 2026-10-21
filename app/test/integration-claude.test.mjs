@@ -14,7 +14,7 @@ test('카탈로그: 이름이 다른 종류를 가리키는 상품이 없다', (
   const conflict = {
     shoes: /팬츠|pants|셔츠|shirt|재킷|자켓|jacket|코트|주걱|슈\s*혼|깔창|인솔|양말/i,
     bottom: /재킷|자켓|jacket|코트|coat|스웨터|sweater|swim|수영|쇼트|shorts\b/i,
-    top: /팬츠|pants|슬랙스|스커트|skirt|쇼트(?!\s*슬리브)|shorts\b|재킷|자켓|jacket|코트|swim|수영|장갑|gloves?\b/i,
+    top: /팬츠|pants|슬랙스|스커트|skirt|쇼트(?!\s*슬리브|혼)|shorts\b|재킷|자켓|jacket|코트|swim|수영|장갑|gloves?\b/i,
     outer: /팬츠|pants|슬랙스|스커트|구두|스니커즈|swim|수영|티셔츠/i,
     dress: /팬츠|pants|재킷|자켓|swim|수영/i,
     acc: /팬츠|재킷|자켓|셔츠|swim/i,

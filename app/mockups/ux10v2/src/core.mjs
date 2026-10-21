@@ -22,6 +22,19 @@ import { outfitCopy } from '../../../src/outfit-copy.js';
 
 export const MOCK_API_VERSION = 2;
 
+// 날씨 코디(R17)의 옷 종류별 따뜻함. 흔히 쓰는 "기온별 옷차림" 구간을 옷 종류로만 옮긴 것이다(소재·두께 정보는 없다).
+const OUTER_WARMTH = { cardigan: 1, vest: 1, jacket: 2, blazer: 2, coat: 3, down: 4 };
+const TOP_WARMTH = { tee: 0, polo: 0, shirt: 1, longtee: 1, dress: 1, knit: 2, sweat: 2 };
+// 아침 최저 기온으로 겉옷 범위를 정한다. outerMin 0이면 겉옷 없이도 된다.
+export function weatherBand(min) {
+  if (min >= 20) return { label: '더운 날', advice: '겉옷 없이 가볍게 입어도 돼요.', outerMin: 0, outerMax: 1 };
+  if (min >= 17) return { label: '선선한 날', advice: '얇은 겉옷 하나면 충분해요.', outerMin: 0, outerMax: 2 };
+  if (min >= 12) return { label: '쌀쌀한 아침', advice: '가벼운 재킷이나 카디건을 챙기세요.', outerMin: 1, outerMax: 2, need: '가벼운 겉옷', query: '재킷' };
+  if (min >= 8) return { label: '추워지는 날', advice: '재킷이나 코트가 필요해요.', outerMin: 2, outerMax: 3, need: '재킷이나 코트', query: '코트' };
+  if (min >= 4) return { label: '추운 날', advice: '코트를 입고, 추위를 타면 패딩도 좋아요.', outerMin: 3, outerMax: 4, need: '코트', query: '코트' };
+  return { label: '아주 추운 날', advice: '패딩이나 두꺼운 코트가 필요해요.', outerMin: 3, outerMax: 4, need: '패딩이나 코트', query: '패딩' };
+}
+
 export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
   const DECISION_LABEL = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const RETURN_LABEL = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '마음이 바뀜', other: '기타' };
@@ -662,6 +675,59 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
         });
       }
       return out;
+    },
+
+    // 오늘 날씨에 맞춘 내 옷 코디(R17). 날씨는 화면이 준다({min, max, rain}: 아침 최저·낮 최고 기온 °C, 비 여부).
+    // 기온 구간별 옷 종류 규칙으로 가진 옷 조합에 점수를 매긴다. 소재·두께는 데이터에 없어 따지지 않는다.
+    // 맞는 겉옷이 옷장에 없으면 missing으로 찾을 말(query)을 준다. 자동으로 사 오라고 하지 않는다.
+    weatherOutfits(weather = {}, { limit = 3 } = {}) {
+      const min = Number(weather.min);
+      const max = Number(weather.max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return { ok: false, message: '날씨 정보가 없어요.' };
+      const rain = !!weather.rain;
+      const gap = max - min;
+      const band = weatherBand(min);
+      const list = this.closetOutfits({ limit: 120, detail: true }).list || [];
+      // 겉옷이 없어도 되는 날은 겉옷을 뺀 차림도 후보로 둔다(가진 조합에는 늘 겉옷이 끼어 있다).
+      const variants = band.outerMin === 0
+        ? list.flatMap((o) => (o.pieces.some((p) => p.role === 'outer') ? [o, { ...o, pieces: o.pieces.filter((p) => p.role !== 'outer'), key: o.baseKey, withoutOuter: true }] : [o]))
+        : list;
+      const scored = variants.map((o) => {
+        const kinds = Object.fromEntries(o.pieces.filter((p) => p.slot).map((p) => [p.role, SLOT_BY_ID[p.slot]?.shape]));
+        const reasons = [];
+        let score = 0;
+        const outer = kinds.outer || null;
+        const ow = OUTER_WARMTH[outer] ?? 0;
+        if (ow < band.outerMin) { score -= 3 * (band.outerMin - ow); }
+        else if (ow > band.outerMax) { score -= 2 * (ow - band.outerMax); }
+        else { score += 3; if (outer) reasons.push(`${garmentKindName(outer)}: 아침 ${min}°에 맞는 겉옷`); }
+        const top = kinds.top || kinds.dress || null;
+        const tw = TOP_WARMTH[top] ?? 1;
+        if (max >= 25 && tw >= 2) score -= 3;
+        else if (max >= 25 && tw === 0) { score += 2; reasons.push(`${garmentKindName(top)}: 낮 ${max}°라 가볍게`); }
+        else if (max < 15 && tw === 2) { score += 2; reasons.push(`${garmentKindName(top)}: 낮에도 ${max}°라 따뜻하게`); }
+        else if (max < 15 && tw === 0 && ow < 2) score -= 2;
+        if (gap >= 10 && outer && ow >= 1 && ow <= 2) { score += 1; reasons.push('일교차가 커서 낮엔 겉옷을 벗어도 돼요'); }
+        if (rain && kinds.shoes === 'boot') { score += 1; reasons.push('비 오는 날 부츠'); }
+        return { ...o, score, fit: score >= 3 ? 'good' : score >= 0 ? 'ok' : 'poor', reasons };
+      }).sort((a, b) => b.score - a.score);
+      // 겉옷만 다른 조합이 줄줄이 나오지 않게 겉옷 뺀 조합(baseKey)마다 가장 맞는 것 하나만 남긴다.
+      const seen = new Set();
+      let outfits = scored.filter((o) => o.fit !== 'poor' && !seen.has(o.baseKey) && seen.add(o.baseKey)).slice(0, limit);
+      // 맞는 조합이 없으면 가진 옷 중 가장 가까운 것을 '부족' 표시와 함께 보여 준다(빈 화면 대신).
+      const short = !outfits.length;
+      if (short) outfits = scored.filter((o) => !seen.has(o.baseKey) && seen.add(o.baseKey)).slice(0, Math.min(limit, 2));
+      const owned = new Set(S.garments.map((g) => SLOT_BY_ID[g.slot]?.shape || g.kind));
+      const hasOuter = Object.entries(OUTER_WARMTH).some(([k, w]) => owned.has(k) && w >= band.outerMin && w <= band.outerMax);
+      const missing = band.outerMin > 0 && !hasOuter ? { role: 'outer', label: band.need, query: band.query } : null;
+      const notes = [];
+      if (rain) notes.push('비 소식이 있어요. 우산을 챙기세요.');
+      if (gap >= 10) notes.push(`일교차가 ${gap}°예요. 벗기 쉬운 겉옷이 좋아요.`);
+      return {
+        ok: true, weather: { min, max, rain, gap }, band: { label: band.label, advice: band.advice },
+        outfits, short, missing, notes, count: list.length,
+        note: '기온과 옷 종류로만 골랐어요(소재·두께는 몰라요).',
+      };
     },
 
     // 순위와 순위별 이유: 같은 결과 안에서 이 상품이 다른 상품과 무엇이 다른지를 규칙으로 계산한다(대화형 AI가 아니다).

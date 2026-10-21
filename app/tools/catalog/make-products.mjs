@@ -4,6 +4,7 @@
 // 사용: node app/tools/catalog/make-products.mjs
 import fs from 'node:fs';
 import { productEligible } from '../../src/catalog-policy.js';
+import { parseCard } from './classify.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -65,12 +66,30 @@ export function cleanName(name) {
 
 const quality = (p) => (p.rating ?? 4.4) * Math.log10((p.reviews || 0) + (p.likes || 0) / 8 + 10);
 const PER_BRAND_SLOT = 3;
-export function selectBrandProducts(list) {
+export function selectBrandProducts(list, cap = PER_BRAND_SLOT) {
   // 제외되는 인기 상품이 상위 세 자리 안에서 유효한 상품을 밀어내지 않게 한다.
   return list
     .filter(productEligible)
     .sort((a, b) => quality(b) - quality(a))
-    .slice(0, PER_BRAND_SLOT);
+    .slice(0, cap);
+}
+
+// 대표 관심 브랜드(focus.json): 이름 규칙이 놓친 상품을 편집자가 정한 종류·색으로 raw.json에서 꺼낸다(새 수집 없음).
+export function focusProducts(focus = {}, raw = {}, parse) {
+  const out = [];
+  const seen = new Set();
+  for (const [key, cards] of Object.entries(raw)) {
+    const [g, rest] = key.split(':');
+    const brand = rest.split('|')[0];
+    for (const c of cards) {
+      const pick = focus.items?.[c.id];
+      if (!pick || seen.has(c.id)) continue;
+      seen.add(c.id);
+      const [slot, color] = pick;
+      out.push({ ...parse(c, g), brand, slot, color, colorSource: 'curation', classification: 'curated-focus' });
+    }
+  }
+  return out;
 }
 
 export function buildProducts({
@@ -80,6 +99,7 @@ export function buildProducts({
   imageColors = {},
   exclude = [],
   fixes = {},
+  focusCaps = {},
 }) {
   const excluded = new Set(exclude);
   const products = new Map();
@@ -140,7 +160,7 @@ export function buildProducts({
     });
   }
   for (const group of Object.values(groups)) {
-    for (const p of selectBrandProducts(group)) {
+    for (const p of selectBrandProducts(group, focusCaps[group[0].brand] || PER_BRAND_SLOT)) {
       products.set(p.id, {
         id: `ms-${p.id}`,
         slot: p.slot,
@@ -156,6 +176,7 @@ export function buildProducts({
         reviews: p.reviews || 0,
         likes: p.likes || 0,
         ...(p.summer ? { summer: true } : {}),
+        ...(p.classification === 'curated-focus' ? { focus: true } : {}),
         store: '무신사',
         checkedAt: p.checkedAt || '2026-10-14',
       });
@@ -189,10 +210,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const { list, missing, pickedCount } = buildProducts({
     curation: read('curation.json', {}),
     snapshot: read('snapshot.json', {}),
-    brandProducts: read('brands.json', []),
+    brandProducts: [...read('brands.json', []), ...focusProducts(read('focus.json', {}), read('raw.json', {}), parseCard)],
     imageColors: read('image-colors.json', {}),
     exclude: read('exclude.json', []),
     fixes: read('fixes.json', {}),
+    focusCaps: read('focus.json', {}).brands || {},
   });
   fs.writeFileSync(path.join(dir, '../../src/data/products.js'), renderProductsModule(list));
   const bySlot = {};

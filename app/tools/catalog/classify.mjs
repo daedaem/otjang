@@ -376,7 +376,7 @@ const MEN_FIRST = new Set([
   '닥터마틴',
 ]);
 
-function parseCard(c, g) {
+export function parseCard(c, g) {
   const t = c.text;
   const rating = t.match(/(\d\.\d)\s*\(([\d,]+)\)/);
   const nameAt = t.indexOf(c.name.slice(0, 8));
