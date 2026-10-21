@@ -15,6 +15,7 @@ function fakeD1(raw = new DatabaseSync(':memory:')) {
       const statement = {
         bind(...values) { args = values; return statement; },
         async run() { const result = raw.prepare(sql).run(...args); return { success: true, meta: { changes: Number(result.changes) } }; },
+        async first() { return raw.prepare(sql).get(...args) ?? null; },
       };
       return statement;
     },
@@ -42,12 +43,66 @@ test('login page works before setup and contains no remote assets, key or persis
   assert.match(page.headers.get('cache-control'), /no-store/);
 });
 
-test('only a configured session mode and a 32–256 printable ASCII server key work', async () => {
-  for (const env of [{}, { PRIVATE_AUTH_MODE: 'access', PRIVATE_APP_ACCESS_KEY: secret() }, ...[undefined, '', 'x'.repeat(31), 'x'.repeat(257), '가'.repeat(32), ' '.repeat(32), 'x'.repeat(31) + '\n'].map((PRIVATE_APP_ACCESS_KEY) => ({ PRIVATE_AUTH_MODE: 'session', PRIVATE_APP_ACCESS_KEY }))]) {
+test('only a configured session mode and an 8–128 printable ASCII app password work', async () => {
+  for (const env of [{}, { PRIVATE_AUTH_MODE: 'access', PRIVATE_APP_ACCESS_KEY: secret() }, ...[undefined, '', 'x'.repeat(7), 'x'.repeat(129), '가'.repeat(8), ' '.repeat(8), 'x'.repeat(7) + '\n'].map((PRIVATE_APP_ACCESS_KEY) => ({ PRIVATE_AUTH_MODE: 'session', PRIVATE_APP_ACCESS_KEY }))]) {
     assert.deepEqual(await authorizeSession(request('/'), env), { ok: false, status: 503, code: 'not_configured' });
     const response = await handlePrivateSession(request('/_private/session', { password: 'wrong' }), env);
     assert.equal(response.status, 503);
   }
+});
+
+test('eight-character app password uses a separate random persisted server seed, never the password as HMAC key', async () => {
+  const env = environment();
+  env.PRIVATE_APP_ACCESS_KEY = 'test-P8!';
+  const response = await login(env);
+  assert.equal(response.status, 200);
+  const settings = env.RANK_DB.raw.prepare('SELECT * FROM private_auth_settings').all();
+  assert.equal(settings.length, 1);
+  assert.equal(settings[0].id, 1);
+  assert.match(settings[0].seed, /^[A-Za-z0-9_-]{43}$/);
+  assert.notEqual(settings[0].seed, env.PRIVATE_APP_ACCESS_KEY);
+  const serialized = JSON.stringify(settings) + response.headers.get('set-cookie') + await response.text();
+  assert.ok(!serialized.includes(env.PRIVATE_APP_ACCESS_KEY));
+  const cookie = cookieFrom(response);
+  assert.deepEqual(await authorizeSession(request('/', { cookie }), env, { now: () => NOW }), { ok: true });
+  // A password-only signature is invalid even when the password is known locally.
+  const payload = cookie.split('.')[1];
+  const passwordKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.PRIVATE_APP_ACCESS_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const forged = Buffer.from(await crypto.subtle.sign('HMAC', passwordKey, new TextEncoder().encode(`otjang/session/v1\0${payload}`))).toString('base64url');
+  assert.equal((await authorizeSession(request('/', { cookie: `${cookie.split('.').slice(0, 2).join('.')}.${forged}` }), env, { now: () => NOW })).status, 401);
+});
+
+test('concurrent isolates share the persisted seed winner and can verify each other’s sessions', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const env = environment(fakeD1(raw));
+  env.PRIVATE_APP_ACCESS_KEY = 'test-P8!';
+  const other = await import('../functions/lib/private-session.js?seed-isolate=1');
+  const responses = await Promise.all([
+    handlePrivateSession(request('/_private/session', { password: env.PRIVATE_APP_ACCESS_KEY }), env, { now: () => NOW }),
+    other.handlePrivateSession(request('/_private/session', { password: env.PRIVATE_APP_ACCESS_KEY }), { ...env, RANK_DB: fakeD1(raw) }, { now: () => NOW }),
+  ]);
+  assert.ok(responses.every((r) => r.status === 200));
+  assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM private_auth_settings').get().n, 1);
+  for (const response of responses) {
+    assert.equal((await other.authorizeSession(request('/', { cookie: cookieFrom(response) }), { ...env, RANK_DB: fakeD1(raw) }, { now: () => NOW })).ok, true);
+  }
+});
+
+test('missing or corrupt server seed cannot fall back to a password-only or in-memory signing secret', async () => {
+  const env = environment();
+  const cookie = cookieFrom(await login(env));
+  for (const RANK_DB of [undefined, { prepare() { throw Error('database unavailable'); } }]) {
+    assert.equal((await authorizeSession(request('/', { cookie }), { ...env, RANK_DB }, { now: () => NOW })).status, 503);
+  }
+  const db = fakeD1();
+  db.raw.prepare('CREATE TABLE private_auth_settings (id INTEGER PRIMARY KEY, seed TEXT NOT NULL)').run();
+  db.raw.prepare('INSERT INTO private_auth_settings VALUES (1, ?)').run('corrupt');
+  const broken = { ...env, RANK_DB: db };
+  assert.equal((await authorizeSession(request('/', { cookie }), broken, { now: () => NOW })).status, 503);
+  const response = await login(broken);
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('set-cookie'), null);
+  assert.equal(db.raw.prepare('SELECT seed FROM private_auth_settings').get().seed, 'corrupt');
 });
 
 test('login sets a nonce-bearing HMAC cookie for seven days without returning a password', async () => {

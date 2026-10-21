@@ -198,6 +198,8 @@ test('real session login opens private routes only with its signed cookie and ne
       let values = [];
       return {
         bind(...args) { values = args; return this; },
+        async first() { return db.prepare(sql).get(...values) ?? null; },
+        async all() { return { success: true, results: db.prepare(sql).all(...values) }; },
         async run() {
           const result = db.prepare(sql).run(...values);
           return { success: true, meta: { changes: Number(result.changes) } };
@@ -205,7 +207,9 @@ test('real session login opens private routes only with its signed cookie and ne
       };
     },
   };
-  const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join('');
+  // This synthetic 8-character fixture exercises the shortest supported app password.
+  // Production signing entropy must come from the independently generated D1 seed.
+  const secret = 'test-P8!';
   const calls = { rank: 0, weather: 0, catalog: 0, assets: 0 };
   const endpoint = (name) => async () => { calls[name]++; return new Response(name); };
   const app = createWorker({ rank: endpoint('rank'), weather: endpoint('weather'), catalog: endpoint('catalog') });
@@ -227,6 +231,23 @@ test('real session login opens private routes only with its signed cookie and ne
       assert.equal(response.status, 200);
       assert.equal(await response.text(), target);
       assert.equal(calls[target], previous + 1);
+    }
+    const settings = db.prepare('SELECT seed FROM private_auth_settings WHERE id = 1').all();
+    assert.equal(settings.length, 1);
+    assert.match(settings[0].seed, /^[A-Za-z0-9_-]{43}$/);
+    assert.notEqual(settings[0].seed, secret);
+    assert.equal(login.headers.get('set-cookie').includes(settings[0].seed), false);
+    const changedPassword = await app.fetch(new Request('https://private.example/shared/eoul-mock.js', {
+      headers: { Cookie: cookie },
+    }), { ...env, PRIVATE_APP_ACCESS_KEY: 'updated-Pass8!' });
+    assert.equal(changedPassword.status, 401);
+    assert.equal(db.prepare('SELECT seed FROM private_auth_settings WHERE id = 1').get().seed, settings[0].seed);
+    // Every path rejects an existing signed cookie if the shared signing state fails.
+    const brokenEnv = { ...env, RANK_DB: { prepare() { throw Error('DO_NOT_REFLECT_SIGNING_STATE'); } } };
+    for (const [path, method] of routes) {
+      const response = await app.fetch(new Request(`https://private.example${path}`, { method, headers: { Cookie: cookie } }), brokenEnv);
+      assert.equal(response.status, 503);
+      assert.doesNotMatch(await response.text(), /DO_NOT_REFLECT_SIGNING_STATE/);
     }
     const accessEnv = { ...env, PRIVATE_AUTH_MODE: 'access', ACCESS_TEAM_DOMAIN: 'wardrobe-owner.cloudflareaccess.com', ACCESS_AUD: 'private-app-audience' };
     const access = await app.fetch(new Request('https://private.example/', { headers: { Cookie: cookie } }), accessEnv);
