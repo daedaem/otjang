@@ -17,6 +17,30 @@
   };
   window.claude = { use: async (name) => (name === 'sample' ? sample : null) };
 
+  // 사용자 등록 카탈로그(/api/catalog/*). 화면은 window.EOUL_CROWD가 있을 때만 공유 등록을 쓰고, 없으면(링크 시안) 이 기기에만 둔다.
+  // 실패는 {code}로 돌려준다: not_configured(DB 미연결)·offline·invalid·daily_limit·error. 기기 id는 이 브라우저에만 있는 무작위 값.
+  const deviceId = () => {
+    try {
+      let id = localStorage.getItem('eoul-crowd:device');
+      if (!id) { id = crypto.randomUUID().replace(/-/g, ''); localStorage.setItem('eoul-crowd:device', id); }
+      return id;
+    } catch { return null; }
+  };
+  const api = async (path, body) => {
+    let res;
+    try {
+      res = await fetch(`/api/catalog/${path}`, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+    } catch { return { code: 'offline' }; }
+    const out = await res.json().catch(() => null);
+    return res.ok && out ? out : { code: out?.code || 'error', message: out?.message };
+  };
+  window.EOUL_CROWD = {
+    submit: (item) => api('submit', { ...item, device: deviceId() }),
+    withdraw: (key) => api('withdraw', { key, device: deviceId() }),
+    search: (q) => api(`search?q=${encodeURIComponent(q)}`),
+    status: (keys) => api(`status?keys=${keys.map(encodeURIComponent).join(',')}`),
+  };
+
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }
