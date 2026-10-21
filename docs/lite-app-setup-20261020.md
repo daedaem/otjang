@@ -1,107 +1,81 @@
-# 설치형 시험 앱 올리기 — 아이폰 홈 화면에서 쓰기 (2026-10-20)
+# 설치형 시험 앱 운영 안내
 
-**2026-10-21 현재:** d12 v3 "걸어 보고 사기"가 설치 앱 원본이다. 기존 Worker는 그대로 두며 **공개·미리보기 추가 배포는 금지**다. 아래 계정 생성·배포 순서는 과거 설치 기록이다. master 병합은 배포 승인이 아니다.
+갱신: 2026-10-21. 현재 설치 앱 원본은 d12 v3 **"걸어 보고 사기"**, 배포 대상은 기존 Cloudflare Worker **`otjang`**, 기준 브랜치는 **`master`**다. 새 Pages 프로젝트나 Cloudflare 계정을 만들지 않는다. 과거 Claude 브랜치·Pages 설치·이전 빌드 재시도 절차는 이 안내로 대체한다.
 
-Workers Builds에서는 `WORKERS_CI`가 설정되면 빌드를 `PUBLIC_DEPLOY_BLOCKED`로 중단한다. 로컬/GitHub 빌드는 된다. 상품 사진 권리 확인·대표의 별도 공개 승인 이후에만 `OTJANG_ALLOW_PUBLIC_DEPLOY=owner-approved`를 설정한다. 이번 작업에서 Cloudflare 설정을 변경하지 않았다.
-옷장·기록은 **아이폰 안 저장소에만** 있다. AI 한도·직접 등록용 공유 D1은 실제 연결 전이다. 사진 파일도 올리지 않는다(상품 사진은 판매처 이미지 서버 주소).
+대표는 무료 D1 연결과 **본인만 접속하는 비공개 배포**를 승인했다. 상품 사진 권리는 미확인이므로 일반 공개·외부 링크 공유·유료 가입·크레딧 충전은 승인 범위가 아니다. Cloudflare Access는 카드·약관 단계에서 중단했고, 현재는 **카드 없는 앱 자체 로그인**을 사용한다. 상세 실행 증거는 [본인 전용 AI 연결·운영 기록](private-ai-connect-20261021.md)에 남긴다.
 
-메뉴 이름은 Cloudflare 공식 문서(2026-10-20 확인)를 따랐다. 화면이 바뀌었으면 같은 뜻의 메뉴를 찾으면 된다.
+## 현재 확인 범위
 
-## 대표님이 하실 일 (약 15분)
+- **로컬 연결 작업본:** 합성 키·가짜 Claude·Node SQLite를 사용한 검사 83개 통과. 실제 서명 쿠키와 앱·API·정적 자산 보호를 포함한다.
+- **D1 생성:** 무료 DB `otjang-private`, ID `e3b0965b-a661-4ef0-b6a0-2ed1c12eed99`. 이 ID는 비밀 값이 아니다.
+- **소스 설정:** 같은 DB를 `RANK_DB`와 `CROWD_DB` 두 이름으로 연결한다. DB 생성·설정 파일 작성은 실제 Worker 바인딩·테이블 생성·운영 성공과 별개다.
+- **미확인:** 새 코드의 원격 배포, 런타임 Secret 두 개의 반영, 실제 Claude 응답, 아이폰 설치 앱의 갱신·로그인·기존 자료 보존. 로컬 검사 성공을 이 단계들의 완료로 해석하지 않는다.
 
-### 1. Cloudflare 무료 계정
-https://dash.cloudflare.com/sign-up 에서 이메일로 가입한다. 결제 수단은 넣지 않아도 된다.
+## 배포 설정과 안전한 순서
 
-### 2. 저장소 연결 (Pages 프로젝트 만들기)
-1. 대시보드 왼쪽 **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**
-2. **GitHub** 선택 → 로그인 → 저장소 `daedaem/otjang` 선택 → **Install & Authorize** → **Begin setup**
-3. **Set up builds and deployments** 화면에서 아래처럼 넣는다.
+기존 Worker의 저장소 빌드 설정을 아래와 맞춘다. **오래된 배포의 Retry가 아니라, 인증 보호가 들어간 최신 master 커밋을 배포한다.**
 
-| 칸 | 값 |
+| 항목 | 값 |
 |---|---|
-| Project name | 원하는 이름(주소가 `이름.pages.dev`가 됨). 짐작하기 어려운 이름 권장 |
-| Production branch | `claude/fashn-vton-m1-test-3ox240` (master에 합친 뒤에는 master) |
-| Framework preset | None |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Root directory (advanced) → Path | `app/lite` |
+| Worker | `otjang` |
+| 저장소 / 운영 브랜치 | `daedaem/otjang` / `master` |
+| 루트 디렉터리 | `app/lite` |
+| 빌드 명령 | `npm run build` |
+| 배포 명령 | `npx wrangler deploy` |
+| 인증 모드 | `PRIVATE_AUTH_MODE=session` |
+| 자산 경로 | `assets.run_worker_first: true` — 앱·API·정적 자산 전체 인증 |
+| 별도 버전 URL | `preview_urls: false` |
 
-4. **Save and Deploy**. 1~2분 뒤 `https://이름.pages.dev` 주소가 나온다. 이때는 AI 순위 자리에 "AI 순위가 아직 설정되지 않아 기본 순서로 보여 드려요"가 나오는 게 정상이다.
+1. **검증한 인증 보호 코드를 먼저 master에 반영·배포한다.** 비밀 값이 없으면 앱·유료 AI가 열리지 않는 상태로 배포한다. 구형 공개 서버에 API 키부터 넣지 않는다.
+2. Workers Builds에 비밀값이 아닌 `OTJANG_PRIVATE_DEPLOY=owner-approved`, `PRIVATE_AUTH_MODE=session`을 설정한다. 빌드 차단 장치는 이 조합으로 비공개 배포만 허용한다. `OTJANG_ALLOW_PUBLIC_DEPLOY`는 설정하지 않는다. 빌드 허용 여부만으로 실제 인증이나 Secret 반영이 증명되지는 않는다.
+3. 만들어 둔 D1을 `RANK_DB`·`CROWD_DB`에 연결한 배포인지 확인한다. 두 별칭은 같은 DB를 가리킨다. 새 DB를 자동 생성하거나 기존 DB를 초기화하지 않는다.
+4. **보호 코드가 실제로 배포된 뒤** 대표가 Worker의 **런타임 Variables and Secrets**에 아래 Secret 두 개를 직접 입력한다. 빌드 변수에 넣지 않는다. 값·쿠키·입력 화면을 채팅, Git, PR, 로그에 남기지 않는다.
+5. Secret 반영 배포의 버전과 인증 보호를 확인한다. 로그인 전에는 `/`가 로그인으로 이동하고, API·상품 자산이 401 또는 설정 미완료 503으로 막혀야 한다. 로그인 실패로 인증을 끄거나 한도를 우회하지 않는다.
+6. 본인 로그인 후 필요한 최소 실제 AI 시험을 한다. **런타임 Secret으로 정상 작동하는 것을 확인한 뒤** 기존 일반 빌드 변수의 API 키를 제거한다. 키 교체·이전 키의 발급처 폐기는 대표가 별도로 확인한다. 먼저 지워서 유일한 값을 잃거나, 제거만으로 발급처 폐기까지 끝났다고 기록하지 않는다.
 
-### 3. API 키 넣기 (채팅에 붙이지 않는다)
-1. Anthropic 콘솔에서 새 API 키를 만든다(채팅에 붙였던 키는 삭제).
-2. Cloudflare에서 방금 만든 프로젝트 → **Settings** → **Variables and Secrets** → **Add**
-   - 이름 `ANTHROPIC_API_KEY`, 값에 키, **Encrypt** 선택 → **Save**
-3. **Deployments** 탭에서 가장 최근 배포의 메뉴(⋯)에서 다시 배포(Retry deployment)를 누른다(메뉴 이름은 화면에 따라 다를 수 있다). 비밀 값은 다시 배포해야 반영된다.
+| 런타임 Secret 이름 | 용도 |
+|---|---|
+| `PRIVATE_APP_ACCESS_KEY` | 본인 접속 키. 무작위 영문·숫자·기호 32~256자, 공백 제외. AI 키와 다른 값 사용 |
+| `ANTHROPIC_API_KEY` | Claude API 호출. 브라우저·앱 코드로 보내지 않음 |
 
-### Workers로 만들어진 경우 (배포 명령이 `npx wrangler deploy`로 보일 때)
-최근 Cloudflare 화면은 저장소를 연결하면 Pages 대신 Workers 프로젝트를 만들기도 한다. 이 경우에도 그대로 쓸 수 있게 `app/lite/wrangler.jsonc`와 `worker.js`를 넣어 두었다(2026-10-20).
-1. **Settings → Build**: 분기(Branch)를 `claude/fashn-vton-m1-test-3ox240`로, 루트 디렉터리 `app/lite`, 빌드 명령 `npm run build`, 배포 명령 `npx wrangler deploy`
-   - 분기가 `master`면 "root directory not found"로 실패한다(master에는 `app/lite`가 없다).
-2. **API 키는 빌드 변수가 아니라 실행용 비밀 값으로**: 빌드 변수(Build variables)에 넣은 `ANTHROPIC_API_KEY`는 지우고, **Settings → Variables and Secrets → Add → 유형 Secret**으로 `ANTHROPIC_API_KEY`를 넣는다. 빌드 변수는 앱이 실행될 때 보이지 않는다.
-3. **빌드 다시 시도**.
-- Worker 이름은 Workers Builds가 대시보드 이름으로 덮어쓴다(설정 파일의 `otjang-lite`와 달라도 된다).
-- 아래 AI 한도는 예전 KV 방식에서 **공유 D1 원자 예약 필수**로 바뀌었다. D1을 승인 없이 연결하지 않는다.
+Cloudflare의 일반 Secret 저장은 새 배포를 만들 수 있다. 그래서 **보호 코드 선배포 → 런타임 Secret 입력** 순서를 지킨다. API 키 자체의 유효성·잔액은 실제 응답을 확인하기 전까지 미검증이다. [Cloudflare Secrets 공식 안내](https://developers.cloudflare.com/workers/configuration/secrets/)
 
-### 4. 아이폰에 설치
-1. **Safari**로 `https://이름.pages.dev`를 연다(다른 브라우저 말고 Safari).
-2. 아래 **공유** 버튼 → **홈 화면에 추가** → **추가**
-3. 이후에는 홈 화면 아이콘으로 연다. 홈 화면 앱은 Safari와 저장 공간이 따로라서, Safari에서 넣은 옷은 앱에 보이지 않는다.
+## 본인 로그인과 AI 한도
 
-## AI 실행 조건 — 인증과 사용량 제한 필수 (2026-10-21)
+- 로그인은 `/_private/login`, 성공하면 7일짜리 `HttpOnly; Secure; SameSite=Strict` 서명 쿠키를 사용한다. 접속 키를 브라우저 저장소에 보관하지 않는다. 키를 바꾸면 이전 키로 서명한 세션은 거절한다.
+- 로그인 시도는 공유 D1에서 IP별 분당 5회·전체 분당 60회로 제한한다. IP 원문 대신 분 단위 HMAC 태그를 쓰며 오래된 시도 기록을 정리한다. D1 실패 시 새 로그인을 허용하지 않는다.
+- 현재 배포 설정의 AI 한도는 **UTC 하루 100회·월 300회·분 5회**다. `DAILY_LIMIT`, `MONTHLY_LIMIT`, `MINUTE_LIMIT`가 설정 이름이다. 인증 후 공유 D1에서 먼저 예약하며 실패·취소에도 횟수를 되돌리지 않는다. 예전 선택적 KV 방식은 사용하지 않는다.
+- 한도는 **호출 횟수 제한**이며 금액의 절대 상한이 아니다. 기존 크레딧 만료 뒤 충전·추가 비용은 별도 대표 결정이다.
+- AI 요청은 rank/consult 구조화 형식, 질문 300자·본문 32KiB로 제한한다. 상품명·가격·수집일은 서버 카탈로그에서 채우고 출력 후보도 검증한다. 임의 prompt·모델·개인 사진은 받지 않는다. 최대 출력 2,000토큰, 재시도 0회·대기 15초다.
+- API 오류면 기본 상품 순서를 유지하거나 상담 오류를 안내한다. 실제 추천 품질·주제 거절 정확도는 호출 성공과 별도로 평가한다.
 
-예전 선택적 `RANK_KV` 읽기→쓰기는 동시 요청 한도를 보장하지 못하므로 폐기했다. 키만 있거나 KV만 연결된 환경은 유료 AI를 호출하지 않는다.
+Access 인증 코드는 대안으로 남긴다. 모드가 없거나 `access`이면 기존 JWT 검증과 `ACCESS_TEAM_DOMAIN`·`ACCESS_AUD`가 필요하며, 알 수 없는 모드는 503이다. **현재 session 모드에 Access 가입·카드 등록은 필요 없다.**
 
-- `ANTHROPIC_API_KEY`: **런타임 Secret**만 사용한다. 일반 빌드 변수에 키를 두지 않는다. 이미 일반 변수로 사용한 키는 대표가 발급처에서 교체·폐기한다. 값이나 화면 캡처는 문서/채팅/PR에 넣지 않는다.
-- Cloudflare Access의 비공개 앱 정책 + `ACCESS_TEAM_DOMAIN`(본인 팀의 `team.cloudflareaccess.com` 또는 https 원점) + `ACCESS_AUD`가 필요하다. 서버는 JWT 서명·issuer·audience·유효 시간을 검사한다. 헤더 이름만 흉내 내서는 통과하지 않는다.
-- 공유 D1 `RANK_DB`(또는 `CROWD_DB`)가 필요하다. 연결 전에는 503이다. **이번 작업은 D1·Access 정책/계정/바인딩을 만들거나 변경하지 않았다.** 별도 대표 결정이 필요하다.
-- 기본 UTC 일 300회·월 300회·분 10회. `DAILY_LIMIT`, `MONTHLY_LIMIT`, `MINUTE_LIMIT`는 1~10,000 정수만 허용한다. 한 SQL로 먼저 예약하며 실패·취소에도 횟수를 반환하지 않는다. 날짜·월·분·횟수만 저장한다.
-- 모델 고정, 최대 출력 2,000토큰, SDK 재시도 0회·대기 15초. **호출 수 제한이며 달러 금액의 절대 상한이 아니다.** 크레딧 만료·발급처 지출 정책은 별도 관리한다. 과거 "검색당 1원 미만" 추정은 운영 근거로 쓰지 않는다.
-- 구조화 요청만 받는다: rank/consult, 질문 300자, 후보 id·옷장 비교·최근 대화, 본문 32KiB. 후보 상품명·가격·수집일은 서버 카탈로그에서 채운다. 원문 `prompt`·임의 모델·사진/URL은 받지 않는다. 출력도 후보와 형식을 검증한다.
-- 실패 시 기본 순서 유지 또는 상담 오류 안내. 추천 이유의 진실성·주제 거절·실제 AI 품질은 추가 실증이 필요하다.
+## 사용자 등록 DB와 날씨
 
-근거: [Access JWT 검증](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/), [Workers 빌드 브랜치](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/), [D1 batch 트랜잭션](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
+`CROWD_DB`는 같은 `otjang-private` DB다. 표는 첫 요청 때 서버가 만든다. 기본 `CROWD_MIN=3`이므로 서로 다른 기기 3곳이 같은 옷을 등록해야 공유 검색에 나온다. 본인만 접속하는 현재 단계에서 기준을 충족하지 않는 것은 오류가 아니다. 기기당 최근 24시간 20건을 제한하고, 철회해도 사용량은 초기화하지 않는다. 선택 Secret `CROWD_SALT`가 있으면 IP 해시 기준 60건도 적용한다. 기기 ID는 계정 인증을 대신하지 못하므로 다중 사용자 공개 전에는 별도 설계가 필요하다. 사진은 받지 않으며 등록한 판매처 링크는 다른 사람의 검색 결과로 보내지 않는다.
 
-## 선택: 사용자 등록 공유 DB (R15, 2026-10-21)
-목록에 없는 옷을 직접 등록하면, 같은 옷을 서로 다른 기기 3곳 이상이 등록했을 때 모두의 검색에 나온다. 서버 코드는 `functions/api/catalog.js`(Cloudflare D1, 무료 등급)이고, **DB를 연결하기 전에는 등록이 그 기기에만 저장된다**(화면은 "서버 연결 전에는 이 기기에만"이라고 알린다).
+날씨는 `/api/weather`가 Open-Meteo 예보를 대신 받아 온다. 현재 위치를 허용하지 않으면 서울 기준으로 시작하고, 날씨 카드의 지역 이름 또는 ⋯ 메뉴에서 19개 도시·현재 위치를 내 지역으로 고를 수 있다. 좌표는 0.1°로 줄이며 고정 지역은 기기에만 저장한다. 서버는 좌표를 저장하지 않고 사용자 IP를 날씨 서비스에 전달하지 않는다. 결측 예보를 0도로 표시하지 않으며 실패는 502로 알린다. Open-Meteo의 상업 이용 조건은 공개 서비스 전 별도 확인한다.
 
-연결 방법(둘 중 하나, Claude가 `wrangler.jsonc`에 한 줄을 넣어야 한다):
-- **A. 자동 생성 승인(추천, 대표님 작업 0):** 대표님이 "D1 자동 생성 승인"이라고 말하면 Claude가 `wrangler.jsonc`에 `"d1_databases": [{ "binding": "CROWD_DB" }]`(id 없이)를 넣는다. 다음 배포 때 Wrangler가 대표님 계정에 무료 D1을 만든다(Wrangler 4.151의 자동 생성 기능 기준, 실제 Workers Builds에서 되는지는 첫 배포로 확인 필요). 실패하면 배포만 실패하고 지금 앱은 그대로 돌아간다 → Claude가 되돌린다.
-- **B. 직접 만들기(약 2분):** 대시보드 → **Storage & Databases → D1** → **Create** → 이름 `otjang-crowd` → 만든 뒤 보이는 **Database ID**를 Claude에게 알려 준다(비밀 값이 아니다).
+## 아이폰에서 확인할 순서
 
-표는 첫 요청 때 서버가 만든다(따로 SQL을 돌릴 필요 없음). 선택 값(Variables and Secrets):
-- `CROWD_MIN`: 검색에 올리는 기준 기기 수(기본 3). 혼자 시험할 때는 1로 두면 바로 검색된다.
-- `CROWD_SALT`(Secret): 넣으면 IP를 소금 친 해시로만 남겨 같은 망에서 최근 24시간 60건 상한을 건다. 없으면 IP를 남기지 않고 기기당 최근 24시간 20건 상한만 쓴다.
+1. 보호된 Worker 주소를 Safari에서 열고 **본인 접속 키로 로그인**한다. 개인 키는 링크에 붙이지 않는다.
+2. 공유 메뉴 → **홈 화면에 추가**. 기존 설치 앱이 있으면 먼저 업데이트 동작을 확인하고, 삭제·사이트 데이터 초기화는 하지 않는다.
+3. 설치 앱에서 로그인·새 버전 반영·검색·상담·날씨·등록을 확인한다. Safari와 홈 화면 앱의 로그인·저장 자료가 같다고 가정하지 말고 각각 확인한다.
+4. 옷장·구매 기록은 기본적으로 **해당 기기의 브라우저 저장소**에 있다. 자동 기기 동기화나 전체 백업은 제공하지 않으므로 기존 내보내기 기능으로 보존한다. 앱·사이트 데이터를 지우면 잃을 수 있다.
 
-알아 둘 점:
-- 기기 id는 브라우저가 만든 무작위 값이라 마음먹으면 부풀릴 수 있다. 혼자 시험·포트폴리오 단계용이며, 여러 사람에게 열기 전에 계정 확인으로 바꾼다.
-- 판매처 링크는 저장만 하고 남의 검색 결과에는 보내지 않는다(모르는 사람이 넣은 주소를 퍼뜨리지 않기). 사진은 받지 않는다.
-- 나쁜 등록 지우기(운영자): `npx wrangler d1 execute <DB 이름> --remote --command "DELETE FROM crowd_items WHERE key = '…'"`.
-- 같은 옷 판단은 브랜드·품명의 띄어쓰기·대소문자·기호를 지운 뒤 비교한다. "무신사 스탠다드"와 "MUSINSA STANDARD"처럼 다른 말로 쓴 것은 아직 다른 옷으로 센다(브랜드 별칭 표는 후속).
+실제 아이폰 Safari의 설치·위치 허용·세션 유지·서비스 워커 갱신은 별도 미검증이다. Chromium의 모바일 크기 검사는 실기기 검사가 아니며, Mac·Windows의 로컬 실행 성공도 아이폰 동작이나 성능을 보증하지 않는다.
 
-## 날씨 코디 (R17, 2026-10-21)
-- 앱 화면은 d12 v3 "걸어 보고 사기"다(예전 d7에서 바뀜). 예전 앱에 넣은 옷장은 처음 열 때 한 번 옮긴다.
-- 처음에는 '현재 위치' 방식이라 **위치 허용**을 묻는다. 허용하면 현재 위치, 거절하면 서울 기준 날씨를 보여 준다.
-- 날씨 카드의 지역 이름(또는 ⋯ > 날씨 지역)을 누르면 **내 지역**을 고정할 수 있다: 19개 도시 중 고르기, 또는 '지금 있는 곳을 내 지역으로'(약 10km 단위로 줄여 이 기기에만 저장). 고정하면 위치를 다시 묻지 않는다.
-- 날씨는 `/api/weather`가 Open-Meteo 예보를 대신 받아 온다(키·가입 없음). 좌표는 0.1°(약 10km)로 줄여 보내고 저장하지 않는다. 아이폰 IP는 날씨 서비스로 가지 않는다.
-- Open-Meteo 무료 이용은 비상업 용도다. 사업으로 공개하기 전에 상업 조건을 확인하거나 기상청 단기예보 API로 바꾼다(확인 필요).
-- 확인한 범위: 점검 3개(좌표 줄이기·비 판정·실패 502), `wrangler dev`에서 실제 Open-Meteo 응답, 390px Chromium에서 위치 허용 → "날씨 코디 · 내 위치 근처" → 체험용 옷장 → 날씨 코디·코트 부족 시 실제 상품. **실제 아이폰 Safari의 위치 허용 화면은 확인하지 못했다.**
+## 개발자용 검사
 
-## 알아 둘 점
-- **주소를 아는 사람은 열 수 있다.** 검색 엔진 제외 표시(noindex)는 있지만 접근 통제가 아니다. Cloudflare에 있는 간단한 접근 제한(Settings → General → Enable access policy)은 미리보기 배포만 막고 `pages.dev` 본 주소는 막지 않는다(공식 문서). 본 주소까지 막으려면 Zero Trust(Access) 설정이 따로 필요하다.
-- **상품 사진 권리는 확인되지 않았다.** 혼자 쓰는 범위에서만 쓰고, 공개 포트폴리오에는 화면 녹화 영상을 쓰는 게 안전하다.
-- **AI 비용:** 위 인증·공유 한도 조건을 모두 충족해야 호출한다. 임의 프롬프트 전송은 폐기했다. 실제 결제 금액·응답 품질은 별도 검증 대상이다.
-- **옷장 자료는 아이폰에만 있다.** 앱을 지우거나 Safari 방문 기록·웹사이트 데이터를 지우면 함께 지워진다.
-- 무료 등급의 요청 수·용량 한도는 Cloudflare 요금 정책에 따른다(혼자 쓰는 양으로는 넘지 않을 것으로 본다, 확인 필요).
-
-## 개발자용
 ```bash
 cd app/lite
 npm ci
-npm test            # 서버 함수 점검(가짜 Claude·Node 내장 SQLite, 비용 0)
-npm run build       # dist/ 생성
-node dev.mjs --fake # http://127.0.0.1:8790, 가짜 AI·인증·예약. 실모드는 필수 설정이 없으면 503
+npm test
+npm run build
+node dev.mjs --fake
 ```
-- 화면 원본은 `app/mockups/ux10v2/links/d12-hang.html`이고, 빌드가 링크 페이지 전용 줄만 빼서 감싼다. 화면을 고치면 d12를 고친다.
-- 확인한 범위(2026-10-20): 서버 함수 점검 5개 통과, `wrangler pages dev`(Cloudflare 실행 환경)에서 키 없음 503·틀린 키 503 응답, 아이폰 크기(390×844) Chromium에서 검색→AI 순위(가짜 응답)→상세, 서비스 워커 등록과 연결 끊김 상태에서 다시 열기. **실제 아이폰 Safari와 실제 Claude 응답은 아직 확인하지 못했다.**
-- 확인한 범위(2026-10-21, 사용자 등록 DB): 점검 9개 통과(같은 옷 표기 차이, 기기 3곳 기준, 같은 기기 반복 1회, 철회, 형식 거절, 하루 상한, IP 원문 미저장, 링크 비공개). `wrangler dev`(로컬 D1)에서 등록 → 2곳 기준 도달 → 검색 노출 확인. **실제 Cloudflare D1 연결은 아직 하지 않았다.**
+
+Node 22의 내장 SQLite와 합성 키·가짜 AI로 검사한다. `--fake` 서버는 `127.0.0.1:8790`에서만 쓰는 화면 시험용이며 실제 Worker의 보안·D1·AI 연결 검증을 대신하지 않는다. 터널로 공개하지 않는다. 화면 원본은 `app/mockups/ux10v2/links/d12-hang.html`, 운영 진입점은 `app/lite/worker.js`다.
+
+장애가 나면 배포 버전과 상태 코드를 먼저 확인한다. 401은 세션, 503은 설정·D1, 429는 로그인 또는 AI 한도, 502는 제공자·날씨·출력 검증 실패 가능성이 있다. API 키 값이나 개인 자료 없이 [운영 기록의 장애 구분](private-ai-connect-20261021.md#장애-구분과-복구)에 결과를 남긴다. `noindex`나 추측하기 어려운 주소는 접근 통제가 아니다.

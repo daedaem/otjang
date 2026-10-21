@@ -2,12 +2,18 @@
 // 링크 페이지의 Claude sample 기능은 덮어쓰지 않는다. 서비스 워커도 여기서 등록한다.
 (() => {
   const ERR = { 400: 'bad_request', 401: 'unauthorized', 403: 'unauthorized', 413: 'bad_request', 429: 'rate_limited', 503: 'not_configured' };
+  const resumeLogin = (res, body) => {
+    if (res.status === 401 && body?.login === '/_private/login' && typeof window.location?.replace === 'function') {
+      window.location.replace('/_private/login');
+    }
+  };
   window.EOUL_SERVER_AI = async (request) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
       const res = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request), signal: controller.signal });
       const body = await res.json().catch(() => null);
+      resumeLogin(res, body);
       if (!res.ok) throw Object.assign(new Error(body?.message || `HTTP ${res.status}`), { code: body?.code || ERR[res.status] || 'error' });
       if (!body || typeof body !== 'object') throw Object.assign(new Error('parse'), { code: 'parse' });
       return body;
@@ -35,6 +41,7 @@
       res = await fetch(`/api/catalog/${path}`, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
     } catch { return { code: 'offline' }; }
     const out = await res.json().catch(() => null);
+    resumeLogin(res, out);
     return res.ok && out ? out : { code: out?.code || 'error', message: out?.message };
   };
   // 오늘·내일 날씨(/api/weather). 날씨 지역은 이 기기에만 저장한다: '현재 위치'(열 때마다 위치를 묻고, 거절하면 서울)
@@ -88,8 +95,9 @@
     const c = place.mode === 'fixed' ? place : here || SEOUL;
     let res;
     try { res = await fetch(`/api/weather?lat=${c.lat}&lon=${c.lon}`); } catch { return null; }
-    if (!res.ok) return null;
     const body = await res.json().catch(() => null);
+    resumeLogin(res, body);
+    if (!res.ok) return null;
     if (!body?.today) return null;
     const label = place.mode === 'fixed' ? place.name : here ? '현재 위치' : '서울(위치 허용 전)';
     const value = { place: label, placeMode: place.mode, source: body.source, today: body.today, tomorrow: body.tomorrow };
