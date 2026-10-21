@@ -15,13 +15,14 @@ function safeURL(value, hosts) {
   } catch { return null; }
 }
 export function offers(data) {
-  if (!Array.isArray(data?.Items)) return null;
-  return data.Items.slice(0, 12).flatMap((entry) => {
-    const p = entry?.Item || entry;
+  const list = Array.isArray(data?.items) ? data.items : Array.isArray(data?.Items) ? data.Items : null;
+  if (!list) return null;
+  return list.slice(0, 12).flatMap((entry) => {
+    const p = entry?.item || entry?.Item || entry;
     const name = text(p?.itemName, 1200), shop = text(p?.shopName, 160);
     const url = safeURL(p?.itemUrl, ['item.rakuten.co.jp', 'www.rakuten.co.jp']);
     if (!name || !shop || !url || !Number.isSafeInteger(p?.itemPrice) || p.itemPrice <= 0 || p.availability !== 1) return [];
-    const image = (Array.isArray(p.mediumImageUrls) ? p.mediumImageUrls : []).map((x) => safeURL(x?.imageUrl, ['thumbnail.image.rakuten.co.jp', 'image.rakuten.co.jp', 'tshop.r10s.jp', 'shop.r10s.jp'])).find(Boolean) || null;
+    const image = (Array.isArray(p.mediumImageUrls) ? p.mediumImageUrls : []).map((x) => safeURL(typeof x === 'string' ? x : x?.imageUrl, ['thumbnail.image.rakuten.co.jp', 'image.rakuten.co.jp', 'tshop.r10s.jp', 'shop.r10s.jp'])).find(Boolean) || null;
     return [{ name, shop, url, image, price: p.itemPrice, currency: 'JPY', taxFlag: p.taxFlag === 0 || p.taxFlag === 1 ? p.taxFlag : null }];
   });
 }
@@ -47,7 +48,7 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
     if (!await takeSlot(env.RANK_DB, now)) return reply(429, { code: 'rate_limited', message: '잠시 후 다시 검색해 주세요.' });
   } catch { return reply(503, { code: 'unavailable', message: '검색 연결을 준비하고 있어요.' }); }
   const api = new URL(ENDPOINT);
-  api.search = new URLSearchParams({ applicationId: appId, keyword: q.trim(), format: 'json', hits: '12', page: '1', availability: '1', elements: 'itemName,itemPrice,itemUrl,mediumImageUrls,availability,shopName,taxFlag' }).toString();
+  api.search = new URLSearchParams({ applicationId: appId, keyword: q.trim(), format: 'json', formatVersion: '2', hits: '12', page: '1', availability: '1', elements: 'itemName,itemPrice,itemUrl,mediumImageUrls,availability,shopName,taxFlag' }).toString();
   const controller = new AbortController();
   let timer;
   try {
@@ -72,7 +73,10 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
       const bytes = new Uint8Array(size);
       let offset = 0;
       for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-      return { status: res.status, data: JSON.parse(new TextDecoder().decode(bytes)) };
+      let data;
+      try { data = JSON.parse(new TextDecoder().decode(bytes)); }
+      catch { throw Object.assign(new Error('provider_json'), { code: 'provider_json', format: /html/i.test(res.headers.get('content-type') || '') ? 'html' : 'other' }); }
+      return { status: res.status, data };
     };
     const result = await Promise.race([
       upstream(),
@@ -85,9 +89,16 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
         message: auth ? '라쿠텐 앱의 키와 허용 사이트 설정을 확인해 주세요.' : '라쿠텐 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' });
     }
     const items = offers(result.data);
-    if (!items) throw new Error('invalid');
+    if (!items) {
+      // Only known public schema field NAMES, never provider values/error descriptions.
+      const upstreamKeys = ['Items', 'items', 'data', 'error', 'error_description', 'message', 'status', 'results', 'result'].filter((key) => Object.hasOwn(result.data || {}, key));
+      return reply(502, { code: 'provider_shape', upstreamKeys, message: '라쿠텐 상품 응답 형식을 확인하고 있어요.' });
+    }
     return reply(200, { source: 'Rakuten Ichiba', items, fetchedAt: new Date(now).toISOString() });
-  } catch { return reply(502, { code: 'upstream', message: '라쿠텐 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' }); }
+  } catch (error) {
+    const code = controller.signal.aborted ? 'upstream_timeout' : error?.code === 'provider_json' ? 'provider_json' : 'upstream';
+    return reply(502, { code, ...(code === 'provider_json' ? { upstreamFormat: error.format } : {}), message: code === 'upstream_timeout' ? '라쿠텐 검색 응답이 늦어졌어요. 잠시 후 다시 시도해 주세요.' : '라쿠텐 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' });
+  }
   finally { clearTimeout(timer); }
 }
 // Pages entry also fails closed; Worker invokes handle only after its central gate.

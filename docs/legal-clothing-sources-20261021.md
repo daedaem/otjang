@@ -88,3 +88,13 @@ OPF는 상업 재사용이 가능한 공개 데이터이며 출처·ODbL 조건�
 대표가 Cloudflare 런타임 Secret 2개의 값 입력·저장·배포를 직접 완료했다. Codex는 입력 창이 닫힌 뒤 `RAKUTEN_APPLICATION_ID`, `RAKUTEN_ACCESS_KEY` 두 행의 ‘비밀 / 암호화된 값’ 표시만 확인했다. 새 비밀값을 읽거나 출력하지 않았다. 본인 로그인·기존 AI 키/한도·공개 차단을 유지한다. 제공자 인증 실패는 raw 본문 대신 안전한 `provider_auth`·HTTP 상태만 표시한다.
 
 후속 검사: lite **106/106**, build 자산 버전 `13e4bc73e808`, diff 공백 검사 통과. 코드 push/PR·CI·master 비공개 배포·실제 검색 증거는 실행 뒤 추가한다. API 키 발급/기술 연결은 전체 상용 이용 권한 검토 완료와 다르다. 등록 화면 영문 약관의 비공개 환경 제한 등은 일본어 원문·공식 운영 해석에 맞춰 확인해야 하며, 일반 공개·AI 재가공·타 제휴 수익 사용을 승인받았다고 쓰지 않는다.
+
+### 첫 운영 검사와 후속 수정
+
+PR #31 head `ed85131`의 GitHub push/PR 검사 6개(3종 중복 실행)가 성공했고 master `9841ed1`로 병합했다. Cloudflare master 빌드 `bd89f5b2`에서 자산 `13e4bc73e808`을 만들었다. 별도 브랜치 preview 실패 `abe9d193`는 루트 `/opt/buildhome/repo/package.json` ENOENT로 확인했고 운영 master 설정(`app/lite`)과 구분한다.
+
+운영 UI에서 `Levis 501`을 입력하고 Rakuten 조회를 실행했으나 일반 upstream 오류를 받았다. 직접 연 동일 앱 API JSON에서도 같은 안전한 오류를 확인했다. 이 시점에는 실제 연결 성공이 아니다. 원문/비밀값을 출력하지 않고 시간초과·비JSON·상품 구조 오류를 구분한다. 구조 오류에는 미리 정한 공개 스키마 필드 이름만 허용하며 공급자 원문 값·오류 설명을 싣지 않는다.
+
+추가로 새 HTML과 기존 서비스워커의 캐시된 `lite.js`가 섞여 버튼이 없는 상태를 관찰했다(추가 새로고침 후 나타남). 기존 서비스워커가 쿼리를 무시하므로 `?v=`로 해결하지 않고 JS/mjs 파일 내용 해시를 경로에 넣는다. 예전 경로는 이전 화면 호환용으로 제공하되 새 설치 캐시는 해시 파일만 저장한다. 옷장·기록 localStorage는 변경/삭제하지 않는다.
+
+공식 [20260701 문서의 formatVersion 설명](https://webservice.rakuten.co.jp/documentation/ichiba-item-search)에는 소문자 `items`/`item`, 버전 2의 평탄화 배열을 명시한다. 이전 Codex 코드가 대문자 `Items`에만 의존하고 합성 응답도 옛 형식을 사용한 것이 오류다. 현행 문서 형식을 먼저 읽도록 수정하고 `formatVersion=2`를 명시했다. 소문자 wrapper·평탄화 상품·문자열 이미지 배열·빈 결과를 검사한다. 실제 성공은 새 운영 버전에서 별도 확인한다.
