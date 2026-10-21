@@ -98,3 +98,11 @@ PR #31 head `ed85131`의 GitHub push/PR 검사 6개(3종 중복 실행)가 성�
 추가로 새 HTML과 기존 서비스워커의 캐시된 `lite.js`가 섞여 버튼이 없는 상태를 관찰했다(추가 새로고침 후 나타남). 기존 서비스워커가 쿼리를 무시하므로 `?v=`로 해결하지 않고 JS/mjs 파일 내용 해시를 경로에 넣는다. 예전 경로는 이전 화면 호환용으로 제공하되 새 설치 캐시는 해시 파일만 저장한다. 옷장·기록 localStorage는 변경/삭제하지 않는다.
 
 공식 [20260701 문서의 formatVersion 설명](https://webservice.rakuten.co.jp/documentation/ichiba-item-search)에는 소문자 `items`/`item`, 버전 2의 평탄화 배열을 명시한다. 이전 Codex 코드가 대문자 `Items`에만 의존하고 합성 응답도 옛 형식을 사용한 것이 오류다. 현행 문서 형식을 먼저 읽도록 수정하고 `formatVersion=2`를 명시했다. 소문자 wrapper·평탄화 상품·문자열 이미지 배열·빈 결과를 검사한다. 실제 성공은 새 운영 버전에서 별도 확인한다.
+
+### Workers 요청 옵션 정정
+
+PR #32의 GitHub 검사 6개가 성공했고 master `97d397e`·운영 빌드 `a2205e9b`·자산 `c7cdfd637b2c`를 반영했다. 실제 조회는 여전히 일반 upstream 오류였다. 추가 확인한 [Cloudflare 공식 Request 규격](https://developers.cloudflare.com/workers/runtime-apis/request/#options)은 redirect:error를 지원하지 않고 요청 생성 단계에서 TypeError를 던진다고 명시한다. 이 구현 오류를 Node의 Fetch mock/배포 dry-run이 발견하지 못했다. 따라서 소문자 파서만으로 실제 첫 실패 원인을 해결했다고 쓰지 않는다.
+
+fetch를 manual 리디렉션 모드로 바꾸고 3xx를 즉시 거절한다. Location으로 이동하거나 키/원문을 응답하지 않는다. HTTP 성공·현재 상품 구조 검증은 그대로 유지한다. 추가 합성 검사는 요청이 한 번뿐이고 리디렉션 대상이나 자격증명이 노출되지 않음을 확인한다. 실제 Workers 요청 모드도 합성 자격증명 없이 별도 실행한다.
+
+로컬 workerd(Wrangler 4.151.3, compatibility_date=2026-10-20)에서 비밀값·외부 요청 없이 Request 생성만 실행했다. manual은 성공했고 error는 `Invalid redirect value` TypeError를 재현했다. lite 111/111 검사와 build `c7cdfd637b2c`, diff 공백 검사를 통과했다. 이 증거는 요청 옵션 호환성이고 실제 제공자 인증 성공은 운영에서 별도 확인한다.
