@@ -60,6 +60,13 @@ test('observed merchant aliases and official short-link host work while unrelate
   assert.deepEqual(offers(response({ ...item, commissionlink: 'https://bitl.bz.attacker.test/synthetic' }), KEY), []);
   assert.equal(offers(response({ ...item, title: '합성 LEVIS 501 셔츠' }), KEY, 'levis ５０１').length, 1);
   assert.deepEqual(offers(fixture, KEY, '없는 상품'), []);
+  const actualShape = offers(response({ ...item, cp_name: '11번가', price: '85140', commissionlink: 'https://biz.adpick.co.kr/r123456' }), KEY);
+  assert.equal(actualShape[0].price, '85,140원');
+  assert.equal(actualShape[0].url, 'https://biz.adpick.co.kr/r123456');
+  for (const path of ['/api/another-key/directlink', '/login', '/r123456?other=private']) {
+    assert.deepEqual(offers(response({ ...item, commissionlink: 'https://biz.adpick.co.kr' + path }), KEY), []);
+  }
+  assert.deepEqual(offers(response({ ...item, price: '0' }), KEY), []);
 });
 test('Adpick normalization never guesses brand/availability and rejects unsafe links or credential echoes', () => {
   const good = offers(response(item), KEY)[0];
@@ -69,6 +76,7 @@ test('Adpick normalization never guesses brand/availability and rejects unsafe l
     { title: KEY }, { price: KEY }, { cp_name: '' }, { cp_name: 'SHEIN' }, { cp_name: '알리익스프레스' }, { cp_name: '미확인 판매처' }, { cp_code: '' }, { commissionlink: '' },
     { commissionlink: 'javascript:alert(1)' }, { commissionlink: 'https://link.adpick.co.kr.attacker.test/x' },
     { commissionlink: 'https://user:password@link.adpick.co.kr/x' }, { commissionlink: `https://link.adpick.co.kr/${KEY}` },
+    { commissionlink: `https://biz.adpick.co.kr/api/${KEY}/directlink` },
   ]) assert.deepEqual(offers(response({ ...item, ...bad }), KEY), []);
   for (const photo of ['http://insecure.test/image.jpg', 'https://127.0.0.1/a.jpg', `https://cdn.adpick.co.kr/${KEY}.jpg`]) {
     assert.equal(offers(response({ ...item, photo }), KEY)[0].image, null);
