@@ -1,10 +1,12 @@
-// 카드·외부 인증 가입 없이 쓰는 본인 전용 접속. 접속 키는 서버 Secret에만 둔다.
-// 세션·IP 태그는 서로 다른 HMAC 문맥을 쓰며 키·비밀번호·IP 원문은 기록하지 않는다.
+// 카드·외부 인증 가입 없이 쓰는 본인 전용 접속. 앱 비밀번호는 서버 Secret에만 둔다.
+// 서명용 32바이트 난수는 서버 D1에 따로 둔다. 서로 다른 HMAC 문맥을 쓰며
+// 앱 비밀번호·공급자 키·IP 원문은 DB·로그·응답에 기록하지 않는다.
 const COOKIE = '__Host-otjang-session';
 const LIFETIME = 7 * 24 * 60 * 60;
 const MAX_BODY = 1024;
 const encoder = new TextEncoder();
 const schemaReady = new WeakMap();
+const seedReady = new WeakMap();
 const baseHeaders = {
   'Cache-Control': 'private, no-store',
   'X-Content-Type-Options': 'nosniff',
@@ -21,7 +23,7 @@ const errorResponse = (result) => json({ error: result.code }, result.status);
 
 function configuration(env) {
   const secret = env?.PRIVATE_APP_ACCESS_KEY;
-  if (env?.PRIVATE_AUTH_MODE !== 'session' || typeof secret !== 'string' || !/^[\x21-\x7e]{32,256}$/.test(secret)) return null;
+  if (env?.PRIVATE_AUTH_MODE !== 'session' || typeof secret !== 'string' || !/^[\x21-\x7e]{8,128}$/.test(secret)) return null;
   return secret;
 }
 
@@ -45,7 +47,7 @@ function decode(value, max = 1024) {
 }
 
 async function sign(secret, context, value) {
-  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(`otjang/${context}/v1\0${value}`)));
 }
 
@@ -68,8 +70,10 @@ function readCookie(request) {
 }
 
 export async function authorizeSession(request, env, { now = Date.now } = {}) {
-  const secret = configuration(env);
-  if (!secret) return unconfigured();
+  const password = configuration(env);
+  if (!password) return unconfigured();
+  let secret;
+  try { secret = await signingKey(env, password); } catch { return unconfigured(); }
   try {
     const current = seconds(now);
     const token = readCookie(request);
@@ -93,12 +97,39 @@ async function ensureSchema(db) {
   let pending = schemaReady.get(db);
   if (!pending) {
     pending = (async () => {
+      await db.prepare('CREATE TABLE IF NOT EXISTS private_auth_settings (id INTEGER PRIMARY KEY CHECK (id = 1), seed TEXT NOT NULL)').run();
       await db.prepare('CREATE TABLE IF NOT EXISTS private_login_usage (utc_minute INTEGER NOT NULL, ip_tag TEXT NOT NULL)').run();
       await db.prepare('CREATE INDEX IF NOT EXISTS private_login_minute_ip ON private_login_usage (utc_minute, ip_tag)').run();
     })();
     schemaReady.set(db, pending);
   }
   try { await pending; } catch (error) { schemaReady.delete(db); throw error; }
+}
+
+async function signingKey(env, password) {
+  const db = env?.RANK_DB || env?.CROWD_DB;
+  if (!db || typeof db.prepare !== 'function') throw Error();
+  let pending = seedReady.get(db);
+  if (!pending) {
+    pending = (async () => {
+      await ensureSchema(db);
+      const candidate = encode(crypto.getRandomValues(new Uint8Array(32)));
+      // Different isolates may race. All must read the one persisted winner, never
+      // continue with their losing local candidate or a password-only signing key.
+      await db.prepare('INSERT INTO private_auth_settings (id, seed) VALUES (1, ?1) ON CONFLICT(id) DO NOTHING').bind(candidate).run();
+      const row = await db.prepare('SELECT seed FROM private_auth_settings WHERE id = 1').first();
+      const seed = decode(row?.seed, 43);
+      if (seed.length !== 32) throw Error();
+      return seed;
+    })();
+    seedReady.set(db, pending);
+  }
+  let seed;
+  try { seed = await pending; } catch (error) { seedReady.delete(db); throw error; }
+  // The owner's memorable app password is not a signing secret. A strong,
+  // server-generated D1 seed supplies entropy. Password rotation changes this
+  // derived generation key and invalidates every previously signed cookie.
+  return sign(seed, 'owner-generation', password);
 }
 
 async function reserveLogin(request, env, secret, current) {
@@ -154,7 +185,7 @@ async function passwordBody(request) {
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     const body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).join(',') !== 'password' ||
-      typeof body.password !== 'string' || !/^[\x21-\x7e]{1,256}$/.test(body.password)) throw Error();
+      typeof body.password !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(body.password)) throw Error();
     return body.password;
   } catch { throw failure(400, 'invalid_request'); }
 }
@@ -162,8 +193,8 @@ async function passwordBody(request) {
 function loginPage() {
   const nonce = encode(crypto.getRandomValues(new Uint8Array(16)));
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>본인 전용 접속</title>
-<style nonce="${nonce}">*{box-sizing:border-box}body{margin:0;padding:24px;min-height:100svh;display:grid;place-items:center;background:#f6f6f8;color:#17171c;font:16px system-ui,sans-serif}main{width:min(100%,390px);padding:32px;background:white;border-radius:24px}h1{margin:0 0 12px;font-size:25px}p{line-height:1.6;color:#606068}label{display:block;margin:24px 0 8px}input,button{width:100%;min-height:48px;border:1px solid #d3d3da;border-radius:12px;padding:12px;font:inherit}button{margin-top:16px;background:#17171c;color:white;cursor:pointer}button:disabled{opacity:.5}#notice{min-height:24px;font-size:14px}</style></head><body><main><h1>본인 전용 접속</h1><p>개인 접속 키로 시험 앱을 열어요.<br>결제나 별도 가입은 필요 없어요.</p><form id="login"><label for="password">개인 접속 키</label><input id="password" name="password" type="password" autocomplete="current-password" required minlength="32" maxlength="256"><button type="submit">들어가기</button><p id="notice" role="status" aria-live="polite"></p></form></main>
-<script nonce="${nonce}">const form=document.querySelector('#login'),field=document.querySelector('#password'),button=form.querySelector('button'),notice=document.querySelector('#notice');form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;notice.textContent='확인하고 있어요.';try{const response=await fetch('/_private/session',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:field.value})});if(response.ok){location.replace('/');return}notice.textContent=response.status===429?'시도가 많아요. 잠시 후 다시 해주세요.':response.status===503?'접속 설정을 준비하고 있어요.':'접속 키를 다시 확인해 주세요.'}catch{notice.textContent='연결을 확인하고 다시 시도해 주세요.'}finally{field.value='';button.disabled=false}});</script></body></html>`;
+<style nonce="${nonce}">*{box-sizing:border-box}body{margin:0;padding:24px;min-height:100svh;display:grid;place-items:center;background:#f6f6f8;color:#17171c;font:16px system-ui,sans-serif}main{width:min(100%,390px);padding:32px;background:white;border-radius:24px}h1{margin:0 0 12px;font-size:25px}p{line-height:1.6;color:#606068}label{display:block;margin:24px 0 8px}input,button{width:100%;min-height:48px;border:1px solid #d3d3da;border-radius:12px;padding:12px;font:inherit}button{margin-top:16px;background:#17171c;color:white;cursor:pointer}button:disabled{opacity:.5}#notice{min-height:24px;font-size:14px}</style></head><body><main><h1>본인 전용 접속</h1><p>앱 비밀번호로 시험 앱을 열어요.<br>한 번 로그인하면 이 기기에서 7일 동안 유지돼요.<br>결제나 별도 가입은 필요 없어요.</p><form id="login"><label for="password">앱 비밀번호</label><input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"><button type="submit">들어가기</button><p id="notice" role="status" aria-live="polite"></p></form></main>
+<script nonce="${nonce}">const form=document.querySelector('#login'),field=document.querySelector('#password'),button=form.querySelector('button'),notice=document.querySelector('#notice');form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;notice.textContent='확인하고 있어요.';try{const response=await fetch('/_private/session',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:field.value})});if(response.ok){location.replace('/');return}notice.textContent=response.status===429?'시도가 많아요. 잠시 후 다시 해주세요.':response.status===503?'접속 설정을 준비하고 있어요.':'앱 비밀번호를 다시 확인해 주세요.'}catch{notice.textContent='연결을 확인하고 다시 시도해 주세요.'}finally{field.value='';button.disabled=false}});</script></body></html>`;
   return new Response(html, { headers: {
     ...baseHeaders, 'Content-Type': 'text/html; charset=utf-8',
     'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
@@ -190,16 +221,17 @@ export async function handlePrivateSession(request, env, { now = Date.now } = {}
   try {
     const password = await passwordBody(request);
     const current = seconds(now);
-    const quota = await reserveLogin(request, env, secret, current);
+    const generationKey = await signingKey(env, secret);
+    const quota = await reserveLogin(request, env, generationKey, current);
     if (!quota.ok) return errorResponse(quota);
     const [expectedPassword, receivedPassword] = await Promise.all([
-      sign(secret, 'password', secret), sign(secret, 'password', password),
+      sign(generationKey, 'password', secret), sign(generationKey, 'password', password),
     ]);
     if (!equal(expectedPassword, receivedPassword)) return errorResponse(denied());
     const payload = encode(encoder.encode(JSON.stringify({
       v: 1, iat: current, exp: current + LIFETIME, nonce: encode(crypto.getRandomValues(new Uint8Array(16))),
     })));
-    const token = `v1.${payload}.${encode(await sign(secret, 'session', payload))}`;
+    const token = `v1.${payload}.${encode(await sign(generationKey, 'session', payload))}`;
     return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
   } catch (error) {
     return errorResponse(error?.ok === false ? error : failure(503, 'login_unavailable'));
