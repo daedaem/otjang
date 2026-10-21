@@ -784,6 +784,10 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       const abroad = p ? [
         { id: 'ebay', label: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${e(en)}&LH_ItemCondition=3000`, query: en, note: '영어로 비슷한 종류·색 검색' },
         { id: 'mercari-jp', label: '메루카리(일본)', url: `https://jp.mercari.com/search?keyword=${e(ja)}&status=on_sale`, query: ja, note: '일본어로 비슷한 종류·색 검색' },
+        // 패션 중고 전문(2026-10-21 대표 요청). Grailed·Depop은 자동 확인에 403(봇 차단)이라 실제 브라우저에서 확인이 필요하다.
+        { id: 'grailed', label: 'Grailed', url: `https://www.grailed.com/shop?query=${e(en)}`, query: en, note: '디자이너·스트리트 중고' },
+        { id: 'vinted', label: 'Vinted', url: `https://www.vinted.com/catalog?search_text=${e(en)}`, query: en, note: '미국·유럽 중고' },
+        { id: 'depop', label: 'Depop', url: `https://www.depop.com/search/?q=${e(en)}`, query: en, note: '빈티지·스트리트 중고' },
       ] : [];
       return {
         kind: 'search-links',

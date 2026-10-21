@@ -246,6 +246,8 @@ a { color: inherit; text-decoration: none; }
 .links { display: grid; }
 .links a { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; border-top: 1px solid var(--line); padding-left: 12px; }
 .links a i { color: var(--ink3); }
+.used .ug { margin: 12px 0 4px; font-weight: 700; color: var(--ink2); }
+.links a .un { font-weight: 400; }
 .buybar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 8px var(--gutR) calc(10px + var(--sab)) var(--gutL); }
 .buybar .in { max-width: 560px; margin: 0 auto; }
 .buybar .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 18px; color: var(--ink2); margin-bottom: 4px; min-height: 36px; }
@@ -850,7 +852,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         </section>
         <details class="used"><summary><span>중고로 찾기</span><i class="ph ph-caret-right"></i></summary>
           <p class="t6">외부 사이트의 검색 결과로 이동해요 · 이 앱은 매물·가격·상태를 확인하지 않았어요</p>
-          <div class="links">${nvu.used.groups[0].links.slice(0, 3).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}<i class="ph ph-arrow-up-right"></i></a>`).join('')}</div></details>
+          ${nvu.used.groups.map((g) => `<p class="t6 ug">${esc(g.region)}</p><div class="links">${g.links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener"><span>${esc(l.label)}${l.note ? `<span class="t6 un"> · ${esc(l.note)}</span>` : ''}</span><i class="ph ph-arrow-up-right"></i></a>`).join('')}</div>`).join('')}</details>
         <p class="foot">${esc(v.fine || '')}</p>
         </div></div>`;
     },

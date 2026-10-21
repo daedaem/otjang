@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 31161d7) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 a1d8712) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 891개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -4718,6 +4718,10 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
       const abroad = p ? [
         { id: 'ebay', label: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${e(en)}&LH_ItemCondition=3000`, query: en, note: '영어로 비슷한 종류·색 검색' },
         { id: 'mercari-jp', label: '메루카리(일본)', url: `https://jp.mercari.com/search?keyword=${e(ja)}&status=on_sale`, query: ja, note: '일본어로 비슷한 종류·색 검색' },
+        // 패션 중고 전문(2026-10-21 대표 요청). Grailed·Depop은 자동 확인에 403(봇 차단)이라 실제 브라우저에서 확인이 필요하다.
+        { id: 'grailed', label: 'Grailed', url: `https://www.grailed.com/shop?query=${e(en)}`, query: en, note: '디자이너·스트리트 중고' },
+        { id: 'vinted', label: 'Vinted', url: `https://www.vinted.com/catalog?search_text=${e(en)}`, query: en, note: '미국·유럽 중고' },
+        { id: 'depop', label: 'Depop', url: `https://www.depop.com/search/?q=${e(en)}`, query: en, note: '빈티지·스트리트 중고' },
       ] : [];
       return {
         kind: 'search-links',
@@ -4845,6 +4849,6 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
 if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "31161d7" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "a1d8712" };
 window.EoulMock = mock;
 })();
