@@ -1,0 +1,2298 @@
+{
+  "source": "Open Products Facts",
+  "sourceURL": "https://world.openproductsfacts.org",
+  "license": "ODbL-1.0",
+  "licenseURL": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "contentsLicense": "https://opendatacommons.org/licenses/dbcl/1-0/",
+  "attribution": "Contains information from Open Products Facts, made available under the Open Database License (ODbL).",
+  "fetchedAt": "2026-10-21T12:38:45.987Z",
+  "query": {
+    "category": "en:clothing",
+    "endpoint": "https://world.openproductsfacts.org/api/v2/search"
+  },
+  "sourceCount": 240,
+  "usableCount": 194,
+  "skippedCount": 46,
+  "requests": [
+    "https://world.openproductsfacts.org/api/v2/search?categories_tags_en=clothing&page_size=100&page=1&sort_by=code&fields=code%2Cproduct_name%2Cbrands%2Ccategories_tags",
+    "https://world.openproductsfacts.org/api/v2/search?categories_tags_en=clothing&page_size=100&page=2&sort_by=code&fields=code%2Cproduct_name%2Cbrands%2Ccategories_tags",
+    "https://world.openproductsfacts.org/api/v2/search?categories_tags_en=clothing&page_size=100&page=3&sort_by=code&fields=code%2Cproduct_name%2Cbrands%2Ccategories_tags"
+  ],
+  "modifications": "Clothing subset; missing/unknown brand, missing name/id, loading placeholders, infant diapers and price-like names omitted; fields projected and renamed; no images or prices included.",
+  "items": [
+    {
+      "code": "0000108256925",
+      "brand": "Nike",
+      "name": "Nike",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0000108256925"
+    },
+    {
+      "code": "0001171222698",
+      "brand": "Thought",
+      "name": "Thought Bamboo Socks",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0001171222698"
+    },
+    {
+      "code": "00066761",
+      "brand": "Chaos socks",
+      "name": "Large cuneiform socks black w white",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/00066761"
+    },
+    {
+      "code": "0008918213461",
+      "brand": "Northwave",
+      "name": "Socks",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "fr:Chaussettes-de-velo"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0008918213461"
+    },
+    {
+      "code": "00099905",
+      "brand": "Kilina",
+      "name": "Chemise dentile court",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shirts-tops"
+      ],
+      "url": "https://world.openproductsfacts.org/product/00099905"
+    },
+    {
+      "code": "0023616314347",
+      "brand": "Columbia",
+      "name": "All-Season Travel Crew",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0023616314347"
+    },
+    {
+      "code": "00468537",
+      "brand": "Heren",
+      "name": "Oversize T-shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/00468537"
+    },
+    {
+      "code": "0191665792789",
+      "brand": "Sketches",
+      "name": "Dynamight olive",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0191665792789"
+    },
+    {
+      "code": "0192499280237",
+      "brand": "Nike",
+      "name": "Nike Blazer Mid 77 Vintage White Black",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0192499280237"
+    },
+    {
+      "code": "0192623944837",
+      "brand": "Nortiv8",
+      "name": "Trekman-2 bleue foncée",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "fr:Chaussures de sport aquatique"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0192623944837"
+    },
+    {
+      "code": "0193239480306",
+      "brand": "Levi's",
+      "name": "Pantalon Chino",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0193239480306"
+    },
+    {
+      "code": "0194114913155",
+      "brand": "icebreaker",
+      "name": "Men's Merino 150 Tech Lite III T-shirt Herd Run",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0194114913155"
+    },
+    {
+      "code": "0194114934433",
+      "brand": "icebreaker",
+      "name": "Men's 125 Cool-Lite Merino Blend Sphere III T-shirt Vision Grid",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0194114934433"
+    },
+    {
+      "code": "0194655678056",
+      "brand": "Bruno Magli",
+      "name": "Magnifico White M 10.5",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0194655678056"
+    },
+    {
+      "code": "0194917339657",
+      "brand": "Saucony",
+      "name": "Peregrine 11 ST",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes",
+        "fr:Chaussures de course à pied"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0194917339657"
+    },
+    {
+      "code": "0195440574935",
+      "brand": "icebreaker",
+      "name": "W Tech Lite II SS Scoop T-shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0195440574935"
+    },
+    {
+      "code": "0195734395475",
+      "brand": "Adidas",
+      "name": "Stan Smith bleu",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0195734395475"
+    },
+    {
+      "code": "0195751424998",
+      "brand": "Salomon",
+      "name": "Wattara",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0195751424998"
+    },
+    {
+      "code": "0195901304217",
+      "brand": "Levi's",
+      "name": "Jean 511 slim",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "xx:jeans"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0195901304217"
+    },
+    {
+      "code": "0196249772867",
+      "brand": "Icebreaker",
+      "name": "T-shirt alpine",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0196249772867"
+    },
+    {
+      "code": "0196249774397",
+      "brand": "Icebreaker",
+      "name": "T-shirt camper",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0196249774397"
+    },
+    {
+      "code": "0196989379043",
+      "brand": "Skechers, Skechers Vapor Foam, Skechers Vapor Foam Air-cooled Memory Foam",
+      "name": "Skechers 232629 / BKGY * Vapor Foam-covert * Black/Gray EUR 41, UK 7, CM 26, USA Men's 8",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "he:Обувь",
+        "he:נעליים"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0196989379043"
+    },
+    {
+      "code": "0197375550381",
+      "brand": "New balance",
+      "name": "chaussures",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0197375550381"
+    },
+    {
+      "code": "0197615472572",
+      "brand": "Adidas",
+      "name": "Duramo SL2 M",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0197615472572"
+    },
+    {
+      "code": "0198605127304",
+      "brand": "Hoka",
+      "name": "Clifton 9 gtx",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0198605127304"
+    },
+    {
+      "code": "0439123830674",
+      "brand": "Nordstrom Rack",
+      "name": "Crew Socks - Dress (5 pack)",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "en:Crew socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0439123830674"
+    },
+    {
+      "code": "05870134",
+      "brand": "Marks & Spencers",
+      "name": "M&S Cotton Lycra Trunks",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/05870134"
+    },
+    {
+      "code": "0689076783170",
+      "brand": "Fine Daily",
+      "name": "Kingtox",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts",
+        "en:polyester-t-shirt"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0689076783170"
+    },
+    {
+      "code": "0732262121376",
+      "brand": "Bonnetier",
+      "name": "T-shirt ultra léger",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0732262121376"
+    },
+    {
+      "code": "0789049052378",
+      "brand": "Bonnetiet",
+      "name": "T-shirt homme taupe - pas perdu",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0789049052378"
+    },
+    {
+      "code": "0826216077274",
+      "brand": "Nike",
+      "name": "Chaussure NIKE !!",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0826216077274"
+    },
+    {
+      "code": "0827738680270",
+      "brand": "47",
+      "name": "Hat 47 Yankees",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:clothing-accessories",
+        "en:hats",
+        "en:Open-products-facts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0827738680270"
+    },
+    {
+      "code": "0886955612099",
+      "brand": "Converse",
+      "name": "Converse",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/0886955612099"
+    },
+    {
+      "code": "10300208501789",
+      "brand": "LLOYD",
+      "name": "DWAINE",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/10300208501789"
+    },
+    {
+      "code": "2000017153896",
+      "brand": "Nike",
+      "name": "Nike Revolution 5",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2000017153896"
+    },
+    {
+      "code": "2000209608913",
+      "brand": "Uniqlo",
+      "name": "Dry Crew Neck Short Sleeve T-Shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2000209608913"
+    },
+    {
+      "code": "2000213752916",
+      "brand": "Uniqlo",
+      "name": "T-Shirt Manches courtes",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2000213752916"
+    },
+    {
+      "code": "2000219055691",
+      "brand": "Uniqlo",
+      "name": "Dry-EX T-Shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:active wear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2000219055691"
+    },
+    {
+      "code": "2004158073600",
+      "brand": "Gemo",
+      "name": "Chaussure",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2004158073600"
+    },
+    {
+      "code": "2092160815042",
+      "brand": "Salomon",
+      "name": "Impact 8 noir translucide",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:outdoor-recreation",
+        "en:winter-sports-activities",
+        "en:shoes",
+        "en:skiing-snowboarding",
+        "en:ski-boots",
+        "fr:Chaussures de ski alpin"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2092160815042"
+    },
+    {
+      "code": "2355896130385",
+      "brand": "Dany",
+      "name": "Chaussure",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/2355896130385"
+    },
+    {
+      "code": "30348134",
+      "brand": "Madory",
+      "name": "chaussures",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/30348134"
+    },
+    {
+      "code": "3040523300680",
+      "brand": "DIM",
+      "name": "Slips Coton Stretch",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:briefs",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3040523300680"
+    },
+    {
+      "code": "3040523300697",
+      "brand": "DIM",
+      "name": "3 slips Coton Stretch",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:briefs",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3040523300697"
+    },
+    {
+      "code": "3109882236570",
+      "brand": "Rossignol",
+      "name": "Saphir GX bleu pétrole",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:outdoor-recreation",
+        "en:winter-sports-activities",
+        "en:shoes",
+        "en:skiing-snowboarding",
+        "en:ski-boots",
+        "fr:Chaussures de ski alpin"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3109882236570"
+    },
+    {
+      "code": "3222477691452",
+      "brand": "SINCÈRE  Casino",
+      "name": "6 slips 6/8 ans",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:briefs"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3222477691452"
+    },
+    {
+      "code": "3492212493652",
+      "brand": "kiabi",
+      "name": "T-shirt attack on Titan homme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3492212493652"
+    },
+    {
+      "code": "3492214544444",
+      "brand": "kiabi",
+      "name": "T-shirt Paris 2024 homme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3492214544444"
+    },
+    {
+      "code": "3501350226050",
+      "brand": "Bleuforêt",
+      "name": "Chaussettes Fil d'Écosse Taille 43-46",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3501350226050"
+    },
+    {
+      "code": "3501350231511",
+      "brand": "Bleuforêt",
+      "name": "100% fil d’écosse",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3501350231511"
+    },
+    {
+      "code": "3501350374126",
+      "brand": "Bleuforêt",
+      "name": "Sport coolmax respirant",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3501350374126"
+    },
+    {
+      "code": "3583780228811",
+      "brand": "Decathlon",
+      "name": "NYAMBA MEN'S 100% COTTON T-SHIRT SPORTEE - BLACK",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3583780228811"
+    },
+    {
+      "code": "3596655536614",
+      "brand": "Celio",
+      "name": "Manteau long avec capuche",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:apparel-and-luggage-and-personal-care-products",
+        "en:coats-and-jackets",
+        "en:mens-coats-or-jackets"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3596655536614"
+    },
+    {
+      "code": "3608390950614",
+      "brand": "Decathlon, Domyos, Décathlon",
+      "name": "Short fitness homme non teint",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shorts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3608390950614"
+    },
+    {
+      "code": "3608459578759",
+      "brand": "Decathlon",
+      "name": "Olaian TO 50 M Black",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3608459578759"
+    },
+    {
+      "code": "3610860237156",
+      "brand": "dim",
+      "name": "t shirts",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3610860237156"
+    },
+    {
+      "code": "3610860655820",
+      "brand": "DIM",
+      "name": "4 boxers EcoDIM",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3610860655820"
+    },
+    {
+      "code": "3610861514409",
+      "brand": "DIM",
+      "name": "3 boxers style",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3610861514409"
+    },
+    {
+      "code": "3610861740839",
+      "brand": "DIM",
+      "name": "3 boxers classic colors",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3610861740839"
+    },
+    {
+      "code": "3610862972369",
+      "brand": "DIM",
+      "name": "2 boxers Air Sport",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3610862972369"
+    },
+    {
+      "code": "3616031033022",
+      "brand": "kiabi",
+      "name": "T-shirt homme Stranger Things",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616031033022"
+    },
+    {
+      "code": "3616035166146",
+      "brand": "kiabi",
+      "name": "t-shirt Marcel",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616035166146"
+    },
+    {
+      "code": "3616037128272",
+      "brand": "kiabi",
+      "name": "robe",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:dresses"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616037128272"
+    },
+    {
+      "code": "3616037571597",
+      "brand": "kiabi",
+      "name": "T-shirt Femme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616037571597"
+    },
+    {
+      "code": "3616280550530",
+      "brand": "damart",
+      "name": "tee shirt de dessous femme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616280550530"
+    },
+    {
+      "code": "3616473966100",
+      "brand": "TEX",
+      "name": "Slip Tex Bicolore Homme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:briefs"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616473966100"
+    },
+    {
+      "code": "3616740987401",
+      "brand": "Inextenso",
+      "name": "Chaussettes",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616740987401"
+    },
+    {
+      "code": "3616958498256",
+      "brand": "Memory foam",
+      "name": "Chaussure",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616958498256"
+    },
+    {
+      "code": "3616958500256",
+      "brand": "TEX",
+      "name": "Chaussure",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3616958500256"
+    },
+    {
+      "code": "3665630181184",
+      "brand": "Bonpied",
+      "name": "Chaussettes",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3665630181184"
+    },
+    {
+      "code": "3666287275301",
+      "brand": "Armor Lux",
+      "name": "Chaussette de sport Héritage",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "fr:Chaussettes de sport"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3666287275301"
+    },
+    {
+      "code": "3666287342638",
+      "brand": "Armor lux",
+      "name": "T-shirt manche courte héritage",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3666287342638"
+    },
+    {
+      "code": "3666287513946",
+      "brand": "Armor lux",
+      "name": "T-shirt héritage",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3666287513946"
+    },
+    {
+      "code": "3666801870876",
+      "brand": "Tamaris",
+      "name": "Basket tes",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3666801870876"
+    },
+    {
+      "code": "3700307323402",
+      "brand": "Kaporal jeans",
+      "name": "Polo",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:polo-shirt"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3700307323402"
+    },
+    {
+      "code": "3700955360521",
+      "brand": "66° North, Café du Cycliste",
+      "name": "Landmannalaugar",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:sport-clothes",
+        "en:bicycle-activewear",
+        "en:bicycle-jerseys"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3700955360521"
+    },
+    {
+      "code": "3701341513743",
+      "brand": "Van|Rysel",
+      "name": "T-shirt gris Brigade du Pavé",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3701341513743"
+    },
+    {
+      "code": "3701341520437",
+      "brand": "Van|Rysel",
+      "name": "T-shirt gris anthracite",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3701341520437"
+    },
+    {
+      "code": "3701341520475",
+      "brand": "Van|Rysel",
+      "name": "T-shirt bleu marine",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3701341520475"
+    },
+    {
+      "code": "3701642202834",
+      "brand": "Little Marcel",
+      "name": "Collant semi-opaque",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:hosiery"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3701642202834"
+    },
+    {
+      "code": "3800089702874",
+      "brand": "Life with Down Syndrome",
+      "name": "Life with Down Syndrome",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "en:Charity"
+      ],
+      "url": "https://world.openproductsfacts.org/product/3800089702874"
+    },
+    {
+      "code": "4000917542071",
+      "brand": "Design Collection, Schäfer",
+      "name": "Herren Motiv Socken",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "de:Herrensocken"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4000917542071"
+    },
+    {
+      "code": "4006083958333",
+      "brand": "Tchibo",
+      "name": "Tchibo Thermo-Regenjacke",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4006083958333"
+    },
+    {
+      "code": "4007065790811",
+      "brand": "Schiesser",
+      "name": "Tank Top, weiß, 95/5 Organic Cotton",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4007065790811"
+    },
+    {
+      "code": "4017084760719",
+      "brand": "Galaxy, Willax",
+      "name": "Arbeitshose Galaxy",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4017084760719"
+    },
+    {
+      "code": "4032055295236",
+      "brand": "Lloyd",
+      "name": "DWAINE",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "de:Herrenschuhe"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4032055295236"
+    },
+    {
+      "code": "4038189339440",
+      "brand": "Hello Kitty, Sanrio",
+      "name": "Socks",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4038189339440"
+    },
+    {
+      "code": "4043876358567",
+      "brand": "Falke",
+      "name": "Falke Swing 2 for you",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4043876358567"
+    },
+    {
+      "code": "4046504479023",
+      "brand": "Socks4Fun, Wowerat GmbH",
+      "name": "Bambus-Viskose Wellnessstrümpfe",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4046504479023"
+    },
+    {
+      "code": "4051309858324",
+      "brand": "uhlsport",
+      "name": "Essential Rain Jacket, black/white XL",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "de:Regenjacken"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4051309858324"
+    },
+    {
+      "code": "4051773053607",
+      "brand": "Brandit",
+      "name": "Women M65 Pants",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants",
+        "en:women-clothes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4051773053607"
+    },
+    {
+      "code": "4051773180884",
+      "brand": "Brandit",
+      "name": "Flannel Shirt Long Sleeve",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shirts-tops"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4051773180884"
+    },
+    {
+      "code": "4052025907877",
+      "brand": "relaxdays",
+      "name": "relaxdays Schuhanzieher Design, schwarz",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "de:Haushalt"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4052025907877"
+    },
+    {
+      "code": "4052269360025",
+      "brand": "monari",
+      "name": "Pullover, rot",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4052269360025"
+    },
+    {
+      "code": "4052916022337",
+      "brand": "Lyvergy",
+      "name": "pantalon",
+      "categories": [
+        "en:apparel-accessories",
+        "en:arts-entertainment",
+        "en:clothing",
+        "en:hobbies-creative-arts",
+        "en:arts-crafts",
+        "en:art-crafting-materials",
+        "en:textiles"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4052916022337"
+    },
+    {
+      "code": "4052916449714",
+      "brand": "Livergy",
+      "name": "Pantalon cargo léger homme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants",
+        "fr:Pantalons cargo"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4052916449714"
+    },
+    {
+      "code": "4055316639785",
+      "brand": "Terrax, Terrax Workwear",
+      "name": "Gürtel, 120 cm",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4055316639785"
+    },
+    {
+      "code": "4055334463690",
+      "brand": "Esmara",
+      "name": "Ladies’ Slippers",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "en:slippers"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4055334463690"
+    },
+    {
+      "code": "4056463722177",
+      "brand": "engbers",
+      "name": "Jeans &quot;My Favorite&quot;, straight, schwarz",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants",
+        "xx:jeans"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4056463722177"
+    },
+    {
+      "code": "4056464009710",
+      "brand": "engbers",
+      "name": "Hemd, Kurzarm, Uni R, Regular Fit, reinweiß",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "de:Hemden"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4056464009710"
+    },
+    {
+      "code": "4057283174986",
+      "brand": "Adidas",
+      "name": "Boîte",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4057283174986"
+    },
+    {
+      "code": "4059322770043",
+      "brand": "Adidas",
+      "name": "Calcetines Deportivos Santos Sock 18 CV3588 Negro",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4059322770043"
+    },
+    {
+      "code": "4061447031435",
+      "brand": "ews Textilvertrieb, frank fields",
+      "name": "4 Retro-Pants",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061447031435"
+    },
+    {
+      "code": "4061459021455",
+      "brand": "Up2Fashion",
+      "name": "Jeans Regular Fit",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "xx:jeans"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061459021455"
+    },
+    {
+      "code": "4061459400809",
+      "brand": "Up2Fashion",
+      "name": "Sneaker-Socken für Damen und Herren 3er-Pack",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061459400809"
+    },
+    {
+      "code": "4061459921410",
+      "brand": "Up2Fashion",
+      "name": "Sommer-Söckchen",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061459921410"
+    },
+    {
+      "code": "4061461017521",
+      "brand": "Up2Fashion",
+      "name": "Jeans",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "xx:jeans"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061461017521"
+    },
+    {
+      "code": "4061461144371",
+      "brand": "Up2Fashion",
+      "name": "Sneaker-Socken",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061461144371"
+    },
+    {
+      "code": "4061461144401",
+      "brand": "Up2Fashion",
+      "name": "Sneaker-Socken",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061461144401"
+    },
+    {
+      "code": "4061462483387",
+      "brand": "Up2Fashion",
+      "name": "T-Shirt Extra Slim Fit, schwarz, 2er-Pack",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061462483387"
+    },
+    {
+      "code": "4061462507779",
+      "brand": "Up2Fashion",
+      "name": "T-Shirt Premium 2er-Pack",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061462507779"
+    },
+    {
+      "code": "4061811326105",
+      "brand": "Rieker",
+      "name": "Туфли женские Rieker летние кожа/текстиль",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4061811326105"
+    },
+    {
+      "code": "4063551026451",
+      "brand": "Boss",
+      "name": "Sock Trainers with Double B Monogram Light Beige (Size 7)",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4063551026451"
+    },
+    {
+      "code": "4063676864136",
+      "brand": "Tchibo",
+      "name": "Pyjama",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:sleepwear-loungewear",
+        "en:pajamas"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4063676864136"
+    },
+    {
+      "code": "4064036803260",
+      "brand": "Adidas",
+      "name": "Terrex speed flow",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4064036803260"
+    },
+    {
+      "code": "4064505498492",
+      "brand": "BRAX",
+      "name": "Style Fabio In schwarz",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4064505498492"
+    },
+    {
+      "code": "4066425413944",
+      "brand": "Olymp, Olymp Luxor",
+      "name": "Hemd, Kurzarm, Modern Fit, blau-weiß",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "de:Hemden"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4066425413944"
+    },
+    {
+      "code": "4067112780677",
+      "brand": "FALKE",
+      "name": "Lyocell Balance Herren T-Shirt space blue",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4067112780677"
+    },
+    {
+      "code": "4067681211763",
+      "brand": "Ernsting's family, Topolino",
+      "name": "Socken, Größe 27-30",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4067681211763"
+    },
+    {
+      "code": "4067978361218",
+      "brand": "Puma",
+      "name": "Grounded SL Mid Gray-White",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4067978361218"
+    },
+    {
+      "code": "4068947074153",
+      "brand": "Tchibo",
+      "name": "Pyjama-Set",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:sleepwear-loungewear",
+        "en:pajamas"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4068947074153"
+    },
+    {
+      "code": "4069365394724",
+      "brand": "Up2Fashion",
+      "name": "T-Shirt Herren 3er-Pack",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4069365394724"
+    },
+    {
+      "code": "4069365692035",
+      "brand": "Up2Fashion",
+      "name": "Hose Woman",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4069365692035"
+    },
+    {
+      "code": "4069365771174",
+      "brand": "Up2Fashion",
+      "name": "Retro Shorts Herren (Größe L)",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shorts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4069365771174"
+    },
+    {
+      "code": "4069365778463",
+      "brand": "Crane",
+      "name": "Fitness-Socken für Damen und Herren",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4069365778463"
+    },
+    {
+      "code": "4069365778753",
+      "brand": "Crane",
+      "name": "Fitness-Socken für Damen und Herren",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4069365778753"
+    },
+    {
+      "code": "4305615653198",
+      "brand": "Rossmann",
+      "name": "Fusswohl 3 in 1 Gelsohle Work",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4305615653198"
+    },
+    {
+      "code": "4311536056833",
+      "brand": "Spirit of Colours",
+      "name": "Sportsocken Unisex, weiß",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536056833"
+    },
+    {
+      "code": "4311536056857",
+      "brand": "Spirit of Colours",
+      "name": "Sportsocken Unisex, schwarz",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536056857"
+    },
+    {
+      "code": "4311536086113",
+      "brand": "Spirit of Colours",
+      "name": "Sneaker-Socken Unisex weiß",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536086113"
+    },
+    {
+      "code": "4311536086144",
+      "brand": "Spirit of Colours",
+      "name": "Sneaker-Socken Unisex schwarz",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536086144"
+    },
+    {
+      "code": "4311536087530",
+      "brand": "Spirit of Colours",
+      "name": "Freizeitclogs",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536087530"
+    },
+    {
+      "code": "4311536098710",
+      "brand": "Spirit of Colours",
+      "name": "Sneaker-Socken Unisex schwarz & weiß",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536098710"
+    },
+    {
+      "code": "4311536155345",
+      "brand": "Spirit of Colours",
+      "name": "Sneaker-Socken, schwarz",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536155345"
+    },
+    {
+      "code": "4311536509278",
+      "brand": "Spirit of Colours",
+      "name": "Unterziehshirt Herren schwarz aus Bio-Baumwolle",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4311536509278"
+    },
+    {
+      "code": "4550170464219",
+      "brand": "Shimano",
+      "name": "SH-RX800",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "fr:Chaussures de vélo"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4550170464219"
+    },
+    {
+      "code": "4610008987706",
+      "brand": "Круглый год",
+      "name": "Носки мужские размер 25(39-40) [А-1]",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:hosiery",
+        "en:socks",
+        "en:apparel-and-luggage-and-personal-care-products",
+        "ru:Носки мужские"
+      ],
+      "url": "https://world.openproductsfacts.org/product/4610008987706"
+    },
+    {
+      "code": "5002014007179",
+      "brand": "Northwave",
+      "name": "Origin WMN",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "fr:Chaussures de VTT",
+        "fr:Chaussures de vélo"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5002014007179"
+    },
+    {
+      "code": "5012123105024",
+      "brand": "Lacoste",
+      "name": "Chaussure Lacoste",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5012123105024"
+    },
+    {
+      "code": "5059016001353",
+      "brand": "Solovair",
+      "name": "8 eye derby boot British Royal navy blue",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "en:boots"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5059016001353"
+    },
+    {
+      "code": "5059016154899",
+      "brand": "Solovair",
+      "name": "Astronaut 6 eye derby boot",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "en:boots"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5059016154899"
+    },
+    {
+      "code": "5059016176969",
+      "brand": "Solovair",
+      "name": "Solovair Casual 4 eye Gibson Shoe",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5059016176969"
+    },
+    {
+      "code": "5060146593892",
+      "brand": "Luckies",
+      "name": "Beer socks Ale",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5060146593892"
+    },
+    {
+      "code": "5060146593908",
+      "brand": "Luckies",
+      "name": "Beer socks Stout",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5060146593908"
+    },
+    {
+      "code": "5060689230049",
+      "brand": "Flux",
+      "name": "Flux Undies",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5060689230049"
+    },
+    {
+      "code": "5060949956184",
+      "brand": "Powder Design inc",
+      "name": "Hat",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:clothing-accessories",
+        "en:hats"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5060949956184"
+    },
+    {
+      "code": "5064257422478",
+      "brand": "Adidas",
+      "name": "Chaussure",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5064257422478"
+    },
+    {
+      "code": "5390314287941",
+      "brand": "Cara",
+      "name": "Shamrock Laurels Flat Cap, Green [FLC1018/GN]",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:clothing-accessories",
+        "en:hats",
+        "en:flat-caps"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5390314287941"
+    },
+    {
+      "code": "5404030192356",
+      "brand": "kate legwear",
+      "name": "Knee Highs Satin Shine",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "en:women-clothes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5404030192356"
+    },
+    {
+      "code": "5907400376139",
+      "brand": "sinsay",
+      "name": "Bokserki męskie",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:boxer-shorts",
+        "en:panties"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5907400376139"
+    },
+    {
+      "code": "5907898669393",
+      "brand": "Reserved",
+      "name": "739JC-89X",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:women-clothes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5907898669393"
+    },
+    {
+      "code": "5907933529453",
+      "brand": "Sinsay",
+      "name": "354JW-89X-XL",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:women-clothes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/5907933529453"
+    },
+    {
+      "code": "6093235531757",
+      "brand": "HIS",
+      "name": "Muscle Shirt, weiß",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:underwear",
+        "de:Herrenwäsche"
+      ],
+      "url": "https://world.openproductsfacts.org/product/6093235531757"
+    },
+    {
+      "code": "7048652453129",
+      "brand": "Daehlie",
+      "name": "Pantalon Power",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7048652453129"
+    },
+    {
+      "code": "7052130065000000",
+      "brand": "Il Lanificio, Lanificio Cerrutti",
+      "name": "Maglia beige",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "it:Maglioni di lana"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7052130065000000"
+    },
+    {
+      "code": "7056993017250211",
+      "brand": "Fratelli Cerutti, Il lanificio",
+      "name": "Giaccone",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:outerwear",
+        "en:coats-jackets"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7056993017250211"
+    },
+    {
+      "code": "7297576358588",
+      "brand": "Delta",
+      "name": "גרבי צבא / עבודה",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7297576358588"
+    },
+    {
+      "code": "7310710184888",
+      "brand": "Icebug",
+      "name": "Acceleristas7 M RB9X",
+      "categories": [
+        "en:apparel-accessories",
+        "en:sporting-goods",
+        "en:clothing",
+        "en:shoes",
+        "en:sport-shoes",
+        "fr:chaussures de course à pied"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7310710184888"
+    },
+    {
+      "code": "7310710206450",
+      "brand": "Icebug",
+      "name": "NEWRUN M BUGrip GTX",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7310710206450"
+    },
+    {
+      "code": "7330878875244",
+      "brand": "Legend",
+      "name": "Sweatpants herr svart",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants",
+        "en:Sweatpants"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7330878875244"
+    },
+    {
+      "code": "7611366226534",
+      "brand": "Odlo",
+      "name": "Short style 349252 couleur 15000",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shorts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7611366226534"
+    },
+    {
+      "code": "7613273856675",
+      "brand": "Odlo",
+      "name": "Running socks short",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "fr:Chaussettes de course à pied"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613273856675"
+    },
+    {
+      "code": "7613357512725",
+      "brand": "Mammut",
+      "name": "Pantalon homme Casanna HS Thermo",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "fr:Pantalon de ski"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613357512725"
+    },
+    {
+      "code": "7613361254772",
+      "brand": "Odlo",
+      "name": "Haut BL col ras du cou manches courtes ZEROWEIGHT X-LIGHT - blue coral",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361254772"
+    },
+    {
+      "code": "7613361435720",
+      "brand": "Odlo",
+      "name": "Running socks quarter",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "fr:chaussettes de course à pied"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361435720"
+    },
+    {
+      "code": "7613361436628",
+      "brand": "Odlo",
+      "name": "Sports socks quarter",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "fr:Chaussettes de course à pied",
+        "fr:Chaussettes de randonnées",
+        "fr:Chaussettes de sport",
+        "fr:Chaussettes de vélo"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361436628"
+    },
+    {
+      "code": "7613361709920",
+      "brand": "Odlo",
+      "name": "Collant ZEROWEIGHT WARM pour homme",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:hosiery"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361709920"
+    },
+    {
+      "code": "7613361723506",
+      "brand": "Odlo",
+      "name": "T-shirt manche longue Blackcomb submerged",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361723506"
+    },
+    {
+      "code": "7613361872129",
+      "brand": "Odlo",
+      "name": "Collant long performance WARM Eco",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:hosiery"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361872129"
+    },
+    {
+      "code": "7613361872228",
+      "brand": "Odlo",
+      "name": "Turtle neck l/s 1/2 zip",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts",
+        "fr:T-shirt manche longue"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361872228"
+    },
+    {
+      "code": "7613361877223",
+      "brand": "Odlo",
+      "name": "Collants ZEROWEIGHT WARM Reflective",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:hosiery"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7613361877223"
+    },
+    {
+      "code": "7615537393414",
+      "brand": "on",
+      "name": "Cloud 6 (olive / evergreen)",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7615537393414"
+    },
+    {
+      "code": "7623846231990",
+      "brand": "Guess",
+      "name": "T-Shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7623846231990"
+    },
+    {
+      "code": "7640174270903",
+      "brand": "Compressport",
+      "name": "Pro racing socks 3.0",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks",
+        "fr:Chaussettes de vélo"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7640174270903"
+    },
+    {
+      "code": "7640404583018",
+      "brand": "On running",
+      "name": "Mid Sock Mulberry | BlackTaille: M (Men's)",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7640404583018"
+    },
+    {
+      "code": "7640404583155",
+      "brand": "On running",
+      "name": "Cloudneo 1 M Undyed 9",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "fr:Chaussures de course à pied"
+      ],
+      "url": "https://world.openproductsfacts.org/product/7640404583155"
+    },
+    {
+      "code": "8054112330953",
+      "brand": "Champion",
+      "name": "Unisex Shorts, schwarz, 245920-XL",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pants"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8054112330953"
+    },
+    {
+      "code": "8056008075566",
+      "brand": "Socks Industries",
+      "name": "Calze nere",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8056008075566"
+    },
+    {
+      "code": "8428927480040",
+      "brand": "buff",
+      "name": "Cache-Cou multifonctionnel polaire reversible",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8428927480040"
+    },
+    {
+      "code": "8435695242855",
+      "brand": "Flamingos Life",
+      "name": "Marathon Club",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "en:sneakers"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8435695242855"
+    },
+    {
+      "code": "8681366615446",
+      "brand": "LC WAIKIKI",
+      "name": "T-shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:t-shirts"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8681366615446"
+    },
+    {
+      "code": "8693672097847",
+      "brand": "Berrak",
+      "name": "Unterhemd, weiß, XL",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8693672097847"
+    },
+    {
+      "code": "8718824428543",
+      "brand": "Head",
+      "name": "Men’s Boxer Microfiber Athletic fit",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:dresses",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8718824428543"
+    },
+    {
+      "code": "8718824735870",
+      "brand": "Head",
+      "name": "Men’s boxer Cotton stretch Athletic fit",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:dresses",
+        "en:underwear"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8718824735870"
+    },
+    {
+      "code": "8719692889214",
+      "brand": "Angro, Heat Keeper",
+      "name": "Heat Keeper Thermal Comfort Shirt",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8719692889214"
+    },
+    {
+      "code": "8901326030172",
+      "brand": "Jockey",
+      "name": "VEST [8820-WHITE]",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:outerwear",
+        "en:vests"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8901326030172"
+    },
+    {
+      "code": "8901326030189",
+      "brand": "Jockey",
+      "name": "Vest 8820",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:outerwear",
+        "en:vests"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8901326030189"
+    },
+    {
+      "code": "8901778506249",
+      "brand": "Bata",
+      "name": "601 - Black (Formal Shoe)",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8901778506249"
+    },
+    {
+      "code": "8902625074515",
+      "brand": "Levis",
+      "name": "Regular Cut Socks",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8902625074515"
+    },
+    {
+      "code": "8904228265390",
+      "brand": "Happenstance",
+      "name": "Unisex Sandals",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes",
+        "en:sandals"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8904228265390"
+    },
+    {
+      "code": "8905107054364",
+      "brand": "Bata",
+      "name": "Men Ankle Length",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:underwear-socks",
+        "en:socks"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8905107054364"
+    },
+    {
+      "code": "8909102072279",
+      "brand": "REDTAPE",
+      "name": "Men Shoes",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:shoes"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8909102072279"
+    },
+    {
+      "code": "8939108127536",
+      "brand": "XYXX",
+      "name": "NOVA",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:outerwear",
+        "en:vests"
+      ],
+      "url": "https://world.openproductsfacts.org/product/8939108127536"
+    },
+    {
+      "code": "9580303827029",
+      "brand": "Pull & Bear",
+      "name": "Pull",
+      "categories": [
+        "en:apparel-accessories",
+        "en:clothing",
+        "en:pull-over"
+      ],
+      "url": "https://world.openproductsfacts.org/product/9580303827029"
+    }
+  ]
+}

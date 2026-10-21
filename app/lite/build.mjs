@@ -31,6 +31,8 @@ copy(path.join(UX, 'shared/eoul-mock.js'), 'shared/eoul-mock.js');
 copy(path.join(UX, 'design/cutouts.js'), 'shared/cutouts.js');
 for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js']) copy(path.join(UX, 'links/shared', f), `shared/${f}`);
 copy(path.join(HERE, 'src/lite.js'), 'shared/lite.js');
+copy(path.join(HERE, 'src/open-products.mjs'), 'shared/open-products.mjs');
+for (const f of ['clothing.json', 'README.md']) copy(path.join(HERE, 'data/open-products', f), `data/open-products/${f}`);
 
 // 2) 글꼴: Pretendard Variable(SIL OFL 1.1), Phosphor 아이콘(MIT)
 copy(path.join(NM, 'pretendard/dist/web/variable/woff2/PretendardVariable.woff2'), 'shared/fonts/PretendardVariable.woff2');
@@ -56,7 +58,7 @@ const body = read(path.join(UX, 'links', SCREEN))
   .replace(/<script>\s*<\/script>\n?/, '')
   // 예전 설치 앱(d7, 기본 저장 키)에 옷장이 있으면 새 화면의 저장 키로 한 번 옮긴다(덮어쓰지 않음).
   .replace(/<script>window\.EOUL_MOCK_KEY='([^']+)';<\/script>/, (m, key) => `<script>window.EOUL_MOCK_KEY='${key}';try{var o=localStorage.getItem('eoul-mockup-ux10v2:v1');if(o&&!localStorage.getItem('${key}'))localStorage.setItem('${key}',o)}catch(e){}</script>`)
-  .replace('<script src="shared/ai-rank.js"></script>', '<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>');
+  .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>');
 if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes('shared/lite.js')) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);
 const html = `<!doctype html>
 <html lang="ko">
