@@ -16,6 +16,9 @@
 | d9-shop.html | 쇼핑앱식: 둘러보기 먼저, AI추천순·낮은가격순·후기순 정렬, 옷장과 겹치는 옷 빼기, 2·3열 전환. AI 순위 | https://claude.ai/artifact/EKw5tiSgn9DCMqJRunj3wG |
 | d10-deck.html | 한 장씩: AI 순서대로 한 장씩 보며 살게요·고민·안 살래요, 되돌리기. AI 순위 | https://claude.ai/artifact/TugSNNjxCNdRNGv6TyZBZd |
 | **d12-hang.html** | **걸어 보고 사기 2판**(Fable 5.1 독립 평가 "떨어진다" 후 Fable 5.1로 재제작): 결과 첫 화면 4장, 늘 보이던 레일 제거(걸었을 때만 34px 띠), 상세 주행동 "판매처에서 사기" 하나 + 돌아오면 샀어요/보류/안 살래요, 빈 옷장에서 "○○ 있어요?" 한 번 묻고 바로 판정, 옷·코디 전용 AI 상담 | https://claude.ai/artifact/F1eXB73PDGCFafxwq5qiHE |
+| **d13-showroom.html** | **시안 A 에디토리얼 쇼룸**(2026-10-21, Fable 5.1): 같은 3:4 사진·강조색 하나, 옷장은 "나의 컬렉션", 코디는 LOOK 보드(옷↔코디 양방향), 상세·결과에 "같은 옷, 이미 있는 곳" 9곳, 직접 등록(1/3 상태) | https://claude.ai/artifact/Qx8Ps6rftkz6SWVCQQYiyM |
+| **d14-command.html** | **시안 B 한 칸으로 쇼핑**(2026-10-21, Fable 5.1): 위의 한 칸이 찾기·옷장 넣기·코디·중고·상담 명령(PC ⌘K), 탭은 홈·옷장·기록 3개, 결과에 내 옷과 겹침 꼬리표 자동 표시, 중고 전용 모드 | https://claude.ai/artifact/JeNBEAndptBvatjDXQsbd3 |
+| **d15-closet-home.html** | **시안 C 옷장이 집**(2026-10-21, Fable 5.1): 첫 화면이 레일·선반 옷장, 빈 자리("하의가 1벌뿐이에요")에서 쇼핑 시작, 옷마다 자기 페이지(코디 n가지·중고 9곳·상담) | https://claude.ai/artifact/Mfuwv913MVwAknXQ5iR8sy |
 | **d11-rail.html** | **걸어 보고 사기**: 장바구니 대신 내 옷걸이 레일에 걸어 보고 판단(새 코디 +n·비슷한 옷), 살게요·보류·안 살래요 → 주문·받음 → 옷걸이, 옷·코디 전용 AI 상담 탭. AI 순위 | https://claude.ai/artifact/HAjvfwd3SYmniCyoAQfokg |
 | d6-merged.html | 통합 시안(대표 피드백: 별로): 진열 바탕 + 숫자 판정(숫자) + 기본 옷 24칸 채우기(도감) + 옷장 통계(여권), 사진 기준 적용 | https://claude.ai/artifact/5VejkndVXBtaV7xdNaMxRt |
 
