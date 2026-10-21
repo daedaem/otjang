@@ -23,6 +23,12 @@ const SCHEMA = [
     PRIMARY KEY (key, device))`,
   'CREATE INDEX IF NOT EXISTS crowd_device_time ON crowd_items (device, created_at)',
   'CREATE INDEX IF NOT EXISTS crowd_ip_time ON crowd_items (ip, created_at)',
+  // 기여를 철회해도 최근 24시간 등록 사용량은 남긴다. 원본 기여 행과 별도이므로 삭제로 상한을 되돌릴 수 없다.
+  `CREATE TABLE IF NOT EXISTS crowd_submission_usage (
+    id TEXT PRIMARY KEY, device TEXT NOT NULL, ip TEXT, created_at INTEGER NOT NULL)`,
+  'CREATE INDEX IF NOT EXISTS crowd_usage_device_time ON crowd_submission_usage (device, created_at)',
+  'CREATE INDEX IF NOT EXISTS crowd_usage_ip_time ON crowd_submission_usage (ip, created_at)',
+  'CREATE INDEX IF NOT EXISTS crowd_usage_time ON crowd_submission_usage (created_at)',
 ];
 
 const reply = (status, body) => new Response(JSON.stringify(body), {
@@ -91,18 +97,26 @@ async function submit(request, env, db, now) {
   const key = itemKey(item.brand, item.name, item.kind);
   const ip = await ipTag(request, env);
   const since = now - DAY;
-  const byDevice = await db.prepare('SELECT COUNT(*) AS n FROM crowd_items WHERE device = ?1 AND created_at > ?2').bind(body.device, since).first();
-  if (Number(byDevice?.n) >= PER_DEVICE_DAY) return fail(429, 'daily_limit', '오늘은 등록을 많이 했어요. 내일 다시 해 주세요.');
-  if (ip) {
-    const byIp = await db.prepare('SELECT COUNT(*) AS n FROM crowd_items WHERE ip = ?1 AND created_at > ?2').bind(ip, since).first();
-    if (Number(byIp?.n) >= PER_IP_DAY) return fail(429, 'daily_limit', '오늘은 등록을 많이 했어요. 내일 다시 해 주세요.');
-  }
-  // 같은 기기가 같은 옷을 다시 등록하면 한 번으로 센다(색·링크만 새로 고침).
-  await db.prepare(`INSERT INTO crowd_items (key, device, brand, name, hay, kind, color, link, ip, created_at)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-    ON CONFLICT (key, device) DO UPDATE SET color = excluded.color, link = excluded.link`)
-    .bind(key, body.device, item.brand, item.name, `${norm(item.brand)}|${norm(item.name)}`, item.kind, item.color, item.link, ip, now)
-    .run();
+  const reservation = crypto.randomUUID();
+  // D1 batch는 트랜잭션이다. 한 SQL에서 두 상한을 확인하고 예약한 뒤, 같은 트랜잭션에서만 기여를 쓴다.
+  // 다른 요청이 검사와 쓰기 사이에 끼어들거나, 쓰기 실패 뒤 사용량만 남는 것을 막는다.
+  // "하루"는 자정 초기화가 아닌 최근 24시간이다. 기존 기여의 색·링크 수정은 새 등록으로 세지 않는다.
+  const [, , written] = await db.batch([
+    db.prepare('DELETE FROM crowd_submission_usage WHERE created_at <= ?1').bind(since),
+    db.prepare(`INSERT INTO crowd_submission_usage (id, device, ip, created_at)
+      SELECT ?1, ?2, ?3, ?4
+      WHERE NOT EXISTS (SELECT 1 FROM crowd_items WHERE key = ?5 AND device = ?2)
+        AND (SELECT COUNT(*) FROM crowd_submission_usage WHERE device = ?2 AND created_at > ?6) < ?7
+        AND (?3 IS NULL OR (SELECT COUNT(*) FROM crowd_submission_usage WHERE ip = ?3 AND created_at > ?6) < ?8)`)
+      .bind(reservation, body.device, ip, now, key, since, PER_DEVICE_DAY, PER_IP_DAY),
+    db.prepare(`INSERT INTO crowd_items (key, device, brand, name, hay, kind, color, link, ip, created_at)
+      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10
+      WHERE EXISTS (SELECT 1 FROM crowd_submission_usage WHERE id = ?11)
+         OR EXISTS (SELECT 1 FROM crowd_items WHERE key = ?1 AND device = ?2)
+      ON CONFLICT (key, device) DO UPDATE SET color = excluded.color, link = excluded.link`)
+      .bind(key, body.device, item.brand, item.name, `${norm(item.brand)}|${norm(item.name)}`, item.kind, item.color, item.link, ip, now, reservation),
+  ]);
+  if (!written.meta?.changes) return fail(429, 'daily_limit', '최근 24시간 등록 한도에 닿았어요. 등록한 지 24시간이 지나면 다시 해 주세요.');
   return reply(200, state(key, await countOf(db, key), minOf(env)));
 }
 

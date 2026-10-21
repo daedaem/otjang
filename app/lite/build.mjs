@@ -1,10 +1,13 @@
 // 설치형 앱 묶기: 시안 화면(SCREEN, 지금은 d12 "걸어 보고 사기")을 그대로 쓰고, 홈 화면 설치·오프라인·AI 순위 서버 함수 연결만 더해 dist/에 만든다.
 // Cloudflare Pages 설정: 루트 디렉터리 app/lite, 빌드 명령 `npm run build`, 출력 디렉터리 dist (functions/는 Pages가 알아서 올린다).
 // 상품 사진은 판매처 이미지 서버 주소를 그대로 쓴다(저장소·배포본에 사진 파일 없음). 글꼴은 npm 패키지(OFL·MIT)에서 복사한다.
+import { assertBuildAllowed } from './deployment-policy.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+
+assertBuildAllowed();
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const UX = path.join(HERE, '../mockups/ux10v2');

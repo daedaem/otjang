@@ -765,6 +765,14 @@ a { color: inherit; text-decoration: none; }
     not_granted: 'AI 사용을 허용해야 상담할 수 있어요.',
     rate_limited: 'AI 요청이 많아요. 잠시 뒤에 다시 물어봐 주세요.',
     sampling_disabled: '이 계정에서는 AI를 쓸 수 없어서 상담을 할 수 없어요.',
+    unauthorized: 'AI 사용 권한을 확인할 수 없어 상담을 잠시 사용할 수 없어요.',
+    not_configured: 'AI 상담이 아직 설정되지 않았어요.',
+    daily_limit: '오늘 AI 사용 한도에 도달했어요. 내일 다시 물어봐 주세요.',
+    monthly_limit: '이번 달 AI 사용 한도에 도달했어요.',
+    budget_unavailable: 'AI 사용량을 확인할 수 없어 상담을 잠시 멈췄어요.',
+    bad_request: '질문과 최근 대화를 처리할 수 없어요. 짧게 다시 물어봐 주세요.',
+    timeout: 'AI 응답이 늦어요. 잠시 뒤에 다시 물어봐 주세요.',
+    offline: '연결이 없어요. 연결한 뒤 다시 물어봐 주세요.',
   };
   const RULES = `당신은 옷 쇼핑 앱 안의 패션·코디 상담원입니다.
 다룰 수 있는 주제: 옷, 코디(조합), 스타일링, 색 조합, 핏·사이즈 일반 조언, 옷감 관리·세탁, 옷 구매 판단, 사용자의 옷장.
@@ -779,12 +787,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const r = M.ask(q);
       if (r.understood && r.products?.length) cands = r.products.slice(0, 8).map((p) => { const v = M.judge(p.id); return { id: p.id, brand: p.brand, name: p.name, price: p.price, priceNote: p.priceNote, color: p.colorLabel, kind: p.kindName, rating: p.rating, reviews: p.reviews, closet: v ? v.title : '' }; });
     } catch {}
-    const closet = M.getState().closet.map((g) => `${g.colorLabel} ${g.kindName}${g.trial ? '(체험용)' : ''}`);
+    const closet = M.getState().closet.slice(0, 200).map((g) => `${g.colorLabel} ${g.kindName}${g.trial ? '(체험용)' : ''}`.slice(0, 80));
     return { cands, closet };
   }
-  function chatMessages(q, data) {
-    const hist = C.turns.filter((t) => t.role === 'user' || t.role === 'assistant').slice(-5).map((t) => ({ role: t.role, content: t.role === 'user' ? t.text : (t.text || REFUSE) }));
+  function chatHistory() {
+    const hist = C.turns.filter((t) => t.role === 'user' || t.role === 'assistant').slice(-6).map((t) => ({ role: t.role, content: String(t.text || (t.role === 'assistant' ? REFUSE : '')).slice(0, 700) }));
     while (hist.length && hist[0].role !== 'user') hist.shift();
+    return hist;
+  }
+  function chatMessages(q, data, hist) {
     const ref = `참고 자료\n사용자 옷장(${data.closet.length}벌): ${data.closet.join(', ') || '비어 있음'}\n후보 상품: ${data.cands.length ? JSON.stringify(data.cands) : '없음(이번 질문에서 찾은 상품 없음)'}`;
     const msgs = [...hist, { role: 'user', content: `${ref}\n\n사용자 질문: ${q}` }];
     msgs[0] = { role: 'user', content: `${RULES}\n\n${msgs[0].content}` };
@@ -795,13 +806,20 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if (!q) { $('#cq')?.focus(); return; }
     if (q.length > 300) { pushTurn({ role: 'note', kind: 'err', text: `질문이 ${q.length}자예요. 300자 안으로 줄여서 다시 물어봐 주세요.` }); K.refresh(); return; }
     if (C.busy) return;
+    // 현재 질문을 저장하기 전에 과거 대화만 추려 같은 질문이 두 번 전송되지 않게 한다.
+    const history = chatHistory();
     pushTurn({ role: 'user', text: q }); C.busy = true; K.refresh();
     const data = grounding(q);
     let turn;
     try {
-      const sample = await getSampler();
-      if (!sample) throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
-      const out = await sample.json(chatMessages(q, data), { modelTier: 'quick', cache: false });
+      let out;
+      if (typeof window.EOUL_SERVER_AI === 'function') {
+        out = await window.EOUL_SERVER_AI({ task: 'consult', query: q, items: data.cands.map((p) => ({ id: p.id, closet: String(p.closet || '').slice(0, 120) })), closet: data.closet, history });
+      } else {
+        const sample = await getSampler();
+        if (!sample) throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
+        out = await sample.json(chatMessages(q, data, history), { modelTier: 'quick', cache: false });
+      }
       if (!out || out.on_topic !== true || typeof out.answer !== 'string' || !out.answer.trim()) turn = { role: 'assistant', refused: true, text: REFUSE };
       else {
         const ok = new Set(data.cands.map((c) => c.id));
@@ -1203,7 +1221,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         if (!K.reduce) $$('.card', grid).forEach((c) => { const a = first.get(c.dataset.card), b = c.getBoundingClientRect(); if (a) c.animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px)` }, { transform: 'none' }], { duration: 420, easing: K.SPRING.css }); });
         box.className = 'ai'; box.innerHTML = `<i class="ph-fill ph-sparkle"></i><span>${esc(res.summary || 'AI가 후보 순서를 정했어요')}</span>`;
       } else {
-        const why = { unavailable: 'AI 순위 꺼짐(claude.ai에서 열면 켜져요)', not_granted: 'AI 사용을 허용하지 않아 기본 순서', rate_limited: 'AI 요청이 많아 지금은 기본 순서', sampling_disabled: '이 계정은 AI를 쓸 수 없어 기본 순서' }[res.why] || 'AI 순위를 받지 못해 기본 순서';
+        const why = AIRank.whyText(res.why);
         box.className = 'ai off'; box.innerHTML = `<i class="ph ph-info"></i><span>${esc(why)} · ${esc(r.listNote || '평점과 후기 수 순')}</span>`;
       }
     },

@@ -1,6 +1,6 @@
 // AI 순위: 조건에 맞는 후보(엔진이 고른 상품)를 Claude가 다시 줄 세우고, 순위마다 이유를 쓴다.
 // 링크 페이지에서는 sample 기능(보는 사람의 Claude 계정, 처음 한 번 허용을 묻는다)을, 설치형 앱(app/lite)에서는
-// 같은 모양으로 끼운 서버 함수(/api/rank)를 쓴다.
+// 구조화된 요청을 받는 서버 함수(/api/rank)를 쓴다. 서버 요청에는 상품 id·옷장 비교만 보낸다.
 // 원칙: 후보는 엔진이 조건으로 거른 상품만, 이유는 넘겨준 자료(상품 정보·평점·후기·옷장 비교)에 있는 사실만.
 // 돌아온 id는 후보 안에 있는 것만 받고, 빠진 후보는 엔진 순서로 뒤에 붙인다. 쓸 수 없으면 엔진 순서를 그대로 보여 준다.
 (() => {
@@ -11,15 +11,15 @@
 
   function facts(result, limit) {
     const st = M.getState();
-    const closet = st.closet.map((g) => `${g.colorLabel} ${g.kindName}${g.trial ? '(체험용)' : ''}`);
+    const closet = st.closet.slice(0, 200).map((g) => `${g.colorLabel} ${g.kindName}${g.trial ? '(체험용)' : ''}`.slice(0, 80));
     const items = result.products.slice(0, limit).map((p) => {
       const v = M.judge(p.id);
-      const same = (v?.owned || []).filter((o) => ['same-product', 'same-color'].includes(o.relation)).map((o) => `${o.colorLabel} ${o.kindName}`);
-      const sameKind = (v?.owned || []).filter((o) => o.relation === 'other-color').map((o) => `${o.colorLabel} ${o.kindName}`);
+      const same = (v?.owned || []).filter((o) => ['same-product', 'same-color'].includes(o.relation)).slice(0, 50).map((o) => `${o.colorLabel} ${o.kindName}`.slice(0, 80));
+      const sameKind = (v?.owned || []).filter((o) => o.relation === 'other-color').slice(0, 50).map((o) => `${o.colorLabel} ${o.kindName}`.slice(0, 80));
       return {
         id: p.id, brand: p.brand, name: p.name, price: p.price, color: p.colorLabel, kind: p.kindName,
         rating: p.rating, reviews: p.reviews,
-        closet: v?.basis === 'none' ? '옷장 정보 없음' : { 같은종류같은색: same, 같은종류다른색: sameKind, 새로생기는조합수: v?.newLookCount || 0, 판정: v?.title },
+        closet: v?.basis === 'none' ? '옷장 정보 없음' : { 같은종류같은색: same, 같은종류다른색: sameKind, 새로생기는조합수: Math.min(100000, Math.max(0, Math.floor(Number(v?.newLookCount) || 0))), 판정: String(v?.title || '').slice(0, 120) },
       };
     });
     return { closet, items };
@@ -47,19 +47,25 @@ JSON 하나로만 답하세요. 예: {"summary":"한 문장 총평","ranking":[{
   // 결과: { ok, order:[{id, rank, reason, fit}], summary, why? }
   async function rank(text, result, { limit = 12, onStage } = {}) {
     if (!result?.products?.length) return { ok: false, why: 'empty' };
-    const key = `${text}|${result.products.slice(0, limit).map((p) => p.id).join(',')}|${M.getState().closet.map((g) => g.id).join(',')}`;
-    if (memo.has(key)) return memo.get(key);
-    const sample = await sampler();
-    if (!sample) return { ok: false, why: 'unavailable' };
-    onStage?.('asking');
+    const query = String(text || '').trim();
+    if (!query || query.length > 300) return { ok: false, why: 'bad_request' };
+    limit = Math.max(1, Math.min(12, Number.isFinite(limit) ? Math.floor(limit) : 12));
     const data = facts(result, limit);
+    const request = { task: 'rank', query, items: data.items.map(({ id, closet }) => ({ id, closet })), closet: data.closet, conditions: (result.conditions || []).slice(0, 12).map((c) => String(c.label || '').slice(0, 80)) };
+    const key = JSON.stringify(request);
+    if (memo.has(key)) return memo.get(key);
+    const server = typeof window.EOUL_SERVER_AI === 'function' ? window.EOUL_SERVER_AI : null;
+    const sample = server ? null : await sampler();
+    if (!server && !sample) return { ok: false, why: 'unavailable' };
+    onStage?.('asking');
     try {
-      const out = await sample.json(prompt(text, result, data), { modelTier: 'quick' });
+      const out = server ? await server(request) : await sample.json(prompt(query, result, data), { modelTier: 'quick' });
       const ids = new Set(data.items.map((x) => x.id));
       const seen = new Set();
       const order = (Array.isArray(out?.ranking) ? out.ranking : [])
         .filter((r) => r && ids.has(String(r.id)) && !seen.has(String(r.id)) && seen.add(String(r.id)))
         .map((r) => ({ id: String(r.id), reason: String(r.reason || '').slice(0, 80), fit: ['추천', '괜찮아요', '겹쳐요'].includes(r.fit) ? r.fit : '' }));
+      if (!order.length) return { ok: false, why: 'parse' };
       data.items.forEach((x) => { if (!seen.has(x.id)) order.push({ id: x.id, reason: '', fit: '' }); });
       order.forEach((r, i) => { r.rank = i + 1; });
       const res = { ok: true, order, summary: String(out?.summary || '').slice(0, 120) };
@@ -78,8 +84,13 @@ JSON 하나로만 답하세요. 예: {"summary":"한 문장 총평","ranking":[{
     sampling_disabled: '이 계정에서는 AI를 쓸 수 없어서 기본 순서예요.',
     not_configured: 'AI 순위가 아직 설정되지 않아 기본 순서로 보여 드려요.',
     daily_limit: '오늘 AI 순위 사용량을 다 써서 기본 순서로 보여 드려요.',
+    monthly_limit: '이번 달 AI 사용 한도에 도달해 기본 순서로 보여 드려요.',
+    budget_unavailable: 'AI 사용량을 확인할 수 없어 기본 순서로 보여 드려요.',
+    unauthorized: 'AI 사용 권한을 확인할 수 없어 기본 순서로 보여 드려요.',
+    bad_request: 'AI 요청을 처리할 수 없어 기본 순서로 보여 드려요. 질문을 300자 안으로 줄여 보세요.',
+    timeout: 'AI 응답이 늦어 기본 순서로 보여 드려요.',
     offline: '연결이 없어 기본 순서로 보여 드려요.',
   }[why] || 'AI 순위를 받지 못해 기본 순서로 보여 드려요.');
 
-  window.AIRank = { rank, whyText, available: async () => !!(await sampler()) };
+  window.AIRank = { rank, whyText, available: async () => typeof window.EOUL_SERVER_AI === 'function' || !!(await sampler()) };
 })();

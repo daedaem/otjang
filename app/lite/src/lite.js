@@ -1,21 +1,24 @@
-// 설치형 앱 연결부: 링크 페이지의 sample 기능 자리에 우리 서버 함수(/api/rank)를 같은 모양으로 끼운다.
-// 화면(d7)과 ai-rank.js는 그대로 두고, 이 파일만 설치형 앱에서 더한다. 서비스 워커도 여기서 등록한다.
+// 설치형 앱 연결부: 후보 id·옷장 비교만 서버에 보내고, 상품 사실·AI 지시는 서버가 채운다.
+// 링크 페이지의 Claude sample 기능은 덮어쓰지 않는다. 서비스 워커도 여기서 등록한다.
 (() => {
-  const ERR = { 400: 'error', 429: 'rate_limited', 503: 'not_configured' };
-  const sample = {
-    async json(prompt) {
-      let res;
-      try {
-        res = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt }) });
-      } catch {
-        throw Object.assign(new Error('offline'), { code: 'offline' });
-      }
+  const ERR = { 400: 'bad_request', 401: 'unauthorized', 403: 'unauthorized', 413: 'bad_request', 429: 'rate_limited', 503: 'not_configured' };
+  window.EOUL_SERVER_AI = async (request) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const res = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request), signal: controller.signal });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw Object.assign(new Error(body?.message || `HTTP ${res.status}`), { code: body?.code || ERR[res.status] || 'error' });
+      if (!body || typeof body !== 'object') throw Object.assign(new Error('parse'), { code: 'parse' });
       return body;
-    },
+    } catch (error) {
+      if (controller.signal.aborted) throw Object.assign(new Error('timeout'), { code: 'timeout' });
+      if (error?.code) throw error;
+      throw Object.assign(new Error('offline'), { code: 'offline' });
+    } finally {
+      clearTimeout(timer);
+    }
   };
-  window.claude = { use: async (name) => (name === 'sample' ? sample : null) };
 
   // 사용자 등록 카탈로그(/api/catalog/*). 화면은 window.EOUL_CROWD가 있을 때만 공유 등록을 쓰고, 없으면(링크 시안) 이 기기에만 둔다.
   // 실패는 {code}로 돌려준다: not_configured(DB 미연결)·offline·invalid·daily_limit·error. 기기 id는 이 브라우저에만 있는 무작위 값.

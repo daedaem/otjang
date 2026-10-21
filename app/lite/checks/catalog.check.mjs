@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { handleCatalog, itemKey, norm, CROWD_MIN } from '../functions/api/catalog.js';
 
-// D1이 쓰는 prepare().bind().first()/all()/run()만 흉내 낸다.
+// D1의 prepare/bind와 트랜잭션 batch를 같은 SQLite에서 실행한다. 원격 DB·비용은 쓰지 않는다.
 function fakeD1() {
   const db = new DatabaseSync(':memory:');
   return {
@@ -14,16 +14,25 @@ function fakeD1() {
       const st = { bind(...a) { args = a; return st; },
         async first() { return db.prepare(sql).get(...args) ?? null; },
         async all() { return { results: db.prepare(sql).all(...args) }; },
-        async run() { db.prepare(sql).run(...args); return { success: true }; } };
+        execute() { const r = db.prepare(sql).run(...args); return { success: true, meta: { changes: Number(r.changes) } }; },
+        async run() { return st.execute(); } };
       return st;
+    },
+    async batch(statements) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const results = statements.map((statement) => statement.execute());
+        db.exec('COMMIT');
+        return results;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
     },
   };
 }
 const dev = (i) => `device-${String(i).padStart(12, '0')}`;
-const call = async (env, method, path, body, headers = {}) => {
+const call = async (env, method, path, body, headers = {}, options) => {
   const res = await handleCatalog(new Request(`https://x.test${path}`, {
     method, headers: { 'content-type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined,
-  }), env);
+  }), env, options);
   return { status: res.status, body: await res.json() };
 };
 const coat = { brand: 'COS', name: '울 블렌드 코트', kind: 'coat', color: 'black' };
@@ -89,13 +98,93 @@ test('검색어의 %·_는 글자 그대로 찾는다', async () => {
   assert.equal((await call(env, 'GET', '/api/catalog/search?q=%25')).body.items.length, 0);
 });
 
-test('한 기기의 하루 등록은 20건까지', async () => {
+test('한 기기의 최근 24시간 새 등록은 20건까지, 기존 등록 수정은 한 번으로 센다', async () => {
   const env = { CROWD_DB: fakeD1() };
   for (let i = 0; i < 20; i += 1) {
     assert.equal((await call(env, 'POST', '/api/catalog/submit', { device: dev(1), ...coat, name: `코트 ${i}` })).status, 200);
   }
   const r = await call(env, 'POST', '/api/catalog/submit', { device: dev(1), ...coat, name: '코트 마지막' });
   assert.deepEqual([r.status, r.body.code], [429, 'daily_limit']);
+  const updated = await call(env, 'POST', '/api/catalog/submit', { device: dev(1), ...coat, name: '코트 0', color: 'navy' });
+  assert.deepEqual([updated.status, updated.body.count], [200, 1]);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT color FROM crowd_items WHERE key = ?').get(itemKey(coat.brand, '코트 0', coat.kind)).color, 'navy');
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_submission_usage').get().n, 20);
+});
+
+test('같은 기기·IP에서 65번 등록하고 철회해도 사용량은 지워지지 않는다', async () => {
+  const env = { CROWD_DB: fakeD1(), CROWD_SALT: 'local-test-salt' };
+  const headers = { 'cf-connecting-ip': '203.0.113.7' };
+  const options = { now: 1_800_000_000_000 };
+  const accepted = [];
+  for (let i = 0; i < 65; i += 1) {
+    const r = await call(env, 'POST', '/api/catalog/submit', { device: dev(1), ...coat }, headers, options);
+    accepted.push(r.status);
+    if (r.status === 200) {
+      const removed = await call(env, 'POST', '/api/catalog/withdraw', { device: dev(1), key: r.body.key }, headers, options);
+      assert.equal(removed.body.count, 0);
+    } else assert.equal(r.body.code, 'daily_limit');
+  }
+  assert.equal(accepted.filter((status) => status === 200).length, 20);
+  assert.equal(accepted.filter((status) => status === 429).length, 45);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_items').get().n, 0);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_submission_usage').get().n, 20);
+  const other = await call(env, 'POST', '/api/catalog/submit', { device: dev(2), ...coat }, headers, options);
+  assert.equal(other.status, 200, '한 기기의 사용량이 다른 기기 한도를 막지 않는다');
+});
+
+test('65개 동시 등록도 기기 상한 20건을 넘지 않는다', async () => {
+  const env = { CROWD_DB: fakeD1() };
+  const options = { now: 1_800_000_000_000 };
+  const results = await Promise.all(Array.from({ length: 65 }, (_, i) => call(env, 'POST', '/api/catalog/submit', {
+    device: dev(1), ...coat, name: `동시 코트 ${i}`,
+  }, {}, options)));
+  assert.equal(results.filter((r) => r.status === 200).length, 20);
+  assert.equal(results.filter((r) => r.status === 429).length, 45);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_items').get().n, 20);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_submission_usage').get().n, 20);
+});
+
+test('여러 기기의 동시 등록·철회도 같은 IP의 최근 24시간 60건 상한을 보존한다', async () => {
+  const env = { CROWD_DB: fakeD1(), CROWD_SALT: 'local-test-salt' };
+  const headers = { 'cf-connecting-ip': '203.0.113.7' };
+  const options = { now: 1_800_000_000_000 };
+  const results = await Promise.all(Array.from({ length: 65 }, (_, i) => call(env, 'POST', '/api/catalog/submit', {
+    device: dev(i), ...coat,
+  }, headers, options)));
+  assert.equal(results.filter((r) => r.status === 200).length, 60);
+  assert.equal(results.filter((r) => r.status === 429).length, 5);
+  for (const [i, r] of results.entries()) if (r.status === 200) {
+    await call(env, 'POST', '/api/catalog/withdraw', { device: dev(i), key: r.body.key }, headers, options);
+  }
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_items').get().n, 0);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_submission_usage').get().n, 60);
+  assert.equal((await call(env, 'POST', '/api/catalog/submit', { device: dev(100), ...coat }, headers, options)).status, 429);
+  assert.equal((await call(env, 'POST', '/api/catalog/submit', { device: dev(100), ...coat }, { 'cf-connecting-ip': '203.0.113.8' }, options)).status, 200);
+});
+
+test('상한은 자정이 아닌 최근 24시간이며 기여가 남아 있어도 만료되면 새 등록을 받는다', async () => {
+  const env = { CROWD_DB: fakeD1() };
+  const now = Date.parse('2026-10-20T23:59:00Z');
+  const day = 24 * 60 * 60 * 1000;
+  for (let i = 0; i < 20; i += 1) {
+    assert.equal((await call(env, 'POST', '/api/catalog/submit', { device: dev(1), ...coat, name: `코트 ${i}` }, {}, { now })).status, 200);
+  }
+  const next = { device: dev(1), ...coat, name: '다음 코트' };
+  assert.equal((await call(env, 'POST', '/api/catalog/submit', next, {}, { now: now + 2 * 60 * 1000 })).status, 429);
+  assert.equal((await call(env, 'POST', '/api/catalog/submit', next, {}, { now: now + day - 1 })).status, 429);
+  assert.equal((await call(env, 'POST', '/api/catalog/submit', next, {}, { now: now + day })).status, 200);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_items').get().n, 21);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_submission_usage').get().n, 1);
+});
+
+test('기여 저장 실패는 같은 트랜잭션의 사용량 예약도 되돌린다', async () => {
+  const env = { CROWD_DB: fakeD1() };
+  await call(env, 'GET', '/api/catalog/search?q=cos');
+  env.CROWD_DB.raw.exec("CREATE TRIGGER fail_item BEFORE INSERT ON crowd_items BEGIN SELECT RAISE(ABORT, 'local injected failure'); END");
+  const r = await call(env, 'POST', '/api/catalog/submit', { device: dev(1), ...coat });
+  assert.equal(r.status, 502);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_items').get().n, 0);
+  assert.equal(env.CROWD_DB.raw.prepare('SELECT COUNT(*) AS n FROM crowd_submission_usage').get().n, 0);
 });
 
 test('CROWD_SALT가 있을 때만 IP 해시를 남기고, IP 원문은 저장하지 않는다', async () => {
