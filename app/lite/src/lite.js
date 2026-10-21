@@ -27,6 +27,13 @@
   };
 
   // Button-triggered official retailer search. No wardrobe/history/photos or API secret in the browser request.
+  window.EOUL_ADPICK = async (query) => {
+    const res = await fetch(`/api/adpick?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12000) });
+    const body = await res.json().catch(() => null);
+    resumeLogin(res, body);
+    if (!res.ok || !Array.isArray(body?.items)) throw new Error(body?.message || '국내 상품을 불러오지 못했어요.');
+    return body;
+  };
   window.EOUL_RAKUTEN = async (query) => {
     const res = await fetch(`/api/rakuten?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12000) });
     const body = await res.json().catch(() => null);
