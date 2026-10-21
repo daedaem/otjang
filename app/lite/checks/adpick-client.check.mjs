@@ -57,3 +57,35 @@ test('Adpick browser connector calls only the same-origin endpoint with a keywor
   await assert.rejects(context.window.EOUL_ADPICK('옥스포드 셔츠'), /본인 로그인/);
   assert.deepEqual(redirects, ['/_private/login']);
 });
+
+test('submitted search panels start automatically once and stale responses cannot update a detached result', async () => {
+  let finish;
+  const box = { isConnected: true, innerHTML: '' };
+  const panel = { dataset: { adpickQ: '합성 셔츠' }, hasAttribute: () => true };
+  const calls = [];
+  const context = vm.createContext({ esc, $: () => box, $$: () => [panel], window: { EOUL_ADPICK: async (q) => {
+    calls.push(q); return new Promise((resolve) => { finish = resolve; });
+  } } });
+  vm.runInContext(page.slice(page.indexOf('  function autoDomesticSearch('), page.indexOf('  async function recommendOpenProducts(')) + code, context);
+  context.autoDomesticSearch({}); context.autoDomesticSearch({});
+  assert.deepEqual(calls, ['합성 셔츠']);
+  const loading = box.innerHTML;
+  box.isConnected = false;
+  finish({ items: [{ name: 'old response' }], omitted: 0 });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(box.innerHTML, loading);
+});
+
+test('concurrent identical searches share only the in-flight request; completed offers are not persisted', async () => {
+  const lite = fs.readFileSync(new URL('../src/lite.js', import.meta.url), 'utf8');
+  const source = lite.slice(0, lite.indexOf('  // 사용자 등록 카탈로그')) + '\n})();';
+  let calls = 0, finish;
+  const context = vm.createContext({ window: {}, AbortController, AbortSignal, setTimeout, clearTimeout,
+    fetch: async () => { calls++; return new Promise((resolve) => { finish = () => resolve(Response.json({ items: [] })); }); },
+  });
+  vm.runInContext(source, context);
+  const one = context.window.EOUL_ADPICK('합성 셔츠'), two = context.window.EOUL_ADPICK('합성 셔츠');
+  assert.equal(calls, 1); finish(); await Promise.all([one, two]);
+  const next = context.window.EOUL_ADPICK('합성 셔츠');
+  assert.equal(calls, 2); finish(); await next;
+});

@@ -26,12 +26,27 @@
     }
   };
 
-  // Button-triggered official retailer search. No wardrobe/history/photos or API secret in the browser request.
+  // Submitted keyword search, not every keystroke. No wardrobe/history/photos or API secret.
+  // Keep only in-flight promises: no persistent retailer cache or AI forwarding.
+  const domesticFlights = new Map();
   window.EOUL_ADPICK = async (query) => {
-    const res = await fetch(`/api/adpick?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12000) });
+    const text = String(query || '').trim();
+    if (domesticFlights.has(text)) return domesticFlights.get(text);
+    const pending = (async () => {
+      const res = await fetch(`/api/adpick?q=${encodeURIComponent(text)}`, { signal: AbortSignal.timeout(12000) });
+      const body = await res.json().catch(() => null);
+      resumeLogin(res, body);
+      if (!res.ok || !Array.isArray(body?.items)) throw new Error(body?.message || '국내 상품을 찾지 못했어요.');
+      return body;
+    })();
+    domesticFlights.set(text, pending);
+    try { return await pending; } finally { domesticFlights.delete(text); }
+  };
+  window.EOUL_OPEN_PRODUCT_SEARCH = async (query) => {
+    const res = await fetch(`/api/open-products?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12000) });
     const body = await res.json().catch(() => null);
     resumeLogin(res, body);
-    if (!res.ok || !Array.isArray(body?.items)) throw new Error(body?.message || '국내 상품을 불러오지 못했어요.');
+    if (!res.ok || !Array.isArray(body?.items)) throw new Error(body?.message || '공개 상품 DB를 확인하지 못했어요.');
     return body;
   };
   window.EOUL_RAKUTEN = async (query) => {
