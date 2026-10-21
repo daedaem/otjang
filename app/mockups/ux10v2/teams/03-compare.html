@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>어울 · 비교함</title>
+<!-- 시안 03 비교함 2판. 후보를 사람이 직접 비교함에 담고(자동 담기 없음) 나란히 보고 고른다. 검토용 설명은 화면 밖(시안 표시 → 고지)에 둔다. -->
+<script src="../shared/eoul-mock.js"></script>
+<style>
+:root{
+  --ink:#111;--ink2:#2b2b2b;--sub:#5c5c5c;--mute:#737373;--line:#e8e8e5;--line2:#d0d0cb;--bg:#fff;--soft:#f5f5f3;--soft2:#eeeeea;
+  --acc:#0b6b4d;--acc-bg:#e6f3ed;--stop:#a1221b;--stop-bg:#fbedec;--go:#16613a;--go-bg:#e6f2ea;--info:#1b4b8a;--info-bg:#e9eff8;
+  --hdr:56px;--gut:16px;--max:1280px;--bar:68px;color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:72px;scroll-padding-bottom:160px}
+body{margin:0;font:15px/1.5 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;color:var(--ink);background:var(--bg);word-break:keep-all;overflow-wrap:anywhere}
+h1,h2,h3,p,ul,ol,dl,dd,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+img{max-width:100%}
+.num,.price,.cp b{font-variant-numeric:tabular-nums}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.fine{font-size:12px;color:var(--sub);line-height:1.5}
+:focus-visible{outline:3px solid var(--info);outline-offset:2px}
+.eo-cap{font-size:12px!important}
+.ic{display:block;flex:none}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border:1px solid var(--line2);border-radius:8px;background:#fff;font-size:14px;font-weight:600;text-decoration:none;line-height:1.25;text-align:center}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.block{display:flex;width:100%}
+.btn[disabled]{background:var(--soft);border-color:var(--line);color:#6a6a6a;cursor:not-allowed}
+.link{background:none;border:0;padding:0 4px;min-height:32px;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px;color:var(--ink2)}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid var(--line2);border-radius:999px;background:#fff;font-size:14px;white-space:nowrap;text-decoration:none}
+.chip.fixed{background:var(--soft);border-color:var(--soft);font-weight:600}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip .x{display:inline-flex;margin-right:-4px}
+.tag{display:inline-flex;align-items:center;font-size:12px;font-weight:700;line-height:1.4;padding:1px 6px;border-radius:4px;background:var(--soft2);color:#333;white-space:nowrap}
+.t-stop{background:var(--stop-bg);color:var(--stop)}
+.t-go{background:var(--go-bg);color:var(--go)}
+.t-info{background:var(--info-bg);color:var(--info)}
+.t-ink{background:var(--ink);color:#fff}
+
+/* 머리글 */
+.hdr{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+.hdr-in{max-width:var(--max);margin:0 auto;height:var(--hdr);display:flex;align-items:center;gap:4px;padding:0 10px}
+.hback{display:none;width:40px;height:44px;border:0;background:none;align-items:center;justify-content:center;margin-left:-4px}
+body.sub .hback{display:inline-flex}
+.logo{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;font-size:21px;font-weight:800;letter-spacing:-.04em;text-decoration:none}
+.mock{min-height:30px;padding:0 9px;border:1px solid var(--line2);border-radius:999px;background:#fff;font-size:12px;font-weight:700;color:var(--sub);white-space:nowrap}
+.hsearch{display:none}
+.hnav{margin-left:auto;display:flex;align-items:center}
+.hbtn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;height:48px;gap:1px;font-size:12px;line-height:1.1;text-decoration:none;color:var(--ink);border-radius:8px}
+.hbtn[aria-current="page"]{font-weight:800}
+.hbtn[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;background:var(--ink);border-radius:2px}
+.hbtn .cnt{position:absolute;top:2px;left:25px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ink);color:#fff;font-size:12px;font-weight:700;line-height:18px;text-align:center}
+.hbtn .cnt:empty{display:none}
+
+/* 틀 */
+main{max-width:var(--max);margin:0 auto;padding:0 var(--gut) 40px}
+body.has-tray main{padding-bottom:96px}
+body.v-pdp main{padding-bottom:calc(var(--bar) + 32px)}
+
+/* 검색 */
+form.sf{position:relative;display:flex;gap:8px}
+.sf-box{position:relative;flex:1;min-width:0}
+.sf-box .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--sub);pointer-events:none}
+.sf input{width:100%;min-height:46px;padding:0 12px 0 40px;border:1.5px solid var(--ink);border-radius:8px;background:#fff;font-size:16px}
+.sf button[type=submit]{min-height:46px;padding:0 18px;border:0;border-radius:8px;background:var(--ink);color:#fff;font-weight:700;font-size:15px}
+.sug{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:35;background:#fff;border:1px solid var(--line2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px;display:none}
+.sug.on{display:block}
+.sug button{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 10px;border:0;background:none;border-radius:6px;text-align:left;font-size:15px}
+.sug button:hover,.sug button:focus-visible{background:var(--soft)}
+.sug .k{flex:none;width:34px;font-size:12px;color:var(--sub);font-weight:700}
+.sug-foot{display:flex;justify-content:flex-end;padding:2px 4px 0}
+.msearch{padding:12px 0 4px}
+
+/* 홈 */
+.home-h{font-size:24px;line-height:1.3;letter-spacing:-.02em;margin:22px 0 14px}
+.sugs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.sec-h{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.sec-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:36px 0 14px}
+.resume{display:flex;align-items:center;gap:12px;margin-top:22px;padding:12px;border:1px solid var(--line);border-radius:10px;text-decoration:none}
+.resume .ths{display:flex;gap:4px}
+.resume .ths span{width:40px;border-radius:4px;overflow:hidden}
+.resume b{display:block;font-size:15px}
+
+/* 결과 */
+.rtitle{font-size:16px;font-weight:700;margin:10px 0 8px;letter-spacing:-.01em}
+.scope{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 calc(var(--gut) * -1);padding:0 var(--gut) 2px}
+.scope::-webkit-scrollbar{display:none}
+.rmeta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:12px 0 14px;font-size:13px;color:var(--sub)}
+.rmeta b{color:var(--ink);font-size:14px}
+.rmeta .hint{margin-left:auto}
+.notice{font-size:13px;color:var(--ink2);background:var(--soft);border-radius:8px;padding:8px 12px;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px}
+.off-h{font-size:16px;font-weight:800;margin:40px 0 12px}
+
+/* 상품 카드 */
+.card{position:relative;min-width:0;display:flex;flex-direction:column}
+.card-a{display:flex;flex-direction:column;text-decoration:none;color:inherit;min-width:0}
+.card-ph{position:relative;display:block;border-radius:4px;overflow:hidden;background:var(--soft)}
+.card.in .card-ph{box-shadow:inset 0 0 0 2px var(--ink)}
+.card.in .card-ph .eo-ph{box-shadow:inset 0 0 0 2px var(--ink)}
+.slotno{position:absolute;left:8px;top:8px;display:none;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;line-height:24px;text-align:center}
+.card.in .slotno{display:block}
+.card-b{margin-top:10px;font-size:12px;font-weight:800;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-n{margin-top:2px;font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em}
+.cp{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;margin-top:4px}
+.cp b{font-size:16px;font-weight:800}
+.cp span{font-size:12px;color:var(--mute)}
+.ctags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tg{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-top:10px;padding:0 8px;border:1px solid var(--line2);border-radius:6px;background:#fff;font-size:13px;font-weight:700}
+.tg .box{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid #555;border-radius:4px;color:transparent;background:#fff}
+.tg[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.tg[aria-pressed="true"] .box{border-color:#fff;background:#fff;color:var(--ink)}
+.tg:hover{border-color:var(--ink)}
+.more{margin:20px auto 0;display:flex}
+
+/* 비교함 바(하단) */
+.tray{position:fixed;left:0;right:0;bottom:0;z-index:25;background:rgba(255,255,255,.98);border-top:1px solid var(--line2);box-shadow:0 -6px 24px rgba(0,0,0,.08);padding:0 0 env(safe-area-inset-bottom);transform:translateY(110%);transition:transform .22s ease}
+.tray.on{transform:none}
+.tray-in{max-width:var(--max);margin:0 auto;height:72px;display:flex;align-items:center;gap:10px;padding:0 12px}
+.slots{display:flex;gap:7px;flex:none}
+.slot{position:relative;width:48px;height:60px;flex:none;border-radius:4px}
+.slot a{display:block;width:48px;height:60px;border-radius:4px;overflow:hidden;background:var(--soft)}
+.slot.empty{border:1.5px dashed var(--line2);display:flex;align-items:center;justify-content:center;color:#9a9a9a}
+.slot .x{position:absolute;top:-7px;right:-7px;width:24px;height:24px;padding:0;border-radius:12px;border:2px solid #fff;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center}
+.slot .meta{display:none}
+.tray-txt{display:none}
+.tray-go{margin-left:auto;flex:none;min-height:48px;padding:0 14px;font-size:15px}
+.tray-go .n{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#fff;color:var(--ink);font-size:12px;font-weight:800}
+.tray-msg{position:absolute;left:12px;right:12px;bottom:calc(100% + 8px);padding:10px 14px;border-radius:8px;background:var(--ink);color:#fff;font-size:14px;display:none}
+.tray-msg.on{display:block}
+
+/* 알림(누르는 곳 없음) */
+.toast{position:fixed;left:50%;top:calc(var(--hdr) + 10px);z-index:60;transform:translate(-50%,-8px);max-width:calc(100% - 32px);padding:10px 16px;border-radius:8px;background:var(--ink);color:#fff;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* 상세 */
+.pdp-top{display:block}
+.pdp-ph{margin:0 calc(var(--gut) * -1)}
+.pdp-zoom{position:relative;display:block;width:100%;padding:0;border:0;background:var(--soft);cursor:zoom-in}
+.zoom-ic{position:absolute;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 12px;border-radius:17px;background:rgba(255,255,255,.94);box-shadow:0 1px 4px rgba(0,0,0,.12);font-size:12px;font-weight:700}
+.pdp-info{padding-top:18px}
+.pdp-brand{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:800}
+.pdp-name{font-size:18px;font-weight:400;line-height:1.45;letter-spacing:-.01em;margin:4px 0 12px}
+.pdp-pr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.pdp-price{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.pdp-meta{font-size:13px;color:var(--sub)}
+.pdp-rate{margin-top:4px;font-size:13px;color:var(--sub)}
+.pdp-why{margin-top:14px;font-size:14px;color:var(--ink2);border-left:3px solid var(--ink);padding:2px 0 2px 10px}
+.pdp-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.pdp-acts .tg{margin:0;min-height:48px;font-size:14px}
+.pdp-acts .btn{min-height:48px}
+.pdp-rec{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:12px;font-size:13px}
+.pdp-size{margin-top:10px}
+.decide{position:fixed;left:0;right:0;bottom:0;z-index:26;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.98);border-top:1px solid var(--line2);box-shadow:0 -6px 24px rgba(0,0,0,.06)}
+.decide.with-cmp{grid-template-columns:62px repeat(3,minmax(0,1fr))}
+.dbtn{min-height:48px;padding:0 6px;border:1px solid var(--line2);border-radius:8px;background:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px}
+.dbtn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.dbtn .ck{display:none}
+.dbtn[aria-pressed="true"] .ck{display:block}
+.dcmp{position:relative;display:flex;align-items:center;justify-content:center;min-height:48px;border:1px solid var(--line2);border-radius:8px;text-decoration:none;background:#fff}
+.dcmp .st{position:relative;width:40px;height:40px}
+.dcmp .st span{position:absolute;top:0;width:26px;height:33px;border-radius:3px;overflow:hidden;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--line2)}
+.dcmp .st span:nth-child(1){left:0}
+.dcmp .st span:nth-child(2){left:13px;top:6px}
+.dcmp .n{position:absolute;top:-8px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;line-height:22px;text-align:center}
+.sec{margin-top:36px}
+.sec > .sec-h{margin-bottom:12px}
+.sec-sub{margin:-6px 0 12px}
+
+/* 내 옷과 비교 */
+.mine{border:1px solid var(--line);border-radius:12px;padding:16px}
+.mine.tone-stop{border-color:#e7c2bf;background:#fffafa}
+.mine.tone-go{border-color:#bfdccb;background:#f8fcf9}
+.mine-basis{font-size:12px;font-weight:700;color:var(--sub)}
+.mine-t{font-size:19px;font-weight:800;line-height:1.35;letter-spacing:-.01em;margin:4px 0 6px}
+.mine.tone-stop .mine-t{color:var(--stop)}
+.mine.tone-go .mine-t{color:var(--go)}
+.mine-l{font-size:14px;color:var(--ink2);margin-top:2px}
+.mine-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.mine-acts .btn{flex:1 1 150px}
+.flash{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-bottom:12px;padding:8px 12px;border-radius:8px;background:var(--go-bg);color:#0f3f25;font-size:13px;font-weight:600}
+.owned{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.owned figure{min-width:0}
+.owned .ph{border-radius:4px;overflow:hidden}
+.owned figcaption{margin-top:6px;font-size:12px;line-height:1.4}
+.owned figcaption b{display:block;font-size:13px}
+.ask{margin-top:14px}
+.ask p{font-size:14px;font-weight:700;margin-bottom:8px}
+.ask .row{display:flex;flex-wrap:wrap;gap:6px}
+.cautions{margin-top:10px;font-size:13px;color:var(--stop)}
+
+/* 새 상품 · 중고 */
+.nu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.nu-c{border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0;display:flex;flex-direction:column}
+.nu-lab{font-size:15px;font-weight:800;margin-bottom:10px}
+.nu-ph{border-radius:6px;overflow:hidden;background:var(--soft);aspect-ratio:1/1}
+.nu-ph .eo-ph{aspect-ratio:1/1!important}
+.nu-ph.none{display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-size:13px;color:var(--sub);border:1.5px dashed var(--line2);background:#fafaf8}
+.nu-cap{font-size:12px;color:var(--sub);margin:6px 0 8px}
+.nu dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 8px;font-size:13px;margin-bottom:12px}
+.nu dt{color:var(--sub)}
+.nu dd{font-weight:600}
+.nu dd b{font-size:16px}
+.nu .links{display:grid;gap:6px;margin-top:auto}
+.nu .links .btn{min-height:40px;font-size:13px;padding:0 8px}
+.nu details{margin-top:8px}
+.nu summary{min-height:40px;display:flex;align-items:center;font-size:13px;font-weight:700;cursor:pointer}
+.nu details .links{margin-top:4px}
+
+/* 코디 */
+.look-t{font-size:15px;font-weight:700;margin:-4px 0 12px}
+.look{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
+.look figure{min-width:0}
+.look .ph{display:block;border-radius:4px;overflow:hidden}
+.look .focus .ph{box-shadow:0 0 0 2px var(--ink)}
+.look figcaption{margin-top:6px;font-size:12px;line-height:1.4;color:var(--sub)}
+.look figcaption b{display:block;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.look a{text-decoration:none}
+
+/* 시트·사진 보기 */
+.scrim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.42)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:71;max-height:88vh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:16px 16px 0 0;padding:8px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.2)}
+.grab{width:40px;height:4px;border-radius:2px;background:#cfcfcf;margin:4px auto 12px}
+.sheet-h{display:flex;align-items:flex-start;gap:8px}
+.sheet-h h2{flex:1;font-size:19px;line-height:1.35;letter-spacing:-.01em}
+.xbtn{flex:none;width:44px;height:44px;margin:-6px -8px 0 0;border:0;background:none;display:inline-flex;align-items:center;justify-content:center;border-radius:22px}
+.sheet .step{font-size:13px;font-weight:800;color:var(--ink2);margin:16px 0 8px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid var(--line2);border-radius:8px;background:#fff;font-size:14px}
+.opt i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.25);flex:none}
+.opt[aria-pressed="true"]{border:2px solid var(--ink);padding:0 13px;font-weight:700}
+.colors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.colors .opt{padding:0 10px}
+.colors .opt[aria-pressed="true"]{padding:0 9px}
+.sheet-foot{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom));margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);display:grid;gap:8px}
+.sheet-foot .btn{min-height:50px;font-size:15px}
+.viewer{position:fixed;inset:0;z-index:72;background:#fff;display:flex;flex-direction:column}
+.vw-bar{display:flex;align-items:center;gap:8px;height:56px;padding:0 6px 0 16px;border-bottom:1px solid var(--line)}
+.vw-bar p{flex:1;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vw-ph{position:relative;flex:1;min-height:0;overflow:hidden;cursor:zoom-in;background:#fff}
+.vw-ph .eo-ph{aspect-ratio:auto!important;height:100%;background:#fff!important}
+.vw-ph img{transition:transform .2s ease}
+.vw-ph.z{cursor:zoom-out}
+.vw-ph.z img{transform:scale(2.2)}
+.vw-foot{padding:10px 16px calc(10px + env(safe-area-inset-bottom));font-size:12px;color:var(--sub);text-align:center;border-top:1px solid var(--line)}
+
+/* 비교(오버레이) */
+.cmpo{position:fixed;inset:0;z-index:45;background:#fff;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.cmpo-panel{min-height:100%;background:#fff}
+.cmpo-bar{position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:6px;height:56px;padding:0 8px 0 4px;background:#fff;border-bottom:1px solid var(--line)}
+.cmpo-bar h1{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-right:auto}
+.cmpo-bar h1 span{font-weight:600;color:var(--sub);font-size:14px;margin-left:4px}
+.ibtn{width:44px;height:44px;border:0;background:none;border-radius:22px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ibtn[disabled]{opacity:.3;cursor:default}
+.pager{display:flex;align-items:center;gap:2px}
+.pmap{display:flex;gap:3px;margin:0 4px}
+.pmap i{width:12px;height:16px;border-radius:2px;background:var(--soft2);border:1px solid var(--line2)}
+.pmap i.on{background:var(--ink);border-color:var(--ink)}
+.cmp{--n:2;--page:0;--g:12px;padding:0 var(--gut) 40px;max-width:var(--max);margin:0 auto}
+.vp{overflow:hidden}
+.tr{display:grid;grid-template-columns:repeat(var(--n),calc((100% - var(--g)) / 2));column-gap:var(--g);transform:translateX(calc(var(--page) * (-50% - var(--g) / 2)));transition:transform .28s ease}
+.crow{border-top:1px solid var(--line);padding:14px 0}
+.rl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:8px;font-size:13px;font-weight:800;color:var(--ink2)}
+.rl small{font-size:12px;font-weight:600;color:var(--sub)}
+.dmark{font-size:12px;font-weight:800;color:var(--acc);background:var(--acc-bg);border-radius:4px;padding:0 6px;line-height:1.6}
+.c{min-width:0;font-size:14px;line-height:1.45}
+.crow.same .c{color:var(--mute)}
+.chead{padding:14px 0 16px;border-top:0}
+.ch-ph{position:relative;display:block;border-radius:4px;overflow:hidden;background:var(--soft)}
+.ch-ph a{display:block}
+.ch-rm{position:absolute;top:6px;right:6px;width:40px;height:40px;border-radius:20px;border:0;background:rgba(255,255,255,.94);box-shadow:0 1px 4px rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center}
+.ch-dec{position:absolute;left:6px;bottom:6px}
+.ch-b{margin-top:10px;font-size:12px;font-weight:800;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-n{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px;font-size:14px;line-height:1.4;text-decoration:none;min-height:2.8em}
+.ch-n:hover{text-decoration:underline}
+.ch-p{margin-top:4px;font-size:16px;font-weight:800}
+.ch-p span{font-size:12px;font-weight:500;color:var(--mute);margin-left:4px}
+.mini{position:sticky;top:56px;height:0;z-index:7}
+.mini-in{position:absolute;left:calc(var(--gut) * -1);right:calc(var(--gut) * -1);top:0;padding:8px var(--gut);background:rgba(255,255,255,.98);border-bottom:1px solid var(--line2);box-shadow:0 6px 16px rgba(0,0,0,.06);opacity:0;transform:translateY(-6px);visibility:hidden;transition:opacity .18s,transform .18s,visibility .18s}
+.mini.on .mini-in{opacity:1;transform:none;visibility:visible}
+.mi{display:flex;gap:8px;align-items:center;min-width:0}
+.mi .ph{width:40px;flex:none;border-radius:3px;overflow:hidden}
+.mi p{min-width:0;font-size:12px;line-height:1.35}
+.mi p b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.mi p span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--sub)}
+.mi-l{display:none}
+.big{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.delta{display:block;font-size:13px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+.low{display:inline-block;margin-top:4px}
+.sw{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.25);vertical-align:-2px;margin-right:6px}
+.vt{display:block;font-weight:800;line-height:1.4}
+.vt.tone-stop{color:var(--stop)}
+.vt.tone-go{color:var(--go)}
+.vt.tone-info{color:var(--info)}
+.callout{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:4px 0 14px;padding:14px;border-radius:10px;background:var(--soft)}
+.callout p{flex:1 1 220px;font-size:14px}
+.callout p b{display:block;font-size:15px}
+.same-g{border-top:1px solid var(--line);padding:6px 0 4px}
+.same-tg{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;border:0;background:none;padding:0;text-align:left;font-size:13px;font-weight:800;color:var(--ink2)}
+.same-tg .chev{margin-left:auto;transition:transform .2s}
+.same-tg[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.same-sum{display:grid;gap:4px;padding:0 0 10px;font-size:13px;color:var(--mute)}
+.same-sum b{font-weight:700;color:var(--sub);margin-right:6px}
+.dec{display:grid;gap:6px}
+.dec .dbtn{min-height:44px;font-size:14px}
+.dec-rec{margin-top:6px;font-size:12px;color:var(--sub)}
+.cmp-note{margin-top:14px}
+.cmp-empty{padding:28px 0}
+.cmp-empty .slots{margin:18px 0}
+.cmp-empty .slot{width:72px;height:90px}
+.cmp-empty .slot a{width:72px;height:90px}
+
+/* 옷장·기록 */
+.page-h{font-size:24px;letter-spacing:-.02em;margin:22px 0 4px}
+.page-sub{font-size:14px;color:var(--sub)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-top:12px}
+.seg button{min-height:40px;padding:0 16px;border:0;background:#fff;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff;font-weight:700}
+.ggrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 10px;margin-top:8px}
+.gcard{min-width:0}
+.gcard .ph{border-radius:4px;overflow:hidden}
+.gcard p{font-size:13px;line-height:1.4;margin-top:6px}
+.gcard .fine{margin-top:2px}
+.gcard .link{margin-top:2px;min-height:36px}
+.grp-h{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;margin:28px 0 10px}
+.recs{margin-top:16px;border-top:1px solid var(--ink)}
+.rec{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
+.rec-ph{display:block;border-radius:4px;overflow:hidden}
+.rec-b{min-width:0}
+.rec-brand{font-size:12px;font-weight:800;color:var(--ink2)}
+.rec-name{display:block;font-size:14px;line-height:1.4;text-decoration:none;margin-top:2px}
+.rec-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px;font-size:13px}
+.rec-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rec-acts .btn,.rec-acts .tg{min-height:40px;font-size:13px;padding:0 12px;width:auto;margin:0}
+.ret{margin-top:10px}
+.ret p{font-size:13px;font-weight:700;margin-bottom:6px}
+.empty{padding:28px 0 8px}
+.empty-t{font-size:20px;font-weight:800;line-height:1.35;letter-spacing:-.01em}
+.empty-d{margin-top:8px;font-size:14px;color:var(--ink2)}
+.empty .acts{margin-top:18px}
+.sub-h{font-size:13px;font-weight:800;color:var(--ink2);margin:22px 0 8px}
+.foot{max-width:var(--max);margin:40px auto 0;padding:16px var(--gut) 28px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:12px;color:var(--sub)}
+.foot .link{font-size:12px}
+body.has-tray .foot{padding-bottom:100px}
+
+@media (max-width:899px){
+  body.cmp-open #app,body.cmp-open .hdr,body.cmp-open .tray,body.cmp-open .foot{visibility:hidden}
+  body.v-pdp .tray{display:none}
+}
+@media (min-width:900px){
+  :root{--gut:32px;--hdr:64px}
+  .hdr-in{padding:0 24px;gap:12px}
+  .logo{font-size:24px}
+  .hsearch{display:block;flex:1;max-width:560px;margin:0 16px 0 20px}
+  .msearch{display:none}
+  .hnav{gap:4px}
+  .hbtn{flex-direction:row;width:auto;height:44px;padding:0 12px;gap:6px;font-size:14px;font-weight:600}
+  .hbtn .cnt{position:static;margin-left:2px}
+  .hbtn[data-flow="nav-ask"]{display:none}
+  .hbtn[aria-current="page"]::after{left:12px;right:12px;bottom:-10px}
+  body.sub .hback{display:none}
+  .home-h{font-size:30px;margin-top:40px}
+  .rtitle{font-size:22px;margin:28px 0 12px}
+  .scope{margin:0;padding:0;flex-wrap:wrap;overflow:visible}
+  .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:40px 18px}
+  .tray-in{height:88px;padding:0 24px;gap:16px}
+  .slots{gap:14px}
+  .slot{width:auto;height:auto;display:flex;align-items:center;gap:10px;width:208px}
+  .slot a{width:56px;height:70px;flex:none}
+  .slot.empty{width:208px;height:70px;font-size:13px}
+  .slot .x{top:-6px;left:44px;right:auto}
+  .slot .meta{display:block;min-width:0;font-size:12px;line-height:1.35}
+  .slot .meta b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot .meta span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--sub)}
+  .tray-txt{display:block;font-size:13px;color:var(--sub);margin-left:auto;text-align:right}
+  .tray-go{margin-left:0;min-height:52px;padding:0 22px}
+  .pdp-top{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:56px;align-items:start;margin-top:24px}
+  .pdp-ph{margin:0;position:sticky;top:calc(var(--hdr) + 20px)}
+  .pdp-zoom{border-radius:6px;overflow:hidden}
+  .pdp-info{padding-top:4px}
+  .pdp-name{font-size:22px}
+  .pdp-price{font-size:30px}
+  .decide{position:static;padding:0;border:0;box-shadow:none;background:none;margin-top:12px}
+  .decide.with-cmp{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dcmp{display:none}
+  body.v-pdp main{padding-bottom:40px}
+  body.v-pdp.has-tray main{padding-bottom:112px}
+  .look{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+  .owned{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cmpo{background:rgba(0,0,0,.44);padding:28px 24px}
+  .cmpo-panel{max-width:1240px;margin:0 auto;min-height:0;border-radius:14px;overflow:clip;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .cmpo-bar{padding:0 12px 0 20px;height:64px;border-radius:14px 14px 0 0}
+  .cmpo-bar h1{font-size:20px}
+  .pager{display:none}
+  .cmp{padding:0 28px 32px}
+  .crow{display:grid;grid-template-columns:168px minmax(0,1fr);column-gap:28px;align-items:start}
+  .rl{margin:0;padding-top:1px;flex-direction:column;align-items:flex-start;gap:4px}
+  .tr{grid-template-columns:repeat(var(--n),minmax(0,252px));column-gap:24px;transform:none!important}
+  .mini{top:64px}
+  .mini-in{left:-28px;right:-28px;padding:10px 28px}
+  .mini-in .crow{padding:0;border:0}
+  .mi-l{display:block;font-size:13px;font-weight:800}
+  .ch-n{font-size:15px}
+  .ggrid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .rec{grid-template-columns:96px minmax(0,1fr)}
+  .sheet{left:50%;right:auto;bottom:auto;top:50%;width:520px;transform:translate(-50%,-50%);border-radius:16px;max-height:84vh}
+  .sheet-foot{bottom:-16px}
+  .grab{display:none}
+}
+@media (min-width:1180px){
+  .grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="hdr"><div class="hdr-in">
+  <button type="button" class="hback" data-act="back" aria-label="뒤로"></button>
+  <a class="logo" href="#/" aria-label="어울 처음 화면">어울</a>
+  <button type="button" class="mock" data-flow="mock-label">시안 03</button>
+  <div class="hsearch" id="hsearch"></div>
+  <nav class="hnav" aria-label="주요 화면">
+    <a class="hbtn" href="#/" data-flow="nav-ask" id="nav-ask"></a>
+    <a class="hbtn" href="#/compare" data-flow="compare-open" id="nav-cmp"></a>
+    <a class="hbtn" href="#/closet" data-flow="nav-closet" id="nav-closet"></a>
+    <a class="hbtn" href="#/records" data-flow="nav-records" id="nav-records"></a>
+  </nav>
+</div></header>
+<main id="app" tabindex="-1"></main>
+<footer class="foot" id="foot"></footer>
+<div class="tray" id="tray" role="region" aria-label="비교함"></div>
+<div id="cmp-layer"></div>
+<div id="layer"></div>
+<div class="toast" id="toast" aria-hidden="true"></div>
+<p class="sr" id="live" role="status" aria-live="polite"></p>
+<noscript><p style="padding:16px">이 시안은 자바스크립트가 필요해요.</p></noscript>
+<script>
+(function () {
+'use strict';
+const M = window.EoulMock;
+const MAX = 4;
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const app = $('#app'), layer = $('#layer'), cmpLayer = $('#cmp-layer'), trayEl = $('#tray'), toastEl = $('#toast'), live = $('#live');
+const mqPC = matchMedia('(min-width: 900px)');
+const href = (path, params) => M.route.href(path, params || {});
+const go = (path, params, opt) => M.route.go(path, params || {}, opt);
+
+// ── 아이콘(24px 안팎, 선만)
+const P = {
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+  cmp: '<rect x="3.5" y="4.5" width="7" height="15" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.5"/>',
+  closet: '<path d="M12 7.6a2.1 2.1 0 1 1 2.1-2.1"/><path d="M12 7.6v1.1L3.7 14.9a1.4 1.4 0 0 0 .8 2.6h15a1.4 1.4 0 0 0 .8-2.6L12 8.7"/>',
+  rec: '<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.8 8.5h6.4M8.8 12h6.4M8.8 15.5h4"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  zoom: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M11 8.3v5.4M8.3 11h5.4"/>',
+  check: '<path d="m5 12.5 4.3 4.2L19 7"/>',
+  x: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  ext: '<path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/>',
+  left: '<path d="M14.5 6l-6 6 6 6"/>', right: '<path d="M9.5 6l6 6-6 6"/>', down: '<path d="M6 9.5l6 6 6-6"/>',
+  plus: '<path d="M12 5.5v13M5.5 12h13"/>', chev: '<path d="M9 6l6 6-6 6"/>',
+};
+const ic = (n, s = 22, w = 1.8) => `<svg class="ic" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+// ── 화면 상태
+let cur = { key: '', view: '', path: '/', params: {} };
+let lastHash = null;
+let lastSearch = null;        // 마지막 검색 { q, drop }
+let lastResult = null;        // 이어서 묻기에 쓰는 마지막 해석
+let overlayPushed = false;    // 우리가 연 겹친 화면이면 닫을 때 뒤로가기
+let cmpPushed = false;
+let renderedVersion = -1;
+let busy = false;
+let navCount = 0;
+const memo = new Map();       // 화면별 스크롤 위치(겹친 화면은 바탕 화면 위치를 그대로 둔다)
+const ui = { page: 0, sameOpen: false, altMore: false, add: null, flash: null, retFor: null, decFlash: null };
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+function say(text) { live.textContent = ''; setTimeout(() => { live.textContent = text; }, 30); }
+let toastTimer = 0;
+function toast(text) {
+  toastEl.textContent = text; toastEl.classList.add('on'); say(text);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('on'), 3200);
+}
+function act(fn) {
+  busy = true;
+  try { return fn(); }
+  catch (e) { toast(e && e.message ? e.message : '다시 시도해 주세요.'); return null; }
+  finally { busy = false; }
+}
+
+// ── 주소 → 화면
+function parse(route) {
+  const seg = route.path.split('/');
+  const a = seg[1] || '', b = seg[2] || '';
+  const view = a === 'search' ? 'search' : a === 'p' && b ? 'pdp' : a === 'compare' ? 'compare' : a === 'closet' ? 'closet' : a === 'records' ? 'records' : 'home';
+  return { view, id: b };
+}
+function baseKeyOf(route) {
+  const p = { ...route.params }; delete p.view; delete p.add;
+  return href(route.path, p);
+}
+function onRoute(route) {
+  const { view, id } = parse(route);
+  const resubmit = location.hash === lastHash && lastHash !== null;
+  lastHash = location.hash;
+  if (navCount++ > 0) document.body.dataset.nav = '1';
+  if (view === 'compare') {
+    // 비교는 바탕 화면을 그대로 두고 위에 연다(닫으면 같은 자리로).
+    if (!cur.key) renderBase({ path: '/', params: {} }, 'home', '');
+    openCompare(route);
+    renderOverlay(route, view, id);
+    return;
+  }
+  const wasCmp = document.body.classList.contains('cmp-open');
+  if (wasCmp) closeCompareLayer();
+  const key = baseKeyOf(route);
+  if (key === cur.key && !resubmit) {
+    if (renderedVersion !== M.version()) refresh();
+    renderOverlay(route, view, id);
+    return;
+  }
+  if (cur.key && key !== cur.key) memo.set(cur.key, scrollY);
+  renderBase(route, view, id);
+  const y = resubmit ? 0 : (memo.get(key) ?? 0);
+  window.scrollTo(0, y);
+  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+  renderOverlay(route, view, id);
+  if (!resubmit) { const h = $('h1', app); if (h && navCount > 1) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } }
+}
+function renderBase(route, view, id) {
+  cur = { key: baseKeyOf(route), view, id, path: route.path, params: route.params };
+  ui.altMore = false; ui.flash = null; ui.retFor = null;
+  draw();
+}
+function draw() {
+  const { view, id, params } = cur;
+  document.body.dataset.view = view;
+  document.body.classList.toggle('v-pdp', view === 'pdp');
+  document.body.classList.toggle('sub', view !== 'home' && view !== 'search');
+  app.innerHTML = view === 'search' ? viewSearch(params) : view === 'pdp' ? viewPdp(id) : view === 'closet' ? viewCloset() : view === 'records' ? viewRecords() : viewHome();
+  renderedVersion = M.version();
+  chrome();
+}
+function refresh() {
+  const y = scrollY, fk = focusKey(document.activeElement);
+  draw();
+  window.scrollTo(0, y);
+  if (fk) restoreFocus(fk);
+}
+function focusKey(el) {
+  if (!el || el === document.body || !el.dataset) return null;
+  const d = el.dataset;
+  return [el.tagName, d.flow, d.act, d.productId, d.kind, d.color, d.slot, d.step, d.key, d.q, d.id].join('|');
+}
+function restoreFocus(k) {
+  for (const el of $$('button, a, input')) if (focusKey(el) === k && el.offsetParent !== null) { el.focus({ preventScroll: true }); break; }
+}
+
+// ── 머리글·비교함 바·바닥
+function chrome() {
+  const n = M.compareList().length, st = M.getState(), v = cur.view;
+  const navAsk = $('#nav-ask');
+  navAsk.href = lastSearch ? href('/search', lastSearch) : '#/';
+  navAsk.innerHTML = `${ic('search')}<span>검색</span>`;
+  navAsk.setAttribute('aria-label', '검색');
+  const nc = $('#nav-cmp');
+  nc.innerHTML = `${ic('cmp')}<span>비교</span><b class="cnt">${n || ''}</b>`;
+  nc.setAttribute('aria-label', `비교함 ${n}개`);
+  $('#nav-closet').innerHTML = `${ic('closet')}<span>옷장</span>`;
+  $('#nav-closet').setAttribute('aria-label', `옷장 ${st.closetCount}벌`);
+  $('#nav-records').innerHTML = `${ic('rec')}<span>기록</span>`;
+  $('#nav-records').setAttribute('aria-label', `기록 ${st.records.length}건`);
+  for (const [id, on] of [['nav-closet', v === 'closet'], ['nav-records', v === 'records'], ['nav-cmp', document.body.classList.contains('cmp-open')]]) {
+    const el = $('#' + id); if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  }
+  $('.hback').innerHTML = ic('back', 24, 2);
+  const hs = $('#hsearch');
+  const q = v === 'search' && lastSearch ? lastSearch.q : '';
+  if (!hs.contains(document.activeElement)) hs.innerHTML = searchForm('h', q);
+  renderTray();
+  $('#foot').innerHTML = (v === 'home' || v === 'closet' || v === 'records')
+    ? `<span>어울 · 시안 03</span><button type="button" class="link" data-flow="reset">처음부터 다시</button><a class="link" href="../index.html">시안 목록</a>` : '';
+}
+function renderTray() {
+  const ids = M.compareList(), n = ids.length;
+  const show = n > 0 && ['home', 'search', 'pdp'].includes(cur.view);
+  trayEl.classList.toggle('on', show);
+  document.body.classList.toggle('has-tray', show);
+  if (!show) { trayEl.innerHTML = ''; trayEl.setAttribute('aria-hidden', 'true'); return; }
+  trayEl.removeAttribute('aria-hidden');
+  const items = ids.map((id) => M.product(id, { criteria: null })).filter(Boolean);
+  const slots = items.map((p, i) => `<div class="slot"><a href="${href('/p/' + p.id)}" aria-label="${i + 1}번 ${esc(p.brand)} ${esc(p.name)}">${M.photoHtml(p, { caption: false })}</a>
+      <button type="button" class="x" data-act="tray-rm" data-id="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)} 비교함에서 빼기">${ic('x', 14, 2.4)}</button>
+      <p class="meta"><b>${esc(p.brand)}</b><span>${esc(p.priceText)}</span></p></div>`).join('')
+    + Array.from({ length: MAX - n }, () => `<div class="slot empty" aria-hidden="true">${ic('plus', 18, 1.6)}</div>`).join('');
+  const go2 = n >= 2
+    ? `<a class="btn primary tray-go" href="#/compare" data-flow="compare-open">비교하기 <span class="n">${n}</span></a>`
+    : `<button type="button" class="btn primary tray-go" disabled>1개 더 담기</button>`;
+  trayEl.innerHTML = `<div class="tray-in"><div class="slots">${slots}</div><p class="tray-txt"><b class="num">${n}</b>/${MAX} 담음<br>${n < 2 ? '2개부터 나란히 봐요' : n < MAX ? `${MAX - n}개 더 담을 수 있어요` : '가득 찼어요'}</p>${go2}</div><p class="tray-msg" id="tray-msg" role="status"></p>`;
+}
+
+// ── 공통 조각
+function searchForm(where, value) {
+  return `<form class="sf" role="search" data-where="${where}" autocomplete="off">
+    <label class="sr" for="q-${where}">찾을 옷</label>
+    <div class="sf-box">${ic('search', 20)}<input id="q-${where}" name="q" data-flow="ask-input" value="${esc(value)}" placeholder="예: 출근용 셔츠 10만원 이하" enterkeyhint="search" aria-autocomplete="list" aria-controls="sug-${where}"></div>
+    <button type="submit" data-flow="ask-submit">찾기</button>
+    <div class="sug" id="sug-${where}" role="listbox" aria-label="검색 제안"></div></form>`;
+}
+function ownTone(t) { return t === 'stop' ? 't-stop' : t === 'new' ? 't-go' : t === 'info' ? 't-info' : ''; }
+function vTone(t) { return t === 'stop' ? 'tone-stop' : t === 'go' ? 'tone-go' : t === 'info' || t === 'own' ? 'tone-info' : ''; }
+function cmpToggle(p, extra = '') {
+  const on = M.compareHas(p.id);
+  return `<button type="button" class="tg ${extra}" data-flow="compare-add" data-product-id="${p.id}" aria-pressed="${on}" aria-label="${esc(p.brand)} ${esc(p.name)} 비교 담기"><span class="box">${ic('check', 14, 3)}</span>비교 담기</button>`;
+}
+function pcard(p, { flow = true } = {}) {
+  const list = M.compareList(), i = list.indexOf(p.id);
+  const tags = [];
+  if (p.owned && p.owned.tone && p.owned.tone !== 'none') tags.push(`<span class="tag ${ownTone(p.owned.tone)}">${esc(p.owned.label)}</span>`);
+  if (p.record && p.record.decision) tags.push(`<span class="tag">${esc(p.record.decisionLabel)}</span>`);
+  return `<article class="card${i >= 0 ? ' in' : ''}" data-card="${p.id}">
+    <a class="card-a" href="${href('/p/' + p.id)}"${flow ? ` data-flow="result" data-product-id="${p.id}"` : ''}>
+      <span class="card-ph">${M.photoHtml(p)}<span class="slotno" aria-hidden="true">${i >= 0 ? i + 1 : ''}</span></span>
+      <span class="card-b">${esc(p.brand)}</span>
+      <span class="card-n">${esc(p.name)}</span>
+      <span class="cp"><b>${esc(p.priceText)}</b><span>${esc(p.priceShort)}</span></span>
+      ${tags.length ? `<span class="ctags">${tags.join('')}</span>` : ''}
+    </a>${cmpToggle(p)}</article>`;
+}
+function sellerLink(d, cls = '') {
+  return `<a class="btn ${cls}" data-flow="seller-link" href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${esc(d.store)}에서 보기 ${ic('ext', 16)}<span class="sr">(새 창)</span></a>`;
+}
+const DEC = [['hold', '보류'], ['skip', '안 살래'], ['buy', '사기로 함']];
+function decideBtns(id, rec, name) {
+  const d = rec && rec.decision;
+  return DEC.map(([k, label]) => `<button type="button" class="dbtn" data-flow="decide-${k}" data-product-id="${id}" aria-pressed="${d === k}"${name ? ` aria-label="${esc(name)} ${label}"` : ''}>${ic('check', 16, 2.6).replace('class="ic"', 'class="ic ck"')}${label}</button>`).join('');
+}
+const DONE = { buy: '사기로 했다고 기록했어요', hold: '보류로 기록했어요', skip: '안 사기로 기록했어요' };
+
+// ── 첫 화면
+function viewHome() {
+  const recent = M.searchSuggestions('', { limit: 8 });
+  const ids = M.compareList();
+  const sug = M.suggest({ limit: 8 });
+  return `<div class="msearch">${searchForm('m', '')}</div>
+    <h1 class="home-h">무엇을 비교해 볼까요?</h1>
+    <div class="sugs" aria-label="검색 제안">${recent.map((s) => `<a class="chip" href="${href('/search', { q: s.q })}" data-flow="example" data-q="${esc(s.q)}">${s.kind === 'recent' ? '<span class="fine">최근</span>' : ''}${esc(s.q)}</a>`).join('')}</div>
+    ${ids.length ? `<a class="resume" href="#/compare"><span class="ths">${ids.slice(0, 4).map((id) => `<span>${M.photoHtml(M.product(id, { criteria: null }), { caption: false })}</span>`).join('')}</span><span><b>비교함 ${ids.length}개 이어서 보기</b><span class="fine">${ids.length < 2 ? '1개 더 담으면 나란히 볼 수 있어요' : '담아 둔 후보를 나란히 봐요'}</span></span></a>` : ''}
+    <div class="sec-top"><h2 class="sec-h">${esc(sug.title)}</h2></div>
+    <div class="grid">${sug.items.map((p) => pcard(p, { flow: false })).join('')}</div>`;
+}
+
+// ── 검색 결과
+function viewSearch(params) {
+  const q = String(params.q || '').trim();
+  if (!q) return viewHome();
+  const drop = params.drop ? String(params.drop).split(',').filter(Boolean) : [];
+  const prev = !drop.length && lastResult && lastResult.understood && lastResult.text !== q ? lastResult : null;
+  const r = M.ask(q, { drop, previous: prev });
+  if (r.understood) lastResult = r;
+  lastSearch = { q, drop: drop.join(',') };
+  const chips = r.conditions.map((c) => c.removable
+    ? `<a class="chip" href="${href('/search', { q, drop: [...r.dropped, c.key].join(',') })}" data-flow="condition-remove" data-key="${c.key}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<span class="x">${ic('x', 16, 2)}</span></a>`
+    : `<span class="chip fixed">${esc(c.label)}</span>`).join('');
+  const notices = r.notices.filter((x) => !['empty', 'kind-unavailable', 'not-understood'].includes(x.kind)).map((x) => `<p class="notice">${esc(x.text)}</p>`).join('');
+  let body;
+  if (!r.products.length && !r.offOccasion.length) body = emptyHtml(r, q);
+  else {
+    body = `<div class="rmeta"><span><b class="num">${r.total}</b>개</span><span>${esc(r.listNote)}</span>${M.compareList().length ? '' : '<span class="hint">2~4개 담아 나란히 비교해요</span>'}</div>
+      ${notices}
+      <div class="grid">${r.products.map((p) => pcard(p)).join('')}</div>
+      ${r.offOccasion.length ? `<h2 class="off-h">${esc(r.offOccasionTitle)}</h2><div class="grid">${r.offOccasion.map((p) => pcard(p)).join('')}</div>` : ''}`;
+  }
+  return `<div class="msearch">${searchForm('m', q)}</div>
+    <h1 class="rtitle">${esc(r.title)}</h1>
+    ${chips ? `<div class="scope" role="group" aria-label="검색 범위">${chips}</div>` : ''}
+    ${body}`;
+}
+function emptyHtml(r, q) {
+  const msg = r.notices.find((x) => ['empty', 'kind-unavailable', 'not-understood', 'error', 'empty-input'].includes(x.kind));
+  const removable = r.conditions.filter((c) => c.removable);
+  const others = r.notices.filter((x) => x !== msg).map((x) => `<p class="notice">${esc(x.text)}</p>`).join('');
+  return `<section class="empty" aria-labelledby="empty-t">
+    <p class="empty-t" id="empty-t">${r.understood ? '맞는 상품을 찾지 못했어요' : '이 말로는 찾을 수 없어요'}</p>
+    ${msg ? `<p class="empty-d">${esc(msg.text)}</p>` : ''}${others}
+    ${removable.length ? `<p class="sub-h">조건을 직접 빼고 다시 찾기</p><div class="acts">${removable.map((c) => `<a class="btn" data-flow="empty-action" href="${href('/search', { q, drop: [...r.dropped, c.key].join(',') })}">‘${esc(c.label)}’ 빼고 찾기</a>`).join('')}</div>` : ''}
+    <p class="sub-h">이렇게 찾아 보세요</p>
+    <div class="sugs">${(r.examples || M.examples()).slice(0, 5).map((x) => `<a class="chip" href="${href('/search', { q: x })}" data-flow="example" data-q="${esc(x)}">${esc(x)}</a>`).join('')}</div>
+  </section>`;
+}
+
+// ── 상품 상세
+function viewPdp(id) {
+  const d = M.product(id);
+  if (!d) return `<section class="empty"><h1 class="empty-t">상품을 찾지 못했어요</h1><div class="acts"><a class="btn" href="#/">처음 화면으로</a></div></section>`;
+  const v = d.verdict, nu = M.newVsUsed(id), list = M.compareList();
+  const inT = list.includes(id);
+  const rec = v.record;
+  const altN = mqPC.matches ? 8 : 4;
+  const alts = d.alternatives.slice(0, ui.altMore ? 8 : altN);
+  return `<article class="pdp" data-flow="pdp" aria-labelledby="pdp-name">
+    <div class="pdp-top">
+      <div class="pdp-ph"><button type="button" class="pdp-zoom" data-flow="photo-zoom" data-act="zoom" aria-label="사진 크게 보기">${M.photoHtml(d, { eager: true })}<span class="zoom-ic">${ic('zoom', 16, 2)}크게</span></button></div>
+      <div class="pdp-info">
+        <p class="pdp-brand" data-flow="pdp-brand">${esc(d.brand)}</p>
+        <h1 class="pdp-name" id="pdp-name" data-flow="pdp-name">${esc(d.name)}</h1>
+        <div class="pdp-pr"><span class="pdp-price" data-flow="pdp-price">${esc(d.priceText)}</span><span class="pdp-meta">${esc(d.priceShort)} · ${esc(d.store)}</span></div>
+        ${d.rating ? `<p class="pdp-rate"><span aria-hidden="true">★</span> ${esc(d.rating)} · 후기 ${Number(d.reviews || 0).toLocaleString('ko-KR')}개</p>` : ''}
+        <p class="pdp-why">${esc(d.why[0] || d.reason)}</p>
+        <div class="pdp-acts">${cmpToggle(d)}${sellerLink(d)}</div>
+        <div class="decide${list.length ? ' with-cmp' : ''}" role="group" aria-label="이 상품 결정">
+          ${list.length ? dcmpHtml(list) : ''}${decideBtns(id, rec)}
+        </div>
+        <p class="pdp-rec" id="pdp-rec">${recLine(id, rec)}</p>
+        <p class="fine pdp-size">사이즈·소재·착용 사진은 ${esc(d.store)}에서 확인해요.</p>
+        <section class="sec" aria-labelledby="mine-h"><h2 class="sec-h" id="mine-h">내 옷과 비교</h2>${mineHtml(id, v)}</section>
+        <section class="sec" aria-labelledby="nu-h"><h2 class="sec-h" id="nu-h">새 상품 · 중고</h2>${nuHtml(d, nu)}</section>
+      </div>
+    </div>
+    <section class="sec" aria-labelledby="alt-h">
+      <div class="sec-top"><h2 class="sec-h" id="alt-h">같은 조건 다른 선택</h2><span class="fine">${d.alternatives.length}개</span></div>
+      ${d.alternativesNote ? `<p class="fine sec-sub">${esc(d.alternativesNote)}</p>` : ''}
+      ${alts.length ? `<div class="grid">${alts.map((p) => pcard(p, { flow: false })).join('')}</div>${d.alternatives.length > alts.length ? `<button type="button" class="btn more" data-act="alt-more">${d.alternatives.length - alts.length}개 더 보기</button>` : ''}` : '<p class="fine">같은 조건의 다른 상품이 없어요.</p>'}
+    </section>
+    ${lookHtml(d)}
+  </article>`;
+}
+function dcmpHtml(list) {
+  const ps = list.slice(-2).map((x) => M.product(x, { criteria: null })).filter(Boolean);
+  return `<a class="dcmp" href="#/compare" aria-label="비교함 ${list.length}개 보기"><span class="st">${ps.map((p) => `<span>${M.photoHtml(p, { caption: false })}</span>`).join('')}</span><b class="n">${list.length}</b></a>`;
+}
+function recLine(id, rec) {
+  const f = ui.decFlash && ui.decFlash.id === id ? ui.decFlash : null;
+  if (!rec || !rec.decision) return '';
+  return `<span class="tag t-ink">${esc(rec.decisionLabel)}</span><span>${f ? esc(DONE[f.d]) : '직접 남긴 기록'}</span>${f ? `<button type="button" class="link" data-act="undo-dec" data-id="${id}">되돌리기</button>` : ''}<a class="link" href="#/records">기록 보기</a>`;
+}
+function mineHtml(id, v) {
+  const f = ui.flash && ui.flash.ctx === id ? ui.flash : null;
+  const flash = f ? `<p class="flash" role="status">${esc(f.text)}<button type="button" class="link" data-act="undo-g" data-id="${f.gid}">되돌리기</button></p>` : '';
+  const s = v.addSuggestion;
+  let h = `<div class="mine ${vTone(v.tone)}">${flash}<p class="mine-basis">${esc(v.basisLabel)}</p>
+    <p class="mine-t"><span data-flow="verdict">${esc(v.title)}</span></p>
+    ${v.lines.slice(0, 2).map((l) => `<p class="mine-l">${esc(l)}</p>`).join('')}`;
+  if (v.cautions && v.cautions.length) h += `<ul class="cautions">${v.cautions.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>`;
+  if (v.owned && v.owned.length) h += `<div class="owned">${v.owned.slice(0, 4).map((g) => `<figure><div class="ph">${M.photoHtml(g, { caption: false })}</div><figcaption><b>${esc(g.colorLabel)} ${esc(g.slotName || g.kindName)}</b>${esc(g.relationLabel)}${g.photo && g.photo.similar ? ` · ${esc(M.note.short.similar)}` : ''}${g.trial ? ' · 체험용' : ''}</figcaption></figure>`).join('')}</div>`;
+  const nl = (v.looks || []).find((l) => l.new);
+  if (nl && v.newLookCount) h += `<p class="sub-h">새로 생기는 코디 · ${esc(nl.formula || nl.title)}</p><div class="owned">${nl.pieces.slice(0, 4).map((p) => `<figure><div class="ph">${M.photoHtml(p, { caption: false })}</div><figcaption><b>${esc(p.roleLabel)}</b>${p.focus ? '이 상품' : p.owned ? (p.trial ? '체험용 옷' : '내 옷') : esc(p.kindName)}</figcaption></figure>`).join('')}</div>`;
+  if (v.ask) h += `<div class="ask"><p>${esc(v.ask.question)}</p><div class="row">${v.ask.choices.map((c) => `<button type="button" class="chip${v.ask.value === c.id ? ' on' : ''}" data-act="own" data-id="${id}" data-v="${c.id}" aria-pressed="${v.ask.value === c.id}">${esc(c.label)}</button>`).join('')}</div></div>`;
+  if (s) h += `<div class="mine-acts"><button type="button" class="btn ${v.basis === 'none' ? 'primary' : ''}" data-flow="closet-add" data-act="add" data-id="${id}">${v.basis === 'none' ? `가진 ${esc(s.kindName)} 넣고 비교` : `가진 ${esc(s.kindName)} 더 넣기`}</button>${v.basis === 'none' ? '<button type="button" class="btn" data-flow="trial-closet">체험용 옷으로 보기</button>' : ''}</div>`;
+  return h + '</div>';
+}
+function nuHtml(d, nu) {
+  const used = nu.used, groups = used.groups || [];
+  const dom = groups[0] ? groups[0].links : [], abroad = groups[1] ? groups[1].links : [];
+  const lk = (l) => `<a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.note || l.query)}">${esc(l.label)} ${ic('ext', 14)}<span class="sr">(새 창, 외부 검색)</span></a>`;
+  return `<div class="nu">
+    <div class="nu-c"><p class="nu-lab">새 상품</p>
+      <div class="nu-ph">${M.photoHtml(d, { caption: false })}</div><p class="nu-cap">${esc(nu.fresh.photoNote)}</p>
+      <dl><dt>가격</dt><dd><b>${esc(nu.fresh.priceText)}</b><br><span class="fine">${esc(nu.fresh.priceNote)}</span></dd><dt>상태</dt><dd>${esc(nu.fresh.condition)}</dd></dl>
+      <div class="links">${sellerLink(d)}</div></div>
+    <div class="nu-c" data-flow="used-search"><p class="nu-lab">중고</p>
+      <div class="nu-ph none">${esc(used.photoNote)}</div><p class="nu-cap">${esc(M.note.short.used)}</p>
+      <dl><dt>가격</dt><dd>${esc(used.priceNote)}</dd><dt>상태</dt><dd>${esc(used.condition)}</dd></dl>
+      <div class="links">${dom.map(lk).join('')}</div>
+      ${abroad.length ? `<details><summary>해외 중고 검색</summary><div class="links">${abroad.map(lk).join('')}</div></details>` : ''}</div>
+  </div>`;
+}
+function lookHtml(d) {
+  const o = d.outfit;
+  if (!o) return d.outfitNote ? `<section class="sec"><h2 class="sec-h">이 상품으로 입는 코디</h2><p class="fine">${esc(d.outfitNote)}</p></section>` : '';
+  return `<section class="sec" aria-labelledby="look-h"><h2 class="sec-h" id="look-h">이 상품으로 입는 코디</h2><p class="look-t">${esc(o.title)}</p>
+    <div class="look">${o.pieces.map((p) => {
+      const inner = `<span class="ph">${M.photoHtml(p, { caption: false })}</span><figcaption><b>${esc(p.roleLabel)} · ${p.focus ? '이 상품' : p.owned ? (p.trial ? '체험용 옷' : '내 옷') : esc(p.kindName)}</b>${p.product && !p.focus ? `${esc(p.product.priceText)} 수집가` : p.photo && p.photo.similar ? esc(M.note.short.similar) : esc(p.colorLabel)}</figcaption>`;
+      return `<figure class="${p.focus ? 'focus' : ''}">${p.product && !p.focus ? `<a href="${href('/p/' + p.product.id)}" aria-label="${esc(p.roleLabel)} ${esc(p.label)}">${inner}</a>` : inner}</figure>`;
+    }).join('')}</div>
+    ${o.note ? `<p class="fine" style="margin-top:10px">${esc(o.note)}</p>` : ''}${d.outfitNote ? `<p class="fine">${esc(d.outfitNote)}</p>` : ''}
+  </section>`;
+}
+
+// ── 겹친 화면(사진 크게 보기·옷 넣기 시트)
+function renderOverlay(route, view, id) {
+  const p = route.params || {};
+  let html = '';
+  if (view === 'pdp' && p.view === 'photo') html = viewerHtml(id);
+  else if (p.add && (view === 'pdp' || view === 'compare' || view === 'closet')) {
+    if (!ui.add || ui.add.token !== location.hash) ui.add = initAdd(view, id, p.add);
+    html = sheetHtml();
+  }
+  if (!html) { ui.add = null; overlayPushed = false; }
+  const had = !!layer.innerHTML;
+  layer.innerHTML = html;
+  document.body.style.overflow = html || document.body.classList.contains('cmp-open') ? 'hidden' : '';
+  if (html && !had) { const f = $('[data-autofocus]', layer) || $('button, a', layer); if (f) f.focus({ preventScroll: true }); }
+}
+function closeOverlay() {
+  if (overlayPushed) { overlayPushed = false; history.back(); return; }
+  const r = M.route.current(); const p = { ...r.params }; delete p.view; delete p.add;
+  go(r.path, p, { replace: true });
+}
+function openOverlay(params) { overlayPushed = true; go(cur.view === 'compare' || document.body.classList.contains('cmp-open') ? '/compare' : cur.path, { ...baseParams(), ...params }); }
+function baseParams() { const p = { ...(M.route.current().params || {}) }; delete p.view; delete p.add; return p; }
+function viewerHtml(id) {
+  const d = M.product(id, { criteria: null });
+  if (!d) return '';
+  return `<div class="viewer" data-flow="photo-viewer" role="dialog" aria-modal="true" aria-label="사진 크게 보기">
+    <div class="vw-bar"><p>${esc(d.brand)} · ${esc(d.name)}</p><button type="button" class="ibtn" data-act="close" aria-label="닫기" data-autofocus>${ic('x', 24, 2)}</button></div>
+    <div class="vw-ph" data-act="zoom-toggle">${M.photoHtml(d, { fit: 'contain', eager: true })}</div>
+    <p class="vw-foot">사진을 누르면 크게, 다시 누르면 원래대로 · 판매처 대표 사진</p></div>`;
+}
+function initAdd(view, id, add) {
+  const token = location.hash;
+  if (view === 'closet') return { token, ctx: 'closet', kind: null, color: null, slot: null, slots: false };
+  const pid = view === 'compare' ? add : id;
+  const v = M.judge(pid);
+  const s = v && v.addSuggestion;
+  return { token, ctx: view, pid, kind: s ? s.kind : null, kindName: s ? s.kindName : '옷', slot: s ? s.slot : null, slotName: s ? s.slotName : '', color: null, slots: false };
+}
+function sheetHtml() {
+  const a = ui.add; if (!a) return '';
+  const back = a.ctx === 'pdp' ? '넣고 이 상품으로 돌아가기' : a.ctx === 'compare' ? '넣고 비교로 돌아가기' : '옷장에 넣기';
+  const kinds = a.ctx === 'closet' ? `<p class="step">종류</p><div class="opts">${M.kindChoices().map((k) => `<button type="button" class="opt" data-flow="kind-option" data-kind="${k.id}" aria-pressed="${a.kind === k.id}">${esc(k.name)}</button>`).join('')}</div>` : '';
+  const slots = a.kind ? M.slotChoices(a.kind) : [];
+  const slotUI = a.ctx === 'closet'
+    ? (a.kind && slots.length ? `<p class="step">세부 종류 <span class="fine">몰라도 돼요</span></p><div class="opts">${slots.map((s) => `<button type="button" class="opt" data-flow="slot-option" data-slot="${s.id}" aria-pressed="${a.slot === s.id}">${esc(s.name)}</button>`).join('')}</div>` : '')
+    : `<p class="fine" style="margin-top:6px">종류는 이 상품과 같은 ‘${esc((slots.find((s) => s.id === a.slot) || {}).name || a.slotName)}’로 넣어요. <button type="button" class="link" data-act="slots">${a.slots ? '접기' : '바꾸기'}</button></p>
+       ${a.slots ? `<div class="opts" style="margin-top:8px">${slots.map((s) => `<button type="button" class="opt" data-flow="slot-option" data-slot="${s.id}" aria-pressed="${a.slot === s.id}">${esc(s.name)}</button>`).join('')}</div>` : ''}`;
+  const ready = a.kind && a.color;
+  const title = a.ctx === 'closet' ? '가진 옷 한 벌 넣기' : `가진 ${esc(a.kindName)} 색을 골라 주세요`;
+  return `<div class="scrim" data-act="close"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-h">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-h"><h2 id="sheet-h">${title}</h2><button type="button" class="xbtn" data-act="close" aria-label="닫기">${ic('x', 22, 2)}</button></div>
+    ${slotUI}${kinds}
+    ${a.kind ? `<p class="step">색</p><div class="colors">${M.colorChoices().map((c) => `<button type="button" class="opt" data-flow="color-option" data-color="${c.id}" aria-pressed="${a.color === c.id}"${a.ctx !== 'closet' && c.id === 'white' ? ' data-autofocus' : ''}><i style="background:${esc(c.hex)}"></i>${esc(c.label)}</button>`).join('')}</div>` : ''}
+    <div class="sheet-foot">
+      <button type="button" class="btn primary block" data-flow="closet-save"${ready ? '' : ' disabled'}>${ready ? back : a.kind ? '색을 골라 주세요' : '종류를 골라 주세요'}</button>
+      ${a.ctx !== 'closet' ? '<button type="button" class="btn block" data-flow="trial-closet">체험용 옷으로 해 보기</button>' : ''}
+    </div>
+  </div>`;
+}
+
+// ── 비교(바탕 화면 위에 여는 겹친 화면)
+function openCompare(route) {
+  cmpPushed = true;
+  document.body.classList.add('cmp-open');
+  if (ui.page == null) ui.page = 0;
+  drawCompare();
+  chrome();
+}
+function closeCompareLayer() {
+  document.body.classList.remove('cmp-open');
+  if (cmpObs) { cmpObs.disconnect(); cmpObs = null; }
+  cmpLayer.innerHTML = '';
+  document.body.style.overflow = '';
+}
+let cmpObs = null;
+function drawCompare() {
+  const box = $('.cmpo', cmpLayer);
+  const keepY = box ? box.scrollTop : 0;
+  const ids = M.compareList();
+  const n = ids.length;
+  const pages = Math.max(1, n - 1);
+  ui.page = Math.min(Math.max(0, ui.page || 0), Math.max(0, n - 2));
+  const pager = n > 2 ? `<div class="pager" role="group" aria-label="비교 열 넘기기">
+      <button type="button" class="ibtn" data-act="pg" data-d="-1" aria-label="앞 후보 보기"${ui.page <= 0 ? ' disabled' : ''}>${ic('left', 22, 2)}</button>
+      <span class="pmap" aria-hidden="true">${ids.map((_, i) => `<i class="${i >= ui.page && i <= ui.page + 1 ? 'on' : ''}"></i>`).join('')}</span>
+      <span class="sr" id="pg-now">${ui.page + 1}~${ui.page + 2}번째 후보 보는 중, 전체 ${n}개</span>
+      <button type="button" class="ibtn" data-act="pg" data-d="1" aria-label="다음 후보 보기"${ui.page >= pages - 1 ? ' disabled' : ''}>${ic('right', 22, 2)}</button></div>` : '';
+  const html = `<div class="cmpo" role="dialog" aria-modal="true" aria-labelledby="cmp-h"><div class="cmpo-panel">
+    <div class="cmpo-bar"><button type="button" class="ibtn" data-act="close-cmp" aria-label="비교 닫기">${ic(mqPC.matches ? 'x' : 'back', 24, 2)}</button>
+      <h1 id="cmp-h">비교함<span class="num">${n}/${MAX}</span></h1>${pager}</div>
+    ${n < 2 ? cmpEmpty(ids) : cmpTable(ids)}
+  </div></div>`;
+  cmpLayer.innerHTML = html;
+  const nb = $('.cmpo', cmpLayer);
+  if (nb) nb.scrollTop = keepY;
+  wireCompare();
+}
+function cmpEmpty(ids) {
+  const p = ids[0] ? M.product(ids[0]) : null;
+  const alts = p ? p.alternatives.slice(0, 4) : [];
+  return `<section class="cmp" data-flow="compare-view"><div class="cmp-empty">
+    <p class="empty-t">${ids.length ? '1개 더 담으면 나란히 볼 수 있어요' : '비교함이 비어 있어요'}</p>
+    <p class="empty-d">검색 결과나 상품 상세에서 ‘비교 담기’를 눌러 2~4개를 담아요.</p>
+    <div class="slots">${ids.map((id) => { const x = M.product(id, { criteria: null }); return `<div class="slot" data-flow="compare-item" data-product-id="${id}"><a href="${href('/p/' + id)}" aria-label="${esc(x.brand)} ${esc(x.name)}">${M.photoHtml(x, { caption: false })}</a><button type="button" class="x" data-act="cmp-rm" data-id="${id}" aria-label="${esc(x.brand)} ${esc(x.name)} 비교함에서 빼기">${ic('x', 14, 2.4)}</button></div>`; }).join('')}${Array.from({ length: MAX - ids.length }, () => `<div class="slot empty" aria-hidden="true">${ic('plus', 20, 1.6)}</div>`).join('')}</div>
+    ${alts.length ? `<p class="sub-h">같은 조건 다른 선택에서 담기</p><div class="grid">${alts.map((a) => pcard(a, { flow: false })).join('')}</div>` : `<div class="acts"><a class="btn primary" href="${lastSearch ? href('/search', lastSearch) : '#/'}">${lastSearch ? '검색 결과로' : '찾으러 가기'}</a></div>`}
+  </div></section>`;
+}
+const ROW_ORDER = ['verdict', 'owned', 'price', 'color', 'kind', 'looks', 'reason', 'popularity', 'store'];
+function cmpTable(ids) {
+  const c = M.compareRows(ids);
+  const items = c.items, n = items.length;
+  const J = items.map((p) => M.judge(p.id));
+  const low = Math.min(...items.map((p) => p.price));
+  const rows = ROW_ORDER.map((k) => c.rows.find((r) => r.key === k)).filter(Boolean);
+  const diff = rows.filter((r) => !r.same), same = rows.filter((r) => r.same);
+  const cell = (r, i) => {
+    const p = items[i], v = J[i], val = r.values[i];
+    if (r.key === 'price') return `<span class="big">${esc(p.priceText)}</span>${p.price > low ? `<span class="delta">+${esc(M.formatPrice(p.price - low))}</span>` : r.same ? '' : '<span class="tag t-go low">담은 것 중 가장 낮음</span>'}<span class="fine" style="display:block">${esc(p.priceShort)}</span>`;
+    if (r.key === 'verdict') return `<span class="vt ${vTone(v.tone)}">${esc(val)}</span>`;
+    if (r.key === 'owned') return p.owned && p.owned.tone !== 'none' ? `<span class="tag ${ownTone(p.owned.tone)}">${esc(val)}</span>${p.owned.text ? `<span class="fine" style="display:block;margin-top:4px">${esc(p.owned.text)}</span>` : ''}` : esc(val);
+    if (r.key === 'color') return `<span class="sw" style="background:${esc(p.colorHex || '#ccc')}" aria-hidden="true"></span>${esc(val)}`;
+    if (r.key === 'popularity') return val === '정보 없음' ? esc(val) : `<span aria-hidden="true">★ </span>${esc(val)}`;
+    return esc(val);
+  };
+  const label = (r) => r.key === 'verdict' ? `${esc(r.label)}<small>${esc(J[0].basisLabel)}</small>` : esc(r.label);
+  const rowHtml = (r) => `<div class="crow${r.same ? ' same' : ' diff'}" data-row="${r.key}"><div class="rl">${label(r)}${r.same ? '' : '<span class="dmark">다름</span>'}</div><div class="vp"><div class="tr">${items.map((_, i) => `<div class="c" data-col="${i}">${cell(r, i)}</div>`).join('')}</div></div></div>`;
+  const none = J.find((v) => v.basis === 'none');
+  const noneId = none ? items[J.indexOf(none)].id : null;
+  const head = `<div class="crow chead"><div class="rl mi-l" aria-hidden="true"></div><div class="vp"><div class="tr">${items.map((p, i) => {
+    const rec = J[i].record;
+    return `<div class="c" data-col="${i}" data-flow="compare-item" data-product-id="${p.id}">
+      <div class="ch-ph"><a href="${href('/p/' + p.id)}" tabindex="-1" aria-hidden="true">${M.photoHtml(p, { eager: true })}</a>
+        <button type="button" class="ch-rm" data-act="cmp-rm" data-id="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)} 비교함에서 빼기">${ic('x', 20, 2)}</button>
+        ${rec && rec.decision ? `<span class="tag t-ink ch-dec">${esc(rec.decisionLabel)}</span>` : ''}</div>
+      <p class="ch-b">${esc(p.brand)}</p><a class="ch-n" href="${href('/p/' + p.id)}">${esc(p.name)}</a>
+      <p class="ch-p">${esc(p.priceText)}<span>${esc(p.priceShort)}</span></p></div>`;
+  }).join('')}</div></div></div>`;
+  const mini = `<div class="mini" aria-hidden="true"><div class="mini-in"><div class="crow"><div class="rl mi-l">${n}개 비교 중</div><div class="vp"><div class="tr">${items.map((p, i) => `<div class="c mi" data-col="${i}"><span class="ph">${M.photoHtml(p, { caption: false, alt: '' })}</span><p><b>${esc(p.priceText)}</b><span>${esc(p.brand)}</span></p></div>`).join('')}</div></div></div></div></div>`;
+  const callout = none ? `<div class="callout"><p><b>내 옷과 겹치는지 아직 몰라요</b>가진 ${esc(none.addSuggestion ? none.addSuggestion.kindName : '옷')} 한 벌만 넣으면 후보마다 다시 비교해요.</p><button type="button" class="btn primary" data-flow="closet-add" data-act="add" data-id="${noneId}">가진 ${esc(none.addSuggestion ? none.addSuggestion.kindName : '옷')} 넣기</button></div>` : '';
+  const sameBlock = same.length ? `<div class="same-g">
+      <button type="button" class="same-tg" data-act="same" aria-expanded="${ui.sameOpen}" aria-controls="same-rows">같은 값 ${same.length}줄 <span class="fine">${ui.sameOpen ? '흐리게 펼쳐 둠' : '모든 후보가 같아요'}</span><span class="chev">${ic('down', 20, 2)}</span></button>
+      <div id="same-rows">${ui.sameOpen ? same.map(rowHtml).join('') : `<ul class="same-sum">${same.map((r) => `<li><b>${esc(r.label)}</b>${esc(r.values[0])}</li>`).join('')}</ul>`}</div></div>` : '';
+  const decRow = `<div class="crow" data-row="decide"><div class="rl">결정</div><div class="vp"><div class="tr">${items.map((p, i) => {
+    const rec = J[i].record, f = ui.decFlash && ui.decFlash.id === p.id ? ui.decFlash : null;
+    return `<div class="c" data-col="${i}"><div class="dec" role="group" aria-label="${esc(p.brand)} ${esc(p.name)} 결정">${decideBtns(p.id, rec, `${p.brand} ${p.name}`)}</div>${f ? `<p class="dec-rec">${esc(DONE[f.d])} · <button type="button" class="link" data-act="undo-dec" data-id="${p.id}">되돌리기</button></p>` : rec && rec.decision ? `<p class="dec-rec">기록: ${esc(rec.stageLabel)}</p>` : ''}</div>`;
+  }).join('')}</div></div></div>`;
+  const sellRow = `<div class="crow" data-row="seller"><div class="rl">판매처</div><div class="vp"><div class="tr">${items.map((p, i) => `<div class="c" data-col="${i}">${sellerLink(p, 'block')}</div>`).join('')}</div></div></div>`;
+  return `<section class="cmp" data-flow="compare-view" style="--n:${n};--page:${ui.page}" aria-label="후보 ${n}개 나란히 비교">
+    ${head}${mini}${callout}${diff.map(rowHtml).join('')}${sameBlock}${decRow}${sellRow}
+    <p class="fine cmp-note">${esc(c.note)}</p></section>`;
+}
+function wireCompare() {
+  const box = $('.cmpo', cmpLayer), cmp = $('.cmp', cmpLayer);
+  if (!box || !cmp) return;
+  const head = $('.chead', cmp), mini = $('.mini', cmp);
+  if (cmpObs) cmpObs.disconnect();
+  if (head && mini && 'IntersectionObserver' in window) {
+    const top = mqPC.matches ? 64 : 56;
+    cmpObs = new IntersectionObserver(([e]) => { mini.classList.toggle('on', !e.isIntersecting && e.boundingClientRect.top < top + 10); }, { root: box, rootMargin: `-${top + 60}px 0px 0px 0px`, threshold: 0 });
+    cmpObs.observe(head);
+  }
+  let sx = 0, sy = 0, t0 = 0;
+  cmp.addEventListener('touchstart', (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now(); }, { passive: true });
+  cmp.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - t0 < 800) setPage(ui.page + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+  cmp.addEventListener('focusin', (e) => {
+    if (mqPC.matches) return;
+    const c = e.target.closest('[data-col]'); if (!c) return;
+    const i = Number(c.dataset.col);
+    if (i < ui.page) setPage(i); else if (i > ui.page + 1) setPage(i - 1);
+  });
+}
+function setPage(p) {
+  const n = M.compareList().length;
+  const np = Math.min(Math.max(0, p), Math.max(0, n - 2));
+  if (np === ui.page) return;
+  ui.page = np;
+  const cmp = $('.cmp', cmpLayer); if (cmp) cmp.style.setProperty('--page', np);
+  $$('.pmap i', cmpLayer).forEach((el, i) => el.classList.toggle('on', i >= np && i <= np + 1));
+  const [pv, nx] = $$('.pager .ibtn', cmpLayer);
+  if (pv) pv.disabled = np <= 0; if (nx) nx.disabled = np >= n - 2;
+  const s = $('#pg-now', cmpLayer); if (s) s.textContent = `${np + 1}~${np + 2}번째 후보 보는 중, 전체 ${n}개`;
+  say(`${np + 1}~${np + 2}번째 후보를 보고 있어요`);
+}
+function closeCompare() {
+  if (cmpPushed && document.body.dataset.nav) { history.back(); return; }
+  go(cur.key ? cur.path : '/', cur.key ? cur.params : {}, { replace: true });
+}
+
+// ── 옷장
+function viewCloset() {
+  const s = M.getState();
+  const groups = [['내 옷', s.closet.filter((g) => !g.trial && !g.bought)], ['기록에서 산 옷', s.closet.filter((g) => g.bought)], ['체험용', s.closet.filter((g) => g.trial)]];
+  const f = ui.flash && ui.flash.ctx === 'closet' ? ui.flash : null;
+  return `<h1 class="page-h">옷장</h1>
+    <p class="page-sub">내 옷 <b class="num">${s.mineCount}</b>벌${s.trialCount ? ` · 체험용 <b class="num">${s.trialCount}</b>벌(내 옷으로 세지 않아요)` : ''}</p>
+    <div class="seg" role="group" aria-label="상품 성별">${[['M', '남성'], ['F', '여성']].map(([g, l]) => `<button type="button" data-act="gender" data-v="${g}" aria-pressed="${s.gender === g}">${l}</button>`).join('')}</div>
+    <div class="acts"><button type="button" class="btn primary" data-flow="closet-add" data-act="add-closet">${ic('plus', 18, 2)}옷 넣기</button><button type="button" class="btn" data-flow="trial-closet">${s.trialCount ? '체험용 옷 다시 넣기' : '체험용 옷 넣어 보기'}</button>${s.trialCount ? '<button type="button" class="btn" data-act="clear-trial">체험용 옷 빼기</button>' : ''}</div>
+    ${f ? `<p class="flash" role="status">${esc(f.text)}<button type="button" class="link" data-act="undo-g" data-id="${f.gid}">되돌리기</button></p>` : ''}
+    ${s.closetCount ? groups.filter((g) => g[1].length).map(([t, gs]) => `<h2 class="grp-h">${esc(t)} <span class="fine">${gs.length}벌</span></h2><div class="ggrid">${gs.map((g) => `<div class="gcard"><div class="ph">${M.photoHtml(g, { caption: false })}</div><p>${esc(g.label)}</p><p class="fine">${esc(g.colorLabel)}${g.photo && g.photo.similar ? ` · ${esc(M.note.short.similar)}` : ''}</p>${g.bought ? '' : `<button type="button" class="link" data-act="g-rm" data-id="${g.id}" aria-label="${esc(g.label)} 빼기">빼기</button>`}</div>`).join('')}</div>`).join('')
+      : `<section class="empty"><p class="empty-t">아직 넣은 옷이 없어요</p><p class="empty-d">옷장 없이도 찾고 비교할 수 있어요. 한 벌만 넣으면 비교표의 ‘내 옷과’ 줄이 채워져요.</p></section>`}`;
+}
+
+// ── 기록
+function viewRecords() {
+  const s = M.getState();
+  if (!s.records.length) return `<h1 class="page-h">기록</h1><section class="empty"><p class="empty-t">아직 남긴 결정이 없어요</p><p class="empty-d">상세나 비교에서 보류·안 살래·사기로 함을 누르면 여기에 남아요.</p><div class="acts"><a class="btn primary" href="${lastSearch ? href('/search', lastSearch) : '#/'}">찾으러 가기</a></div></section>`;
+  return `<h1 class="page-h">기록 <span class="num">${s.records.length}</span>건</h1><p class="page-sub">${esc(M.note.short.records)}이에요.</p>
+    <ol class="recs">${s.records.map((r) => {
+      const p = r.product || {};
+      const tone = r.stage === 'returned' ? 't-stop' : r.stage === 'kept' ? 't-go' : r.decision === 'hold' ? 't-info' : '';
+      const steps = (r.next || []).map((x, i) => `<button type="button" class="btn${i === 0 ? ' primary' : ''}" data-flow="record-step" data-step="${x.step}" data-product-id="${r.productId}">${esc(x.label)}</button>`).join('');
+      const ret = ui.retFor === r.productId ? `<div class="ret" role="group" aria-label="반품 사유"><p>반품 사유를 골라 주세요</p><div class="sugs" style="margin:0">${M.returnReasons.map((x) => `<button type="button" class="chip" data-act="ret" data-id="${r.productId}" data-v="${x.id}">${esc(x.label)}</button>`).join('')}<button type="button" class="chip" data-act="ret-cancel">취소</button></div></div>` : '';
+      return `<li class="rec" data-flow="record" data-product-id="${r.productId}">
+        <a class="rec-ph" href="${href('/p/' + r.productId)}" tabindex="-1" aria-hidden="true">${M.photoHtml(p, { caption: false })}</a>
+        <div class="rec-b"><p class="rec-brand">${esc(p.brand)}</p><a class="rec-name" href="${href('/p/' + r.productId)}">${esc(p.name)}</a>
+          <p class="rec-meta"><span class="tag ${tone}">${esc(r.stageLabel)}</span><span class="fine">${esc(p.priceText)} 수집가${r.wearCount ? ` · 입은 횟수 ${r.wearCount}` : ''}${r.returnReasonLabel ? ` · 반품 사유 ${esc(r.returnReasonLabel)}` : ''}</span></p>
+          <div class="rec-acts">${steps}${p.id ? cmpToggle(p) : ''}${r.stage === 'candidate' ? `<button type="button" class="btn" data-act="rec-rm" data-id="${r.productId}">기록 지우기</button>` : ''}</div>${ret}</div></li>`;
+    }).join('')}</ol>`;
+}
+
+// ── 비교함 담기·결정·옷 넣기
+function syncCompare(changedId) {
+  const list = M.compareList();
+  $$('[data-flow="compare-add"]').forEach((b) => b.setAttribute('aria-pressed', String(list.includes(b.dataset.productId))));
+  $$('[data-card]').forEach((c) => { const i = list.indexOf(c.dataset.card); c.classList.toggle('in', i >= 0); const s = $('.slotno', c); if (s) s.textContent = i >= 0 ? i + 1 : ''; });
+  const dec = $('.decide', app);
+  if (dec) {
+    const old = $('.dcmp', dec); if (old) old.remove();
+    dec.classList.toggle('with-cmp', list.length > 0);
+    if (list.length) dec.insertAdjacentHTML('afterbegin', dcmpHtml(list));
+  }
+  const hint = $('.rmeta .hint', app); if (hint && list.length) hint.remove();
+  renderedVersion = M.version();
+  chrome();
+  if (document.body.classList.contains('cmp-open')) drawCompare();
+}
+function toggleCompare(id) {
+  const had = M.compareHas(id);
+  if (!had && M.compareList().length >= MAX) {
+    const m = $('#tray-msg');
+    const text = `비교함은 ${MAX}개까지예요. 아래에서 하나를 빼면 담을 수 있어요.`;
+    if (m && trayEl.classList.contains('on')) { m.textContent = text; m.classList.add('on'); setTimeout(() => m.classList.remove('on'), 3200); say(text); }
+    else toast(`비교함은 ${MAX}개까지예요. 비교함에서 하나를 빼 주세요.`);
+    return;
+  }
+  act(() => { if (had) M.compareRemove(id); else M.compareAdd(id); });
+  const n = M.compareList().length;
+  say(had ? `비교함에서 뺐어요. ${n}개 남았어요.` : `비교함에 담았어요. ${n}/${MAX}`);
+  syncCompare(id);
+}
+function decide(id, d) {
+  const before = M.judge(id);
+  const prev = before && before.record ? before.record.decision : null;
+  const r = act(() => M.decide(id, d));
+  if (!r) return;
+  ui.decFlash = { id, d, prev };
+  say(DONE[d]);
+  if (document.body.classList.contains('cmp-open')) { drawCompare(); renderedVersion = -1; return; }
+  // 상세: 버튼 상태와 기록 줄만 바꾼다(사진을 다시 그리지 않는다).
+  $$(`[data-product-id="${id}"][data-flow^="decide-"]`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.flow === 'decide-' + d)));
+  const line = $('#pdp-rec'); if (line) line.innerHTML = recLine(id, M.judge(id).record);
+  renderedVersion = M.version();
+  chrome();
+}
+function undoDecision(id) {
+  const f = ui.decFlash; if (!f || f.id !== id) return;
+  act(() => { if (f.prev) M.decide(id, f.prev); else M.removeRecord(id); });
+  ui.decFlash = null;
+  say('결정을 되돌렸어요');
+  if (document.body.classList.contains('cmp-open')) { drawCompare(); renderedVersion = -1; } else refresh();
+}
+function saveGarment() {
+  const a = ui.add; if (!a || !a.kind || !a.color) return;
+  const g = act(() => M.addGarment({ kind: a.kind, color: a.color, slot: a.slot || null }));
+  if (!g) return;
+  ui.flash = { ctx: a.ctx === 'pdp' ? a.pid : a.ctx, gid: g.id, text: `${g.colorLabel} ${g.slotName || g.kindName}${a.ctx === 'closet' ? '을(를) 넣었어요.' : '을(를) 넣고 다시 비교했어요.'}` };
+  say(ui.flash.text);
+  if (a.ctx === 'compare') ui.sameOpen = false;
+  // 바탕 화면을 새 판정으로 다시 그린 뒤 시트를 닫는다(같은 상품·같은 비교로 돌아감).
+  refresh();
+  if (document.body.classList.contains('cmp-open')) drawCompare();
+  closeOverlay();
+}
+function loadTrial() {
+  act(() => M.loadTrialCloset());
+  const t = `체험용 옷 ${M.getState().trialCount}벌을 넣었어요(내 옷으로 세지 않아요).`;
+  say(t);
+  if (layer.innerHTML) { refresh(); if (document.body.classList.contains('cmp-open')) drawCompare(); closeOverlay(); }
+  else if (document.body.classList.contains('cmp-open')) { drawCompare(); renderedVersion = -1; }
+  else refresh();
+  toast(t);
+}
+
+// ── 검색 제안(입력 중)
+function showSug(form) {
+  const input = $('input', form), box = $('.sug', form);
+  const rows = M.searchSuggestions(input.value, { limit: 6 });
+  const hasRecent = rows.some((r) => r.kind === 'recent');
+  if (!rows.length) { box.classList.remove('on'); input.setAttribute('aria-expanded', 'false'); return; }
+  box.innerHTML = rows.map((r) => `<button type="button" role="option" data-act="sug" data-q="${esc(r.q)}"><span class="k">${esc(r.label)}</span>${esc(r.q)}</button>`).join('') + (hasRecent ? '<div class="sug-foot"><button type="button" class="link" data-act="clear-recent">최근 검색 지우기</button></div>' : '');
+  box.classList.add('on'); input.setAttribute('aria-expanded', 'true');
+}
+function hideSug() { $$('.sug.on').forEach((b) => { b.classList.remove('on'); const i = $('input', b.parentElement); if (i) i.setAttribute('aria-expanded', 'false'); }); }
+document.addEventListener('focusin', (e) => { if (e.target.matches('.sf input')) showSug(e.target.closest('form')); });
+document.addEventListener('input', (e) => { if (e.target.matches('.sf input')) showSug(e.target.closest('form')); });
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('form.sf'); if (!f) return;
+  e.preventDefault(); hideSug();
+  const q = String($('input', f).value || '').trim();
+  $('input', f).blur();
+  go('/search', q ? { q } : {});
+});
+
+// ── 누르기
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('form.sf')) hideSug();
+  const t = e.target.closest('button, a, [data-act]');
+  if (!t || t.disabled) return;
+  const f = t.dataset.flow, a = t.dataset.act, d = t.dataset;
+  if (f === 'mock-label') { M.openDisclosure(); return; }
+  if (f === 'nav-ask' && (cur.view === 'search' || cur.view === 'home') && !document.body.classList.contains('cmp-open')) {
+    e.preventDefault(); window.scrollTo(0, 0); const i = $('.msearch input') || $('#hsearch input'); if (i && i.offsetParent) i.focus(); return;
+  }
+  if (t.tagName === 'A' && !a) {
+    if (t.closest('.cmpo') && t.getAttribute('href') && t.getAttribute('href').startsWith('#/p/')) { ui.page = 0; }
+    return; // 주소 이동은 브라우저에 맡긴다(뒤로가기·새 창).
+  }
+  if (f === 'compare-add') return toggleCompare(d.productId);
+  if (f && f.startsWith('decide-')) return decide(d.productId, f.slice(7));
+  if (f === 'closet-add') { if (a === 'add-closet') return openOverlay({ add: '1' }); return openOverlay({ add: document.body.classList.contains('cmp-open') ? d.id : '1' }); }
+  if (f === 'kind-option' && ui.add) { ui.add.kind = d.kind; ui.add.slot = null; ui.add.kindName = (M.kindChoices().find((k) => k.id === d.kind) || {}).name || '옷'; return redrawSheet(); }
+  if (f === 'color-option' && ui.add) { ui.add.color = d.color; return redrawSheet(d.color); }
+  if (f === 'slot-option' && ui.add) { ui.add.slot = ui.add.slot === d.slot && ui.add.ctx === 'closet' ? null : d.slot; return redrawSheet(); }
+  if (f === 'closet-save') return saveGarment();
+  if (f === 'trial-closet') return loadTrial();
+  if (f === 'record-step') {
+    if (d.step === 'returned') { ui.retFor = d.productId; return refresh(); }
+    const r = act(() => M.advance(d.productId, d.step)); if (r) say(`기록했어요: ${r.stageLabel}`); return refresh();
+  }
+  if (f === 'reset') { act(() => { M.reset(); M.compareClear(); }); lastSearch = null; lastResult = null; ui.page = 0; memo.clear(); go('/', {}); refresh(); toast('처음 상태로 돌렸어요'); return; }
+  switch (a) {
+    case 'back': if (document.body.dataset.nav) history.back(); else go('/'); return;
+    case 'zoom': overlayPushed = true; go(cur.path, { ...baseParams(), view: 'photo' }); return;
+    case 'zoom-toggle': {
+      const img = $('img', t); t.classList.toggle('z');
+      if (img && t.classList.contains('z')) { const r = t.getBoundingClientRect(); img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`; }
+      return;
+    }
+    case 'close': return closeOverlay();
+    case 'close-cmp': return closeCompare();
+    case 'tray-rm': act(() => M.compareRemove(d.id)); say('비교함에서 뺐어요'); return syncCompare(d.id);
+    case 'cmp-rm': act(() => M.compareRemove(d.id)); say(`비교함에서 뺐어요. ${M.compareList().length}개 남았어요.`); drawCompare(); renderedVersion = -1; chrome(); return;
+    case 'pg': return setPage(ui.page + Number(d.d));
+    case 'same': ui.sameOpen = !ui.sameOpen; return drawCompare();
+    case 'alt-more': ui.altMore = true; return refresh();
+    case 'undo-dec': return undoDecision(d.id);
+    case 'undo-g': act(() => M.removeGarment(d.id)); ui.flash = null; say('방금 넣은 옷을 뺐어요'); refresh(); if (document.body.classList.contains('cmp-open')) drawCompare(); return;
+    case 'own': act(() => M.setOwnership(d.id, d.v)); return refresh();
+    case 'slots': if (ui.add) { ui.add.slots = !ui.add.slots; redrawSheet(); } return;
+    case 'gender': act(() => M.setGender(d.v)); return refresh();
+    case 'g-rm': act(() => M.removeGarment(d.id)); say('옷을 뺐어요'); return refresh();
+    case 'clear-trial': act(() => M.clearTrialCloset()); say('체험용 옷을 뺐어요'); return refresh();
+    case 'rec-rm': act(() => M.removeRecord(d.id)); say('기록을 지웠어요'); return refresh();
+    case 'ret': { const r = act(() => M.advance(d.id, 'returned', { reason: d.v })); ui.retFor = null; if (r) say(`기록했어요: ${r.stageLabel}`); return refresh(); }
+    case 'ret-cancel': ui.retFor = null; return refresh();
+    case 'sug': hideSug(); go('/search', { q: d.q }); return;
+    case 'clear-recent': act(() => M.clearRecent()); hideSug(); return;
+    default:
+  }
+});
+function redrawSheet(focusColor) {
+  const sc = $('.sheet', layer); const y = sc ? sc.scrollTop : 0;
+  layer.innerHTML = sheetHtml();
+  const ns = $('.sheet', layer); if (ns) ns.scrollTop = y;
+  const fb = focusColor ? $(`[data-color="${focusColor}"]`, layer) : null; if (fb) fb.focus({ preventScroll: true });
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if ($('.sug.on')) return hideSug();
+    if (layer.innerHTML) { e.preventDefault(); return closeOverlay(); }
+    if (document.body.classList.contains('cmp-open') && !$('#eo-disclosure[open]')) { e.preventDefault(); return closeCompare(); }
+  }
+  if (document.body.classList.contains('cmp-open') && !mqPC.matches && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.target.matches('input')) setPage(ui.page + (e.key === 'ArrowRight' ? 1 : -1));
+});
+mqPC.addEventListener('change', () => { if (cur.key) refresh(); if (document.body.classList.contains('cmp-open')) drawCompare(); });
+M.subscribe(() => { if (busy) return; if (cur.key) refresh(); if (document.body.classList.contains('cmp-open')) drawCompare(); });
+
+if (M.boot.q && !location.hash) history.replaceState(null, '', href('/search', { q: M.boot.q }));
+M.route.on(onRoute, { restoreScroll: false });
+})();
+</script>
+</body>
+</html>

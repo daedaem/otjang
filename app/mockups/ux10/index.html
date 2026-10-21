@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>어울 시안 10 비교</title>
+<meta name="description" content="어울 UX/UI 개선 시안 10개를 휴대폰·PC 크기로 직접 눌러 보고 나란히 비교하는 갤러리. AI 역할 검토이며 실제 전문가 참여가 아니다.">
+<style>
+  :root {
+    --bg: #f4f3f0; --surface: #ffffff; --ink: #17171a; --ink-2: #4a4a52; --ink-3: #6d6d75; --line: #dedcd6;
+    --accent: #1f5f4a; --accent-ink: #ffffff; --warn: #8a3b12; --chip: #ecebe6; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.06);
+    --radius: 14px; --gutter: 16px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141416; --surface: #1d1d21; --ink: #f1f0ec; --ink-2: #c9c8c2; --ink-3: #a3a29c; --line: #34343a;
+      --accent: #6cc3a0; --accent-ink: #0d1f18; --warn: #f0a070; --chip: #2a2a30; --shadow: 0 1px 2px rgba(0,0,0,.4);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  a { color: var(--accent); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); }
+  .mockbar { background: var(--ink); color: var(--bg); font-size: 13px; }
+  .mockbar .wrap { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 8px; padding-bottom: 8px; }
+  header.hero { padding: 36px 0 20px; }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.02em; text-wrap: balance; }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 760px; margin: 0; }
+  h2 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-3); margin: 0 0 16px; font-size: 15px; }
+  section { padding: 28px 0; border-top: 1px solid var(--line); }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 20px; }
+  .step { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .step b { display: block; margin-bottom: 4px; }
+  /* 시나리오 조절 */
+  .controls { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .controls .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-top: 10px; padding-bottom: 10px; }
+  .controls label { font-size: 14px; color: var(--ink-2); }
+  .controls input[type=text] { flex: 1 1 260px; min-width: 0; font: inherit; font-size: 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); min-height: 44px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: none; padding: 0 14px; min-height: 44px; cursor: pointer; font-size: 14px; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--ink); background: var(--surface); text-decoration: none; color: var(--ink); cursor: pointer; font-size: 15px; white-space: nowrap; }
+  .btn.primary { background: var(--ink); color: var(--bg); }
+  .btn.small { min-height: 40px; padding: 0 12px; font-size: 14px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--chip); border: 0; border-radius: 999px; padding: 0 12px; min-height: 40px; font-size: 14px; cursor: pointer; }
+  /* 추천 */
+  .rank { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .rank article { background: var(--surface); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+  .rank .no { font-size: 13px; color: var(--accent); font-weight: 700; }
+  .rank h3 { margin: 2px 0 6px; font-size: 19px; }
+  .rank p { margin: 0 0 8px; color: var(--ink-2); font-size: 15px; }
+  /* 시안 카드 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); aspect-ratio: 16 / 11; }
+  .shots img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; background: var(--chip); }
+  .shots .ph { display: grid; place-items: center; color: var(--ink-3); font-size: 13px; background: var(--chip); }
+  .card .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .card .no { font-size: 13px; color: var(--ink-3); }
+  .card h3 { margin: 0; font-size: 21px; letter-spacing: -0.01em; }
+  .card .tag { color: var(--ink-2); margin: 0; }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0; }
+  .metrics div { background: var(--chip); border-radius: 10px; padding: 6px 8px; font-size: 12px; color: var(--ink-2); }
+  .metrics b { display: block; font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  details { border-top: 1px solid var(--line); padding-top: 8px; }
+  summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-weight: 600; font-size: 15px; }
+  details ul { margin: 4px 0 8px; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
+  details li { margin: 3px 0; }
+  .refs { font-size: 13px; color: var(--ink-3); }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
+  .pick { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: 14px; cursor: pointer; }
+  .pick input { width: 20px; height: 20px; }
+  /* 기준선 표 */
+  table { border-collapse: collapse; width: 100%; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--ink-3); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .table-scroll { overflow-x: auto; border-radius: var(--radius); }
+  .note { background: var(--surface); border-left: 4px solid var(--accent); padding: 12px 14px; border-radius: 10px; color: var(--ink-2); font-size: 15px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  ul.plain { padding-left: 18px; margin: 6px 0; color: var(--ink-2); }
+  ul.plain li { margin: 4px 0; }
+  footer { padding: 28px 0 48px; color: var(--ink-3); font-size: 13px; border-top: 1px solid var(--line); }
+  /* 보기 창 */
+  .viewer { position: fixed; inset: 0; z-index: 50; background: rgba(10,10,12,.82); display: none; flex-direction: column; }
+  .viewer.on { display: flex; }
+  .viewer .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px var(--gutter); color: #fff; }
+  .viewer .bar b { margin-right: auto; font-size: 15px; }
+  .viewer .bar .btn { background: #fff; color: #111; border-color: #fff; }
+  .viewer .bar .seg { background: #fff; color: #111; }
+  .stage { flex: 1; display: flex; gap: 20px; align-items: flex-start; justify-content: center; overflow: auto; padding: 8px var(--gutter) 20px; }
+  .device { position: relative; flex: none; background: #000; border-radius: 34px; padding: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  .device.pc { border-radius: 12px; padding: 8px; }
+  .device .frame { overflow: hidden; border-radius: 26px; background: #fff; }
+  .device.pc .frame { border-radius: 6px; }
+  .device iframe { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+  .device .label { color: #ddd; font-size: 13px; text-align: center; padding-top: 8px; }
+  @media (max-width: 720px) {
+    .steps { grid-template-columns: 1fr; }
+    .controls { position: static; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="mockbar"><div class="wrap"><span><b>목업 비교 갤러리</b></span><span>AI 역할 검토 · 실제 전문가 참여 아님</span><span>예시 자료 · 저장은 이 브라우저에만</span></div></div>
+
+<header class="hero"><div class="wrap">
+  <h1>어울 UX/UI 개선 시안 10개</h1>
+  <p class="lede">옷장 없이 한 줄로 묻고, 실제 상품을 받고, 가진 옷이 있으면 더해 비교하고, 살지 정하는 흐름을 열 가지 다른 구조로 만들었습니다. 판정·상품·조건은 모두 현재 앱의 엔진이 그대로 내고, 화면만 다릅니다.</p>
+  <div class="steps">
+    <div class="step"><b>1. 같은 조건 고르기</b>위 막대에서 요청과 옷장 상태를 정하면 모든 시안이 그 상태로 열려요.</div>
+    <div class="step"><b>2. 직접 눌러 보기</b>‘휴대폰으로’·‘PC로’를 누르면 실제 크기 화면이 열려요. 휴대폰에서는 ‘새 창으로’가 편해요.</div>
+    <div class="step"><b>3. 둘을 나란히</b>카드의 ‘비교에 담기’를 두 개 고르고 ‘나란히 보기’를 누르세요.</div>
+  </div>
+</div></header>
+
+<div class="controls" role="region" aria-label="모든 시안에 같은 조건으로 열기">
+  <div class="wrap">
+    <label for="q">같은 요청</label>
+    <input id="q" type="text" value="출근용 셔츠 10만원 이하" autocomplete="off" enterkeyhint="done">
+    <div class="seg" role="group" aria-label="옷장 상태">
+      <button type="button" data-closet="none" aria-pressed="true">옷장 없이</button>
+      <button type="button" data-closet="trial" aria-pressed="false">체험용 옷 8벌</button>
+    </div>
+    <label class="pick" title="판매처 사진을 몇 개 상품에만 불러와요. 공개 권리 미확인 · 비공개 시험용"><input type="checkbox" id="photos"> 사진 몇 개(비공개 시험용)</label>
+    <button type="button" class="btn primary" id="compare" disabled>나란히 보기 (0/2)</button>
+  </div>
+  <div class="wrap" style="padding-bottom:10px"><div class="chips" id="qchips" aria-label="요청 예시"></div></div>
+</div>
+
+<main>
+  <section id="ranking"><div class="wrap">
+    <h2>Claude의 추천 순위</h2>
+    <p class="sub" id="ranking-sub">시안 검사가 끝나면 채워집니다.</p>
+    <div class="rank" id="rank"></div>
+  </div></section>
+
+  <section id="teams"><div class="wrap">
+    <h2>10개 시안</h2>
+    <p class="sub">숫자는 흐름 검사 도구가 같은 시나리오(옷장 없이 ‘출근용 셔츠 10만원 이하’ → 첫 상품 판정 → 사기로 함 → 흰 셔츠 한 벌 넣기)로 직접 누른 횟수예요. 적을수록 빠르지만, 숫자만으로 좋은 시안을 정하지 않았어요.</p>
+    <div class="grid" id="grid"></div>
+  </div></section>
+
+  <section id="baseline"><div class="wrap">
+    <h2>현재 앱 기준선</h2>
+    <p class="sub">현재 빌드(커밋 f174ecb)를 휴대폰 390×844에서 같은 시나리오로 직접 눌러 잰 값이에요. 현재 앱은 이 갤러리에 넣지 않았어요(실제 상품 사진을 쓰기 때문).</p>
+    <div class="table-scroll"><table>
+      <caption class="sub" style="text-align:left;padding:10px 12px">현재 앱과 시안 비교의 기준</caption>
+      <thead><tr><th scope="col">항목</th><th scope="col">현재 앱</th><th scope="col">무엇이 문제인가</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">옷장 없이 상품을 열었을 때 판정</th><td>없음</td><td>상세의 주 버튼이 판매처 링크라서 ‘살까’ 판단 없이 밖으로 나가요.</td></tr>
+        <tr><th scope="row">첫 판정까지 누르는 횟수</th><td class="num">8번</td><td>요청 2 → 상품 열기 1 → ‘내 옷 넣고 비교하기’ 1 → ‘사진 없이 종류로’ 1 → 셔츠 1 → 화이트 1 → 저장 1</td></tr>
+        <tr><th scope="row">결과 화면 길이</th><td class="num">3,999px · 약 4.7화면</td><td>상품 9개 2열 → 덜 맞는 대안 → 맨 아래 코디. 카드엔 이유 한 줄.</td></tr>
+        <tr><th scope="row">상품 상세 길이</th><td class="num">2,472px · 약 2.9화면</td><td>큰 사진 → 이유 → 코디 → 대안 → 맨 아래 비교 버튼.</td></tr>
+        <tr><th scope="row">PC 배치</th><td>모바일 늘림</td><td>하단 탭바가 PC에도 있고 코디 사진 칸이 매우 커요.</td></tr>
+        <tr><th scope="row">후보끼리 비교</th><td>없음</td><td>한 상품씩 시트로만 판단해요.</td></tr>
+      </tbody>
+    </table></div>
+  </div></section>
+
+  <section id="used"><div class="wrap">
+    <h2>중고 매물 추가 목표 반영</h2>
+    <p class="sub">자세한 판단은 저장소의 docs/used-market-review-20261019.md에 있어요.</p>
+    <div class="cols">
+      <div class="note"><b>지금 시안에 들어간 것: 검색 링크 연결</b><ul class="plain">
+        <li>모든 시안의 판정 화면에 ‘중고로도 찾아보기’가 있어요. 국내 번개장터·당근·중고나라·후루츠패밀리, 해외 eBay·메루카리(일본)의 공개 검색 결과로 이동해요.</li>
+        <li>어울은 매물·가격·재고·상태를 확인하지 않았다고 화면에 함께 써요. 가짜 매물이나 추정 시세는 만들지 않았어요.</li>
+        <li>국내는 같은 상품 이름으로, 해외는 색·종류로 찾아서 같은 상품이 아닐 수 있어요.</li>
+      </ul></div>
+      <div class="note"><b>앱 안 실제 매물: 아직 연동 전</b><ul class="plain">
+        <li>eBay Browse API: 무료 구간이 있지만 운영은 파트너 승인제이고 결과 재정렬 금지 등 화면 조건이 있어요.</li>
+        <li>번개장터 파트너 API: 계약 후 키 발급, 기능·요금이 공개 문서에 없어 판단할 수 없어요.</li>
+        <li>라쿠텐: 규약상 다른 사이트 링크와 경쟁 서비스가 금지돼 여러 판매처 비교와 맞지 않아요.</li>
+      </ul></div>
+    </div>
+  </div></section>
+
+  <section id="method"><div class="wrap">
+    <h2>어떻게 만들고 검토했나</h2>
+    <div class="cols">
+      <div><ul class="plain">
+        <li>팀마다 AI가 디자이너·프론트 개발자 역할을 나눠 맡았어요. 실제 사람 전문가는 참여하지 않았어요.</li>
+        <li>판정 문장·조건·코디는 현재 앱의 엔진을 그대로 묶은 공통 코어에서 나와요. 시안은 화면만 달라요.</li>
+        <li>상품 이름·가격은 2026년 10월 13~14일 무신사에서 수집한 개인 시험용 자료예요(공개 권리 미확인). 사진 대신 종류·색 그림을 썼어요.</li>
+      </ul></div>
+      <div><ul class="plain">
+        <li>가격은 ‘수집가’예요. 현재가·최저가가 아니에요.</li>
+        <li>요청은 정해진 규칙으로 읽어요. 대화형 AI가 아니에요.</li>
+        <li>수상 표시는 이전에 시상 기관 페이지로 확인한 사례만 썼어요. 나머지는 ‘참고 실서비스’로 구분했어요.</li>
+      </ul></div>
+    </div>
+  </div></section>
+</main>
+
+<footer><div class="wrap">어울 목업 · 기존 앱과 저장 데이터는 바꾸지 않았어요 · 기본은 외부 요청 없음(판매처·중고 링크는 누를 때만 이동) · ‘사진 몇 개’를 켜면 상품 12개에 한해 판매처 사진을 불러와요(공개 권리 미확인, 비공개 시험용)</div></footer>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="시안 보기">
+  <div class="bar">
+    <b id="viewer-title">시안</b>
+    <div class="seg" role="group" aria-label="화면 크기">
+      <button type="button" data-device="phone" aria-pressed="true">휴대폰</button>
+      <button type="button" data-device="pc" aria-pressed="false">PC</button>
+    </div>
+    <a class="btn small" id="viewer-open" href="#" target="_blank" rel="noopener">새 창으로</a>
+    <button type="button" class="btn small" id="viewer-close">닫기</button>
+  </div>
+  <div class="stage" id="stage"></div>
+</div>
+
+<script>
+// 시안 정보: 각 팀 보고와 흐름 검사 결과로 채운다.
+const TEAMS = [{"n": 1, "file": "01-answer.html", "name": "답 먼저", "roles": "리드 프로덕트 디자이너·콘텐츠 디자이너·프론트엔드(AI 역할)", "tagline": "결과 맨 위 첫 후보 카드에 판정과 결정 버튼이 바로 붙어 있어요. 비교·결정·기록이 그 카드 안에서 끝나요.", "solves": ["옷장 없이도 결과 화면에서 바로 판정이 보이고, 그 아래 결정 버튼 3개가 와요", "가진 옷 넣기는 보조 버튼으로 내려 옷장 없는 사람을 등록부터 시키지 않아요", "결과를 첫 후보 카드 1장 + 다른 선택 2개로 줄이고 개수 관계를 밝혀요", "다른 선택을 누르면 이동 없이 카드 자리로 올라와 판정이 바뀌어요", "옷을 넣으면 같은 카드에 바뀐 판정과 '바뀌기 전' 판정을 함께 보여요"], "structure": ["휴대폰: 입력 → 조건 문장 칩 → 답 카드(상품·판정·옷 넣기·결정·판매처·펼치기 3개) → 다른 선택 2개 → 더 보기", "PC: 상단 검색창, 왼쪽 따라 내려오는 답 카드, 오른쪽 근거 열(이유·코디·중고·다른 선택)"], "risks": ["첫 후보가 정답처럼 느껴져 다른 후보를 덜 볼 수 있어요", "휴대폰에서 이유·코디·중고가 접혀 있어 한 번 더 눌러야 해요", "색 17개 선택지 때문에 옷 넣기 패널이 길어요"], "port": "난이도 중 · 먼저 옮길 조각: 결과 맨 위 답 카드(첫 후보 + 판정 + 결정 3개), 판정 안 옷 넣기 패널", "refs": "Patagonia 맥락형 주 행동(수상) · Polène 흑백·여백(수상) · 답변형 검색 Google·Perplexity(참고 실서비스)", "metrics": {"verdict": 2, "add": 4, "problems": 0}, "shots": [{"src": "previews/01-b.jpg", "alt": "답 먼저 휴대폰 판정 화면"}, {"src": "previews/01-pc.jpg", "alt": "답 먼저 PC 화면"}]}, {"n": 2, "file": "02-stepper.html", "name": "세 번 탭", "roles": "인터랙션 디자이너·UX 라이터·프론트엔드(AI 역할)", "tagline": "무엇·언제·얼마까지를 세 번 누르면 후보가 나오고, 고른 탭을 문장으로 보여 줘 다음엔 말로도 찾게 해요.", "solves": ["타이핑 없이 종류 타일 → 상황 → 예산 세 번이면 결과가 나와요", "'이렇게 찾았어요: 출근용 셔츠 10만원 이하' 문장으로 말로 찾는 법을 익혀요", "결과 맨 위 '하나만 더' 카드에서 색만 고르면 가진 옷이 들어가고 목록 표시가 바로 바뀌어요", "판단 화면 하단에 결정 버튼 3개를 고정하고 판정 쪽만 진하게 해요", "PC는 왼쪽 진행 레일 + 목록 | 판단 두 칸, 숫자키로 고르기"], "structure": ["휴대폰: 질문 1개씩(종류 타일 3×3 → 상황 → 예산) → 문장·조건 칩·목록 → 판단 화면(결정 버튼 하단 고정)", "PC: 왼쪽 단계 레일, 가운데 질문 카드, 결과에서는 목록과 판단 두 칸"], "risks": ["색·계절·브랜드는 탭으로 못 고르고 말로 적어야 해요", "휴대폰 판단 화면이 세로로 길어요", "종류 타일이 성별마다 9개뿐이에요"], "port": "난이도 중 · 먼저 옮길 조각: '이렇게 찾았어요' 문장 + 조건 칩, 판단 하단 고정 결정 버튼", "refs": "lululemon 활동 먼저 탐색(수상) · 토스 한 화면 한 질문, Typeform(참고 실서비스)", "metrics": {"verdict": 3, "add": 4, "problems": 0}, "shots": [{"src": "previews/02-b.jpg", "alt": "세 번 탭 휴대폰 판정 화면"}, {"src": "previews/02-pc.jpg", "alt": "세 번 탭 PC 화면"}]}, {"n": 3, "file": "03-compare.html", "name": "비교함", "roles": "정보 설계자·데이터 시각화 디자이너·프론트엔드(AI 역할)", "tagline": "후보를 비교함에 2~4개 담아 가격·색·내 옷과·새 코디 수를 한 표에서 나란히 보고 골라요.", "solves": ["후보를 직접 담아 나란히 보는 비교표(값이 다른 행은 '다름', 같은 행은 흐리게, 자동 담기 없음)", "목록 줄을 누르면 그 자리에 판정과 결정 버튼이 펼쳐져요", "비교표 안 '가진 옷 넣기' 행에서 넣으면 표 전체 판정이 다시 계산돼요", "수집가는 가장 낮은 값 대비 차액으로 보여요", "중고 행은 '연동 전'과 외부 검색 링크만"], "structure": ["휴대폰: 촘촘한 목록(줄마다 담기) → 하단 비교함 바 → 2열씩 넘기는 비교표", "PC: 왼쪽 요청·조건·내 옷 요약, 가운데 목록, 오른쪽 항상 보이는 비교함 → 넓은 비교표"], "risks": ["같은 종류끼리는 판정 문장이 같아 표가 가르는 축이 가격·색·이유뿐일 때가 많아요", "비교함·비교표는 새로 만들어야 해서 현재 앱 이식이 가장 무거운 편이에요", "휴대폰에서 4개를 보려면 여러 번 넘겨야 해요"], "port": "난이도 상(비교함 전체) · 먼저 옮길 조각: 목록 줄을 펼쳐 판정 → 결정 → 판매처를 보여 주는 부분(이건 중)", "refs": "Patagonia 페이지를 바꾸지 않는 비교(수상) · Apple 모델 비교, 다나와 상품 비교(참고 실서비스)", "metrics": {"verdict": 3, "add": 4, "problems": 0}, "shots": [{"src": "previews/03-b.jpg", "alt": "비교함 휴대폰 판정 화면"}, {"src": "previews/03-pc.jpg", "alt": "비교함 PC 화면"}]}, {"n": 4, "file": "04-deck.html", "name": "한 장씩", "roles": "모션 디자이너·인터랙션 디자이너·프론트엔드(AI 역할)", "tagline": "후보를 카드 한 장씩 판정과 함께 보고, 살래·보류·패스를 누르면 그 결정이 곧 기록이 돼요.", "solves": ["한 화면에 카드 한 장과 '3 / 9'만, 다 보면 정리 카드(살래 수집가 합계·판매처)", "카드 앞면에 판정, 뒤집으면 이유·코디·판매처·중고", "카드 안에서 가진 옷을 넣으면 '방금 바뀜 · 전에는 ~'과 함께 판정이 바뀌어요", "엄지 닿는 하단 버튼(패스·보류·살래), 판정 쪽만 채움", "PC는 남은 후보 목록 | 카드 | 결정 트레이 3열, 방향키로 결정", "결정 직후 6초 동안 '되돌리기'로 이전 카드와 기록을 원래대로"], "structure": ["휴대폰: 요청·조건 칩 → 진행 표시 → 카드 더미 → 하단 고정 결정 버튼", "PC: 왼쪽 후보 목록, 가운데 카드, 오른쪽 결정 트레이"], "risks": ["한 장씩이라 후보 전체를 한눈에 비교하기 어려워요(휴대폰은 '후보 목록' 시트를 따로 열어야 해요)", "결정이 쉬워 실수로 누를 수 있어요. 6초 '되돌리기'로 보완했어요", "주문 이후 단계는 되돌리기 대상이 아니에요"], "port": "난이도 중 · 먼저 옮길 조각: 판정 카드 안 옷 넣기와 '방금 바뀜' 표시, 판정 바로 아래 결정 3개", "refs": "Coupang R.Lux 흑백·마이크로 애니메이션(수상) · 스와이프형 카드 판단 Tinder 등(참고 실서비스)", "metrics": {"verdict": 2, "add": 4, "problems": 0}, "shots": [{"src": "previews/04-b.jpg", "alt": "한 장씩 휴대폰 판정 화면"}, {"src": "previews/04-pc.jpg", "alt": "한 장씩 PC 화면"}]}, {"n": 5, "file": "05-lookbook.html", "name": "코디 먼저", "roles": "패션 비주얼 디렉터·프로덕트 디자이너·프론트엔드(AI 역할)", "tagline": "결과를 '이렇게 입어요' 룩보드로 시작하고, 그 아래에 주인공 옷의 판정과 결정을 붙여요.", "solves": ["맨 아래에 있던 코디를 맨 위 룩보드로 올렸어요(보드·판정·결정이 약 1.5화면 안)", "보드 2~3개를 넘기며 후보끼리 조합째 비교해요", "주인공 칸을 누르면 같은 조건의 다른 선택으로 바꿔 끼워요", "판정 카드 안에서 가진 옷을 넣으면 보드에 '내 옷'으로 들어가요", "코디를 못 만들면 그 사실을 보드 자리에 그대로 써요(조건을 풀지 않음)"], "structure": ["휴대폰: 요청 → 룩보드(넘기기) → 사야 할 후보 수·수집가 합계 → 판정 카드 → 이 조합의 후보들", "PC: 왼쪽 60% 고정 룩보드와 구성 옷, 오른쪽 판정·결정·후보"], "risks": ["종류·색 그림이라 실제 사진만큼 입은 모습이 와닿지 않아요(사진 권리 확보에 달림)", "보드 순서가 요청마다 달라 보일 수 있어요", "PC는 보드가 커서 판정 옆 정보가 아래로 밀려요"], "port": "난이도 중 · 먼저 옮길 조각: 결과 맨 위 '1번 후보 코디 보드 + 판정·결정 카드', 판정 카드 안 옷 넣기", "refs": "Gucci Ancora 큰 이미지 모바일 UI(수상) · DVF 이미지 비율 통일(수상) · Pinterest 보드(참고 실서비스)", "metrics": {"verdict": 2, "add": 4, "problems": 0}, "shots": [{"src": "previews/05-b.jpg", "alt": "코디 먼저 휴대폰 판정 화면"}, {"src": "previews/05-pc.jpg", "alt": "코디 먼저 PC 화면"}]}, {"n": 6, "file": "06-sheets.html", "name": "한 화면", "roles": "모바일 인터랙션 디자이너·디자인 시스템 디자이너·프론트엔드(AI 역할)", "tagline": "화면은 하나. 요청과 조건은 늘 위에 있고, 후보·판정·옷 넣기는 지도 앱처럼 시트로 겹쳐 올라와요.", "solves": ["요청과 조건 칩이 늘 위에 있어 언제든 고쳐 다시 찾아요", "결과는 3단 높이 시트, 상품을 누르면 판정 시트가 쌓이고 닫으면 같은 자리로", "판정 시트 주 버튼이 '가진 ○○ 넣고 비교', 넣으면 '바뀌기 전'과 함께 판정이 바뀌어요", "목록 '비교' 단추로 2~3개를 담아 나란히 보기", "PC는 메일 앱처럼 3분할(요청·내 옷 | 목록 | 판정)"], "structure": ["휴대폰: 위 고정 요청·조건 → 결과 시트(살짝·절반·전체) → 판정 시트 → 옷 넣기 시트, 뒤로가기 = 시트 닫기", "PC: 왼쪽 요청·조건·내 옷·기록 요약, 가운데 목록, 오른쪽 판정·결정"], "risks": ["휴대폰에서 위쪽 요청 영역이 약 150px을 늘 차지해요", "시트가 3층까지 쌓이면 위치가 헷갈릴 수 있어요", "옷 넣기 시트에 종류·색을 모두 펼쳐 길어요"], "port": "난이도 중 · 먼저 옮길 조각: 판정 안 '가진 옷 넣고 비교' 작은 시트와 '바뀌기 전' 표시, 판정 아래 고정 결정 버튼", "refs": "Patagonia 겹쳐 띄우는 방식(수상) · Apple·Google 지도 바텀시트, 메일 앱 3분할(참고 실서비스)", "metrics": {"verdict": 3, "add": 4, "problems": 0}, "shots": [{"src": "previews/06-b.jpg", "alt": "한 화면 휴대폰 판정 화면"}, {"src": "previews/06-pc.jpg", "alt": "한 화면 PC 화면"}]}, {"n": 7, "file": "07-ledger.html", "name": "장부", "roles": "핀테크 프로덕트 디자이너·정보 디자이너·프론트엔드(AI 역할)", "tagline": "후보 하나를 장부 한 줄로, 누르면 영수증 전표가 열리고 결정 도장이 결정 장부로 이어져요.", "solves": ["2열 격자를 번호·상품·수집가·내 옷과·판정 칸의 장부 표로 바꿔 후보끼리 숫자로 견줘요", "예산 줄에 '한 벌 기준'과 목록 수집가 범위를 밝혀요", "전표 안 '가진 옷 넣고 다시 계산' 뒤 이전 판정을 취소선으로 남겨요", "중고 줄은 '연동 전'과 외부 검색 링크만", "결정 합계는 '사기로 한 상품 수집가 합(결제 금액 아님)'으로, 반품은 빼고 안 삼은 건수만", "전표 결정 도장 옆에 '직접 남긴 기록 · 확인된 거래 아님'"], "structure": ["휴대폰: 요청 → 조건·예산 줄 → 2단으로 접은 장부 줄 → 누른 줄 아래 전표 펼침", "PC: 왼쪽 넓은 장부 표, 오른쪽 고정 전표, 위쪽 결정 장부 요약"], "risks": ["목록 줄에는 판정 문장이 없고 전표를 열어야 보여요(성능 때문)", "전표·도장 비유가 처음엔 낯설 수 있어요", "휴대폰에서 전표가 길어요"], "port": "난이도 중 · 먼저 옮길 조각: 전표 안 '다시 계산' 양식과 이전 판정 표시, 결정 장부 합계", "refs": "Polène 흑백(수상) · 29CM 색·선 최소화(수상) · 가계부 앱 거래 목록(참고 실서비스)", "metrics": {"verdict": 3, "add": 4, "problems": 0}, "shots": [{"src": "previews/07-b.jpg", "alt": "장부 휴대폰 판정 화면"}, {"src": "previews/07-pc.jpg", "alt": "장부 PC 화면"}]}, {"n": 8, "file": "08-rail.html", "name": "옷장 레일", "roles": "UX 리서처·프로덕트 디자이너·프론트엔드(AI 역할)", "tagline": "가진 옷이 늘 레일에 걸려 있고, 후보를 보면 겹치는 옷과 코디 짝이 그림으로 반응해요.", "solves": ["옷장 없는 판정에서 '가진 코트 걸고 비교'를 누르면 레일 빈칸이 깜빡이고 3번 탭으로 넣어요", "첫 화면의 예시 옷장 띠 대신 비어 있는 레일 빈칸 4개로 시작해요", "결과 카드마다 '겹쳐요·색만 달라요·새 코디 n' 태그가 붙어요", "'이 옷이 들어가면'에서 후보를 끼운 레일과 코디 선을 보여 줘요", "받은 옷은 레일에 '기록에서 산 옷'으로 걸려요"], "structure": ["휴대폰: 위에 늘 붙은 가로 레일 → 요청 → 압축 카드 목록(카드가 가운데 오면 레일 반응) → 판정 화면", "PC: 왼쪽 세로 옷장, 가운데 결과, 오른쪽 판정 3단. 카드에 올리면 왼쪽 옷장이 반응"], "risks": ["휴대폰에서 레일이 위쪽 약 130px을 늘 차지해요", "색 테두리·초록 점의 뜻을 처음엔 바로 모를 수 있어요", "후보끼리 나란히 보는 표는 없어요"], "port": "난이도 중 · 먼저 옮길 조각: 판정 안 '가진 ○○ 걸고 비교' 패널, 결과 카드의 겹침 태그", "refs": "s.Oliver 개인화 홈(수상) · 옷장 앱 목록 Acloset 등(참고 실서비스)", "metrics": {"verdict": 3, "add": 4, "problems": 0}, "shots": [{"src": "previews/08-b.jpg", "alt": "옷장 레일 휴대폰 판정 화면"}, {"src": "previews/08-pc.jpg", "alt": "옷장 레일 PC 화면"}]}, {"n": 9, "file": "09-editorial.html", "name": "읽는 결과", "roles": "에디토리얼 디자이너·카피 에디터·프론트엔드(AI 역할)", "tagline": "결과를 짧은 기사처럼 번호 항목과 문단으로 읽게 하되, 판정은 '규칙 판정' 상자로 분명히 구분해요.", "solves": ["상위 3개를 번호 붙은 항목으로, 엔진이 고른 이유를 문단으로 보여 줘요", "판정은 인용문이 아니라 '규칙 판정' 이름표 상자에 넣고 기준을 밝혀요", "결과 제목 바로 아래에 '사람 스타일리스트가 쓴 글이 아니에요'", "'세 항목 나란히' 표로 수집가·색·내 옷과를 견줘요", "판정 상자 바로 아래 결정 줄(PC 첫 화면 안)"], "structure": ["휴대폰: 명조 제목 → 조건 칩 → 항목 01~03(그림·이유 문단·판정 인용구·결정) → 나란히 표 → 색인 → 각주", "PC: 본문 680px + 오른쪽 고정 목차·결정 요약 2단"], "risks": ["읽는 형식이라 결과 페이지 전체가 현재보다 길어요", "엔진 문장을 이어 붙여 문단이 어색할 때가 있어요", "글 형식이 실제보다 믿음직하게 읽힐 위험이 남아 있어 표기를 계속 지켜야 해요"], "port": "난이도 중 · 먼저 옮길 조각: 판정 자리 옷 넣기 양식, 상위 3개 + 나란히 비교표", "refs": "Polène 타이포·여백(수상) · 29CM 콘텐츠 집중(수상) · 패션 매거진형 기사 Mr Porter·SSENSE(참고 실서비스)", "metrics": {"verdict": 2, "add": 4, "problems": 0}, "shots": [{"src": "previews/09-b.jpg", "alt": "읽는 결과 휴대폰 판정 화면"}, {"src": "previews/09-pc.jpg", "alt": "읽는 결과 PC 화면"}]}, {"n": 10, "file": "10-thumb.html", "name": "엄지 하나", "roles": "접근성 디자이너·모바일 UX 디자이너·프론트엔드(AI 역할)", "tagline": "지하철에서 한 손으로. 입력·조건·결정이 모두 화면 아래 절반에 있고 글자는 크게.", "solves": ["상품을 누르면 아래에서 판정 서랍이 올라와 큰 판정과 결정 버튼(56px 이상)을 보여요", "후보 3개만 크게, 나머지·비교·코디·덜 맞는 대안은 접어 약 1.3화면", "서랍 안에서 큰 타일로 가진 옷을 넣고 같은 판정으로 돌아와요", "서랍에서 이전·다음으로 후보를 넘기며 판정을 견줘요", "'글자 크게'·'고대비' 전환, PC 단축키(/, Enter, 1·2·3, ←→, Esc)"], "structure": ["휴대폰: 아래 고정 명령 줄(조건 칩·예시·입력·탭), 답은 그 위로 쌓임, 판정 서랍(결정 막대 고정)", "PC: 가운데 640px 단, 명령 줄과 서랍은 아래 가운데 고정, 단축키 안내"], "risks": ["명령 줄과 서랍이 화면을 많이 차지해요(글자 크게 모드에서 더)", "답이 위로 쌓이는 방식이 처음엔 낯설 수 있어요(말풍선은 없앴어요)", "'이미 있나요?'를 서랍에 바로 둬서 서랍이 길어져요"], "port": "난이도 중 · 먼저 옮길 조각: 아래 고정 판정 서랍(판정·결정·옷 넣기), 명령 줄 위 조건 칩", "refs": "Patagonia 모바일 UX(수상) · iOS Safari 하단 주소창, Samsung One UI 한 손 조작(참고 실서비스)", "metrics": {"verdict": 3, "add": 4, "problems": 0}, "shots": [{"src": "previews/10-b.jpg", "alt": "엄지 하나 휴대폰 판정 화면"}, {"src": "previews/10-pc.jpg", "alt": "엄지 하나 PC 화면"}]}];
+const RANKING = {"sub": "세 검토(처음 쓰는 사람·신뢰·이식성, 모두 AI 역할)와 현재 앱 기준선을 함께 보고 Claude가 정한 순위예요. 한 시안을 통째로 고르기보다, 현재 앱에 조각을 옮기는 순서로 권해요.", "items": [{"label": "1위 · 먼저 옮길 뼈대", "team": 1, "title": "01 답 먼저", "why": "현재 앱의 가장 큰 문제(옷장 없으면 판정이 없고, 판정까지 8번)를 결과 맨 위 카드 하나로 풀어요. 첫 판정까지 2번이고, 처음 쓰는 사람·신뢰 두 검토에서 상위였어요. 결과 화면 머리 아래에 카드 하나를 넣는 방식이라 갈아엎지 않아요."}, {"label": "2위 · 판정 화면", "team": 10, "title": "10 엄지 하나", "why": "판정 서랍(아래 고정 결정 버튼, 이전·다음 후보, 닫으면 제자리)이 작은 휴대폰에서도 결정 버튼을 첫 화면에 보여요. 처음 쓰는 사람·이식성 두 검토에서 상위였고, 현재 앱의 바텀시트 구조와 같아 그대로 옮기기 쉬워요."}, {"label": "3위 · 옷 넣기", "team": 6, "title": "06 한 화면", "why": "신뢰 검토 1위예요. 판정에서 여는 옷 넣기 시트(종류 미리 선택 → 색 → 넣기 → 같은 판정으로 복귀)가 가장 짧아요. 여러 층 시트 전체는 무거우니 이 넣기 시트만 가져와요."}, {"label": "4위 · 다음 단계", "team": 3, "title": "03 비교함", "why": "후보끼리 나란히 비교하는 유일한 정면 해결이에요. 작은 휴대폰에서도 판정·결정이 첫 화면에 들어와요. 비교함 전체는 새로 만들어야 해서 1~3위를 옮긴 뒤에 해요."}, {"label": "5위 · 보조 입구", "team": 2, "title": "02 세 번 탭", "why": "타자 없이 종류 타일로 시작하는 길과 \"이미 있나요? 없어요/있어요\" 한 번 누르기는 옷장 없는 사람에게 좋아요. 주 입구는 한 줄 요청으로 두고 홈의 보조 입구로 써요."}, {"label": "보류", "team": null, "title": "05 · 07 · 08 · 09 · 04", "why": "05 코디 먼저는 실제 사진 권리가 생긴 뒤 다시 봐요. 09 읽는 결과와 07 장부는 고친 뒤에도 글이 길거나 비유가 낯설어요. 08 옷장 레일은 화면을 늘 차지해요. 04 한 장씩은 결정을 쉽게 만들어 충동 구매 위험이 있어 보조 모드로만 둬요."}]};
+const QUERIES = ['출근용 셔츠 10만원 이하', '겨울 데이트 코트', '검정 말고 주말에 입을 편한 바지', '원피스 10만원 이하', '반바지', '꾸안꾸 느낌으로'];
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const state = { closet: 'none', picked: [], device: 'phone', open: [] };
+const qInput = $('#q');
+function src(team) {
+  const q = qInput.value.trim();
+  return `teams/${team.file}?reset=1${state.closet === 'trial' ? '&closet=trial' : ''}${document.getElementById('photos')?.checked ? '&photos=1' : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
+}
+function renderChips() {
+  $('#qchips').innerHTML = QUERIES.map((q) => `<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+}
+function metric(label, value) { return `<div><b>${esc(value ?? '—')}</b>${esc(label)}</div>`; }
+function renderGrid() {
+  $('#grid').innerHTML = TEAMS.map((t) => `<article class="card" id="team-${t.n}">
+    <div class="shots">${t.shots?.length ? t.shots.map((s) => `<img src="${esc(s.src)}" alt="${esc(s.alt)}" loading="lazy">`).join('') : '<div class="ph">화면 준비 중</div><div class="ph"></div>'}</div>
+    <div class="body">
+      <span class="no">시안 ${String(t.n).padStart(2, '0')} · ${esc(t.roles)}</span>
+      <h3>${esc(t.name)}</h3>
+      <p class="tag">${esc(t.tagline)}</p>
+      <div class="metrics">${metric('첫 판정까지', t.metrics?.verdict != null ? `${t.metrics.verdict}번` : null)}${metric('옷 한 벌 넣기', t.metrics?.add != null ? `${t.metrics.add}번` : null)}${metric('검사 문제', t.metrics?.problems != null ? `${t.metrics.problems}개` : null)}</div>
+      <details><summary>무엇을 바꾸나</summary><ul>${(t.solves || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>
+      <details><summary>화면 구조 · 휴대폰과 PC</summary><ul>${(t.structure || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>
+      <details><summary>위험과 한계</summary><ul>${(t.risks || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p class="refs">현재 앱에 옮기기: ${esc(t.port || '')}</p></details>
+      <p class="refs">참고: ${esc(t.refs || '')}</p>
+      <div class="actions">
+        <button type="button" class="btn small" data-view="${t.n}" data-device="phone">휴대폰으로</button>
+        <button type="button" class="btn small" data-view="${t.n}" data-device="pc">PC로</button>
+        <a class="btn small" data-open="${t.n}" href="${esc(src(t))}" target="_blank" rel="noopener">새 창으로</a>
+        <label class="pick"><input type="checkbox" data-pick="${t.n}" ${state.picked.includes(t.n) ? 'checked' : ''}> 비교에 담기</label>
+      </div>
+    </div>
+  </article>`).join('') || '<p class="sub">시안을 만드는 중이에요.</p>';
+}
+function renderRanking() {
+  if (!RANKING) return;
+  $('#ranking-sub').textContent = RANKING.sub;
+  $('#rank').innerHTML = RANKING.items.map((r) => `<article><span class="no">${esc(r.label)}</span><h3>${esc(r.title)}</h3><p>${esc(r.why)}</p>${r.team ? `<button type="button" class="btn small" data-view="${r.team}" data-device="phone">휴대폰으로 보기</button>` : ''}</article>`).join('');
+}
+function updateLinks() {
+  document.querySelectorAll('[data-open]').forEach((a) => { const t = TEAMS.find((x) => x.n === Number(a.dataset.open)); if (t) a.href = src(t); });
+  const n = state.picked.length;
+  const btn = $('#compare');
+  btn.disabled = n !== 2;
+  btn.textContent = `나란히 보기 (${n}/2)`;
+}
+// 실제 크기 화면을 남는 공간에 맞게 줄여 보여 준다.
+function deviceHTML(team, device) {
+  const w = device === 'pc' ? 1280 : 390, h = device === 'pc' ? 800 : 844;
+  return `<div class="device ${device}" data-w="${w}" data-h="${h}"><div class="frame"><iframe title="${esc(team.name)} ${device === 'pc' ? 'PC' : '휴대폰'} 화면" src="${esc(src(team))}" width="${w}" height="${h}"></iframe></div><div class="label">${esc(String(team.n).padStart(2, '0'))} ${esc(team.name)}</div></div>`;
+}
+function fit() {
+  const stage = $('#stage');
+  const devices = [...stage.querySelectorAll('.device')];
+  if (!devices.length) return;
+  const availW = (stage.clientWidth - 32 - (devices.length - 1) * 20) / devices.length - 20;
+  const availH = stage.clientHeight - 60;
+  for (const d of devices) {
+    const w = +d.dataset.w, h = +d.dataset.h;
+    const s = Math.min(1, availW / w, availH / h);
+    const iframe = d.querySelector('iframe');
+    iframe.style.transform = `scale(${s})`;
+    const frame = d.querySelector('.frame');
+    frame.style.width = `${Math.round(w * s)}px`;
+    frame.style.height = `${Math.round(h * s)}px`;
+  }
+}
+let lastFocus = null;
+function openViewer(ids, device) {
+  state.open = ids; state.device = device;
+  const teams = ids.map((n) => TEAMS.find((t) => t.n === n)).filter(Boolean);
+  $('#viewer-title').textContent = teams.map((t) => `${String(t.n).padStart(2, '0')} ${t.name}`).join('  ·  ');
+  $('#stage').innerHTML = teams.map((t) => deviceHTML(t, device)).join('');
+  document.querySelectorAll('#viewer [data-device]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.device === device)));
+  const open = $('#viewer-open');
+  open.hidden = teams.length !== 1;
+  if (teams.length === 1) open.href = src(teams[0]);
+  lastFocus = document.activeElement;
+  $('#viewer').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(fit);
+  $('#viewer-close').focus();
+}
+function closeViewer() {
+  $('#viewer').classList.remove('on');
+  $('#stage').innerHTML = '';
+  document.body.style.overflow = '';
+  lastFocus?.focus?.();
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button, a, input');
+  if (!t) return;
+  if (t.dataset.closet) {
+    state.closet = t.dataset.closet;
+    document.querySelectorAll('[data-closet]').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
+    updateLinks();
+  } else if (t.dataset.q) { qInput.value = t.dataset.q; updateLinks(); }
+  else if (t.dataset.view) {
+    const n = Number(t.dataset.view);
+    // 휴대폰에서는 작은 틀보다 새 창이 실제 사용과 같다.
+    if (window.innerWidth < 720) { const team = TEAMS.find((x) => x.n === n); if (team) window.open(src(team), '_blank', 'noopener'); return; }
+    openViewer([n], t.dataset.device);
+  } else if (t.dataset.pick) {
+    const n = Number(t.dataset.pick);
+    state.picked = t.checked ? [...state.picked.filter((x) => x !== n), n].slice(-2) : state.picked.filter((x) => x !== n);
+    document.querySelectorAll('[data-pick]').forEach((box) => { box.checked = state.picked.includes(Number(box.dataset.pick)); });
+    updateLinks();
+  } else if (t.id === 'compare' && state.picked.length === 2) openViewer(state.picked, 'phone');
+  else if (t.dataset.device && t.closest('#viewer')) openViewer(state.open, t.dataset.device);
+  else if (t.id === 'viewer-close') closeViewer();
+});
+qInput.addEventListener('input', updateLinks);
+document.getElementById('photos').addEventListener('change', updateLinks);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#viewer').classList.contains('on')) closeViewer(); });
+window.addEventListener('resize', fit);
+renderChips(); renderRanking(); renderGrid(); updateLinks();
+</script>
+</body>
+</html>

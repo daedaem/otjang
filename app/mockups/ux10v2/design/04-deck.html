@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko" data-team="04">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>디자인 보드 04 한 장씩</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 04 고유 부품: 진행 막대, 카드 더미, 정리 카드, 왼쪽 후보 목록 */
+  .prog { display: flex; align-items: center; gap: 10px; margin: 12px var(--gut) 0; }
+  .prog .n { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .prog .bar { flex: 1; height: 3px; background: var(--line); border-radius: 2px; position: relative; }
+  .prog .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); border-radius: 2px; }
+  .prog .lv { height: 44px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; background: var(--bg); }
+  .deck { position: relative; margin: 12px var(--gut) 0; }
+  .dcard { position: relative; z-index: 2; border-radius: var(--r-card); background: var(--bg); box-shadow: var(--shadow-2); overflow: hidden; }
+  .dcard .ph { border-radius: 0; }
+  .dcard .in { padding: 12px 14px 14px; }
+  .dcard .b { font-size: 13px; font-weight: 700; } .dcard .n { font-size: 18px; line-height: 1.35; margin-top: 2px; }
+  .dcard .p { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; } .dcard .p strong { font-size: 22px; font-weight: 800; }
+  .dcard .v { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 15px; font-weight: 700; }
+  .dcard .v.stop { color: var(--stop); }
+  .peek { position: absolute; z-index: 1; left: 8px; right: 8px; bottom: -8px; height: 40px; border-radius: var(--r-card); background: var(--soft-2); }
+  .wrap-sum { margin: 16px var(--gut) 0; padding: 18px; border-radius: var(--r-card); border: 1.5px solid var(--ink); }
+  .wrap-sum h3 { margin: 0 0 12px; font-size: 20px; }
+  .wrap-sum .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .wrap-sum .stats div { background: var(--soft); border-radius: 10px; padding: 10px; font-size: 13px; color: var(--sub); }
+  .wrap-sum .stats b { display: block; font-size: 22px; color: var(--ink); }
+  .list-l .it { display: grid; grid-template-columns: 48px 1fr; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; font-size: 13px; }
+  .list-l .it.on { background: var(--soft); font-weight: 700; } .list-l .it .ph { width: 48px; height: 60px; border-radius: 4px; overflow: hidden; }
+  .list-l .it .d { font-size: 12px; color: var(--sub); font-weight: 400; }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico, ph } = K;
+  K.board({ n: '04', name: '한 장씩', idea: '후보를 한 장씩 크게 보고 판정과 함께 결정한다. 결정은 같은 크기 버튼 3개로만(스와이프는 다음 카드 보기), 결정 뒤 5초 되돌리기, 언제든 목록으로 전환.', refs: 'nng-contextual-swipe · hig-buttons · Gucci Ancora(Webby 2024 Best Mobile UI, 수상 사실만) · Coupang R.Lux(Red Dot Design Concept 2025, 콘셉트)' });
+  const { r, d } = K.data();
+  const card = (p, v) => `<div class="deck"><div class="dcard"><div class="ph">${ph(p)}</div><div class="in"><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p"><strong>${esc(p.priceText)}</strong><span class="f12 sub">${esc(p.priceShort)}</span></div><div class="v ${esc(v.tone)}">${ico(v.tone === 'stop' ? 'warn' : 'info', 's')}${esc(v.title)}</div></div></div><div class="peek"></div></div>`;
+  const prog = (i) => `<div class="prog"><span class="n">${i} / ${r.total}</span><span class="bar"><i style="width:${(i / r.total) * 100}%"></i></span><span class="lv">${ico('grid', 's')}목록으로</span></div>`;
+  const deckScreen = (i, p, v, extra = '') => `${K.hdr({ n: '04' })}<div class="pad" style="padding-bottom:0">${K.chips(r)}</div>${prog(i)}${card(p, v)}${K.dbar(v, { h: 52 })}${extra}`;
+  const v1 = M.judge(r.products[0].id), v2 = M.judge(r.products[1].id);
+  K.row(K.phone('카드 · 1장째', deckScreen(1, r.products[0], v1), { clip: true, notes: ['카드 사진 4:5 화면 폭 − 32, 아래 이름·가격·판정', '결정은 버튼으로만(48~52, 강조 1개). 카드 좌우 스와이프 = 다음·이전 카드(결정 아님), 가장자리 20px 제외', '탭바 숨김, 결정 바가 아래'] })
+    + K.phone('결정 직후 · 5초 되돌리기', deckScreen(2, r.products[1], v2, K.toast('보류했어요 · 1번 카드')), { clip: true, notes: ['결정한 카드는 위로 200ms 빠지고 다음 카드', '토스트 role=status, 5초 뒤 사라짐'] })
+    + K.phone('목록으로 보기', `${K.hdr({ n: '04' })}<div class="pad">${K.chips(r)}<div class="prog" style="margin:12px 0 0"><span class="n">${r.total}개</span><span class="bar"></span><span class="lv">한 장씩 보기</span></div><div class="grid2" style="margin-top:14px">${r.products.slice(0, 6).map((x) => K.card(x, { cmp: true })).join('')}</div></div>${K.tabbar(0)}`, { clip: true, notes: ['2열 그리드(data-flow="result"), 카드를 누르면 상세'] }));
+  const sum = `${K.hdr({ n: '04' })}<div class="pad" style="padding-bottom:0">${K.chips(r)}</div>${prog(r.total)}<div class="wrap-sum"><h3>12장 다 봤어요</h3><div class="stats"><div><b>3</b>보류</div><div><b>1</b>사기로 함</div><div><b>8</b>안 살래</div></div><div class="f13 sub" style="margin-bottom:12px">사기로 한 상품 수집가 합 33,890원 · 결제 금액 아님</div><button class="btn primary block">보류 3개 다시 보기</button><button class="btn quiet block" style="margin-top:8px">기록 보기</button></div>${K.tabbar(0)}`;
+  K.row(K.phone('마지막 다음 · 정리 카드', sum, { clip: true }) + K.phone('상품 상세(카드를 누르면)', K.pdpMobile(d, { n: '04' })));
+  const pc = `${K.hdrPc({ n: '04', q: K.Q })}<div style="display:grid;grid-template-columns:3fr 6fr 3fr;gap:32px;padding:20px 32px 0;max-width:1280px;margin:0 auto"><div class="list-l">${r.products.slice(0, 8).map((p, i) => `<div class="it${i === 1 ? ' on' : ''}"><div class="ph">${ph(p)}</div><div>${esc(p.brand)}<div class="d">${esc(p.priceText)}${i === 0 ? ' · 보류' : ''}</div></div></div>`).join('')}</div><div style="max-width:440px;margin:0 auto;width:100%">${prog(2).replace('class="prog"', 'class="prog" style="margin:0 0 12px"')}${card(r.products[1], v2).replace('class="deck"', 'class="deck" style="margin:0"')}</div><div><div class="f14" style="font-weight:700;margin-bottom:10px">결정</div>${K.decide(v2)}<div class="f13 sub" style="margin-top:10px">←→ 이전·다음 카드(카드에 포커스가 있을 때만). 결정 단축키는 없어요.</div><div class="f14" style="font-weight:700;margin:24px 0 8px">결정한 것</div><div class="f14">보류 1 · 사기로 함 0 · 안 살래 0</div></div></div>`;
+  K.row(K.pc('PC · 후보 목록 | 카드 | 결정', pc, { clip: true }));
+})();
+</script>
+</body>
+</html>

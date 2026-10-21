@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko" data-team="10">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>디자인 보드 10 엄지 하나</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 10 고유 부품: 명령 바, 접근성 전환, 결정 서랍 */
+  .a11y { display: flex; gap: 6px; }
+  .a11y span { width: 56px; height: 44px; border: 1px solid var(--line-2); border-radius: var(--r-control); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+  .cmdbar { position: absolute; left: 0; right: 0; z-index: 30; background: var(--bg); border-top: 1px solid var(--line); padding: 10px var(--gut) 12px; box-shadow: 0 -6px 20px rgba(0, 0, 0, .06); }
+  .cmdbar .search .field { height: 56px; } .cmdbar .search .go { height: 56px; min-width: 72px; font-size: 17px; }
+  .cmdbar .chips { margin-bottom: 8px; }
+  .drawer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--bg); border-radius: var(--r-sheet) var(--r-sheet) 0 0; box-shadow: var(--shadow-sheet); padding: 8px var(--gut) 16px; }
+  .drawer .bar { display: flex; justify-content: space-between; align-items: center; }
+  .drawer .bar span { height: 44px; min-width: 56px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-control); display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 700; }
+  .drawer .t { font-size: 22px; font-weight: 700; margin: 12px 0 4px; display: flex; gap: 6px; align-items: center; }
+  .drawer .t.stop { color: var(--stop); }
+  .drawer p { margin: 0 0 14px; font-size: 16px; color: var(--ink-2); }
+  [data-contrast="high"] .card .ph, [data-contrast="high"] .chip, [data-contrast="high"] .btn { outline: 2px solid #000; outline-offset: -2px; }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico, ph } = K;
+  K.board({ n: '10', name: '엄지 하나', idea: '한 손 사용과 접근성. 상품은 화면 가운데(가장 누르기 쉬운 영역), 아래 명령 바에는 검색과 칩만(탭바와 동시 표시 없음), 상세의 결정은 아래 서랍(56px 버튼). 글자 크게·고대비 전환.', refs: 'nng-bottom-sheets · m3-toolbars · hig-accessibility · WCAG 2.2(2.4.11, 2.5.7, 2.5.8) — ‘아래가 무조건 쉽다’는 근거로 쓰지 않음' });
+  const { r, d } = K.data();
+  const hdr = `<header class="hdr"><span class="logo">어울</span><span class="mock">시안 10</span><span class="sp"></span><span class="a11y"><span aria-label="글자 크게">가+</span><span aria-label="고대비">대비</span></span><button class="ib" aria-label="메뉴">${ico('menu')}<span>메뉴</span></button></header>`;
+  const cmd = (top) => `<div class="cmdbar" style="top:${top}px">${K.chips(r)}${K.search('')}</div>`;
+  const results = (opts = '') => `<div ${opts}>${hdr}<div class="pad"><div class="f15" style="font-size:15px">결과 ${r.total}개 · 가격: 10/13 수집가</div><div class="grid2" style="margin-top:12px">${r.products.slice(0, 4).map((x) => K.card(x, { cmp: true })).join('')}</div></div>${cmd(844 - 168)}</div>`;
+  K.row(K.phone('결과 · 명령 바', results(), { clip: true, notes: ['명령 바 = 칩 44 + 입력 56(찾기 56×72), 탭바 없음', '이동(옷장·기록·비교)은 머리글 ‘메뉴’', '고정 바 높이만큼 scroll-padding-bottom'] })
+    + K.phone('고대비', `<div data-contrast="high" style="--ink:#000;--sub:#1a1a1a;--line:#000;--line-2:#000">${results()}</div>`, { clip: true, notes: ['테두리 2px 검정, 의미색 진하게'] })
+    + K.phone('글자 크게', `<div style="--card-name:18px;--card-price:19px;--card-brand:15px">${results().replace('class="grid2"', 'class="grid2" style="grid-template-columns:minmax(0,1fr)"')}</div>`, { clip: true, notes: ['360px에서는 1열로 바뀜(가로 넘침 0)'] }));
+  const v = d.verdict;
+  const drawer = `<div class="scrim"></div><div class="drawer" style="top:${844 - 400}px"><div class="bar"><span>${ico('up', 's')}더 보기</span><span aria-label="닫기">${ico('close', 's')}</span></div><div class="f13 sub" style="margin-top:8px">${esc(v.basisLabel)}</div><div class="t ${esc(v.tone)}">${ico(v.tone === 'stop' ? 'warn' : 'info')}${esc(v.title)}</div><p>${esc(v.lines[0] || '')}</p>${K.decide(v, { h: 56 })}<button class="btn quiet block" style="margin-top:10px;min-height:56px">${ico('plus', 's')}가진 ${esc(v.addSuggestion?.kindName || '옷')} 넣고 비교</button></div>`;
+  const pdp = `${hdr}${K.pdpPhoto(d)}${K.pdpInfo(d)}<div style="height:200px"></div>${drawer}`;
+  K.row(K.phone('상품 상세 · 결정 서랍(≤ 50%)', `<div style="height:844px;overflow:hidden;position:relative">${pdp}</div>`, { clip: true, fold: false, notes: ['서랍 첫 높이 ≤ 50%, ✕·기기 뒤로가기로 닫힘, ‘더 보기’ 버튼으로 높이 변경(드래그 대체)', '결정 버튼 56, 간격 8', '서랍이 열리면 명령 바 숨김'] })
+    + K.phone('상품 상세 · 서랍 닫힘', K.pdpMobile(d, { n: '10' }).replace(/<header class="hdr">[\s\S]*?<\/header>/, hdr), { notes: ['결정 바 56 높이 버튼(토큰 --target 56)'] }));
+  const pc = `<div style="max-width:1280px">${K.hdrPc({ n: '10', q: '' })}<div style="max-width:640px;margin:0 auto;padding:20px 0 0"><div style="font-size:15px">결과 ${r.total}개 · 가격: 10/13 수집가</div><div class="grid3" style="margin-top:12px">${r.products.slice(0, 6).map((x) => K.card(x, { cmp: true })).join('')}</div></div><div class="cmdbar" style="top:${800 - 150}px;left:50%;right:auto;width:640px;transform:translateX(-50%);border-radius:16px 16px 0 0;border:1px solid var(--line)">${K.chips(r)}${K.search('')}</div><div style="position:absolute;left:32px;bottom:24px" class="btn quiet sm">단축키  /  Esc  ←→</div></div>`;
+  K.row(K.pc('PC · 가운데 640 단 + 아래 가운데 명령 바', pc, { clip: true, notes: ['단축키: / 검색, Esc 닫기, ←→ 상세 이전·다음(결정 키 없음)'] }));
+})();
+</script>
+</body>
+</html>

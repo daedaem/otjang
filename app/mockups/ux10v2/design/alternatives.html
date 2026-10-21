@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>창작 디자인 3안</title>
+<!-- 서체: Google Fonts SIL OFL. 서비스 이름은 미정이라 로고 자리는 '이름 미정' 표시. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;600;700&family=Gowun+Batang:wght@400;700&family=Gothic+A1:wght@500;700;800;900&display=swap">
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .alt { position: relative; height: 844px; overflow: hidden; -webkit-font-smoothing: antialiased; }
+  .alt.pcx { height: 800px; }
+  .alt * { box-sizing: border-box; }
+  .alt .ico { width: 22px; height: 22px; stroke-width: 1.5; }
+  .alt .num { font-variant-numeric: tabular-nums; }
+  .alt .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .alt .eo-ph { border-radius: 0 !important; height: auto !important; }
+  .alt .eo-ph img { mix-blend-mode: multiply; }
+  .sec-title { padding: 40px 32px 0; font: 700 22px var(--font); }
+  .sec-title small { display: block; font-weight: 400; font-size: 14px; color: #555; margin-top: 4px; max-width: 980px; }
+
+  /* ───────── A. 재단사의 노트 — 아이보리 종이, 명조 제목, 모눈 사진 바탕, 연필 빨강, 박음질 점선 ───────── */
+  .ta { --paper: #f5efe3; --ink: #2a2622; --sub: #776d61; --line: #d9cfbd; --pencil: #b23a2b; --grid: rgba(120,100,70,.10);
+    background: var(--paper); color: var(--ink); font-family: "Noto Sans KR", sans-serif; font-size: 14px; }
+  .ta .serif { font-family: "Gowun Batang", serif; }
+  .ta-ph { position: relative; background-color: #fbf8f2; background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 14px 14px; }
+  .ta-ph .eo-ph { background: transparent !important; aspect-ratio: 3 / 4 !important; }
+  .ta-ph .eo-ph img { object-fit: contain !important; padding: 8%; }
+  .ta-top { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--line); }
+  .ta-wm { font-family: "Gowun Batang", serif; font-weight: 700; font-size: 18px; letter-spacing: .02em; }
+  .ta-wm small { font: 400 10px "Noto Sans KR", sans-serif; color: var(--sub); margin-left: 6px; letter-spacing: 0; }
+  .ta-icons { display: flex; gap: 8px; color: var(--ink); }
+  .ta-hero { padding: 34px 22px 0; }
+  .ta-hero h1 { margin: 0; font-family: "Gowun Batang", serif; font-size: 30px; line-height: 1.32; font-weight: 700; letter-spacing: -.02em; }
+  .ta-hero p { margin: 12px 0 0; color: var(--sub); font-size: 14px; line-height: 1.6; }
+  .ta-input { margin: 26px 22px 0; padding: 10px 0 12px; border-bottom: 2px solid var(--ink); display: flex; align-items: center; gap: 10px; font-size: 17px; color: var(--sub); }
+  .ta-tags { display: flex; flex-wrap: wrap; gap: 10px 8px; padding: 22px 22px 0; }
+  .ta-tag { position: relative; padding: 7px 12px 7px 22px; background: #fffaf0; border: 1px solid var(--line); border-radius: 3px 10px 10px 3px; font-size: 13px; }
+  .ta-tag::before { content: ''; position: absolute; left: 8px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 3px; border: 1px solid var(--sub); }
+  .ta-note { margin: 34px 22px 0; padding: 16px 18px; border: 1.5px dashed var(--sub); border-radius: 4px; background: #fffaf0; }
+  .ta-note b { font-family: "Gowun Batang", serif; font-size: 16px; } .ta-note p { margin: 6px 0 0; font-size: 13px; color: var(--sub); line-height: 1.6; }
+  .ta-res-h { padding: 18px 18px 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .ta-res-h h2 { margin: 0; font-family: "Gowun Batang", serif; font-size: 21px; font-weight: 700; }
+  .ta-res-h span { font-size: 12px; color: var(--sub); }
+  .ta-chips { display: flex; gap: 6px; padding: 4px 18px 14px; }
+  .ta-chips span { font-size: 12px; padding: 5px 10px; border: 1px solid var(--ink); border-radius: 999px; } .ta-chips span.x::after { content: ' ×'; color: var(--sub); }
+  .ta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 12px; padding: 0 18px; }
+  .ta-card { position: relative; }
+  .ta-card .ta-ph { border: 1px solid var(--line); }
+  .ta-htag { position: absolute; left: -4px; bottom: 54px; z-index: 2; background: #fffaf0; border: 1px solid var(--line); border-radius: 2px 8px 8px 2px; padding: 4px 10px 4px 16px; font: 600 12px "Inter", sans-serif; box-shadow: 0 2px 4px rgba(60,40,10,.08); }
+  .ta-htag::before { content: ''; position: absolute; left: 6px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 2px; background: var(--sub); }
+  .ta-card .b { margin-top: 10px; font-size: 11px; color: var(--sub); letter-spacing: .04em; } .ta-card .n { font-size: 13px; line-height: 1.45; margin-top: 2px; }
+  .ta-card .own { margin-top: 4px; font-size: 12px; color: var(--pencil); text-decoration: underline wavy var(--pencil); text-underline-offset: 3px; }
+  .ta-pdp .ta-ph { border-bottom: 1px solid var(--line); }
+  .ta-pdp .ta-ph .eo-ph { aspect-ratio: 1 / 1 !important; }
+  .ta-pinfo { padding: 18px 20px 0; } .ta-pinfo .b { font-size: 12px; color: var(--sub); letter-spacing: .04em; }
+  .ta-pinfo h1 { margin: 4px 0 0; font-family: "Gowun Batang", serif; font-size: 22px; font-weight: 700; line-height: 1.4; }
+  .ta-pinfo .pr { margin-top: 8px; display: flex; gap: 8px; align-items: baseline; } .ta-pinfo .pr b { font: 700 20px "Inter", sans-serif; } .ta-pinfo .pr span { font-size: 12px; color: var(--sub); }
+  .ta-memo { margin: 18px 16px 0; padding: 16px 18px 18px; background: #fffaf0; border: 1.5px dashed var(--sub); border-radius: 4px; position: relative; }
+  .ta-memo .k { font-size: 11px; letter-spacing: .12em; color: var(--sub); display: flex; justify-content: space-between; }
+  .ta-memo .t { margin-top: 8px; font-family: "Gowun Batang", serif; font-size: 20px; font-weight: 700; }
+  .ta-memo .t em { font-style: normal; background-image: linear-gradient(transparent 62%, rgba(178,58,43,.28) 62%); }
+  .ta-memo p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: #4a433b; }
+  .ta-memo .pin { position: absolute; right: 14px; top: -9px; width: 18px; height: 18px; border-radius: 9px; background: var(--pencil); box-shadow: inset -3px -3px 0 rgba(0,0,0,.18); }
+  .ta-stamps { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 14px 16px 22px; background: var(--paper); border-top: 1px solid var(--line); }
+  .ta-stamps span { height: 50px; display: grid; place-items: center; border: 1.5px solid var(--ink); border-radius: 4px; font-family: "Gowun Batang", serif; font-size: 15px; font-weight: 700; }
+  .ta-stamps span.on { border-color: var(--pencil); color: var(--pencil); background: rgba(178,58,43,.06); transform: rotate(-2deg); }
+  .ta-fit { display: grid; grid-template-columns: 1fr 28px 1fr; gap: 0; margin: 16px 16px 0; }
+  .ta-fit .col .ta-ph { border: 1px solid var(--line); } .ta-fit .lab { font-size: 11px; color: var(--sub); letter-spacing: .1em; margin-bottom: 6px; }
+  .ta-fit .cap { margin-top: 8px; font-size: 13px; line-height: 1.45; }
+  .ta-tape { background: repeating-linear-gradient(180deg, #e8d9a8 0 9px, #d9c78d 9px 10px); border-left: 1px solid #c9b57a; border-right: 1px solid #c9b57a; margin: 18px 6px 0; border-radius: 2px; }
+  .ta-tab { position: absolute; left: 0; right: 0; bottom: 0; height: 62px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); background: var(--paper); }
+  .ta-tab a { display: grid; place-items: center; align-content: center; font-size: 11px; color: var(--sub); gap: 2px; } .ta-tab a.on { color: var(--ink); font-weight: 700; }
+
+  /* ───────── B. 밤의 쇼룸 — 짙은 먹색, 조명 받은 사진 패널, 유리 패널, 호박색 ───────── */
+  .tb { --night: #121412; --night2: #1b1e1b; --text: #ece8df; --sub: #9b978d; --amber: #e3a54c; --glass: rgba(255,255,255,.06);
+    background: radial-gradient(120% 60% at 50% 0%, #1f231f 0%, var(--night) 60%); color: var(--text); font-family: "Noto Sans KR", sans-serif; font-size: 14px; }
+  .tb-ph { position: relative; background: #ecebe6; border-radius: 6px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,.45); }
+  .tb-ph::after { content: ''; position: absolute; inset: 0; background: radial-gradient(80% 60% at 50% 10%, rgba(255,250,235,.35), transparent 70%); pointer-events: none; mix-blend-mode: soft-light; }
+  .tb-ph .eo-ph { background: #ecebe6 !important; aspect-ratio: 4 / 5 !important; }
+  .tb-top { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+  .tb-wm { font-family: "Noto Serif KR", serif; font-size: 17px; letter-spacing: .18em; } .tb-wm small { font: 400 10px "Noto Sans KR", sans-serif; color: var(--sub); letter-spacing: 0; margin-left: 6px; }
+  .tb-hero { padding: 26px 22px 0; } .tb-hero .k { font-size: 11px; letter-spacing: .2em; color: var(--amber); }
+  .tb-hero h1 { margin: 10px 0 0; font-family: "Noto Serif KR", serif; font-weight: 400; font-size: 30px; line-height: 1.35; letter-spacing: -.02em; }
+  .tb-glass { margin: 24px 20px 0; height: 54px; border-radius: 14px; background: var(--glass); border: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(12px); display: flex; align-items: center; gap: 10px; padding: 0 16px; color: var(--sub); font-size: 15px; }
+  .tb-shelf { margin: 30px 0 0; padding: 0 20px; }
+  .tb-shelf .h { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); letter-spacing: .08em; margin-bottom: 14px; }
+  .tb-row { display: flex; gap: 12px; } .tb-row > div { width: 132px; flex: none; }
+  .tb-row .cap { font-size: 12px; color: var(--sub); margin-top: 8px; }
+  .tb-plank { height: 6px; margin: 14px -20px 0; background: linear-gradient(#3a3428, #221f19); box-shadow: 0 6px 12px rgba(0,0,0,.5); }
+  .tb-res-h { padding: 6px 20px 16px; } .tb-res-h h2 { margin: 0; font-family: "Noto Serif KR", serif; font-weight: 400; font-size: 22px; } .tb-res-h span { font-size: 12px; color: var(--sub); }
+  .tb-chips { display: flex; gap: 6px; margin-top: 12px; } .tb-chips span { padding: 6px 12px; border-radius: 999px; background: var(--glass); border: 1px solid rgba(255,255,255,.12); font-size: 12px; }
+  .tb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 14px; padding: 0 20px; }
+  .tb-card .b { margin-top: 12px; font-size: 11px; color: var(--sub); letter-spacing: .08em; } .tb-card .n { font-size: 13px; margin-top: 3px; line-height: 1.45; } .tb-card .p { margin-top: 6px; font: 600 15px "Inter", sans-serif; color: var(--amber); }
+  .tb-card .own { margin-top: 6px; display: inline-flex; gap: 6px; align-items: center; font-size: 11px; color: var(--amber); } .tb-card .own::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .tb-pdp .tb-ph { border-radius: 0; margin: 0; }
+  .tb-pinfo { padding: 20px 22px 0; } .tb-pinfo .b { font-size: 11px; letter-spacing: .14em; color: var(--sub); }
+  .tb-pinfo h1 { margin: 6px 0 0; font-family: "Noto Serif KR", serif; font-weight: 400; font-size: 22px; line-height: 1.4; }
+  .tb-pinfo .pr { margin-top: 10px; font: 600 20px "Inter", sans-serif; color: var(--amber); } .tb-pinfo .pr span { font: 400 12px "Noto Sans KR", sans-serif; color: var(--sub); margin-left: 8px; }
+  .tb-verdict { margin: 18px 20px 0; padding: 16px; border-radius: 14px; background: var(--glass); border: 1px solid rgba(255,255,255,.10); }
+  .tb-verdict .k { font-size: 11px; color: var(--sub); letter-spacing: .1em; } .tb-verdict .t { margin-top: 6px; font-size: 17px; font-weight: 700; }
+  .tb-verdict .t.hot { color: var(--amber); text-shadow: 0 0 18px rgba(227,165,76,.35); } .tb-verdict p { margin: 6px 0 0; font-size: 13px; color: #c9c4b9; line-height: 1.55; }
+  .tb-dock { position: absolute; left: 16px; right: 16px; bottom: 18px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 6px; border-radius: 18px; background: rgba(30,32,30,.75); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(16px); }
+  .tb-dock span { height: 48px; border-radius: 13px; display: grid; place-items: center; font-weight: 600; font-size: 14px; color: var(--text); }
+  .tb-dock span.on { background: var(--amber); color: #1a1408; }
+  .tb-closet { padding: 6px 20px 0; } .tb-closet h2 { margin: 0; font-family: "Noto Serif KR", serif; font-weight: 400; font-size: 22px; }
+  .tb-closet .d { font-size: 12px; color: var(--sub); margin-top: 6px; }
+  .tb-wall { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 10px; margin-top: 18px; }
+  .tb-wall .it { position: relative; } .tb-wall .it.hit .tb-ph { outline: 2px solid var(--amber); outline-offset: 3px; box-shadow: 0 0 30px rgba(227,165,76,.35), 0 20px 40px rgba(0,0,0,.45); }
+  .tb-wall .cap { font-size: 11px; color: var(--sub); margin-top: 8px; } .tb-wall .it.hit .cap { color: var(--amber); }
+  .tb-wall .it.cand .tb-ph { outline: 1.5px dashed var(--text); outline-offset: 3px; }
+
+  /* ───────── C. 색 맞춤 — 상품 색이 카드 바탕, 굵고 둥근 글자, 색 원이 겹치는 판정 ───────── */
+  .tc { --ink: #141414; --sub: #6b6b6b; background: #fff; color: var(--ink); font-family: "Gothic A1", "Noto Sans KR", sans-serif; font-size: 14px; }
+  .tc-top { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; }
+  .tc-wm { font-weight: 900; font-size: 20px; letter-spacing: -.04em; display: flex; align-items: center; gap: 6px; } .tc-wm i { width: 14px; height: 14px; border-radius: 7px; background: #f2c14e; display: inline-block; box-shadow: 8px 0 0 #6aa5e0; margin-right: 8px; mix-blend-mode: multiply; } .tc-wm small { font: 500 10px "Noto Sans KR", sans-serif; color: var(--sub); letter-spacing: 0; }
+  .tc-hero { padding: 18px 18px 0; } .tc-hero h1 { margin: 0; font-weight: 900; font-size: 34px; line-height: 1.18; letter-spacing: -.05em; }
+  .tc-hero p { margin: 12px 0 0; font-size: 14px; color: var(--sub); line-height: 1.55; }
+  .tc-q { margin: 22px 18px 0; height: 58px; border-radius: 29px; background: #f2f2f0; display: flex; align-items: center; gap: 10px; padding: 0 20px; font-size: 16px; color: var(--sub); font-weight: 500; }
+  .tc-pal { margin: 30px 18px 0; } .tc-pal .h { font-weight: 800; font-size: 16px; } .tc-pal .d { font-size: 12px; color: var(--sub); margin-top: 4px; }
+  .tc-dots { display: flex; gap: 10px; margin-top: 14px; } .tc-dots i { width: 44px; height: 44px; border-radius: 22px; border: 2px dashed #cfcfcc; display: block; } .tc-dots i.fill { border: 0; }
+  .tc-ex { display: flex; flex-wrap: wrap; gap: 8px; padding: 22px 18px 0; } .tc-ex span { padding: 9px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+  .tc-res-h { padding: 4px 18px 14px; } .tc-res-h h2 { margin: 0; font-weight: 900; font-size: 24px; letter-spacing: -.04em; } .tc-res-h span { font-size: 12px; color: var(--sub); font-weight: 500; }
+  .tc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px; }
+  .tc-card { border-radius: 26px; padding: 10px; overflow: hidden; }
+  .tc-card .eo-ph { background: transparent !important; aspect-ratio: 1 / 1 !important; }
+  .tc-card .eo-ph img { object-fit: contain !important; }
+  .tc-card .cl { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.7); }
+  .tc-card .cl i { width: 10px; height: 10px; border-radius: 5px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+  .tc-card .b { margin-top: 8px; font-size: 11px; font-weight: 800; } .tc-card .n { font-size: 13px; font-weight: 500; line-height: 1.4; margin-top: 2px; } .tc-card .p { font-size: 16px; font-weight: 900; margin-top: 4px; }
+  .tc-hero2 { border-radius: 0 0 36px 36px; padding: 0 18px 18px; }
+  .tc-hero2 .eo-ph { background: transparent !important; aspect-ratio: 1 / 1 !important; } .tc-hero2 .eo-ph img { object-fit: contain !important; }
+  .tc-pinfo { padding: 16px 20px 0; } .tc-pinfo .b { font-size: 12px; font-weight: 800; } .tc-pinfo h1 { margin: 4px 0 0; font-size: 21px; font-weight: 800; letter-spacing: -.03em; line-height: 1.35; }
+  .tc-pinfo .pr { margin-top: 8px; font-size: 22px; font-weight: 900; } .tc-pinfo .pr span { font-size: 12px; font-weight: 500; color: var(--sub); margin-left: 6px; }
+  .tc-venn { margin: 18px 16px 0; padding: 18px; border-radius: 26px; background: #f5f5f3; display: grid; grid-template-columns: 128px 1fr; gap: 16px; align-items: center; }
+  .tc-venn .v { position: relative; height: 92px; }
+  .tc-venn .v i { position: absolute; top: 6px; width: 80px; height: 80px; border-radius: 40px; mix-blend-mode: multiply; border: 2px solid rgba(0,0,0,.08); }
+  .tc-venn .t { font-weight: 900; font-size: 18px; letter-spacing: -.03em; line-height: 1.3; } .tc-venn p { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+  .tc-acts { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px 20px; display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px; background: linear-gradient(transparent, #fff 30%); }
+  .tc-acts span { height: 54px; border-radius: 27px; display: grid; place-items: center; font-weight: 800; font-size: 15px; background: #f0f0ee; }
+  .tc-acts span.on { background: var(--ink); color: #fff; }
+  .tc-map { padding: 6px 18px 0; } .tc-map h2 { margin: 0; font-weight: 900; font-size: 24px; letter-spacing: -.04em; } .tc-map .d { font-size: 13px; color: var(--sub); margin-top: 6px; }
+  .tc-cl { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 8px; margin-top: 18px; }
+  .tc-cl .c { display: grid; justify-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-align: center; }
+  .tc-cl .c i { width: 58px; height: 58px; border-radius: 29px; display: block; border: 2px solid rgba(0,0,0,.06); }
+  .tc-cl .c.hit i { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--ink); }
+  .tc-cand { margin-top: 22px; border-radius: 26px; padding: 14px; display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+  .tc-cand .eo-ph { background: transparent !important; aspect-ratio: 1 / 1 !important; } .tc-cand .eo-ph img { object-fit: contain !important; }
+  .tc-tab { position: absolute; left: 14px; right: 14px; bottom: 16px; height: 60px; border-radius: 30px; background: var(--ink); color: #fff; display: grid; grid-template-columns: repeat(4, 1fr); }
+  .tc-tab a { display: grid; place-items: center; align-content: center; gap: 1px; font-size: 10px; color: #aaa; font-weight: 700; } .tc-tab a.on { color: #fff; }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico } = K;
+  K.board({ n: '창작', name: '창작 디자인 3안', idea: '서비스의 핵심 생각(사기 전에 ‘가진 옷과 맞는지’ 본다)을 화면의 상징으로 삼은 세 가지 디자인. A 재단사의 노트(판정이 피팅 메모가 된다), B 밤의 쇼룸(조명 받은 진열, 겹치는 옷이 빛난다), C 색 맞춤(옷 색 원이 겹치는 것으로 판정을 본다). 서비스 이름은 미정이라 로고 자리는 ‘이름 미정’.', refs: '특정 회사의 로고·이름·고유 색을 쓰지 않은 창작안. 사진은 파일 가공 없이 화면에서만 톤을 맞춤.', note: '서체 Gowun Batang·Noto Serif KR·Noto Sans KR·Gothic A1·Inter(SIL OFL).' });
+  const ph = (t, o) => M.photoHtml(t, { eager: true, caption: false, ...o });
+  const { r, d } = K.data(); const P = r.products; const v0 = d.verdict;
+  const s = v0.addSuggestion;
+  // 넣은 뒤 상태(겹침 판정)
+  M.addGarment({ kind: s.kind, slot: s.slot, color: 'white' });
+  const r2 = M.ask(K.Q), d2 = M.product(r2.products[0].id), v2 = d2.verdict;
+  const tint = (hex, pct = 24) => `color-mix(in srgb, ${hex || '#dddddd'} ${pct}%, #ffffff)`;
+  const ownTxt = (o) => (!o || o.tone === 'none' || !o.label ? '' : o.label);
+  const section = (title, sub) => document.body.insertAdjacentHTML('beforeend', `<h2 class="sec-title">${title}<small>${sub}</small></h2>`);
+
+  // ── A. 재단사의 노트
+  section('A. 재단사의 노트', '아이보리 종이 위에 모눈 바탕 사진, 명조 제목. 상품마다 꼬리표(행택)가 달리고, 판정은 재단사의 피팅 메모처럼 박음질 점선 안에 적힌다. 결정 버튼은 도장. 대표 화면은 ‘가봉’: 후보와 내 옷을 줄자로 나눠 나란히.');
+  const taTop = `<div class="ta-top"><span class="ta-wm">이름 미정<small>가칭</small></span><span class="ta-icons">${ico('search')}${ico('closet')}${ico('records')}</span></div>`;
+  const taTab = (on) => `<nav class="ta-tab">${[['search', '찾기'], ['compare', '가봉'], ['closet', '옷장'], ['records', '장부']].map(([i, l], k) => `<a class="${k === on ? 'on' : ''}">${ico(i)}${l}</a>`).join('')}</nav>`;
+  const aHome = `<div class="alt ta">${taTop}<div class="ta-hero"><h1>사기 전에,<br>가진 옷에 대 볼게요.</h1><p>찾는 옷을 적어 주세요. 옷장이 비어 있어도 괜찮아요.</p></div><div class="ta-input">${ico('search')}출근용 셔츠 10만원 이하</div><div class="ta-tags">${M.examples().slice(0, 5).map((x) => `<span class="ta-tag">${esc(x)}</span>`).join('')}</div><div class="ta-note"><b>재단사의 메모</b><p>가진 셔츠 한 벌만 알려 주면, 비슷한 옷이 이미 있는지 먼저 짚어 드려요.</p></div>${taTab(0)}</div>`;
+  const aRes = `<div class="alt ta">${taTop}<div class="ta-res-h"><h2>출근용 셔츠 ${r2.total}벌</h2><span>10/13 수집가</span></div><div class="ta-chips"><span>셔츠</span><span class="x">출근</span><span class="x">10만원 이하</span></div><div class="ta-grid">${r2.products.slice(0, 4).map((p) => `<div class="ta-card"><div class="ta-ph">${ph(p)}</div><span class="ta-htag num">${esc(p.priceText)}</span><div class="b">${esc(p.brand)}</div><div class="n clamp2">${esc(p.name)}</div>${ownTxt(p.owned) ? `<div class="own">${esc(ownTxt(p.owned))}</div>` : ''}</div>`).join('')}</div>${taTab(0)}</div>`;
+  const aPdp = `<div class="alt ta ta-pdp">${taTop}<div class="ta-ph">${ph(d2)}</div><div class="ta-pinfo"><div class="b">${esc(d2.brand)}</div><h1>${esc(d2.name)}</h1><div class="pr"><b class="num">${esc(d2.priceText)}</b><span>${esc(d2.priceShort)} · ${esc(d2.store)}</span></div></div><div class="ta-memo"><span class="pin"></span><div class="k"><span>피팅 메모</span><span>${esc(v2.basisLabel)}</span></div><div class="t"><em>${esc(v2.title)}</em></div><p>${esc(v2.lines[0] || '')}</p></div><div class="ta-stamps">${['보류', '안 살래', '사기로 함'].map((x, i) => `<span class="${(v2.lean === 'hold' && i === 0) || (v2.lean === 'buy' && i === 2) ? 'on' : ''}">${x}</span>`).join('')}</div></div>`;
+  const mine = v2.owned[0];
+  const aFit = `<div class="alt ta">${taTop}<div class="ta-res-h"><h2>가봉</h2><span>후보와 내 옷을 나란히</span></div><div class="ta-fit"><div class="col"><div class="lab">후보</div><div class="ta-ph">${ph(d2)}</div><div class="cap">${esc(d2.brand)}<br><b class="num">${esc(d2.priceText)}</b></div></div><div class="ta-tape"></div><div class="col"><div class="lab">내 옷</div><div class="ta-ph">${mine ? ph(mine) : ''}</div><div class="cap">${esc(mine?.label || '')}<br><span style="color:var(--sub);font-size:11px">비슷한 상품 사진</span></div></div></div><div class="ta-memo" style="margin-top:22px"><span class="pin"></span><div class="k"><span>재단사의 판단</span><span>규칙으로 봤어요</span></div><div class="t"><em>같은 종류·같은 색</em>이에요</div><p>새로 더할 이유가 있는지 먼저 생각해 보세요. 핏·소재는 판매처에서 확인해요.</p></div>${taTab(1)}</div>`;
+  K.row(K.phone('A 홈', aHome, { fold: false }) + K.phone('A 검색 결과', aRes, { fold: false, notes: ['상품마다 가격 꼬리표(행택)', '겹침은 연필 물결 밑줄'] }) + K.phone('A 상세 · 피팅 메모', aPdp, { fold: false, notes: ['판정이 박음질 점선 안의 메모, 핵심은 연필 형광 밑줄', '결정은 도장, 기운 쪽만 붉은 도장'] }) + K.phone('A 가봉(대표 화면)', aFit, { fold: false, notes: ['후보와 내 옷 사이를 줄자로 나눔'] }));
+  const aPc = `<div class="alt ta pcx">${taTop.replace('ta-top', 'ta-top" style="padding:0 40px')}<div style="display:grid;grid-template-columns:300px 1fr;gap:48px;padding:32px 40px 0"><div><div class="ta-hero" style="padding:0"><h1 style="font-size:28px">출근용 셔츠<br>${r2.total}벌</h1><p>가격은 10월 13일 수집가</p></div><div class="ta-memo" style="margin:24px 0 0"><span class="pin"></span><div class="k"><span>피팅 메모</span><span>내 옷 1벌</span></div><div class="t" style="font-size:17px"><em>흰 셔츠</em>가 이미 있어요</div><p>흰색은 겹쳐요. 다른 색 셔츠를 먼저 보세요.</p></div></div><div class="ta-grid" style="grid-template-columns:repeat(4,1fr);gap:28px 18px;padding:0">${r2.products.slice(0, 8).map((p) => `<div class="ta-card"><div class="ta-ph">${ph(p)}</div><span class="ta-htag num">${esc(p.priceText)}</span><div class="b">${esc(p.brand)}</div><div class="n clamp2">${esc(p.name)}</div>${ownTxt(p.owned) ? `<div class="own">${esc(ownTxt(p.owned))}</div>` : ''}</div>`).join('')}</div></div></div>`;
+  K.row(K.pc('A PC 결과', aPc));
+
+  // ── B. 밤의 쇼룸
+  section('B. 밤의 쇼룸', '짙은 먹색 공간에 조명 받은 사진 패널이 떠 있고, 가격과 신호는 호박색. 유리 패널 위 결정 도크. 대표 화면은 ‘내 옷장 진열장’: 후보를 내 옷 사이에 걸어 보면 겹치는 옷이 빛난다.');
+  const tbTop = `<div class="tb-top"><span class="tb-wm">이름 미정<small>가칭</small></span><span style="display:flex;gap:10px">${ico('search')}${ico('closet')}</span></div>`;
+  const bHome = `<div class="alt tb">${tbTop}<div class="tb-hero"><div class="k">TONIGHT'S EDIT</div><h1>사기 전에,<br>내 옷장 옆에 걸어 보세요.</h1></div><div class="tb-glass">${ico('search')}출근용 셔츠 10만원 이하</div><div class="tb-shelf"><div class="h"><span>이번 계절 기본</span><span>규칙으로 골랐어요</span></div><div class="tb-row">${M.suggest({ limit: 3 }).items.map((p) => `<div><div class="tb-ph">${ph(p)}</div><div class="cap">${esc(p.kindName)}</div></div>`).join('')}</div><div class="tb-plank"></div></div></div>`;
+  const bRes = `<div class="alt tb">${tbTop}<div class="tb-res-h"><h2>출근용 셔츠</h2><span>${r2.total}벌 · 10/13 수집가</span><div class="tb-chips"><span>셔츠</span><span>출근 ×</span><span>10만원 이하 ×</span></div></div><div class="tb-grid">${r2.products.slice(0, 4).map((p) => `<div class="tb-card"><div class="tb-ph">${ph(p)}</div><div class="b">${esc(p.brand)}</div><div class="n clamp2">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}</div>${ownTxt(p.owned) ? `<div class="own">${esc(ownTxt(p.owned))}</div>` : ''}</div>`).join('')}</div></div>`;
+  const bPdp = `<div class="alt tb tb-pdp">${tbTop}<div class="tb-ph">${ph(d2)}</div><div class="tb-pinfo"><div class="b">${esc(d2.brand)}</div><h1>${esc(d2.name)}</h1><div class="pr num">${esc(d2.priceText)}<span>${esc(d2.priceShort)}</span></div></div><div class="tb-verdict"><div class="k">내 옷과 · ${esc(v2.basisLabel)}</div><div class="t ${v2.tone === 'stop' ? 'hot' : ''}">${esc(v2.title)}</div><p>${esc(v2.lines[0] || '')}</p></div><div class="tb-dock">${['보류', '안 살래', '사기로 함'].map((x, i) => `<span class="${(v2.lean === 'hold' && i === 0) || (v2.lean === 'buy' && i === 2) ? 'on' : ''}">${x}</span>`).join('')}</div></div>`;
+  M.loadTrialCloset();
+  const st = M.getState(); const r3 = M.ask(K.Q); const d3 = M.product(r3.products[0].id);
+  const hitIds = new Set(d3.verdict.owned.map((o) => o.id));
+  const bCloset = `<div class="alt tb">${tbTop}<div class="tb-closet"><h2>내 옷장 진열장</h2><div class="d">체험용 옷 ${st.closetCount}벌 · 후보를 걸어 보면 겹치는 옷이 빛나요</div><div class="tb-wall"><div class="it cand"><div class="tb-ph">${ph(d3)}</div><div class="cap">후보 · ${esc(d3.brand)}</div></div>${st.closet.slice(0, 8).map((g) => `<div class="it ${hitIds.has(g.id) ? 'hit' : ''}"><div class="tb-ph">${ph(g)}</div><div class="cap">${hitIds.has(g.id) ? '겹쳐요 · ' : ''}${esc(g.label)}</div></div>`).join('')}</div></div></div>`;
+  K.row(K.phone('B 홈', bHome, { fold: false }) + K.phone('B 검색 결과', bRes, { fold: false, notes: ['사진 패널에 위에서 비추는 조명', '가격·신호는 호박색 하나'] }) + K.phone('B 상세', bPdp, { fold: false, notes: ['유리 패널 판정, 떠 있는 결정 도크'] }) + K.phone('B 내 옷장 진열장(대표 화면)', bCloset, { fold: false, notes: ['후보는 점선 테두리, 겹치는 내 옷은 호박색으로 빛남(글자 함께)'] }));
+  const bPc = `<div class="alt tb pcx">${tbTop.replace('tb-top', 'tb-top" style="padding:0 40px')}<div style="display:grid;grid-template-columns:1.1fr 1fr;gap:56px;padding:20px 56px 0;align-items:start"><div class="tb-ph" style="max-width:520px">${ph(d3)}</div><div><div class="tb-pinfo" style="padding:0"><div class="b">${esc(d3.brand)}</div><h1 style="font-size:28px">${esc(d3.name)}</h1><div class="pr num" style="font-size:24px">${esc(d3.priceText)}<span>${esc(d3.priceShort)}</span></div></div><div class="tb-verdict" style="margin:24px 0 0"><div class="k">내 옷과 · ${esc(d3.verdict.basisLabel)}</div><div class="t ${d3.verdict.tone === 'stop' ? 'hot' : ''}">${esc(d3.verdict.title)}</div><p>${esc(d3.verdict.lines[0] || '')}</p></div><div class="tb-wall" style="grid-template-columns:repeat(5,1fr);margin-top:24px">${st.closet.slice(0, 5).map((g) => `<div class="it ${hitIds.has(g.id) ? 'hit' : ''}"><div class="tb-ph">${ph(g)}</div><div class="cap">${esc(g.label)}</div></div>`).join('')}</div><div class="tb-dock" style="position:static;margin-top:24px">${['보류', '안 살래', '사기로 함'].map((x, i) => `<span class="${d3.verdict.lean === 'hold' && i === 0 ? 'on' : ''}">${x}</span>`).join('')}</div></div></div></div>`;
+  K.row(K.pc('B PC 상세', bPc));
+
+  // ── C. 색 맞춤
+  section('C. 색 맞춤', '상품마다 그 옷의 색이 카드 바탕이 되고, 굵고 둥근 글자. 판정은 ‘색 원이 겹치는 그림’—후보 색 원과 내 옷 색 원이 겹치면 이미 비슷한 옷이 있다는 뜻. 대표 화면은 ‘옷장 색 지도’.');
+  const tcTop = `<div class="tc-top"><span class="tc-wm"><i></i>이름 미정<small>가칭</small></span><span style="display:flex;gap:10px">${ico('search')}${ico('closet')}</span></div>`;
+  const tcTab = (on) => `<nav class="tc-tab">${[['search', '찾기'], ['compare', '비교'], ['closet', '색 지도'], ['records', '기록']].map(([i, l], k) => `<a class="${k === on ? 'on' : ''}">${ico(i)}${l}</a>`).join('')}</nav>`;
+  const cols = M.colorChoices();
+  const cHome = `<div class="alt tc">${tcTop}<div class="tc-hero"><h1>사기 전에<br>색부터<br>맞춰 볼까요?</h1><p>찾는 옷을 적으면, 가진 옷 색과 겹치는지 바로 보여 드려요.</p></div><div class="tc-q">${ico('search')}출근용 셔츠 10만원 이하</div><div class="tc-pal"><div class="h">내 옷장 색</div><div class="d">아직 비어 있어요 · 한 벌씩 색을 채워 보세요</div><div class="tc-dots"><i></i><i></i><i></i><i></i><i></i></div></div><div class="tc-ex">${M.examples().slice(0, 4).map((x, i) => `<span style="background:${tint(['#f2c14e', '#6aa5e0', '#8fbf7a', '#e58e73'][i], 30)}">${esc(x)}</span>`).join('')}</div>${tcTab(0)}</div>`;
+  const cRes = `<div class="alt tc">${tcTop}<div class="tc-res-h"><h2>출근용 셔츠 ${r2.total}개</h2><span>10/13 수집가 · 셔츠 · 출근 · 10만원 이하</span></div><div class="tc-grid">${r2.products.slice(0, 4).map((p) => `<div class="tc-card" style="background:${tint(p.colorHex, 30)}"><span class="cl"><i style="background:${p.colorHex}"></i>${esc(p.colorLabel)}</span>${ph(p)}<div class="b">${esc(p.brand)}</div><div class="n clamp2">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}</div></div>`).join('')}</div>${tcTab(0)}</div>`;
+  const venn = (cand, mineHex, title, txt) => `<div class="tc-venn"><div class="v"><i style="left:6px;background:${mineHex || '#eee'}"></i><i style="left:44px;background:${cand}"></i></div><div><div class="t">${esc(title)}</div><p>${esc(txt)}</p></div></div>`;
+  const cPdp = `<div class="alt tc">${tcTop}<div class="tc-hero2" style="background:${tint(d2.colorHex, 32)}">${ph(d2)}</div><div class="tc-pinfo"><div class="b">${esc(d2.brand)}</div><h1>${esc(d2.name)}</h1><div class="pr num">${esc(d2.priceText)}<span>${esc(d2.priceShort)}</span></div></div>${venn(d2.colorHex, v2.owned[0]?.colorHex, v2.title, `내 ${v2.owned[0]?.label || '옷'}과 색이 겹쳐요 · 규칙으로 봤어요`)}<div class="tc-acts">${['보류', '안 살래', '사기로 함'].map((x, i) => `<span class="${(v2.lean === 'hold' && i === 0) || (v2.lean === 'buy' && i === 2) ? 'on' : ''}">${x}</span>`).join('')}</div></div>`;
+  const myCols = [...new Map(st.closet.map((g) => [g.color, g])).values()];
+  const cMap = `<div class="alt tc">${tcTop}<div class="tc-map"><h2>옷장 색 지도</h2><div class="d">체험용 옷 ${st.closetCount}벌의 색이에요. 후보 색이 이미 있으면 굵은 테두리로 표시해요.</div><div class="tc-cl">${myCols.map((g) => `<div class="c ${g.color === d3.color ? 'hit' : ''}"><i style="background:${g.colorHex}"></i>${esc(g.colorLabel)}<span style="font-weight:500;color:var(--sub)">${st.closet.filter((x) => x.color === g.color).length}벌</span></div>`).join('')}</div><div class="tc-cand" style="background:${tint(d3.colorHex, 30)}">${ph(d3)}<div><div style="font-size:11px;font-weight:800">후보 · ${esc(d3.colorLabel)}</div><div style="font-weight:900;font-size:17px;margin-top:4px;letter-spacing:-.03em">${esc(d3.verdict.title)}</div><div style="font-size:12px;color:var(--sub);margin-top:4px">${esc(d3.brand)} · ${esc(d3.priceText)}</div></div></div></div>${tcTab(2)}</div>`;
+  K.row(K.phone('C 홈', cHome, { fold: false }) + K.phone('C 검색 결과', cRes, { fold: false, notes: ['카드 바탕 = 그 옷의 색(연하게), 흰 바탕 사진이 색에 녹음', '색 이름 알약 함께(색만으로 구분 안 함)'] }) + K.phone('C 상세 · 색 원 판정', cPdp, { fold: false, notes: ['후보 색 원과 내 옷 색 원이 겹치는 그림 + 글자 판정'] }) + K.phone('C 옷장 색 지도(대표 화면)', cMap, { fold: false }));
+  const cPc = `<div class="alt tc pcx">${tcTop.replace('tc-top', 'tc-top" style="padding:0 40px')}<div style="padding:12px 40px 0"><div class="tc-res-h" style="padding:0 0 18px"><h2 style="font-size:32px">출근용 셔츠 ${r3.total}개</h2><span>10/13 수집가 · 체험용 옷장 ${st.closetCount}벌 기준</span></div><div class="tc-grid" style="grid-template-columns:repeat(5,1fr);gap:14px;padding:0">${r3.products.slice(0, 10).map((p) => `<div class="tc-card" style="background:${tint(p.colorHex, 30)}"><span class="cl"><i style="background:${p.colorHex}"></i>${esc(p.colorLabel)}</span>${ph(p)}<div class="b">${esc(p.brand)}</div><div class="n clamp2">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}</div>${ownTxt(p.owned) ? `<div style="margin-top:4px;font-size:11px;font-weight:800">● ${esc(ownTxt(p.owned))}</div>` : ''}</div>`).join('')}</div></div></div>`;
+  K.row(K.pc('C PC 결과', cPc));
+})();
+</script>
+</body>
+</html>

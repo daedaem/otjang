@@ -1,0 +1,6 @@
+{
+  "brand": { "id": "ttak-label", "name": "딱", "tagline": "옷장 판정기", "heroTitle": "사기 전에 한 번 찍어요.<br>딱! 잠깐. 패스.", "wardrobe": true, "stamps": { "buy": "딱!", "hold": "잠깐", "skip": "패스" }, "deck": true, "daypart": false, "haptic": true },
+  "include": ["stamp-base"],
+  "themeColor": "#E4E2DC",
+  "fonts": "https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Nanum+Gothic+Coding:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+}

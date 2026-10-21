@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>어울 시안 2판 동작 예시</title>
+<!-- 시안이 아니라 공통 코어 2판의 동작 예시다(주소 이동·사진·옷 넣고 복귀·비교함·보류·뒤로가기). 디자인 기준으로 쓰지 않는다. -->
+<script src="../shared/eoul-mock.js"></script>
+<style>
+  :root { --ink: #111; --sub: #666; --line: #e6e6e6; --bg: #fff; --soft: #f5f5f3; --accent: #111; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif; color: var(--ink); background: var(--bg); }
+  button, input { font: inherit; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line); }
+  header .logo { font-weight: 800; font-size: 18px; margin-right: auto; text-decoration: none; color: inherit; }
+  .chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 20px; background: #fff; }
+  .btn { min-height: 48px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 10px; background: #fff; font-weight: 600; }
+  .btn.primary { background: var(--ink); color: #fff; }
+  main { max-width: 1080px; margin: 0 auto; padding: 12px 16px 96px; }
+  form.search { display: flex; gap: 8px; }
+  form.search input { flex: 1; min-height: 48px; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 10px; }
+  .sugs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .scope { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 8px; }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .card { display: block; text-align: left; border: 0; padding: 0; background: none; color: inherit; cursor: pointer; }
+  .card .ph { border-radius: 4px; overflow: hidden; }
+  .card .b { margin-top: 8px; font-size: 13px; font-weight: 700; }
+  .card .n { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .p { font-weight: 700; } .fine { font-size: 12px; color: var(--sub); }
+  .pdp { display: grid; gap: 16px; }
+  @media (min-width: 900px) { .pdp { grid-template-columns: 1.1fr 1fr; align-items: start; } }
+  .pdp .hero { margin: 0 -16px; } @media (min-width: 900px) { .pdp .hero { margin: 0; } }
+  .pdp .hero button { display: block; width: 100%; border: 0; padding: 0; background: none; cursor: zoom-in; }
+  .pdp h1 { font-size: 18px; font-weight: 500; margin: 2px 0 6px; }
+  .pdp .brand { font-size: 14px; font-weight: 700; } .pdp .price { font-size: 22px; font-weight: 800; }
+  .box { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .verdict { font-size: 18px; font-weight: 700; margin: 4px 0; }
+  .decide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); }
+  .bar .btn { flex: 1; }
+  .sheet { position: fixed; inset: auto 0 0 0; z-index: 9; max-height: 85vh; overflow: auto; background: #fff; border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -8px 30px rgba(0,0,0,.2); }
+  .scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0,0,0,.35); }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+  .opts button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .viewer { position: fixed; inset: 0; z-index: 10; background: #fff; display: flex; flex-direction: column; }
+  .viewer .ph { flex: 1; } .viewer .eo-ph { aspect-ratio: auto !important; }
+  table { width: 100%; border-collapse: collapse; } td, th { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 14px; }
+  tr.same td, tr.same th { color: var(--sub); }
+  .row { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .row .ph { width: 64px; flex: none; border-radius: 4px; overflow: hidden; }
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="#/">어울</a>
+  <button class="chip" data-flow="mock-label" type="button" onclick="EoulMock.openDisclosure()">시안 · 정보</button>
+  <a class="chip" href="#/compare" data-flow="compare-open" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">비교 <span id="cmpn">0</span></a>
+  <a class="chip" href="#/closet" data-flow="nav-closet" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">옷장</a>
+  <a class="chip" href="#/records" data-flow="nav-records" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">기록</a>
+</header>
+<main id="app"></main>
+<div id="overlay"></div>
+<script>
+const M = window.EoulMock;
+const $app = document.getElementById('app'), $over = document.getElementById('overlay');
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let last = null; // 마지막 검색 결과(이어서 묻기·조건 빼기에 씀)
+
+function searchForm(value = '') {
+  return `<form class="search" role="search" onsubmit="event.preventDefault(); go('/search', { q: this.q.value })">
+    <input name="q" data-flow="ask-input" value="${esc(value)}" placeholder="예: 출근용 셔츠 10만원 이하" aria-label="찾을 옷" autocomplete="off">
+    <button class="btn primary" data-flow="ask-submit">찾기</button></form>`;
+}
+const go = (path, params, opt) => M.route.go(path, params, opt);
+function card(p) {
+  return `<div><button class="card" data-flow="result" data-product-id="${p.id}" onclick="go('/p/${p.id}')">
+    <div class="ph">${M.photoHtml(p)}</div><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div>
+    <div class="p">${esc(p.priceText)} <span class="fine">${esc(p.priceShort)}</span></div>${p.owned.label && p.owned.tone !== 'none' ? `<div class="fine">${esc(p.owned.label)}</div>` : ''}</button>
+    <button class="chip" data-flow="compare-add" data-product-id="${p.id}" onclick="addCompare('${p.id}')" aria-pressed="${M.compareHas(p.id)}">${M.compareHas(p.id) ? '비교함에 있음' : '비교 담기'}</button></div>`;
+}
+function home() {
+  $app.innerHTML = `${searchForm()}<div class="sugs">${M.searchSuggestions('').map((s) => `<button class="chip" data-flow="example" onclick="go('/search', { q: '${esc(s.q)}' })">${esc(s.q)}</button>`).join('')}</div>`;
+}
+function search({ q = '', drop = '' }) {
+  const r = M.ask(q, { drop: drop ? drop.split(',') : [], previous: last && last.text !== q ? last : null });
+  if (r.understood) last = r;
+  $app.innerHTML = `${searchForm(r.text)}
+    <div class="scope" aria-label="검색 범위">${r.conditions.map((c) => c.removable ? `<button class="chip" data-flow="condition-remove" data-key="${c.key}" onclick="go('/search', { q: '${esc(r.text)}', drop: '${[...r.dropped, c.key].join(',')}' })" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)} ✕</button>` : `<span class="chip" style="display:inline-flex;align-items:center">${esc(c.label)}</span>`).join('')}</div>
+    <h2 style="font-size:16px;margin:8px 0">${esc(r.title)}${r.total ? ` <span class="fine">${r.total}개</span>` : ''}</h2>
+    ${r.notices.map((n) => `<p class="fine">${esc(n.text)}</p>`).join('')}
+    ${r.products.length ? `<div class="grid">${r.products.map(card).join('')}</div>` : `<div class="sugs">${r.examples.slice(0, 4).map((x) => `<button class="chip" data-flow="example" onclick="go('/search', { q: '${esc(x)}' })">${esc(x)}</button>`).join('')}</div>`}`;
+}
+function pdp(id, params) {
+  const d = M.product(id);
+  if (!d) { $app.innerHTML = '<p>상품을 찾지 못했어요.</p>'; return; }
+  const v = d.verdict, nu = M.newVsUsed(id);
+  $app.innerHTML = `<article class="pdp" data-flow="pdp">
+    <div class="hero"><button data-flow="photo-zoom" onclick="go('/p/${id}', { view: 'photo' })" aria-label="사진 크게 보기">${M.photoHtml(d, { eager: true })}</button></div>
+    <div>
+      <div class="brand" data-flow="pdp-brand">${esc(d.brand)}</div>
+      <h1 data-flow="pdp-name">${esc(d.name)}</h1>
+      <div><span class="price" data-flow="pdp-price">${esc(d.priceText)}</span> <span class="fine">${esc(d.priceShort)} · ${esc(d.store)}</span></div>
+      <p class="fine">${esc(d.why[0] || d.reason)}</p>
+      <section class="box" aria-label="내 옷과 비교">
+        <div class="fine">${esc(v.basisLabel)}</div>
+        <div class="verdict" data-flow="verdict">${esc(v.title)}</div>
+        ${v.lines.map((l) => `<p style="margin:4px 0">${esc(l)}</p>`).join('')}
+        <button class="btn" data-flow="closet-add" onclick="go('/p/${id}', { add: 1 })">가진 ${esc(v.addSuggestion?.kindName || '옷')} 넣고 비교</button>
+      </section>
+      <div class="decide" style="margin-top:12px">
+        <button class="btn" data-flow="decide-buy" onclick="decide('${id}','buy')">사기로 함</button>
+        <button class="btn" data-flow="decide-hold" onclick="decide('${id}','hold')">보류</button>
+        <button class="btn" data-flow="decide-skip" onclick="decide('${id}','skip')">안 살래</button>
+      </div>
+      <p class="fine" id="rec">${v.record ? `기록: ${esc(v.record.decisionLabel)}` : ''}</p>
+      <section class="box" aria-label="새 상품과 중고">
+        <div><strong>새 상품 ${esc(nu.fresh.priceText)}</strong> <span class="fine">${esc(nu.fresh.priceNote)}</span></div>
+        <div data-flow="used-search"><strong>중고</strong> <span class="fine">${esc(nu.used.note)}</span>
+        <div class="sugs">${nu.used.groups.flatMap((g) => g.links).map((l) => `<a class="chip" style="display:inline-flex;align-items:center" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join('')}</div></div>
+      </section>
+      <div class="sugs"><button class="chip" data-flow="compare-add" data-product-id="${id}" onclick="addCompare('${id}')">${M.compareHas(id) ? '비교함에 있음' : '비교 담기'}</button>
+        <a class="chip" data-flow="seller-link" style="display:inline-flex;align-items:center" href="${esc(d.url)}" target="_blank" rel="noopener">무신사에서 보기</a></div>
+      <h2 style="font-size:16px">같은 조건 다른 선택</h2>
+      <div class="grid">${d.alternatives.slice(0, 4).map(card).join('')}</div>
+    </div></article>`;
+  $over.innerHTML = '';
+  if (params.view === 'photo') $over.innerHTML = `<div class="viewer" data-flow="photo-viewer" role="dialog" aria-label="사진 크게 보기"><div class="ph">${M.photoHtml(d, { fit: 'contain', eager: true })}</div><button class="btn" onclick="history.back()">닫기</button></div>`;
+  if (params.add) {
+    const s = v.addSuggestion;
+    $over.innerHTML = `<div class="scrim" onclick="history.back()"></div><div class="sheet" role="dialog" aria-label="가진 옷 넣기">
+      <strong>가진 ${esc(s.kindName)} 색을 골라 주세요</strong><p class="fine">종류는 이 상품과 같은 ${esc(s.slotName)}로 넣어요.</p>
+      <div class="opts">${M.colorChoices().map((c) => `<button class="chip" data-flow="color-option" data-color="${c.id}" aria-pressed="false" onclick="pick(this)"><span style="display:inline-block;width:12px;height:12px;border-radius:6px;background:${c.hex};border:1px solid #ccc"></span> ${esc(c.label)}</button>`).join('')}</div>
+      <button class="btn primary" style="width:100%" data-flow="closet-save" onclick="saveGarment('${s.kind}','${s.slot}')">넣고 이 상품으로 돌아가기</button></div>`;
+  }
+}
+let picked = null;
+function pick(el) { document.querySelectorAll('[data-flow="color-option"]').forEach((b) => b.setAttribute('aria-pressed', 'false')); el.setAttribute('aria-pressed', 'true'); picked = el.dataset.color; }
+function saveGarment(kind, slot) { if (!picked) return; M.addGarment({ kind, slot, color: picked }); picked = null; history.back(); }
+function decide(id, d) { M.decide(id, d); render(); }
+function addCompare(id) { try { M.compareAdd(id); } catch (e) { alert(e.message); } render(); }
+function compare() {
+  const c = M.compareRows();
+  $app.innerHTML = `<section data-flow="compare-view"><h1 style="font-size:18px">후보 비교 ${c.items.length}개</h1>
+    ${c.items.length < 2 ? '<p>후보를 둘 이상 담아 주세요.</p>' : ''}
+    <div class="grid" style="grid-template-columns:repeat(${Math.max(2, c.items.length)},minmax(0,1fr))">${c.items.map((p) => `<div data-flow="compare-item" data-product-id="${p.id}"><a href="#/p/${p.id}" style="color:inherit;text-decoration:none"><div class="ph">${M.photoHtml(p)}</div><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div></a>
+      <button class="btn" data-flow="decide-hold" onclick="decide('${p.id}','hold')">${M.judge(p.id).record?.decision === 'hold' ? '보류함' : '보류'}</button> <button class="chip" onclick="M.compareRemove('${p.id}'); render()">빼기</button></div>`).join('')}</div>
+    <table>${c.rows.map((r) => `<tr class="${r.same ? 'same' : ''}"><th>${esc(r.label)}</th>${r.values.map((x) => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table><p class="fine">${esc(c.note)}</p></section>`;
+}
+function records() {
+  const rs = M.getState().records;
+  $app.innerHTML = `<h1 style="font-size:18px">기록 <span class="fine">${M.note.short.records}</span></h1>${rs.map((r) => `<div class="row" data-flow="record" data-product-id="${r.productId}"><div class="ph">${M.photoHtml(r)}</div><div><div class="b">${esc(r.product?.brand)}</div><div>${esc(r.product?.name)}</div><div class="fine">${esc(r.stageLabel)}</div></div></div>`).join('') || '<p>아직 기록이 없어요.</p>'}`;
+}
+function closet() {
+  const st = M.getState();
+  $app.innerHTML = `<h1 style="font-size:18px">옷장 ${st.closetCount}벌</h1><button class="btn" data-flow="trial-closet" onclick="M.loadTrialCloset(); render()">체험용 옷 넣어 보기</button>
+    <div class="grid" style="margin-top:12px">${st.closet.map((g) => `<div><div class="ph">${M.photoHtml(g)}</div><div class="n">${esc(g.label)}</div><div class="fine">${esc(g.sourceLabel)}</div></div>`).join('')}</div>`;
+}
+function render(route = M.route.current()) {
+  document.getElementById('cmpn').textContent = M.compareList().length;
+  $over.innerHTML = '';
+  const [, a, b] = route.path.split('/');
+  if (a === 'search') search(route.params);
+  else if (a === 'p' && b) pdp(b, route.params);
+  else if (a === 'compare') compare();
+  else if (a === 'records') records();
+  else if (a === 'closet') closet();
+  else home();
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $over.innerHTML) history.back(); });
+if (M.boot.q && !location.hash) history.replaceState(null, '', M.route.href('/search', { q: M.boot.q }));
+M.route.on(render);
+</script>
+</body>
+</html>

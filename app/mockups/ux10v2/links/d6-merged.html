@@ -1,0 +1,799 @@
+<title>통합 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="shared/fonts/pretendard.css">
+<link rel="stylesheet" href="shared/icons/regular.css">
+<script>window.EOUL_PHOTO_BASE='p/';</script>
+<script src="shared/eoul-mock.js"></script>
+<script src="shared/cutouts.js"></script>
+<script src="shared/photo-kinds.js"></script>
+<script src="shared/kit.js"></script>
+<style>
+/* 통합 시안: 진열(바탕) + 숫자 판정 + 도감 채우기 + 옷장 통계. 사각(0) + 알약(999)만 쓴다.
+   사진 기준: 흰 배경 단독 사진(flat)은 회색 칸 가운데 높이 78%로 녹이고, 그 밖의 사진은 같은 3:4 칸을 꽉 채운다.
+   옷장·조합 칸에는 flat 사진만 쓰고, 없으면 색 칸(종류 이름)으로 둔다. 모델 사진을 섞지 않는다. */
+:root {
+  --bg: #ffffff; --ink: #111111; --ink-2: #6b6b6b; --ink-3: #9a9a9a; --tile: #efefed; --slot: #f6f6f5; --line: rgba(17, 17, 17, .12); --veil: rgba(255, 255, 255, .9); --scrim: rgba(17, 17, 17, .32);
+  --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --t-label: 11px; --t-meta: 13px; --t-body: 15px; --t-title: 17px; --t-head: 22px; --t-big: 34px;
+  --k-font: var(--font); --k-toast-bg: var(--ink); --k-toast-fg: var(--bg); --k-info-bg: var(--bg); --k-info-fg: var(--ink);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0e0e0e; --ink: #f2f2f0; --ink-2: #a3a3a0; --ink-3: #6f6f6c; --tile: #e8e8e6; --slot: #181818; --line: rgba(242, 242, 240, .14); --veil: rgba(14, 14, 14, .88); --scrim: rgba(0, 0, 0, .55); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0e0e0e; --ink: #f2f2f0; --ink-2: #a3a3a0; --ink-3: #6f6f6c; --tile: #e8e8e6; --slot: #181818; --line: rgba(242, 242, 240, .14); --veil: rgba(14, 14, 14, .88); --scrim: rgba(0, 0, 0, .55); color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font: 400 var(--t-body)/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 3px; }
+.lab { font-size: var(--t-label); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); font-weight: 500; }
+.num { font-variant-numeric: tabular-nums; }
+sup { font-size: .62em; vertical-align: .55em; margin-left: 1px; font-weight: 400; color: var(--ink-2); }
+
+/* 틀 */
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--veil); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+header.top .wrap { display: flex; align-items: center; height: 52px; gap: 20px; }
+.mark { font-weight: 500; font-size: var(--t-meta); letter-spacing: .2em; }
+.mark small { font-size: var(--t-label); letter-spacing: .08em; color: var(--ink-3); margin-left: 8px; }
+.top nav { display: none; gap: 24px; margin-left: 24px; }
+.top .sp { flex: 1; }
+.tl { font-size: var(--t-meta); color: var(--ink-2); min-height: 44px; display: inline-flex; align-items: center; }
+.tl:hover, .tl[aria-current="page"] { color: var(--ink); }
+.tl[aria-current="page"] { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 1.5px; }
+main { padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)); min-height: 70vh; }
+main.enter { animation: enter 420ms var(--spring, ease) backwards; }
+body.pdp-on nav.tabs, body.pdp-on .tray { display: none; }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+
+nav.tabs { position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+nav.tabs .wrap { display: grid; grid-template-columns: repeat(3, 1fr); height: 56px; }
+nav.tabs button { font-size: var(--t-body); color: var(--ink-3); position: relative; }
+nav.tabs button[aria-current="page"] { color: var(--ink); }
+nav.tabs button[aria-current="page"]::after { content: ""; position: absolute; left: 50%; bottom: 12px; width: 18px; height: 1.5px; background: var(--ink); transform: translateX(-50%); }
+.tray { position: fixed; z-index: 24; left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+.tray .wrap { display: flex; align-items: center; gap: 10px; height: 52px; background: var(--ink); color: var(--bg); padding-left: 16px; padding-right: 8px; max-width: 520px; }
+.tray .th { width: 28px; height: 36px; background: var(--tile); position: relative; overflow: hidden; isolation: isolate; }
+.tray b { font-weight: 500; font-size: var(--t-meta); flex: 1; }
+.tray button { height: 36px; padding: 0 16px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: var(--t-meta); font-weight: 500; }
+@media (min-width: 900px) {
+  .top nav { display: flex; }
+  nav.tabs { display: none; }
+  .tray { bottom: 20px; }
+  .tray .wrap { border-radius: 999px; padding-left: 20px; }
+  main { padding-bottom: 96px; }
+}
+
+/* 사진 칸: 각지고, 한 회색. 흰 배경 사진은 칸에 녹인다. */
+.tile { position: relative; display: block; width: 100%; aspect-ratio: 3 / 4; background: var(--tile); overflow: hidden; isolation: isolate; }
+.tile > img, .tile > .eo-ph, .tile > .eo-tile, .tile > .k-miss { position: absolute !important; inset: 0; width: 100% !important; height: 100% !important; aspect-ratio: auto !important; border-radius: 0 !important; }
+.tile > img { object-fit: cover; }
+/* 밝기 필터는 쓰지 않는다: 흰 옷까지 지워진다. */
+.tile > img.flat { inset: 11% 10%; width: 80% !important; height: 78% !important; object-fit: contain; mix-blend-mode: multiply; }
+.ctile { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 10px; }
+.ctile i { width: 34%; aspect-ratio: 1; border-radius: 999px; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+.ctile span { font-size: var(--t-label); color: #6b6b6b; letter-spacing: .02em; text-align: center; padding: 0 6px; }
+.ttag { position: absolute; left: 0; bottom: 0; z-index: 2; font-size: 10px; letter-spacing: .02em; padding: 2px 6px; background: #fff; color: #555; }
+.tile .eo-ph img { object-fit: cover; }
+.press { transition: transform 160ms ease, opacity 160ms ease; }
+.press:active { transform: scale(.985); opacity: .86; }
+.tag { position: absolute; left: 8px; top: 8px; z-index: 2; font-size: var(--t-label); font-weight: 500; letter-spacing: .02em; padding: 3px 7px; background: #fff; color: #111; box-shadow: inset 0 0 0 1.5px #111; }
+.tag.fill { background: #111; color: #fff; box-shadow: none; }
+
+/* 찾기 */
+.home { padding-top: 28px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+.ask label { display: block; }
+.ask h1 { margin: 0 0 18px; font-size: var(--t-head); font-weight: 500; letter-spacing: -.02em; line-height: 1.35; text-wrap: balance; }
+.field { display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid var(--ink); }
+.field input { flex: 1; min-width: 0; height: 52px; border: 0; background: transparent; color: var(--ink); font: 400 var(--t-title) var(--font); outline: none; }
+.field input::placeholder { color: var(--ink-3); }
+.field button { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; }
+.ex { display: grid; margin-top: 8px; }
+.ex button { display: flex; align-items: center; justify-content: space-between; min-height: 48px; border-bottom: 1px solid var(--line); text-align: left; font-size: var(--t-body); color: var(--ink); }
+.ex button i { color: var(--ink-3); font-size: 18px; }
+.ex button:hover i { color: var(--ink); }
+.sec-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.sec-h h2 { margin: 0; font-size: var(--t-title); font-weight: 500; letter-spacing: -.01em; }
+.sec-h .tl { min-height: 0; }
+.peek { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mode { font-size: var(--t-meta); color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.mode button { text-decoration: underline; text-underline-offset: 4px; color: var(--ink); min-height: 32px; }
+.foot { display: flex; gap: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
+.foot button { font-size: var(--t-meta); color: var(--ink-2); min-height: 40px; }
+
+/* 결과 */
+.res-h { padding-top: 22px; }
+.res-h h1 { margin: 0; font-size: var(--t-head); font-weight: 500; letter-spacing: -.02em; line-height: 1.35; text-wrap: balance; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-meta); }
+button.chip:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.chip i { font-size: 14px; color: var(--ink-2); }
+.meta { margin-top: 12px; font-size: var(--t-meta); color: var(--ink-2); }
+.notes { margin-top: 10px; display: grid; gap: 4px; font-size: var(--t-meta); color: var(--ink-2); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 8px; margin-top: 24px; }
+@media (min-width: 720px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 12px; } }
+@media (min-width: 1100px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.card { display: block; text-align: left; width: 100%; }
+.card .tx { display: grid; gap: 1px; margin-top: 10px; }
+.card .br { font-size: var(--t-meta); color: var(--ink-2); }
+.card .nm { font-size: var(--t-meta); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .pr { margin-top: 6px; font-size: var(--t-body); font-weight: 700; }
+.card .pr small { font-size: var(--t-label); font-weight: 400; color: var(--ink-3); margin-left: 6px; letter-spacing: .02em; }
+.card .ow { font-size: var(--t-label); color: var(--ink-2); margin-top: 3px; }
+.sub-h { margin: 48px 0 0; padding-top: 16px; border-top: 1px solid var(--line); font-size: var(--t-body); font-weight: 500; }
+.relax { margin-top: 20px; display: grid; }
+.relax button { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.relax .pv { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 64px); gap: 6px; }
+.res-h, .cl-h { min-width: 0; }
+.pdp > * { min-width: 0; }
+
+/* 상세 */
+.pdp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.pdp .ph-col { position: relative; margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))); }
+.pdp .ph-col .tile { aspect-ratio: 3 / 4; max-height: 64vh; }
+.back { position: absolute; z-index: 3; left: max(12px, env(safe-area-inset-left, 0px)); top: 12px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; background: rgba(255, 255, 255, .92); color: #111; font-size: 20px; }
+.pdp .info { padding-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.pdp .br { font-size: var(--t-meta); color: var(--ink-2); }
+.pdp h1 { margin: 4px 0 0; font-size: var(--t-title); font-weight: 400; line-height: 1.45; letter-spacing: -.01em; text-wrap: balance; }
+.pdp .pr { margin-top: 12px; font-size: var(--t-head); font-weight: 700; letter-spacing: -.01em; }
+.pdp .pn { font-size: var(--t-label); color: var(--ink-3); letter-spacing: .02em; margin-top: 2px; }
+.pdp .out { margin-top: 10px; font-size: var(--t-meta); display: inline-flex; gap: 6px; align-items: center; min-height: 32px; }
+.verdict { margin-top: 28px; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--line); padding: 16px 0 18px; }
+.verdict .t { margin-top: 6px; font-size: var(--t-title); font-weight: 500; line-height: 1.45; letter-spacing: -.01em; }
+.verdict p { margin: 6px 0 0; font-size: var(--t-meta); color: var(--ink-2); line-height: 1.6; }
+.verdict .basis { font-size: var(--t-label); color: var(--ink-3); margin-top: 10px; }
+.owned { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+.owned .cap { font-size: var(--t-label); color: var(--ink-2); margin-top: 6px; line-height: 1.4; }
+.owned .hit .tile { box-shadow: inset 0 0 0 1.5px #111; }
+.looks { margin-top: 18px; }
+.looks .rail { display: grid; grid-auto-flow: column; grid-auto-columns: 46%; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.looks .rail::-webkit-scrollbar { display: none; }
+.collage { position: relative; aspect-ratio: 1; background: var(--tile); display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; padding: 6px; gap: 2px; isolation: isolate; }
+.collage > div { position: relative; overflow: hidden; }
+.collage img, .collage .eo-ph, .collage .eo-tile, .collage .k-miss { position: absolute !important; inset: 0; width: 100% !important; height: 100% !important; aspect-ratio: auto !important; border-radius: 0 !important; object-fit: contain; }
+.collage img.flat { mix-blend-mode: multiply; object-fit: contain; }
+.collage img:not(.flat) { object-fit: cover; }
+.collage .ctile i { width: 40%; }
+.collage .me::after { content: "이 상품"; position: absolute; left: 0; bottom: 0; font-size: 10px; padding: 2px 5px; background: #111; color: #fff; }
+.look-t { font-size: var(--t-label); color: var(--ink-2); margin-top: 6px; line-height: 1.45; }
+.alts { margin-top: 36px; }
+.alts .rail { display: grid; grid-auto-flow: column; grid-auto-columns: 38%; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.alts .rail::-webkit-scrollbar { display: none; }
+.act { position: fixed; z-index: 26; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.act .wrap { display: flex; gap: 8px; align-items: center; height: 72px; }
+.pill { height: 48px; border-radius: 999px; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--t-body); font-weight: 500; white-space: nowrap; transition: transform 160ms ease; }
+.pill:active { transform: scale(.97); }
+.pill.line { box-shadow: inset 0 0 0 1px var(--ink); }
+.pill.line[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.pill.ink { background: var(--ink); color: var(--bg); flex: 1; justify-content: space-between; padding: 0 22px; }
+.pill.ink span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (min-width: 900px) {
+  .home { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 72px; padding-top: 48px; align-items: start; }
+  .home .foot { grid-column: 1 / -1; }
+  .home .ask h1 { font-size: var(--t-big); font-weight: 400; letter-spacing: -.03em; }
+  .pdp { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 48px; padding-top: 20px; align-items: start; }
+  .pdp .ph-col { margin: 0; position: sticky; top: 72px; }
+  .pdp .ph-col .tile { max-height: none; }
+  .pdp .info { padding-top: 8px; }
+  .act { position: static; border: 0; background: none; padding: 0; margin-top: 24px; }
+  .act .wrap { padding: 0; height: auto; }
+  .looks .rail { grid-auto-columns: 31%; }
+  .alts .rail { grid-auto-columns: 23%; }
+}
+
+/* 비교 */
+.cmp-h { padding-top: 22px; display: flex; align-items: center; gap: 8px; }
+.cmp-h h1 { margin: 0; font-size: var(--t-head); font-weight: 500; flex: 1; }
+.cmp { margin-top: 20px; display: grid; grid-template-columns: 76px repeat(var(--n), minmax(0, 1fr)); column-gap: 8px; }
+.cmp .hd { position: relative; }
+.cmp .hd .x { position: absolute; z-index: 2; right: 4px; top: 4px; width: 32px; height: 32px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: #111; display: grid; place-items: center; }
+.cmp .hd .nm { font-size: var(--t-meta); margin-top: 8px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cmp .row { display: contents; }
+.cmp .row > * { padding: 14px 0; border-top: 1px solid var(--line); font-size: var(--t-meta); line-height: 1.5; min-width: 0; }
+.cmp .row .k { color: var(--ink-2); font-size: var(--t-label); letter-spacing: .04em; padding-top: 16px; }
+.cmp .row.first > * { border-top: 1.5px solid var(--ink); font-weight: 500; }
+.cmp .row.same > *:not(.k) { color: var(--ink-3); }
+.cmp-note { margin-top: 14px; font-size: var(--t-label); color: var(--ink-3); }
+.empty { padding: 56px 0; display: grid; gap: 14px; justify-items: start; max-width: 36ch; }
+.empty h2 { margin: 0; font-size: var(--t-title); font-weight: 500; }
+.empty p { margin: 0; color: var(--ink-2); font-size: var(--t-meta); line-height: 1.6; }
+
+/* 옷장 */
+.cl-h { padding-top: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.cl-h h1 { margin: 0; font-size: var(--t-head); font-weight: 500; letter-spacing: -.02em; }
+.stats { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 28px; }
+.stats div { display: grid; gap: 2px; }
+.stats b { font-size: var(--t-big); font-weight: 500; letter-spacing: -.03em; line-height: 1; }
+.stats > div > span { font-size: var(--t-label); color: var(--ink-2); letter-spacing: .1em; text-transform: uppercase; }
+.seg { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); margin-top: 26px; }
+.seg::-webkit-scrollbar { display: none; }
+.seg button { flex: none; height: 44px; font-size: var(--t-meta); color: var(--ink-2); position: relative; }
+.seg button[aria-pressed="true"] { color: var(--ink); }
+.seg button[aria-pressed="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1.5px; background: var(--ink); }
+.shelf { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+@media (min-width: 720px) { .shelf { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; } }
+@media (min-width: 1100px) { .shelf { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.shelf .add { display: grid; place-items: center; aspect-ratio: 3 / 4; box-shadow: inset 0 0 0 1px var(--line); font-size: 22px; color: var(--ink-2); }
+.shelf .add:hover { box-shadow: inset 0 0 0 1px var(--ink); color: var(--ink); }
+.legend { margin-top: 12px; font-size: var(--t-label); color: var(--ink-3); line-height: 1.5; }
+.looks-cl { margin-top: 44px; }
+.looks-cl .rail { display: grid; grid-auto-flow: column; grid-auto-columns: 44%; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+@media (min-width: 720px) { .looks-cl .rail { grid-auto-columns: 22%; } }
+.looks-cl .rail::-webkit-scrollbar { display: none; }
+.new-tag { display: inline-block; font-size: 10px; padding: 2px 6px; background: var(--ink); color: var(--bg); margin-right: 6px; letter-spacing: .02em; }
+.settle { animation: settle 520ms var(--spring, ease); }
+@keyframes settle { from { transform: scale(1.06); } }
+.landing { visibility: hidden; }
+
+/* 기록 */
+.rec-list { margin-top: 18px; display: grid; }
+.rec { display: grid; grid-template-columns: 60px 1fr auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); text-align: left; width: 100%; }
+.rec .br { font-size: var(--t-label); color: var(--ink-2); letter-spacing: .02em; }
+.rec .nm { font-size: var(--t-meta); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.rec .st { font-size: var(--t-meta); font-weight: 500; margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+.rec .st small { font-weight: 400; color: var(--ink-3); font-size: var(--t-label); }
+.dec-mark { display: inline-block; font-size: var(--t-label); padding: 2px 7px; box-shadow: inset 0 0 0 1px var(--ink); }
+.dec-mark.buy { background: var(--ink); color: var(--bg); }
+.dec-mark.skip { box-shadow: inset 0 0 0 1px var(--ink-3); color: var(--ink-2); }
+.rec i { color: var(--ink-3); }
+
+/* 시트 */
+.scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); }
+.sheet { position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; margin: 0 auto; width: min(560px, 100%); max-height: 90dvh; display: flex; flex-direction: column; background: var(--bg); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (min-width: 900px) { .sheet { bottom: auto; top: 50%; transform: translateY(-50%); } }
+.sheet .sh { display: flex; align-items: center; justify-content: space-between; padding: 14px 8px 4px 20px; }
+.sheet .sh h2 { margin: 0; font-size: var(--t-title); font-weight: 500; }
+.sheet .sh button { width: 44px; height: 44px; display: grid; place-items: center; font-size: 20px; }
+.sheet .bd { overflow-y: auto; padding: 8px 20px 20px; }
+.sheet .ft { padding: 12px 20px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+.sheet .ft .pill { flex: 1; }
+.choice { display: grid; }
+.choice button { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 16px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.choice b { font-weight: 500; font-size: var(--t-body); }
+.choice small { grid-column: 1; font-size: var(--t-meta); color: var(--ink-2); }
+.choice i { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 20px; color: var(--ink-3); }
+.choice button[aria-pressed="true"] i { color: var(--ink); }
+.k-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.k-row button { height: 36px; padding: 0 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); font-size: var(--t-meta); }
+.k-row button[aria-pressed="true"] { background: var(--ink); color: var(--bg); box-shadow: none; }
+.sw { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 12px 4px; }
+.sw button { display: grid; justify-items: center; gap: 6px; font-size: var(--t-label); color: var(--ink-2); white-space: nowrap; letter-spacing: -.02em; }
+.sw i { width: 30px; height: 30px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.sw button[aria-pressed="true"] { color: var(--ink); }
+.sw button[aria-pressed="true"] i { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14), 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+.add-pv { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; margin-bottom: 18px; }
+.add-pv .lb { font-size: var(--t-body); font-weight: 500; }
+.add-pv .lb small { display: block; font-weight: 400; font-size: var(--t-label); color: var(--ink-3); margin-top: 4px; }
+.fld { font-size: var(--t-label); color: var(--ink-2); letter-spacing: .1em; text-transform: uppercase; margin: 18px 0 10px; }
+.gsheet { display: grid; grid-template-columns: 120px 1fr; gap: 18px; align-items: end; }
+.gsheet p { margin: 4px 0 0; font-size: var(--t-meta); color: var(--ink-2); }
+/* 판정: 숫자 먼저 */
+.lead { margin-top: 8px; display: grid; gap: 2px; }
+.lead .n { display: flex; align-items: baseline; gap: 4px; }
+.lead .n b { font-size: 44px; font-weight: 500; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.lead .n span { font-size: var(--t-title); }
+.lead .w { font-size: var(--t-head); font-weight: 500; letter-spacing: -.02em; line-height: 1.35; text-wrap: balance; }
+.cmp .vn { display: flex; align-items: baseline; gap: 3px; }
+.cmp .vn b { font-size: var(--t-head); font-weight: 500; letter-spacing: -.02em; line-height: 1; }
+.cmp .vn small { font-size: var(--t-label); color: var(--ink-2); font-weight: 400; }
+/* 옷장 통계 */
+.colorbar { display: flex; height: 10px; margin-top: 10px; gap: 1px; background: var(--line); box-shadow: 0 0 0 1px var(--line); }
+.colorbar i { display: block; min-width: 4px; }
+.clegend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: var(--t-label); color: var(--ink-2); }
+.clegend span { display: inline-flex; align-items: center; gap: 5px; }
+.clegend i { width: 8px; height: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.clegend b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.dots { display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 5px; margin-top: 10px; max-width: 460px; }
+.dots i { aspect-ratio: 1; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); }
+.dots i.on { background: var(--ink); box-shadow: none; }
+.dots i.new { background: var(--ink); box-shadow: none; animation: ring 1400ms var(--spring, ease) both; }
+@keyframes ring { 0% { transform: scale(.2); box-shadow: 0 0 0 0 var(--ink); } 40% { transform: scale(1.25); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4.5px var(--ink); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+.stat-k { margin-top: 26px; }
+/* 기본 옷 24 */
+.dex { margin-top: 44px; }
+.dex .dh { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.dex .dh h2 { margin: 0; font-size: var(--t-title); font-weight: 500; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 6px; }
+.dex .dh h2 .k-odo { font-size: var(--t-head); font-weight: 500; }
+.dex .dh h2 .of { font-size: var(--t-meta); color: var(--ink-2); font-weight: 400; }
+.dex .bar { height: 1.5px; background: var(--line); margin-top: 10px; position: relative; }
+.dex .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); transition: width 700ms var(--spring, ease); }
+.dex .sub { font-size: var(--t-meta); color: var(--ink-2); margin: 10px 0 0; }
+.dexg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+@media (min-width: 720px) { .dexg { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; } }
+@media (min-width: 1100px) { .dexg { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.slot { position: relative; display: block; width: 100%; text-align: left; }
+.slot .no { position: absolute; left: 6px; top: 5px; z-index: 3; font-size: 10px; letter-spacing: .04em; color: #8a8a87; font-variant-numeric: tabular-nums; }
+.slot.miss .box { aspect-ratio: 3 / 4; background: var(--slot); display: grid; place-items: center; align-content: center; gap: 6px; padding: 0 6px; text-align: center; }
+.slot.miss .no { color: var(--ink-3); }
+.slot.miss .nm { font-size: var(--t-label); color: var(--ink-2); line-height: 1.35; }
+.slot.miss .put { font-size: 10px; color: var(--ink-3); letter-spacing: .02em; }
+.slot.miss:hover .box { box-shadow: inset 0 0 0 1px var(--ink); }
+.slot.miss:active .box { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.slot.miss:hover .put { color: var(--ink); }
+.slot.drop .tile > * { animation: drop 640ms var(--spring, ease) both; }
+@keyframes drop { from { opacity: 0; transform: translateY(-14%) scale(1.08); } }
+.free { margin-top: 48px; }
+/* 이정표 */
+.mile { position: fixed; inset: 0; z-index: 60; background: var(--bg); display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); overflow-y: auto; }
+.mile .in { width: min(420px, 100%); display: grid; gap: 14px; justify-items: start; }
+.mile h2 { margin: 0; font-size: var(--t-big); font-weight: 400; letter-spacing: -.03em; line-height: 1.2; }
+.mile p { margin: 0; font-size: var(--t-body); color: var(--ink-2); }
+.mile .collage { width: 100%; margin-top: 8px; }
+.mile .look-t { font-size: var(--t-meta); }
+.mile .pill { width: 100%; justify-content: center; margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { main.enter, .settle, .slot.drop .tile > *, .dots i.new { animation: none; } .pill, .press { transition: none; } .dex .bar i { transition: none; } }
+</style>
+
+<header class="top"><div class="wrap">
+  <span class="mark">이름 미정<small>가칭</small></span>
+  <nav aria-label="주요 화면"><button class="tl" data-tab="home">찾기</button><button class="tl" data-tab="closet">옷장</button><button class="tl" data-tab="records">기록</button></nav>
+  <span class="sp"></span>
+  <button class="tl" id="cmpTop" hidden></button>
+  <button class="tl" id="infoBtn">정보</button>
+</div></header>
+<main id="view" class="wrap"></main>
+<div id="tray"></div>
+<nav class="tabs" aria-label="주요 화면"><div class="wrap"><button data-tab="home">찾기</button><button data-tab="closet">옷장</button><button data-tab="records">기록</button></div></nav>
+<div id="dock"></div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  const { M, esc, $, $$, reduce, SPRING } = K;
+  const DESIGN = '통합 시안';
+  const ZONES = [
+    { key: 'all', name: '전체', kinds: null },
+    { key: 'top', name: '상의', kinds: ['tee', 'longtee', 'shirt', 'polo', 'knit', 'sweat'] },
+    { key: 'bottom', name: '하의', kinds: ['pants', 'jeans', 'skirt'] },
+    { key: 'outer', name: '아우터', kinds: ['jacket', 'blazer', 'cardigan', 'coat', 'down', 'vest'] },
+    { key: 'shoes', name: '신발', kinds: ['sneaker', 'loafer', 'boot'] },
+  ];
+  const ADD_KINDS = ['tee', 'longtee', 'shirt', 'knit', 'sweat', 'pants', 'jeans', 'jacket', 'blazer', 'coat', 'cardigan', 'sneaker', 'loafer', 'boot'];
+  const DEC = [['hold', '보류', '정하지 않고 남겨 둬요. 기록에서 다시 볼 수 있어요.'], ['skip', '안 살래요', '이번에는 사지 않기로 기록해요.'], ['buy', '사기로 했어요', '살 생각이라고 기록해요. 주문은 판매처에서 직접 해요.']];
+  const S = { lastQ: null, zone: 'all', landing: null, prevOutfits: null, prevOwned: null, prevPieces: null, dropSlot: null, fresh: new Set(), seen: new Set() };
+  try { JSON.parse(localStorage.getItem('d6-seen') || '[]').forEach((x) => S.seen.add(x)); } catch {}
+  const saveSeen = () => { try { localStorage.setItem('d6-seen', JSON.stringify([...S.seen])); } catch {} };
+  // 기본 옷 24칸: 자주 가진 종류·색. 가진 옷을 넣는 칸이고, 사야 할 목록이 아니다.
+  const DEX = [['shirt', 'white', '흰 셔츠'], ['shirt', 'blue', '하늘색 셔츠'], ['tee', 'white', '흰 티셔츠'], ['tee', 'black', '검정 티셔츠'], ['knit', 'navy', '네이비 니트'], ['knit', 'grey', '회색 니트'], ['sweat', 'grey', '회색 맨투맨'], ['polo', 'navy', '네이비 폴로'],
+    ['jeans', 'indigo', '인디고 청바지'], ['jeans', 'blue', '연청 청바지'], ['jeans', 'black', '검정 청바지'], ['pants', 'beige', '베이지 바지'], ['pants', 'black', '검정 슬랙스'], ['pants', 'grey', '회색 바지'],
+    ['sneaker', 'white', '흰 운동화'], ['sneaker', 'black', '검정 운동화'], ['loafer', 'brown', '갈색 로퍼'], ['loafer', 'black', '검정 로퍼'],
+    ['blazer', 'navy', '네이비 블레이저'], ['jacket', 'navy', '네이비 재킷'], ['jacket', 'olive', '올리브 재킷'], ['coat', 'beige', '베이지 코트'], ['down', 'black', '검정 패딩'], ['cardigan', 'grey', '회색 카디건']]
+    .map(([kind, color, name], i) => ({ no: i + 1, kind, color, name }));
+  const COLOR = Object.fromEntries(M.colorChoices().map((c) => [c.id, c]));
+
+  // ── 사진 기준(한 규칙): flat이면 칸에 녹이고, 아니면 칸을 채운다. 옷장·조합 칸은 flat 또는 색 칸만.
+  const FLAT = new Set([...(window.PHOTO_FLAT || []), ...K.WHITE]);
+  const imgEl = (src, cls, alt) => `<img class="${cls}" src="${esc(src)}" alt="${esc(alt || '')}" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'k-miss'}))">`;
+  function pImgStd(id) {
+    const ph = M.photo({ id });
+    if (!ph) return M.photoHtml({ id }, { caption: false });
+    return imgEl(ph.src, FLAT.has(id) ? 'flat' : 'cover', ph.alt);
+  }
+  const colorTile = (color, kindName) => `<span class="ctile" style="--c:${esc(COLOR[color]?.hex || '#cfcfcc')}"><i></i><span>${esc(kindName || '옷')}</span></span>`;
+  const kindLabel = (kind) => M.kindChoices('M').find((k) => k.id === kind)?.name || '';
+  function gImgStd(g) {
+    const id = K.CUT[`${g.gender || 'M'}|${g.kind}|${g.color}`]?.find((x) => FLAT.has(x));
+    if (id) { const ph = M.photo({ id }); if (ph) return imgEl(ph.src, 'flat', `비슷한 상품 사진 · ${g.colorLabel || ''} ${g.kindName || ''}`); }
+    return colorTile(g.color, g.kindName || kindLabel(g.kind));
+  }
+  function pieceStd(p) {
+    const g = p.garmentId && M.getState().closet.find((x) => x.id === p.garmentId);
+    if (g) return gImgStd(g);
+    if (p.product && FLAT.has(p.product.id)) return pImgStd(p.product.id);
+    return colorTile(p.color, p.kindName);
+  }
+
+  // 처음 열면 체험용 옷장으로 시작한다(빈 화면 대신 판정이 바로 보이게).
+  if (M.getState().gender !== 'M') M.setGender('M');
+  if (!M.getState().closetCount && !sessionFlag()) M.loadTrialCloset('M');
+  function sessionFlag() { try { return sessionStorage.getItem('d6-mine') === '1'; } catch { return false; } }
+
+  // 알림은 아래 고정 바(행동 바·비교함) 위에 띄운다.
+  function toast(t) {
+    const desk = innerWidth >= 900;
+    const tray = $('.tray'), dock = $('#dock .act');
+    K.toast(t, { bottom: desk ? (tray ? 92 : 32) : dock ? 86 : tray ? 124 : 72 });
+  }
+  const tile = (inner, cls = '') => `<span class="tile ${cls}">${inner}</span>`;
+  const pImg = (id) => tile(pImgStd(id));
+  const gImg = (g, cls = '') => tile(`${gImgStd(g)}${g.trial ? '<span class="ttag">체험용</span>' : ''}`, cls);
+  const fmtDate = (iso) => { if (!iso) return ''; const d = new Date(iso); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
+  const ownedLine = (c) => (c.owned && c.owned.tone !== 'none' && c.owned.tone !== 'stop' ? c.owned.label : '');
+
+  function card(c) {
+    const stop = c.owned?.tone === 'stop';
+    return `<button class="card press" data-p="${esc(c.id)}">${tile(`${stop ? `<span class="tag">${esc(c.owned.label)}</span>` : ''}${pImgStd(c.id)}`)}
+      <span class="tx"><span class="br">${esc(c.brand)}</span><span class="nm">${esc(c.name)}</span>
+      <span class="pr num">${esc(c.priceText)}<small>${esc(c.priceShort)}</small></span>${ownedLine(c) ? `<span class="ow">${esc(ownedLine(c))}</span>` : ''}</span></button>`;
+  }
+  function collage(l) {
+    const order = ['outer', 'top', 'dress', 'bottom', 'shoes'];
+    const ps = l.pieces.filter((p) => order.includes(p.role)).sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role)).slice(0, 4);
+    return `<div class="collage">${ps.map((p) => `<div class="${p.candidate || p.focus ? 'me' : ''}">${pieceStd(p)}</div>`).join('')}</div>`;
+  }
+  const lookText = (l) => l.pieces.filter((p) => ['outer', 'top', 'dress', 'bottom', 'shoes'].includes(p.role)).map((p) => `${p.colorLabel} ${p.kindName}`.trim()).join(' · ');
+
+  // ── 화면
+  const VIEWS = { home, results, product, compare, closet, records };
+  K.start((view, params, dir) => {
+    const main = $('#view');
+    main.classList.remove('enter');
+    main.innerHTML = VIEWS[view](params);
+    if (dir !== 'none' && dir !== 'back' && !reduce) { void main.offsetWidth; main.classList.add('enter'); }
+    chrome(view);
+    // 휴대폰에서는 상세의 행동 바를 본문 밖에 둬서 화면 전환 움직임과 겹치지 않게 한다.
+    document.body.classList.toggle('pdp-on', view === 'product');
+    const act = main.querySelector('.act');
+    $('#dock').replaceChildren();
+    if (act && innerWidth < 900) $('#dock').appendChild(act);
+    bind(view, params);
+  }, { view: 'home', params: {} });
+
+  function chrome(view) {
+    const tabOf = { home: 'home', results: 'home', product: 'home', compare: 'home', closet: 'closet', records: 'records' }[view];
+    $$('[data-tab]').forEach((b) => b.setAttribute('aria-current', b.dataset.tab === tabOf ? 'page' : 'false'));
+    const ids = M.compareList();
+    const top = $('#cmpTop');
+    top.hidden = !ids.length; top.textContent = `비교 ${ids.length}`;
+    const tray = $('#tray');
+    tray.innerHTML = ids.length && !['compare', 'product'].includes(view) ? `<div class="tray"><div class="wrap">${ids.slice(0, 2).map((id) => `<span class="th">${K.productImg(id)}</span>`).join('')}<b>비교함 ${ids.length}개</b><button data-go="compare">나란히 보기</button></div></div>` : '';
+    $$('.tray .th img, .tray .th .eo-ph').forEach((el) => { el.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;object-fit:cover'; });
+    $('.tray [data-go]')?.addEventListener('click', () => K.go('compare'));
+  }
+
+  function home() {
+    const st = M.getState();
+    const mine = st.closet.slice(0, 4);
+    return `<div class="home">
+      <section class="ask">
+        <h1>무엇을 찾나요</h1>
+        <form class="field" id="askForm" role="search"><label for="q" class="sr" style="position:absolute;left:-9999px">찾을 옷</label>
+          <input id="q" name="q" autocomplete="off" placeholder="예: 출근용 셔츠 10만원 이하" value="${esc(S.lastQ || '')}">
+          <button aria-label="찾기"><i class="ph ph-arrow-right"></i></button></form>
+        <div class="ex">${M.examples().slice(0, 5).map((x) => `<button data-q="${esc(x)}"><span>${esc(x)}</span><i class="ph ph-arrow-up-right"></i></button>`).join('')}</div>
+        <p class="meta">정해 둔 규칙으로 요청을 읽어요. 종류·상황·예산·색을 적으면 잘 알아들어요.</p>
+      </section>
+      <section>
+        <div class="sec-h"><h2>옷장<sup>${st.closetCount}</sup></h2><button class="tl" data-tab="closet">전체 보기</button></div>
+        ${mine.length ? `<div class="peek">${mine.map((g) => gImg(g)).join('')}</div>` : ''}
+        <div class="mode" style="margin-top:10px">${modeLine(st)}</div>
+      </section>
+      <div class="foot"><button id="infoFoot">시안 정보</button><button id="resetBtn">처음부터</button></div>
+    </div>`;
+  }
+  function modeLine(st) {
+    if (st.trialCount) return `<span>체험용 옷 ${st.trialCount}벌로 보는 중이에요.</span><button data-mine>내 옷으로 시작</button>`;
+    if (!st.closetCount) return '<span>옷장이 비어 있어요. 가진 옷을 넣으면 겹치는 옷을 알려 드려요.</span><button data-trial>체험용 옷장 불러오기</button>';
+    return `<span>내 옷 ${st.mineCount}벌 기준으로 판단해요.</span>`;
+  }
+
+  function results({ q, drop = [] }) {
+    S.lastQ = q;
+    const r = M.ask(q, { drop });
+    const chips = r.conditions.map((c) => c.removable ? `<button class="chip" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="chip">${esc(c.label)}</span>`).join('');
+    const relax = !r.products.length || r.products.length < 3 ? M.relax(r) : [];
+    return `<section class="res-h">
+        <p class="lab" style="margin:0 0 6px">‘${esc(r.said)}’</p>
+        <h1>${esc(r.understood ? (r.products.length ? `${r.products.length}개를 골랐어요` : r.title) : r.title)}</h1>
+        ${chips ? `<div class="chips">${chips}</div>` : ''}
+        ${r.understood && r.products.length && r.listNote ? `<p class="meta">${esc(r.listNote)}</p>` : ''}
+        ${r.notices.length ? `<div class="notes">${r.notices.map((n) => `<span>${esc(n.text)}</span>`).join('')}</div>` : ''}
+      </section>
+      ${r.products.length ? `<div class="grid">${r.products.map(card).join('')}</div>` : ''}
+      ${relax.length ? `<div class="relax">${relax.map((x) => `<button data-relax='${esc(JSON.stringify(x.drop))}'><span>${esc(x.title)}</span><i class="ph ph-arrow-right"></i><span class="pv">${x.preview.map((p) => pImg(p.id)).join('')}</span></button>`).join('')}</div>` : ''}
+      ${!r.understood ? `<div class="ex" style="margin-top:20px">${r.examples.slice(0, 4).map((x) => `<button data-q="${esc(x)}"><span>${esc(x)}</span><i class="ph ph-arrow-up-right"></i></button>`).join('')}</div>` : ''}
+      ${r.offOccasion.length ? `<h2 class="sub-h">${esc(r.offOccasionTitle)}</h2><div class="grid">${r.offOccasion.map(card).join('')}</div>` : ''}`;
+  }
+
+  function product({ id }) {
+    const p = M.product(id);
+    if (!p) return '<div class="empty"><h2>상품을 찾지 못했어요</h2></div>';
+    const v = p.verdict;
+    const hits = v.owned.slice(0, 4);
+    const looks = (v.looks || []).slice(0, 3);
+    const dec = v.record?.decision;
+    const inCmp = M.compareHas(id);
+    return `<article class="pdp">
+      <div class="ph-col"><button class="back" data-back aria-label="뒤로"><i class="ph ph-arrow-left"></i></button>${pImg(id)}</div>
+      <div class="info">
+        <span class="br">${esc(p.brand)}</span>
+        <h1>${esc(p.name)}</h1>
+        <div class="pr num">${esc(p.priceText)}</div>
+        <div class="pn">${esc(p.priceNote)} · 쿠폰·배송비 제외</div>
+        <a class="out" href="${esc(p.url)}" target="_blank" rel="noopener">무신사에서 보기 <i class="ph ph-arrow-up-right"></i></a>
+        <section class="verdict" aria-label="내 옷과">
+          <div class="lab">내 옷과</div>
+          ${verdictLead(v)}
+          ${v.lines.slice(0, 1).map((l) => `<p>${esc(l)}</p>`).join('')}
+          ${hits.length ? `<div class="owned">${hits.map((g) => `<div class="${['same-product', 'same-color'].includes(g.relation) ? 'hit' : ''}">${gImg(g)}<div class="cap">${esc(g.colorLabel)} ${esc(g.kindName)}<br>${esc(g.relationLabel)}${g.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : ''}
+          ${looks.length ? `<div class="looks"><div class="lab" style="margin-bottom:8px">이 상품을 더하면</div><div class="rail">${looks.map((l) => `<div>${collage(l)}<div class="look-t">${l.new ? '<span class="new-tag">새 조합</span>' : ''}${esc(lookText(l))}</div></div>`).join('')}</div></div>` : ''}
+          <div class="basis">${esc(v.basisLabel)} · 종류·색 기준</div>
+        </section>
+        <div class="act"><div class="wrap">
+          <button class="pill line" id="cmpBtn" aria-pressed="${inCmp}"><i class="ph ${inCmp ? 'ph-check' : 'ph-plus'}"></i>비교</button>
+          <button class="pill ink" id="decBtn"><span>${dec ? `${esc(v.record.decisionLabel)} · 바꾸기` : '결정하기'}</span><span>${esc(p.priceText)}</span></button>
+        </div></div>
+        ${p.alternatives.length ? `<section class="alts"><div class="sec-h"><h2>같은 종류 다른 선택</h2></div><div class="rail">${p.alternatives.slice(0, 6).map(card).join('')}</div></section>` : ''}
+      </div>
+    </article>`;
+  }
+
+  // 숫자 먼저: 겹치는 옷 수 → 새 조합 수 → 문장.
+  function verdictNum(v) {
+    const same = v.owned.filter((o) => ['same-product', 'same-color'].includes(o.relation)).length;
+    if (v.basis === 'none') return { kind: 'none' };
+    if (same) return { kind: 'same', n: same };
+    if (v.newLookCount) return { kind: 'new', n: v.newLookCount };
+    return { kind: 'text' };
+  }
+  function verdictLead(v) {
+    const x = verdictNum(v);
+    if (x.kind === 'none') return '<div class="lead"><div class="w">아직 비교할 옷이 없어요</div></div><div class="t" style="font-size:var(--t-meta);color:var(--ink-2);font-weight:400">옷장에 가진 옷을 한 벌만 넣어도 겹치는지 바로 알려 드려요.</div>';
+    if (x.kind === 'same') return `<div class="lead"><span class="lab" style="letter-spacing:.02em;text-transform:none">옷장에 비슷한 옷</span><div class="n"><b>${x.n}</b><span>벌</span></div></div><div class="t">${esc(v.title)}</div>`;
+    if (x.kind === 'new') return `<div class="lead"><span class="lab" style="letter-spacing:.02em;text-transform:none">이 옷을 더하면 새 조합</span><div class="n"><b>+${x.n}</b><span>개</span></div></div><div class="t">${esc(v.title)}</div>`;
+    return `<div class="lead"><div class="w">${esc(v.title)}</div></div>`;
+  }
+  function compare() {
+    const ids = M.compareList().slice(0, 3);
+    if (!ids.length) return `<div class="empty"><h2>비교함이 비어 있어요</h2><p>상품 화면에서 ‘비교’를 누르면 여기에 두 개를 나란히 놓아요.</p><button class="pill line" data-tab="home">찾으러 가기</button></div>`;
+    const n = Math.min(ids.length, innerWidth < 600 ? 2 : 3);
+    const t = M.compareRows(ids.slice(0, n));
+    return `<div class="cmp-h"><button class="tl" data-back aria-label="뒤로" style="font-size:20px;width:44px"><i class="ph ph-arrow-left"></i></button><h1>나란히 보기</h1></div>
+      <div class="cmp" style="--n:${n}">
+        <span></span>${t.items.map((c) => `<div class="hd"><button class="x" data-rm="${esc(c.id)}" aria-label="${esc(c.name)} 빼기"><i class="ph ph-x"></i></button><button class="press" data-p="${esc(c.id)}" style="display:block;width:100%;text-align:left">${pImg(c.id)}<div class="nm">${esc(c.brand)} ${esc(c.name)}</div></button></div>`).join('')}
+        ${t.rows.filter((r) => r.primary).map((r, i) => `<div class="row ${i === 0 ? 'first' : ''} ${r.same && i ? 'same' : ''}"><span class="k">${esc(r.label)}</span>${i === 0 ? ids.slice(0, n).map((id) => cmpVerdict(id)).join('') : r.values.map((v) => `<span class="num">${esc(v)}</span>`).join('')}</div>`).join('')}
+      </div>
+      <p class="cmp-note">${esc(t.note)}${ids.length > n ? ` 비교함 ${ids.length}개 중 앞의 ${n}개를 보여 줘요.` : ''} 흐린 줄은 값이 같아요.</p>`;
+  }
+
+  function cmpVerdict(id) {
+    const v = M.product(id).verdict; const x = verdictNum(v);
+    const body = x.kind === 'same' ? `<span class="vn"><b class="num">${x.n}</b><small>벌 비슷해요</small></span>` : x.kind === 'new' ? `<span class="vn"><b class="num">+${x.n}</b><small>새 조합</small></span>` : x.kind === 'none' ? '<span class="vn"><small>비교할 옷이 없어요</small></span>' : '';
+    return `<span>${body}<span style="display:block;margin-top:4px;font-weight:400;color:var(--ink-2);font-size:var(--t-label)">${esc(v.title)}</span></span>`;
+  }
+  const matchOf = (slot, closet) => closet.find((g) => g.kind === slot.kind && g.color === slot.color);
+  function closet() {
+    const st = M.getState();
+    const mine = st.closet.filter((g) => g.gender === 'M');
+    const out = M.closetOutfits({ detail: true });
+    const z = ZONES.find((x) => x.key === S.zone);
+    const items = mine.filter((g) => !z.kinds || z.kinds.includes(g.kind));
+    const fresh = S.fresh || new Set();
+    const owned = DEX.filter((d) => matchOf(d, mine)).length;
+    const colorN = {};
+    mine.forEach((g) => { if (g.color) colorN[g.color] = (colorN[g.color] || 0) + 1; });
+    const colors = Object.entries(colorN).sort((a, b) => b[1] - a[1]);
+    const keys = out.list.map((l) => l.baseKey);
+    const dotsN = Math.max(40, Math.ceil(Math.min(out.total, 60) / 20) * 20);
+    const roll = (now, prev) => (prev != null && prev !== now ? K.odo(now, prev) : now);
+    const dots = Array.from({ length: dotsN }, (_, i) => `<i class="${i < out.total ? (keys[i] && fresh.has(keys[i]) ? 'new' : 'on') : ''}"></i>`).join('');
+    return `<section class="cl-h">
+        <h1>옷장<sup>${mine.length}</sup></h1>
+        <div class="stats">
+          <div><b class="num">${roll(out.total, S.prevOutfits)}</b><span>Outfits</span></div>
+          <div><b class="num">${roll(mine.length, S.prevPieces)}</b><span>Pieces</span></div>
+          <div><b class="num">${colors.length}</b><span>Colors</span></div>
+        </div>
+        <div class="mode">${modeLine(st)}</div>
+      </section>
+      <section class="stat-k" aria-label="옷장 색 분포">
+        <div class="lab">Color · 색 분포</div>
+        ${colors.length ? `<div class="colorbar" role="img" aria-label="${esc(colors.map(([c, n]) => `${COLOR[c]?.label} ${n}벌`).join(', '))}">${colors.map(([c, n]) => `<i style="flex-grow:${n};background:${esc(COLOR[c]?.hex || '#999')}"></i>`).join('')}</div>
+          <div class="clegend">${colors.map(([c, n]) => `<span><i style="background:${esc(COLOR[c]?.hex || '#999')}"></i>${esc(COLOR[c]?.label || '')} <b>${n}</b></span>`).join('')}</div>` : '<p class="meta">옷을 넣으면 색 분포가 생겨요.</p>'}
+      </section>
+      <section class="stat-k" aria-label="입을 수 있는 조합 점">
+        <div class="lab">Outfits · 한 점이 한 조합</div>
+        <div class="dots" role="img" aria-label="입을 수 있는 조합 ${out.total}가지">${dots}</div>
+      </section>
+      <section class="dex" aria-label="기본 옷 24">
+        <div class="dh"><h2>기본 옷 ${roll(owned, S.prevOwned)}<span class="of">/ ${DEX.length}</span></h2><span class="lab">${Math.round((owned / DEX.length) * 100)}%</span></div>
+        <div class="bar"><i style="width:${(owned / DEX.length) * 100}%"></i></div>
+        <p class="sub">가진 옷만 세요. 있는 옷이면 칸을 눌러 바로 넣어요.</p>
+        <div class="dexg">${DEX.map((d) => { const g = matchOf(d, mine); const no = String(d.no).padStart(2, '0');
+          return g ? `<button class="slot press ${S.dropSlot === d.no ? 'drop' : ''}" data-g="${esc(g.id)}" aria-label="${no} ${esc(d.name)}${g.trial ? ' 체험용' : ''}"><span class="no">${no}</span>${gImg(g)}</button>`
+            : `<button class="slot miss press" data-slot="${d.no}" aria-label="${no} ${esc(d.name)} 있으면 넣기"><span class="box"><span class="no">${no}</span><span class="nm">${esc(d.name)}</span><span class="put">있으면 넣기</span></span></button>`; }).join('')}</div>
+      </section>
+      <section class="free" aria-label="내 옷 전체">
+        <div class="sec-h"><h2>내 옷 전체<sup>${mine.length}</sup></h2></div>
+        <div class="seg" role="group" aria-label="분류" style="margin-top:0">${ZONES.map((x) => { const n = mine.filter((g) => !x.kinds || x.kinds.includes(g.kind)).length; return `<button data-zone="${x.key}" aria-pressed="${x.key === S.zone}">${x.name}<sup>${n}</sup></button>`; }).join('')}</div>
+        <div class="shelf">${items.map((g) => `<button class="press ${g.id === S.landing ? 'landing' : ''}" data-g="${esc(g.id)}" aria-label="${esc(g.colorLabel)} ${esc(g.kindName)}${g.trial ? ' 체험용' : ''}">${gImg(g)}</button>`).join('')}
+          <button class="add press" id="addG" aria-label="가진 옷 넣기"><i class="ph ph-plus"></i></button></div>
+        <p class="legend">사진은 내 옷이 아니라 종류·색이 같은 비슷한 상품 사진이에요. 사진이 없으면 색으로 보여요.</p>
+      </section>
+      <section class="looks-cl">
+        <div class="sec-h"><h2>입을 수 있는 조합<sup>${out.total}</sup></h2></div>
+        ${out.list.length ? `<div class="rail">${[...out.list].sort((a, b) => Number(fresh.has(b.baseKey)) - Number(fresh.has(a.baseKey))).slice(0, 10).map((l) => `<div>${collage(l)}<div class="look-t">${fresh.has(l.baseKey) ? '<span class="new-tag">새 조합</span>' : ''}${esc(lookText(l))}</div></div>`).join('')}</div>` : '<p class="meta">상의·하의·신발이 한 벌씩 있으면 조합이 생겨요.</p>'}
+      </section>`;
+  }
+
+  function records() {
+    const rs = M.getState().records;
+    if (!rs.length) return `<div class="empty"><h2>아직 결정한 상품이 없어요</h2><p>상품 화면에서 보류·안 살래요·사기로 했어요 중 하나를 고르면 여기에 남아요.</p><button class="pill line" data-tab="home">찾으러 가기</button></div>`;
+    const by = (d) => rs.filter((r) => r.decision === d).length;
+    return `<section class="cl-h"><h1>기록<sup>${rs.length}</sup></h1>
+        <div class="stats"><div><b class="num">${by('buy')}</b><span>Buy</span></div><div><b class="num">${by('hold')}</b><span>Hold</span></div><div><b class="num">${by('skip')}</b><span>Skip</span></div></div></section>
+      <div class="rec-list">${rs.map((r) => `<button class="rec press" data-p="${esc(r.productId)}">${r.product ? pImg(r.product.id) : '<span class="tile"></span>'}
+        <span><span class="br">${esc(r.product?.brand || '')}</span><span class="nm" style="display:-webkit-box">${esc(r.product?.name || '')}</span>
+        <span class="st"><span class="dec-mark ${esc(r.decision || '')}">${esc(r.decisionLabel)}</span><small>${esc(fmtDate(r.updatedAt))} · ${esc(r.product?.priceText || '')} 수집가</small></span></span>
+        <i class="ph ph-caret-right"></i></button>`).join('')}</div>
+      <p class="legend">직접 남긴 기록이에요. 실제 주문·결제와 연결되어 있지 않아요.</p>`;
+  }
+
+  // ── 동작
+  function bind(view, params) {
+    const v = $('#view');
+    $$('[data-tab]', document).forEach((b) => { b.onclick = () => K.tab(b.dataset.tab); });
+    $$('[data-p]', v).forEach((b) => { b.onclick = () => K.go('product', { id: b.dataset.p }); });
+    $$('[data-q]', v).forEach((b) => { b.onclick = () => K.go('results', { q: b.dataset.q }); });
+    $$('[data-back]', v).forEach((b) => { b.onclick = () => K.back(); });
+    $('#askForm', v)?.addEventListener('submit', (e) => { e.preventDefault(); const q = $('#q').value.trim(); if (q) K.go('results', { q }); });
+    $$('[data-drop]', v).forEach((b) => { b.onclick = () => K.go('results', { q: params.q, drop: [...(params.drop || []), b.dataset.drop] }, { replace: true }); });
+    $$('[data-relax]', v).forEach((b) => { b.onclick = () => K.go('results', { q: params.q, drop: JSON.parse(b.dataset.relax) }, { replace: true }); });
+    $$('[data-mine]', v).forEach((b) => { b.onclick = () => { M.clearTrialCloset(); try { sessionStorage.setItem('d6-mine', '1'); } catch {} toast('체험용 옷을 뺐어요. 가진 옷을 넣어 주세요'); K.refresh(); }; });
+    $$('[data-trial]', v).forEach((b) => { b.onclick = () => { M.loadTrialCloset('M'); K.refresh(); }; });
+    $('#infoFoot', v)?.addEventListener('click', () => K.info(DESIGN));
+    $('#resetBtn', v)?.addEventListener('click', () => { K.reset(); try { sessionStorage.removeItem('d6-mine'); } catch {} S.seen.clear(); saveSeen(); M.loadTrialCloset('M'); S.lastQ = null; K.tab('home'); toast('처음 상태로 돌렸어요'); });
+    if (view === 'product') {
+      $('#cmpBtn').onclick = () => {
+        const id = params.id;
+        if (M.compareHas(id)) { M.compareRemove(id); toast('비교함에서 뺐어요'); }
+        else if (M.compareList().length >= 3) { toast('세 개까지 나란히 봐요. 하나를 빼고 담아 주세요'); return; }
+        else { M.compareAdd(id); toast(M.compareList().length > 1 ? `비교함 ${M.compareList().length}개 · 위 ‘비교’에서 나란히 봐요` : '비교함에 담았어요. 하나 더 담아 보세요'); }
+        K.refresh();
+      };
+      $('#decBtn').onclick = () => decide(params.id);
+    }
+    if (view === 'compare') $$('[data-rm]', v).forEach((b) => { b.onclick = () => { M.compareRemove(b.dataset.rm); K.refresh(); }; });
+    if (view === 'closet') {
+      $$('[data-zone]', v).forEach((b) => { b.onclick = () => { S.zone = b.dataset.zone; K.refresh(); }; });
+      $$('[data-g]', v).forEach((b) => { b.onclick = () => garment(b.dataset.g); });
+      $('#addG', v).onclick = () => addGarment();
+      $$('[data-slot]', v).forEach((b) => { b.onclick = () => fillSlot(Number(b.dataset.slot)); });
+      if (S.prevOutfits != null || S.prevOwned != null || S.prevPieces != null) { K.rollOdo(v); S.prevOutfits = null; S.prevOwned = null; S.prevPieces = null; }
+      if (S.dropSlot) setTimeout(() => { S.dropSlot = null; }, 0);
+      setTimeout(() => { S.fresh = new Set(); }, 0);
+    }
+  }
+  $('#infoBtn').onclick = () => K.info(DESIGN);
+  $('#cmpTop').onclick = () => K.go('compare');
+
+  function sheet(title, body, foot = '') {
+    const w = document.createElement('div');
+    w.innerHTML = `<div class="scrim" data-x></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sh"><h2>${esc(title)}</h2><button data-x aria-label="닫기"><i class="ph ph-x"></i></button></div><div class="bd">${body}</div>${foot ? `<div class="ft">${foot}</div>` : ''}</div>`;
+    $('#layer').appendChild(w);
+    document.documentElement.style.overflow = 'hidden';
+    const sh = $('.sheet', w);
+    const desk = innerWidth >= 900;
+    if (!reduce) {
+      sh.animate(desk ? [{ opacity: 0, transform: 'translateY(-46%)' }, { opacity: 1, transform: 'translateY(-50%)' }] : [{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: SPRING.ms, easing: SPRING.css });
+      $('.scrim', w).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+    }
+    const close = async (fast) => {
+      document.documentElement.style.overflow = '';
+      document.removeEventListener('keydown', onKey);
+      if (!fast && !reduce) {
+        const a = sh.animate(desk ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 220, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+        $('.scrim', w).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
+        await a.finished;
+      }
+      w.remove();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    $$('[data-x]', w).forEach((b) => { b.onclick = () => close(); });
+    setTimeout(() => $('.sh button', w)?.focus({ preventScroll: true }), 40);
+    return { w, close };
+  }
+
+  function decide(id) {
+    const p = M.product(id);
+    const cur = p.verdict.record?.decision;
+    const s = sheet('어떻게 할까요', `<p class="meta" style="margin:0 0 6px">${esc(p.brand)} · ${esc(p.priceText)} ${esc(p.priceShort)}</p><div class="choice">${DEC.map(([k, l, d]) => `<button data-d="${k}" aria-pressed="${cur === k}"><b>${l}</b><small>${d}</small><i class="ph ${cur === k ? 'ph-check-circle' : 'ph-circle'}"></i></button>`).join('')}</div>`);
+    $$('[data-d]', s.w).forEach((b) => { b.onclick = async () => {
+      M.decide(id, b.dataset.d);
+      await s.close();
+      toast(`${DEC.find((x) => x[0] === b.dataset.d)[1]}로 기록했어요 · 기록에서 볼 수 있어요`);
+      K.refresh();
+    }; });
+  }
+
+  function garment(gid) {
+    const g = M.getState().closet.find((x) => x.id === gid);
+    if (!g) return;
+    const s = sheet(`${g.colorLabel} ${g.kindName}`, `<div class="gsheet">${gImg(g)}<div><div class="lab">${g.trial ? '체험용' : '내 옷'}</div><p>비슷한 상품 사진이에요. 실제 앱에서는 내 옷 사진으로 바꿀 수 있어요.</p></div></div>`, `<button class="pill line" id="rmG"><i class="ph ph-minus"></i>옷장에서 빼기</button>`);
+    $('#rmG', s.w).onclick = async () => {
+      try {
+        const before = M.closetOutfits().total;
+        M.removeGarment(gid);
+        await s.close(true);
+        const after = M.closetOutfits().total;
+        K.refresh();
+        toast(after < before ? `뺐어요 · 조합 ${before - after}개가 줄었어요` : '뺐어요');
+      } catch (e) { toast(e.message); }
+    };
+  }
+
+  // 넣기 전후를 재서 숫자 굴림·새 조합 점·이정표를 정한다. 이정표는 내 옷만 있을 때(체험용 없음) 한 번씩.
+  function measure() {
+    const mine = M.getState().closet.filter((g) => g.gender === 'M');
+    const out = M.closetOutfits({ detail: true });
+    return { pieces: mine.length, owned: DEX.filter((d) => matchOf(d, mine)).length, total: out.total, keys: new Set(out.list.map((l) => l.baseKey)), list: out.list };
+  }
+  function after(before) {
+    const now = measure();
+    S.fresh = new Set([...now.keys].filter((k) => !before.keys.has(k)));
+    S.prevOutfits = before.total; S.prevOwned = before.owned; S.prevPieces = before.pieces;
+    const ownOnly = !M.getState().trialCount;
+    const ms = !ownOnly ? null : before.total === 0 && now.total > 0 ? 'first' : [24, 12].find((m) => before.owned < m && now.owned >= m) || null;
+    return { now, ms, gained: now.total - before.total, look: now.list.find((l) => S.fresh.has(l.baseKey)) || now.list[0] };
+  }
+  function fillSlot(no) {
+    const d = DEX.find((x) => x.no === no);
+    const before = measure();
+    M.addGarment({ kind: d.kind, color: d.color, slot: M.slotChoices(d.kind, 'M')[0]?.id || null, gender: 'M' });
+    const r = after(before);
+    S.dropSlot = no;
+    K.refresh();
+    if (r.ms && !S.seen.has(r.ms)) { S.seen.add(r.ms); saveSeen(); setTimeout(() => milestone(r.ms, r.look, r.now.owned), reduce ? 0 : 700); }
+    else toast(`${d.name} 넣었어요${r.gained > 0 ? ` · 조합 +${r.gained}` : ''}`);
+  }
+  function milestone(ms, look, owned) {
+    $('.k-toast')?.remove();
+    const title = ms === 'first' ? '첫 조합이 생겼어요' : ms === 24 ? '기본 옷을 다 채웠어요' : `기본 옷 ${owned}칸을 채웠어요`;
+    const body = ms === 'first' ? '내 옷만으로 입을 수 있는 첫 조합이에요.' : '가진 옷을 이만큼 알려 주셨어요. 사기 전에 겹치는 옷을 더 정확히 알려 드려요.';
+    const el = document.createElement('div');
+    el.className = 'mile'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', title);
+    el.innerHTML = `<div class="in"><div class="lab">${ms === 'first' ? 'Milestone · 이정표' : `기본 옷 ${owned} / ${DEX.length}`}</div><h2>${title}</h2><p>${body}</p>
+      ${look ? `${collage(look)}<div class="look-t">${esc(lookText(look))}</div>` : ''}
+      <button class="pill ink" id="mileOk" style="justify-content:center">계속 채우기</button></div>`;
+    document.body.appendChild(el);
+    document.documentElement.style.overflow = 'hidden';
+    if (!reduce) { el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240 }); $('.in', el).animate([{ transform: 'translateY(24px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: SPRING.ms, easing: SPRING.css }); }
+    const close = () => { document.documentElement.style.overflow = ''; el.remove(); };
+    $('#mileOk', el).onclick = close;
+    $('#mileOk', el).focus({ preventScroll: true });
+    el.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  }
+
+  function addGarment() {
+    const kinds = M.kindChoices('M').filter((k) => ADD_KINDS.includes(k.id));
+    let kind = kinds[0].id, color = null;
+    const colors = M.colorChoices();
+    const s = sheet('가진 옷 넣기', '<div id="addBody"></div>', '<button class="pill ink" id="putG" style="justify-content:center">색을 골라 주세요</button>');
+    const paint = () => {
+      const pv = { gender: 'M', kind, color: color || 'black', slot: M.slotChoices(kind, 'M')[0]?.id || null };
+      $('#addBody', s.w).innerHTML = `<div class="add-pv"><span id="pvTile" style="opacity:${color ? 1 : .4}">${gImg(pv)}</span><div class="lb">${color ? `${esc(colors.find((c) => c.id === color).label)} ` : ''}${esc(kinds.find((k) => k.id === kind).name)}<small>${color ? '비슷한 상품 사진으로 보여요' : '색을 고르면 사진이 바뀌어요'}</small></div></div>
+        <div class="fld">종류</div><div class="k-row">${kinds.map((k) => `<button data-k="${k.id}" aria-pressed="${k.id === kind}">${esc(k.name)}</button>`).join('')}</div>
+        <div class="fld">색</div><div class="sw">${colors.map((c) => `<button data-c="${c.id}" aria-pressed="${c.id === color}" aria-label="${esc(c.label)}"><i style="background:${c.hex}"></i>${esc(c.label)}</button>`).join('')}</div>
+        <p class="legend">사진 없이 종류와 색만 저장해요.</p>`;
+      $$('[data-k]', s.w).forEach((b) => { b.onclick = () => { kind = b.dataset.k; paint(); }; });
+      $$('[data-c]', s.w).forEach((b) => { b.onclick = () => { color = b.dataset.c; paint(); }; });
+      const put = $('#putG', s.w);
+      put.disabled = !color; put.style.opacity = color ? 1 : .35;
+      put.textContent = color ? '옷장에 넣기' : '색을 골라 주세요';
+    };
+    paint();
+    $('#putG', s.w).onclick = async () => {
+      if (!color) return;
+      const from = $('#pvTile .tile', s.w).getBoundingClientRect();
+      const html = $('#pvTile .tile', s.w).innerHTML;
+      const before = measure();
+      const g = M.addGarment({ kind, color, slot: M.slotChoices(kind, 'M')[0]?.id || null, gender: 'M' });
+      const res = after(before);
+      S.zone = 'all'; S.landing = g.id;
+      if (K.current().view !== 'closet') K.tab('closet'); else K.refresh();
+      const target = $(`[data-g="${g.id}"]`);
+      const r = target.getBoundingClientRect();
+      if (r.top < 60 || r.bottom > innerHeight - 140) scrollTo({ top: scrollY + r.top - innerHeight * .35, behavior: 'instant' });
+      s.close();
+      await K.fly(html, from, target.querySelector('.tile') || target, { bg: getComputedStyle(document.documentElement).getPropertyValue('--tile') });
+      target.classList.remove('landing'); target.classList.add('settle');
+      S.landing = null;
+      if (res.ms && !S.seen.has(res.ms)) { S.seen.add(res.ms); saveSeen(); milestone(res.ms, res.look, res.now.owned); }
+      else toast(res.gained > 0 ? `넣었어요 · 입을 수 있는 조합 +${res.gained}` : '넣었어요');
+    };
+  }
+})();
+</script>

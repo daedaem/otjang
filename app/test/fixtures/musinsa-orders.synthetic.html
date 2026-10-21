@@ -1,0 +1,37 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>구매내역 읽기 · 합성 검증</title>
+<style>body{font:16px/1.6 system-ui;max-width:700px;margin:30px auto;padding:16px}article{border:1px solid #ccc;padding:16px;margin:12px 0}a,span{display:block}textarea{width:100%;height:180px}button{padding:12px}#result{white-space:pre-line}</style></head><body>
+<h1>합성 주문내역 검증</h1><p>실제 개인 주문이 아닙니다. 읽기·중복·상태 구분을 확인하는 합성 자료입니다.</p>
+<section><header>주문일: 2024. 05. 12.<br>주문번호: SYNTHETIC-20240512-A</header>
+<article><span>배송 완료</span><a href="https://www.musinsa.com/brands/synthetic">합성 브랜드</a><a href="https://www.musinsa.com/products/900000000001">시험용 옥스퍼드 셔츠</a><span>옵션: 화이트 / M</span><span>수량: 1개</span><span>상품금액: 30,000원</span><button>반품 신청</button></article>
+<article><span>반품 완료</span><a href="https://www.musinsa.com/brands/synthetic">합성 브랜드</a><a href="https://www.musinsa.com/products/900000000002">시험용 재킷</a><span>옵션: 베이지 / L</span><span>1개</span><span>45,000원</span></article></section>
+<section><header>주문일: 2024-06-01<br>주문번호: SYNTHETIC-20240601-B</header>
+<article><span>취소 완료</span><a href="https://www.musinsa.com/brands/synthetic">합성 브랜드</a><a href="https://www.musinsa.com/products/900000000001">시험용 옥스퍼드 셔츠</a><span>옵션: 블루 / L</span><span>2개</span><span>30,000원</span><span>25,000원</span></article></section>
+<section><article><span>배송 중</span><a href="https://www.musinsa.com/products/900000000003">주문번호 미확인 시험 바지</a></article></section>
+<section><header>주문일: 2024-06-05<br>주문번호: SYNTHETIC-20240605-C</header>
+<article><a href="https://www.musinsa.com/products/900000000004">상태가 없는 시험 니트</a><span>옵션: M</span><button>반품 신청</button></article></section>
+<aside><h2>추천 상품 (주문 아님)</h2><a href="https://www.musinsa.com/products/900000000005">추천 상품</a></aside>
+<article hidden><span>배송 완료</span><a href="https://www.musinsa.com/products/900000000006">숨긴 시험 상품</a></article>
+<button id="run">읽기와 검증 실행</button><p id="result" role="status"></p><label>앱 가져오기 시험용 내역<textarea id="payload" readonly></textarea></label>
+<script type="module">
+import { readMusinsaOrderPage } from '../../src/musinsa-order-reader.js';
+document.getElementById('run').addEventListener('click', async () => {
+  try {
+    const data = await readMusinsaOrderPage({ doc: document, href: 'https://www.musinsa.com/mypage/orders' });
+    const check = (ok, description) => { if (!ok) throw new Error(description); return description; };
+    const first = data.items[0], checks = [];
+    checks.push(check(data.items.length === 5, '추천·숨긴 상품 제외'));
+    checks.push(check(first.name === '시험용 옥스퍼드 셔츠' && first.brand === '합성 브랜드', '상품명·브랜드 구분'));
+    checks.push(check(first.status === 'delivered', '반품 신청 버튼을 완료 상태로 오인하지 않음'));
+    checks.push(check(first.orderDate === '2024-05-12' && first.identity === 'order', '해당 주문의 날짜·식별 확인'));
+    checks.push(check(data.items[1].status === 'returned' && data.items[2].status === 'cancelled', '반품·취소 완료 구분'));
+    checks.push(check(first.amount === 30000 && data.items[2].amount === null, '모호한 복수 금액은 미확인'));
+    checks.push(check(data.items[3].identity === 'page' && data.items[3].orderDate === null, '다른 주문의 번호·날짜를 빌려 쓰지 않음'));
+    checks.push(check(data.items[4].status === 'unknown', '신청 버튼만 있는 내역은 상태 미확인'));
+    checks.push(check(data.items.every((row) => !JSON.stringify(row).includes('SYNTHETIC-')), '원 주문번호는 저장·전송하지 않음'));
+    const again = await readMusinsaOrderPage({ doc: document, href: 'https://www.musinsa.com/mypage/orders' });
+    checks.push(check(data.items.every((row, i) => row.key === again.items[i].key), '동일 화면 다시 읽기 식별 일치'));
+    document.getElementById('result').textContent = `${checks.length}개 통과\n${checks.join('\n')}`;
+    document.getElementById('payload').value = JSON.stringify(data);
+  } catch (error) { document.getElementById('result').textContent = `실패: ${error.message}`; }
+});
+</script></body></html>

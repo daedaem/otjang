@@ -152,7 +152,7 @@ export const SLOTS = [
     why: '생지 데님과 짝을 이루는 아메카지 신발', tip: '바지 밑단을 한 번 접어 부츠 목을 보여 주세요' },
   { id: 'm-chelsea', g: 'M', cat: 'shoes', shape: 'boot', name: '첼시 부츠', colors: ['brown', 'black'], style: M([2, 1, 1, 3, 2, 0]), occ: ['date', 'daily', 'work'], seasons: FW, formal: 3,
     why: '가을·겨울 코디를 한 단계 올려 주는 부츠', tip: '바지 밑단이 부츠에 살짝 걸치는 길이가 좋아요' },
-  { id: 'm-white-sneaker', g: 'M', cat: 'shoes', shape: 'sneaker', name: '화이트 스니커즈', colors: ['white'], style: M([1, 0, 2, 3, 1, 0]), occ: ['daily', 'date', 'weekend'], seasons: ALL, formal: 2,
+  { id: 'm-white-sneaker', g: 'M', cat: 'shoes', shape: 'sneaker', name: '화이트 스니커즈', colors: ['white'], requiredColors: ['white'], style: M([1, 0, 2, 3, 1, 0]), occ: ['daily', 'date', 'weekend'], seasons: ALL, formal: 2,
     why: '슬랙스와 신어도 어색하지 않은 깔끔한 운동화', tip: '깨끗하게 관리하는 것만으로 코디가 살아요' },
   { id: 'm-canvas', g: 'M', cat: 'shoes', shape: 'sneaker', name: '캔버스 스니커즈', colors: ['ivory', 'black', 'white'], style: M([2, 2, 2, 1, 0, 0]), occ: ['daily', 'weekend'], seasons: ['spring', 'summer', 'fall'], formal: 1,
     why: '치노·데님과 신는 캐주얼 운동화', tip: '아이보리 색은 흰색보다 덜 튀어요' },

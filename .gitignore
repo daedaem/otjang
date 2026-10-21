@@ -5,6 +5,8 @@
 *.pem
 *.key
 /data/wardrobe.json
+/app/data/wardrobe.json
+/app/data/wardrobe-with-photos.json
 /private/
 
 # Dependencies and generated outputs
@@ -27,3 +29,18 @@ shots/
 /docs/*PRD*v0.3.md
 /prototypes/
 /app/dist/
+
+# Self-hosted server data (accounts, wardrobes, photos)
+/server/data/
+/server/data-try/
+/server/data-phone-20261019/
+*.db
+*.db-shm
+*.db-wal
+/server/models/
+
+# Deploy kit: local settings and database replicas
+/deploy/backups/
+/deploy/backups-staging/
+/deploy/policy/
+/server/policy/

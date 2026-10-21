@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "어울 구매내역 가져오기 · 로컬 시험판",
+  "version": "0.1.0",
+  "description": "직접 연 무신사 주문내역에서 선택한 상품 정보만 복사합니다. 서버 전송과 자동 로그인은 없습니다.",
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "action": { "default_popup": "popup.html", "default_title": "무신사 구매내역 가져오기" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'; img-src 'self'" }
+}

@@ -1,0 +1,83 @@
+/* 딱 · 드레스룸 — 내 옷장 안에 들어선 느낌. 호두나무 벽, 놋쇠 봉, 조명이 떨어지는 진열장. 조명은 시간대를 따른다(아침 햇살·낮·저녁 조명·밤 조명). 판정은 옷에 다는 놋쇠 태그. (참고: 2026 ADA Visuals and Graphics 수상작 Tide Guide의 하루를 따라가는 팔레트) */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg: #1B1612; --surface: #261F1A; --sunk: #2F2620; --ink: #F4EDE4; --ink-2: #D6CABB; --ink-3: #ADA08F;
+  --line: #3D322A; --accent: #E9B467; --accent-soft: #3A2C1C; --heart: #F08C78; --art-line: #8F8273; --photo-surface: #F2EDE6;
+  --brass: linear-gradient(135deg, #F7D995 0%, #D7A653 45%, #A97A33 100%); --brass-ink: #2A1D0F;
+  --lamp: radial-gradient(120% 55% at 50% -12%, rgba(255, 190, 110, .22), transparent 62%);
+  --wood: repeating-linear-gradient(92deg, #2B211B 0 9px, #30251E 9px 14px, #281F19 14px 23px);
+  --rod: #D7A653; --shelf: #5B4231; --floor: #3A2B21; --door: #2E231C; --handle: #D7A653; --wardrobe-inside: #201913; --drawer: #2A211B;
+  --radius-xs: 8px; --radius-sm: 12px; --radius-md: 16px;
+  color-scheme: dark;
+}
+:root[data-daypart="dawn"], :root[data-daypart="day"] {
+  --bg: #E7E3DD; --surface: #F4F1EC; --sunk: #DCD6CD; --ink: #1F1B17; --ink-2: #463F37; --ink-3: #635A50;
+  --line: #CFC7BB; --accent: #8A5E22; --accent-soft: #F1E5D2; --heart: #B4442F; --art-line: #8C8378; --photo-surface: #FAF8F5;
+  --brass-ink: #2A1D0F;
+  --lamp: radial-gradient(90% 60% at 85% -10%, rgba(255, 236, 196, .75), transparent 60%);
+  --wood: repeating-linear-gradient(92deg, #C9AE8F 0 9px, #CDB396 9px 14px, #C4A887 14px 23px);
+  --rod: #B88A3F; --shelf: #B8987A; --floor: #D6C7B4; --door: #D9C4AA; --handle: #8A5E22; --wardrobe-inside: #EFEBE5; --drawer: #F6F3EF;
+  color-scheme: light;
+}
+:root[data-daypart="dawn"] { --lamp: radial-gradient(90% 60% at 10% -10%, rgba(255, 205, 170, .7), transparent 60%); }
+body { font-family: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", sans-serif; background: var(--lamp), var(--bg); background-attachment: fixed; }
+.brand, .onboard .logo, .section.page-intro h2, .section h2, .detail-title, .look-title, .onboard .lead, .journey-verdict h3, .deck-body h3, .sheet h2 { font-family: "Gowun Batang", serif; font-weight: 700; letter-spacing: -.02em; }
+.brand { font-size: 32px; color: var(--accent); }
+.brand small { font-family: "IBM Plex Sans KR", sans-serif; }
+.section.page-intro h2 { font-size: 38px; line-height: 1.22; }
+.section.page-intro .eyebrow::after { content: " · 밤 조명"; }
+:root[data-daypart="dawn"] .section.page-intro .eyebrow::after { content: " · 아침 햇살"; }
+:root[data-daypart="day"] .section.page-intro .eyebrow::after { content: " · 낮의 드레스룸"; }
+:root[data-daypart="dusk"] .section.page-intro .eyebrow::after { content: " · 저녁 조명"; }
+.eyebrow { color: var(--accent); letter-spacing: .12em; }
+.top { border-bottom: 1px solid var(--line); background: transparent; }
+.profile-btn { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn { border-radius: 999px; background: var(--brass); color: var(--brass-ink); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 6px 16px -8px rgba(0, 0, 0, .6); }
+.btn.secondary { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.chip { border-radius: 999px; background: transparent; border-color: var(--line); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--brass-ink); border-color: var(--accent); }
+.thumb, .citem .thumb, .tile, .closet-add-stage { background: var(--photo-surface); }
+.thumb img, .tile img { mix-blend-mode: multiply; }
+.next-pick, .deck { padding: 16px; border-radius: 18px; background: radial-gradient(80% 50% at 50% 0%, rgba(255, 200, 130, .16), transparent 70%), var(--surface); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px var(--line), 0 24px 40px -28px rgba(0, 0, 0, .8); }
+.deck-photo .thumb { border-radius: 12px; box-shadow: 0 18px 30px -18px rgba(0, 0, 0, .7); }
+.look { border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.look-body { padding: 12px 14px 14px; }
+.look-grid { background: var(--surface); }
+.home-shortcuts > button, .notice, .demo-notice { border: 0; border-radius: 14px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.nav { background: var(--wood); border-top: 1px solid var(--line); }
+.nav button { color: var(--ink-3); }
+.nav button[aria-current="page"] { background: transparent; color: var(--accent); }
+.nav button[aria-current="page"]::after { content: ""; position: absolute; top: 0; width: 40%; height: 2px; background: var(--brass); box-shadow: 0 6px 14px rgba(233, 180, 103, .45); }
+.nav .count { background: var(--accent); color: var(--brass-ink); }
+.sheet { background: var(--lamp), var(--bg); border-radius: 22px 22px 0 0; }
+.closet-toolbar-tabs button[aria-pressed="true"] { border-bottom-color: var(--accent); color: var(--accent); }
+
+.tv-hero { border-radius: 18px; background: radial-gradient(70% 70% at 50% 20%, rgba(255, 210, 150, .22), transparent 70%), var(--sunk); padding: 18px 0; }
+.tv-hero .tv-img { border-radius: 10px; box-shadow: 0 18px 30px -18px rgba(0, 0, 0, .7); }
+.tv-seal, .stamp-mark { width: 92px; height: 60px; border-radius: 10px 10px 10px 26px; background: var(--brass); color: var(--brass-ink); font-family: "Gowun Batang", serif; font-weight: 700; font-size: 26px; --seal-tilt: -9deg; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 8px 14px -6px rgba(0, 0, 0, .55); }
+.tv-seal::before, .stamp-mark::before { content: ""; position: absolute; left: 10px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: var(--bg); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5); }
+.tv-seal { padding-left: 14px; }
+.tv-seal.tv-hold, .stamp-mark.stamp-hold, .stamp-mark.stamp-skip { background: linear-gradient(135deg, #E9E4DC, #B9B1A5); }
+.stamp-mark { width: 54px; height: 32px; padding-left: 10px; font-size: 13px; border-radius: 6px 6px 6px 14px; transform: rotate(-8deg); }
+.stamp-mark::before { left: 5px; width: 6px; height: 6px; margin-top: -3px; }
+.tv-stats > div { padding: 12px; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.tv-stats dd { font-family: "Gowun Batang", serif; font-size: 30px; color: var(--accent); }
+.stamp-word { font-family: "Gowun Batang", serif; }
+.stamp-tally { border: 0; border-radius: 14px; box-shadow: 0 0 0 1px var(--line); }
+.stamp-tally .stamp-word { color: var(--accent); }
+.stamp-tally b { font-family: "Gowun Batang", serif; }
+.stamp-saved { background: var(--brass); color: var(--brass-ink); border-radius: 14px; }
+.stamp-saved small { color: rgba(42, 29, 15, .75); }
+
+.wardrobe { padding: 22px 12px 0; border-radius: 18px; background: radial-gradient(90% 30% at 50% 0%, rgba(255, 200, 130, .28), transparent 70%), var(--wardrobe-inside); box-shadow: 0 0 0 10px var(--door), 0 0 0 11px var(--line); margin: 28px 11px 11px; }
+.rack-label { color: var(--accent); letter-spacing: .12em; }
+.rack-hang .rack-row { background: linear-gradient(#FBE3A8, #C49444 60%, #8E6726) 0 9px / 100% 6px no-repeat; background-attachment: local; }
+.rack-hang .citem::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 30' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 13V9.5a3.5 3.5 0 1 0-3.5-3.5' stroke='%23D7A653' stroke-width='2'/%3E%3Cpath d='M24 13 3 25.5c0 1.4 1 2 2.2 2h37.6c1.2 0 2.2-.6 2.2-2z' fill='%237A5539' stroke='%235B3E29' stroke-width='1.2'/%3E%3C/svg%3E"); }
+.rack-hang .citem .thumb { box-shadow: 0 14px 22px -14px rgba(0, 0, 0, .7); }
+.rack-shelf .rack-row { background: linear-gradient(rgba(255, 255, 255, .08), transparent 3px), linear-gradient(var(--shelf), var(--shelf)) 0 100% / 100% 10px no-repeat; background-repeat: no-repeat; background-size: 100% 3px, 100% 10px; background-position: 0 calc(100% - 7px), 0 100%; }
+.rack-floor { margin: 0 -12px; padding: 0 12px 14px; background: repeating-linear-gradient(90deg, rgba(0, 0, 0, .14) 0 1px, transparent 1px 64px), repeating-linear-gradient(0deg, rgba(0, 0, 0, .1) 0 1px, transparent 1px 18px), var(--floor); }
+.rack-floor .rack-row { background: none; }
+.rack-floor .rack-label { padding-top: 12px; }
+.rack-add { padding-bottom: 14px; }
+.rack-add .closet-add-tile { border-color: var(--line); color: var(--ink-2); }
+.wardrobe-opening::before { background: linear-gradient(var(--handle), var(--handle)) calc(100% - 14px) 50% / 3px 70px no-repeat, linear-gradient(90deg, rgba(0, 0, 0, .25), transparent 20% 80%, rgba(0, 0, 0, .25)), var(--wood); }
+.wardrobe-opening::after { background: linear-gradient(var(--handle), var(--handle)) 14px 50% / 3px 70px no-repeat, linear-gradient(90deg, rgba(0, 0, 0, .25), transparent 20% 80%, rgba(0, 0, 0, .25)), var(--wood); }

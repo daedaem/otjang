@@ -1,0 +1,55 @@
+/* 어울 시안 2판 공통 디자인 토큰. 설계: docs/ux10v2-design-spec-20261019.md
+   기준값은 03 비교함(실서비스에 가장 가까운 시안)에서 뽑았다. 시안은 <html data-team="NN">으로 아래 테마 층을 고른다.
+   색만 바꾼 안이 되지 않도록 테마는 정체성에 필요한 최소 값만 바꾼다(구조·조작은 각 시안이 다르게). */
+:root {
+  color-scheme: light;
+  /* 색: 무채색 + 강조 1 + 판정 의미색(글자와 함께만 쓰고 색만으로 뜻을 전하지 않는다) */
+  --ink: #111111; --ink-2: #2b2b2b; --sub: #5c5c5c; --mute: #737373;
+  --line: #e8e8e5; --line-2: #d0d0cb; --bg: #ffffff; --soft: #f5f5f3; --soft-2: #eeeeea; --photo-bg: #f3f3f1;
+  --accent: #0b6b4d; --accent-bg: #e6f3ed; --on-accent: #ffffff;
+  --stop: #a1221b; --stop-bg: #fbedec;   /* 겹쳐요·비슷한 옷 있음 */
+  --go: #16613a; --go-bg: #e6f2ea;       /* 새 코디가 생겨요 */
+  --info: #1b4b8a; --info-bg: #e9eff8;   /* 색만 달라요·확인 필요 */
+  --pair: #8f5300; --pair-bg: #fff1cf;   /* 함께 더해야 조합 */
+  --focus: #1f5fbf; --scrim: rgba(0, 0, 0, .40);
+  /* 글자 */
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --font-serif: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
+  --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --fs-16: 16px; --fs-18: 18px; --fs-20: 20px; --fs-24: 24px; --fs-28: 28px; --fs-32: 32px;
+  --lh-tight: 1.3; --lh: 1.5; --lh-loose: 1.65;
+  --fw-regular: 400; --fw-medium: 500; --fw-bold: 700; --fw-heavy: 800;
+  /* 상품 위계(카드 / 상세): 브랜드 < 품명 < 가격 */
+  --card-brand: 13px; --card-name: 14px; --card-price: 15px;
+  --pdp-brand: 14px; --pdp-name: 18px; --pdp-price: 24px;
+  /* 간격(4 단위) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+  --gut: 16px; --max: 1280px; --grid-gap-x: 8px; --grid-gap-y: 20px;
+  /* 모양 */
+  --r-photo: 4px; --r-control: 8px; --r-card: 12px; --r-sheet: 16px; --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .06); --shadow-2: 0 6px 24px rgba(0, 0, 0, .10); --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, .18);
+  /* 크기 */
+  --hdr: 56px; --tabbar: 56px; --bar: 68px; --target: 48px; --target-min: 44px; --chip-h: 36px; --tray: 72px;
+  --eo-ratio: 4 / 5;
+  /* 움직임 */
+  --t-fast: 120ms; --t: 200ms; --t-sheet: 280ms; --ease: cubic-bezier(.2, .8, .2, 1);
+}
+@media (min-width: 900px) {
+  :root { --gut: 32px; --hdr: 64px; --grid-gap-x: 16px; --grid-gap-y: 28px; --pdp-name: 22px; --pdp-price: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0ms; --t: 0ms; --t-sheet: 0ms; }
+}
+
+/* ── 시안별 테마 층(정체성에 필요한 값만) */
+[data-team="04"] { --accent: #111111; --accent-bg: #f0f0f0; --r-card: 20px; } /* 흑백, 카드가 주인공 */
+[data-team="05"] { --bg: #f7f4ef; --soft: #efeae2; --photo-bg: #ffffff; --line: #e2dbcf; --accent: #6b3f1d; --accent-bg: #f3e8dc; } /* 따뜻한 룩북 종이 */
+[data-team="07"] { --soft: #f4f5f6; --line: #e3e5e8; --accent: #1b4b8a; --accent-bg: #e9eff8; } /* 차가운 장부 */
+[data-team="08"] { --bg: #ffffff; --soft: #f5f4f1; --rail: #f3f1ec; --accent: #0f6b3f; } /* 레일 바탕 */
+[data-team="09"] { --bg: #f7f5f0; --soft: #eeeae2; --line: #dcd6cc; --accent: #8a2d1d; --pdp-name: 23px; --pdp-price: 26px; } /* 잡지, 제목은 --font-serif */
+[data-team="10"] { --fs-base: 17px; --card-name: 16px; --card-price: 17px; --pdp-name: 20px; --pdp-price: 26px; --target: 56px; --chip-h: 44px; }
+[data-team="10"][data-contrast="high"] { --ink: #000; --sub: #1a1a1a; --mute: #2b2b2b; --line: #000; --line-2: #000; --soft: #fff; --accent: #000; --on-accent: #fff; --stop: #8a0000; --go: #004d1a; --info: #002e6b; }
+[data-team="10"][data-text="large"] { --card-name: 18px; --card-price: 19px; --pdp-name: 24px; --pdp-price: 30px; }
+
+/* 공통 기본 */
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.tnum { font-variant-numeric: tabular-nums; }

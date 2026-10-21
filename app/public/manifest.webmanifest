@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "어울 · 내 옷에서 시작하는 스타일",
+  "short_name": "어울",
+  "description": "내 옷을 정리하고, 함께 입을 조합과 다음 구매 후보를 살펴보세요.",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "share_target": { "action": "./", "method": "GET", "params": { "title": "title", "text": "text", "url": "url" } },
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

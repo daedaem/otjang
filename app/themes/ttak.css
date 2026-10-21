@@ -1,0 +1,53 @@
+/* 딱 — 넘기고, 묻고, 고르는 커뮤니티. 검정 바탕, 라임 강조, 굵은 제목. 판단은 한 번에 찍는 도장으로. */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg: #0E0E0E; --surface: #1C1C1C; --sunk: #262626; --ink: #FFFFFF; --ink-2: #D4D4D4; --ink-3: #A6A6A6;
+  --line: #333333; --accent: #C8F03C; --accent-soft: #2B3410; --heart: #FF6B6B; --art-line: #8A8A8A;
+  --photo-surface: #EDEDED; --radius-xs: 14px; --radius-sm: 18px; --radius-md: 26px;
+  color-scheme: dark;
+}
+body { font-family: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", sans-serif; }
+.brand, .onboard .logo, .section.page-intro h2, .section h2, .detail-title, .look-title, .onboard .lead, .journey-verdict h3 { font-family: "Black Han Sans", sans-serif; font-weight: 400; letter-spacing: 0; }
+.brand { color: var(--accent); font-size: 34px; }
+.brand small { font-family: "IBM Plex Sans KR", -apple-system, sans-serif; font-weight: 500; letter-spacing: .01em; }
+.section.page-intro h2 { font-size: 40px; line-height: 1.12; }
+.top { border-bottom: 0; }
+.profile-btn { border-radius: 999px; border-color: var(--line); background: var(--sunk); color: var(--ink); }
+.btn { border-radius: 16px; background: var(--accent); color: #0E0E0E; }
+.btn.secondary { background: var(--sunk); color: var(--ink); }
+.chip { border-radius: 999px; background: var(--sunk); border-color: var(--line); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--accent); color: #0E0E0E; border-color: var(--accent); }
+.thumb, .hero, .citem .thumb { background: var(--photo-surface); border-radius: 18px; }
+.next-pick { background: var(--surface); border-radius: 26px; padding: 14px; }
+.next-pick-body .eyebrow { color: var(--accent); }
+.look { background: var(--surface); border-radius: 24px; }
+.look-grid { background: var(--surface); }
+.look-body { padding: 12px 14px 14px; }
+.home-shortcuts > button { background: var(--surface); border: 0; border-radius: 22px; }
+.notice { border-left: 0; border-radius: 18px; background: var(--surface); }
+.nav { background: var(--bg); border-top-color: var(--line); }
+.nav button[aria-current="page"] { background: transparent; color: var(--accent); }
+.nav .count { background: var(--accent); color: #0E0E0E; }
+.sheet { border-radius: 28px 28px 0 0; }
+
+.deck { background: var(--surface); border-radius: 26px; padding: 14px; }
+.deck-photo .thumb { background: var(--accent); border-radius: 20px; padding: 18px; }
+.deck-photo .thumb img { background: #FFFFFF; border-radius: 14px; transform: rotate(2deg); }
+.deck-count { color: var(--ink-2); }
+.tv-hero { height: 240px; border-radius: 26px; background: var(--accent); overflow: hidden; }
+.tv-hero .tv-img { width: 56%; height: 86%; background: #FFFFFF; border-radius: 20px; transform: rotate(3deg); box-shadow: 0 14px 24px rgba(0,0,0,.18); }
+.tv-seal { border-radius: 50%; background: #0E0E0E; color: var(--accent); font-family: "Black Han Sans", sans-serif; font-size: 28px; }
+.tv-seal.tv-hold { color: #FFFFFF; }
+.tv-stats > div { background: var(--surface); border-radius: 18px; padding: 12px; }
+.tv-stats dd { font-family: "Black Han Sans", sans-serif; font-weight: 400; font-size: 28px; }
+.tv-stats > div:first-child dd { color: var(--accent); }
+.deck .tv-stats > div { background: var(--sunk); }
+.stamp-mark { border-radius: 50%; background: var(--accent); color: #0E0E0E; font-family: "Black Han Sans", sans-serif; font-weight: 400; }
+.stamp-mark.stamp-hold { background: #FFFFFF; }
+.stamp-mark.stamp-skip { background: var(--sunk); color: var(--ink-2); }
+.stamp-word { font-family: "Black Han Sans", sans-serif; font-weight: 400; }
+.stamp-tally { background: var(--surface); border: 0; border-radius: 18px; }
+.stamp-tally .stamp-word { color: var(--accent); }
+.stamp-tally b { font-family: "Black Han Sans", sans-serif; font-weight: 400; }
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --rod: #C8F03C; --shelf: #333333; --floor: #1C1C1C; --door: #1C1C1C; --handle: #C8F03C; --wardrobe-inside: #151515; --drawer: #1C1C1C; }
+.rack-hang .citem::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 30' fill='none' stroke='%23C8F03C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 13V9.5a3.5 3.5 0 1 0-3.5-3.5'/%3E%3Cpath d='M24 13 3 27h42z'/%3E%3C/svg%3E"); }
+.rack-label { color: var(--accent); }

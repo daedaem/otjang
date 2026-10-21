@@ -1,0 +1,78 @@
+/* 딱 · 조각보 — 옷감 조각을 이어 붙인 보자기처럼. 한지 바탕, 쪽빛·홍·치자·옥색 조각, 바늘땀 이음선, 판정은 붉은 낙관. 옷장은 장석 단 장롱. (참고: 2026 ADA 후보 Katha Room의 전통 미술로 그린 UI) */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg: #EFECE6; --surface: #FAF8F4; --sunk: #E5E0D7; --ink: #23232B; --ink-2: #44444F; --ink-3: #5F5F6B;
+  --line: #D2CCC1; --accent: #2E4A7C; --accent-soft: #DCE2EE; --heart: #B8413A; --art-line: #8C8A93; --photo-surface: #FBFAF7;
+  --jjok: #2E4A7C; --hong: #B8413A; --chija: #E1AC3A; --ok: #6EA597; --ja: #6C4B7C; --bunhong: #E7B6AE; --seal: #BF3329;
+  --stitch: rgba(255, 255, 255, .7);
+  --patches: linear-gradient(90deg, var(--jjok) 0 17%, var(--chija) 17% 29%, var(--hong) 29% 51%, var(--ok) 51% 63%, var(--bunhong) 63% 79%, var(--ja) 79% 100%);
+  --hanji: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .37 0 0 0 0 .3 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --radius-xs: 3px; --radius-sm: 4px; --radius-md: 6px;
+  --rod: #7A5840; --shelf: #6E4E37; --floor: #E3DCCF; --door: #5A3A28; --handle: #C9A24A; --wardrobe-inside: #F6F3EC; --drawer: #F3EFE7;
+  color-scheme: light;
+}
+body { font-family: "Gowun Dodum", -apple-system, "Apple SD Gothic Neo", sans-serif; background: var(--bg) var(--hanji); }
+.brand, .onboard .logo, .section.page-intro h2, .section h2, .detail-title, .look-title, .onboard .lead, .journey-verdict h3, .deck-body h3, .sheet h2 { font-family: "Song Myung", serif; font-weight: 400; letter-spacing: -.02em; }
+.brand { font-size: 34px; color: var(--seal); }
+.brand small { font-family: "Gowun Dodum", sans-serif; color: var(--ink-3); }
+.section.page-intro h2 { font-size: 40px; line-height: 1.2; }
+.eyebrow { color: var(--jjok); letter-spacing: .1em; }
+.top { position: relative; border-bottom: 0; padding-bottom: 14px; }
+.top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9px; background: repeating-linear-gradient(90deg, var(--stitch) 0 5px, transparent 5px 9px) 0 50% / 100% 1.5px no-repeat, var(--patches); }
+.profile-btn { border-color: var(--line); background: var(--surface); }
+.btn { position: relative; border-radius: 4px; background: var(--jjok); color: #FFFFFF; outline: 1.5px dashed var(--stitch); outline-offset: -6px; }
+.btn.secondary { background: var(--surface); color: var(--jjok); outline-color: rgba(46, 74, 124, .45); box-shadow: inset 0 0 0 1.5px var(--jjok); }
+.chip { border-radius: 3px; background: var(--surface); border-color: var(--line); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--hong); border-color: var(--hong); color: #FFFFFF; }
+.thumb, .citem .thumb, .tile { background: var(--photo-surface); }
+.thumb img, .tile img { mix-blend-mode: multiply; }
+.next-pick, .deck { position: relative; padding: 18px 16px; background: var(--surface); border-radius: 3px; box-shadow: 0 0 0 1px var(--line), 0 10px 22px -16px rgba(35, 35, 43, .45); }
+.next-pick::before, .deck::before { content: ""; position: absolute; inset: 6px; border: 1.5px dashed rgba(46, 74, 124, .3); pointer-events: none; }
+.deck::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: var(--patches); }
+.look { border-radius: 3px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); border-top: 9px solid var(--jjok); }
+.looks .look:nth-child(3n+2) { border-top-color: var(--hong); }
+.looks .look:nth-child(3n) { border-top-color: var(--ok); }
+.look-body { padding: 12px 14px 14px; }
+.look-grid { background: var(--surface); }
+.home-shortcuts > button { border: 0; border-radius: 3px; outline: 1.5px dashed var(--stitch); outline-offset: -6px; }
+.home-shortcuts > button:first-child { background: var(--jjok); color: #FFFFFF; }
+.home-shortcuts > button:nth-child(2) { background: var(--chija); color: var(--ink); }
+.home-shortcuts > button:first-child small { color: rgba(255, 255, 255, .82); }
+.home-shortcuts > button:nth-child(2) small { color: rgba(35, 35, 43, .78); }
+.notice, .demo-notice { border: 0; border-left: 6px solid var(--ok); border-radius: 3px; background: var(--surface); }
+.section-head { padding-bottom: 8px; border-bottom: 1.5px dashed var(--line); }
+.nav { background: var(--jjok); border-top: 0; }
+.nav button { color: rgba(255, 255, 255, .72); }
+.nav button[aria-current="page"] { background: transparent; color: #FFFFFF; }
+.nav button[aria-current="page"]::after { content: ""; position: absolute; bottom: 7px; width: 22px; height: 4px; background: var(--chija); }
+.nav .count { background: var(--hong); color: #FFFFFF; }
+.sheet { background: var(--bg) var(--hanji); border-radius: 4px 4px 0 0; }
+.sheet::before { content: ""; display: block; height: 7px; margin: -1px -1px 12px; background: var(--patches); }
+.closet-toolbar-tabs button[aria-pressed="true"] { border-bottom-color: var(--hong); }
+
+.tv-hero { background: var(--surface); box-shadow: 0 0 0 1px var(--line); padding: 16px 0; }
+.tv-seal { width: 86px; height: 86px; border-radius: 6px; background: var(--seal); color: #FBF3EC; font-family: "Song Myung", serif; font-size: 34px; --seal-tilt: -5deg; box-shadow: inset 0 0 0 4px var(--seal), inset 0 0 0 6px #FBF3EC; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3 2.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 120px 120px; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3 2.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 120px 120px; }
+.tv-seal.tv-hold { background: transparent; color: var(--seal); box-shadow: inset 0 0 0 3px var(--seal); font-size: 28px; }
+.tv-stats > div { padding: 10px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); border-top: 5px solid var(--jjok); }
+.tv-stats > div:nth-child(2) { border-top-color: var(--ok); }
+.tv-stats > div:nth-child(3) { border-top-color: var(--hong); }
+.tv-stats dd { font-family: "Song Myung", serif; font-weight: 400; font-size: 30px; }
+.stamp-mark { width: 40px; border-radius: 4px; background: var(--seal); color: #FBF3EC; font-family: "Song Myung", serif; font-weight: 400; font-size: 15px; transform: rotate(-6deg); box-shadow: inset 0 0 0 2px var(--seal), inset 0 0 0 3.5px #FBF3EC; }
+.stamp-mark.stamp-hold, .stamp-mark.stamp-skip { background: #FBF3EC; color: var(--seal); box-shadow: inset 0 0 0 2px var(--seal); font-size: 13px; }
+.stamp-word { font-family: "Song Myung", serif; font-weight: 400; color: var(--seal); }
+.btn .stamp-word { color: inherit; }
+.stamp-tally { border: 0; border-radius: 3px; box-shadow: 0 0 0 1px var(--line); border-top: 6px solid var(--hong); }
+.stamp-tally.stamp-hold { border-top-color: var(--chija); }
+.stamp-tally.stamp-skip { border-top-color: var(--ok); }
+.stamp-tally b { font-family: "Song Myung", serif; font-weight: 400; }
+.stamp-saved { background: var(--jjok); color: #FFFFFF; border-radius: 3px; outline: 1.5px dashed var(--stitch); outline-offset: -6px; }
+.stamp-saved small { color: rgba(255, 255, 255, .78); }
+
+.wardrobe { border-radius: 4px; box-shadow: 0 0 0 8px #5A3A28, 0 0 0 9px #3E271A; margin: 26px 9px 9px; }
+.rack-label { color: #5A3A28; font-family: "Song Myung", serif; font-weight: 400; font-size: var(--text-label); }
+.rack-hang .rack-row { background: linear-gradient(#9A7458, #6A4A35) 0 9px / 100% 6px no-repeat; background-attachment: local; }
+.rack-hang .citem::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 30' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 13V9.5a3.5 3.5 0 1 0-3.5-3.5' stroke='%23B08A3E' stroke-width='2'/%3E%3Cpath d='M24 13 3 25.5c0 1.4 1 2 2.2 2h37.6c1.2 0 2.2-.6 2.2-2z' fill='%23B89470' stroke='%236E4E37' stroke-width='1.4'/%3E%3C/svg%3E"); }
+.rack-shelf .rack-row { background: linear-gradient(#8A6447, #5E4130) 0 100% / 100% 10px no-repeat; }
+.rack-drawer .rack-row { border-color: #6E4E37; background: var(--drawer); box-shadow: inset 0 0 0 1px #FFFFFF; }
+.rack-add .closet-add-tile { border-color: #8A6447; color: #5A3A28; }
+.wardrobe-opening::before, .wardrobe-opening::after { background: radial-gradient(circle at calc(100% - 26px) 50%, #E3C26A 0 7px, #9C7A2E 7.5px 9px, transparent 9.5px), radial-gradient(ellipse 22px 30px at calc(100% - 26px) 50%, #C9A24A 0 100%, transparent 101%), linear-gradient(90deg, rgba(0,0,0,.18), transparent 18% 82%, rgba(0,0,0,.18)), repeating-linear-gradient(97deg, #5A3A28 0 7px, #61402D 7px 11px, #563626 11px 19px); }
+.wardrobe-opening::after { background: radial-gradient(circle at 26px 50%, #E3C26A 0 7px, #9C7A2E 7.5px 9px, transparent 9.5px), radial-gradient(ellipse 22px 30px at 26px 50%, #C9A24A 0 100%, transparent 101%), linear-gradient(90deg, rgba(0,0,0,.18), transparent 18% 82%, rgba(0,0,0,.18)), repeating-linear-gradient(83deg, #5A3A28 0 7px, #61402D 7px 11px, #563626 11px 19px); }

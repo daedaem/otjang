@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>시각 방향 10</title>
+<!-- 서체: Google Fonts의 SIL Open Font License 한글 서체(외부 요청). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Gothic+A1:wght@400;700;900&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Nanum+Gothic+Coding:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;600;900&display=swap">
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .dir-meta { max-width: 390px; font-size: 13px; color: #333; }
+  .dir-meta b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .dir-meta span { display: block; color: #666; }
+  .s { height: 844px; overflow: hidden; position: relative; }
+  .s .eo-ph { border-radius: inherit; }
+  .lc2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* D01 밝은 기술형 — 둥근 카드 24, 연한 회청 바탕, 남색 강조, IBM Plex Sans KR */
+  .d01 { background: #f5f7fb; font-family: "IBM Plex Sans KR", sans-serif; color: #1b1f2a; }
+  .d01 .top { padding: 14px 16px 8px; display: flex; align-items: center; gap: 8px; } .d01 .logo { font-weight: 700; font-size: 20px; letter-spacing: -.02em; }
+  .d01 .sb { margin: 0 16px; height: 52px; border-radius: 26px; background: #fff; box-shadow: 0 1px 3px rgba(20,30,60,.08); display: flex; align-items: center; gap: 10px; padding: 0 18px; font-size: 16px; }
+  .d01 .chips { padding: 12px 16px 4px; gap: 6px; } .d01 .chip { border: 0; background: #e7ebff; color: #2f3fbf; height: 36px; font-weight: 500; }
+  .d01 .hero { margin: 12px 16px; background: #fff; border-radius: 24px; padding: 12px; box-shadow: 0 2px 10px rgba(20,30,60,.06); display: grid; grid-template-columns: 120px 1fr; gap: 14px; }
+  .d01 .hero .ph { border-radius: 16px; overflow: hidden; background: #eef1f6; }
+  .d01 .k { color: #3b4fd8; font-size: 12px; font-weight: 700; } .d01 .b { font-size: 13px; font-weight: 700; margin-top: 4px; } .d01 .n { font-size: 15px; } .d01 .p { font-size: 20px; font-weight: 700; margin-top: 6px; }
+  .d01 .v { grid-column: 1 / -1; display: flex; gap: 8px; } .d01 .v span { flex: 1; height: 44px; border-radius: 22px; background: #f0f2f8; display: grid; place-items: center; font-weight: 500; } .d01 .v span.on { background: #3b4fd8; color: #fff; }
+  .d01 .g { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; } .d01 .c { background: #fff; border-radius: 20px; padding: 8px; } .d01 .c .ph { border-radius: 14px; overflow: hidden; }
+  .d01 .c .b { margin-top: 8px; } .d01 .c .n { font-size: 13px; } .d01 .c .p { font-size: 15px; margin-top: 2px; }
+
+  /* D02 큰 글씨 대화형 — 흰 바탕, 큰 문장 제목, 목록형, 파란 주 버튼, Noto Sans KR 굵게 */
+  .d02 { background: #fff; font-family: "Noto Sans KR", sans-serif; color: #191f28; }
+  .d02 .top { height: 52px; display: flex; align-items: center; padding: 0 20px; font-weight: 700; color: #4e5968; }
+  .d02 h1 { margin: 12px 20px 6px; font-size: 28px; line-height: 1.32; font-weight: 700; letter-spacing: -.03em; }
+  .d02 .sub2 { margin: 0 20px 18px; font-size: 15px; color: #6b7684; }
+  .d02 .row { display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: center; padding: 12px 20px; }
+  .d02 .row .ph { border-radius: 16px; overflow: hidden; background: #f2f4f6; } .d02 .b { font-size: 14px; color: #6b7684; } .d02 .n { font-size: 17px; font-weight: 500; } .d02 .p { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .d02 .cta { position: absolute; left: 20px; right: 20px; bottom: 24px; height: 56px; border-radius: 16px; background: #2563eb; color: #fff; display: grid; place-items: center; font-size: 17px; font-weight: 700; }
+  .d02 .edit { margin: 0 20px 8px; display: flex; gap: 8px; } .d02 .edit span { height: 36px; padding: 0 14px; border-radius: 10px; background: #f2f4f6; display: inline-flex; align-items: center; font-size: 14px; font-weight: 500; color: #4e5968; }
+
+  /* D03 고밀도 커머스 — 흰 바탕·검정, 모서리 0, 3열, 작은 글자, 대문자 브랜드, Gothic A1 */
+  .d03 { background: #fff; font-family: "Gothic A1", sans-serif; color: #000; }
+  .d03 .top { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border-bottom: 1px solid #000; } .d03 .logo { font-weight: 900; font-size: 22px; letter-spacing: -.04em; }
+  .d03 .sb { height: 44px; margin: 8px 12px; background: #f1f1f1; display: flex; align-items: center; padding: 0 12px; font-size: 15px; gap: 8px; }
+  .d03 .bar { display: flex; gap: 0; border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; } .d03 .bar span { flex: 1; height: 40px; display: grid; place-items: center; font-size: 13px; font-weight: 700; border-right: 1px solid #e5e5e5; }
+  .d03 .cnt { padding: 10px 12px; font-size: 12px; color: #666; display: flex; justify-content: space-between; }
+  .d03 .g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 4px; padding: 0 4px; } .d03 .c .ph { aspect-ratio: 5 / 6; overflow: hidden; background: #f4f4f4; } .d03 .c .ph .eo-ph { aspect-ratio: auto !important; height: 100%; }
+  .d03 .b { font-size: 12px; font-weight: 900; margin-top: 6px; text-transform: uppercase; } .d03 .n { font-size: 12px; color: #333; } .d03 .p { font-size: 13px; font-weight: 900; margin-top: 2px; }
+
+  /* D04 럭셔리 다크 — 검정 바탕, 따뜻한 흰 글자, 명조, 가득 찬 사진, 가는 선 */
+  .d04 { background: #0d0d0c; color: #efebe3; font-family: "Noto Serif KR", serif; }
+  .d04 .top { height: 56px; display: flex; align-items: center; justify-content: center; letter-spacing: .4em; font-size: 15px; border-bottom: 1px solid #2a2a28; }
+  .d04 .q { padding: 14px 20px; font-size: 13px; letter-spacing: .08em; color: #a9a49a; display: flex; justify-content: space-between; border-bottom: 1px solid #2a2a28; }
+  .d04 .hero .ph { aspect-ratio: 4 / 5; } .d04 .hero .ph .eo-ph { background: #e9e6df; }
+  .d04 .info { padding: 18px 20px; } .d04 .b { font-size: 12px; letter-spacing: .25em; color: #a9a49a; } .d04 .n { font-size: 22px; margin: 6px 0 8px; font-weight: 400; } .d04 .p { font-family: "IBM Plex Sans KR", sans-serif; font-size: 17px; letter-spacing: .05em; }
+  .d04 .v { margin-top: 14px; padding-top: 14px; border-top: 1px solid #2a2a28; font-size: 15px; color: #d8d2c4; }
+  .d04 .acts { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #2a2a28; } .d04 .acts span { height: 60px; display: grid; place-items: center; font-size: 14px; letter-spacing: .15em; border-right: 1px solid #2a2a28; } .d04 .acts span:last-child { border-right: 0; }
+
+  /* D05 잡지 룩북 — 크림 종이, 고운바탕 명조, 겹친 콜라주, 테라코타 강조 */
+  .d05 { background: #f2ece2; color: #2b2520; font-family: "Gowun Batang", serif; }
+  .d05 .top { padding: 16px 20px 0; display: flex; justify-content: space-between; align-items: baseline; } .d05 .logo { font-size: 26px; font-weight: 700; } .d05 .iss { font-size: 12px; color: #8a7a68; letter-spacing: .1em; }
+  .d05 h1 { margin: 18px 20px 4px; font-size: 30px; line-height: 1.25; font-weight: 700; } .d05 .by { margin: 0 20px; font-size: 13px; color: #b0532c; }
+  .d05 .col { position: relative; height: 430px; margin: 18px 20px 0; }
+  .d05 .col .a { position: absolute; left: 0; top: 0; width: 62%; } .d05 .col .b2 { position: absolute; right: 0; top: 60px; width: 42%; } .d05 .col .c2 { position: absolute; left: 22%; top: 250px; width: 40%; }
+  .d05 .col .ph { background: #fff; padding: 6px; box-shadow: 0 6px 18px rgba(60,40,20,.15); }
+  .d05 .col .ph .eo-ph { height: auto !important; aspect-ratio: 4 / 5 !important; }
+  .d05 .col .ph img { position: absolute; inset: 0; } .d05 .col .a .ph { transform: rotate(-1.5deg); } .d05 .col .b2 .ph { transform: rotate(2deg); }
+  .d05 .cap { position: absolute; right: 0; top: 330px; width: 38%; font-size: 14px; line-height: 1.5; } .d05 .cap b { display: block; color: #b0532c; font-size: 12px; letter-spacing: .1em; }
+
+  /* D06 iOS 네이티브 재질 — 회색 그룹 바탕, 흐림 머리, 그룹 목록, 시트 손잡이 */
+  .d06 { background: #f2f2f7; font-family: -apple-system, "Noto Sans KR", sans-serif; color: #000; }
+  .d06 .nav { padding: 10px 16px 8px; background: rgba(249,249,251,.85); backdrop-filter: blur(20px); } .d06 .lt { font-size: 32px; font-weight: 700; letter-spacing: -.02em; }
+  .d06 .sb { height: 38px; border-radius: 10px; background: rgba(118,118,128,.12); display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 16px; color: #3c3c43; margin-top: 8px; }
+  .d06 .seg { display: flex; margin: 10px 16px; background: rgba(118,118,128,.12); border-radius: 9px; padding: 2px; } .d06 .seg span { flex: 1; height: 32px; display: grid; place-items: center; font-size: 13px; font-weight: 600; border-radius: 7px; } .d06 .seg span.on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .d06 .grp { margin: 8px 16px; background: #fff; border-radius: 12px; overflow: hidden; } .d06 .it { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: .5px solid #c6c6c8; } .d06 .it:last-child { border-bottom: 0; }
+  .d06 .it .ph { border-radius: 8px; overflow: hidden; } .d06 .n { font-size: 16px; } .d06 .b { font-size: 13px; color: #8e8e93; } .d06 .p { font-size: 15px; font-weight: 600; } .d06 .chev { color: #c4c4c7; font-size: 20px; }
+  .d06 .sheet2 { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: rgba(255,255,255,.92); backdrop-filter: blur(20px); border-radius: 14px 14px 0 0; box-shadow: 0 -2px 12px rgba(0,0,0,.08); padding: 8px 16px; } .d06 .sheet2 i { display: block; width: 36px; height: 5px; border-radius: 3px; background: #c7c7cc; margin: 0 auto 10px; }
+
+  /* D07 스위스 데이터 — 엄격한 격자선, 고정폭 숫자, 빨강 강조, 대문자 꼬리표 */
+  .d07 { background: #fff; color: #111; font-family: "IBM Plex Sans KR", sans-serif; }
+  .d07 .top { display: grid; grid-template-columns: 1fr auto; border-bottom: 2px solid #111; padding: 12px 16px; } .d07 .logo { font-weight: 700; font-size: 18px; } .d07 .no { font-family: "Nanum Gothic Coding", monospace; font-size: 13px; }
+  .d07 .q { padding: 10px 16px; border-bottom: 1px solid #111; font-size: 14px; } .d07 .q b { color: #e3000f; }
+  .d07 .hd { display: grid; grid-template-columns: 28px 96px 1fr 84px; border-bottom: 1px solid #111; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; } .d07 .hd span, .d07 .r > * { padding: 8px 6px; border-right: 1px solid #ddd; } .d07 .hd span:last-child, .d07 .r > *:last-child { border-right: 0; text-align: right; }
+  .d07 .r { display: grid; grid-template-columns: 28px 96px 1fr 84px; border-bottom: 1px solid #ddd; align-items: start; } .d07 .r .i { font-family: "Nanum Gothic Coding", monospace; font-size: 13px; color: #e3000f; } .d07 .r .ph { padding: 6px; } .d07 .r .t { font-size: 13px; } .d07 .r .t b { display: block; font-size: 12px; } .d07 .r .m { font-family: "Nanum Gothic Coding", monospace; font-size: 14px; font-weight: 700; }
+  .d07 .r .tag2 { display: inline-block; margin-top: 6px; font-size: 11px; letter-spacing: .08em; border: 1px solid #e3000f; color: #e3000f; padding: 1px 4px; }
+
+  /* D08 따뜻한 생활형 — 베이지·나무색, 둥근 16, 고운돋움, 옷걸이 레일 */
+  .d08 { background: #efe6d9; color: #3a2f25; font-family: "Gowun Dodum", sans-serif; }
+  .d08 .top { padding: 14px 18px 6px; display: flex; justify-content: space-between; align-items: center; } .d08 .logo { font-size: 22px; font-weight: 700; color: #4f6b3a; }
+  .d08 .rail { margin: 6px 18px 0; padding: 10px 10px 12px; border-radius: 18px; background: #e3d6c3; position: relative; } .d08 .rail::before { content: ''; position: absolute; left: 14px; right: 14px; top: 12px; height: 4px; border-radius: 2px; background: #a0805e; }
+  .d08 .rail .hs { display: flex; gap: 8px; padding-top: 10px; } .d08 .rail .h { width: 52px; } .d08 .rail .h .ph { border-radius: 12px; overflow: hidden; border: 2px solid #fff; } .d08 .rail .add { width: 52px; height: 65px; border-radius: 12px; border: 2px dashed #a0805e; display: grid; place-items: center; font-size: 22px; color: #a0805e; }
+  .d08 .rail .lb { font-size: 13px; margin-top: 8px; color: #6b5843; }
+  .d08 .t2 { margin: 16px 18px 10px; font-size: 18px; font-weight: 700; } .d08 .g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 18px; }
+  .d08 .c { background: #faf6ef; border-radius: 18px; padding: 8px; } .d08 .c .ph { border-radius: 12px; overflow: hidden; } .d08 .n { font-size: 14px; margin-top: 6px; } .d08 .p { font-size: 16px; font-weight: 700; } .d08 .tg { display: inline-block; margin-top: 6px; font-size: 12px; padding: 3px 8px; border-radius: 10px; background: #dfe8d4; color: #3f5a2c; }
+
+  /* D09 흑백 편집 — 순백·검정, 블랙한산스 대형 제목, 명조 본문, 비대칭 */
+  .d09 { background: #fff; color: #000; font-family: "Noto Serif KR", serif; }
+  .d09 .top { height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-family: "Noto Sans KR", sans-serif; font-size: 12px; letter-spacing: .2em; font-weight: 700; }
+  .d09 h1 { margin: 8px 16px 0; font-family: "Black Han Sans", sans-serif; font-weight: 400; font-size: 52px; line-height: 1.02; letter-spacing: -.02em; }
+  .d09 .dek { margin: 12px 16px 18px 96px; font-size: 14px; line-height: 1.6; }
+  .d09 .it { display: grid; grid-template-columns: 56px 1fr; gap: 0; margin: 0 16px; border-top: 2px solid #000; padding-top: 10px; }
+  .d09 .num { font-family: "Black Han Sans", sans-serif; font-size: 40px; line-height: 1; } .d09 .it .ph { margin-right: -16px; } .d09 .b { font-family: "Noto Sans KR", sans-serif; font-size: 11px; letter-spacing: .2em; font-weight: 700; margin-top: 10px; } .d09 .n { font-size: 18px; margin-top: 2px; } .d09 .p { font-family: "Noto Sans KR", sans-serif; font-size: 15px; font-weight: 700; margin-top: 4px; }
+
+  /* D10 고대비 접근성 — 노랑·검정, 아주 큰 글자, 두꺼운 테두리, 64px 버튼 */
+  .d10 { background: #fff; color: #000; font-family: "Noto Sans KR", sans-serif; }
+  .d10 .top { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #000; color: #ffe600; font-weight: 900; font-size: 22px; } .d10 .top span { font-size: 15px; border: 2px solid #ffe600; padding: 4px 10px; border-radius: 8px; }
+  .d10 .q { margin: 14px 16px; font-size: 20px; font-weight: 700; }
+  .d10 .c { margin: 0 16px 14px; border: 3px solid #000; border-radius: 14px; overflow: hidden; display: grid; grid-template-columns: 130px 1fr; }
+  .d10 .c .ph { border-right: 3px solid #000; } .d10 .c .in { padding: 12px; } .d10 .b { font-size: 15px; font-weight: 700; } .d10 .n { font-size: 18px; line-height: 1.35; } .d10 .p { font-size: 24px; font-weight: 900; margin-top: 6px; }
+  .d10 .bar { position: absolute; left: 0; right: 0; bottom: 0; background: #ffe600; border-top: 4px solid #000; padding: 12px 16px; display: flex; gap: 10px; } .d10 .bar .in2 { flex: 1; height: 64px; border: 3px solid #000; border-radius: 12px; background: #fff; display: flex; align-items: center; padding: 0 14px; font-size: 18px; } .d10 .bar .go2 { width: 88px; height: 64px; border-radius: 12px; background: #000; color: #ffe600; display: grid; place-items: center; font-size: 20px; font-weight: 900; }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ph } = K;
+  K.board({ n: '01~10', name: '시각 방향 비교', idea: '같은 검색 결과(출근용 셔츠 10만원 이하)를 10가지 시각 언어로 그렸다. 서체·색·사진 다루는 방식·격자·밀도·부품 모양이 모두 다르다. 대표님이 2~3개를 고르면 그 방향으로 전체 화면 보드를 다시 그린다.', refs: '각 방향의 참고 계열은 아래 설명. 특정 회사의 로고·이름·고유 색을 그대로 쓰지 않았다.', note: '서체는 Google Fonts의 무료(SIL OFL) 한글 서체.' });
+  const { r } = K.data();
+  const p = r.products, v = M.judge(p[0].id);
+  const D = [
+    ['01', '답 먼저', '밝은 기술형', 'IBM Plex Sans KR · 연한 회청 바탕 · 둥근 카드 24 · 남색 강조 1개 · 알약 버튼', '참고 계열: 빅테크 스토어 앱의 둥근 카드·여백(공식 디자인 시스템 계열)', `<div class="s d01"><div class="top"><span class="logo">어울</span><span class="mock">시안 01</span></div><div class="sb">${K.ico('search', 's')}${esc(K.Q)}</div>${K.chips(r)}<div class="hero"><div class="ph">${ph(p[0])}</div><div><div class="k">첫 후보 · 1/${r.total}</div><div class="b">${esc(p[0].brand)}</div><div class="n lc2">${esc(p[0].name)}</div><div class="p">${esc(p[0].priceText)}</div></div><div class="v"><span>보류</span><span>안 살래</span><span>사기로 함</span></div></div><div class="g">${p.slice(1, 5).map((x) => `<div class="c"><div class="ph">${ph(x)}</div><div class="b">${esc(x.brand)}</div><div class="n lc2">${esc(x.name)}</div><div class="p">${esc(x.priceText)}</div></div>`).join('')}</div></div>`],
+    ['02', '세 번 탭', '큰 글씨 대화형', 'Noto Sans KR 굵게 · 흰 바탕 · 28px 문장 제목 · 목록형 · 아래 꽉 찬 파란 버튼', '참고 계열: 국내 핀테크 앱의 한 화면 한 문장·큰 글씨(최소 입력 원칙)', `<div class="s d02"><div class="top">‹ 어울</div><h1>출근용 셔츠,<br>10만원 이하로 ${r.total}개 찾았어요</h1><div class="sub2">가격은 10월 13일 수집가예요</div><div class="edit"><span>셔츠</span><span>출근</span><span>10만원 이하</span><span>바꾸기</span></div>${p.slice(0, 4).map((x) => `<div class="row"><div class="ph">${ph(x)}</div><div><div class="b">${esc(x.brand)}</div><div class="n lc2">${esc(x.name)}</div><div class="p">${esc(x.priceText)}</div></div></div>`).join('')}<div class="cta">첫 번째 셔츠 자세히 보기</div></div>`],
+    ['03', '비교함', '고밀도 커머스', 'Gothic A1 · 흰 바탕·검정 · 모서리 0 · 3열 · 대문자 브랜드 · 정렬·필터 막대', '참고 계열: 국내 패션 커머스의 촘촘한 3열 상품 목록', `<div class="s d03"><div class="top"><span class="logo">어울</span><span class="f12">비교 0 · 옷장 · 기록</span></div><div class="sb">⌕ ${esc(K.Q)}</div><div class="bar"><span>셔츠 ✕</span><span>출근 ✕</span><span>10만원 ✕</span><span>추천순 ▾</span></div><div class="cnt"><span>상품 ${r.total}</span><span>10/13 수집가</span></div><div class="g">${p.slice(0, 9).map((x) => `<div class="c"><div class="ph">${ph(x)}</div><div class="b">${esc(x.brand)}</div><div class="n lc2">${esc(x.name)}</div><div class="p">${esc(x.priceText)}</div></div>`).join('')}</div></div>`],
+    ['04', '한 장씩', '럭셔리 다크', 'Noto Serif KR · 검정 바탕 · 따뜻한 흰 글자 · 넓은 자간 · 가득 찬 사진 · 가는 선 · 아래 3칸 결정', '참고 계열: 럭셔리 패션 앱의 흑백·풀스크린 사진(수상작 계열)', `<div class="s d04"><div class="top">어 울</div><div class="q"><span>출근 · 셔츠 · 10만원 이하</span><span>01 / ${r.total}</span></div><div class="hero"><div class="ph">${ph(p[0])}</div></div><div class="info"><div class="b">${esc(p[0].brand)}</div><div class="n">${esc(p[0].name)}</div><div class="p">${esc(p[0].priceText)} · 10/13 수집가</div><div class="v">옷장 없이 고른 후보예요</div></div><div class="acts"><span>보류</span><span>안 살래</span><span>사기로 함</span></div></div>`],
+    ['05', '코디 먼저', '잡지 룩북', '고운바탕 명조 · 크림 종이 · 겹친 콜라주(사진에 흰 테두리·살짝 기울임) · 테라코타 강조', '참고 계열: 패션 잡지 룩북·에디토리얼 쇼핑', `<div class="s d05"><div class="top"><span class="logo">어울</span><span class="iss">LOOK 01 · 출근</span></div><h1>셔츠 하나로<br>출근 코디 세 벌</h1><div class="by">규칙으로 조합한 예시 · 착용 사진 아님</div><div class="col"><div class="a"><div class="ph">${ph(p[0])}</div></div><div class="b2"><div class="ph">${ph(M.product(p[0].id).outfit?.pieces.find((x) => !x.focus)?.product || p[1])}</div></div><div class="c2"><div class="ph">${ph(M.product(p[0].id).outfit?.pieces.filter((x) => !x.focus)[1]?.product || p[2])}</div></div><div class="cap"><b>주인공</b>${esc(p[0].brand)}<br>${esc(p[0].name)}<br>${esc(p[0].priceText)}</div></div></div>`],
+    ['06', '한 화면', 'iOS 네이티브 재질', '시스템 서체 · 회색 그룹 바탕 · 큰 제목 · 흐림 머리 · 그룹 목록 · 분할 버튼 · 아래 시트 손잡이', '참고 계열: Apple HIG의 큰 제목·그룹 목록·시트', `<div class="s d06"><div class="nav"><div class="lt">찾기</div><div class="sb">${K.ico('search', 's')}${esc(K.Q)}</div></div><div class="seg"><span class="on">추천순</span><span>수집가 낮은 순</span><span>비교</span></div><div class="grp">${p.slice(0, 5).map((x) => `<div class="it"><div class="ph">${ph(x)}</div><div><div class="n lc2">${esc(x.name)}</div><div class="b">${esc(x.brand)}</div></div><div><div class="p">${esc(x.priceText)}</div><div class="chev">›</div></div></div>`).join('')}</div><div class="sheet2"><i></i><b>내 옷장 0벌</b><div class="f13" style="color:#8e8e93;margin-top:4px">가진 옷을 넣으면 겹치는지 알려 드려요</div></div></div>`],
+    ['07', '장부', '스위스 데이터', 'IBM Plex Sans KR + 나눔고딕코딩 숫자 · 엄격한 격자선 · 빨강 강조 1개 · 대문자 열 이름', '참고 계열: 국제주의 타이포그래피·데이터 표(공식 데이터 표 디자인 시스템 계열)', `<div class="s d07"><div class="top"><span class="logo">어울 장부</span><span class="no">N°${r.total}</span></div><div class="q">출근 · 셔츠 · <b>10만원 이하</b> · 10/13 수집가</div><div class="hd"><span>#</span><span>사진</span><span>상품</span><span>수집가</span></div>${p.slice(0, 5).map((x, i) => `<div class="r"><span class="i">${String(i + 1).padStart(2, '0')}</span><div class="ph">${ph(x)}</div><div class="t"><b>${esc(x.brand)}</b>${esc(x.name)}${i === 0 ? '<br><span class="tag2">옷장 없이 판단</span>' : ''}</div><span class="m">${esc(x.priceText.replace('원', ''))}</span></div>`).join('')}</div>`],
+    ['08', '옷장 레일', '따뜻한 생활형', '고운돋움 · 베이지·나무색 · 둥근 18 · 진짜 옷걸이처럼 그린 레일 · 초록 강조', '참고 계열: 생활형 옷장 앱·라이프스타일 커머스', `<div class="s d08"><div class="top"><span class="logo">어울</span><span class="f13">옷장 · 기록</span></div><div class="rail"><div class="hs">${['＋', '', '', ''].map((x, i) => i === 0 ? '<div class="add">＋</div>' : '<div class="add" style="opacity:.4"></div>').join('')}</div><div class="lb">내 옷장이 비어 있어요 · 한 벌만 걸어도 겹침을 알려 드려요</div></div><div class="t2">출근용 셔츠 · 10만원 이하</div><div class="g">${p.slice(0, 4).map((x) => `<div class="c"><div class="ph">${ph(x)}</div><div class="n lc2">${esc(x.name)}</div><div class="p">${esc(x.priceText)}</div><span class="tg">새로 걸 자리 있음</span></div>`).join('')}</div></div>`],
+    ['09', '읽는 결과', '흑백 편집', '블랙한산스 대형 제목 + Noto Serif KR 본문 · 순백·검정 · 비대칭 들여쓰기 · 굵은 구분선', '참고 계열: 편집 매거진형 쇼핑(수상한 잡지형 쇼핑몰 계열)', `<div class="s d09"><div class="top"><span>어울 · 읽는 결과</span><span>N°01</span></div><h1>출근용<br>셔츠 셋</h1><div class="dek">10만원 안쪽에서 고른 기본 셔츠 ${r.total}벌 가운데 먼저 세 벌을 읽어요. 가격은 10월 13일 수집가예요.</div>${p.slice(0, 2).map((x, i) => `<div class="it"><div class="num">0${i + 1}</div><div><div class="ph">${ph(x)}</div><div class="b">${esc(x.brand)}</div><div class="n">${esc(x.name)}</div><div class="p">${esc(x.priceText)}</div></div></div>`).join('')}</div>`],
+    ['10', '엄지 하나', '고대비 접근성', 'Noto Sans KR 900 · 노랑·검정 · 18~24px 글자 · 3px 테두리 · 64px 버튼 · 아래 명령 바', '참고 계열: 공공 서비스 디자인 시스템의 고대비·큰 터치 영역(WCAG 2.2)', `<div class="s d10"><div class="top">어울<span>글자 크게</span></div><div class="q">셔츠 ${r.total}개 · 10만원 이하</div>${p.slice(0, 3).map((x) => `<div class="c"><div class="ph">${ph(x)}</div><div class="in"><div class="b">${esc(x.brand)}</div><div class="n lc2">${esc(x.name)}</div><div class="p">${esc(x.priceText)}</div></div></div>`).join('')}<div class="bar"><div class="in2">찾을 옷을 적어요</div><div class="go2">찾기</div></div></div>`],
+  ];
+  K.row(D.map(([n, name, look, spec, ref, html]) => `<div class="frame-wrap"><div class="dir-meta"><b>${n} ${esc(name)} — ${esc(look)}</b><span>${esc(spec)}</span><span>${esc(ref)}</span></div><div class="frame phone">${html}</div></div>`).join(''));
+})();
+</script>
+</body>
+</html>

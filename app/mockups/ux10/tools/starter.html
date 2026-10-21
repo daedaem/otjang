@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>스타터 · 목업 코어 사용 예</title>
+<!-- 시안이 아니다. 시안 제작자가 코어 API와 data-flow 표시를 확인하는 최소 예시. 갤러리에 넣지 않는다. -->
+<style>
+  :root { --ink:#151515; --sub:#666; --line:#ddd; --bg:#fff; --art-line:#333; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 960px; margin: 0 auto; padding: 12px 16px 80px; }
+  .mock { font-size: 12px; background: #111; color: #fff; padding: 6px 16px; display: flex; gap: 8px; justify-content: space-between; }
+  .mock button { color: #fff; background: none; border: 1px solid #555; border-radius: 6px; font-size: 12px; min-height: 32px; }
+  form { display: flex; gap: 8px; margin: 12px 0; }
+  input { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+  button, a.btn { font: inherit; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--ink); background: var(--bg); color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .card { text-align: left; display: block; width: 100%; border: 1px solid var(--line); background: var(--bg); padding: 8px; }
+  .art { width: 64px; height: 64px; }
+  .notice { background: #f5f5f5; padding: 8px 10px; border-radius: 8px; margin: 6px 0; }
+  .fine { color: var(--sub); font-size: 13px; }
+  nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 8px; justify-content: center; padding: 8px; background: #fafafa; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="mock" data-flow="mock-label"><span>목업 · 스타터 · 저장은 이 브라우저에만</span><button data-flow="reset" id="reset">처음부터</button></div>
+<main id="app"></main>
+<nav><button data-flow="nav-ask" id="nav-ask">묻기</button><button data-flow="nav-closet" id="nav-closet">내 옷</button><button data-flow="nav-records" id="nav-records">기록</button></nav>
+<script src="../shared/eoul-mock.js"></script>
+<script>
+const M = window.EoulMock;
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let view = { name: 'ask', result: null, productId: null, adding: null };
+
+function render() {
+  const app = $('#app');
+  if (view.name === 'ask') app.innerHTML = askView();
+  if (view.name === 'detail') app.innerHTML = detailView();
+  if (view.name === 'closet') app.innerHTML = closetView();
+  if (view.name === 'records') app.innerHTML = recordsView();
+}
+function askView() {
+  const r = view.result;
+  return `<h1>어떤 옷 찾으세요?</h1>
+    <form id="ask"><input data-flow="ask-input" name="q" value="${esc(r?.said || '')}" placeholder="예: 출근용 셔츠 10만원 이하" aria-label="찾을 옷"><button data-flow="ask-submit">찾기</button></form>
+    <div class="chips">${M.examples().map((q) => `<button data-flow="example" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    ${r ? `<h2>${esc(r.title)}</h2>
+      <div class="chips">${r.conditions.map((c) => c.removable ? `<button data-flow="condition-remove" data-key="${c.key}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)} ×</button>` : `<span>${esc(c.label)}</span>`).join('')}</div>
+      ${r.notices.map((n) => `<p class="notice">${esc(n.text)}</p>`).join('')}
+      <div class="grid">${[...r.products, ...r.offOccasion].map((p) => `<button class="card" data-flow="result" data-product-id="${p.id}">
+        <span class="art" style="display:block">${M.art(p)}</span>
+        <b>${esc(p.brand)}</b><br>${esc(p.name)}<br>${esc(p.priceText)} <span class="fine">${esc(p.priceNote)}</span><br>
+        <span class="fine">${esc(p.reason)}</span>${p.owned.text ? `<br><span class="fine">${esc(p.owned.text)}</span>` : ''}</button>`).join('')}</div>
+      ${r.outfit ? `<h3>${esc(r.outfit.title)}</h3><p class="fine">${esc(r.outfit.note)}</p>` : ''}${r.outfitNote ? `<p class="fine">${esc(r.outfitNote)}</p>` : ''}
+      <p class="fine">${esc(M.note.catalog)}</p>` : ''}`;
+}
+function detailView() {
+  const d = M.product(view.productId);
+  const v = d.verdict;
+  return `<button data-flow="back" id="back">← 결과</button>
+    <div class="art" style="width:120px;height:120px">${M.art(d)}</div>
+    <p>${esc(d.brand)} · ${esc(d.slotName)}</p><h2>${esc(d.name)}</h2><p>${esc(d.priceText)} <span class="fine">${esc(d.priceNote)}</span></p>
+    <section><p class="fine">${esc(v.basisLabel)}</p><h3 data-flow="verdict">${esc(v.title)}</h3>
+      ${v.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+      ${v.cautions.map((l) => `<p class="notice">${esc(l)}</p>`).join('')}
+      ${v.basis === 'none' ? `<button data-flow="closet-add" data-kind="${v.addSuggestion.kind}">가진 ${esc(v.addSuggestion.kindName)} 넣고 비교</button>` : ''}
+    </section>
+    <div class="chips"><button data-flow="decide-buy">사기로 함</button><button data-flow="decide-hold">보류</button><button data-flow="decide-skip">안 살래</button></div>
+    ${v.record ? `<p class="fine">기록: ${esc(v.record.stageLabel)}</p>` : ''}
+    <a class="btn" data-flow="seller-link" href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${esc(d.store)}에서 보기</a>
+    <ul>${d.why.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>
+    ${d.outfit ? `<p>${esc(d.outfit.title)}</p>` : ''}${d.outfitNote ? `<p class="fine">${esc(d.outfitNote)}</p>` : ''}`;
+}
+function closetView() {
+  const s = M.getState();
+  const a = view.adding;
+  return `<h2>내 옷 ${s.closetCount}벌</h2>
+    <ul>${s.closet.map((g) => `<li>${esc(g.colorLabel)} ${esc(g.label)} (${esc(g.sourceLabel)}) <button data-remove="${g.id}" aria-label="${esc(g.label)} 빼기">빼기</button></li>`).join('')}</ul>
+    <button data-flow="closet-add">옷 한 벌 넣기</button> <button data-flow="trial-closet" id="trial">체험용 옷 넣기</button>
+    ${a ? `<h3>종류</h3><div class="chips">${M.kindChoices().map((k) => `<button data-flow="kind-option" data-kind="${k.id}" aria-pressed="${a.kind === k.id}">${esc(k.name)}</button>`).join('')}</div>
+      ${a.kind ? `<h3>색</h3><div class="chips">${M.colorChoices().map((c) => `<button data-flow="color-option" data-color="${c.id}" aria-pressed="${a.color === c.id}">${esc(c.label)}</button>`).join('')}</div>
+      <button data-flow="closet-save" ${a.color ? '' : 'disabled'}>넣기</button>` : ''}` : ''}`;
+}
+function recordsView() {
+  const s = M.getState();
+  return `<h2>기록</h2>${s.records.map((r) => `<div data-flow="record" data-product-id="${r.productId}"><b>${esc(r.product.name)}</b> · ${esc(r.stageLabel)}
+    ${r.next.map((n) => `<button data-flow="record-step" data-step="${n.step}" data-product-id="${r.productId}">${esc(n.label)}</button>`).join('')}</div>`).join('') || '<p>아직 기록이 없어요.</p>'}
+    <p class="fine">${esc(M.note.records)}</p>`;
+}
+
+document.addEventListener('submit', (e) => {
+  if (e.target.id !== 'ask') return;
+  e.preventDefault();
+  view = { ...view, name: 'ask', result: M.ask(new FormData(e.target).get('q'), { previous: view.result }) };
+  render();
+});
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button, a');
+  if (!t) return;
+  const flow = t.dataset.flow;
+  if (flow === 'example') { view = { ...view, name: 'ask', result: M.ask(t.dataset.q) }; return render(); }
+  if (flow === 'condition-remove') { view.result = M.ask(view.result.text, { drop: [...view.result.dropped, t.dataset.key] }); return render(); }
+  if (flow === 'result') { view = { ...view, name: 'detail', productId: t.dataset.productId }; return render(); }
+  if (flow === 'back') { view.name = 'ask'; if (view.result) view.result = M.ask(view.result.text, { drop: view.result.dropped }); return render(); }
+  if (flow?.startsWith('decide-')) { M.decide(view.productId, flow.slice(7)); return render(); }
+  if (flow === 'closet-add') { view = { ...view, name: 'closet', adding: { kind: t.dataset.kind || null, color: null, returnTo: view.name === 'detail' ? view.productId : null } }; return render(); }
+  if (flow === 'kind-option') { view.adding.kind = t.dataset.kind; return render(); }
+  if (flow === 'color-option') { view.adding.color = t.dataset.color; return render(); }
+  if (flow === 'closet-save') {
+    M.addGarment({ kind: view.adding.kind, color: view.adding.color });
+    const back = view.adding.returnTo;
+    view.adding = null;
+    if (back) view = { ...view, name: 'detail', productId: back };
+    return render();
+  }
+  if (flow === 'trial-closet') { M.loadTrialCloset(); return render(); }
+  if (t.dataset.remove) { M.removeGarment(t.dataset.remove); return render(); }
+  if (flow === 'record-step') { M.advance(t.dataset.productId, t.dataset.step, { reason: t.dataset.step === 'returned' ? 'size' : null }); return render(); }
+  if (flow === 'nav-ask') { view.name = 'ask'; return render(); }
+  if (flow === 'nav-closet') { view.name = 'closet'; return render(); }
+  if (flow === 'nav-records') { view.name = 'records'; return render(); }
+  if (flow === 'reset') { M.reset(); view = { name: 'ask', result: null, productId: null, adding: null }; return render(); }
+});
+M.subscribe(() => { if (view.name !== 'detail') render(); });
+if (M.boot.q) view.result = M.ask(M.boot.q);
+render();
+</script>
+</body>
+</html>

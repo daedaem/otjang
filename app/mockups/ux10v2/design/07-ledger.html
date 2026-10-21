@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko" data-team="07">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>디자인 보드 07 장부</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 07 고유 부품: 정렬 줄, 후보 줄(사진 120), 전표, 장부 합계, PC 표 */
+  .sortbar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .sortbar .s { display: flex; gap: 6px; } .sortbar .s span { height: 36px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--line-2); display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; }
+  .sortbar .s span.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .budget { font-size: 13px; color: var(--sub); margin-top: 8px; }
+  .lrow { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .lrow .ph { border-radius: 4px; overflow: hidden; }
+  .lrow .b { font-size: 13px; font-weight: 700; } .lrow .n { font-size: 15px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .lrow .p { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 6px 0; }
+  .lrow .v { font-size: 13px; color: var(--sub); margin-top: 6px; display: flex; gap: 4px; align-items: center; }
+  .slip { margin: 20px var(--gut) 0; border: 1px solid var(--line); border-radius: var(--r-card); }
+  .slip .h { display: flex; justify-content: space-between; padding: 12px 14px; border-bottom: 1px dashed var(--line-2); font-size: 13px; font-weight: 700; }
+  .slip .kv { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 48px; padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .slip .kv:last-child { border-bottom: 0; } .slip .kv .k { color: var(--sub); font-size: 13px; } .slip .kv .ch { font-size: 13px; font-weight: 700; text-decoration: underline; }
+  .total { margin: 12px var(--gut) 0; padding: 16px; border-radius: var(--r-card); background: var(--soft); }
+  .total .k { font-size: 13px; color: var(--sub); } .total .v { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; } .total .s { font-size: 13px; color: var(--sub); margin-top: 2px; }
+  .crec { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 72px; border-bottom: 1px solid var(--line); }
+  .crec .ph { width: 48px; height: 60px; border-radius: 4px; overflow: hidden; } .crec .nm { font-size: 14px; line-height: 1.35; } .crec .nm small { display: block; color: var(--sub); font-size: 12px; } .crec .pr { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  table.lt { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.lt th { position: sticky; top: 0; background: var(--soft); text-align: left; font-size: 12px; color: var(--sub); padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  table.lt td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.lt td.num, table.lt th.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico, ph } = K;
+  K.board({ n: '07', name: '장부', idea: '후보를 숫자로 견주고(사진은 크게), 결정은 전표처럼 남고, 기록은 촘촘한 장부로 쌓인다. 합계는 ‘사기로 한 상품 수집가 합 · 결제 금액 아님’.', refs: 'govuk-summary-list · polaris-table · carbon-data-table · 29CM(Red Dot 2014 모바일 앱)' });
+  M.loadTrialCloset();
+  const { r, d } = K.data();
+  const prices = r.products.map((p) => p.price);
+  const row = (p) => { const v = M.judge(p.id); return `<div class="lrow"><div class="ph">${ph(p)}</div><div><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p">${esc(p.priceText)}</div>${K.tag(p.owned)}<div class="v">${ico(v.tone === 'stop' ? 'warn' : v.tone === 'go' ? 'ok' : 'info', 's')}${esc(v.title)}</div></div></div>`; };
+  const results = `${K.hdr({ n: '07', closet: 8 })}<div class="pad">${K.search(K.Q)}<div style="margin-top:10px">${K.chips(r)}</div><div class="sortbar"><span class="s"><span class="on">추천순</span><span>수집가 낮은 순</span></span><span class="f13" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;min-height:44px">${ico('grid', 's')}사진 크게</span></div><div class="budget">예산은 한 벌 기준 · 이 목록 수집가 ${M.formatPrice(Math.min(...prices))}~${M.formatPrice(Math.max(...prices))} · 10/13 수집</div>${r.products.slice(0, 4).map(row).join('')}</div>${K.tabbar(0)}`;
+  const slip = (dd) => `<div class="slip"><div class="h"><span>전표</span><span class="sub" style="font-weight:400">체험용 옷 8벌 기준</span></div>${[['상품', `${dd.brand} ${dd.name}`, ''], ['수집가', `${dd.priceText} · ${dd.priceShort}`, ''], ['판매처', dd.store, ''], ['내 옷과', dd.verdict.title, ''], ['새 코디', `${dd.verdict.newLookCount}개`, ''], ['결정', dd.verdict.record?.decisionLabel || '결정 전', '변경']].map(([k, v, c]) => `<div class="kv"><span class="k">${esc(k)}</span><span>${esc(v)}</span>${c ? `<span class="ch">${c}</span>` : '<span></span>'}</div>`).join('')}</div>`;
+  const pdp = `${K.hdr({ n: '07', back: true, closet: 8 })}${K.pdpPhoto(d)}${K.pdpInfo(d)}${slip(d)}<div class="sec">${K.newUsed(d.id)}</div><div class="sec">${K.seller()}</div><div style="height:96px"></div>${K.dbar(d.verdict)}`;
+  K.row(K.phone('결과 · 후보 줄(사진 120)', results, { clip: true, notes: ['줄 높이 약 168, 사진 120×150, 가격 18/800 고정폭 숫자', '‘사진 크게’ = 2열 그리드 전환', '구분선만, 카드 상자 없음'] })
+    + K.phone('상품 상세 · 전표', pdp, { notes: ['큰 사진 다음 전표(키-값, 줄 48), ‘변경’은 결정 줄에만'] }));
+  M.decide(r.products[0].id, 'buy'); M.advance(r.products[0].id, 'ordered');
+  M.decide(r.products[1].id, 'hold'); M.decide(r.products[2].id, 'skip');
+  const recs = M.getState().records;
+  const ledger = `${K.hdr({ n: '07', closet: 8, records: recs.length })}<div class="pad"><div class="f18" style="font-size:20px;font-weight:700">장부</div><div class="f13 sub">직접 남긴 기록이에요</div></div><div class="total"><div class="k">사기로 한 상품 수집가 합</div><div class="v">${M.formatPrice(recs.filter((x) => x.decision === 'buy' && x.stage !== 'returned').reduce((s, x) => s + x.product.price, 0))}</div><div class="s">결제 금액 아님 · 안 산 상품 ${recs.filter((x) => x.decision === 'skip').length}개 · 보류 ${recs.filter((x) => x.decision === 'hold').length}개</div></div><div class="pad">${recs.map((x) => `<div class="crec"><div class="ph">${ph(x)}</div><div class="nm">${esc(x.product.name)}<small>${esc(x.product.brand)} · <span class="tag ${x.decision === 'buy' ? 'go' : x.decision === 'hold' ? 'info' : ''}" style="height:20px">${esc(x.stageLabel)}</span></small></div><div class="pr">${esc(x.product.priceText)}</div></div>`).join('')}</div>${K.tabbar(3)}`;
+  const empty = `${K.hdr({ n: '07' })}<div class="pad" style="padding-top:120px;text-align:center"><div style="font-size:18px;font-weight:700">아직 기록이 없어요</div><div class="f14 sub" style="margin:6px 0 16px">사기로 한 옷이 여기에 쌓여요</div><button class="btn primary">찾으러 가기</button></div>${K.tabbar(3)}`;
+  K.row(K.phone('장부(기록)', ledger, { clip: true, notes: ['줄 높이 72, 사진 48×60, 단계 칩(글자+색), 가격 오른쪽 정렬', '줄을 누르면 그 상품 전표'] }) + K.phone('빈 장부', empty, { clip: true, notes: ['표 머리 없이 한 문장 + 버튼 1개'] }));
+  const pc = `${K.hdrPc({ n: '07', q: K.Q })}<div style="display:grid;grid-template-columns:8fr 4fr;gap:24px;padding:20px 32px 0;max-width:1280px;margin:0 auto"><div>${K.chips(r)}<div class="budget">예산은 한 벌 기준 · 10/13 수집가</div><table class="lt" style="margin-top:12px"><thead><tr><th>사진</th><th>상품</th><th class="num">수집가 ▾</th><th>내 옷과</th><th>판정</th><th>비교</th></tr></thead><tbody>${r.products.slice(0, 4).map((p) => { const v = M.judge(p.id); return `<tr><td style="width:120px"><div style="width:96px;border-radius:4px;overflow:hidden">${ph(p)}</div></td><td><b class="f13">${esc(p.brand)}</b><div>${esc(p.name)}</div></td><td class="num" style="font-weight:800">${esc(p.priceText)}</td><td>${K.tag(p.owned)}</td><td class="f13">${esc(v.title)}</td><td><span class="btn quiet sm">담기</span></td></tr>`; }).join('')}</tbody></table></div><div>${K.pdpPhoto(d).replace('class="pdp-photo"', 'class="pdp-photo" style="max-width:320px"')}${slip(d).replace('class="slip"', 'class="slip" style="margin:16px 0 0"')}<div style="margin-top:12px">${K.decide(d.verdict)}</div></div></div>`;
+  K.row(K.pc('PC · 정렬 가능한 표 + 오른쪽 전표', pc, { clip: true, notes: ['사진 열 96~120, 머리 고정, 수집가 열 정렬, 줄을 누르면 오른쪽 전표가 바뀜'] }));
+})();
+</script>
+</body>
+</html>

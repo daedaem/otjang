@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="theme-color" content="#ffffff">
+<title>결정 노트 · 시안 05</title>
+<!-- 시안 05 '결정 노트': 검색 하나가 날짜가 찍힌 결정 시트 한 장이 된다(01 요청 → 02 후보 → 03 비교 → 04 결정).
+     공통으로 쓰는 것은 상품 자료·검색·판정 코어(eoul-mock.js)와 흰 배경 사진 목록(photo-kinds.js)뿐이고, 화면은 이 폴더 안에서만 그린다. -->
+<script>window.EOUL_MOCK_KEY = 'eoul-five-05:v1'; // 시안마다 저장을 따로 둔다(한 주소에서 열어도 기록이 섞이지 않게).</script>
+<script src="../../ux10v2/shared/eoul-mock.js"></script>
+<script src="../../ux10v2/links/shared/photo-kinds.js"></script>
+<link rel="stylesheet" href="ledger.css">
+</head>
+<body>
+<a class="skip" href="#app">본문으로 건너뛰기</a>
+<header class="top">
+  <div class="bar">
+    <a class="mark" href="#/" aria-label="결정 노트 처음 화면"><span class="mark-box" aria-hidden="true">결</span><span class="mark-name">결정 노트</span></a>
+    <button class="tag" type="button" data-flow="mock-label">시안 05</button>
+    <a class="cmp" href="#/compare" data-flow="compare-open" aria-label="비교 열기">비교 <span class="num" id="cmpn">0</span></a>
+  </div>
+  <nav class="tabs" aria-label="주 메뉴">
+    <a href="#/" data-flow="nav-ask" data-tab="note">노트</a>
+    <a href="#/closet" data-flow="nav-closet" data-tab="closet">옷장</a>
+    <a href="#/records" data-flow="nav-records" data-tab="records">기록</a>
+  </nav>
+</header>
+<main id="app" tabindex="-1"></main>
+<div id="over"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="ledger.js"></script>
+</body>
+</html>

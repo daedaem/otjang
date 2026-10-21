@@ -1,0 +1,552 @@
+<title>매거진 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="shared/fonts/pretendard.css">
+<link rel="stylesheet" href="shared/icons/regular.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&display=swap">
+<script>window.EOUL_PHOTO_BASE='p/';</script>
+<script src="shared/eoul-mock.js"></script>
+<script src="shared/cutouts.js"></script>
+<script src="shared/kit.js"></script>
+<style>
+/* 매거진: 흰 종이 + 먹 + 병록색 하나. 결과는 한 호(issue), 상세는 기사, 옷장은 목차, 기록은 지난 호.
+   글자 크기 다섯 단계(11 라벨 · 13 캡션 · 15 본문 · 20 소제목 · 표제 30~64)만 쓴다. 사진판은 4:5, 모서리 0. */
+:root {
+  --paper: #ffffff; --ink: #111214; --ink-2: #4b4f55; --ink-3: #868a91; --rule: rgba(17, 18, 20, .14); --rule-strong: #111214;
+  --plate: #f1f1ef; --accent: #1d4a3a; --accent-soft: rgba(29, 74, 58, .08); --on-ink: #ffffff;
+  --serif: 'Noto Serif KR', 'Nanum Myeongjo', 'AppleMyungjo', serif;
+  --sans: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --s-label: 11px; --s-cap: 13px; --s-body: 15px; --s-sub: 20px; --s-display: clamp(30px, 6.4vw, 64px);
+  --k-font: var(--sans); --k-toast-bg: #111214; --k-toast-fg: #fff; --k-info-bg: #fff; --k-info-fg: #111214;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d0e10; --ink: #f1f1ee; --ink-2: #b9bcc1; --ink-3: #80848b; --rule: rgba(241, 241, 238, .16); --rule-strong: #f1f1ee;
+    --plate: #e8e8e5; --accent: #8cc7ad; --accent-soft: rgba(140, 199, 173, .12); --on-ink: #0d0e10;
+    --k-toast-bg: #f1f1ee; --k-toast-fg: #0d0e10; --k-info-bg: #17181b; --k-info-fg: #f1f1ee; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0d0e10; --ink: #f1f1ee; --ink-2: #b9bcc1; --ink-3: #80848b; --rule: rgba(241, 241, 238, .16); --rule-strong: #f1f1ee;
+  --plate: #e8e8e5; --accent: #8cc7ad; --accent-soft: rgba(140, 199, 173, .12); --on-ink: #0d0e10;
+  --k-toast-bg: #f1f1ee; --k-toast-fg: #0d0e10; --k-info-bg: #17181b; --k-info-fg: #f1f1ee; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--paper); }
+body { color: var(--ink); font: 400 var(--s-body)/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; word-break: keep-all; overflow-wrap: break-word; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+a { color: inherit; }
+.ph { line-height: 1; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1280px; margin: 0 auto; }
+@media (min-width: 900px) { .wrap { padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); } }
+
+.label { font: 600 var(--s-label)/1.3 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.cap { font-size: var(--s-cap); line-height: 1.5; color: var(--ink-2); }
+.serif { font-family: var(--serif); }
+.num { font-variant-numeric: tabular-nums; }
+.press { transition: transform 140ms ease, opacity 140ms ease; }
+.press:active { transform: scale(.98); opacity: .8; }
+
+/* 머리(마스트헤드) */
+.mast { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper); border-bottom: 1px solid var(--rule-strong); }
+.mast .wrap { display: flex; align-items: center; gap: 16px; min-height: 56px; }
+.mast .name { font: 700 var(--s-sub)/1 var(--serif); letter-spacing: -.02em; }
+.mast .issue { display: none; }
+.mast .nav { display: none; gap: 28px; margin-left: auto; }
+.mast .nav button { font-size: var(--s-cap); font-weight: 500; color: var(--ink-3); padding: 18px 0; border-bottom: 2px solid transparent; }
+.mast .nav button[aria-current="page"] { color: var(--ink); border-color: var(--ink); }
+.mast .tools { display: flex; gap: 4px; margin-left: auto; }
+.mast .tools button { height: 40px; padding: 0 10px; font-size: var(--s-cap); color: var(--ink-2); }
+@media (min-width: 900px) {
+  .mast .issue { display: block; margin-left: 18px; padding-left: 18px; border-left: 1px solid var(--rule); }
+  .mast .nav { display: flex; }
+  .mast .tools { margin-left: 24px; }
+}
+
+/* 아래 글자 탭(휴대폰) */
+.tabs { position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: 1px solid var(--rule-strong); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs .wrap { display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabs button { height: 52px; font-size: var(--s-cap); font-weight: 500; color: var(--ink-3); }
+.tabs button[aria-current="page"] { color: var(--ink); font-weight: 700; }
+.tabs sup, .mast sup { font-size: 10px; margin-left: 2px; color: var(--accent); font-weight: 700; }
+@media (min-width: 900px) { .tabs { display: none; } }
+main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 900px) { main { padding-bottom: 80px; } }
+
+/* 사진판 */
+.plate { position: relative; display: block; background: var(--plate); aspect-ratio: 4 / 5; overflow: hidden; max-width: 100%; }
+.plate > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.plate > img.k-white { object-fit: contain; padding: 7%; mix-blend-mode: multiply; }
+.plate .eo-ph, .plate .eo-tile, .plate .k-miss { position: absolute; inset: 0; aspect-ratio: auto !important; border-radius: 0 !important; }
+
+/* 표지(찾기) */
+.cover { padding-top: 40px; display: grid; gap: 40px; }
+.cover h1 { margin: 12px 0 0; font: 700 var(--s-display)/1.18 var(--serif); letter-spacing: -.03em; text-wrap: balance; max-width: 14ch; }
+.ask { display: flex; align-items: flex-end; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; }
+.ask input { flex: 1; min-width: 0; border: 0; background: none; color: var(--ink); font: 500 var(--s-sub)/1.4 var(--serif); padding: 6px 0; outline: none; }
+.ask input::placeholder { color: var(--ink-3); }
+.ask button { height: 44px; padding: 0 4px; font-size: var(--s-cap); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.toc { border-top: 1px solid var(--rule-strong); }
+.toc button { width: 100%; display: flex; align-items: baseline; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+.toc button .t { flex: 1; font: 500 var(--s-sub)/1.4 var(--serif); letter-spacing: -.01em; }
+.toc button .ph { font-size: 18px; color: var(--ink-3); }
+.trialbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 14px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.trialbar b { font-weight: 600; }
+.trialbar .sp { flex: 1; }
+.link { font-size: var(--s-cap); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; padding: 8px 0; }
+@media (min-width: 900px) {
+  .cover { grid-template-columns: 7fr 5fr; column-gap: 64px; padding-top: 72px; align-items: start; }
+  .cover .side { padding-top: 34px; }
+}
+
+/* 표지 이야기 */
+.story { margin-top: 48px; border-top: 1px solid var(--rule-strong); padding-top: 16px; }
+.story h2 { margin: 8px 0 18px; font: 700 clamp(24px, 4.4vw, 40px)/1.25 var(--serif); letter-spacing: -.02em; }
+.story .g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.story .g .item:first-child { grid-column: 1 / -1; }
+.story .more { margin-top: 18px; }
+@media (min-width: 900px) {
+  .story { margin-top: 72px; display: grid; grid-template-columns: 4fr 8fr; column-gap: 40px; align-items: start; }
+  .story .g { grid-template-columns: 6fr 3fr 3fr; column-gap: 24px; align-items: end; }
+  .story .g .item:first-child { grid-column: auto; }
+}
+
+/* 한 호(결과) */
+.issuehead { padding-top: 28px; padding-bottom: 28px; border-bottom: 1px solid var(--rule-strong); }
+.issuehead h1 { margin: 14px 0 16px; font: 700 var(--s-display)/1.15 var(--serif); letter-spacing: -.03em; text-wrap: balance; }
+.dateline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--s-cap); color: var(--ink-2); }
+.tok { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 4px 0 0; font-weight: 600; color: var(--ink); border-bottom: 1px solid var(--ink); }
+.tok .ph { font-size: 14px; color: var(--ink-3); }
+.tok.fixed { border-bottom-color: transparent; color: var(--ink-2); font-weight: 500; }
+.dateline .dot { color: var(--ink-3); }
+.note { margin-top: 10px; font-size: var(--s-cap); color: var(--ink-3); }
+.list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; row-gap: 36px; padding-top: 32px; }
+.item { text-align: left; display: block; min-width: 0; }
+.item.lead { grid-column: 1 / -1; }
+.item .no { font: 700 var(--s-sub)/1 var(--serif); display: block; margin: 14px 0 6px; }
+.item .brand { display: block; margin-bottom: 4px; }
+.item .nm { display: block; font: 500 var(--s-body)/1.45 var(--serif); letter-spacing: -.01em; }
+.item.lead .nm { font-size: var(--s-sub); }
+.item .pr { display: block; margin-top: 6px; font-size: var(--s-cap); color: var(--ink); font-weight: 600; }
+.item .pr small { font-weight: 400; color: var(--ink-3); margin-left: 6px; font-size: var(--s-label); letter-spacing: .02em; }
+.owned { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: var(--s-label); font-weight: 600; letter-spacing: .02em; color: var(--ink-2); }
+.owned::before { content: ""; width: 7px; height: 7px; border: 1.5px solid currentColor; }
+.owned.stop { color: var(--ink); }
+.owned.stop::before { background: currentColor; }
+.owned.new { color: var(--accent); }
+.colophon { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: var(--s-cap); color: var(--ink-3); max-width: 64ch; }
+@media (min-width: 900px) {
+  .list { grid-template-columns: repeat(12, 1fr); column-gap: 24px; row-gap: 72px; padding-top: 56px; }
+  .item { grid-column: span 4; }
+  .item.lead { grid-column: 1 / span 7; display: grid; grid-template-columns: 1fr; }
+  .item.lead + .item { grid-column: 9 / span 4; align-self: end; }
+  .item.lead + .item + .item { grid-column: 1 / span 4; }
+  .item.lead + .item + .item + .item { grid-column: 6 / span 4; margin-top: 96px; }
+  .item.lead.right { grid-column: 6 / span 7; }
+}
+.relax { padding-top: 32px; display: grid; gap: 0; border-top: 1px solid var(--rule-strong); margin-top: 24px; }
+.relax button { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+.relax .t { font: 500 var(--s-sub)/1.4 var(--serif); }
+.relax .pv { display: flex; gap: 6px; }
+.relax .pv .plate { width: 44px; }
+
+/* 기사(상세) */
+.feature { display: grid; gap: 28px; padding-top: 0; }
+.feature .hero { margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); }
+.feature .hero figcaption { padding: 8px max(16px, env(safe-area-inset-left, 0px)) 0; }
+.feature h1 { margin: 10px 0 12px; font: 700 clamp(26px, 5vw, 44px)/1.22 var(--serif); letter-spacing: -.025em; text-wrap: balance; }
+.priceline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.priceline b { font: 700 var(--s-sub)/1.2 var(--serif); }
+.quote { position: relative; padding: 4px 0 4px 20px; border-left: 3px solid var(--accent); }
+.quote .q { font: 700 clamp(22px, 4vw, 30px)/1.35 var(--serif); letter-spacing: -.02em; margin: 6px 0 10px; text-wrap: balance; }
+.quote p { margin: 0 0 6px; color: var(--ink-2); max-width: 60ch; }
+.figs { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; }
+.figs figure { margin: 0; width: 104px; }
+.figs figcaption { margin-top: 6px; font-size: var(--s-label); line-height: 1.45; color: var(--ink-2); }
+.figs figcaption b { display: block; color: var(--ink); font-size: 12px; font-weight: 600; }
+.acts { display: grid; gap: 10px; }
+.decide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.decide button { height: 48px; border: 1px solid var(--ink); border-radius: 999px; font-size: var(--s-cap); font-weight: 600; white-space: nowrap; }
+.decide button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.sub-acts { display: flex; flex-wrap: wrap; gap: 4px 24px; align-items: center; }
+.sub-acts .link { display: inline-flex; align-items: center; gap: 6px; }
+.spread { border-top: 1px solid var(--rule-strong); padding-top: 18px; }
+.spread h2, .sect h2 { margin: 8px 0 18px; font: 700 var(--s-sub)/1.35 var(--serif); letter-spacing: -.01em; }
+.looks { display: grid; gap: 28px; }
+.look .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.look .board .plate { aspect-ratio: 3 / 4; }
+.look .board .plate.cand { outline: 2px solid var(--accent); outline-offset: -2px; }
+.look .board .plate .tag { position: absolute; left: 0; top: 0; padding: 3px 6px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.look .board .k-white { padding: 6%; }
+.look figcaption { margin-top: 10px; font-size: var(--s-cap); color: var(--ink-2); }
+.look figcaption b { color: var(--ink); font-family: var(--serif); font-weight: 500; }
+@media (min-width: 900px) {
+  .feature { grid-template-columns: 7fr 5fr; column-gap: 56px; padding-top: 40px; align-items: start; }
+  .feature .hero { margin: 0; position: sticky; top: 96px; }
+  .feature .hero figcaption { padding-left: 0; }
+  .feature .body { padding-top: 8px; display: grid; gap: 28px; }
+  .spread.wide { grid-column: 1 / -1; }
+  .looks { grid-template-columns: 1fr 1fr; column-gap: 40px; }
+}
+@media (max-width: 899px) { .feature .body { display: grid; gap: 28px; } }
+
+/* 비교 */
+.cmp { padding-top: 28px; }
+.cmp h1 { margin: 10px 0 24px; font: 700 var(--s-display)/1.15 var(--serif); letter-spacing: -.03em; }
+.cmp .heads { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cmp .heads .brand { display: block; margin-top: 10px; }
+.cmp .heads .nm { display: block; font: 500 var(--s-body)/1.4 var(--serif); }
+.cmp .heads .rm { margin-top: 6px; }
+.cmp table { width: 100%; border-collapse: collapse; margin-top: 24px; table-layout: fixed; }
+.cmp th { text-align: left; padding: 16px 0 4px; font-weight: 600; }
+.cmp td { padding: 4px 12px 14px 0; vertical-align: top; border-bottom: 1px solid var(--rule); }
+.cmp tr.verdict td { font: 700 var(--s-body)/1.45 var(--serif); }
+.cmp td.diff { color: var(--ink); }
+.cmp td.same { color: var(--ink-3); }
+.cmp details { margin-top: 18px; }
+.cmp summary { cursor: pointer; font-size: var(--s-cap); font-weight: 600; padding: 10px 0; }
+@media (min-width: 900px) { .cmp .grid2 { display: grid; grid-template-columns: 5fr 7fr; gap: 56px; align-items: start; } }
+
+/* 목차(옷장) */
+.contents { padding-top: 28px; }
+.contents h1 { margin: 12px 0 8px; font: 700 var(--s-display)/1.15 var(--serif); letter-spacing: -.03em; }
+.contents .lede { color: var(--ink-2); max-width: 46ch; margin: 0 0 20px; }
+.addbtn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 22px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-size: var(--s-cap); font-weight: 600; }
+.chapter { border-top: 1px solid var(--rule-strong); margin-top: 28px; }
+.chapter .ch { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 0 6px; }
+.chapter .ch h2 { margin: 0; font: 700 var(--s-sub)/1.3 var(--serif); }
+.chapter .ch span { font: 500 var(--s-sub)/1 var(--serif); color: var(--ink-3); }
+.row { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.row .plate { width: 56px; }
+.row .t { font: 500 var(--s-body)/1.4 var(--serif); }
+.row .rm { height: 40px; padding: 0 6px; font-size: var(--s-cap); color: var(--ink-3); }
+.row .rm:hover { color: var(--ink); }
+.empty { padding: 18px 0; color: var(--ink-3); font-size: var(--s-cap); }
+.outfits { margin-top: 40px; }
+.outfits .looks { grid-template-columns: 1fr; }
+@media (min-width: 900px) {
+  .contents .cols { display: grid; grid-template-columns: 5fr 7fr; gap: 56px; align-items: start; }
+  .contents .cols .outfits { margin-top: 28px; }
+  .outfits .looks { grid-template-columns: 1fr 1fr; }
+}
+
+/* 지난 호(기록) */
+.back { padding-top: 28px; }
+.back h1 { margin: 12px 0 20px; font: 700 var(--s-display)/1.15 var(--serif); letter-spacing: -.03em; }
+.rec { width: 100%; display: grid; grid-template-columns: 52px 56px 1fr; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+.rec .d { font: 700 var(--s-sub)/1 var(--serif); }
+.rec .plate { width: 56px; }
+.rec .t { display: block; font: 500 var(--s-body)/1.4 var(--serif); }
+.rec .st { display: inline-block; margin-top: 4px; font-size: var(--s-label); font-weight: 700; letter-spacing: .08em; padding: 2px 8px; border: 1px solid var(--ink); }
+.rec .st.buy { background: var(--ink); color: var(--on-ink); }
+.rec .st.skip { border-color: var(--ink-3); color: var(--ink-3); }
+.blank { padding: 40px 0; border-top: 1px solid var(--rule-strong); }
+.blank p { font: 500 var(--s-sub)/1.5 var(--serif); margin: 0 0 16px; max-width: 26ch; }
+
+/* 옷 넣기 시트 */
+dialog.sheet { border: 0; padding: 0; width: min(560px, 100%); max-width: 100%; max-height: 92dvh; margin: auto auto 0; background: var(--paper); color: var(--ink); }
+dialog.sheet::backdrop { background: rgba(10, 11, 12, .45); }
+@media (min-width: 900px) { dialog.sheet { margin: auto; } }
+.sheet .in { padding: 20px max(20px, env(safe-area-inset-left, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 16px; }
+.sheet .top { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--rule-strong); padding-bottom: 12px; }
+.sheet h2 { margin: 0; font: 700 var(--s-sub)/1.3 var(--serif); }
+.sheet .x { width: 44px; height: 44px; display: grid; place-items: center; font-size: 20px; }
+.sheet .pv { display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: end; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { height: 36px; padding: 0 14px; border: 1px solid var(--rule); font-size: var(--s-cap); font-weight: 500; }
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.sws { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px 6px; }
+.sw { display: grid; justify-items: center; gap: 6px; font-size: var(--s-label); color: var(--ink-2); white-space: nowrap; }
+.sw i { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.sw[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.sw[aria-pressed="true"] i { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14), 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
+.sheet .go { height: 52px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-weight: 600; }
+.sheet .go[disabled] { opacity: .35; cursor: default; }
+
+.fade-in { animation: rise 520ms var(--spring, ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } .press { transition: none; } }
+</style>
+
+<header class="mast" role="banner">
+  <div class="wrap">
+    <span class="name">이름 미정</span>
+    <span class="issue label" id="issue"></span>
+    <nav class="nav" aria-label="주요 메뉴" id="nav"></nav>
+    <span class="tools"><button id="infoBtn" class="press">정보</button><button id="resetBtn" class="press">처음부터</button></span>
+  </div>
+</header>
+<main id="app" class="wrap"></main>
+<nav class="tabs" aria-label="주요 메뉴"><div class="wrap" id="tabs"></div></nav>
+<dialog class="sheet" id="sheet" aria-label="가진 옷 넣기"></dialog>
+
+<script>
+(() => {
+  const { M, esc, $, $$ } = K;
+  const NAME = 'D4 매거진';
+  const TRIAL_KEY = 'd4-trial-off';
+  const app = $('#app');
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+
+  // 처음 열면 체험용 옷장으로 시작해 '내 옷과' 판단을 바로 볼 수 있게 한다.
+  const st0 = M.getState();
+  if (!st0.closetCount && !st0.records.length && !store.get(TRIAL_KEY)) M.loadTrialCloset('M');
+
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const md = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}.${pad2(d.getDate())}`; };
+  const plate = (inner, cls = '') => `<span class="plate ${cls}">${inner}</span>`;
+  const ownedTag = (o) => !o || o.tone === 'none' ? '' : `<span class="owned ${esc(o.tone)}">${esc(o.label)}</span>`;
+  $('#issue').textContent = `${M.catalog.checkedLabel.replace(/^2026년 /, '')} 수집`;
+
+  // ── 메뉴
+  const DEST = [['home', '찾기'], ['closet', '옷장'], ['records', '기록'], ['compare', '비교']];
+  function navs(view) {
+    const n = M.compareList().length;
+    const html = DEST.map(([v, l]) => `<button class="press" data-tab="${v}" ${view === v || (view === 'results' && v === 'home') || (view === 'detail' && v === 'home') ? 'aria-current="page"' : ''}>${l}${v === 'compare' && n ? `<sup class="num">${n}</sup>` : ''}</button>`).join('');
+    $('#nav').innerHTML = html; $('#tabs').innerHTML = html;
+    $$('[data-tab]').forEach((b) => { b.onclick = () => K.tab(b.dataset.tab); });
+  }
+
+  // ── 표지
+  function home() {
+    const st = M.getState();
+    const out = st.closetCount ? M.closetOutfits() : { total: 0 };
+    return `<section class="cover fade-in">
+      <div>
+        <div class="label">This issue · 찾기</div>
+        <h1>오늘은 어떤 옷을 찾나요?</h1>
+        <form class="ask" id="askForm" role="search" style="margin-top:28px">
+          <input id="q" name="q" autocomplete="off" placeholder="출근용 셔츠 10만원 이하" aria-label="찾는 옷을 한 줄로 적어 주세요">
+          <button class="press" type="submit">찾기<i class="ph ph-arrow-right"></i></button>
+        </form>
+        <p class="cap" style="margin:12px 0 0">종류·상황·색·예산을 한 줄로 적으면 정해 둔 규칙으로 읽어요.</p>
+      </div>
+      <div class="side">
+        <div class="label" style="margin-bottom:10px">이번 호에서 읽을 만한 요청</div>
+        <div class="toc">${M.examples('M').slice(0, 5).map((x) => `<button class="press" data-q="${esc(x)}"><span class="t">${esc(x)}</span><i class="ph ph-arrow-up-right"></i></button>`).join('')}</div>
+        <div class="trialbar" style="margin-top:28px">
+          ${st.trialCount ? `<span><b>체험용 옷 ${st.trialCount}벌</b>로 보는 중</span>` : `<span><b>내 옷 ${st.closetCount}벌</b></span>`}
+          <span class="cap num">조합 ${out.total}가지</span><span class="sp"></span>
+          <button class="link press" data-tab="closet">옷장 목차</button>
+        </div>
+      </div>
+    </section>${coverStory()}`;
+  }
+  // 표지 이야기: 첫 번째 예시 요청의 결과 세 벌. 순서는 규칙으로 계산한 결과 순서다.
+  function coverStory() {
+    const q = M.examples('M')[0];
+    const y = scrollY; const r = M.ask(q); scrollTo(0, y);
+    const top = r.products.slice(0, 3);
+    if (!top.length) return '';
+    return `<section class="story fade-in" aria-label="표지 이야기">
+      <div><div class="label">Cover story</div><h2>${esc(q)}</h2><p class="cap">이 요청으로 찾은 ${r.total}벌 가운데 앞의 세 벌이에요.</p>
+        <button class="link press more" data-q="${esc(q)}">이 호 전체 보기</button></div>
+      <div class="g">${top.map((c, i) => `<button class="item press" data-id="${c.id}">${plate(K.productImg(c.id))}<span class="no num">${pad2(i + 1)}</span><span class="brand label">${esc(c.brand)}</span><span class="nm">${esc(c.name)}</span><span class="pr num">${esc(c.priceText)}<small>${esc(c.priceShort)}</small></span></button>`).join('')}</div>
+    </section>`;
+  }
+
+  // ── 한 호(결과)
+  function results(p) {
+    const r = M.ask(p.q, { drop: p.drop || [] });
+    const items = r.products;
+    const head = `<header class="issuehead fade-in">
+      <div class="label num">${esc(M.catalog.checkedLabel.replace(/^2026년 /, '').replace(/~.*/, ''))} 수집 · ${esc(items[0]?.kindName || '상품')} ${r.total}벌</div>
+      <h1>${esc(p.q)}</h1>
+      <div class="dateline">${r.conditions.map((c) => c.removable ? `<button class="tok press" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="tok fixed">${esc(c.label)}</span>`).join('<span class="dot">·</span>')}
+        ${(p.drop || []).length ? `<button class="link press" data-undrop>조건 되돌리기</button>` : ''}</div>
+      ${r.listNote ? `<div class="note">${esc(r.listNote)}</div>` : ''}
+    </header>`;
+    if (!r.understood) return head + `<div class="blank"><p>이 문장은 아직 읽지 못했어요.</p><p class="cap">종류(셔츠, 코트)나 상황(출근, 데이트)을 넣어 다시 적어 주세요.</p><button class="link press" data-tab="home">다시 적기</button></div>`;
+    if (!items.length) {
+      const rx = M.relax(r);
+      return head + `<section class="relax"><div class="label">맞는 상품이 없어요 · 조건을 하나 빼면</div>
+        ${rx.map((x) => `<button class="press" data-relax='${esc(JSON.stringify(x.drop))}'><span><span class="t">${esc(x.title)}</span></span><span class="pv">${x.preview.map((pp) => plate(K.productImg(pp.id))).join('')}</span></button>`).join('') || '<p class="empty">뺄 수 있는 조건이 없어요.</p>'}</section>`;
+    }
+    let lead = 0;
+    const list = items.map((c, i) => {
+      const isLead = i % 3 === 0;
+      if (isLead) lead++;
+      return `<button class="item press ${isLead ? `lead ${lead % 2 === 0 ? 'right' : ''}` : ''}" data-id="${c.id}">
+        ${plate(K.productImg(c.id))}
+        <span class="no num">${pad2(i + 1)}</span>
+        <span class="brand label">${esc(c.brand)}</span>
+        <span class="nm">${esc(c.name)}</span>
+        <span class="pr num">${esc(c.priceText)}<small>${esc(c.priceShort)}</small></span>
+        ${ownedTag(c.owned)}
+      </button>`;
+    }).join('');
+    return head + `<section class="list" aria-label="결과 ${r.total}개">${list}</section>
+      <p class="colophon">이 호의 순서와 문장은 편집자가 고른 것이 아니에요. 적은 조건과 정해 둔 규칙으로 계산한 순서예요. 가격은 수집 시점의 판매가예요.</p>`;
+  }
+
+  // ── 기사(상세)
+  function detail(p) {
+    const c = M.product(p.id);
+    if (!c) return `<div class="blank"><p>상품을 찾지 못했어요.</p></div>`;
+    const v = c.verdict;
+    const dec = v.record?.decision;
+    const inCmp = M.compareHas(c.id);
+    const figs = (v.owned || []).slice(0, 4).map((g) => `<figure>${plate(K.garmentImg(g))}<figcaption><b>${esc(g.label)}</b>${esc(g.relationLabel)}${g.trial ? ' · 체험용' : ''}</figcaption></figure>`).join('');
+    const looks = (v.looks || []).slice(0, 2).map((l) => look(l)).join('');
+    return `<article class="feature fade-in">
+      <figure class="hero" style="margin-top:0">${plate(K.productImg(c.id))}<figcaption class="cap">판매처 사진 · ${esc(c.store)}</figcaption></figure>
+      <div class="body">
+        <div>
+          <div class="label">${esc(c.brand)} · ${esc(c.slotName)}</div>
+          <h1>${esc(c.name)}</h1>
+          <div class="priceline num"><b>${esc(c.priceText)}</b><span class="cap">${esc(c.priceNote)} · 쿠폰·배송비 제외</span></div>
+          ${ownedTag(c.owned)}
+        </div>
+        <section class="quote" aria-label="내 옷과">
+          <div class="label">내 옷과</div>
+          <p class="q">${esc(v.title)}</p>
+          ${(v.lines || []).map((l) => `<p>${esc(l)}</p>`).join('')}
+          <p class="cap" style="color:var(--ink-3)">${esc(v.basisLabel)}</p>
+          ${figs ? `<div class="figs">${figs}</div>` : ''}
+        </section>
+        <div class="acts">
+          <div class="label">결정</div>
+          <div class="decide" role="group" aria-label="결정">${[['hold', '보류'], ['skip', '안 살래요'], ['buy', '사기로 했어요']].map(([k, l]) => `<button class="press" data-dec="${k}" aria-pressed="${dec === k}">${l}</button>`).join('')}</div>
+          <div class="sub-acts">
+            <button class="link press" data-cmp="${c.id}">${inCmp ? '비교에서 빼기' : '비교에 담기'}</button>
+            ${M.compareList().length >= 2 ? '<button class="link press" data-tab="compare">비교 보기</button>' : ''}
+            <a class="link" href="${esc(c.url)}" target="_blank" rel="noopener">무신사에서 보기<i class="ph ph-arrow-up-right"></i></a>
+          </div>
+        </div>
+        ${looks ? `<section class="spread"><div class="label">함께 입기</div><h2>가진 옷과 이렇게 입어요</h2><div class="looks">${looks}</div></section>` : ''}
+        <p class="colophon" style="margin-top:0">${esc(v.fine)}</p>
+      </div>
+    </article>`;
+  }
+  function look(l) {
+    const order = ['outer', 'top', 'dress', 'bottom', 'shoes'];
+    const ps = l.pieces.filter((x) => order.includes(x.role)).sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role)).slice(0, 4);
+    return `<figure class="look" style="margin:0"><div class="board" style="grid-template-columns:repeat(${ps.length}, 1fr)">${ps.map((x) => plate(`${x.candidate ? '<span class="tag">이 상품</span>' : ''}${K.pieceImg(x)}`, x.candidate ? 'cand' : '')).join('')}</div>
+      <figcaption><b>${esc(l.formula || l.title)}</b> · ${ps.map((x) => `${esc(x.colorLabel)} ${esc(x.kindName)}`).join(', ')}${ps.some((x) => x.trial) ? ' · 체험용 옷 기준' : ''}</figcaption></figure>`;
+  }
+
+  // ── 비교
+  function compare() {
+    const ids = M.compareList();
+    if (ids.length < 2) return `<section class="cmp fade-in"><div class="label">비교</div><h1>두 벌을 나란히</h1>
+      <div class="blank"><p>${ids.length ? '한 벌 더 담으면 나란히 볼 수 있어요.' : '상품 기사에서 ‘비교에 담기’를 누르면 여기에 모여요.'}</p><button class="link press" data-tab="home">상품 찾기</button></div></section>`;
+    const t = M.compareRows(ids.slice(0, 2));
+    const row = (r) => `<tr class="${r.key === 'verdict' ? 'verdict' : ''}"><th colspan="2" class="label">${esc(r.label)}</th></tr><tr class="${r.key === 'verdict' ? 'verdict' : ''}">${r.values.map((x) => `<td class="${r.same ? 'same' : 'diff'}">${esc(x)}</td>`).join('')}</tr>`;
+    return `<section class="cmp fade-in"><div class="label">비교 · ${t.items.length}벌</div><h1>두 벌을 나란히</h1>
+      <div class="grid2"><div class="heads">${t.items.map((c) => `<div><button class="press" data-id="${c.id}" style="display:block;width:100%;text-align:left">${plate(K.productImg(c.id))}<span class="brand label">${esc(c.brand)}</span><span class="nm">${esc(c.name)}</span></button><button class="rm link press" data-cmp="${c.id}">빼기</button></div>`).join('')}</div>
+      <div><table class="num"><colgroup><col style="width:50%"><col style="width:50%"></colgroup>${t.rows.filter((r) => r.primary).map(row).join('')}</table>
+      <details><summary>더 보기</summary><table class="num"><colgroup><col style="width:50%"><col style="width:50%"></colgroup>${t.rows.filter((r) => !r.primary && r.key !== 'popularity').map(row).join('')}</table></details>
+      <p class="colophon">${esc(t.note)}</p></div></div></section>`;
+  }
+
+  // ── 목차(옷장)
+  const ZONES = [['top', '상의', ['tee', 'longtee', 'shirt', 'polo', 'knit', 'sweat']], ['bottom', '하의', ['pants', 'jeans', 'skirt']], ['outer', '아우터', ['jacket', 'blazer', 'cardigan', 'coat', 'down', 'vest']], ['shoes', '신발', ['sneaker', 'loafer', 'boot']]];
+  function closet() {
+    const st = M.getState();
+    const out = M.closetOutfits({ detail: true });
+    const chapters = ZONES.map(([k, name, kinds]) => {
+      const items = st.closet.filter((g) => kinds.includes(g.kind));
+      return `<section class="chapter"><div class="ch"><h2>${name}</h2><span class="num">${pad2(items.length)}</span></div>
+        ${items.map((g) => `<div class="row">${plate(K.garmentImg(g))}<div><div class="t">${esc(g.label)}</div><div class="cap">${esc(g.colorLabel)} · ${esc(g.kindName)}${g.trial ? ' · 체험용' : ''}</div></div><button class="rm press" data-rm="${g.id}" aria-label="${esc(g.label)} 빼기">빼기</button></div>`).join('') || `<div class="empty">아직 없어요 · <button class="link press" data-add="${k}">${name} 넣기</button></div>`}
+      </section>`;
+    }).join('');
+    const others = st.closet.filter((g) => !ZONES.some((z) => z[2].includes(g.kind)));
+    return `<section class="contents fade-in">
+      <div class="label">Contents · 옷장</div>
+      <h1 class="num">옷장 ${st.closetCount}벌</h1>
+      <p class="lede">${st.trialCount ? `체험용 옷 ${st.trialCount}벌로 보는 중이에요. 체험용 옷은 내 옷이 아니에요.` : '가진 옷을 종류와 색으로 넣으면 겹치는 옷과 입을 수 있는 조합을 알려 드려요.'}</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center"><button class="addbtn press" data-add=""><i class="ph ph-plus"></i>가진 옷 넣기</button>
+        ${st.trialCount ? '<button class="link press" data-trial="off">체험용 빼고 내 옷으로</button>' : '<button class="link press" data-trial="on">체험용 옷장 보기</button>'}</div>
+      <p class="cap" style="color:var(--ink-3);margin:14px 0 0">사진은 내 옷이 아니라 종류·색이 같은 비슷한 상품 사진이에요.</p>
+      <div class="cols"><div>${chapters}${others.length ? `<section class="chapter"><div class="ch"><h2>그 밖의 옷</h2><span class="num">${pad2(others.length)}</span></div>${others.map((g) => `<div class="row">${plate(K.garmentImg(g))}<div><div class="t">${esc(g.label)}</div><div class="cap">${esc(g.colorLabel)}</div></div><button class="rm press" data-rm="${g.id}">빼기</button></div>`).join('')}</section>` : ''}</div>
+      <section class="outfits spread"><div class="label">Spread · 입을 수 있는 조합</div><h2 class="num">가진 옷으로 ${out.total}가지</h2>
+        ${out.list?.length ? `<div class="looks">${out.list.slice(0, 4).map(look).join('')}</div>` : '<p class="empty">상의·하의·신발이 한 벌씩 있으면 조합이 생겨요.</p>'}
+        <p class="cap" style="color:var(--ink-3)">종류·색이 어울리는지만 봤어요. 핏·소재는 따지지 않아요.</p></section></div>
+    </section>`;
+  }
+
+  // ── 지난 호(기록)
+  function records() {
+    const rs = M.getState().records;
+    return `<section class="back fade-in"><div class="label">Back issues · 기록</div><h1 class="num">결정 ${rs.length}건</h1>
+      ${rs.length ? rs.map((r) => `<button class="rec press" data-id="${r.productId}"><span class="d num">${md(r.updatedAt)}</span>${plate(K.productImg(r.productId))}<span><span class="label">${esc(r.product.brand)}</span><span class="t">${esc(r.product.name)}</span><span class="st ${esc(r.decision || '')}">${esc(r.stageLabel || r.decisionLabel)}</span></span></button>`).join('')
+        : '<div class="blank"><p>아직 결정한 옷이 없어요.</p><p class="cap">상품 기사에서 보류, 안 살래요, 사기로 했어요 중 하나를 누르면 여기에 남아요.</p><button class="link press" data-tab="home">상품 찾기</button></div>'}
+      <p class="colophon">기록은 직접 누른 결정이에요. 실제 주문이나 결제가 확인된 것은 아니에요.</p></section>`;
+  }
+
+  // ── 옷 넣기 시트
+  function openAdd(zone = '') {
+    const d = $('#sheet');
+    const kinds = M.kindChoices('M').filter((k) => ZONES.some((z) => z[2].includes(k.id)) && (!zone || ZONES.find((z) => z[0] === zone)[2].includes(k.id)));
+    let kind = kinds[0]?.id, color = null;
+    const colors = M.colorChoices();
+    const draw = () => {
+      const slot = M.slotChoices(kind, 'M')[0]?.id || null;
+      const kn = kinds.find((k) => k.id === kind)?.name || '';
+      const cl = colors.find((c) => c.id === color)?.label;
+      d.innerHTML = `<div class="in"><div class="top"><h2>가진 옷 넣기</h2><button class="x press" data-close aria-label="닫기"><i class="ph ph-x"></i></button></div>
+        <div class="pv">${plate(color ? K.garmentImg({ gender: 'M', kind, color, slot }) : '')}<div><div class="label">미리 보기</div><div class="serif" style="font-size:var(--s-sub);font-weight:700;margin-top:6px">${cl ? `${esc(cl)} ` : ''}${esc(kn)}</div><div class="cap">${color ? '비슷한 상품 사진으로 보여요' : '색을 고르면 사진이 나와요'}</div></div></div>
+        <div><div class="label" style="margin-bottom:8px">종류</div><div class="chips">${kinds.map((k) => `<button class="chip press" data-k="${k.id}" aria-pressed="${k.id === kind}">${esc(k.name)}</button>`).join('')}</div></div>
+        <div><div class="label" style="margin-bottom:10px">색</div><div class="sws">${colors.map((c) => `<button class="sw press" data-c="${c.id}" aria-pressed="${c.id === color}" aria-label="${esc(c.label)}"><i style="background:${c.hex}"></i>${esc(c.label)}</button>`).join('')}</div></div>
+        <button class="go press" id="addGo" ${color ? '' : 'disabled'}>${color ? `${esc(cl)} ${esc(kn)} 넣기` : '색을 골라 주세요'}</button></div>`;
+      $$('[data-k]', d).forEach((b) => { b.onclick = () => { kind = b.dataset.k; draw(); }; });
+      $$('[data-c]', d).forEach((b) => { b.onclick = () => { color = b.dataset.c; draw(); }; });
+      $('[data-close]', d).onclick = () => d.close();
+      $('#addGo', d).onclick = () => {
+        const before = M.closetOutfits().total;
+        M.addGarment({ kind, color, slot: M.slotChoices(kind, 'M')[0]?.id || null, gender: 'M' });
+        const after = M.closetOutfits().total;
+        d.close(); K.refresh();
+        K.toast(after > before ? `넣었어요 · 조합이 ${after - before}가지 늘었어요` : '넣었어요');
+      };
+    };
+    draw();
+    d.showModal ? d.showModal() : d.setAttribute('open', '');
+  }
+
+  // ── 그리기
+  function render(view, p) {
+    navs(view);
+    const html = view === 'results' ? results(p) : view === 'detail' ? detail(p) : view === 'compare' ? compare() : view === 'closet' ? closet() : view === 'records' ? records() : home();
+    app.innerHTML = html;
+    bind(view, p);
+  }
+  function bind(view, p) {
+    $$('[data-tab]', app).forEach((b) => { b.onclick = () => K.tab(b.dataset.tab); });
+    $$('[data-q]', app).forEach((b) => { b.onclick = () => K.go('results', { q: b.dataset.q }); });
+    const f = $('#askForm', app);
+    if (f) f.onsubmit = (e) => { e.preventDefault(); const q = $('#q', f).value.trim(); if (q) K.go('results', { q }); else $('#q', f).focus(); };
+    $$('[data-id]', app).forEach((b) => { b.onclick = () => K.go('detail', { id: b.dataset.id }); });
+    $$('[data-drop]', app).forEach((b) => { b.onclick = () => K.go('results', { q: p.q, drop: [...(p.drop || []), b.dataset.drop] }, { replace: true }); });
+    $$('[data-undrop]', app).forEach((b) => { b.onclick = () => K.go('results', { q: p.q }, { replace: true }); });
+    $$('[data-relax]', app).forEach((b) => { b.onclick = () => K.go('results', { q: p.q, drop: JSON.parse(b.dataset.relax) }, { replace: true }); });
+    $$('[data-dec]', app).forEach((b) => { b.onclick = () => {
+      M.decide(p.id, b.dataset.dec);
+      K.toast({ hold: '보류로 기록했어요', skip: '안 사기로 기록했어요', buy: '사기로 했어요 · 기록에 남겼어요' }[b.dataset.dec]);
+      K.refresh();
+    }; });
+    $$('[data-cmp]', app).forEach((b) => { b.onclick = () => {
+      const id = b.dataset.cmp;
+      if (M.compareHas(id)) { M.compareRemove(id); K.toast('비교에서 뺐어요'); }
+      else {
+        if (M.compareList().length >= 2) M.compareRemove(M.compareList()[0]);
+        M.compareAdd(id);
+        K.toast(M.compareList().length >= 2 ? '두 벌이 모였어요 · 비교 탭에서 봐요' : '비교에 담았어요 · 한 벌 더 담아 주세요');
+      }
+      K.refresh();
+    }; });
+    $$('[data-rm]', app).forEach((b) => { b.onclick = () => { try { M.removeGarment(b.dataset.rm); K.toast('옷장에서 뺐어요'); K.refresh(); } catch (e) { K.toast(e.message); } }; });
+    $$('[data-add]', app).forEach((b) => { b.onclick = () => openAdd(b.dataset.add); });
+    $$('[data-trial]', app).forEach((b) => { b.onclick = () => {
+      if (b.dataset.trial === 'off') { M.clearTrialCloset(); store.set(TRIAL_KEY, '1'); K.toast('체험용 옷을 뺐어요'); }
+      else { M.loadTrialCloset('M'); store.set(TRIAL_KEY, null); K.toast('체험용 옷 8벌을 넣었어요'); }
+      K.refresh();
+    }; });
+  }
+  $('#infoBtn').onclick = () => K.info(NAME);
+  $('#resetBtn').onclick = () => { K.reset(); store.set(TRIAL_KEY, null); M.loadTrialCloset('M'); K.tab('home'); K.toast('처음 상태로 돌렸어요'); };
+  K.start(render, { view: 'home', params: {} });
+})();
+</script>

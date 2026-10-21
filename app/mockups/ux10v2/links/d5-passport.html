@@ -1,0 +1,696 @@
+<title>옷장 여권</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="shared/fonts/pretendard.css">
+<link rel="stylesheet" href="shared/icons/regular.css">
+<link rel="stylesheet" href="shared/icons/bold.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<script>window.EOUL_PHOTO_BASE = 'p/';</script>
+<script src="shared/eoul-mock.js"></script>
+<script src="shared/cutouts.js"></script>
+<script src="shared/kit.js"></script>
+<style>
+/* 레이아웃: 공항 출발 안내판처럼 한 줄에 한 벌. 휴대폰은 한 줄 기둥 + 아래 탭, 넓은 화면은 왼쪽 여권(숫자) | 오른쪽 안내판.
+   모서리 규칙: 면(카드·사진 칸) 14px, 안내 표지(배지) 4px, 누르는 버튼은 알약(999px).
+   색 규칙: 바탕은 무채색. 색은 의미에만 쓴다. 호박색 = 겹쳐요, 초록 = 새 조합·사기로 함, 흰색 = 보류. */
+:root {
+  --bg: #0b0d10; --surface: #13161b; --raise: #1a1e25; --tile: #dfe2e6;
+  --ink: #eef1f5; --ink-2: #a1a9b4; --ink-3: #6c7480; --line: rgba(255, 255, 255, .08); --line-2: rgba(255, 255, 255, .16);
+  --amber: #f5b70a; --amber-ink: #111111; --green: #3ccf8e; --green-ink: #06140d; --sign: #f4f5f7; --sign-ink: #111317;
+  --press: rgba(255, 255, 255, .06); --shadow: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 18px 40px -24px rgba(0, 0, 0, .8);
+  --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --r: 14px; --r-sign: 4px;
+  --k-font: var(--sans); --k-toast-bg: #f4f5f7; --k-toast-fg: #111317; --k-info-bg: #13161b; --k-info-fg: #eef1f5;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f2f3f5; --surface: #ffffff; --raise: #ffffff; --tile: #eceef1;
+    --ink: #0d0f12; --ink-2: #5a626d; --ink-3: #8a929c; --line: rgba(13, 15, 18, .08); --line-2: rgba(13, 15, 18, .16);
+    --amber: #f5b70a; --amber-ink: #111111; --green: #0f9d63; --green-ink: #ffffff; --sign: #0d0f12; --sign-ink: #ffffff;
+    --press: rgba(13, 15, 18, .05); --shadow: 0 1px 2px rgba(20, 30, 50, .06), 0 16px 36px -24px rgba(20, 30, 50, .3);
+    --k-toast-bg: #0d0f12; --k-toast-fg: #ffffff; --k-info-bg: #ffffff; --k-info-fg: #0d0f12;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f2f3f5; --surface: #ffffff; --raise: #ffffff; --tile: #eceef1;
+  --ink: #0d0f12; --ink-2: #5a626d; --ink-3: #8a929c; --line: rgba(13, 15, 18, .08); --line-2: rgba(13, 15, 18, .16);
+  --amber: #f5b70a; --amber-ink: #111111; --green: #0f9d63; --green-ink: #ffffff; --sign: #0d0f12; --sign-ink: #ffffff;
+  --press: rgba(13, 15, 18, .05); --shadow: 0 1px 2px rgba(20, 30, 50, .06), 0 16px 36px -24px rgba(20, 30, 50, .3);
+  --k-toast-bg: #0d0f12; --k-toast-fg: #ffffff; --k-info-bg: #ffffff; --k-info-fg: #0d0f12;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--sans); letter-spacing: -.005em; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+a { color: inherit; }
+.ph, .ph-bold { line-height: 1; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* 타입 단계(6개): 48 숫자 · 22 제목 · 16 본문 · 14 줄 · 12 표지·작은 글 · 11 아주 작은 표지 */
+.t48 { font-size: 48px; line-height: 1; font-weight: 700; letter-spacing: -.04em; }
+.t22 { font-size: 22px; line-height: 1.32; font-weight: 700; letter-spacing: -.025em; }
+.t14 { font-size: 14px; line-height: 1.45; }
+.t12 { font-size: 12px; line-height: 1.45; }
+.t11 { font-size: 11px; line-height: 1.4; }
+
+/* 뼈대 */
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px)); }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; gap: 4px; height: 56px; margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 0 max(8px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.top .wm { font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
+.top .wm small { margin-left: 6px; font: 500 11px var(--mono); color: var(--ink-3); letter-spacing: .04em; }
+.top .sp { flex: 1; }
+.top .back { margin-left: -10px; }
+.ib { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 999px; font-size: 20px; color: var(--ink-2); transition: background .15s, transform .15s; }
+.ib:hover { background: var(--press); color: var(--ink); }
+.ib:active { transform: scale(.94); }
+.view { animation: none; }
+.view.in-forward { animation: inR 420ms var(--spring) both; }
+.view.in-back { animation: inL 360ms var(--spring) both; }
+.view.in-tab { animation: fade 240ms ease-out both; }
+@keyframes inR { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes inL { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* 표지(배지): 공항 게이트 표지처럼 굵고 각지게 */
+.sign { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--r-sign); font: 700 12px/1 var(--sans); letter-spacing: -.01em; white-space: nowrap; }
+.sign.amber { background: var(--amber); color: var(--amber-ink); }
+.sign.green { background: var(--green); color: var(--green-ink); }
+.sign.white { background: var(--sign); color: var(--sign-ink); }
+.sign.ghost { box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); }
+.sign .mono { font-weight: 700; }
+
+/* 라벨 줄: 모노 대문자 표지 */
+.lab { font: 500 11px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.sec { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 28px 0 10px; }
+.sec h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.sec .more { font-size: 12px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 4px; }
+
+/* 여권(홈) */
+.passport { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 18px 18px 16px; position: relative; overflow: hidden; }
+.passport .head { display: flex; justify-content: space-between; align-items: center; }
+.trial { margin-top: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--raise); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; }
+.trial b { font-weight: 600; }
+.trial button { margin-left: auto; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 600; box-shadow: inset 0 0 0 1px var(--line-2); white-space: nowrap; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 18px; }
+.stat { padding-right: 8px; }
+.stat + .stat { padding-left: 14px; border-left: 1px solid var(--line); }
+.stat .v { display: flex; flex-wrap: nowrap; white-space: nowrap; align-items: baseline; gap: 3px; }
+.stat .v .t48 { font-family: var(--sans); }
+.stat .v span.u { white-space: nowrap; flex: none; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.stat .lab { margin-top: 8px; }
+.colorbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; margin-top: 22px; gap: 2px; }
+.colorbar i { display: block; height: 100%; min-width: 4px; transition: flex-grow .6s var(--spring); box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .25); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.legend i { width: 8px; height: 8px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .35); }
+.legend b { font: 500 12px var(--mono); color: var(--ink); }
+.dots { display: grid; grid-template-columns: repeat(20, 1fr); gap: 5px; margin-top: 10px; }
+.dots i { aspect-ratio: 1; border-radius: 50%; background: var(--line-2); }
+.dots i.on { background: var(--ink); }
+.dots i.new { background: var(--green); animation: popdot 600ms var(--spring) both; }
+@keyframes popdot { from { transform: scale(0); } to { transform: none; } }
+.zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 18px; border-top: 1px solid var(--line); }
+.zones button { text-align: left; padding: 12px 0 2px; }
+.zones button + button { padding-left: 12px; border-left: 1px solid var(--line); }
+.zones .n { font: 700 22px/1 var(--mono); }
+.zones .lab { margin-top: 6px; }
+
+/* 찾기 입력: 출발지 검색칸 */
+.search { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 8px 0 16px; border-radius: var(--r); background: var(--surface); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.search i { font-size: 20px; color: var(--ink-3); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; font-size: 16px; }
+.search input::placeholder { color: var(--ink-3); }
+.search .go { height: 40px; padding: 0 16px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 14px; font-weight: 700; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 12px 16px 2px; margin: 0 -16px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 14px; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line-2); transition: background .15s, transform .15s; }
+.chip:hover { color: var(--ink); background: var(--press); }
+.chip:active { transform: scale(.97); }
+.chip.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+.chip.x { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 14px; color: var(--ink); }
+.chip.x i { font-size: 14px; color: var(--ink-3); }
+
+/* 안내판 줄: 사진 · 이름 · 가격 · 표지 */
+.board { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.board .bh { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.row { width: 100%; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 16px; text-align: left; transition: background .15s; }
+.row + .row { border-top: 1px solid var(--line); }
+.row:hover { background: var(--press); }
+.row:active { background: var(--line); }
+.thumb { width: 64px; height: 80px; border-radius: 10px; background: var(--tile); overflow: hidden; display: grid; place-items: center; position: relative; }
+.thumb img, .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb img.k-white, .tile img.k-white { object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.05) contrast(1.03); padding: 8%; }
+.thumb .eo-ph, .thumb .eo-tile, .tile .eo-ph, .tile .eo-tile { position: absolute; inset: 0; width: 100% !important; height: 100% !important; aspect-ratio: auto !important; border-radius: 0 !important; }
+.row .br { font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .nm { font-size: 14px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row .pr { margin-top: 4px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.row .pr b { font: 700 14px var(--mono); }
+.row .pr small { font: 500 11px var(--mono); color: var(--ink-3); }
+.row .st { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.row .st i { color: var(--ink-3); font-size: 16px; }
+.empty { padding: 28px 18px; text-align: left; color: var(--ink-2); font-size: 14px; }
+.empty b { display: block; color: var(--ink); font-size: 16px; margin-bottom: 4px; }
+
+/* 결과 머리 */
+.rh { margin: 22px 0 4px; }
+.rh .lab { margin-bottom: 6px; }
+.notice { margin-top: 10px; font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; }
+.notice i { margin-top: 2px; color: var(--ink-3); }
+.relax { display: grid; gap: 8px; margin-top: 12px; }
+.relax button { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: var(--r); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; font-weight: 600; }
+
+/* 상세 */
+.pd { display: grid; gap: 18px; margin-top: 8px; }
+.pd .hero { position: relative; aspect-ratio: 4 / 5; max-height: 520px; width: 100%; border-radius: var(--r); background: var(--tile); overflow: hidden; display: grid; place-items: center; }
+.pd .hero img { width: 100%; height: 100%; object-fit: cover; }
+.pd .hero img.k-white { object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.05) contrast(1.03); padding: 10%; }
+.pd .hero .eo-ph, .pd .hero .eo-tile { position: absolute; inset: 0; width: 100% !important; height: 100% !important; aspect-ratio: auto !important; }
+.pd .meta .br { font-size: 14px; color: var(--ink-2); }
+.pd .meta h1 { margin: 2px 0 10px; }
+.pd .price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pd .price b { font: 700 22px var(--mono); letter-spacing: -.02em; }
+.pd .price small { font-size: 12px; color: var(--ink-3); }
+.pd .acts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.btn { height: 48px; padding: 0 18px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700; white-space: nowrap; transition: transform .15s, background .15s; text-decoration: none; }
+.btn:active { transform: scale(.97); }
+.btn.solid { background: var(--ink); color: var(--bg); }
+.btn.line { box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink); }
+.btn.line:hover { background: var(--press); }
+.btn i { font-size: 18px; }
+
+/* 탑승권형 판정 카드 */
+.pass { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); position: relative; }
+.pass .ph-top { padding: 16px 18px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pass .title { padding: 0 18px; font-size: 16px; font-weight: 700; line-height: 1.45; letter-spacing: -.015em; }
+.pass .fields { display: grid; grid-template-columns: repeat(3, 1fr); margin: 16px 18px 0; border-top: 1px solid var(--line); }
+.pass .fields > div { padding: 12px 0 14px; }
+.pass .fields > div + div { padding-left: 12px; border-left: 1px solid var(--line); }
+.pass .fields .v { font: 700 22px/1.1 var(--mono); margin-top: 6px; }
+.pass .fields .v small { font: 600 12px var(--sans); color: var(--ink-2); margin-left: 2px; }
+.tear { position: relative; height: 20px; margin: 0; }
+.tear::before { content: ""; position: absolute; left: 18px; right: 18px; top: 50%; border-top: 1px dashed var(--line-2); }
+.tear::after, .tear .l { content: ""; position: absolute; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--bg); }
+.tear::after { right: -10px; }
+.tear .l { left: -10px; }
+.pass .body { padding: 2px 18px 18px; }
+.pass .lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.owned { display: grid; gap: 8px; margin-top: 14px; }
+.owned .o { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; }
+.owned .thumb { width: 44px; height: 54px; border-radius: 8px; }
+.owned .o .nm { font-size: 14px; font-weight: 600; }
+.looks { display: flex; gap: 10px; overflow-x: auto; margin: 14px -18px 0; padding: 0 18px 2px; scrollbar-width: none; }
+.looks::-webkit-scrollbar { display: none; }
+.look { flex: none; width: 200px; }
+.look .pcs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.look .tile { position: relative; aspect-ratio: 3 / 4; border-radius: 8px; background: var(--tile); overflow: hidden; display: grid; place-items: center; }
+.look .tile.cand { box-shadow: 0 0 0 2px var(--green); }
+.look .t { margin-top: 6px; font-size: 12px; color: var(--ink-2); }
+.decide { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 6px; padding: 0 18px 18px; }
+.decide button { height: 48px; border-radius: 999px; font-size: 14px; font-weight: 700; box-shadow: inset 0 0 0 1px var(--line-2); transition: transform .15s, background .15s; }
+.decide button:active { transform: scale(.97); }
+.decide button[aria-pressed="true"][data-dec="hold"] { background: var(--sign); color: var(--sign-ink); box-shadow: none; }
+.decide button[aria-pressed="true"][data-dec="skip"] { background: var(--raise); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink-3); }
+.decide button[aria-pressed="true"][data-dec="buy"] { background: var(--green); color: var(--green-ink); box-shadow: none; }
+.fine { font-size: 12px; color: var(--ink-3); padding: 0 18px 16px; }
+
+/* 비교: 둘로 나눈 안내판 */
+.cmp { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; margin-top: 8px; }
+.cmp .heads { display: grid; grid-template-columns: 1fr 1fr; }
+.cmp .hd { padding: 12px; position: relative; }
+.cmp .hd + .hd { border-left: 1px solid var(--line); }
+.cmp .hd .tile { position: relative; aspect-ratio: 4 / 5; border-radius: 10px; background: var(--tile); overflow: hidden; display: grid; place-items: center; }
+.cmp .hd .br { margin-top: 10px; font-size: 12px; color: var(--ink-3); }
+.cmp .hd .nm { font-size: 14px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cmp .hd .rm { position: absolute; right: 16px; top: 16px; width: 32px; height: 32px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; display: grid; place-items: center; font-size: 14px; }
+.cmp .r { border-top: 1px solid var(--line); }
+.cmp .r .k { padding: 10px 12px 0; }
+.cmp .r .vs { display: grid; grid-template-columns: 1fr 1fr; }
+.cmp .r .vs div { padding: 4px 12px 12px; font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.cmp .r .vs div + div { border-left: 1px solid var(--line); }
+.cmp .r.diff .vs div { font-weight: 600; }
+.cmp .r.primary-v .vs div { font-weight: 700; }
+.cmp .note { padding: 12px; font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--line); }
+
+/* 옷장 */
+.zoneh { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 10px; }
+.zoneh h3 { margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+.zoneh h3 .mono { font-size: 12px; color: var(--ink-3); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.g { text-align: left; }
+.g .tile { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; background: var(--tile); overflow: hidden; display: grid; place-items: center; transition: transform .2s var(--spring); }
+.g:hover .tile { transform: translateY(-2px); }
+.g:active .tile { transform: scale(.97); }
+.g .cap { margin-top: 6px; font-size: 12px; line-height: 1.35; color: var(--ink-2); }
+.g .cap b { display: block; color: var(--ink); font-weight: 600; }
+.g .tr { position: absolute; left: 6px; top: 6px; z-index: 1; }
+.g.add .tile { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); font-size: 22px; }
+.g.landing .tile { visibility: hidden; }
+.g.settle .tile { animation: settle 520ms var(--spring); }
+@keyframes settle { from { transform: scale(1.06); } to { transform: none; } }
+.outfits { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.of { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 10px; }
+.of .pcs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.of .tile { position: relative; aspect-ratio: 3 / 4; border-radius: 8px; background: var(--tile); overflow: hidden; display: grid; place-items: center; }
+.of .t { margin-top: 8px; font-size: 12px; color: var(--ink-2); }
+.of .tg { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+
+/* 기록 */
+.sum { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px 0; margin-top: 8px; }
+.sum > div { padding: 0 16px; }
+.sum > div + div { border-left: 1px solid var(--line); }
+.sum .lab { white-space: nowrap; letter-spacing: .02em; }
+.sum .v { font: 700 22px/1.1 var(--mono); margin-top: 6px; }
+
+/* 아래 탭 */
+.tabs { position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; padding: 0 max(8px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(8px, env(safe-area-inset-left, 0px)); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
+.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+.tabs button { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ink-3); position: relative; }
+.tabs button i { font-size: 22px; }
+.tabs button[aria-current="page"] { color: var(--ink); }
+.tabs .badge { position: absolute; top: 8px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--amber); color: var(--amber-ink); font: 700 11px/18px var(--mono); }
+
+/* 시트 */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .5); }
+.sheet { position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; margin: 0 auto; width: min(560px, 100%); max-height: 90dvh; display: flex; flex-direction: column; background: var(--raise); border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 0 -20px 40px -20px rgba(0, 0, 0, .5); }
+.sheet .sh { display: flex; align-items: center; padding: 10px 6px 0 18px; }
+.sheet .sh h3 { margin: 0; flex: 1; font-size: 16px; font-weight: 700; }
+.sheet .bd { overflow-y: auto; padding: 4px 18px 16px; }
+.sheet .ft { padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+.sheet .ft .btn { width: 100%; }
+.grab { width: 36px; height: 4px; border-radius: 999px; background: var(--line-2); margin: 8px auto 0; }
+.stage { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; margin-top: 6px; }
+.stage .tile { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; background: var(--tile); overflow: hidden; display: grid; place-items: center; }
+.stage .tile.swap img { animation: swap 380ms var(--spring); }
+@keyframes swap { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+.kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 10px 4px; }
+.sw { display: grid; justify-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.sw i { width: 32px; height: 32px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .35); transition: box-shadow .15s, transform .2s var(--spring); }
+.sw[aria-pressed="true"] { color: var(--ink); }
+.sw[aria-pressed="true"] i { box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .35), 0 0 0 2px var(--raise), 0 0 0 4px var(--ink); transform: scale(1.06); }
+.slab { margin: 18px 0 8px; }
+
+/* 넓은 화면: 왼쪽 여권 | 오른쪽 안내판 */
+@media (min-width: 1000px) {
+  .dash { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .dash > .left { position: sticky; top: 72px; }
+  .dash > .right > .sec:first-child { margin-top: 0; }
+  .pd { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .pd .hero { position: sticky; top: 72px; }
+  .boards2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+</style>
+
+<div class="wrap" id="wrap">
+  <header class="top" id="top"></header>
+  <main id="main"></main>
+</div>
+<nav class="tabs" id="tabs" aria-label="주요 화면"><div class="in"></div></nav>
+
+<script>
+(() => {
+  const { M, esc, $, $$ } = K;
+  const DESIGN = 'D5 여권';
+  const KEY = 'd5-passport:started';
+  const ZONES = [
+    { key: 'top', name: '상의', kinds: ['tee', 'longtee', 'shirt', 'polo', 'knit', 'sweat', 'vest'] },
+    { key: 'bottom', name: '하의', kinds: ['pants', 'jeans', 'skirt'] },
+    { key: 'outer', name: '아우터', kinds: ['jacket', 'blazer', 'cardigan', 'coat', 'down'] },
+    { key: 'shoes', name: '신발', kinds: ['sneaker', 'loafer', 'boot'] },
+  ];
+  const zoneOf = (kind) => ZONES.find((z) => z.kinds.includes(kind));
+  const S = { q: '', result: null, prevStats: null, landing: null, fresh: new Set(), prevKeys: null };
+  const COLORS = Object.fromEntries(M.colorChoices().map((c) => [c.id, c]));
+
+  // 처음 열면 체험용 옷장으로 시작(한 번만). 내 옷으로 바꾸면 다시 채우지 않는다.
+  let started = null;
+  try { started = localStorage.getItem(KEY); } catch {}
+  if (!started && !M.getState().closetCount) { M.loadTrialCloset('M'); try { localStorage.setItem(KEY, '1'); } catch {} }
+
+  // ── 표지
+  const TONE = { stop: ['amber', '겹쳐요'], go: ['green', '새 조합'], pair: ['white', '짝이 필요해요'], think: ['ghost', '더 확인'], info: ['ghost', '참고'], own: ['white', '내 옷'], none: ['ghost', '옷장 없이'] };
+  const toneSign = (v) => {
+    const [c, l] = TONE[v.tone] || TONE.info;
+    return `<span class="sign ${c}">${esc(l)}${v.tone === 'go' && v.newLookCount ? ` <span class="mono">+${v.newLookCount}</span>` : ''}</span>`;
+  };
+  const OWN = { stop: 'amber', info: 'ghost', new: 'green', none: '' };
+  const ownedSign = (o) => (o && o.tone !== 'none' && o.label ? `<span class="sign ${OWN[o.tone] || 'ghost'}">${esc(o.label)}</span>` : '');
+  const DEC = { buy: ['green', '사기로 함'], hold: ['white', '보류'], skip: ['ghost', '안 사요'] };
+  const decSign = (d) => (d && DEC[d] ? `<span class="sign ${DEC[d][0]}">${DEC[d][1]}</span>` : '');
+  const recordSign = (r) => {
+    if (r.stage === 'kept') return '<span class="sign green">내 옷</span>';
+    if (r.stage === 'returned') return '<span class="sign ghost">반품</span>';
+    if (r.stage === 'ordered') return '<span class="sign white">주문함</span>';
+    if (r.stage === 'received') return '<span class="sign white">받음</span>';
+    return decSign(r.decision) || '<span class="sign ghost">결정 전</span>';
+  };
+
+  // ── 공통 조각
+  function header(view) {
+    const root = ['home', 'search', 'closet', 'records', 'compare'].includes(view) && K.current() && (K.current().view === view) && !['detail'].includes(view);
+    const back = !['home', 'search', 'closet', 'records'].includes(view) || false;
+    $('#top').innerHTML = `${back ? '<button class="ib back" id="back" aria-label="뒤로"><i class="ph ph-arrow-left"></i></button>' : ''}
+      <span class="wm">이름 미정<small>D5 · PASSPORT</small></span><span class="sp"></span>
+      <button class="ib" id="theme" aria-label="밝게·어둡게"><i class="ph ph-circle-half"></i></button>
+      <button class="ib" id="info" aria-label="시안 정보"><i class="ph ph-info"></i></button>
+      <button class="ib" id="reset" aria-label="처음부터"><i class="ph ph-arrow-counter-clockwise"></i></button>`;
+    $('#back') && ($('#back').onclick = () => K.back());
+    $('#info').onclick = () => K.info(DESIGN);
+    $('#theme').onclick = () => {
+      const r = document.documentElement;
+      const dark = r.dataset.theme ? r.dataset.theme === 'dark' : !matchMedia('(prefers-color-scheme: light)').matches;
+      r.dataset.theme = dark ? 'light' : 'dark';
+    };
+    $('#reset').onclick = () => { K.reset(); M.loadTrialCloset('M'); S.result = null; S.q = ''; S.prevStats = null; S.fresh = new Set(); K.tab('home'); K.toast('처음 상태로 돌렸어요'); };
+  }
+  function tabs(view) {
+    const n = M.compareList().length;
+    const T = [['home', 'ph-identification-card', '여권'], ['search', 'ph-magnifying-glass', '찾기'], ['closet', 'ph-coat-hanger', '옷장'], ['compare', 'ph-columns', '비교'], ['records', 'ph-list-checks', '기록']];
+    const cur = ['detail'].includes(view) ? null : view;
+    $('#tabs .in').innerHTML = T.map(([v, i, l]) => `<button data-tab="${v}" ${cur === v ? 'aria-current="page"' : ''}><i class="ph${cur === v ? '-bold' : ''} ${i}"></i>${l}${v === 'compare' && n ? `<span class="badge">${n}</span>` : ''}</button>`).join('');
+    $$('[data-tab]').forEach((b) => { b.onclick = () => K.tab(b.dataset.tab); });
+  }
+  const row = (p, { sign = '', sub = '' } = {}) => `<button class="row" data-pid="${p.id}">
+      <span class="thumb">${K.productImg(p.id)}</span>
+      <span style="min-width:0"><span class="br" style="display:block">${esc(p.brand)}</span><span class="nm">${esc(p.name)}</span>
+        <span class="pr"><b>${esc(p.priceText)}</b><small>${esc(p.priceShort || '')}</small>${sub}</span></span>
+      <span class="st">${sign}<i class="ph ph-caret-right"></i></span></button>`;
+  const bindRows = (root = document) => $$('[data-pid]', root).forEach((b) => { b.onclick = () => K.go('detail', { id: b.dataset.pid }); });
+
+  // ── 여권(홈)
+  function stats() {
+    const st = M.getState();
+    const mine = st.closet.filter((g) => g.gender === st.gender);
+    const out = M.closetOutfits({ detail: true });
+    return { st, mine, out, total: out.total, n: mine.length, rec: st.records.length };
+  }
+  function passportCard(x) {
+    const from = S.prevStats;
+    const counts = {};
+    x.mine.forEach((g) => { if (g.color) counts[g.color] = (counts[g.color] || 0) + 1; });
+    const colors = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const dotsN = Math.max(40, Math.ceil(Math.min(x.total, 60) / 20) * 20);
+    const keys = (x.out.list || []).map((l) => l.baseKey);
+    const dots = Array.from({ length: dotsN }, (_, i) => {
+      const on = i < x.total;
+      const fresh = on && keys[i] && S.fresh.has(keys[i]);
+      return `<i class="${fresh ? 'new' : on ? 'on' : ''}"></i>`;
+    }).join('');
+    const z = ZONES.map((zz) => [zz, x.mine.filter((g) => zz.kinds.includes(g.kind)).length]);
+    return `<section class="passport" aria-label="옷장 여권">
+      <div class="head"><span class="lab">CLOSET PASSPORT · ${x.st.gender === 'F' ? 'W' : 'M'}</span><span class="lab mono">${new Date().toISOString().slice(0, 10).replace(/-/g, '.')}</span></div>
+      ${x.st.trialCount ? `<div class="trial"><i class="ph ph-info" style="color:var(--ink-3)"></i><span><b>체험용 옷 ${x.st.trialCount}벌</b>로 보는 중이에요</span><button id="mine">내 옷으로 시작</button></div>` : ''}
+      <div class="stats">
+        <div class="stat"><div class="v">${stat(x.n, from?.n, 'n')}<span class="u">벌</span></div><div class="lab">내 옷장</div></div>
+        <div class="stat"><div class="v">${stat(x.total, from?.total, 't')}<span class="u">가지</span></div><div class="lab">입을 조합</div></div>
+        <div class="stat"><div class="v">${stat(x.rec, from?.rec, 'r')}<span class="u">건</span></div><div class="lab">결정 기록</div></div>
+      </div>
+      <div class="lab" style="margin-top:22px">COLOR · 옷장 색 분포</div>
+      ${colors.length ? `<div class="colorbar" role="img" aria-label="색 분포: ${colors.map(([c, n]) => `${COLORS[c]?.label} ${n}벌`).join(', ')}">${colors.map(([c, n]) => `<i style="flex-grow:${n};background:${COLORS[c]?.hex || '#888'}"></i>`).join('')}</div>
+        <div class="legend">${colors.map(([c, n]) => `<span><i style="background:${COLORS[c]?.hex}"></i>${esc(COLORS[c]?.label)} <b>${n}</b></span>`).join('')}</div>` : '<div class="t12" style="color:var(--ink-3);margin-top:8px">옷을 넣으면 색 분포가 생겨요.</div>'}
+      <div class="lab" style="margin-top:20px">OUTFITS · 한 점이 한 조합</div>
+      <div class="dots" role="img" aria-label="입을 수 있는 조합 ${x.total}가지">${dots}</div>
+      <div class="zones">${z.map(([zz, n]) => `<button data-zone="${zz.key}" aria-label="${zz.name} ${n}벌"><div class="n">${String(n).padStart(2, '0')}</div><div class="lab">${zz.name}</div></button>`).join('')}</div>
+    </section>`;
+  }
+  function stat(v, from, id) { return `<span class="t48" data-stat="${id}">${K.odo(v, from == null ? v : from)}</span>`; }
+
+  function viewHome() {
+    const x = stats();
+    const recs = x.st.records.slice(0, 4);
+    const ex = M.examples();
+    const html = `<div class="dash"><div class="left">${passportCard(x)}</div>
+      <div class="right">
+        <div class="sec"><h2>어떤 옷을 찾아요?</h2></div>
+        <form class="search" id="sform" role="search"><i class="ph ph-magnifying-glass"></i><input id="q" type="search" enterkeyhint="search" placeholder="예: ${esc(ex[0])}" aria-label="찾을 옷"><button class="go" type="submit">찾기</button></form>
+        <div class="chips">${ex.slice(0, 5).map((e) => `<button class="chip" data-ex="${esc(e)}">${esc(e)}</button>`).join('')}</div>
+        <div class="sec"><h2>최근 결정</h2>${recs.length ? '<button class="more" data-go="records">전체<i class="ph ph-caret-right"></i></button>' : ''}</div>
+        <div class="board">${recs.length ? recs.map((r) => r.product ? row({ ...r.product, priceShort: '수집가' }, { sign: recordSign(r) }) : '').join('') : '<div class="empty"><b>아직 결정한 옷이 없어요</b>찾은 옷을 열고 보류·안 사요·사기로 함 중 하나를 고르면 여기 남아요.</div>'}</div>
+        <div class="sec"><h2>입을 수 있는 조합</h2><button class="more" data-go="closet">옷장<i class="ph ph-caret-right"></i></button></div>
+        ${outfitCards(x.out.list.slice(0, 4))}
+      </div></div>`;
+    return html;
+  }
+  function outfitCards(list) {
+    if (!list.length) return '<div class="board"><div class="empty"><b>아직 조합이 없어요</b>상의·하의·신발이 한 벌씩 있으면 조합이 생겨요.</div></div>';
+    const order = ['outer', 'top', 'dress', 'bottom', 'shoes'];
+    return `<div class="outfits">${list.map((l) => {
+      const ps = l.pieces.filter((p) => order.includes(p.role)).sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role)).slice(0, 4);
+      const fresh = S.fresh.has(l.baseKey);
+      return `<article class="of"><div class="pcs">${ps.map((p) => `<span class="tile">${K.pieceImg(p)}</span>`).join('')}${Array.from({ length: 4 - ps.length }, () => '<span></span>').join('')}</div>
+        <div class="tg"><span class="lab">${l.formulaLook ? esc(l.formula) : 'BASIC'}</span>${fresh ? '<span class="sign green">새로 생김</span>' : ''}</div>
+        <div class="t">${ps.map((p) => `${esc(p.colorLabel)} ${esc(p.kindName)}`).join(' · ')}</div></article>`;
+    }).join('')}</div>`;
+  }
+
+  // ── 찾기·결과
+  function viewSearch(params) {
+    if (params.q && params.q !== S.q) { S.q = params.q; S.result = M.ask(params.q); }
+    const r = S.result;
+    const ex = M.examples();
+    let res = '';
+    if (r) {
+      const ownedOn = M.getState().closetCount > 0;
+      res = `<div class="rh"><div class="lab">RESULT · ${r.understood ? `${r.total}개` : '못 읽음'}</div><h1 class="t22" style="margin:0">${esc(r.title)}</h1></div>
+        ${r.conditions.length ? `<div class="chips" aria-label="알아들은 조건">${r.conditions.map((c) => c.removable ? `<button class="chip x" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="chip on" style="display:inline-flex;align-items:center">${esc(c.label)}</span>`).join('')}</div>` : ''}
+        ${r.notices.slice(0, 2).map((n) => `<div class="notice"><i class="ph ph-info"></i><span>${esc(n.text)}</span></div>`).join('')}
+        ${r.products.length ? `<div class="sec"><h2>맞는 상품</h2><span class="t12" style="color:var(--ink-3)">${esc(r.listNote)}</span></div>
+          <div class="board boards-list">${r.products.slice(0, 16).map((p) => row(p, { sign: ownedOn ? ownedSign(p.owned) : '' })).join('')}</div>` : ''}
+        ${r.offOccasion?.length ? `<div class="sec"><h2>${esc(r.offOccasionTitle)}</h2></div><div class="board">${r.offOccasion.slice(0, 6).map((p) => row(p, { sign: ownedOn ? ownedSign(p.owned) : '' })).join('')}</div>` : ''}
+        ${r.understood && !r.products.length ? (() => { const rx = M.relax(r); return rx.length ? `<div class="sec"><h2>조건을 하나 빼면</h2></div><div class="relax">${rx.map((x) => `<button data-relax='${esc(JSON.stringify(x.drop))}'><span>${esc(x.title)}</span><i class="ph ph-caret-right"></i></button>`).join('')}</div>` : ''; })() : ''}
+        ${!r.understood ? `<div class="sec"><h2>이렇게 적어 보세요</h2></div><div class="chips">${r.examples.slice(0, 4).map((e) => `<button class="chip" data-ex="${esc(e)}">${esc(e)}</button>`).join('')}</div>` : ''}`;
+    }
+    return `<div class="sec" style="margin-top:12px"><h2>찾기</h2><span class="t12" style="color:var(--ink-3)">정해 둔 규칙으로 읽어요</span></div>
+      <form class="search" id="sform" role="search"><i class="ph ph-magnifying-glass"></i><input id="q" type="search" enterkeyhint="search" value="${esc(S.q)}" placeholder="예: ${esc(ex[0])}" aria-label="찾을 옷"><button class="go" type="submit">찾기</button></form>
+      ${r ? '' : `<div class="chips">${ex.map((e) => `<button class="chip" data-ex="${esc(e)}">${esc(e)}</button>`).join('')}</div>`}
+      ${res}`;
+  }
+  function bindSearch() {
+    const f = $('#sform');
+    if (f) f.onsubmit = (e) => { e.preventDefault(); const q = $('#q').value.trim(); if (!q) { $('#q').focus(); return; } runSearch(q); };
+    $$('[data-ex]').forEach((b) => { b.onclick = () => runSearch(b.dataset.ex); });
+    $$('[data-drop]').forEach((b) => { b.onclick = () => { const drop = [...(S.result.dropped || []), b.dataset.drop]; S.result = M.ask(S.result.text, { drop }); K.refresh(); } ; });
+    $$('[data-relax]').forEach((b) => { b.onclick = () => { S.result = M.ask(S.result.text, { drop: JSON.parse(b.dataset.relax) }); K.refresh(); }; });
+  }
+  function runSearch(q) {
+    S.q = q; S.result = M.ask(q);
+    if (K.current().view === 'search') K.refresh(); else K.tab('search');
+  }
+
+  // ── 상세
+  function viewDetail({ id }) {
+    const p = M.product(id);
+    if (!p) return '<div class="empty"><b>상품을 찾을 수 없어요</b></div>';
+    const v = p.verdict;
+    const dec = v.record?.decision;
+    const inCmp = M.compareHas(id);
+    const overlap = (v.owned || []).filter((o) => ['same-product', 'same-color'].includes(o.relation)).length;
+    const looks = (v.looks || []).filter((l) => l.pieces.some((x) => x.candidate));
+    return `<div class="pd">
+      <div class="hero">${K.productImg(id)}</div>
+      <div>
+        <div class="meta"><div class="br">${esc(p.brand)}</div><h1 class="t22">${esc(p.name)}</h1>
+          <div class="price"><b>${esc(p.priceText)}</b><small>${esc(p.priceNote)} · ${esc(p.store)}</small></div>
+          <div class="t12" style="color:var(--ink-3);margin-top:6px">${esc(p.colorLabel)} · ${esc(p.slotName)} · ${esc(p.colorNote)}</div>
+          <div class="acts">
+            <button class="btn ${inCmp ? 'solid' : 'line'}" id="cmp"><i class="ph${inCmp ? '-bold ph-check' : ' ph-columns'}"></i>${inCmp ? '비교함에 있어요' : '비교에 담기'}</button>
+            <a class="btn line" href="${esc(p.url)}" target="_blank" rel="noopener">무신사에서 보기<i class="ph ph-arrow-up-right"></i></a>
+          </div>
+        </div>
+        <section class="pass" aria-label="내 옷과 판정" style="margin-top:18px">
+          <div class="ph-top"><span class="lab">내 옷과 · BOARDING CHECK</span>${toneSign(v)}</div>
+          <div class="title">${esc(v.title)}</div>
+          <div class="fields">
+            <div><div class="lab">겹치는 옷</div><div class="v">${v.basis === 'none' ? '-' : overlap}<small>벌</small></div></div>
+            <div><div class="lab">새 조합</div><div class="v">${v.basis === 'none' ? '-' : `+${v.newLookCount || 0}`}<small>개</small></div></div>
+            <div><div class="lab">기준</div><div class="v" style="font-size:14px;font-family:var(--sans);font-weight:600;line-height:1.35">${esc(v.basisLabel)}</div></div>
+          </div>
+          <div class="tear"><span class="l"></span></div>
+          <div class="body">
+            <ul class="lines">${(v.lines || []).slice(0, 3).map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+            ${(v.owned || []).length ? `<div class="lab" style="margin-top:16px">옷장에서 찾은 옷</div><div class="owned">${v.owned.slice(0, 4).map((o) => `<div class="o"><span class="thumb">${K.garmentImg(o)}</span><span><span class="nm">${esc(o.colorLabel)} ${esc(o.kindName)}</span><span class="t12" style="display:block;color:var(--ink-3)">${esc(o.relationLabel)}${o.trial ? ' · 체험용' : ''}</span></span>${['same-product', 'same-color'].includes(o.relation) ? '<span class="sign amber">겹쳐요</span>' : '<span class="sign ghost">비슷해요</span>'}</div>`).join('')}</div>` : ''}
+            ${looks.length ? `<div class="lab" style="margin-top:16px">이 옷을 더하면</div><div class="looks">${looks.map((l) => `<div class="look"><div class="pcs">${l.pieces.filter((x) => x.role !== 'acc').slice(0, 4).map((x) => `<span class="tile ${x.candidate ? 'cand' : ''}">${K.pieceImg(x)}</span>`).join('')}</div><div class="t">${esc(l.title)}${l.new ? ' · 새 조합' : ''}</div></div>`).join('')}</div>` : ''}
+          </div>
+          <div class="decide" role="group" aria-label="결정">${[['hold', '보류'], ['skip', '안 살래요'], ['buy', '사기로 했어요']].map(([k, l]) => `<button data-dec="${k}" aria-pressed="${dec === k}">${l}</button>`).join('')}</div>
+          <div class="fine">${esc(v.fine || '')}</div>
+        </section>
+      </div></div>`;
+  }
+  function bindDetail({ id }) {
+    $('#cmp') && ($('#cmp').onclick = () => {
+      try {
+        if (M.compareHas(id)) { M.compareRemove(id); K.toast('비교함에서 뺐어요'); }
+        else { M.compareAdd(id); const n = M.compareList().length; K.toast(n >= 2 ? `비교함 ${n}개 · 아래 '비교'에서 봐요` : '비교함에 담았어요 · 하나 더 담아 봐요'); }
+      } catch (e) { K.toast(e.message); }
+      K.refresh();
+    });
+    $$('[data-dec]').forEach((b) => { b.onclick = () => {
+      const before = M.getState().records.length;
+      M.decide(id, b.dataset.dec);
+      K.toast(b.dataset.dec === 'buy' ? '사기로 했어요 · 기록에 남겼어요' : b.dataset.dec === 'hold' ? '보류로 기록했어요' : '안 사기로 기록했어요');
+      K.refresh();
+    }; });
+  }
+
+  // ── 비교
+  function viewCompare() {
+    const ids = M.compareList();
+    if (ids.length < 2) {
+      return `<div class="sec" style="margin-top:12px"><h2>비교</h2><span class="lab mono">${ids.length}/2</span></div>
+        <div class="board">${ids.map((id) => { const p = M.product(id); return p ? row(p, { sign: '<span class="sign white">담음</span>' }) : ''; }).join('')}
+        <div class="empty"><b>${ids.length ? '하나만 더 담으면 나란히 볼 수 있어요' : '비교할 옷을 두 개 담아 주세요'}</b>상품을 열고 '비교에 담기'를 누르세요.</div></div>
+        <button class="btn line" style="margin-top:14px" data-go="search"><i class="ph ph-magnifying-glass"></i>찾으러 가기</button>`;
+    }
+    const show = ids.slice(-2);
+    const c = M.compareRows(show);
+    return `<div class="sec" style="margin-top:12px"><h2>나란히 보기</h2><span class="lab mono">${ids.length > 2 ? `최근 2개 / ${ids.length}` : '2/2'}</span></div>
+      <section class="cmp" aria-label="두 상품 비교">
+        <div class="heads">${c.items.map((p) => `<div class="hd"><button class="tile" data-pid="${p.id}" style="width:100%" aria-label="${esc(p.name)} 자세히">${K.productImg(p.id)}</button><button class="rm" data-rm="${p.id}" aria-label="비교에서 빼기"><i class="ph-bold ph-x"></i></button><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}</div></div>`).join('')}</div>
+        ${c.rows.filter((r) => r.primary).map((r) => `<div class="r ${r.same ? '' : 'diff'} ${r.key === 'verdict' ? 'primary-v' : ''}"><div class="k lab">${esc(r.label)}${r.same ? ' · 같음' : ''}</div><div class="vs">${r.values.map((val, i) => `<div>${r.key === 'verdict' ? `${toneSign(M.judge(c.items[i].id))}<div style="margin-top:6px">${esc(val)}</div>` : r.key === 'price' ? `<span class="mono">${esc(val)}</span>` : esc(val)}</div>`).join('')}</div></div>`).join('')}
+        <div class="note">${esc(c.note)}</div>
+      </section>`;
+  }
+  function bindCompare() {
+    $$('[data-rm]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); M.compareRemove(b.dataset.rm); K.refresh(); }; });
+  }
+
+  // ── 옷장
+  function viewCloset() {
+    const x = stats();
+    const zones = ZONES.map((z) => {
+      const items = x.mine.filter((g) => z.kinds.includes(g.kind));
+      return `<div class="zoneh"><h3>${z.name}<span class="mono">${String(items.length).padStart(2, '0')}</span></h3><button class="more t12" data-add="${z.key}" style="color:var(--ink-2);height:32px;display:inline-flex;align-items:center;gap:4px"><i class="ph ph-plus"></i>넣기</button></div>
+        <div class="grid">${items.map((g) => `<button class="g ${g.id === S.landing ? 'landing' : ''}" data-g="${g.id}" aria-label="${esc(g.colorLabel)} ${esc(g.kindName)}${g.trial ? ' 체험용' : ''}"><span class="tile">${g.trial ? '<span class="sign ghost tr" style="background:rgba(255,255,255,.85);color:#333;box-shadow:none">체험용</span>' : ''}${K.garmentImg(g)}</span><span class="cap"><b>${esc(g.colorLabel)} ${esc(g.kindName)}</b></span></button>`).join('')}
+          ${items.length ? '' : `<button class="g add" data-add="${z.key}"><span class="tile"><i class="ph ph-plus"></i></span><span class="cap">가진 ${z.name} 넣기</span></button>`}</div>`;
+    }).join('');
+    return `<div class="dash"><div class="left">${passportCard(x)}<p class="t12" style="color:var(--ink-3);margin:12px 2px 0">옷장 사진은 내 옷이 아니라 종류·색이 같은 비슷한 상품 사진이에요.</p></div>
+      <div class="right"><div class="sec"><h2>옷장</h2><button class="btn solid" data-add="" style="height:40px"><i class="ph-bold ph-plus"></i>가진 옷 넣기</button></div>
+      ${zones}
+      <div class="sec" id="looks"><h2>입을 수 있는 조합 <span class="mono" style="color:var(--ink-3);font-size:14px">${x.total}</span></h2></div>
+      <p class="t12" style="color:var(--ink-3);margin:-4px 0 10px">종류·색이 어울리는지만 봤어요. 핏·소재는 따지지 않았어요.</p>
+      ${outfitCards([...x.out.list].sort((a, b) => Number(S.fresh.has(b.baseKey)) - Number(S.fresh.has(a.baseKey))).slice(0, 12))}</div></div>`;
+  }
+  function bindPassport() {
+    $('#mine') && ($('#mine').onclick = () => { M.clearTrialCloset(); S.prevStats = null; S.fresh = new Set(); K.toast('체험용 옷을 뺐어요 · 가진 옷을 넣어 보세요'); K.tab('closet'); });
+    $$('[data-zone]').forEach((b) => { b.onclick = () => K.tab('closet'); });
+    $$('[data-add]').forEach((b) => { b.onclick = () => openAdd(b.dataset.add || null); });
+    $$('[data-g]').forEach((b) => { b.onclick = () => openGarment(b.dataset.g); });
+  }
+
+  // 시트
+  function sheet(title) {
+    const w = document.createElement('div');
+    w.innerHTML = `<div class="scrim" data-x></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="sh"><h3>${esc(title)}</h3><button class="ib" data-x aria-label="닫기"><i class="ph ph-x"></i></button></div><div class="bd"></div><div class="ft"></div></div>`;
+    document.body.appendChild(w);
+    const el = { w, sh: $('.sheet', w), bd: $('.bd', w), ft: $('.ft', w), scrim: $('.scrim', w) };
+    if (!K.reduce) { el.sh.animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: K.SPRING.ms, easing: K.SPRING.css }); el.scrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }); }
+    const onKey = (e) => { if (e.key === 'Escape') el.close(); };
+    document.addEventListener('keydown', onKey);
+    el.close = async (instant) => {
+      document.removeEventListener('keydown', onKey);
+      if (!instant && !K.reduce) { el.scrim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }); await el.sh.animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 220, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }).finished; }
+      w.remove();
+    };
+    $$('[data-x]', w).forEach((b) => { b.onclick = () => el.close(); });
+    setTimeout(() => $('.ib[data-x]', w)?.focus({ preventScroll: true }), 30);
+    return el;
+  }
+  function openAdd(zone) {
+    const g = M.getState().gender;
+    const kinds = M.kindChoices(g).filter((k) => ZONES.some((z) => z.kinds.includes(k.id)));
+    const ordered = zone ? [...kinds.filter((k) => zoneOf(k.id)?.key === zone), ...kinds.filter((k) => zoneOf(k.id)?.key !== zone)] : kinds;
+    let kind = ordered[0].id, color = null;
+    const el = sheet('가진 옷 넣기');
+    const paint = (swap) => {
+      const kn = kinds.find((k) => k.id === kind)?.name || '';
+      el.bd.innerHTML = `<div class="stage"><span class="tile ${swap ? 'swap' : ''}" id="stg">${color ? K.garmentImg({ gender: g, kind, color, slot: M.slotChoices(kind, g)[0]?.id }) : '<span class="lab">COLOR?</span>'}</span>
+          <div><div class="t22" style="font-size:16px">${color ? `${esc(COLORS[color].label)} ${esc(kn)}` : esc(kn)}</div><div class="t12" style="color:var(--ink-3);margin-top:4px">${color ? '비슷한 상품 사진으로 보여요' : '색을 고르면 사진이 붙어요'}</div></div></div>
+        <div class="lab slab">종류</div><div class="kinds">${ordered.map((k) => `<button class="chip ${k.id === kind ? 'on' : ''}" data-k="${k.id}" aria-pressed="${k.id === kind}">${esc(k.name)}</button>`).join('')}</div>
+        <div class="lab slab">색</div><div class="cols">${M.colorChoices().map((c) => `<button class="sw" data-c="${c.id}" aria-pressed="${c.id === color}" aria-label="${esc(c.label)}"><i style="background:${c.hex}"></i>${esc(c.label)}</button>`).join('')}</div>`;
+      el.ft.innerHTML = `<button class="btn solid" id="hang" ${color ? '' : 'disabled style="opacity:.35"'}><i class="ph-bold ph-plus"></i>${color ? '옷장에 넣기' : '색을 골라 주세요'}</button>`;
+      $$('[data-k]', el.bd).forEach((b) => { b.onclick = () => { kind = b.dataset.k; paint(true); }; });
+      $$('[data-c]', el.bd).forEach((b) => { b.onclick = () => { color = b.dataset.c; paint(true); }; });
+      $('#hang', el.ft).onclick = () => color && hang();
+    };
+    const hang = async () => {
+      const src = $('#stg', el.bd);
+      const from = src.getBoundingClientRect();
+      const html = src.innerHTML;
+      const before = stats();
+      const prevKeys = new Set((before.out.list || []).map((l) => l.baseKey));
+      const garment = M.addGarment({ kind, color, slot: M.slotChoices(kind, g)[0]?.id || null, gender: g });
+      const after = M.closetOutfits({ detail: true });
+      S.fresh = new Set(after.list.map((l) => l.baseKey).filter((k) => !prevKeys.has(k)));
+      S.prevStats = { n: before.n, total: before.total, rec: before.rec };
+      S.landing = garment.id;
+      if (K.current().view !== 'closet') K.tab('closet'); else K.refresh();
+      const tile = $(`[data-g="${garment.id}"] .tile`);
+      if (tile) { const r = tile.getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 100) scrollTo({ top: scrollY + r.top - innerHeight * .4, behavior: 'instant' }); }
+      el.close();
+      await K.fly(html, from, tile, { radius: 12, bg: 'var(--tile)' });
+      S.landing = null;
+      const btn = tile?.closest('.g'); btn?.classList.remove('landing'); btn?.classList.add('settle');
+      K.rollOdo($('.passport'));
+      $$('.passport .dots i.new').forEach((d, i) => { d.style.animationDelay = `${i * 40}ms`; });
+      const gained = after.total - before.total;
+      K.toast(gained > 0 ? `넣었어요 · 새 조합 ${S.fresh.size || gained}개` : '넣었어요 · 상의·하의·신발이 모이면 조합이 생겨요');
+      S.prevStats = null;
+    };
+    paint(false);
+  }
+  function openGarment(id) {
+    const gm = M.getState().closet.find((x) => x.id === id);
+    if (!gm) return;
+    const el = sheet(`${gm.colorLabel} ${gm.kindName}`);
+    el.bd.innerHTML = `<div class="stage"><span class="tile">${K.garmentImg(gm)}</span><div><div class="sign ${gm.trial ? 'ghost' : 'white'}">${esc(gm.sourceLabel)}</div><div class="t12" style="color:var(--ink-3);margin-top:8px">비슷한 상품 사진이에요. 내 옷 사진이 아니에요.</div></div></div>`;
+    el.ft.innerHTML = '<button class="btn line" id="rm"><i class="ph ph-minus"></i>옷장에서 빼기</button>';
+    $('#rm', el.ft).onclick = () => {
+      try {
+        const before = stats();
+        M.removeGarment(id);
+        S.prevStats = { n: before.n, total: before.total, rec: before.rec }; S.fresh = new Set();
+        el.close(true); K.refresh();
+        K.toast('옷장에서 뺐어요');
+      } catch (e) { K.toast(e.message); }
+    };
+  }
+
+  // ── 기록
+  function viewRecords() {
+    const recs = M.getState().records;
+    const buy = recs.filter((r) => r.decision === 'buy' && r.product);
+    const total = buy.reduce((s, r) => s + (r.product.price || 0), 0);
+    return `<div class="sec" style="margin-top:12px"><h2>결정 기록</h2><span class="t12" style="color:var(--ink-3)">직접 남긴 기록이에요</span></div>
+      <div class="sum"><div><div class="lab">보류</div><div class="v">${recs.filter((r) => r.decision === 'hold').length}</div></div><div><div class="lab">안 사요</div><div class="v">${recs.filter((r) => r.decision === 'skip').length}</div></div><div><div class="lab">사기로 함</div><div class="v">${buy.length}</div></div></div>
+      ${buy.length ? `<p class="t12" style="color:var(--ink-2);margin:10px 2px 0">사기로 한 옷 수집가 합계 <span class="mono" style="color:var(--ink);font-weight:700">${M.formatPrice(total)}</span> · 쿠폰·배송비 제외</p>` : ''}
+      <div class="sec"><h2>안내판</h2></div>
+      <div class="board">${recs.length ? recs.map((r) => r.product ? row({ ...r.product, priceShort: '수집가' }, { sign: recordSign(r), sub: r.stage !== 'candidate' ? `<small style="font-family:var(--sans)">${esc(r.stageLabel || '')}</small>` : '' }) : '').join('') : '<div class="empty"><b>아직 기록이 없어요</b>상품을 열고 결정을 고르면 여기 남아요.</div>'}</div>`;
+  }
+
+  // ── 그리기
+  const VIEWS = { home: [viewHome, bindPassport], search: [viewSearch, bindSearch], detail: [viewDetail, bindDetail], compare: [viewCompare, bindCompare], closet: [viewCloset, bindPassport], records: [viewRecords, () => {}] };
+  function render(view, params, dir) {
+    const [v, b] = VIEWS[view] || VIEWS.home;
+    header(view);
+    tabs(view);
+    const m = $('#main');
+    m.innerHTML = `<div class="view ${dir === 'forward' ? 'in-forward' : dir === 'back' ? 'in-back' : dir === 'tab' ? 'in-tab' : ''}">${v(params)}</div>`;
+    b(params);
+    if (view === 'home') bindSearch();
+    bindRows(m);
+    $$('[data-go]', m).forEach((x) => { x.onclick = () => K.tab(x.dataset.go); });
+    if (S.prevStats && !S.landing) { K.rollOdo(m); S.prevStats = null; }
+  }
+  K.start(render, { view: 'home', params: {} });
+})();
+</script>

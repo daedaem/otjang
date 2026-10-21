@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko" data-team="01">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>디자인 보드 01 답 먼저</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 01 고유 부품: 답 카드 */
+  .answer { margin: 14px var(--gut) 0; padding: 12px; border: 1.5px solid var(--ink); border-radius: var(--r-card); }
+  .answer .top { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 12px; }
+  .answer .top .ph { border-radius: var(--r-photo); overflow: hidden; }
+  .answer .k { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .answer .b { margin-top: 4px; font-size: 13px; font-weight: 700; }
+  .answer .n { font-size: 15px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .answer .p { margin-top: 6px; font-size: 18px; font-weight: 800; }
+  .answer .why { margin-top: 6px; font-size: 13px; color: var(--sub); line-height: 1.4; }
+  .answer .v { display: flex; align-items: center; gap: 6px; margin: 12px 0 10px; font-size: 16px; font-weight: 700; }
+  .answer .v.stop { color: var(--stop); } .answer .v.go { color: var(--go); }
+  .answer .decide .btn { min-height: 44px; }
+  .answer .more { display: flex; justify-content: space-between; align-items: center; min-height: 44px; margin-top: 4px; font-size: 14px; font-weight: 700; }
+  .others-h { margin: 22px var(--gut) 10px; font-size: 16px; font-weight: 700; }
+  .pc-wrap { max-width: 1280px; margin: 0 auto; padding: 20px 32px 0; }
+  .pc-cols { display: grid; grid-template-columns: 5fr 7fr; gap: 32px; margin-top: 16px; align-items: start; }
+  .answer.pc { margin: 0; padding: 16px; }
+  .answer.pc .top { grid-template-columns: 220px minmax(0, 1fr); gap: 16px; }
+  .answer.pc .n { font-size: 16px; } .answer.pc .p { font-size: 22px; }
+  .pdp-pc { display: grid; grid-template-columns: 7fr 5fr; gap: 40px; padding: 24px 32px 0; max-width: 1280px; margin: 0 auto; }
+  .pdp-pc .pdp-info { padding: 0; } .pdp-pc .verdict, .pdp-pc .sec { margin-left: 0; margin-right: 0; }
+</style>
+<script src="../shared/eoul-mock.js"></script>
+<script src="kit.js"></script>
+</head>
+<body>
+<script>
+(() => {
+  if (!window.K) return;
+  const { M, esc, ico, ph } = K;
+  K.board({ n: '01', name: '답 먼저', idea: '첫 후보가 곧 답이다. 결과 맨 위 답 카드에서 사진·이름·가격·판정·결정까지 보고, 다른 후보는 바로 아래 2열로 훑는다. 큰 사진은 상세에서.', refs: 'baymard-query-types · hig-search-fields · baymard-list-info · Webby 2023 Google Store(Best Mobile User Experience 부문, 수상 사실만)' });
+  const { r, d, p } = K.data();
+  const v0 = d.verdict;
+  const answer = (pr, v, { pc = false, total = r.total } = {}) => `<section class="answer${pc ? ' pc' : ''}"><div class="top"><div class="ph">${ph(pr)}</div><div><div class="k">첫 후보 · 1/${total}</div><div class="b">${esc(pr.brand)}</div><div class="n">${esc(pr.name)}</div><div class="p">${esc(pr.priceText)}</div><div class="why">${esc(pr.reason)}</div></div></div><div class="v ${esc(v.tone)}">${ico(v.tone === 'stop' ? 'warn' : v.tone === 'go' ? 'ok' : 'info', 's')}${esc(v.title)}</div>${K.decide(v)}<a class="more">가진 ${esc(v.addSuggestion?.kindName || '옷')} 넣고 비교 ${ico('plus', 's')}</a></section>`;
+  const results = (rr, vv) => `${K.hdr({ n: '01', closet: M.getState().closetCount })}<div class="pad">${K.search(K.Q)}<div style="margin-top:10px">${K.chips(rr)}</div>${K.meta(rr)}</div>${answer(rr.products[0], vv, { total: rr.total })}<h2 class="others-h">다른 후보 ${rr.total - 1}개</h2><div class="pad" style="padding-top:0"><div class="grid2">${rr.products.slice(1, 5).map((x) => K.card(x, { cmp: true })).join('')}</div></div>${K.tabbar(0)}`;
+  const pdp = (dd, extra = '', before = null) => `${K.hdr({ n: '01', back: true })}${K.pdpPhoto(dd)}${K.pdpInfo(dd)}${K.verdict(dd.verdict, { before })}<div class="sec"><h2>새 상품과 중고</h2>${K.newUsed(dd.id)}</div><div class="sec">${K.seller()}</div><div class="sec"><h2>같은 조건 다른 선택</h2><div class="grid2">${dd.alternatives.slice(0, 4).map((x) => K.card(x, { cmp: true })).join('')}</div></div><div style="height:96px"></div>${K.dbar(dd.verdict)}${extra}`;
+  // 1행: 빈 옷장
+  const f1 = K.phone('결과 · 빈 옷장', results(r, v0), { notes: ['답 카드 높이 ≤ 340(화면 40%), 아래 후보 2개 이상이 첫 화면에 보인다', '답 카드 사진·이름을 누르면 상세(#/p/id)', '결정 강조는 판정이 기울 때만 하나(지금은 없음)'] });
+  const f2 = K.phone('검색 제안', `${K.hdr({ n: '01' })}<div class="pad">${K.search('셔')}${K.sugs('셔')}</div>`, { clip: true, fold: false, notes: ['최근·예시·종류 순, 최대 6줄, 줄 높이 48'] });
+  const f3 = K.phone('상품 상세 · 빈 옷장', pdp(d), { notes: ['사진 화면 폭 100% 4:5, ‘크게’ → 사진 크게 보기', '가격 아래 판정 한 줄 요약 → 판정 블록', '하단 결정 바 68(탭바 숨김)'] });
+  const f4 = K.phone('사진 크게 보기', `${K.hdr({ n: '01', back: true })}${K.viewer(d)}`, { clip: true, fold: false });
+  const f5 = K.phone('옷 넣기 시트', `<div style="height:844px;overflow:hidden;position:relative">${pdp(d, K.addSheet(v0))}</div>`, { clip: true, fold: false, notes: ['종류는 이 상품과 같은 세부 종류로 미리 정함, 색만 고름', '색 고르기 전 주 버튼 비활성'] });
+  K.row(f1 + f2 + f3 + f4 + f5);
+  // 2행: 옷 넣은 뒤 · 빈 결과 · PC
+  const s = v0.addSuggestion;
+  M.addGarment({ kind: s.kind, slot: s.slot, color: 'white' });
+  const r2 = M.ask(K.Q); const d2 = M.product(r2.products[0].id);
+  const f6 = K.phone('옷 넣고 같은 상품으로 복귀', pdp(d2, '', v0.title), { notes: ['3초간 ‘방금 바뀜 · 전에는 …’', '겹치는 내 옷 사진에 ‘비슷한 상품 사진’ 표시'] });
+  const f7 = K.phone('결과 · 옷 한 벌 넣은 뒤', results(r2, d2.verdict), { notes: ['카드에 겹침 꼬리표(아이콘+글자+색)'] });
+  const re = M.ask('셔츠 1만원 이하');
+  const f8 = K.phone('빈 결과 · 답 카드 자리', `${K.hdr({ n: '01' })}<div class="pad">${K.search('셔츠 1만원 이하')}<div style="margin-top:10px">${K.chips(re)}</div></div><div class="pad">${K.empty(re)}</div>${K.tabbar(0)}`, { notes: ['조건 하나 뺀 대안은 결과 수와 사진으로 보여 주고 누를 때만 적용(자동 적용 없음)'] });
+  K.row(f6 + f7 + f8);
+  const pcRes = `${K.hdrPc({ n: '01', q: K.Q })}<div class="pc-wrap">${K.chips(r2)}${K.meta(r2)}<div class="pc-cols"><div style="position:sticky;top:80px">${answer(r2.products[0], d2.verdict, { pc: true })}</div><div><div class="f14" style="font-weight:700;margin-bottom:12px">다른 후보 ${r2.total - 1}개</div><div class="grid3">${r2.products.slice(1, 7).map((x) => K.card(x, { cmp: true })).join('')}</div></div></div></div>`;
+  const pcPdp = `${K.hdrPc({ n: '01', q: K.Q })}<div class="pdp-pc"><div>${K.pdpPhoto(d2)}</div><div>${K.pdpInfo(d2)}${K.verdict(d2.verdict)}<div class="sec" style="margin-top:16px">${K.decide(d2.verdict)}</div><div class="sec" style="margin-top:12px">${K.seller()}</div><div class="sec">${K.newUsed(d2.id)}</div></div></div>`;
+  K.row(K.pc('PC 결과 · 답 카드 왼쪽 고정', pcRes, { clip: true, notes: ['왼쪽 5열 답 카드(사진 위, 정보·판정·결정 아래) 스크롤 고정, 오른쪽 7열 다른 후보 3열'] }));
+  K.row(K.pc('PC 상세', pcPdp, { clip: true, notes: ['7:5, 오른쪽 정보 열 스크롤 고정, 결정이 판매처 버튼보다 강함'] }));
+})();
+</script>
+</body>
+</html>

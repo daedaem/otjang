@@ -1,0 +1,413 @@
+{
+  "provenance": "Two specification examples; 48 AI-curated cases. No collected user-typing dataset; not an accuracy benchmark.",
+  "cases": [
+    {
+      "text": "출근용 셔츠 10만원 이하",
+      "source": "requirements-example",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 100000,
+        "occasion": "work"
+      }
+    },
+    {
+      "text": "아메카지 겨울 아우터",
+      "source": "requirements-example",
+      "expect": {
+        "category": "outer",
+        "season": "winter",
+        "style": "amekaji"
+      }
+    },
+    {
+      "text": "회사에 입을 흰 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "occasion": "work",
+        "color": "white"
+      }
+    },
+    {
+      "text": "사무실에서 입을 니트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "occasion": "work"
+      }
+    },
+    {
+      "text": "데이트할 때 입을 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "occasion": "date"
+      }
+    },
+    {
+      "text": "소개팅 니트 10만원 이하",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "occasion": "date",
+        "maxPrice": 100000
+      }
+    },
+    {
+      "text": "주말에 입을 청바지",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "jeans",
+        "occasion": "weekend"
+      }
+    },
+    {
+      "text": "검정 말고 출근 바지",
+      "source": "curated-regression",
+      "expect": {
+        "category": "bottom",
+        "occasion": "work",
+        "excludeColor": "black"
+      }
+    },
+    {
+      "text": "셔츠 말고 니트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "excludedItem": "셔츠"
+      }
+    },
+    {
+      "text": "그레이 후드티",
+      "source": "curated-regression",
+      "expect": {
+        "color": "grey",
+        "shapes": [
+          "hoodie",
+          "sweat"
+        ],
+        "namePattern": "후드|후디|hood"
+      }
+    },
+    {
+      "text": "빨간 니트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "color": "red"
+      }
+    },
+    {
+      "text": "네이비 가디건",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "cardigan",
+        "color": "navy"
+      }
+    },
+    {
+      "text": "베이지 치노 바지",
+      "source": "curated-regression",
+      "expect": {
+        "category": "bottom",
+        "color": "beige"
+      }
+    },
+    {
+      "text": "여자 원피스 10만원 이하",
+      "source": "curated-regression",
+      "expect": {
+        "category": "dress",
+        "maxPrice": 100000
+      }
+    },
+    {
+      "text": "여자 니트 5만원 이하",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "maxPrice": 50000
+      }
+    },
+    {
+      "text": "남자 원피스",
+      "source": "curated-regression",
+      "expect": {
+        "zero": true
+      }
+    },
+    {
+      "text": "반바지 추천해줘",
+      "source": "curated-regression",
+      "expect": {
+        "zero": true
+      }
+    },
+    {
+      "text": "수영복",
+      "source": "curated-regression",
+      "expect": {
+        "zero": true
+      }
+    },
+    {
+      "text": "은하수 슈퍼망토",
+      "source": "curated-regression",
+      "expect": {
+        "zero": true,
+        "understood": false
+      }
+    },
+    {
+      "text": "겨울 코트 1만원 이하",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "coat",
+        "maxPrice": 10000,
+        "zero": true
+      }
+    },
+    {
+      "text": "셔츠 5만원 미만",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 50000,
+        "maxPriceExclusive": true
+      }
+    },
+    {
+      "text": "셔츠 10만원 초과",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "minPrice": 100000,
+        "minPriceExclusive": true
+      }
+    },
+    {
+      "text": "셔츠 5~10만원",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "minPrice": 50000,
+        "maxPrice": 100000
+      }
+    },
+    {
+      "text": "셔츠 50,000원 이하",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 50000
+      }
+    },
+    {
+      "text": "셔츠 10만 원 안으로",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 100000
+      }
+    },
+    {
+      "text": "5만원 안쪽의 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 50000
+      }
+    },
+    {
+      "text": "셔츠 10만원 넘지 않는",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 100000
+      }
+    },
+    {
+      "text": "셔츠 10만원 안 넘는",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "maxPrice": 100000
+      }
+    },
+    {
+      "text": "5만원대 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "minPrice": 50000,
+        "maxPrice": 59999
+      }
+    },
+    {
+      "text": "가격순 로퍼",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "loafer",
+        "priceSort": "asc"
+      }
+    },
+    {
+      "text": "높은 가격순 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "priceSort": "desc"
+      }
+    },
+    {
+      "text": "폴로 니트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "brand": "폴로 랄프 로렌"
+      }
+    },
+    {
+      "text": "폴로 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "polo",
+        "brand": null
+      }
+    },
+    {
+      "text": "카라티",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "polo"
+      }
+    },
+    {
+      "text": "체크 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt"
+      }
+    },
+    {
+      "text": "청재킷",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "jacket"
+      }
+    },
+    {
+      "text": "다운 조끼",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "vest"
+      }
+    },
+    {
+      "text": "출근 슬랙스",
+      "source": "curated-regression",
+      "expect": {
+        "category": "bottom",
+        "occasion": "work"
+      }
+    },
+    {
+      "text": "겨울 데이트 코트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "coat",
+        "season": "winter",
+        "occasion": "date"
+      }
+    },
+    {
+      "text": "가을 미니멀 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "season": "fall",
+        "style": "minimal"
+      }
+    },
+    {
+      "text": "청바지에 어울리는 신발",
+      "source": "curated-regression",
+      "expect": {
+        "category": "shoes"
+      }
+    },
+    {
+      "text": "주말에 입을 편한 바지",
+      "source": "curated-regression",
+      "expect": {
+        "category": "bottom",
+        "comfort": true
+      }
+    },
+    {
+      "text": "구김 안 가는 출근 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "unsupported": "구김 정도"
+      }
+    },
+    {
+      "text": "방수 재킷",
+      "source": "curated-regression",
+      "expect": {
+        "category": "outer",
+        "unsupported": "방수·발수"
+      }
+    },
+    {
+      "text": "따뜻한 겨울 코트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "coat",
+        "unsupported": "보온성"
+      }
+    },
+    {
+      "text": "시원한 여름 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "unsupported": "통기성"
+      }
+    },
+    {
+      "text": "키 작은 사람 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "unsupported": "사이즈·체형"
+      }
+    },
+    {
+      "text": "얇은 니트",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "knit",
+        "unsupported": "두께"
+      }
+    },
+    {
+      "text": "신축성 있는 바지",
+      "source": "curated-regression",
+      "expect": {
+        "category": "bottom",
+        "unsupported": "신축성"
+      }
+    },
+    {
+      "text": "물빨래 되는 셔츠",
+      "source": "curated-regression",
+      "expect": {
+        "shape": "shirt",
+        "unsupported": "세탁 방법"
+      }
+    }
+  ]
+}
