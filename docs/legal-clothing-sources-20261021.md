@@ -106,3 +106,15 @@ PR #32의 GitHub 검사 6개가 성공했고 master `97d397e`·운영 빌드 `a2
 fetch를 manual 리디렉션 모드로 바꾸고 3xx를 즉시 거절한다. Location으로 이동하거나 키/원문을 응답하지 않는다. HTTP 성공·현재 상품 구조 검증은 그대로 유지한다. 추가 합성 검사는 요청이 한 번뿐이고 리디렉션 대상이나 자격증명이 노출되지 않음을 확인한다. 실제 Workers 요청 모드도 합성 자격증명 없이 별도 실행한다.
 
 로컬 workerd(Wrangler 4.151.3, compatibility_date=2026-10-20)에서 비밀값·외부 요청 없이 Request 생성만 실행했다. manual은 성공했고 error는 `Invalid redirect value` TypeError를 재현했다. lite 111/111 검사와 build `c7cdfd637b2c`, diff 공백 검사를 통과했다. 이 증거는 요청 옵션 호환성이고 실제 제공자 인증 성공은 운영에서 별도 확인한다.
+
+### 실제 운영 연결 확인 — 2026-10-21
+
+PR #33 head `cfb3a63`의 GitHub push/PR 검사 6개가 통과했고 master `6f6f5ee3434982f9c46b6ff3725c1ad1be337296`로 병합했다. 별도 Cloudflare 브랜치 preview 검사는 실패 상태이며 운영 성공과 혼동하지 않는다. 운영 master 빌드 `5a0b4841-a0a5-4ffa-a5f8-0beb8b1be858`가 41초에 준비되었고 활성 Worker는 `32b51c34`다.
+
+로그인한 Chrome의 실제 `https://otjang.tg8685.workers.dev/#/add`에서 새로고침 → `Levis 501` 입력 → ‘라쿠텐 상품 불러오기’를 눌러 공식 상품 12개를 확인했다. 사진, 일본어 원본 상품명, 판매처, 엔화(JPY) 가격, 원본 상품 링크, `Supported by Rakuten Developers`가 표시된다. 동일 앱의 인증된 `/api/rakuten`에서도 정규화된 성공 JSON을 확인했다. 제공자 인증과 실제 데이터 경로가 동작한다는 증거다. 상품 등록·구매·AI 호출·개인 사진 전송은 하지 않았고 기존 옷장 자료를 수정하지 않았다. PC 화면의 사진 표시를 확인했으며 실제 iPhone 설치 앱에서는 아직 재검증하지 않았다.
+
+첫 실패에는 두 구현 결함이 있었다. 20260701의 소문자 items/item 응답을 반영하지 않았고, Workers가 지원하지 않는 redirect:error로 요청 생성 자체가 실패했다. Node mock/정적 배포 통과를 연결 성공으로 판단하지 않는다. 현행 응답 파싱·manual 리디렉션 거절·시간/크기/호출 제한은 유지한다. 키는 런타임 Secret에만 남고 프런트·Git·공급자 오류 원문에 싣지 않는다.
+
+사용 방법: 옷장 → 옷 넣기 → 브랜드·품명 입력 → 라쿠텐 상품 불러오기. 현재 라쿠텐 전체를 제공 순서로 검색하는 별도 목록이다. 한글 자연어 번역, 앱의 예산/종류 조건 적용, AI 순위 결합, 원화 환산/한국 배송, 최저가 판정, 일괄 DB 수집까지 완료했다고 표현하지 않는다.
+
+[Rakuten 공식 무료 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/900001971983-Are-Rakuten-Webservice-APIs-free-to-use)를 당일 확인했다. API 자체는 현재 무료이며 요청 제한/약관은 적용된다. 이 검색 경로는 Claude API를 호출하지 않는다. 기존 AI/호스팅 비용과 공개 출시·AI 재가공 권리 검토는 별개다. 기존 937건의 공개 권리를 확보하거나 전 상품 저장을 승인받았다는 뜻도 아니다.
