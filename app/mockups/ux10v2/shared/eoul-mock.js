@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 462b34c) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 31161d7) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 891개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -4554,6 +4554,31 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
     },
     clearRecent() { commit(() => { S.recent = []; }); },
 
+    // 가진 옷을 상품으로 찾기(오늘의집처럼 브랜드·품명으로). 띄어 쓴 낱말이 모두 브랜드나 품명에 들어 있는 상품만 준다.
+    // 사기 전 추천 검색(ask)과 달리 조건·계절·성별로 거르지 않는다. 남녀 모두에서 찾고, 지금 성별 상품을 앞에 둔다.
+    findProducts(text, { limit = 20 } = {}) {
+      const words = String(text ?? '').toLowerCase().replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+      if (!words.length) return [];
+      const hits = SAFE_PRODUCTS.filter((p) => SLOT_BY_ID[p.slot] && words.every((w) => `${p.brand} ${p.name}`.toLowerCase().includes(w)));
+      const mine = (p) => (SLOT_BY_ID[p.slot].g === S.gender ? 0 : 1);
+      return hits.sort((a, b) => mine(a) - mine(b)).slice(0, limit).map((p) => card(p));
+    },
+    // 찾은 상품을 '가진 옷'으로 넣는다. 산 기록(advance 'received')과 같은 모양이라 옷장에 판매처 사진·브랜드·품명이 남는다.
+    // 색이 사진에서 추정된 상품은 색을 비워 둔다(화면에서 물어 채운다). 같은 상품을 두 번 넣지 않는다.
+    addOwnedProduct(productId, { trial = false } = {}) {
+      const p = PRODUCT_BY_ID[productId];
+      const slot = p && SLOT_BY_ID[p.slot];
+      if (!slot) throw new Error('상품을 다시 확인해 주세요.');
+      const dup = S.garments.find((g) => g.productId === p.id);
+      if (dup) return garmentView(dup);
+      const garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
+      commit(() => {
+        S.garments = [...S.garments, garment];
+        if (trial) S.trialIds = [...S.trialIds, garment.id];
+      });
+      return garmentView(garment);
+    },
+
     // 가진 옷만으로 입을 수 있는 조합 수(코디 공식 + 종류·색 기본 조합). 옷장을 채우는 재미의 보상 숫자.
     // 구매 추천이 아니다. 체험용 옷도 포함하므로 화면에서 '체험용 포함'을 밝힌다.
     // detail: true면 조합 목록(list)도 준다. key는 조합에 든 옷 id를 이은 값, baseKey는 겉옷을 뺀 값이다.
@@ -4820,6 +4845,6 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
 if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "462b34c" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "31161d7" };
 window.EoulMock = mock;
 })();
