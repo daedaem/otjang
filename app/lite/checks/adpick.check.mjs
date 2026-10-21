@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { handleAdpick, offers, malls, takeSlot, onRequest } from '../functions/api/adpick.js';
+import { handleAdpick, offers, malls, inspectOffers, takeSlot, onRequest } from '../functions/api/adpick.js';
 import { createWorker } from '../worker.js';
 const KEY = 'synthetic-adpick-test-key';
 function db() {
@@ -87,6 +87,16 @@ test('Adpick mall lookup returns identity only; account commissions, reports and
     return Response.json(raw);
   } });
   assert.deepEqual((await res.json()).malls, [{ code: 'SYNTHETIC', name: '합성몰' }]);
+});
+test('owner failure diagnostics contain field counts and public origins but no key, full URL or product titles', () => {
+  const inspected = inspectOffers(response(
+    { ...item, cp_name: KEY, commissionlink: `https://user:password@bitl.bz/private-product?key=${KEY}` },
+    { ...item, commissionlink: `https://${KEY.toUpperCase()}.example.com/private-product` },
+  ), KEY);
+  assert.deepEqual(inspected.fields, { title: 2, price: 2, photo: 2, cp_code: 2, cp_name: 2, commissionlink: 2 });
+  assert.deepEqual(inspected.origins, ['https://bitl.bz']);
+  assert.deepEqual(inspected.shops, ['쿠팡']);
+  assert.doesNotMatch(JSON.stringify(inspected), /synthetic-adpick|SYNTHETIC-ADPICK|password|private-product|합성 테스트/);
 });
 test('Adpick provider errors, redirects, hangs and oversized bodies reveal neither path key nor raw response', async () => {
   for (const fetcher of [

@@ -1,6 +1,6 @@
 # 애드픽 국내 상품 연결 인계 — 2026-10-21
 
-상태: **Safari 로그인·BIZ 실제 상품 화면·계정별 API 검색 지원 목록 확인 완료. 서버 Secret·실제 API 응답·운영 연결은 대기**. 초기에는 대표가 로그인할 수 없었으나, 이후 Safari 로그인 완료를 알렸다. Issue #38, Draft PR #39. BIZ 화면 검색 성공을 우리 Worker의 API 성공으로 대신하지 않는다.
+상태: **Safari 로그인·BIZ 실제 상품 화면·계정별 API 검색 지원 목록·서버 Secret 저장 확인 완료. PR #39 master 병합 완료. 새 코드의 운영 배포·실제 API 응답은 대기**. 초기에는 대표가 로그인할 수 없었으나, 이후 Safari 로그인 완료를 알렸다. Issue #38, Draft PR #39. BIZ 화면 검색 성공을 우리 Worker의 API 성공으로 대신하지 않는다.
 
 ## 확인한 공식 근거
 
@@ -40,3 +40,11 @@
 1. 대표가 기존 애드픽 키를 Cloudflare 프로덕션 런타임 `ADPICK_API_KEY` Secret에 직접 입력·저장한다. Chrome 폼에 이름·비밀 체크만 준비했고 값은 비워뒀다. 기존 4개 Secret은 바꾸지 않았다. 새 인증정보 입력·제출은 브라우저 도구 규칙상 사용자 인계 사항이다. 대표가 창이 안 보인다고 하여 Chrome 창 메뉴에서 해당 설정 창을 앞으로 가져오고 값 칸에 커서를 놓았다.
 2. 실제 API 상품명·가격·사진·commissionlink를 우리 인증된 경로에서 소수 조회해 대조한다. 키나 키를 포함한 제공자 URL/오류 원문은 수집하지 않는다. 코드의 허용 호스트/스키마가 실제 응답과 일치해야 한다.
 3. PR #39 현재 HEAD의 검사를 확인하고 master 비공개 배포를 진행한다. 배포 버전과 실제 앱 조회가 모두 확인돼야 연결 완료로 보고한다. 공개 출시·상품별 외부 AI 처리·가격/재고 보증·최저가 보장은 별도다. 회원 약관·활동 매체 등록·몰별 운영 조건을 모두 확인했다는 뜻이 아니다.
+
+## 추가 운영 진행: Secret 저장 후
+
+- 대표가 `ADPICK_API_KEY` 저장을 완료했다. 이름과 ‘암호화된 값’만 확인했으며 값은 읽지 않았다. Secret 추가 버전 `26cbc9c2`가 100% 활성 상태지만 소스는 이전 PR #36이므로 애드픽 앱 연결 성공을 뜻하지 않는다.
+- PR #39 소스 `cb1c84fe270d27006489bba66f9ae533a1386637`를 master `b220e356967abeed7a3a7005d6b7158426ea4c06`로 병합했다. 로컬 lite 126/126·app 688/688·build `6ef091a1c613`·Wrangler dry-run이 통과했다. CI connector에서 5개 성공을 확인했고, 마지막 app job은 connector 표시가 지연되어 GitHub 원본 화면에서 workflow ‘completed successfully’와 완료 단계를 확인했다.
+- Cloudflare 빌드 기록에는 새 master 빌드가 나타나지 않았다. `master`·루트 `app/lite`·`npm run build`·`npx wrangler deploy`·포함 `*`·제외 없음·Disable builds 꺼짐을 확인했다. GitHub Cloudflare 앱은 설치·활성·저장소 접근이 있었고, 대표가 재인증을 완료했다. 권한 추가·앱 삭제·정지·연결 해제는 실행하지 않았다. **새 이벤트가 오지 않는 원인은 미확정**이다.
+- 공식 Wrangler 직접 배포를 준비했다. 배포 묶음에는 개인 파일·사진·키가 없고 본인 인증과 기존 D1 별칭·keep_vars를 유지한다. 새 OAuth 접근의 최종 Authorize는 대표에게 인계했다. 범위는 account:read·user:read·workers:write와 Wrangler 필수 background access이며, 해당 계정의 다른 Worker도 범위에 포함된다고 알렸다. 승인 시 Mac 키체인 저장·이번 검증 후 logout을 안내했다. 첫 대기 요청은 만료돼 새 요청으로 갱신했다. 승인 완료·배포 완료로 기록하지 않는다.
+- 다음 작업은 Wrangler 인증 성공 확인 → 정확히 위 master 소스 비공개 배포 → 버전 확인 → 실제 앱 상품 조회 → 키 값 없는 검증 기록 → Wrangler logout이다. 본인의 입력·Authorize가 끝나기 전 관련 권한을 승인한 것으로 가정하지 않는다.
