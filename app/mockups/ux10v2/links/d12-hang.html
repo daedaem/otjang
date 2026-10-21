@@ -1637,11 +1637,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     try {
       const data = await window.EOUL_OPEN_PRODUCT_SEARCH(query);
       if (box !== $('[data-open-recommendations]')) return;
-      const draw = (items, reasons = new Map(), summary = '') => {
+      const draw = (items, reasons = new Map(), summary = '', ai = null) => {
         box.innerHTML = `<h2 class="h3">공개 상품 후보 <span class="t6">${items.length}개</span></h2><p class="t6">가격·재고·구매처 없는 상품 정보예요. 예산·핏 조건 충족 여부는 확인할 수 없어요.</p>
           ${summary ? `<p class="t5" role="status">${esc(summary)}</p>` : ''}
           ${items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer"><span class="grow"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span>${reasons.has(p.code) ? `<span class="m">${esc(reasons.get(p.code))}</span>` : ''}</span><i class="ph ph-arrow-up-right"></i></a>`).join('')}
-          <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a> · ${esc(data.fetchedAt.slice(0, 10))} 기준 · <a href="/api/open-products/export" download>사용한 DB 내려받기</a></p>`;
+          <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a> · ${esc(data.fetchedAt.slice(0, 10))} 기준 · <a href="/api/open-products/export" download>사용한 DB 내려받기</a></p>${ai ? `<details class="ai-info"><summary>AI 응답 정보</summary><p class="t6">${esc(ai.model)} · 입력 ${esc(ai.inputTokens)} / 출력 ${esc(ai.outputTokens)} 토큰<br>${esc(ai.requestId)}</p></details>` : ''}`;
       };
       if (!data.items.length) { draw([], new Map(), '이 공개 DB에는 일치하는 후보가 없어요.'); return; }
       draw(data.items, new Map(), data.items.length > 1 && window.EOUL_SERVER_AI ? 'AI가 이름·브랜드·분류 기준으로 비교하고 있어요…' : '상품 정보 확인용 후보예요.');
@@ -1650,8 +1650,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         const ranked = await window.EOUL_SERVER_AI({ task: 'open_rank', query, items: data.items.map((p) => p.code) });
         if (box !== $('[data-open-recommendations]')) return;
         const byId = new Map(data.items.map((p) => [p.code, p]));
-        draw(ranked.ranking.map((r) => byId.get(r.id)), new Map(ranked.ranking.map((r) => [r.id, r.reason])), `AI 후보 비교 · ${ranked.summary}`);
-      } catch { if (box === $('[data-open-recommendations]')) draw(data.items, new Map(), 'AI 비교를 완료하지 못해 상품 코드 순서로 보여드려요.'); }
+        draw(ranked.ranking.map((r) => byId.get(r.id)), new Map(ranked.ranking.map((r) => [r.id, r.reason])), `AI 후보 비교 · ${ranked.summary}`, ranked.ai);
+      } catch (error) {
+        const code = error.code || (error.name === 'TypeError' ? 'screen_error' : 'error');
+        const failures = { credit_unavailable: 'API 크레딧을 확인해 주세요.', model_unavailable: '설정된 AI 모델에 연결하지 못했어요.', provider_access_denied: 'API 사용 권한을 확인해 주세요.', effort_unsupported: '모델의 추론 옵션을 확인하고 있어요.', output_config_invalid: '모델 응답 옵션을 확인하고 있어요.', provider_request_rejected: 'AI 서버가 요청 형식을 거절했어요.', provider_timeout: 'AI 서버 응답 시간이 길어졌어요.', provider_unavailable: 'AI 제공자 연결이 원활하지 않아요.', screen_error: '후보 비교 화면을 확인하고 있어요.' };
+        if (box === $('[data-open-recommendations]')) draw(data.items, new Map(), `AI 비교를 완료하지 못해 상품 코드 순서로 보여드려요. ${failures[code] || AIRank.whyText(code)} (${code})`);
+      }
     } catch { if (box === $('[data-open-recommendations]')) box.innerHTML = '<p class="t6" role="status">공개 상품 DB에 연결하지 못했어요. 다시 검색해 주세요.</p>'; }
   }
   async function searchAdpick(button) {
