@@ -174,6 +174,8 @@ a { color: inherit; text-decoration: none; }
 .wx .wx-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; margin-top: 2px; }
 .wx .wx-t { font-size: 22px; line-height: 30px; font-weight: 800; letter-spacing: -.025em; min-width: 0; }
 .wx .wx-days { display: inline-flex; flex: none; border-radius: 999px; background: var(--surface); margin: -6px -6px -6px 0; }
+.wx .wx-place { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; margin: -12px 0; padding: 0 4px; font: inherit; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.chips.wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 .wx .wx-day { min-height: 44px; min-width: 48px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink3); }
 .wx .wx-day[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .wx .wx-band { margin-top: 2px; font-size: 15px; line-height: 22px; color: var(--ink2); }
@@ -890,7 +892,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const src = wxSource();
     const day = WX.day === 'tomorrow' && src.tomorrow ? 'tomorrow' : 'today';
     const w = src[day];
-    const srcTag = src.kind === 'real' ? esc(src.place || '현재 위치') : '예시 날씨';
+    const canPlace = !!window.EOUL_WEATHER_PLACE;
+    const srcTag = src.kind === 'real'
+      ? (canPlace ? `<button class="wx-place" data-wxplace aria-label="날씨 지역 바꾸기: ${esc(src.place || '현재 위치')}">${esc(src.place || '현재 위치')}<i class="ph ph-caret-down"></i></button>` : esc(src.place || '현재 위치'))
+      : '예시 날씨';
     const temp = `<span class="wx-t num">${day === 'today' ? '오늘' : '내일'} · 아침 ${w.min}° → 낮 ${w.max}°${w.rain ? ' · 비' : ''}</span>`;
     const days = src.tomorrow ? `<span class="wx-days" role="group" aria-label="날짜"><button class="wx-day" data-wxday="today" aria-pressed="${day === 'today'}">오늘</button><button class="wx-day" data-wxday="tomorrow" aria-pressed="${day === 'tomorrow'}">내일</button></span>` : '';
     const head = `<div class="label"><i class="ph-fill ph-sun-horizon"></i>날씨 코디 · ${srcTag}<span class="sp"></span>${days}</div><div class="wx-h">${temp}</div>`;
@@ -925,6 +930,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   function wireWeather() {
     $$('[data-wxex]').forEach((b) => { b.onclick = () => { S.ui.wxEx = b.dataset.wxex; saveUi(); keepY(); }; });
     $$('[data-wxday]').forEach((b) => { b.onclick = () => { WX.day = b.dataset.wxday; keepY(); }; });
+    $$('[data-wxplace]').forEach((b) => { b.onclick = placeSheet; });
     const nx = $('[data-wxnext]'); if (nx) nx.onclick = () => { const src = wxSource(); const day = WX.day === 'tomorrow' && src.tomorrow ? 'tomorrow' : 'today'; const w = src[day]; const key = `${day}|${w.min}|${w.max}|${w.rain ? 1 : 0}`; WX.idx[key] = (WX.idx[key] || 0) + 1; keepY(); };
     loadWeather();
   }
@@ -1613,9 +1619,33 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if (!R.brand) setTimeout(() => rb.focus(), 60);
   }
 
+  // 날씨 지역(설치 앱에서만): 현재 위치 또는 내 지역. 이 기기에만 저장하고, 바꾸면 날씨를 다시 받는다.
+  function placeSheet() {
+    const P = window.EOUL_WEATHER_PLACE;
+    if (!P || $('.sheet')) return;
+    const cur = P.get();
+    const sh = sheet(`<h2 class="h2" style="margin:4px 0 4px">날씨 지역</h2>
+      <p class="t6" style="margin:0 0 12px">이 기기에만 저장해요. 날씨를 물을 때는 약 10km 단위로 줄인 위치만 보내요.</p>
+      <div class="menu"><button class="row" data-pl-here aria-pressed="${cur.mode === 'here'}"><span class="grow t5">현재 위치<span class="t6" style="display:block">열 때마다 위치로 · 거절하면 서울</span></span>${cur.mode === 'here' ? '<i class="ph-fill ph-check-circle arr"></i>' : ''}</button>
+      <button class="row" data-pl-save><span class="grow t5">지금 있는 곳을 내 지역으로</span><i class="ph ph-map-pin arr"></i></button></div>
+      <div class="label" style="margin:14px 0 8px">내 지역 고르기${cur.mode === 'fixed' ? ` · 지금 ${esc(cur.name)}` : ''}</div>
+      <div class="chips wrap">${P.presets.map((p, i) => `<button class="chip ${cur.mode === 'fixed' && cur.name === p.name ? 'on' : ''}" data-pl="${i}" aria-pressed="${cur.mode === 'fixed' && cur.name === p.name}">${esc(p.name)}</button>`).join('')}</div>
+      <p class="t6" role="status" data-pl-msg style="margin:10px 0 0"></p>`);
+    const apply = async (place) => { P.set(place); WX.real = undefined; WX.failed = false; await sh.close(); if (['home', 'looks'].includes(curView)) K.refresh(); loadWeather(); };
+    $('[data-pl-here]', sh.s).onclick = () => apply({ mode: 'here' });
+    $$('[data-pl]', sh.s).forEach((b) => { b.onclick = () => { const p = P.presets[+b.dataset.pl]; apply({ mode: 'fixed', ...p }); }; });
+    $('[data-pl-save]', sh.s).onclick = async () => {
+      const msg = $('[data-pl-msg]', sh.s);
+      msg.textContent = '위치를 확인하는 중이에요…';
+      const c = await P.here();
+      if (!c) { msg.textContent = '위치를 받지 못했어요. 설정에서 위치를 허용하거나 목록에서 골라 주세요.'; return; }
+      apply({ mode: 'fixed', name: '저장한 위치', lat: c.lat, lon: c.lon });
+    };
+  }
   function menu() {
-    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
+    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
+    const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
     $('[data-theme]', sh.s).onclick = async () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; await sh.close(); };
     $('[data-reset]', sh.s).onclick = async () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; await sh.close(); K.tab('home'); };
   }

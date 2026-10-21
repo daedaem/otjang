@@ -34,32 +34,63 @@
     const out = await res.json().catch(() => null);
     return res.ok && out ? out : { code: out?.code || 'error', message: out?.message };
   };
-  // 오늘·내일 날씨(/api/weather). 위치는 이 기기에서 물어보고(거절하면 서울 기준), 0.1°로 줄여 우리 서버에만 보낸다.
+  // 오늘·내일 날씨(/api/weather). 날씨 지역은 이 기기에만 저장한다: '현재 위치'(열 때마다 위치를 묻고, 거절하면 서울)
+  // 또는 '내 지역'(목록에서 고르거나, 지금 있는 곳을 0.1°로 줄여 저장). 서버에는 0.1°로 줄인 좌표만 보낸다.
   // 화면은 window.EOUL_WEATHER가 있을 때만 실제 날씨를 쓰고, 없으면(링크 시안) 예시 날씨라고 밝힌다.
   const SEOUL = { lat: 37.6, lon: 127.0 };
+  const PLACE_KEY = 'eoul-weather:place';
+  const CACHE_KEY = 'eoul-weather:last';
+  const round = (n) => Math.round(n * 10) / 10;
+  const PRESETS = [
+    ['서울', 37.6, 127.0], ['인천', 37.5, 126.7], ['수원', 37.3, 127.0], ['성남', 37.4, 127.1], ['고양', 37.7, 126.8],
+    ['용인', 37.2, 127.2], ['춘천', 37.9, 127.7], ['강릉', 37.8, 128.9], ['대전', 36.4, 127.4], ['세종', 36.5, 127.3],
+    ['청주', 36.6, 127.5], ['전주', 35.8, 127.1], ['광주', 35.2, 126.9], ['대구', 35.9, 128.6], ['포항', 36.0, 129.4],
+    ['울산', 35.5, 129.3], ['부산', 35.2, 129.1], ['창원', 35.2, 128.7], ['제주', 33.5, 126.5],
+  ].map(([name, lat, lon]) => ({ name, lat, lon }));
   const where = () => new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null);
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: Math.round(p.coords.latitude * 10) / 10, lon: Math.round(p.coords.longitude * 10) / 10 }),
+      (p) => resolve({ lat: round(p.coords.latitude), lon: round(p.coords.longitude) }),
       () => resolve(null),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60 * 60 * 1000 },
     );
   });
-  window.EOUL_WEATHER = async () => {
-    const KEY = 'eoul-weather:last';
+  const readPlace = () => {
     try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if (saved && Date.now() - saved.at < 30 * 60 * 1000) return saved.value;
+      const p = JSON.parse(localStorage.getItem(PLACE_KEY) || 'null');
+      if (p?.mode === 'fixed' && Number.isFinite(p.lat) && Number.isFinite(p.lon)) return { mode: 'fixed', name: String(p.name || '내 지역').slice(0, 20), lat: round(p.lat), lon: round(p.lon) };
     } catch {}
-    const here = await where();
-    const c = here || SEOUL;
+    return { mode: 'here' };
+  };
+  window.EOUL_WEATHER_PLACE = {
+    presets: PRESETS,
+    get: readPlace,
+    // place: {mode:'here'} 또는 {mode:'fixed', name, lat, lon}
+    set(place) {
+      const p = place?.mode === 'fixed' ? { mode: 'fixed', name: String(place.name || '내 지역').slice(0, 20), lat: round(+place.lat), lon: round(+place.lon) } : { mode: 'here' };
+      try { localStorage.setItem(PLACE_KEY, JSON.stringify(p)); localStorage.removeItem(CACHE_KEY); } catch {}
+      return p;
+    },
+    // 지금 있는 곳(0.1°)을 돌려준다. 위치를 거절하면 null.
+    here: where,
+  };
+  window.EOUL_WEATHER = async () => {
+    const place = readPlace();
+    const sig = place.mode === 'fixed' ? `${place.lat},${place.lon}` : 'here';
+    try {
+      const saved = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (saved && saved.sig === sig && Date.now() - saved.at < 30 * 60 * 1000) return saved.value;
+    } catch {}
+    const here = place.mode === 'here' ? await where() : null;
+    const c = place.mode === 'fixed' ? place : here || SEOUL;
     let res;
     try { res = await fetch(`/api/weather?lat=${c.lat}&lon=${c.lon}`); } catch { return null; }
     if (!res.ok) return null;
     const body = await res.json().catch(() => null);
     if (!body?.today) return null;
-    const value = { place: here ? '내 위치 근처' : '서울(위치 허용 전)', source: body.source, today: body.today, tomorrow: body.tomorrow };
-    try { localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), value })); } catch {}
+    const label = place.mode === 'fixed' ? place.name : here ? '현재 위치' : '서울(위치 허용 전)';
+    const value = { place: label, placeMode: place.mode, source: body.source, today: body.today, tomorrow: body.tomorrow };
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), sig, value })); } catch {}
     return value;
   };
 
