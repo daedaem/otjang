@@ -1,4 +1,4 @@
-// OPF facts stay in their own ODbL dataset, outside the retailer/AI price catalog.
+// OPF facts stay in their own ODbL dataset, outside the retailer price catalog.
 export const SOURCE = 'Open Products Facts';
 export const SOURCE_URL = 'https://world.openproductsfacts.org';
 export const LICENSE_URL = 'https://opendatacommons.org/licenses/odbl/1-0/';
@@ -21,12 +21,16 @@ const aliases = {
   유니클로: 'uniqlo', 게스: 'guess', 브랜딧: 'brandit', 셀리오: 'celio',
   리바이스: 'levis', 아디다스: 'adidas', 나이키: 'nike', 데카트론: 'decathlon',
 };
+const categoryWords = {
+  셔츠: ['en:shirts'], 티셔츠: ['en:t-shirts'], 청바지: ['en:jeans'], 바지: ['en:pants', 'en:jeans', 'en:trousers'],
+  양말: ['en:socks'], 신발: ['en:shoes'], 재킷: ['en:jackets'], 자켓: ['en:jackets'], 코트: ['en:coats'],
+};
 const norm = (s) => String(s || '').normalize('NFKC').toLowerCase().replace(/[’']/g, '').replace(/[-_]/g, ' ');
 export function searchProducts(items, query, limit = 12) {
   const q = norm(query).trim().slice(0, 120);
   if (!q) return [];
   const words = q.split(/\s+/).map((w) => aliases[w] || w);
-  return items.filter((p) => words.every((w) => norm(`${p.brand} ${p.name} ${p.code}`).includes(w)))
+  return items.filter((p) => words.every((w) => norm(`${p.brand} ${p.name} ${p.code}`).includes(w) || categoryWords[w]?.some((c) => p.categories.includes(c))))
     .slice(0, Math.min(30, Math.max(1, Number(limit) || 12)));
 }
 
@@ -54,7 +58,10 @@ if (typeof window !== 'undefined') {
     return loading;
   };
   window.EOUL_OPEN_PRODUCTS = {
-    async search(query) { const data = await load(); return { ...data, items: searchProducts(data.items, query) }; },
+    async search(query, { server = false } = {}) {
+      if (server && window.EOUL_OPEN_PRODUCT_SEARCH) return window.EOUL_OPEN_PRODUCT_SEARCH(query);
+      const data = await load(); return { ...data, items: searchProducts(data.items, query) };
+    },
     draft: registrationDraft,
     rakutenSearchURL,
   };

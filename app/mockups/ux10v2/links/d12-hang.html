@@ -588,7 +588,8 @@ a { color: inherit; text-decoration: none; }
   };
   const adpickLink = (q) => {
     const text = String(q || '').trim();
-    return text && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel><h2 class="h3">국내 쇼핑몰에서 찾기</h2><p class="t6">애드픽 제휴 광고 · 예산·코디 조건은 적용하지 않아요. 상품명에 입력한 단어가 모두 있는 결과만 보여드려요.</p><div class="field"><label>브랜드·상품명<input data-adpick-keyword maxlength="100" value="${esc(text)}" placeholder="예: 리바이스 501"></label></div><button class="btn line sm" data-adpick-search data-adpick-q="${esc(text)}">국내 상품 불러오기</button><div data-adpick-results aria-live="polite"></div></section>` : '';
+    if (text.length > 100) return '<p class="t6">국내 상품 검색어는 100자 이내로 입력해 주세요.</p>';
+    return text && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel data-adpick-q="${esc(text)}"><h2 class="h3">국내 쇼핑몰 상품</h2><p class="t6">애드픽 제휴 광고 · 입력한 단어로 찾아요. 예산·핏·코디 조건은 적용하지 않아요.</p><div data-adpick-results aria-live="polite"><p class="t6" role="status">국내 상품을 찾고 있어요…</p></div></section>` : '';
   };
   const shoppingLinks = (q) => adpickLink(q) + rakutenLink(q);
   const crowd = () => (window.EOUL_CROWD && typeof window.EOUL_CROWD.submit === 'function' ? window.EOUL_CROWD : null);
@@ -1022,7 +1023,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
 
     results({ q, drop = [] }) {
-      const r = M.ask(q, { drop });
+      const parsed = M.ask(q, { drop });
+      // Do not present a broad local match as the requested brand/condition.
+      // Provider search still receives the full request independently below.
+      const partial = (parsed.notices || []).filter((n) => ['unknown', 'unsupported'].includes(n.kind));
+      const r = partial.length ? { ...parsed, understood: false, products: [], notices: [{ text: '기존 상품 목록에서 요청의 일부를 확인하지 못해 다른 상품으로 채우지 않았어요. 브랜드·상품명으로 다시 검색하거나 아래 국내 상품 결과를 확인해 주세요.' }] } : parsed;
       const chips = (r.conditions || []).map((c) => c.removable ? `<button class="chip" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="chip on">${esc(c.label)}</span>`).join('');
       const head = top({ mid: `<button class="qbox" data-edit="${esc(q)}" aria-label="다시 찾기: ${esc(q)}"><i class="ph ph-magnifying-glass"></i><span>${esc(q)}</span></button>` });
       S.result = null;
@@ -1037,11 +1042,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           M.kindChoices().filter((k) => k.name !== kindLabel).slice(0, 5).forEach((k) => alts.push({ label: `${k.name}${josa(k.name, '으로', '로')} 보기`, q: q.includes(kindLabel) ? q.replace(kindLabel, k.name) : k.name }));
         }
         return `${head}${chips ? `<div class="chips scroll">${chips}</div>` : ''}
-          <div class="empty"><h2 class="h2">${r.understood ? '조건에 맞는 옷이 없어요' : '무슨 옷인지 못 알아들었어요'}</h2>
+          <div class="empty"><h2 class="h2">${partial.length ? '기존 목록에서 일부 조건을 확인하지 못했어요' : r.understood ? '조건에 맞는 옷이 없어요' : '무슨 옷인지 못 알아들었어요'}</h2>
           <p class="sub t5" style="margin-top:6px">${esc(note || (r.understood ? '다른 옷으로 바꿔 채우지 않았어요.' : '종류를 넣어 다시 말해 주세요. 예: 셔츠, 코트, 운동화'))}</p>
           ${rel.length ? `<div style="margin-top:12px">${rel.map((x) => `<button class="row" data-relax='${esc(JSON.stringify(x.drop))}'><span class="grow t5">${esc(x.title)}</span><i class="ph ph-caret-right arr"></i></button>`).join('')}</div>` : ''}
           ${alts.length ? `<p class="t6" style="margin-top:20px">대신 이렇게 볼 수도 있어요</p><div class="chips">${alts.map((a) => `<button class="chip ex" data-q="${esc(a.q)}">${esc(a.label)}</button>`).join('')}</div>` : ''}
-          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${shoppingLinks(q)}`;
+          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${shoppingLinks(q)}${window.EOUL_OPEN_PRODUCT_SEARCH ? '<section class="section" data-open-recommendations aria-live="polite"></section>' : ''}`;
       }
       S.result = r;
       const basis = M.judge(r.products[0].id)?.basisLabel || '';
@@ -1053,7 +1058,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         <div class="chips scroll" aria-label="조건"><span class="cnt num">${r.products.length}개 · ${esc(basis.replace(' 판단했어요', ''))}</span>${chips}</div>
         <div class="ai ${order ? '' : 'wait'}" id="ai" role="status">${order ? `<i class="ph-fill ph-sparkle"></i><span>${esc(S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요')}</span>` : '<i class="ph ph-circle-notch"></i><span>AI가 후보 순서를 정하는 중이에요</span>'}</div>
         <div class="grid" id="grid">${gridHtml(sorted)}</div>
-        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}${shoppingLinks(q)}`;
+        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}${shoppingLinks(q)}${window.EOUL_OPEN_PRODUCT_SEARCH ? '<section class="section" data-open-recommendations aria-live="polite"></section>' : ''}`;
     },
 
     consult() {
@@ -1160,8 +1165,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
     // 옷장 넣기: 브랜드·품명으로 찾아 ‘가지고 있어요’. 목록(이 앱이 아는 상품) 밖이면 직접 등록(브랜드·상품명·종류·색).
     add({ q = '' } = {}) {
-      return `${top({ mid: `<form class="qform" id="af" role="search"><input id="aq" value="${esc(q)}" enterkeyhint="search" autocomplete="off" placeholder="브랜드나 상품명으로 찾기 · ${esc(M.catalog.store)} ${M.catalog.count}개" aria-label="브랜드나 상품명"></form>` })}
-        <div id="ares"></div><div id="aopen" aria-live="polite"></div>
+      return `${top({ mid: `<form class="qform" id="af" role="search" style="display:flex;align-items:center"><input id="aq" style="flex:1;min-width:0" value="${esc(q)}" enterkeyhint="search" autocomplete="off" placeholder="브랜드나 상품명으로 찾기" aria-label="브랜드나 상품명"><button type="submit" class="icon" aria-label="상품 검색"><i class="ph ph-magnifying-glass"></i></button></form>` })}
+        <div id="ares"></div><div id="adom"></div><div id="aopen" aria-live="polite"></div>
         <button class="row" data-reg-open style="margin-top:8px"><span class="grow"><span class="t5">목록에 없어요 → 직접 등록</span><span class="t6" style="display:block">브랜드·상품명·종류·색만 적어요</span></span><i class="ph ph-caret-right arr"></i></button>`;
     },
 
@@ -1248,6 +1253,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
     reg() { wireReg(); },
     async results({ q, drop = [] }) {
+      autoDomesticSearch(document);
+      void recommendOpenProducts(q);
       $$('[data-drop]').forEach((b) => { b.onclick = () => K.go('results', { q, drop: [...drop, b.dataset.drop] }, { replace: true }); });
       $$('[data-relax]').forEach((b) => { b.onclick = () => K.go('results', { q, drop: JSON.parse(b.dataset.relax) }, { replace: true }); });
       fadeChips();
@@ -1302,10 +1309,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       drawShelf();
       const inp = $('#aq');
       let t;
-      const run = () => renderAddResults(inp.value);
-      inp.oninput = () => { clearTimeout(t); t = setTimeout(run, 120); };
-      $('#af').onsubmit = (e) => { e.preventDefault(); clearTimeout(t); run(); inp.blur(); };
-      run();
+      const run = (submitted = false) => renderAddResults(inp.value, { submitted });
+      inp.oninput = () => { clearTimeout(t); t = setTimeout(() => run(false), 120); };
+      $('#af').onsubmit = (e) => { e.preventDefault(); clearTimeout(t); run(true); inp.blur(); };
+      run(Boolean(q));
       if (!q) setTimeout(() => inp.focus(), 60);
     },
     records() {
@@ -1553,17 +1560,27 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     $('[data-no]', sh.s).onclick = () => sh.close();
   }
   // ── 옷장 넣기(브랜드·품명 검색)
-  function renderAddResults(q) {
+  let lastAddSubmission = '';
+  function renderAddResults(q, { submitted = false } = {}) {
     const box = $('#ares'); if (!box) return;
     const text = String(q || '').trim();
-    openProductSearch(text);
+    if (submitted) lastAddSubmission = text;
+    else if (text !== lastAddSubmission) lastAddSubmission = '';
+    const submittedSearch = text !== '' && text === lastAddSubmission;
+    const domestic = $('#adom');
+    if (domestic && domestic.dataset.query !== (submittedSearch ? text : '')) {
+      domestic.dataset.query = submittedSearch ? text : '';
+      domestic.innerHTML = submittedSearch ? shoppingLinks(text) : '';
+      if (submittedSearch) autoDomesticSearch(domestic);
+    }
+    openProductSearch(text, { submitted: submittedSearch });
     const mine = M.getState().closet;
     const has = (id) => mine.find((g) => g.productId === id);
     if (!text) {
       const recent = [...mine].slice(-3).reverse();
       box.innerHTML = `<div class="chips" style="margin-top:12px">${addExamples().map((b) => `<button class="chip ex" data-aq="${esc(b)}">${esc(b)}</button>`).join('')}</div>
         ${recent.length ? `<section class="section"><div class="h"><h2 class="h3">최근 넣은 옷</h2></div>${recent.map((g) => `<div class="srow">${garmentPic(g)}<span class="grow"><span class="n">${esc(g.label)}</span><span class="m">${esc(g.detailMissing || g.sourceLabel)}</span></span></div>`).join('')}</section>` : ''}`;
-      $$('[data-aq]', box).forEach((b) => { b.onclick = () => { $('#aq').value = b.dataset.aq; renderAddResults(b.dataset.aq); }; });
+      $$('[data-aq]', box).forEach((b) => { b.onclick = () => { $('#aq').value = b.dataset.aq; renderAddResults(b.dataset.aq, { submitted: true }); }; });
       return;
     }
     let hits = [];
@@ -1579,23 +1596,23 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // 공개 데이터는 별도 파일에서 이 기기 안에서 검색한다. 입력할 때마다 외부 API를 호출하지 않는다.
   let openSeq = 0;
   window.addEventListener('eoul-open-products-ready', () => { if ($('#aq') && $('#ares')) renderAddResults($('#aq').value); });
-  async function openProductSearch(text) {
+  async function openProductSearch(text, { submitted = false } = {}) {
     const seq = ++openSeq;
     const box = $('#aopen'), provider = window.EOUL_OPEN_PRODUCTS;
     if (!box || !provider) return;
     if (!text) {
       box.innerHTML = `<section class="section"><h2 class="h3">공개 상품 정보로 찾아 넣기</h2><p class="t6">브랜드·이름을 찾아 등록할 수 있어요. 가격·재고 정보는 없어요.</p><div class="chips">${['유니클로', '리바이스', 'Brandit', 'Guess'].map((q) => `<button class="chip ex" data-opq="${esc(q)}">${esc(q)}</button>`).join('')}</div></section>`;
-      $$('[data-opq]', box).forEach((b) => { b.onclick = () => { $('#aq').value = b.dataset.opq; renderAddResults(b.dataset.opq); }; });
+      $$('[data-opq]', box).forEach((b) => { b.onclick = () => { $('#aq').value = b.dataset.opq; renderAddResults(b.dataset.opq, { submitted: true }); }; });
       return;
     }
     box.innerHTML = '<p class="t6" role="status">공개 상품 정보를 찾고 있어요…</p>';
     try {
-      const data = await provider.search(text);
+      const data = await provider.search(text, { server: submitted });
       if (seq !== openSeq || box !== $('#aopen')) return;
       box.innerHTML = `<section class="section"><h2 class="h3">공개 상품 정보 <span class="t6">${data.items.length}개${data.items.length === 12 ? ' 이상' : ''}</span></h2>
         <p class="t6">Open Products Facts · ${esc(data.fetchedAt.slice(0, 10))} 기준 ${data.usableCount}건 안에서 검색 · 가격·재고 없음<br>커뮤니티가 등록한 정보예요. 원본과 내 옷을 확인해 주세요.</p>
         ${data.items.length ? data.items.map((x, i) => `<div class="srow"><i class="ph ph-tag" aria-hidden="true" style="font-size:28px;flex:none"></i><span class="grow"><span class="b">${esc(x.brand)}</span><span class="n">${esc(x.name)}</span><span class="m">상품 코드 ${esc(x.code)} · <a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">원본</a></span></span><button class="btn line sm" data-opf-add="${i}">이 정보로 등록</button></div>`).join('') : '<p class="t5">이 공개 목록에는 일치하는 상품이 없어요.</p>'}
-        <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">ODbL</a> · <a href="/data/open-products/clothing.json" download style="text-decoration:underline">사용한 공개 데이터 받기</a> · <a href="/data/open-products/README.md" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">출처·변경 내역</a></p></section>${shoppingLinks(text)}`;
+        <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">ODbL</a> · <a href="/data/open-products/clothing.json" download style="text-decoration:underline">사용한 공개 데이터 받기</a> · <a href="/data/open-products/README.md" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">출처·변경 내역</a></p></section>`;
       $$('[data-opf-add]', box).forEach((b) => { b.onclick = () => {
         const draft = provider.draft(data.items[Number(b.dataset.opfAdd)]);
         if (!draft) return;
@@ -1603,22 +1620,53 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }; });
     } catch {
       if (seq !== openSeq || box !== $('#aopen')) return;
-      box.innerHTML = `<p class="t6" role="status">공개 상품 정보를 불러오지 못했어요. 검색어를 다시 입력하거나 직접 등록해 주세요.</p>${shoppingLinks(text)}`;
+      box.innerHTML = `<p class="t6" role="status">공개 상품 정보를 불러오지 못했어요. 검색어를 다시 입력하거나 직접 등록해 주세요.</p>`;
     }
+  }
+  function autoDomesticSearch(root) {
+    $$('[data-adpick-panel]', root).forEach((panel) => {
+      if (panel.dataset.started) return;
+      panel.dataset.started = '1';
+      void searchAdpick(panel);
+    });
+  }
+  async function recommendOpenProducts(query) {
+    const box = $('[data-open-recommendations]');
+    if (!box || !window.EOUL_OPEN_PRODUCT_SEARCH) return;
+    box.innerHTML = '<p class="t6" role="status">공개 상품 DB에서 후보를 찾고 있어요…</p>';
+    try {
+      const data = await window.EOUL_OPEN_PRODUCT_SEARCH(query);
+      if (box !== $('[data-open-recommendations]')) return;
+      const draw = (items, reasons = new Map(), summary = '') => {
+        box.innerHTML = `<h2 class="h3">공개 상품 후보 <span class="t6">${items.length}개</span></h2><p class="t6">가격·재고·구매처 없는 상품 정보예요. 예산·핏 조건 충족 여부는 확인할 수 없어요.</p>
+          ${summary ? `<p class="t5" role="status">${esc(summary)}</p>` : ''}
+          ${items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer"><span class="grow"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span>${reasons.has(p.code) ? `<span class="m">${esc(reasons.get(p.code))}</span>` : ''}</span><i class="ph ph-arrow-up-right"></i></a>`).join('')}
+          <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a> · ${esc(data.fetchedAt.slice(0, 10))} 기준 · <a href="/api/open-products/export" download>사용한 DB 내려받기</a></p>`;
+      };
+      if (!data.items.length) { draw([], new Map(), '이 공개 DB에는 일치하는 후보가 없어요.'); return; }
+      draw(data.items, new Map(), data.items.length > 1 && window.EOUL_SERVER_AI ? 'AI가 이름·브랜드·분류 기준으로 비교하고 있어요…' : '상품 정보 확인용 후보예요.');
+      if (data.items.length < 2 || !window.EOUL_SERVER_AI) return;
+      try {
+        const ranked = await window.EOUL_SERVER_AI({ task: 'open_rank', query, items: data.items.map((p) => p.code) });
+        if (box !== $('[data-open-recommendations]')) return;
+        const byId = new Map(data.items.map((p) => [p.code, p]));
+        draw(ranked.ranking.map((r) => byId.get(r.id)), new Map(ranked.ranking.map((r) => [r.id, r.reason])), `AI 후보 비교 · ${ranked.summary}`);
+      } catch { if (box === $('[data-open-recommendations]')) draw(data.items, new Map(), 'AI 비교를 완료하지 못해 상품 코드 순서로 보여드려요.'); }
+    } catch { if (box === $('[data-open-recommendations]')) box.innerHTML = '<p class="t6" role="status">공개 상품 DB에 연결하지 못했어요. 다시 검색해 주세요.</p>'; }
   }
   async function searchAdpick(button) {
     if (button.disabled || !window.EOUL_ADPICK) return;
-    const panel = button.closest('[data-adpick-panel]');
+    const panel = button.hasAttribute?.('data-adpick-panel') ? button : button.closest('[data-adpick-panel]');
     const box = $('[data-adpick-results]', panel);
-    const query = $('[data-adpick-keyword]', panel).value.trim();
+    const query = ($('[data-adpick-keyword]', panel)?.value || panel.dataset.adpickQ || button.dataset.adpickQ || '').trim();
     if (query.length < 2) { box.innerHTML = '<p class="t6" role="status">브랜드나 상품명을 2자 이상 입력해 주세요.</p>'; return; }
     button.disabled = true;
-    box.innerHTML = '<p class="t6" role="status">국내 상품을 불러오는 중이에요…</p>';
+    box.innerHTML = '<p class="t6" role="status">국내 상품을 찾고 있어요…</p>';
     try {
       const data = await window.EOUL_ADPICK(query);
       if (!box.isConnected) return;
       box.innerHTML = `<p class="t6">애드픽 제공 순서 · ${esc(data.fetchedAt?.slice(0, 10) || '')} 조회 · 가격은 참고값이며 결제 전 판매처에서 확인해 주세요.</p>${data.items.length ? '<p class="t6">제휴 광고: 링크를 통한 구매 시 운영자에게 수수료가 지급될 수 있습니다.</p>' + data.items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer sponsored">${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" style="object-fit:contain;flex:none">` : ''}<span class="grow"><span class="n">${esc(p.name)}</span><span class="m">${esc(p.shop)} · ${esc(p.price)}</span></span><i class="ph ph-arrow-up-right"></i></a>`).join('') : data.omitted > 0 ? '<p class="t5">검색어와 맞지 않거나 국내 판매처·구매 링크 등 필수 정보를 확인할 수 없어 결과를 표시하지 못했어요. 브랜드·상품명만 짧게 입력해 보세요.</p>' : '<p class="t5">이번 검색 결과에는 맞는 국내 제휴 상품이 없어요. 조건을 자동으로 넓히지 않았어요.</p>'}`;
-    } catch (error) { if (box.isConnected) box.innerHTML = `<p class="t6" role="status">${esc(error.message || '국내 상품을 불러오지 못했어요.')}</p>`; }
+    } catch (error) { if (box.isConnected) box.innerHTML = `<p class="t6" role="status">${esc(error.message || '국내 상품을 찾지 못했어요.')}</p><button class="btn line sm" data-adpick-search>다시 시도</button>`; }
     finally { button.disabled = false; }
   }
   async function planRakuten(button) {
