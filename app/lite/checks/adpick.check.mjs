@@ -21,7 +21,7 @@ test('Adpick input, missing credentials and missing quota DB fail before any pro
   const options = { fetcher: async () => { calls++; throw Error('not allowed'); } };
   for (const [req, config, status] of [
     [request(), {}, 503], [request(), { ...env(), RANK_DB: null }, 503],
-    [request('x'), env(), 400], [request('가'.repeat(101)), env(), 400],
+    [request('x'), env(), 400], [request('!!'), env(), 400], [request('가'.repeat(101)), env(), 400],
     [request('셔츠\n키'), env(), 400], [new Request(request().url + '&url=https://other.test'), env(), 400],
     [new Request('https://private.example/api/adpick/unknown'), env(), 404],
     [new Request(request().url, { method: 'POST' }), env(), 405],
@@ -29,24 +29,37 @@ test('Adpick input, missing credentials and missing quota DB fail before any pro
   assert.equal(calls, 0);
 });
 test('Adpick calls only official search with a server path key, bounded Korean query and original affiliate links', async () => {
-  const res = await handleAdpick(request(), env(), { fetcher: async (raw, init) => {
+  const res = await handleAdpick(request('테스트 셔츠'), env(), { fetcher: async (raw, init) => {
     const url = new URL(raw);
     assert.equal(url.origin, 'https://biz.adpick.co.kr');
     assert.equal(url.pathname, `/api/${KEY}/search`);
-    assert.equal(url.searchParams.get('q'), '옥스포드 셔츠');
+    assert.equal(url.searchParams.get('q'), '테스트 셔츠');
     assert.equal(url.searchParams.get('limit'), '20');
     assert.deepEqual([...url.searchParams.keys()].sort(), ['limit', 'q']);
     assert.equal(init.redirect, 'manual');
     assert.equal(init.cache, 'no-store');
-    return Response.json(response(item, { ...item, title: '두 번째', price: 42000 }));
+    return Response.json(response(item, { ...item, title: '두 번째 테스트 셔츠', price: 42000 }));
   } });
   assert.equal(res.status, 200);
   assert.match(res.headers.get('cache-control'), /no-store/);
   const out = await res.json();
-  assert.deepEqual(out.items.map((p) => [p.name, p.price]), [[item.title, '29,900원'], ['두 번째', '42,000원']]);
+  assert.deepEqual(out.items.map((p) => [p.name, p.price]), [[item.title, '29,900원'], ['두 번째 테스트 셔츠', '42,000원']]);
   assert.equal(out.items[0].url, item.commissionlink);
   assert.equal(out.items[0].currency, 'KRW');
   assert.doesNotMatch(JSON.stringify(out), /synthetic-adpick-test-key|\/api\//);
+});
+test('observed merchant aliases and official short-link host work while unrelated keyword matches are removed', () => {
+  const fixture = response(
+    { ...item, title: '합성 리바이스 501 셔츠', cp_name: '더블유컨셉코리아', commissionlink: 'https://bitl.bz/synthetic' },
+    { ...item, title: '합성 501 오토바이 부품', cp_name: 'SSG' },
+    { ...item, title: '합성 리바이스 501 청바지', cp_name: '롯데홈쇼핑' },
+  );
+  const out = offers(fixture, KEY, '리바이스 501');
+  assert.deepEqual(out.map(p => p.shop), ['더블유컨셉코리아', '롯데홈쇼핑']);
+  assert.equal(out[0].url, 'https://bitl.bz/synthetic');
+  assert.deepEqual(offers(response({ ...item, commissionlink: 'https://bitl.bz.attacker.test/synthetic' }), KEY), []);
+  assert.equal(offers(response({ ...item, title: '합성 LEVIS 501 셔츠' }), KEY, 'levis ５０１').length, 1);
+  assert.deepEqual(offers(fixture, KEY, '없는 상품'), []);
 });
 test('Adpick normalization never guesses brand/availability and rejects unsafe links or credential echoes', () => {
   const good = offers(response(item), KEY)[0];

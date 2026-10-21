@@ -4,26 +4,30 @@ import { authorizePrivateRequest } from '../lib/private-access.js';
 const ORIGIN = 'https://biz.adpick.co.kr';
 const reply = (status, body) => Response.json(body, { status, headers: { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 const clean = (s, max) => typeof s === 'string' && s.length <= max && !/[\x00-\x1f\x7f]/.test(s) ? s.trim() : '';
-// Names observed on the official public partner page and API documentation.
+// Names observed on the official public partner page and authenticated search/guide.
 // Partnership is not proof that search is supported; only live returned offers are shown.
-const domestic = new Set(['쿠팡', '11번가', 'CJ온스타일', 'GS SHOP', 'Hmall', 'H패션몰', 'W컨셉', '필웨이', '포스티', '교복몰'].map((s) => s.normalize('NFKC').replace(/\s+/g, '').toLowerCase()));
+const domestic = new Set(['쿠팡', '11번가', 'CJ온스타일', 'GS SHOP', 'Hmall', 'H패션몰', 'W컨셉', '더블유컨셉코리아', '필웨이', '포스티', '교복몰', 'SSG', '롯데홈쇼핑', '보리보리'].map((s) => s.normalize('NFKC').replace(/\s+/g, '').toLowerCase()));
 const domesticShop = (name) => domestic.has(name.normalize('NFKC').replace(/\s+/g, '').toLowerCase());
+const words = (s) => s.normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+// The provider's real search also returned unrelated products. Require every literal
+// keyword in the title, without inventing synonyms, translating or modifying it.
+const matches = (name, query) => words(query).every((word) => words(name).join(' ').includes(word));
 function safeURL(value, key, commission = false) {
   try {
     const u = new URL(value);
     if (typeof value !== 'string' || value.length > 4096 || value.includes(key) || u.protocol !== 'https:' || u.username || u.password || u.port) return null;
-    if (commission && !['link.adpick.co.kr', 'adpick.co.kr', 'www.adpick.co.kr'].includes(u.hostname)) return null;
+    if (commission && !['link.adpick.co.kr', 'adpick.co.kr', 'www.adpick.co.kr', 'bitl.bz'].includes(u.hostname)) return null;
     if (!commission && (!/^(?:[a-z0-9-]+\.)+[a-z]{2,63}$/i.test(u.hostname) || /(?:^|\.)(?:localhost|local|internal|test|invalid|example)$/.test(u.hostname))) return null;
     return u.href;
   } catch { return null; }
 }
-export function offers(data, key) {
+export function offers(data, key, query = '') {
   if (data?.success !== true || !Array.isArray(data.data)) return null;
   return data.data.slice(0, 20).flatMap((p) => {
     const name = clean(p?.title, 1200), shop = clean(p?.cp_name, 160), code = clean(p?.cp_code, 80);
     const url = safeURL(p?.commissionlink, key, true);
     const price = typeof p?.price === 'number' && Number.isSafeInteger(p.price) && p.price > 0 ? `${p.price.toLocaleString('ko-KR')}원` : clean(p?.price, 80);
-    if (!name || !shop || !domesticShop(shop) || !code || !price || !url || [name, shop, code, price].some((s) => s.includes(key))) return [];
+    if (!name || !shop || !domesticShop(shop) || !code || !price || !url || !matches(name, query) || [name, shop, code, price].some((s) => s.includes(key))) return [];
     return [{ name, shop, code, price, currency: 'KRW', url, image: safeURL(p?.photo, key) }];
   }).slice(0, 12);
 }
@@ -49,7 +53,7 @@ export async function handleAdpick(request, env, { fetcher = fetch, now = Date.n
   const u = new URL(request.url), kind = u.pathname === '/api/adpick/malls' ? 'malls' : u.pathname === '/api/adpick' ? 'search' : null;
   if (!kind) return reply(404, { code: 'not_found' });
   const q = u.searchParams.get('q');
-  if (kind === 'search' && (!clean(q, 100) || q.trim().length < 2 || new TextEncoder().encode(q).length > 300)) return reply(400, { code: 'invalid', message: '브랜드나 상품명을 2~100자로 입력해 주세요.' });
+  if (kind === 'search' && (!clean(q, 100) || q.trim().length < 2 || !words(q).length || new TextEncoder().encode(q).length > 300)) return reply(400, { code: 'invalid', message: '브랜드나 상품명을 2~100자로 입력해 주세요.' });
   if (![...u.searchParams.keys()].every((name) => kind === 'search' && name === 'q')) return reply(400, { code: 'invalid', message: '지원하지 않는 검색 조건이에요.' });
   const key = env?.ADPICK_API_KEY;
   if (typeof key !== 'string' || !/^[\x21-\x7e]{8,256}$/.test(key)) return reply(503, { code: 'not_configured', message: '국내 상품 검색 연결을 준비하고 있어요.' });
@@ -80,7 +84,7 @@ export async function handleAdpick(request, env, { fetcher = fetch, now = Date.n
       const limited = result.status === 429;
       return reply(limited ? 429 : 502, { code: limited ? 'rate_limited' : 'provider_unavailable', message: limited ? '잠시 후 다시 검색해 주세요.' : '애드픽 상품을 불러오지 못했어요. 계정 승인과 API 설정을 확인해 주세요.' });
     }
-    const items = kind === 'malls' ? malls(result.data, key) : offers(result.data, key);
+    const items = kind === 'malls' ? malls(result.data, key) : offers(result.data, key, q.trim());
     if (!items) throw Error('shape');
     // The key is in the provider URL by its specification. Never return/log that URL or raw errors.
     return reply(200, { source: 'ADPICK', [kind === 'malls' ? 'malls' : 'items']: items,

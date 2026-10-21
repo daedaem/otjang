@@ -9,7 +9,7 @@ function ui(data) {
   const box = { isConnected: true, innerHTML: '' }, button = { disabled: false, dataset: { adpickQ: '합성 셔츠' }, closest: () => ({}) };
   const calls = [];
   const context = vm.createContext({ $, esc, window: { EOUL_ADPICK: async (q) => { calls.push(q); if (data instanceof Error) throw data; return data; }, EOUL_SERVER_AI() { throw Error('Product data must not reach AI'); } } });
-  function $() { return box; }
+  function $(selector) { return selector === '[data-adpick-keyword]' ? { value: '합성 셔츠' } : box; }
   vm.runInContext(code, context);
   return { box, button, calls, run: () => context.searchAdpick(button) };
 }

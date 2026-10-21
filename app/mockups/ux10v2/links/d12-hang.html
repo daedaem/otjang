@@ -588,7 +588,7 @@ a { color: inherit; text-decoration: none; }
   };
   const adpickLink = (q) => {
     const text = String(q || '').trim();
-    return text && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel><h2 class="h3">국내 쇼핑몰에서 찾기</h2><p class="t6">애드픽 제휴 광고 · 키워드 검색이며 예산·코디 조건은 적용하지 않아요.</p><button class="btn line sm" data-adpick-search data-adpick-q="${esc(text)}">국내 상품 불러오기</button><div data-adpick-results aria-live="polite"></div></section>` : '';
+    return text && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel><h2 class="h3">국내 쇼핑몰에서 찾기</h2><p class="t6">애드픽 제휴 광고 · 예산·코디 조건은 적용하지 않아요. 상품명에 입력한 단어가 모두 있는 결과만 보여드려요.</p><div class="field"><label>브랜드·상품명<input data-adpick-keyword maxlength="100" value="${esc(text)}" placeholder="예: 리바이스 501"></label></div><button class="btn line sm" data-adpick-search data-adpick-q="${esc(text)}">국내 상품 불러오기</button><div data-adpick-results aria-live="polite"></div></section>` : '';
   };
   const shoppingLinks = (q) => adpickLink(q) + rakutenLink(q);
   const crowd = () => (window.EOUL_CROWD && typeof window.EOUL_CROWD.submit === 'function' ? window.EOUL_CROWD : null);
@@ -1608,13 +1608,16 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
   async function searchAdpick(button) {
     if (button.disabled || !window.EOUL_ADPICK) return;
-    const box = $('[data-adpick-results]', button.closest('[data-adpick-panel]'));
+    const panel = button.closest('[data-adpick-panel]');
+    const box = $('[data-adpick-results]', panel);
+    const query = $('[data-adpick-keyword]', panel).value.trim();
+    if (query.length < 2) { box.innerHTML = '<p class="t6" role="status">브랜드나 상품명을 2자 이상 입력해 주세요.</p>'; return; }
     button.disabled = true;
     box.innerHTML = '<p class="t6" role="status">국내 상품을 불러오는 중이에요…</p>';
     try {
-      const data = await window.EOUL_ADPICK(button.dataset.adpickQ);
+      const data = await window.EOUL_ADPICK(query);
       if (!box.isConnected) return;
-      box.innerHTML = `<p class="t6">애드픽 제공 순서 · ${esc(data.fetchedAt?.slice(0, 10) || '')} 조회 · 가격은 참고값이며 결제 전 판매처에서 확인해 주세요.</p>${data.items.length ? '<p class="t6">제휴 광고: 링크를 통한 구매 시 운영자에게 수수료가 지급될 수 있습니다.</p>' + data.items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer sponsored">${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" style="object-fit:contain;flex:none">` : ''}<span class="grow"><span class="n">${esc(p.name)}</span><span class="m">${esc(p.shop)} · ${esc(p.price)}</span></span><i class="ph ph-arrow-up-right"></i></a>`).join('') : data.omitted > 0 ? '<p class="t5">국내 판매처·구매 링크 등 필수 정보를 확인할 수 없어 결과를 표시하지 못했어요.</p>' : '<p class="t5">이 검색어에 맞는 국내 제휴 상품이 없어요. 조건을 자동으로 넓히지 않았어요.</p>'}`;
+      box.innerHTML = `<p class="t6">애드픽 제공 순서 · ${esc(data.fetchedAt?.slice(0, 10) || '')} 조회 · 가격은 참고값이며 결제 전 판매처에서 확인해 주세요.</p>${data.items.length ? '<p class="t6">제휴 광고: 링크를 통한 구매 시 운영자에게 수수료가 지급될 수 있습니다.</p>' + data.items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer sponsored">${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" style="object-fit:contain;flex:none">` : ''}<span class="grow"><span class="n">${esc(p.name)}</span><span class="m">${esc(p.shop)} · ${esc(p.price)}</span></span><i class="ph ph-arrow-up-right"></i></a>`).join('') : data.omitted > 0 ? '<p class="t5">검색어와 맞지 않거나 국내 판매처·구매 링크 등 필수 정보를 확인할 수 없어 결과를 표시하지 못했어요. 브랜드·상품명만 짧게 입력해 보세요.</p>' : '<p class="t5">이번 검색 결과에는 맞는 국내 제휴 상품이 없어요. 조건을 자동으로 넓히지 않았어요.</p>'}`;
     } catch (error) { if (box.isConnected) box.innerHTML = `<p class="t6" role="status">${esc(error.message || '국내 상품을 불러오지 못했어요.')}</p>`; }
     finally { button.disabled = false; }
   }
