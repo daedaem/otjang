@@ -15,13 +15,14 @@ function safeURL(value, hosts) {
   } catch { return null; }
 }
 export function offers(data) {
-  if (!Array.isArray(data?.Items)) return null;
-  return data.Items.slice(0, 12).flatMap((entry) => {
-    const p = entry?.Item || entry;
+  const list = Array.isArray(data?.items) ? data.items : Array.isArray(data?.Items) ? data.Items : null;
+  if (!list) return null;
+  return list.slice(0, 12).flatMap((entry) => {
+    const p = entry?.item || entry?.Item || entry;
     const name = text(p?.itemName, 1200), shop = text(p?.shopName, 160);
     const url = safeURL(p?.itemUrl, ['item.rakuten.co.jp', 'www.rakuten.co.jp']);
     if (!name || !shop || !url || !Number.isSafeInteger(p?.itemPrice) || p.itemPrice <= 0 || p.availability !== 1) return [];
-    const image = (Array.isArray(p.mediumImageUrls) ? p.mediumImageUrls : []).map((x) => safeURL(x?.imageUrl, ['thumbnail.image.rakuten.co.jp', 'image.rakuten.co.jp', 'tshop.r10s.jp', 'shop.r10s.jp'])).find(Boolean) || null;
+    const image = (Array.isArray(p.mediumImageUrls) ? p.mediumImageUrls : []).map((x) => safeURL(typeof x === 'string' ? x : x?.imageUrl, ['thumbnail.image.rakuten.co.jp', 'image.rakuten.co.jp', 'tshop.r10s.jp', 'shop.r10s.jp'])).find(Boolean) || null;
     return [{ name, shop, url, image, price: p.itemPrice, currency: 'JPY', taxFlag: p.taxFlag === 0 || p.taxFlag === 1 ? p.taxFlag : null }];
   });
 }
@@ -47,7 +48,7 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
     if (!await takeSlot(env.RANK_DB, now)) return reply(429, { code: 'rate_limited', message: '잠시 후 다시 검색해 주세요.' });
   } catch { return reply(503, { code: 'unavailable', message: '검색 연결을 준비하고 있어요.' }); }
   const api = new URL(ENDPOINT);
-  api.search = new URLSearchParams({ applicationId: appId, keyword: q.trim(), format: 'json', hits: '12', page: '1', availability: '1', elements: 'itemName,itemPrice,itemUrl,mediumImageUrls,availability,shopName,taxFlag' }).toString();
+  api.search = new URLSearchParams({ applicationId: appId, keyword: q.trim(), format: 'json', formatVersion: '2', hits: '12', page: '1', availability: '1', elements: 'itemName,itemPrice,itemUrl,mediumImageUrls,availability,shopName,taxFlag' }).toString();
   const controller = new AbortController();
   let timer;
   try {

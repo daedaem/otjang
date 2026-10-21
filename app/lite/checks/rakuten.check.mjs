@@ -44,6 +44,7 @@ test('official request uses only a bounded keyword and server credentials, retur
     assert.equal(parsed.origin + parsed.pathname, ENDPOINT);
     assert.equal(parsed.searchParams.get('keyword'), 'Levis 501');
     assert.equal(parsed.searchParams.get('hits'), '12');
+    assert.equal(parsed.searchParams.get('formatVersion'), '2');
     assert.equal(parsed.searchParams.get('applicationId'), config.RAKUTEN_APPLICATION_ID);
     assert.equal(parsed.searchParams.has('accessKey'), false);
     assert.equal(parsed.searchParams.has('affiliateId'), false);
@@ -51,7 +52,7 @@ test('official request uses only a bounded keyword and server credentials, retur
     assert.equal(options.headers.Origin, APP_ORIGIN);
     assert.equal(options.headers.Referer, `${APP_ORIGIN}/`);
     assert.equal(options.redirect, 'error');
-    return Response.json({ Items: [{ Item: item }, { Item: { ...item, itemName: 'Second', itemPrice: 100 } }] });
+    return Response.json({ items: [item, { ...item, itemName: 'Second', itemPrice: 100 }] });
   } });
   assert.equal(response.status, 200);
   assert.match(response.headers.get('cache-control'), /no-store/);
@@ -122,11 +123,18 @@ test('provider authorization errors have a safe status/code and never reflect er
 });
 
 test('format failures expose only safe public schema names, not response values', async () => {
-  const res = await handleRakuten(request(), env(), { fetcher: async () => Response.json({ items: [], error_description: 'synthetic-test-access-key', privateField: 'hidden' }) });
+  const res = await handleRakuten(request(), env(), { fetcher: async () => Response.json({ items: {}, error_description: 'synthetic-test-access-key', privateField: 'hidden' }) });
   const body = await res.json();
   assert.equal(body.code, 'provider_shape');
   assert.deepEqual(body.upstreamKeys, ['items', 'error_description']);
   assert.doesNotMatch(JSON.stringify(body), /synthetic|privateField|hidden/);
   const html = await handleRakuten(request(), env(), { fetcher: async () => new Response('<html>private text</html>', { headers: { 'content-type': 'text/html' } }) });
   assert.deepEqual((await html.json()).upstreamFormat, 'html');
+});
+
+test('current documented lowercase item wrappers and flat version 2 are parsed without fabricating missing items', () => {
+  assert.equal(offers({ items: [{ item }] })[0].name, item.itemName);
+  assert.equal(offers({ items: [{ ...item, mediumImageUrls: [item.mediumImageUrls[0].imageUrl] }] })[0].image, item.mediumImageUrls[0].imageUrl);
+  assert.deepEqual(offers({ items: [] }), []);
+  assert.equal(offers({ items: {} }), null);
 });
