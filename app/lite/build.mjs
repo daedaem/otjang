@@ -2,6 +2,7 @@
 // Cloudflare Pages 설정: 루트 디렉터리 app/lite, 빌드 명령 `npm run build`, 출력 디렉터리 dist (functions/는 Pages가 알아서 올린다).
 // 상품 사진은 판매처 이미지 서버 주소를 그대로 쓴다(저장소·배포본에 사진 파일 없음). 글꼴은 npm 패키지(OFL·MIT)에서 복사한다.
 import { assertBuildAllowed } from './deployment-policy.mjs';
+import { versionedAssetPath } from './asset-version.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -33,6 +34,13 @@ for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js']) copy(path.join(UX, '
 copy(path.join(HERE, 'src/lite.js'), 'shared/lite.js');
 copy(path.join(HERE, 'src/open-products.mjs'), 'shared/open-products.mjs');
 for (const f of ['clothing.json', 'README.md']) copy(path.join(HERE, 'data/open-products', f), `data/open-products/${f}`);
+const scriptPaths = new Map();
+for (const f of ['eoul-mock.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'lite.js', 'open-products.mjs']) {
+  const rel = `shared/${f}`, bytes = fs.readFileSync(path.join(OUT, rel));
+  const versioned = versionedAssetPath(rel, bytes);
+  put(versioned, bytes);
+  scriptPaths.set(rel, versioned);
+}
 
 // 2) 글꼴: Pretendard Variable(SIL OFL 1.1), Phosphor 아이콘(MIT)
 copy(path.join(NM, 'pretendard/dist/web/variable/woff2/PretendardVariable.woff2'), 'shared/fonts/PretendardVariable.woff2');
@@ -58,8 +66,9 @@ const body = read(path.join(UX, 'links', SCREEN))
   .replace(/<script>\s*<\/script>\n?/, '')
   // 예전 설치 앱(d7, 기본 저장 키)에 옷장이 있으면 새 화면의 저장 키로 한 번 옮긴다(덮어쓰지 않음).
   .replace(/<script>window\.EOUL_MOCK_KEY='([^']+)';<\/script>/, (m, key) => `<script>window.EOUL_MOCK_KEY='${key}';try{var o=localStorage.getItem('eoul-mockup-ux10v2:v1');if(o&&!localStorage.getItem('${key}'))localStorage.setItem('${key}',o)}catch(e){}</script>`)
-  .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>');
-if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes('shared/lite.js')) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);
+  .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>')
+  .replace(/(<script\b[^>]*\bsrc=")(shared\/[^"<>]+)(")/g, (all, before, rel, after) => scriptPaths.has(rel) ? `${before}${scriptPaths.get(rel)}${after}` : all);
+if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes(scriptPaths.get('shared/lite.js'))) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -128,7 +137,7 @@ const walk = (dir) => {
   }
 };
 walk(OUT);
-const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html').map((f) => `/${f}`)].sort();
+const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
 const hash = crypto.createHash('sha256');
 for (const f of files.sort()) hash.update(f).update(fs.readFileSync(path.join(OUT, f)));
 const version = hash.digest('hex').slice(0, 12);

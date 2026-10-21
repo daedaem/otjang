@@ -120,3 +120,13 @@ test('provider authorization errors have a safe status/code and never reflect er
   assert.equal(body.upstreamStatus, 403);
   assert.doesNotMatch(JSON.stringify(body), /synthetic|denied/);
 });
+
+test('format failures expose only safe public schema names, not response values', async () => {
+  const res = await handleRakuten(request(), env(), { fetcher: async () => Response.json({ items: [], error_description: 'synthetic-test-access-key', privateField: 'hidden' }) });
+  const body = await res.json();
+  assert.equal(body.code, 'provider_shape');
+  assert.deepEqual(body.upstreamKeys, ['items', 'error_description']);
+  assert.doesNotMatch(JSON.stringify(body), /synthetic|privateField|hidden/);
+  const html = await handleRakuten(request(), env(), { fetcher: async () => new Response('<html>private text</html>', { headers: { 'content-type': 'text/html' } }) });
+  assert.deepEqual((await html.json()).upstreamFormat, 'html');
+});
