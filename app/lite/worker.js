@@ -5,6 +5,7 @@ import { handle } from './functions/api/rank.js';
 import { handleCatalog } from './functions/api/catalog.js';
 import { handleWeather } from './functions/api/weather.js';
 import { handleRakuten } from './functions/api/rakuten.js';
+import { handleAdpick } from './functions/api/adpick.js';
 import { authorizePrivateRequest } from './functions/lib/private-access.js';
 import { handlePrivateSession } from './functions/lib/private-session.js';
 
@@ -42,6 +43,7 @@ export function createWorker({
   catalog = handleCatalog,
   weather = handleWeather,
   rakuten = handleRakuten,
+  adpick = handleAdpick,
   privateSession = handlePrivateSession,
 } = {}) {
   return {
@@ -67,6 +69,7 @@ export function createWorker({
       }
       if (url.pathname.startsWith('/api/catalog/')) return catalog(request, env);
       if (url.pathname === '/api/rakuten') return rakuten(request, env);
+      if (url.pathname === '/api/adpick' || url.pathname.startsWith('/api/adpick/')) return adpick(request, env);
       if (url.pathname === '/api/weather') {
         if (request.method !== 'GET') return new Response('GET만 받아요.', { status: 405, headers: privateHeaders });
         return weather(request, env);
