@@ -1,4 +1,4 @@
-// 설치형 앱 묶기: 쉬운 시안(d7) 화면을 그대로 쓰고, 홈 화면 설치·오프라인·AI 순위 서버 함수 연결만 더해 dist/에 만든다.
+// 설치형 앱 묶기: 시안 화면(SCREEN, 지금은 d12 "걸어 보고 사기")을 그대로 쓰고, 홈 화면 설치·오프라인·AI 순위 서버 함수 연결만 더해 dist/에 만든다.
 // Cloudflare Pages 설정: 루트 디렉터리 app/lite, 빌드 명령 `npm run build`, 출력 디렉터리 dist (functions/는 Pages가 알아서 올린다).
 // 상품 사진은 판매처 이미지 서버 주소를 그대로 쓴다(저장소·배포본에 사진 파일 없음). 글꼴은 npm 패키지(OFL·MIT)에서 복사한다.
 import fs from 'node:fs';
@@ -43,13 +43,18 @@ for (const [dir, name, css] of [['regular', 'Phosphor', 'regular.css'], ['fill',
 const ICONS = ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'maskable-512.png', 'icon.svg'];
 for (const f of ICONS) copy(path.join(HERE, '../public/icons', f), `icons/${f}`);
 
-// 4) 화면: d7 본문 조각을 완전한 문서로 감싼다. 링크 페이지 전용 줄(사진 폴더, claude 메타, 제목)은 뺀다.
-const body = read(path.join(UX, 'links/d7-simple.html'))
+// 4) 화면: 시안 본문 조각을 완전한 문서로 감싼다. 링크 페이지 전용 줄(사진 폴더, claude 메타, 제목)은 뺀다.
+//    저장 키(EOUL_MOCK_KEY)는 남겨서 링크 시안과 같은 이름으로 이 기기에 저장한다.
+export const SCREEN = 'd12-hang.html';
+const body = read(path.join(UX, 'links', SCREEN))
   .replace(/<title>[^<]*<\/title>\n?/, '')
   .replace(/<meta name="claude:[^>]*>\n?/, '')
-  .replace(/<script>window\.EOUL_PHOTO_BASE=[^<]*<\/script>\n?/, '')
+  .replace(/window\.EOUL_PHOTO_BASE\s*=\s*'[^']*';\s*/, '')
+  .replace(/<script>\s*<\/script>\n?/, '')
+  // 예전 설치 앱(d7, 기본 저장 키)에 옷장이 있으면 새 화면의 저장 키로 한 번 옮긴다(덮어쓰지 않음).
+  .replace(/<script>window\.EOUL_MOCK_KEY='([^']+)';<\/script>/, (m, key) => `<script>window.EOUL_MOCK_KEY='${key}';try{var o=localStorage.getItem('eoul-mockup-ux10v2:v1');if(o&&!localStorage.getItem('${key}'))localStorage.setItem('${key}',o)}catch(e){}</script>`)
   .replace('<script src="shared/ai-rank.js"></script>', '<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>');
-if (body.includes('EOUL_PHOTO_BASE') || !body.includes('shared/lite.js')) throw new Error('d7 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.');
+if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes('shared/lite.js')) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -99,7 +104,7 @@ put('_headers', `/*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   X-Robots-Tag: noindex, nofollow, noimageindex
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
 /sw.js
   Cache-Control: no-cache
 /index.html

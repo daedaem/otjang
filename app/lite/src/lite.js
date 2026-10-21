@@ -34,6 +34,35 @@
     const out = await res.json().catch(() => null);
     return res.ok && out ? out : { code: out?.code || 'error', message: out?.message };
   };
+  // 오늘·내일 날씨(/api/weather). 위치는 이 기기에서 물어보고(거절하면 서울 기준), 0.1°로 줄여 우리 서버에만 보낸다.
+  // 화면은 window.EOUL_WEATHER가 있을 때만 실제 날씨를 쓰고, 없으면(링크 시안) 예시 날씨라고 밝힌다.
+  const SEOUL = { lat: 37.6, lon: 127.0 };
+  const where = () => new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: Math.round(p.coords.latitude * 10) / 10, lon: Math.round(p.coords.longitude * 10) / 10 }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60 * 60 * 1000 },
+    );
+  });
+  window.EOUL_WEATHER = async () => {
+    const KEY = 'eoul-weather:last';
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (saved && Date.now() - saved.at < 30 * 60 * 1000) return saved.value;
+    } catch {}
+    const here = await where();
+    const c = here || SEOUL;
+    let res;
+    try { res = await fetch(`/api/weather?lat=${c.lat}&lon=${c.lon}`); } catch { return null; }
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => null);
+    if (!body?.today) return null;
+    const value = { place: here ? '내 위치 근처' : '서울(위치 허용 전)', source: body.source, today: body.today, tomorrow: body.tomorrow };
+    try { localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), value })); } catch {}
+    return value;
+  };
+
   window.EOUL_CROWD = {
     submit: (item) => api('submit', { ...item, device: deviceId() }),
     withdraw: (key) => api('withdraw', { key, device: deviceId() }),
