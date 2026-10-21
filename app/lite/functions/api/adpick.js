@@ -16,17 +16,26 @@ function safeURL(value, key, commission = false) {
   try {
     const u = new URL(value);
     if (typeof value !== 'string' || value.length > 4096 || value.includes(key) || u.protocol !== 'https:' || u.username || u.password || u.port) return null;
-    if (commission && !['link.adpick.co.kr', 'adpick.co.kr', 'www.adpick.co.kr', 'bitl.bz'].includes(u.hostname)) return null;
+    if (commission && !['link.adpick.co.kr', 'adpick.co.kr', 'www.adpick.co.kr', 'biz.adpick.co.kr', 'bitl.bz'].includes(u.hostname)) return null;
+    if (commission && u.hostname === 'biz.adpick.co.kr' && (!/^\/r[0-9]+$/.test(u.pathname) || u.search || u.hash)) return null;
     if (!commission && (!/^(?:[a-z0-9-]+\.)+[a-z]{2,63}$/i.test(u.hostname) || /(?:^|\.)(?:localhost|local|internal|test|invalid|example)$/.test(u.hostname))) return null;
     return u.href;
   } catch { return null; }
+}
+function displayPrice(value) {
+  const s = clean(value, 80);
+  if (typeof value === 'number' || /^\d+$/.test(s) || /^\d{1,3}(?:,\d{3})+$/.test(s)) {
+    const amount = typeof value === 'number' ? value : Number(s.replaceAll(',', ''));
+    return Number.isSafeInteger(amount) && amount > 0 ? `${amount.toLocaleString('ko-KR')}원` : '';
+  }
+  return s;
 }
 export function offers(data, key, query = '') {
   if (data?.success !== true || !Array.isArray(data.data)) return null;
   return data.data.slice(0, 20).flatMap((p) => {
     const name = clean(p?.title, 1200), shop = clean(p?.cp_name, 160), code = clean(p?.cp_code, 80);
     const url = safeURL(p?.commissionlink, key, true);
-    const price = typeof p?.price === 'number' && Number.isSafeInteger(p.price) && p.price > 0 ? `${p.price.toLocaleString('ko-KR')}원` : clean(p?.price, 80);
+    const price = displayPrice(p?.price);
     if (!name || !shop || !domesticShop(shop) || !code || !price || !url || !matches(name, query) || [name, shop, code, price].some((s) => s.includes(key))) return [];
     return [{ name, shop, code, price, currency: 'KRW', url, image: safeURL(p?.photo, key) }];
   }).slice(0, 12);
@@ -37,6 +46,22 @@ export function malls(data, key) {
     const code = clean(p?.cp_code, 80), name = clean(p?.name, 160);
     return code && name && !code.includes(key) && !name.includes(key) ? [{ code, name }] : [];
   });
+}
+// Owner-only failure diagnostics: field presence and public link origin only.
+// Never include titles, complete URLs, query strings, the key or raw provider errors.
+export function inspectOffers(data, key) {
+  const rows = Array.isArray(data?.data) ? data.data.slice(0, 20) : [];
+  const fields = Object.fromEntries(['title', 'price', 'photo', 'cp_code', 'cp_name', 'commissionlink'].map((field) => [field, rows.filter(p => p && p[field] !== undefined && p[field] !== null && p[field] !== '').length]));
+  const shops = [...new Set(rows.map(p => clean(p?.cp_name, 160)).filter(s => s && !s.includes(key)))].slice(0, 20);
+  const origins = [...new Set(rows.flatMap(p => {
+    try {
+      const u = new URL(p?.commissionlink);
+      return ['http:', 'https:'].includes(u.protocol) && /^[a-z0-9.-]{1,180}$/i.test(u.hostname) && !u.hostname.toLowerCase().includes(key.toLowerCase()) ? [`${u.protocol}//${u.hostname}`] : [];
+    } catch { return []; }
+  }))].slice(0, 5);
+  const linkKeyEchoes = rows.filter(p => typeof p?.commissionlink === 'string' && p.commissionlink.includes(key)).length;
+  const apiLinkCount = rows.filter(p => { try { return new URL(p?.commissionlink).pathname.startsWith('/api/'); } catch { return false; } }).length;
+  return { fields, shops, origins, linkKeyEchoes, apiLinkCount };
 }
 export async function takeSlot(db, kind, now = Date.now()) {
   if (!db) return false;
@@ -88,7 +113,8 @@ export async function handleAdpick(request, env, { fetcher = fetch, now = Date.n
     if (!items) throw Error('shape');
     // The key is in the provider URL by its specification. Never return/log that URL or raw errors.
     return reply(200, { source: 'ADPICK', [kind === 'malls' ? 'malls' : 'items']: items,
-      ...(kind === 'search' ? { omitted: Math.max(0, Math.min(result.data.data.length, 20) - items.length) } : {}), fetchedAt: new Date(now).toISOString() });
+      ...(kind === 'search' ? { omitted: Math.max(0, Math.min(result.data.data.length, 20) - items.length),
+        ...(!items.length && result.data.data.length ? { diagnostics: inspectOffers(result.data, key) } : {}) } : {}), fetchedAt: new Date(now).toISOString() });
   } catch {
     return reply(502, { code: controller.signal.aborted ? 'upstream_timeout' : 'upstream', message: '국내 상품을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' });
   } finally { clearTimeout(timer); }
