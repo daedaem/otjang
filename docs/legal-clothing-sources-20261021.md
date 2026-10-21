@@ -109,6 +109,8 @@ fetch를 manual 리디렉션 모드로 바꾸고 3xx를 즉시 거절한다. Loc
 
 ### 실제 운영 연결 확인 — 2026-10-21
 
+이 절은 최초 상품 조회 증거다. 후속 AI 검색어 기능/출시 범위는 다음 절의 추가 검토를 본다.
+
 PR #33 head `cfb3a63`의 GitHub push/PR 검사 6개가 통과했고 master `6f6f5ee3434982f9c46b6ff3725c1ad1be337296`로 병합했다. 별도 Cloudflare 브랜치 preview 검사는 실패 상태이며 운영 성공과 혼동하지 않는다. 운영 master 빌드 `5a0b4841-a0a5-4ffa-a5f8-0beb8b1be858`가 41초에 준비되었고 활성 Worker는 `32b51c34`다.
 
 로그인한 Chrome의 실제 `https://otjang.tg8685.workers.dev/#/add`에서 새로고침 → `Levis 501` 입력 → ‘라쿠텐 상품 불러오기’를 눌러 공식 상품 12개를 확인했다. 사진, 일본어 원본 상품명, 판매처, 엔화(JPY) 가격, 원본 상품 링크, `Supported by Rakuten Developers`가 표시된다. 동일 앱의 인증된 `/api/rakuten`에서도 정규화된 성공 JSON을 확인했다. 제공자 인증과 실제 데이터 경로가 동작한다는 증거다. 상품 등록·구매·AI 호출·개인 사진 전송은 하지 않았고 기존 옷장 자료를 수정하지 않았다. PC 화면의 사진 표시를 확인했으며 실제 iPhone 설치 앱에서는 아직 재검증하지 않았다.
@@ -118,3 +120,23 @@ PR #33 head `cfb3a63`의 GitHub push/PR 검사 6개가 통과했고 master `6f6f
 사용 방법: 옷장 → 옷 넣기 → 브랜드·품명 입력 → 라쿠텐 상품 불러오기. 현재 라쿠텐 전체를 제공 순서로 검색하는 별도 목록이다. 한글 자연어 번역, 앱의 예산/종류 조건 적용, AI 순위 결합, 원화 환산/한국 배송, 최저가 판정, 일괄 DB 수집까지 완료했다고 표현하지 않는다.
 
 [Rakuten 공식 무료 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/900001971983-Are-Rakuten-Webservice-APIs-free-to-use)를 당일 확인했다. API 자체는 현재 무료이며 요청 제한/약관은 적용된다. 이 검색 경로는 Claude API를 호출하지 않는다. 기존 AI/호스팅 비용과 공개 출시·AI 재가공 권리 검토는 별개다. 기존 937건의 공개 권리를 확보하거나 전 상품 저장을 승인받았다는 뜻도 아니다.
+
+### AI 추천·한국어·상용화 재검토 — 2026-10-21
+
+대표가 AI 추천 사용 가능성을 확인하고 가능한 부분을 연결하라고 요청했고, 일본어 상품명/구매 불편을 지적했다. 아래는 공개 공식 문서 확인과 그에 따른 구현 판단을 구분한 기록이다. API 키 발급·기술 성공을 포괄적 권리 허가로 간주하지 않는다.
+
+| 범위 | 공식 근거/판정 | 이번 동작 |
+|---|---|---|
+| 상품 소개 + 해당 Rakuten 상품 링크 | [공식 이용 용도 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/900001974363-How-can-the-information-returned-by-the-Rakuten-Webservice-APIs-be-used)는 이 목적을 명시하며 다른 목적의 복제/변경을 제한한다 | 원문·JPY·출처·원본 링크 유지 |
+| 다른 공급원 상품과 함께 표시 | [공식 병기 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/900001970786-Is-it-possible-to-co-locate-items-acquired-through-another-company-s-web-service)는 출처를 구분하면 허용하고 Rakuten 정보를 다른 제휴 수익에 쓰는 것은 문제라고 설명한다 | 별도 섹션은 UX/출처를 위한 선택이며 혼합 표시 자체가 금지라서 나눈 것은 아니다 |
+| 외부 AI로 상품 순위·이유 생성 / 상품명 한국어 번역 / 모델 학습 | 확인한 공식 문서에 이 범위를 명시적으로 허용하는 문구를 찾지 못했다. 상품 소개 목적의 AI 추론을 포괄적으로 금지한다고도 쓰지 않는다 | 공급자 데이터는 AI 입력/학습/번역/벡터 DB로 보내지 않는다. 상품별 AI 추천 권리 확인은 미완료 |
+| 한국어 요청을 일본어 검색어로 제안 | 공급자 상품정보를 처리하지 않는 설계. 앱 소유의 지시와 사용자가 입력한 문구만 Claude에 전달한다 | 본인 전용 기존 AI 게이트에 retailer_search 작업 추가. 사용자 확인 뒤 별도 상품 조회 |
+| API 자체 무료와 앱 수익화 | [유료 도구 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/900001970826-Is-it-possible-to-provide-a-paid-tool-using-the-Rakuten-API)는 Rakuten Affiliate 외 수익화에 허가를 요구한다 | 요금제/구독/다른 제휴 링크를 추가하지 않는다. 향후 수익 모델은 별도 검토 |
+
+[공식 약관 영문 안내](https://webservice.rakuten.co.jp/guide/rule)의 Article 10에는 경쟁 서비스·허용 외 복제/변경·특정인만 접근하는 환경 제한도 있다. 일본어 원문 및 이 앱의 적용 범위를 법률 검토/별도 허가 없이 모두 충족했다고 확정하지 않는다. 본인용 배포를 일반 공개하거나 인증을 제거해 해결하지 않는다. [개별 판단 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/25589986110105-I-want-to-check-each-individual-case-to-see-if-it-violates-the-Terms-of-service)는 제공자가 개별 위반 여부를 답하지 않는다고 하므로 ‘문의만 보내면 반드시 승인받는다’고 약속하지 않는다.
+
+한국 사용자 UX 판단(제안): 국내 상품/구매를 기본 경로로 확보하고 Rakuten은 일본/해외 상품 추가 검색으로 둔다. 검색어를 바꿔도 상품 원문·일본어 결제·반품 과정은 한국어 쇼핑몰로 바뀌지 않는다. [Rakuten 공식 한국어 구매/배송 안내](https://globalexpress.rakuten.co.jp/beginner/ichiba/?lang=ko)는 일본 창고를 거쳐 해외로 보내는 별도 흐름을 설명한다. 따라서 API 상품의 한국 직배송·최종 결제액·한국어 응대를 보장하지 않는다. 배송비/관세 계산 기능은 기존 R9 범위에 따라 추가하지 않았다.
+
+구현 경계: retailer_search는 `{task, query}`만 허용하며 상품·사진·옷장·history 필드를 받으면 AI 호출/한도 예약 전에 거절한다. 기존 본인 인증과 공유 AI 일/월/분 한도를 그대로 쓰고, 모델/크레딧 충전 없이 출력 상한은 600토큰이다. 검색어는 80자/UTF-8 128바이트와 허용 문자로 검증한다. URL·상품/가격/순위 등 예상하지 않은 출력은 거절한다. 사용자에게 제안어·미적용 조건을 보여주고 ‘이 검색어로 찾아보기’를 눌러야 Rakuten API를 호출한다. 상품 응답은 후속 AI에 다시 전달하지 않는다. 결과 원문·JPY·공급자 순서를 유지하고 AI 추천 순위와 구분한다. 키는 여전히 서버 Secret이다. AI 검색어 제안은 기존 Anthropic 크레딧/한도에 포함되고 일반 Rakuten 조회만 무료다.
+
+로컬 검증(합성 데이터): lite 115/115, 일반 앱 688/688, build `9d3ad54bbb33`, diff 공백 검사 통과. 실제 Chrome의 격리된 빈 옷장 QA에서 한국어 입력 → 합성 AI 검색어 제안 → 사용자가 누른 뒤 0건 조회/자동 대체 없음 순서를 확인했다. 합성 응답은 LOCAL QA라고 표시하며 실제 AI/실제 상품 성공으로 쓰지 않는다. PR/운영 반영·실제 모델 및 제공자 응답은 실행 뒤 별도 기록한다.

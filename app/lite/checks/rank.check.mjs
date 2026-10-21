@@ -25,6 +25,43 @@ test('key/access/shared budget absent: fail closed and make zero provider calls'
   assert.equal(budget.status, 503);
   assert.equal(client.calls.length, 0);
 });
+
+test('retailer search translates only user words and shares authentication/quota without product data', async () => {
+  const client = fake({ on_topic: true, keyword: 'リーバイス 501', notes: ['원화 예산은 적용하지 않아요.'] });
+  let reservations = 0;
+  const body = { task: 'retailer_search', query: '리바이스 501 청바지' };
+  const r = await result(body, client, { reserve: async () => { reservations++; return { ok: true }; } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.keyword, 'リーバイス 501');
+  assert.deepEqual(JSON.parse(client.calls[0].messages[0].content), { query: body.query });
+  assert.equal(client.calls[0].max_tokens, 600);
+  assert.equal(client.calls[0].model, MODEL);
+  assert.match(client.calls[0].system, /상품 데이터는 제공되지 않습니다/);
+  assert.equal(reservations, 1);
+  for (const extra of [{ items: [] }, { closet: [] }, { history: [] }, { products: [{ name: 'retailer data' }] }, { keyword: 'override' }, { model: 'other' }]) {
+    assert.equal((await result({ ...body, ...extra }, client)).status, 400);
+  }
+  assert.equal(client.calls.length, 1);
+  const denied = await result(body, client, { authorize: async () => ({ ok: false, status: 401 }) });
+  assert.equal(denied.status, 401);
+  const limited = await result(body, client, { reserve: async () => ({ ok: false, status: 429, code: 'monthly_limit' }) });
+  assert.equal(limited.status, 429);
+  assert.equal(client.calls.length, 1);
+});
+
+test('retailer query output refuses URLs, scripts, oversized bytes, fabricated product fields and wrong topics', async () => {
+  const body = { task: 'retailer_search', query: '리바이스 501' };
+  const valid = { on_topic: true, keyword: 'リーバイス 501', notes: [] };
+  for (const out of [
+    { ...valid, keyword: 'https://attacker.test' }, { ...valid, keyword: '<script>bad</script>' },
+    { ...valid, keyword: 'あ'.repeat(43) }, { ...valid, keyword: 'a' },
+    { ...valid, keyword: '셔츠\nsecret' }, { ...valid, notes: Array(7).fill('note') },
+    { ...valid, notes: ['a'.repeat(101)] }, { ...valid, url: 'https://shop.test' },
+    { ...valid, price: 123 }, { ...valid, ranking: [] }, { ...valid, on_topic: 'yes' },
+  ]) assert.equal((await result(body, fake(out))).status, 502);
+  assert.deepEqual((await result(body, fake({ on_topic: false, keyword: 'discard', notes: ['discard'] }))).body,
+    { on_topic: false, keyword: '', notes: [] });
+});
 test('legacy prefixed arbitrary prompt cannot open the proxy; malformed/unknown facts consume no reservation', async () => {
   const client = fake(); let reservations = 0;
   const reserve = async () => { reservations++; return { ok: true }; };
