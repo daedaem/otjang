@@ -78,3 +78,13 @@ OPF는 상업 재사용이 가능한 공개 데이터이며 출처·ODbL 조건�
 - `cd app/lite && npm run build`: 파일 24개, 자산 버전 `13e4bc73e808`.
 - `WRANGLER_SEND_METRICS=false npx --yes wrangler@4.151.0 deploy --dry-run --outdir /private/tmp/otjang-open-sources-dryrun`: 성공. 실제 업로드/운영 Secret 변경 없음.
 - `git diff --check`: 통과. GitHub CI·운영 배포 검사를 실행한 것으로 쓰지 않는다.
+
+## 키 발급 이후 연결 작업 (같은 날, 진행 중)
+
+대표가 ‘발급 완료했어요 이제 연결해주세요 그리고 무료가 맞는지’ 요청했다. 라쿠텐 공식 무료 FAQ를 다시 확인했다. API 무료와 기존 Claude API·Cloudflare 자원 비용은 별개이며, 라쿠텐 검색 경로는 Claude를 호출하지 않는다.
+
+대표가 라쿠텐의 Web Application 등록·약관/CAPTCHA·발급을 직접 완료했다. 등록 사이트는 `otjang.tg8685.workers.dev`다. 서버 전용 타입은 고정 IP 목록을 요구하므로 현재 Workers 구성에서 해당 타입으로 인증된다고 주장하지 않는다. 실제 등록한 웹 앱의 고정 Origin/Referer를 서버에서 보내되, 사용자 요청의 Origin을 넘기거나 키를 프런트로 옮기지 않는다. 허용 여부는 실제 제공자 응답으로 확인한다.
+
+대표가 Cloudflare 런타임 Secret 2개의 값 입력·저장·배포를 직접 완료했다. Codex는 입력 창이 닫힌 뒤 `RAKUTEN_APPLICATION_ID`, `RAKUTEN_ACCESS_KEY` 두 행의 ‘비밀 / 암호화된 값’ 표시만 확인했다. 새 비밀값을 읽거나 출력하지 않았다. 본인 로그인·기존 AI 키/한도·공개 차단을 유지한다. 제공자 인증 실패는 raw 본문 대신 안전한 `provider_auth`·HTTP 상태만 표시한다.
+
+후속 검사: lite **106/106**, build 자산 버전 `13e4bc73e808`, diff 공백 검사 통과. 코드 push/PR·CI·master 비공개 배포·실제 검색 증거는 실행 뒤 추가한다. API 키 발급/기술 연결은 전체 상용 이용 권한 검토 완료와 다르다. 등록 화면 영문 약관의 비공개 환경 제한 등은 일본어 원문·공식 운영 해석에 맞춰 확인해야 하며, 일반 공개·AI 재가공·타 제휴 수익 사용을 승인받았다고 쓰지 않는다.

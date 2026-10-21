@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { handleRakuten, offers, takeSlot, ENDPOINT, onRequest } from '../functions/api/rakuten.js';
+import { handleRakuten, offers, takeSlot, ENDPOINT, APP_ORIGIN, onRequest } from '../functions/api/rakuten.js';
 import { createWorker } from '../worker.js';
 
 function db() {
@@ -48,6 +48,8 @@ test('official request uses only a bounded keyword and server credentials, retur
     assert.equal(parsed.searchParams.has('accessKey'), false);
     assert.equal(parsed.searchParams.has('affiliateId'), false);
     assert.equal(options.headers.accessKey, config.RAKUTEN_ACCESS_KEY);
+    assert.equal(options.headers.Origin, APP_ORIGIN);
+    assert.equal(options.headers.Referer, `${APP_ORIGIN}/`);
     assert.equal(options.redirect, 'error');
     return Response.json({ Items: [{ Item: item }, { Item: { ...item, itemName: 'Second', itemPrice: 100 } }] });
   } });
@@ -108,4 +110,13 @@ test('Rakuten route stays behind private authorization and never falls through t
 
 test('Pages entry also fails closed before a provider call when authentication is unconfigured', async () => {
   assert.equal((await onRequest({ request: request(), env: {} })).status, 503);
+});
+
+test('provider authorization errors have a safe status/code and never reflect error details or credentials', async () => {
+  const res = await handleRakuten(request(), env(), { fetcher: async () => new Response('denied synthetic-test-access-key', { status: 403 }) });
+  const body = await res.json();
+  assert.equal(res.status, 502);
+  assert.equal(body.code, 'provider_auth');
+  assert.equal(body.upstreamStatus, 403);
+  assert.doesNotMatch(JSON.stringify(body), /synthetic|denied/);
 });

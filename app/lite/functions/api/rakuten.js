@@ -2,6 +2,9 @@
 // No database copy, currency conversion, image transformation, AI forwarding or affiliate rewriting.
 import { authorizePrivateRequest } from '../lib/private-access.js';
 export const ENDPOINT = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
+// The owner registered this web application domain. Never forward a caller-supplied
+// Origin/Referer or expose the key in browser code to satisfy domain restrictions.
+export const APP_ORIGIN = 'https://otjang.tg8685.workers.dev';
 const reply = (status, body) => Response.json(body, { status, headers: { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 const text = (s, max) => typeof s === 'string' && s.length <= max && !/[\x00-\x1f\x7f]/.test(s) ? s.trim() : '';
 const secret = (s) => typeof s === 'string' && /^[\x21-\x7e]{8,512}$/.test(s) ? s : null;
@@ -50,7 +53,7 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
   try {
     // Race also bounds a test/upstream fetcher that ignores AbortSignal.
     const upstream = async () => {
-      const res = await fetcher(api.toString(), { headers: { accessKey, Accept: 'application/json' }, redirect: 'error', cache: 'no-store', signal: controller.signal });
+      const res = await fetcher(api.toString(), { headers: { accessKey, Accept: 'application/json', Origin: APP_ORIGIN, Referer: `${APP_ORIGIN}/` }, redirect: 'error', cache: 'no-store', signal: controller.signal });
       if (!res.ok) return { status: res.status };
       // Bound memory as well as elapsed time. Never expose an upstream error body.
       const reader = res.body?.getReader();
@@ -76,7 +79,11 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
       new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, timeoutMs); }),
     ]);
     if (result.status === 404) return reply(200, { source: 'Rakuten Ichiba', items: [], fetchedAt: new Date(now).toISOString() });
-    if (result.status < 200 || result.status >= 300) return reply(result.status === 429 ? 429 : 502, { code: result.status === 429 ? 'rate_limited' : 'upstream', message: '라쿠텐 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' });
+    if (result.status < 200 || result.status >= 300) {
+      const auth = result.status === 401 || result.status === 403;
+      return reply(result.status === 429 ? 429 : 502, { code: result.status === 429 ? 'rate_limited' : auth ? 'provider_auth' : 'upstream', upstreamStatus: result.status,
+        message: auth ? '라쿠텐 앱의 키와 허용 사이트 설정을 확인해 주세요.' : '라쿠텐 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' });
+    }
     const items = offers(result.data);
     if (!items) throw new Error('invalid');
     return reply(200, { source: 'Rakuten Ichiba', items, fetchedAt: new Date(now).toISOString() });
