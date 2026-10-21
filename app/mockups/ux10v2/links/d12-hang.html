@@ -582,9 +582,9 @@ a { color: inherit; text-decoration: none; }
   const opfNotice = (source) => source?.provider === 'opf' && /^\d{6,24}$/.test(source.code)
     ? `<p class="t6" style="margin:10px 0">Open Products Facts에서 가져온 정보 · <a href="https://world.openproductsfacts.org/product/${source.code}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">원본 확인</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">ODbL</a><br>종류·색과 실제로 가진 상품인지 확인해 주세요. 상품 사진·가격은 제공하지 않아요.</p>` : '';
   const rakutenLink = (q) => {
-    const text = String(q || '').trim().slice(0, 120);
+    const text = String(q || '').trim();
     const url = text ? `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(text)}/` : null;
-    return url ? `<section class="section" data-rakuten-panel><h2 class="h3">라쿠텐에서도 찾아보기</h2><p class="t6">같은 문구로 라쿠텐 전체를 검색해요. 앱의 예산·종류 조건은 적용되지 않아요.</p>${window.EOUL_RAKUTEN ? `<button class="btn line sm" data-rakuten-search data-rakuten-q="${esc(text)}">라쿠텐 상품 불러오기</button><div data-rakuten-results aria-live="polite"></div>` : ''}<a class="row" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><span class="grow t5">라쿠텐 사이트에서 직접 검색</span><i class="ph ph-arrow-up-right arr"></i></a></section>` : '';
+    return url ? `<section class="section" data-rakuten-panel><h2 class="h3">일본 상품도 더 찾아볼까요?</h2><p class="t6">라쿠텐 키워드 검색 · 앱의 예산·핏·코디 조건은 적용되지 않아요. 일본어 판매처에서 구매하며 한국 배송은 판매처에서 확인해 주세요.</p>${window.EOUL_RAKUTEN ? `${window.EOUL_SERVER_AI ? `<button class="btn line sm" data-rakuten-plan data-rakuten-q="${esc(text)}">AI로 일본어 검색어 만들기</button><div data-rakuten-plan-result aria-live="polite"></div>` : ''}<button class="btn line sm" data-rakuten-search data-rakuten-q="${esc(text)}">입력한 말로 라쿠텐 검색</button><div data-rakuten-results aria-live="polite"></div>` : ''}<a class="row" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><span class="grow t5">라쿠텐 사이트에서 직접 검색</span><i class="ph ph-arrow-up-right arr"></i></a></section>` : '';
   };
   const crowd = () => (window.EOUL_CROWD && typeof window.EOUL_CROWD.submit === 'function' ? window.EOUL_CROWD : null);
   // 등록 상태 한 줄: 서버가 답하면 그 숫자, 아니면 이 기기 숫자.
@@ -1354,10 +1354,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search]');
+    const t = e.target.closest('[data-back],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan]');
     if (!t) return;
     if (t.hasAttribute('data-back')) K.back();
     else if (t.hasAttribute('data-rakuten-search')) searchRakuten(t);
+    else if (t.hasAttribute('data-rakuten-plan')) planRakuten(t);
     else if (t.hasAttribute('data-add-open')) K.go('add', {});
     else if (t.hasAttribute('data-add-q')) K.go('add', { q: t.dataset.addQ });
     else if (t.hasAttribute('data-reg-open')) { S.reg = null; K.go('reg', { q: t.dataset.regQ || '' }); }
@@ -1599,14 +1600,34 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       box.innerHTML = `<p class="t6" role="status">공개 상품 정보를 불러오지 못했어요. 검색어를 다시 입력하거나 직접 등록해 주세요.</p>${rakutenLink(text)}`;
     }
   }
+  async function planRakuten(button) {
+    if (button.disabled || !window.EOUL_SERVER_AI) return;
+    const panel = button.closest('[data-rakuten-panel]');
+    const box = $('[data-rakuten-plan-result]', panel);
+    button.disabled = true;
+    box.innerHTML = '<p class="t6" role="status">한국어 요청으로 검색어를 만들고 있어요…</p>';
+    try {
+      const data = await window.EOUL_SERVER_AI({ task: 'retailer_search', query: button.dataset.rakutenQ });
+      if (!box.isConnected) return;
+      if (!data?.on_topic) { box.innerHTML = '<p class="t6" role="status">찾는 옷이나 브랜드를 말해 주세요.</p>'; return; }
+      if (typeof data.keyword !== 'string' || !Array.isArray(data.notes)) throw Error('검색어를 만들지 못했어요. 다시 시도해 주세요.');
+      box.innerHTML = `<label class="t6">AI가 제안한 일본어 검색어<input class="input" data-rakuten-keyword maxlength="80" value="${esc(data.keyword)}"></label><p class="t6">검색어 제안이며 상품 추천·번역이 아니에요. 예산·핏·코디 조건은 적용하지 않아요.${data.notes.map((n) => ` ${esc(n)}`).join('')}</p><button class="btn line sm" data-rakuten-search data-rakuten-confirmed>이 검색어로 찾아보기</button>`;
+      $('[data-rakuten-results]', panel).innerHTML = '';
+    } catch (error) {
+      if (box.isConnected) box.innerHTML = `<p class="t6" role="status">${esc(error.code === 'bad_request' ? '앱을 새로고침하고 다시 시도해 주세요.' : 'AI 검색어를 만들지 못했어요. 입력한 말로 검색할 수 있어요.')}</p>`;
+    } finally { button.disabled = false; }
+  }
   async function searchRakuten(button) {
     if (button.disabled || !window.EOUL_RAKUTEN) return;
     const box = $('[data-rakuten-results]', button.closest('[data-rakuten-panel]'));
     button.disabled = true;
     box.innerHTML = '<p class="t6" role="status">라쿠텐 상품을 불러오는 중이에요…</p>';
     try {
-      const data = await window.EOUL_RAKUTEN(button.dataset.rakutenQ);
-      box.innerHTML = `<p class="t6">라쿠텐 제공 순서 · 가격은 일본 엔(JPY) · ${esc(data.fetchedAt?.slice(0, 10) || '')} 조회</p>${data.items.length ? data.items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" style="object-fit:contain;flex:none">` : ''}<span class="grow"><span class="n">${esc(p.name)}</span><span class="m">${esc(p.shop)} · ¥${Number(p.price).toLocaleString('ja-JP')} JPY${p.taxFlag === 1 ? ' (세전)' : ''}</span></span><i class="ph ph-arrow-up-right"></i></a>`).join('') : '<p class="t5">라쿠텐에서 일치하는 상품을 찾지 못했어요.</p>'}
+      const panel = button.closest('[data-rakuten-panel]');
+      const query = button.hasAttribute('data-rakuten-confirmed') ? $('[data-rakuten-keyword]', panel).value.trim() : button.dataset.rakutenQ;
+      const data = await window.EOUL_RAKUTEN(query);
+      if (!box.isConnected) return;
+      box.innerHTML = `<p class="t6">검색어: ${esc(query)} · 라쿠텐 제공 순서(AI 추천 순위 아님) · 일본 엔(JPY) · ${esc(data.fetchedAt?.slice(0, 10) || '')} 조회</p>${data.items.length ? data.items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" style="object-fit:contain;flex:none">` : ''}<span class="grow"><span class="n">${esc(p.name)}</span><span class="m">${esc(p.shop)} · ¥${Number(p.price).toLocaleString('ja-JP')} JPY${p.taxFlag === 1 ? ' (세전)' : ''}</span></span><i class="ph ph-arrow-up-right"></i></a>`).join('') : '<p class="t5">라쿠텐에서 일치하는 상품을 찾지 못했어요. 조건을 자동으로 넓히지 않았어요.</p>'}
         <!-- Rakuten Web Services Attribution Snippet FROM HERE -->
         <a href="https://developers.rakuten.com/" target="_blank">Supported by Rakuten Developers</a>
         <!-- Rakuten Web Services Attribution Snippet TO HERE -->`;
