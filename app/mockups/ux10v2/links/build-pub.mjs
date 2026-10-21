@@ -15,6 +15,8 @@ const i = lines.findIndex((l) => l.startsWith('const PRODUCTS = ['));
 const arr = JSON.parse(lines[i].slice('const PRODUCTS = '.length).replace(/;\s*$/, ''));
 const kept = arr.filter((p) => keep.has(p.id));
 lines[i] = `const PRODUCTS = ${JSON.stringify(kept)}; // 링크 게시용: 사진을 함께 올린 ${kept.length}개만 남김(전체 ${arr.length}개)`;
+const c = lines.findIndex((l) => l.startsWith('const CATALOG = '));
+if (c >= 0) lines[c] = lines[c].replace(/"count":\d+/, `"count":${kept.length}`); // 화면의 '상품 n개' 안내도 게시본 개수로
 fs.writeFileSync(corePath, lines.join('\n'));
 for (const p of kept) fs.copyFileSync(path.join(D, 'p', `${p.id}.jpg`), path.join(OUT, 'p', `${p.id}.jpg`));
 for (const f of fs.readdirSync(D).filter((f) => /^d\d+-.*\.html$/.test(f))) fs.copyFileSync(path.join(D, f), path.join(OUT, f));

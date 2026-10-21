@@ -48,6 +48,7 @@ a { color: inherit; text-decoration: none; }
 .app.bar { padding-bottom: calc(112px + var(--sab)); }
 .app.chat { padding-bottom: calc(var(--tabs) + 84px + var(--sab)); }
 .app.pin { padding-bottom: calc(var(--tabs) + 88px + var(--sab)); }
+.app.addv { padding-bottom: calc(96px + var(--sab)); }
 .view { animation: in 240ms ease-out both; }
 .view.back { animation-name: inback; }
 @keyframes in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -66,7 +67,7 @@ a { color: inherit; text-decoration: none; }
 .top.hide { transform: translateY(-110%); }
 .top .sp { flex: 1; }
 .icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; color: var(--ink); flex: none; }
-.icon.quiet-i { font-size: 20px; color: var(--ink3); width: 36px; }
+.icon.quiet-i { font-size: 20px; color: var(--ink3); margin-left: -6px; }
 .icon:active { background: var(--well); }
 .mark { display: inline-flex; align-items: center; gap: 6px; padding-left: 6px; font-weight: 800; font-size: 17px; letter-spacing: -.02em; white-space: nowrap; }
 .mark i { color: var(--acc); font-size: 22px; }
@@ -88,7 +89,7 @@ a { color: inherit; text-decoration: none; }
 
 /* 아래 탭(48px) */
 .tabs { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; background: var(--bg); box-shadow: 0 -1px 0 var(--line); padding-bottom: var(--sab); }
-.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
 .tabs button { height: var(--tabs); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 12px; line-height: 14px; font-weight: 600; color: var(--ink3); white-space: nowrap; }
 .tabs button i { font-size: 22px; }
 .tabs button[aria-current="page"] { color: var(--ink); }
@@ -230,7 +231,7 @@ a { color: inherit; text-decoration: none; }
 .lk .ps .p1 { min-width: 0; }
 .lk .ps .ph-box { border-radius: 8px; }
 .lk .ps .p1.me .ph-box { box-shadow: inset 0 0 0 2px var(--acc); }
-.lk .ps .p1 .t6 { margin-top: 4px; font-size: 12px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lk .ps .p1 .t6 { margin-top: 4px; font-size: 12px; line-height: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lk .cap { margin-top: 8px; font-size: 13px; color: var(--ink2); }
 .owned { display: flex; gap: 10px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
 .owned .o { flex: none; width: 76px; }
@@ -371,8 +372,86 @@ a { color: inherit; text-decoration: none; }
 .chatbar button { width: 50px; height: 50px; border-radius: var(--r); background: var(--btn-bg); color: var(--btn-fg); display: grid; place-items: center; font-size: 22px; flex: none; }
 .chatbar button:disabled { opacity: .5; }
 
+/* 옷장 넣기(브랜드·품명 검색) */
+.sbox { width: 100%; min-height: 52px; border-radius: var(--r); border: 2px solid var(--ink); background: var(--surface); display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 16px; color: var(--ink3); text-align: left; }
+.sbox i { font-size: 20px; color: var(--ink); flex: none; }
+.qform { flex: 1; min-width: 0; display: flex; margin: 0 6px 0 2px; }
+.qform input { flex: 1; min-width: 0; height: 38px; border: 0; border-radius: 10px; background: var(--well); padding: 0 12px; font-size: 16px; outline: none; }
+.qform input:focus { box-shadow: inset 0 0 0 2px var(--acc); }
+.srow { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.srow .ph-box { width: 60px; flex: none; border-radius: 8px; }
+.srow .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.srow .b { font-size: 12px; font-weight: 700; color: var(--ink3); }
+.srow .n { font-size: 14px; line-height: 19px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.srow .m { font-size: 12px; color: var(--ink3); }
+.srow .btn.sm { padding: 0 12px; font-size: 14px; flex: none; }
+.srow .ok { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; line-height: 16px; font-weight: 700; color: var(--acc-text); flex: none; max-width: 42%; text-align: right; }
+.srow .ok i { font-size: 18px; }
+.shelfbar { position: fixed; z-index: 29; left: 0; right: 0; bottom: 0; background: var(--bg); box-shadow: 0 -1px 0 var(--line); padding: 10px var(--gutR) calc(10px + var(--sab)) var(--gutL); }
+.shelfbar .in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+.shelfbar .ths { display: flex; gap: 4px; flex: none; }
+.shelfbar .ths .ph-box { width: 34px; border-radius: 6px; }
+.shelfbar .ths .ph-box.empty { border: 1.5px dashed var(--ink3); background: transparent; opacity: .6; }
+.shelfbar .grow { flex: 1; min-width: 0; font-size: 14px; line-height: 19px; color: var(--ink2); }
+.shelfbar .grow b { color: var(--ink); font-size: 15px; }
+.shelfbar .btn.sm { flex: none; }
+.shelfbar.pop .ths .ph-box:last-child { animation: pop 420ms var(--spring, ease); }
+
+/* 옷장(모으는 재미): 같은 틀의 선반 타일, 종류별 묶음, 브랜드 칩 */
+.shelf { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 10px; margin-top: 10px; }
+.gt { text-align: left; min-width: 0; display: flex; flex-direction: column; }
+.gt .ph-box { border-radius: 10px; }
+.gt .n { margin-top: 6px; font-size: 13px; line-height: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gt .m { font-size: 12px; line-height: 16px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gt .m.miss { color: var(--acc-text); }
+.stat { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat .c { padding: 12px 14px; border-radius: 14px; background: var(--well); min-width: 0; text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 44px; }
+.stat .c .k { font-size: 12px; font-weight: 700; color: var(--ink3); white-space: nowrap; }
+.stat .c .v { font-size: 22px; line-height: 28px; font-weight: 800; white-space: nowrap; }
+.stat .c .v small { font-size: 13px; font-weight: 600; color: var(--ink2); margin-left: 2px; }
+.stat .c .go { font-size: 13px; font-weight: 700; color: var(--acc-text); display: inline-flex; align-items: center; gap: 2px; }
+.brands .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.brands .chip .num { color: inherit; opacity: .7; }
+.recent { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 10px calc(-1 * var(--gutR)) 0 calc(-1 * var(--gutL)); padding: 0 var(--gutR) 0 var(--gutL); }
+.recent::-webkit-scrollbar { display: none; }
+.recent .gt { flex: none; width: 96px; }
+
+/* 코디: 내 옷으로 입을 수 있는 조합(규칙으로 조합한 예시) */
+.chips.scroll.moods { height: 44px; }
+.chips.scroll.moods .chip { min-height: 44px; padding: 0 16px; }
+.moods .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.lk .ps .p1.cand .ph-box { box-shadow: inset 0 0 0 2px var(--acc); }
+.lk .ps .p1 .pr { font-size: 12px; line-height: 16px; font-weight: 700; color: var(--acc-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lk .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.lk .head b { font-size: 14px; min-width: 0; }
+.lk .head .t6 { white-space: nowrap; flex: none; }
+.lks { display: grid; gap: 10px; margin-top: 12px; }
+.sg { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); position: relative; }
+.sg .pic { width: 64px; flex: none; position: relative; display: block; }
+.sg .pic .ph-box { border-radius: 8px; }
+.sg .pic .hangt { width: 44px; height: 44px; right: -10px; top: -10px; }
+.sg .pic .hangt span { width: 28px; height: 28px; font-size: 16px; }
+.sg .grow { flex: 1; min-width: 0; text-align: left; display: flex; flex-direction: column; }
+.sg .b { font-size: 12px; font-weight: 700; color: var(--ink3); }
+.sg .n { font-size: 14px; line-height: 19px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.sg .why { font-size: 13px; line-height: 18px; color: var(--acc-text); font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sg .p { font-size: 14px; font-weight: 800; white-space: nowrap; }
+.sg .p small { font-size: 12px; font-weight: 500; color: var(--ink3); margin-left: 3px; }
+
+/* 상담 이력 */
+.hist { margin-top: 12px; }
+.hist .hrow { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.hist .hrow .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; min-height: 44px; justify-content: center; }
+.hist .hrow .n { font-size: 15px; line-height: 21px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.hist .hrow .icon { width: 44px; }
+.hist .hrow .icon i { color: var(--ink3); font-size: 20px; }
+.ttl { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--well); display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink2); }
+.ttl .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 @media (min-width: 900px) {
-  .app, .tabs .in, .strip .in, .buybar .in, .chatbar form, .pinbar .in { max-width: 920px; }
+  .app, .tabs .in, .strip .in, .buybar .in, .chatbar form, .pinbar .in, .shelfbar .in { max-width: 920px; }
+  .shelf { grid-template-columns: repeat(6, 1fr); }
+  .stat { max-width: 560px; }
   .grid { grid-template-columns: repeat(4, 1fr); gap: 22px 14px; }
   .pdp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; margin-top: 8px; }
   .pdp-photo { margin: 0; border-radius: 18px; position: sticky; top: 64px; }
@@ -380,8 +459,9 @@ a { color: inherit; text-decoration: none; }
   .pdp-head { margin-top: 0; }
   .cgrid { grid-template-columns: repeat(6, 1fr); }
   .sum { max-width: 560px; }
+  .lks { grid-template-columns: 1fr 1fr; }
 }
-@media (prefers-reduced-motion: reduce) { .view, .hg.swing, .strip.pop, .hangt.pop span { animation: none !important; } .btn, .top, .hangt span { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .view, .hg.swing, .strip.pop, .hangt.pop span, .shelfbar.pop .ths .ph-box:last-child { animation: none !important; } .btn, .top, .hangt span { transition: none; } }
 </style>
 
 <main class="app" id="app"></main>
@@ -389,8 +469,9 @@ a { color: inherit; text-decoration: none; }
 <button class="strip" id="strip" hidden data-tabgo="closet" aria-label="옷걸이 열기"></button>
 <nav class="tabs" id="tabs" aria-label="메뉴"><div class="in">
   <button data-tab="home"><i class="ph ph-magnifying-glass"></i>찾기</button>
+  <button data-tab="looks"><i class="ph ph-t-shirt"></i>코디</button>
+  <button data-tab="closet"><i class="ph ph-coat-hanger"></i>옷장</button>
   <button data-tab="consult"><i class="ph ph-chats-circle"></i>상담</button>
-  <button data-tab="closet"><i class="ph ph-coat-hanger"></i>옷걸이</button>
   <button data-tab="records"><i class="ph ph-notebook"></i>기록</button>
 </div></nav>
 
@@ -419,6 +500,7 @@ a { color: inherit; text-decoration: none; }
     return `<span class="ph-box"><img class="${flat ? 'flat' : 'cover'}" src="${esc(ph.src)}" alt="${esc(ph.alt)}" decoding="async">${t}${extra}</span>`;
   }
   function garmentPic(g) {
+    if (g.productId && M.photo({ id: g.productId })) return productPic(g.productId);
     const id = K.CUT[`${g.gender || M.getState().gender || 'M'}|${g.kind}|${g.color}`]?.[0];
     if (id) { const ph = M.photo({ id }); if (ph) return `<span class="ph-box"><img class="flat" src="${esc(ph.src)}" alt="${esc(`${g.colorLabel || ''} ${g.kindName || ''}`.trim())}" decoding="async"></span>`; }
     return `<span class="ph-box" role="img" aria-label="${esc(`${g.colorLabel || ''} ${g.kindName || ''}`.trim())}"><span class="swatch"><i style="background:${esc(g.colorHex || '#ccc')}"></i></span></span>`;
@@ -515,11 +597,11 @@ a { color: inherit; text-decoration: none; }
   // ── 띠(걸린 옷이 있을 때만)
   function renderStrip({ pop = false } = {}) {
     const el = $('#strip');
-    const on = ['home', 'results', 'records'].includes(curView) && hung().length > 0;
+    const on = ['home', 'results', 'records', 'looks'].includes(curView) && hung().length > 0;
     el.hidden = !on;
     $('#app').classList.toggle('strip-on', on);
     if (!on) return;
-    el.innerHTML = `<span class="in"><i class="ph-fill ph-coat-hanger" aria-hidden="true"></i><span class="tx">${esc(stripText())}</span><span class="go">옷걸이<i class="ph ph-caret-right"></i></span></span>`;
+    el.innerHTML = `<span class="in"><i class="ph-fill ph-coat-hanger" aria-hidden="true"></i><span class="tx">${esc(stripText())}</span><span class="go">옷장<i class="ph ph-caret-right"></i></span></span>`;
     el.classList.toggle('pop', pop && !K.reduce);
   }
 
@@ -527,11 +609,15 @@ a { color: inherit; text-decoration: none; }
   // 답은 JSON {on_topic, answer, product_ids}. on_topic이 true가 아니면 모델 답은 버리고 정해 둔 안내만 보인다.
   // 상품 사실은 우리가 넘긴 후보에서만, product_ids도 넘긴 후보 안의 것만 받는다. 대화는 이 탭에만 저장(옷장·기록과 섞지 않음).
   const REFUSE = '옷이나 코디 이야기만 도와드릴 수 있어요. 예: ‘청바지에 어울리는 신발은?’';
-  const CHAT_KEY = 'd12-consult:v1';
+  // 상담 이력은 이 페이지의 저장 이름(eoul-d12-hang:consult)으로 이 브라우저에만 남는다. 묶음 30개, 묶음마다 40턴까지.
+  const CHAT_KEY = 'eoul-d12-hang:consult';
   const CHAT_EX = ['네이비 블레이저에 어울리는 바지는?', '하객룩 뭐 입을까요?', '내 옷장으로 출근 코디 짜 줘'];
-  const C = { turns: [], busy: false };
-  try { C.turns = JSON.parse(sessionStorage.getItem(CHAT_KEY) || '[]'); } catch { C.turns = []; }
-  const saveChat = () => { try { sessionStorage.setItem(CHAT_KEY, JSON.stringify(C.turns.slice(-30))); } catch {} };
+  const C = { threads: [], cur: null, busy: false, get turns() { return this.thread()?.turns || []; }, thread() { return this.threads.find((t) => t.id === this.cur) || null; } };
+  try { const v = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}'); C.threads = Array.isArray(v.threads) ? v.threads : []; C.cur = C.threads.some((t) => t.id === v.cur) ? v.cur : null; } catch { C.threads = []; C.cur = null; }
+  const saveChat = () => { try { C.threads.forEach((t) => { t.turns = t.turns.slice(-40); }); C.threads = C.threads.slice(-30); localStorage.setItem(CHAT_KEY, JSON.stringify({ threads: C.threads, cur: C.cur })); } catch {} };
+  const pushTurn = (turn) => { let t = C.thread(); if (!t) { t = { id: `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: String(turn.text || '').slice(0, 60), at: new Date().toISOString(), turns: [] }; C.threads.push(t); C.cur = t.id; } t.turns.push(turn); t.at = new Date().toISOString(); saveChat(); };
+  const delThread = (id) => { C.threads = C.threads.filter((t) => t.id !== id); if (C.cur === id) C.cur = null; saveChat(); };
+  const whenText = (iso) => { const d = new Date(iso); const now = new Date(); return d.toDateString() === now.toDateString() ? `오늘 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : `${d.getMonth() + 1}월 ${d.getDate()}일`; };
   let chatSampler = null;
   const getSampler = () => (chatSampler ||= (window.claude?.use ? window.claude.use('sample').catch(() => null) : Promise.resolve(null)));
   const CHAT_ERR = {
@@ -567,9 +653,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   async function askConsult(raw) {
     const q = String(raw || '').trim();
     if (!q) { $('#cq')?.focus(); return; }
-    if (q.length > 300) { C.turns.push({ role: 'note', kind: 'err', text: `질문이 ${q.length}자예요. 300자 안으로 줄여서 다시 물어봐 주세요.` }); saveChat(); K.refresh(); return; }
+    if (q.length > 300) { pushTurn({ role: 'note', kind: 'err', text: `질문이 ${q.length}자예요. 300자 안으로 줄여서 다시 물어봐 주세요.` }); K.refresh(); return; }
     if (C.busy) return;
-    C.turns.push({ role: 'user', text: q }); C.busy = true; saveChat(); K.refresh();
+    pushTurn({ role: 'user', text: q }); C.busy = true; K.refresh();
     const data = grounding(q);
     let turn;
     try {
@@ -585,7 +671,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     } catch (e) {
       turn = { role: 'note', kind: 'err', text: CHAT_ERR[e?.code] || '답을 받지 못했어요. 잠시 뒤에 다시 물어봐 주세요.' };
     }
-    C.busy = false; C.turns.push(turn); saveChat();
+    C.busy = false; pushTurn(turn);
     if (curView === 'consult') K.refresh();
   }
   const recCard = (id) => { const p = M.product(id); if (!p) return ''; return `<div class="rc" data-card="${id}"><button class="open-p" data-pid="${id}">${productPic(id)}<div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>${hangToggle(id)}</div>`; };
@@ -598,9 +684,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const html = (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
-    const tabbed = ['home', 'consult', 'closet', 'records', 'results'].includes(view);
+    const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
     $('#tabs').hidden = !tabbed;
-    app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : ''}`;
+    app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
     (A[view] || (() => {}))(params);
@@ -625,19 +711,39 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if (st.closetCount) {
       let ps = [];
       try { ps = M.ask(ex).products.slice(0, 2); } catch {}
-      return `<section class="proof" aria-label="내 옷 기준 예시"><div class="label"><i class="ph-fill ph-coat-hanger"></i>‘${esc(ex)}’를 ${esc(M.judge(ps[0]?.id)?.basisLabel || '내 옷 기준')}으로 보면</div>
+      const out = M.closetOutfits().total;
+      return `<section class="proof" aria-label="내 옷 기준"><div class="label"><i class="ph-fill ph-coat-hanger"></i>내 옷 ${st.closetCount}벌 기준${st.trialCount ? ` · 체험용 ${st.trialCount}벌` : ''}</div>
+        <button class="row" data-tabgo="looks" style="border-bottom:0;padding:6px 0"><span class="grow"><span class="h3">내 옷으로 코디 보기</span><span class="t6" style="display:block">${out ? `지금 입을 수 있는 조합 ${out}가지 · 출근·데이트·주말로도 볼 수 있어요` : '상의·하의·신발이 모이면 조합이 생겨요'}</span></span><i class="ph ph-caret-right arr"></i></button>
+        <p class="t6" style="margin:8px 0 2px">‘${esc(ex)}’를 걸어 보면</p>
         ${ps.map((p) => row(p, delta(p.id))).join('')}
-        <div style="display:flex;gap:16px;margin-top:4px"><button class="quiet" data-q="${esc(ex)}">전체 결과 보기</button>${st.trialCount ? '<button class="quiet" data-mine>체험용 옷 내리기</button>' : ''}</div></section>`;
+        <div style="display:flex;gap:16px;margin-top:4px"><button class="quiet" data-q="${esc(ex)}">전체 결과 보기</button><button class="quiet" data-add-open>옷 넣기</button>${st.trialCount ? '<button class="quiet" data-mine>체험용 옷 내리기</button>' : ''}</div></section>`;
     }
-    let p = null;
-    try { p = M.ask(ex).products[0] || null; } catch {}
-    const g0 = st.gender || 'M';
-    const ths = g0 === 'F' ? [['tee', 'white'], ['knit', 'beige'], ['pants', 'black'], ['sneaker', 'white']] : [['shirt', 'white'], ['blazer', 'navy'], ['pants', 'beige'], ['sneaker', 'white']];
-    return `<section class="proof" aria-label="걸어 보면 이렇게"><div class="label"><i class="ph-fill ph-coat-hanger"></i>걸어 보면 이렇게 알려 드려요</div>
-      <h2 class="h3">내 옷 옆에 걸어 보고, 겹치는지·새 코디가 생기는지 숫자로 봐요</h2>
-      <div class="demo">${p ? productPic(p.id) : '<span class="ph-box"></span>'}<div><div class="ths" aria-label="체험용 옷장 예시">${ths.map(([k, c]) => garmentPic({ kind: k, color: c, gender: g0 })).join('')}</div><div class="cap">${p ? `예: ${esc(p.brand)} ${esc(p.name)}` : '예시 상품'}을 체험용 옷 ${g0 === 'F' ? 7 : 8}벌 옆에 걸면 겹치는 옷과 새 코디 수가 나와요.</div></div></div>
-      <button class="btn line wide sm" data-trial style="margin-top:12px"><i class="ph ph-coat-hanger"></i>체험용 옷장으로 걸어 보기</button></section>`;
+    return inviteHtml({ label: '옷장에 3벌만 넣어 보면', h: '겹치는 옷과 입을 수 있는 코디를 알려 드려요', sub: '브랜드나 상품명으로 찾아 넣는 게 가장 빨라요. 판매처 사진이 그대로 옷장에 걸려요.' });
   }
+  // 옷장이 비었을 때의 초대: 브랜드·품명 검색 상자와 예시, 체험용 옷장. 홈·옷장·코디에서 같이 쓴다.
+  const ADD_EX = ['무신사 옥스포드', '유니클로', '나이키', '폴로', '뉴발란스', '아디다스'];
+  const addExamples = () => ADD_EX.filter((b) => { try { return M.findProducts(b, { limit: 1 }).length; } catch { return false; } }).slice(0, 4);
+  function inviteHtml({ label, h, sub }) {
+    return `<section class="proof" aria-label="옷장 넣기"><div class="label"><i class="ph-fill ph-coat-hanger"></i>${esc(label)}</div>
+      <h2 class="h3">${esc(h)}</h2>
+      <p class="t6" style="margin-top:4px">${esc(sub)}</p>
+      <button class="sbox" data-add-open style="margin-top:12px"><i class="ph ph-magnifying-glass"></i>브랜드나 상품명으로 찾기</button>
+      <div class="chips" style="margin-top:10px">${addExamples().map((b) => `<button class="chip ex" data-add-q="${esc(b)}">${esc(b)}</button>`).join('')}</div>
+      <div style="display:flex;gap:16px;margin-top:4px"><button class="quiet" data-trial>체험용 옷장으로 먼저 보기</button><button class="quiet" data-addkind>종류·색으로 넣기</button></div></section>`;
+  }
+  // 코디 한 벌(규칙으로 조합한 예시): 내 옷은 판매처 사진이나 비슷한 상품 사진, 후보는 주황 테두리.
+  function lookHtml(o, { title = '', sub = '', owned = true } = {}) {
+    const ps = o.pieces.filter((x) => ['outer', 'top', 'inner', 'bottom', 'shoes', 'dress'].includes(x.role));
+    const main = ps.filter((x) => x.role !== 'inner').slice(0, 4);
+    const cap = (x) => x.owned ? `${esc(x.label)}${x.trial ? ' · 체험용' : ''}` : x.product ? `후보 · ${esc(x.product.priceText)}` : esc(x.label);
+    return `<div class="lk"><div class="head"><b>${esc(title || (o.formula && o.formula !== o.title ? o.formula : o.title))}</b><span class="t6">${sub}</span></div>
+      <div class="ps">${main.map((x) => `<div class="p1${x.owned ? '' : ' cand'}">${x.owned ? piecePic(x) : x.product ? productPic(x.product.id) : piecePic(x)}<div class="${x.owned ? 't6' : 'pr'}">${cap(x)}</div></div>`).join('')}</div>
+      <div class="cap">${owned ? '내 옷으로만 조합' : `내 옷 ${o.ownedCount}벌 + 후보 ${o.buyCount}벌`} · 규칙으로 조합한 예시 · 핏·소재는 안 따져요</div></div>`;
+  }
+  const MOODS = [['work', '출근'], ['date', '데이트'], ['weekend', '주말·여행'], ['formal', '격식·하객']];
+  const moodAsk = (label) => { try { const r = M.ask(`${label} 코디`); return r.understood && (r.conditions || []).some((c) => c.key === 'occasion') ? r : null; } catch { return null; } };
+  // ‘한 벌만 더’ 상품 줄: 사진·브랜드·품명·이유·수집가 + 걸기 토글.
+  const sgRow = (p, why = '') => `<div class="sg" data-card="${p.id}"><span class="pic">${productPic(p.id)}${hangToggle(p.id)}</span><button class="grow" data-pid="${p.id}"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span><span class="why">${esc(why || p.why || p.reason || '')}</span><span class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></span></button></div>`;
 
   const V = {
     home({ q = '' } = {}) {
@@ -687,19 +793,27 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
 
     consult() {
-      const t = C.turns;
-      const body = t.map((x) => {
+      const th = C.thread();
+      if (!th) {
+        const list = [...C.threads].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+        return `${top({ back: false, right: list.length ? '<button class="tbtn" data-delall>모두 지우기</button>' : '' })}
+          <h1 class="h1" style="margin-top:12px">코디 상담</h1>
+          <p class="t5 sub" style="margin-top:4px">옷·코디 이야기만 할 수 있어요. 내 옷장을 보고 답해요.</p>
+          <div class="chips">${CHAT_EX.map((q) => `<button class="chip ex" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+          ${list.length ? `<section class="section"><div class="h"><h2 class="h3">이전 상담 <span class="t6 num">${list.length}</span></h2><span class="t6">누르면 이어서 물어봐요</span></div>
+            <div class="hist">${list.map((t) => `<div class="hrow"><button class="grow" data-thread="${t.id}"><span class="n">${esc(t.title)}</span><span class="t6">${esc(whenText(t.at))} · 주고받은 말 ${t.turns.filter((x) => x.role !== 'note').length}개</span></button><button class="icon" data-delthread="${t.id}" aria-label="이 상담 지우기"><i class="ph ph-trash"></i></button></div>`).join('')}</div></section>` : '<p class="t6" style="margin-top:20px">상담 내용은 이 브라우저에만 남아요. 다음에 와서 이어서 물어볼 수 있어요.</p>'}
+          <p class="foot">AI 답변이라 틀릴 수 있어요 · 옷·코디 주제만 답해요. 상품 가격은 수집한 날의 판매가예요.</p>`;
+      }
+      const body = th.turns.map((x) => {
         if (x.role === 'user') return `<div class="msg me">${esc(x.text)}</div>`;
         if (x.role === 'note') return `<div class="msg err" role="status">${esc(x.text)}</div>`;
         if (x.refused) return `<div class="msg bot refuse"><span class="who"><i class="ph ph-hand"></i>상담 범위 밖이에요</span>${esc(x.text)}</div>`;
         return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}`;
       }).join('');
-      return `${top({ back: false, right: t.length ? '<button class="tbtn" data-newchat>새 상담</button>' : '' })}
-        <h1 class="h1" style="margin-top:12px">코디 상담</h1>
-        <p class="t5 sub" style="margin-top:4px">옷·코디 이야기만 할 수 있어요.</p>
-        ${!t.length ? `<div class="chips">${CHAT_EX.map((q) => `<button class="chip ex" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : ''}
+      return `${top({ back: false, right: '<button class="tbtn" data-chatlist><i class="ph ph-list-bullets"></i>이전 상담</button><button class="tbtn" data-newchat>새 상담</button>' })}
+        <div class="ttl"><i class="ph ph-chats-circle"></i><span class="grow">${esc(th.title)}</span><span class="t6 nw">${esc(whenText(th.at))}</span></div>
         <div class="thread" id="thread" aria-live="polite">${body}${C.busy ? '<div class="msg bot wait" role="status"><span class="who"><i class="ph ph-circle-notch"></i>생각하는 중이에요</span></div>' : ''}</div>
-        <p class="foot">AI 답변이라 틀릴 수 있어요 · 옷·코디 주제만 답해요. 상품 가격은 수집한 날의 판매가예요.</p>`;
+        <p class="foot">AI 답변이라 틀릴 수 있어요 · 옷·코디 주제만 답해요. 이 상담은 이 브라우저에 남아요.</p>`;
     },
 
     detail({ id }) {
@@ -760,23 +874,82 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const st = M.getState();
       const mine = st.closet;
       const cands = hung().map((id) => M.product(id)).filter(Boolean);
-      const other = mine.filter((g) => !GROUPS.some(([, ks]) => ks.includes(g.kind)));
       const out = mine.length ? M.closetOutfits().total : 0;
       const received = st.records.filter((x) => x.decision === 'buy' && ['ordered', 'received'].includes(x.stage)).length;
+      const brandOf = (g) => (g.productId ? M.product(g.productId)?.brand || null : null);
+      const bc = new Map(); mine.forEach((g) => { const b = brandOf(g); if (b) bc.set(b, (bc.get(b) || 0) + 1); });
+      const brands = [...bc.entries()].sort((a, b) => b[1] - a[1]);
+      const bf = S.brandFilter && bc.has(S.brandFilter) ? S.brandFilter : null;
+      const shown = bf ? mine.filter((g) => brandOf(g) === bf) : mine;
+      const gt = (g) => { const b = brandOf(g); const miss = g.detailMissing; return `<button class="gt" data-g="${g.id}" aria-label="${esc(g.label)}">${garmentPic(g)}<span class="n">${esc(g.label)}</span><span class="m${miss ? ' miss' : ''}">${esc(miss ? `${miss} · 눌러서 채우기` : (b || `${g.colorLabel} ${g.kindName}`) + (g.trial ? ' · 체험용' : ''))}</span></button>`; };
       const tile = (inner, cls, attrs, label, d = '') => `<button class="hg ${cls}" ${attrs}><i class="${cls.includes('cand') ? 'ph-fill' : 'ph'} ph-coat-hanger" aria-hidden="true"></i><span class="tile">${inner}</span><span class="t6">${label}</span>${d}</button>`;
       const railC = cands.map((p) => { const d = delta(p.id); return tile(productPic(p.id), 'cand', `data-pid="${p.id}" aria-label="걸어 보는 중: ${esc(p.brand)} ${esc(p.name)}"`, esc(p.name), `<span class="d ${d?.tone === 'stop' ? 'stop' : ''}">${esc(d ? d.text : (needAsk(p.id) ? '한 번 물어볼게요' : '비교 중'))}</span>`); });
-      const railG = [];
-      const vacant = cands.length ? '' : [0, 1].map((i) => tile('', 'vacant', mine.length ? 'data-tabgo="home" aria-label="옷 찾으러 가기"' : 'data-add aria-label="가진 옷 걸기"', i ? '' : (mine.length ? '찾기에서 걸어 보기' : '아직 빈 옷걸이'))).join('');
+      const railHtml = cands.length ? `<div class="section"><div class="h"><h2 class="h3">걸어 보는 중 <span class="num acc">${cands.length}</span></h2>${cands.length >= 2 ? '<button class="quiet" data-go-compare>나란히 비교</button>' : ''}</div><div class="rail" aria-label="걸어 본 옷 레일"><span class="bar-line" aria-hidden="true"></span><div class="hgs">${railC.join('')}</div></div></div>` : '';
+      const groups = [...GROUPS.map(([name, ks]) => [name, shown.filter((g) => ks.includes(g.kind))]), ['기타', shown.filter((g) => !GROUPS.some(([, ks]) => ks.includes(g.kind)))]].filter(([, items]) => items.length);
+      if (!mine.length) {
+        return `${top({ back: false, right: '<button class="icon" data-menu aria-label="더보기"><i class="ph ph-dots-three"></i></button>' })}
+          <h1 class="h1" style="margin-top:12px">옷장이 비어 있어요</h1>
+          <p class="t5 sub" style="margin-top:4px">비워 둬도 찾고 살 수 있어요. 3벌만 넣으면 겹치는 옷과 코디를 알려 드려요.</p>
+          ${inviteHtml({ label: '가장 빠른 방법', h: '브랜드나 상품명으로 찾아서 ‘가지고 있어요’', sub: `이 앱이 아는 상품 ${M.catalog.count}개 안에서 찾아요. 없으면 종류·색으로 넣을 수 있어요.` })}
+          ${railHtml}`;
+      }
       return `${top({ back: false, right: '<button class="icon" data-menu aria-label="더보기"><i class="ph ph-dots-three"></i></button>' })}
-        <h1 class="h1" style="margin-top:12px">${mine.length ? `옷 <span class="num">${mine.length}</span>벌이 걸려 있어요` : '옷걸이가 비어 있어요'}</h1>
-        <p class="t5 sub" style="margin-top:4px">${mine.length ? (out ? `종류·색 기준으로 <b class="num">${out}</b>가지 입을 수 있어요` : '상의·하의·신발을 함께 걸면 입을 수 있는 조합을 세어 드려요') : '비워 둬도 찾고 살 수 있어요. 걸어 두면 겹치는 옷을 알려 드려요.'}</p>
-        <div class="section" style="margin-top:22px"><div class="h"><h2 class="h3">걸어 보는 중 ${cands.length ? `<span class="num acc">${cands.length}</span>` : ''}</h2>${cands.length >= 2 ? '<button class="quiet" data-go-compare>나란히 비교</button>' : ''}</div>
-        <div class="rail" aria-label="걸어 본 옷 레일"><span class="bar-line" aria-hidden="true"></span><div class="hgs">${railC.join('')}${railG.join('')}${vacant}</div></div></div>
-        ${st.trialCount ? `<div class="notice"><span class="grow">체험용 옷 ${st.trialCount}벌이 걸려 있어요</span><button data-mine>내리기</button></div>` : !mine.length ? `<div class="notice"><span class="grow">예시 옷장으로 먼저 써 볼 수 있어요</span><button data-trial>체험용 옷 걸기</button></div>` : ''}
-        ${received ? `<div class="notice"><span class="grow">사기로 한 옷 ${received}벌 · 받으면 기록에서 ‘계속 입을게요’를 눌러 옷걸이로 옮겨요</span><button data-tabgo="records">기록</button></div>` : ''}
-        ${GROUPS.map(([name, ks]) => { const items = mine.filter((g) => ks.includes(g.kind)); return items.length ? `<section class="section"><div class="h"><h2 class="h3">${name} <span class="t6 num">${items.length}</span></h2></div><div class="cgrid">${items.map((g) => `<button class="g" data-g="${g.id}">${garmentPic(g)}<div class="t6">${esc(g.colorLabel)} ${esc(g.kindName)}${g.trial ? ' · 체험용' : g.bought ? ' · 산 옷' : ''}</div></button>`).join('')}</div></section>` : ''; }).join('')}
-        ${other.length ? `<section class="section"><div class="h"><h2 class="h3">기타</h2></div><div class="cgrid">${other.map((g) => `<button class="g" data-g="${g.id}">${garmentPic(g)}<div class="t6">${esc(g.colorLabel)} ${esc(g.kindName)}</div></button>`).join('')}</div></section>` : ''}
-        ${mine.length ? '<p class="foot">옷걸이의 사진은 내 옷이 아니라 종류·색이 같은 상품 사진이에요. 사진이 없으면 색으로 보여 드려요.</p>' : ''}`;
+        <h1 class="h1" style="margin-top:12px">옷 <span class="num">${mine.length}</span>벌${out ? ` · 코디 <span class="num">${out}</span>가지` : ''}</h1>
+        <p class="t5 sub" style="margin-top:4px">${out ? '종류·색 기준으로 규칙이 센 숫자예요. 한 벌 더 넣으면 조합이 늘어요.' : '상의·하의·신발이 한 벌씩 모이면 입을 수 있는 조합을 세어 드려요.'}</p>
+        <div class="stat"><button class="c" data-tabgo="looks"><span class="k">내 옷으로 코디</span><span class="v num">${out}<small>가지</small></span><span class="go">코디 보기<i class="ph ph-caret-right"></i></span></button><button class="c" data-add-open><span class="k">옷장</span><span class="v num">${mine.length}<small>벌</small></span><span class="go">옷 넣기<i class="ph ph-plus"></i></span></button></div>
+        ${st.trialCount ? `<div class="notice"><span class="grow">체험용 옷 ${st.trialCount}벌이 섞여 있어요 · 내 옷을 넣으면 내려도 돼요</span><button data-mine>내리기</button></div>` : ''}
+        ${received ? `<div class="notice"><span class="grow">사기로 한 옷 ${received}벌 · 받으면 기록에서 ‘계속 입을게요’를 누르면 옷장에 들어와요</span><button data-tabgo="records">기록</button></div>` : ''}
+        ${railHtml}
+        ${mine.length >= 4 ? `<section class="section"><div class="h"><h2 class="h3">최근 넣은 옷</h2></div><div class="recent">${[...mine].slice(-4).reverse().map(gt).join('')}</div></section>` : ''}
+        ${brands.length ? `<section class="section"><div class="h"><h2 class="h3">모은 브랜드 <span class="t6 num">${brands.length}</span></h2>${bf ? '<button class="quiet" data-brand="">전체 보기</button>' : ''}</div><div class="chips brands">${brands.map(([b, n]) => `<button class="chip ${bf === b ? '' : 'ex'}" data-brand="${esc(b)}" aria-pressed="${bf === b}">${esc(b)} <span class="num">${n}</span></button>`).join('')}</div></section>` : ''}
+        ${groups.map(([name, items]) => `<section class="section"><div class="h"><h2 class="h3">${name} <span class="t6 num">${items.length}</span></h2></div><div class="shelf">${items.map(gt).join('')}</div></section>`).join('')}
+        <p class="foot">상품으로 넣은 옷은 판매처 사진, 종류·색으로 넣은 옷은 비슷한 상품 사진이에요. 사진이 없으면 색으로 보여 드려요.</p>`;
+    },
+
+    // 옷장 넣기: 브랜드·품명으로 찾아 ‘가지고 있어요’. 목록(이 앱이 아는 상품) 밖이면 종류·색으로.
+    add({ q = '' } = {}) {
+      return `${top({ mid: `<form class="qform" id="af" role="search"><input id="aq" value="${esc(q)}" enterkeyhint="search" autocomplete="off" placeholder="브랜드나 상품명으로 찾기" aria-label="브랜드나 상품명"></form>` })}
+        <p class="t6" style="margin-top:10px">이 앱이 아는 상품 ${M.catalog.count}개(${esc(M.catalog.store)} · ${esc(M.catalog.checkedLabel)}) 안에서 찾아요. 모든 상품이 있지는 않아요.</p>
+        <div id="ares"></div>
+        <button class="row" data-addkind style="margin-top:8px"><span class="grow"><span class="t5">목록에 없어요 → 종류·색으로 넣기</span><span class="t6" style="display:block">사진 대신 비슷한 상품 사진으로 보여 드려요</span></span><i class="ph ph-caret-right arr"></i></button>`;
+    },
+
+    // 코디: 내 옷으로 입을 수 있는 조합(규칙), 상황별로 보기, ‘한 벌만 더 있으면’.
+    looks({ mood = '' } = {}) {
+      const st = M.getState();
+      const mine = st.closet;
+      const head = top({ back: false, right: '<button class="icon" data-menu aria-label="더보기"><i class="ph ph-dots-three"></i></button>' });
+      if (!mine.length) {
+        return `${head}<h1 class="h1" style="margin-top:12px">내 옷으로 코디를 짜 드려요</h1>
+          <p class="t5 sub" style="margin-top:4px">상의·하의·신발 3벌만 넣으면 입을 수 있는 조합과 ‘한 벌만 더 있으면’을 보여 드려요.</p>
+          ${inviteHtml({ label: '시작은 3벌', h: '브랜드나 상품명으로 찾아 넣어 주세요', sub: '판매처 사진이 그대로 옷장에 걸리고, 조합은 종류·색 규칙으로 세요.' })}`;
+      }
+      const avail = MOODS.map(([id, label]) => [id, label, moodAsk(label)]).filter((m) => m[2]);
+      const cur = avail.find((m) => m[0] === mood) || null;
+      const chips = `<div class="chips scroll moods" aria-label="상황"><button class="chip ${cur ? 'ex' : ''}" data-mood="" aria-pressed="${!cur}">내 옷 전체</button>${avail.map(([id, label]) => `<button class="chip ${cur?.[0] === id ? '' : 'ex'}" data-mood="${id}" aria-pressed="${cur?.[0] === id}">${esc(label)}</button>`).join('')}</div>`;
+      if (!cur) {
+        const d = M.closetOutfits({ detail: true });
+        const seen = new Set(); const list = d.list.filter((o) => !seen.has(o.key) && seen.add(o.key)).slice(0, 12);
+        const sg = M.suggest({ limit: 3 });
+        const sgRows = sg.basis === 'closet' ? sg.items : [];
+        return `${head}<h1 class="h1" style="margin-top:12px">내 옷 ${mine.length}벌로 <span class="num">${d.total}</span>가지</h1>
+          <p class="t5 sub" style="margin-top:4px">${d.total ? `코디 공식 ${d.formulas}개 · 기본 조합 ${d.basic}개 · 종류·색 기준` : '상의·하의·신발이 한 벌씩 있으면 조합이 생겨요'}</p>
+          ${chips}
+          ${list.length ? `<div class="lks">${list.map((o) => lookHtml(o, { sub: o.formulaLook ? '코디 공식' : '기본 조합' })).join('')}</div>` : `<div class="empty"><h2 class="h2">아직 조합이 없어요</h2><p class="t5 sub" style="margin-top:6px">상의·하의·신발을 한 벌씩 넣으면 바로 세어 드려요.</p><button class="btn line wide sm" data-add-open style="margin-top:12px"><i class="ph ph-plus"></i>옷 넣기</button></div>`}
+          ${sgRows.length ? `<section class="section"><div class="h"><h2 class="h3">한 벌만 더 있으면</h2><span class="t6">내 옷과 함께 쓰는 코디 공식</span></div>${sgRows.map((p) => sgRow(p)).join('')}<p class="t6" style="margin-top:8px">규칙으로 고른 상품이에요. 가격은 수집한 날의 판매가예요.</p></section>` : ''}
+          <p class="foot">${esc(d.note)}</p>`;
+      }
+      const r = cur[2];
+      const o = r.outfit;
+      const cands = o ? o.pieces.filter((x) => !x.owned && x.product) : [];
+      const condText = (r.conditions || []).map((c) => c.label).join(' · ');
+      return `${head}<h1 class="h1" style="margin-top:12px">${esc(cur[1])} 코디</h1>
+        <p class="t5 sub" style="margin-top:4px">${o ? (o.buyCount ? `내 옷 ${o.ownedCount}벌에 한 벌만 더하면 돼요` : `내 옷 ${o.ownedCount}벌로 입을 수 있어요`) : '내 옷으로는 아직 맞는 코디 공식이 없어요'}</p>
+        ${chips}
+        ${o ? `<div class="lks">${lookHtml(o, { sub: esc(condText), owned: !o.buyCount })}</div>` : `<div class="empty" style="margin-top:20px"><p class="t5 sub">${esc(r.outfitNote || `${cur[1]} 조건에 맞는 코디 공식이 내 옷만으로는 아직 없어요. 조건을 풀지 않았어요.`)}</p></div>`}
+        ${cands.length ? `<section class="section"><div class="h"><h2 class="h3">한 벌만 더 있으면</h2><span class="t6">${esc(condText)} 조건 안에서 고름</span></div>${cands.map((x) => sgRow(M.product(x.product.id) || x.product, `${cur[1]} 코디의 ${x.kindName} 자리`)).join('')}</section>` : ''}
+        ${r.products.length ? `<button class="row" data-q="${esc(r.text)}" style="margin-top:8px"><span class="grow t5">${esc(cur[1])} 조건에 맞는 옷 ${r.products.length}개 더 보기</span><i class="ph ph-caret-right arr"></i></button>` : ''}
+        <p class="foot">조합은 정해 둔 코디 공식과 종류·색 규칙으로 고른 예시예요. 핏·소재·현재 가격은 판매처에서 확인해요.</p>`;
     },
 
     records() {
@@ -803,8 +976,6 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const A = {
     home() {
       $('#sf').onsubmit = (e) => { e.preventDefault(); const q = $('#q').value.trim(); if (q) K.go('results', { q }); else $('#q').focus(); };
-      $('[data-trial]') && ($('[data-trial]').onclick = () => { M.loadTrialCloset(); K.refresh(); });
-      $('[data-mine]') && ($('[data-mine]').onclick = () => { M.clearTrialCloset(); K.refresh(); });
     },
     async results({ q, drop = [] }) {
       $$('[data-drop]').forEach((b) => { b.onclick = () => K.go('results', { q, drop: [...drop, b.dataset.drop] }, { replace: true }); });
@@ -840,7 +1011,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       $('#bar').innerHTML = `<div class="chatbar"><form id="cf"><input id="cq" maxlength="400" enterkeyhint="send" autocomplete="off" placeholder="예: 베이지 니트에 어울리는 바지는?" aria-label="코디 질문"${C.busy ? ' disabled' : ''}><button aria-label="보내기"${C.busy ? ' disabled' : ''}><i class="ph ph-paper-plane-right"></i></button></form></div>`;
       $('#cf').onsubmit = (e) => { e.preventDefault(); const v = $('#cq').value; askConsult(v); };
       $$('[data-ask]').forEach((b) => { b.onclick = () => askConsult(b.dataset.ask); });
-      $('[data-newchat]') && ($('[data-newchat]').onclick = () => { C.turns = []; C.busy = false; saveChat(); K.refresh(); });
+      $('[data-newchat]') && ($('[data-newchat]').onclick = () => { C.cur = null; C.busy = false; saveChat(); K.refresh(); });
+      $('[data-chatlist]') && ($('[data-chatlist]').onclick = () => { C.cur = null; saveChat(); K.refresh(); });
+      $$('[data-thread]').forEach((b) => { b.onclick = () => { C.cur = b.dataset.thread; saveChat(); K.refresh(); }; });
+      $$('[data-delthread]').forEach((b) => { b.onclick = () => { const th = C.threads.find((x) => x.id === b.dataset.delthread); confirmSheet(`‘${th?.title || ''}’ 상담을 지울까요?`, '지우면 되돌릴 수 없어요.', '지우기', () => { delThread(b.dataset.delthread); K.refresh(); }); }; });
+      $('[data-delall]') && ($('[data-delall]').onclick = () => confirmSheet(`상담 ${C.threads.length}개를 모두 지울까요?`, '지우면 되돌릴 수 없어요.', '모두 지우기', () => { C.threads = []; C.cur = null; saveChat(); K.refresh(); }));
       requestAnimationFrame(() => { if (C.turns.length) scrollTo(0, document.documentElement.scrollHeight); });
     },
     compare() {
@@ -848,11 +1023,20 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       b.onclick = () => { const on = $('#cmp').classList.toggle('showsame'); b.setAttribute('aria-expanded', on); b.innerHTML = `<i class="ph ph-caret-${on ? 'up' : 'down'}"></i>같은 항목 ${$$('#cmp tr.same').length}개 ${on ? '접기' : '보기'}`; };
     },
     closet() {
-      $('#bar').innerHTML = '<div class="pinbar"><div class="in"><button class="btn go wide" data-add><i class="ph ph-plus"></i>가진 옷 걸기</button></div></div>';
-      $$('[data-add]').forEach((b) => { b.onclick = () => addFlow(); });
-      $('[data-mine]') && ($('[data-mine]').onclick = () => { M.clearTrialCloset(); K.refresh(); });
-      $('[data-trial]') && ($('[data-trial]').onclick = () => { M.loadTrialCloset(); K.refresh(); });
+      $('#bar').innerHTML = '<div class="pinbar"><div class="in"><button class="btn go wide" data-add-open><i class="ph ph-plus"></i>옷 넣기</button></div></div>';
       $$('[data-g]').forEach((b) => { b.onclick = () => garmentSheet(b.dataset.g); });
+      $$('[data-brand]').forEach((b) => { b.onclick = () => { S.brandFilter = S.brandFilter === b.dataset.brand ? null : b.dataset.brand || null; const y = scrollY; K.refresh(); requestAnimationFrame(() => scrollTo(0, y)); }; });
+    },
+    looks() { fadeChips(); $$('[data-mood]').forEach((b) => { b.onclick = () => K.tab('looks', { mood: b.dataset.mood }); }); },
+    add({ q = '' } = {}) {
+      drawShelf();
+      const inp = $('#aq');
+      let t;
+      const run = () => renderAddResults(inp.value);
+      inp.oninput = () => { clearTimeout(t); t = setTimeout(run, 120); };
+      $('#af').onsubmit = (e) => { e.preventDefault(); clearTimeout(t); run(); inp.blur(); };
+      run();
+      if (!q) setTimeout(() => inp.focus(), 60);
     },
     records() {
       $$('[data-adv]').forEach((b) => { b.onclick = () => { try { M.advance(b.dataset.adv, b.dataset.step); K.refresh(); } catch (e) { K.toast(e.message, { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); } }; });
@@ -905,9 +1089,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit]');
+    const t = e.target.closest('[data-back],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine]');
     if (!t) return;
     if (t.hasAttribute('data-back')) K.back();
+    else if (t.hasAttribute('data-add-open')) K.go('add', {});
+    else if (t.hasAttribute('data-add-q')) K.go('add', { q: t.dataset.addQ });
+    else if (t.hasAttribute('data-addkind')) addFlow();
+    else if (t.dataset.ownAdd) ownAdd(t.dataset.ownAdd, t);
+    else if (t.hasAttribute('data-trial')) { M.loadTrialCloset(); K.refresh(); }
+    else if (t.hasAttribute('data-mine')) { M.clearTrialCloset(); K.refresh(); }
     else if (t.dataset.hang) toggleHang(t.dataset.hang, t);
     else if (t.dataset.own) answerOwn(t.dataset.for, t.dataset.own === 'yes');
     else if (t.dataset.unhang) { M.compareRemove(t.dataset.unhang); K.refresh(); }
@@ -1053,15 +1243,84 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         await sh.close();
         K.refresh();
         const gain = M.closetOutfits().total - before;
-        K.toast(gain > 0 ? `옷걸이에 걸었어요 · 입을 수 있는 조합 +${gain}` : '옷걸이에 걸었어요', { bottom: 128 });
+        if (curView === 'add') drawShelf({ pop: true });
+        K.toast(gain > 0 ? `옷장에 넣었어요 · 입을 수 있는 조합 +${gain}` : '옷장에 넣었어요', { bottom: curView === 'add' ? 100 : 128 });
       }; });
     }; });
   }
   function garmentSheet(id) {
     const g = M.getState().closet.find((x) => x.id === id);
     if (!g) return;
-    const sh = sheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:18px"><span style="width:84px;display:block;flex:none">${garmentPic(g)}</span><div><h2 class="h2">${esc(g.colorLabel)} ${esc(g.kindName)}</h2><div class="t6">${esc(g.sourceLabel || (g.trial ? '체험용' : '내 옷'))} · 사진은 같은 종류·색의 상품</div></div></div><button class="btn soft wide" data-rm>옷걸이에서 내리기</button>`);
+    const brand = g.productId ? M.product(g.productId)?.brand : null;
+    const with_ = M.closetOutfits({ detail: true }).list.filter((o) => o.pieces.some((x) => x.garmentId === id));
+    const seen = new Set(); const sets = with_.filter((o) => !seen.has(o.key) && seen.add(o.key)).slice(0, 2);
+    const sh = sheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span style="width:84px;display:block;flex:none">${garmentPic(g)}</span><div style="min-width:0"><h2 class="h2" style="margin:0">${esc(g.label)}</h2><div class="t6">${esc([brand, g.color ? g.colorLabel : null, g.kindName, g.trial ? '체험용' : g.productId ? '판매처 사진' : '비슷한 상품 사진'].filter(Boolean).join(' · '))}</div></div></div>
+      ${g.detailMissing === '색 미확인' ? `<div class="notice" style="margin:0 0 12px"><span class="grow">색을 알려 주시면 코디에 셀 수 있어요</span><button data-gcolor>색 고르기</button></div>` : ''}
+      <h3 class="h3" style="margin-bottom:4px">이 옷으로 입을 수 있는 코디 <span class="num acc">${with_.length}</span>가지</h3>
+      ${sets.length ? `<div class="lks" style="margin-top:8px">${sets.map((o) => lookHtml(o, { sub: o.formulaLook ? '코디 공식' : '기본 조합' })).join('')}</div>` : `<p class="t6">${g.detailMissing ? '색을 채우면 조합을 셀 수 있어요.' : '상의·하의·신발이 한 벌씩 있으면 조합이 생겨요.'}</p>`}
+      <div style="display:flex;gap:8px;margin-top:16px">${g.detailMissing !== '색 미확인' ? '<button class="btn line sm" data-gcolor style="flex:1">색 바꾸기</button>' : ''}<button class="btn soft sm" data-rm style="flex:1">옷장에서 빼기</button></div>`);
+    $$('[data-gcolor]', sh.s).forEach((b) => { b.onclick = async () => { await sh.close(); pickColor(id, g.kindName, g.color); }; });
     $('[data-rm]', sh.s).onclick = async () => { try { M.removeGarment(id); await sh.close(); K.refresh(); } catch (err) { K.toast(err.message, { bottom: 128 }); } };
+  }
+  // 색만 묻는 시트(옷장의 옷 색 채우기·바꾸기).
+  function pickColor(gid, kindName, current = null, done = null) {
+    const sh = sheet(`<h2 class="h2">${esc(kindName)}${josa(kindName, '은', '는')} 무슨 색이에요?</h2>${colorGrid(current)}`);
+    $$('[data-c]', sh.s).forEach((b) => { b.onclick = async () => { M.updateGarment(gid, { color: b.dataset.c }); await sh.close(); if (done) done(); else K.refresh(); }; });
+    return sh;
+  }
+  // 한 번 확인하는 시트(지우기 같은 되돌릴 수 없는 일).
+  function confirmSheet(title, sub, okLabel, onOk) {
+    const sh = sheet(`<h2 class="h2">${esc(title)}</h2><p class="t6 sub">${esc(sub)}</p><div class="decs"><button class="btn go" data-ok>${esc(okLabel)}</button><button class="btn soft" data-no>그대로 둘게요</button></div>`);
+    $('[data-ok]', sh.s).onclick = async () => { await sh.close(); onOk(); };
+    $('[data-no]', sh.s).onclick = () => sh.close();
+  }
+  // ── 옷장 넣기(브랜드·품명 검색)
+  function renderAddResults(q) {
+    const box = $('#ares'); if (!box) return;
+    const text = String(q || '').trim();
+    const mine = M.getState().closet;
+    const has = (id) => mine.find((g) => g.productId === id);
+    if (!text) {
+      const recent = [...mine].slice(-3).reverse();
+      box.innerHTML = `<div class="chips" style="margin-top:12px">${addExamples().map((b) => `<button class="chip ex" data-aq="${esc(b)}">${esc(b)}</button>`).join('')}</div>
+        ${recent.length ? `<section class="section"><div class="h"><h2 class="h3">최근 넣은 옷</h2></div>${recent.map((g) => `<div class="srow">${garmentPic(g)}<span class="grow"><span class="n">${esc(g.label)}</span><span class="m">${esc(g.detailMissing || g.sourceLabel)}</span></span></div>`).join('')}</section>` : ''}`;
+      $$('[data-aq]', box).forEach((b) => { b.onclick = () => { $('#aq').value = b.dataset.aq; renderAddResults(b.dataset.aq); }; });
+      return;
+    }
+    let hits = [];
+    try { hits = M.findProducts(text, { limit: 20 }); } catch {}
+    if (!hits.length) { box.innerHTML = `<div class="empty" style="margin-top:24px"><h2 class="h2">‘${esc(text)}’로 찾은 상품이 없어요</h2><p class="t5 sub" style="margin-top:6px">이 앱이 아는 상품 안에서만 찾을 수 있어요. 브랜드만 적거나 한 단어로 줄여 보세요. 아래에서 종류·색으로 넣을 수도 있어요.</p></div>`; return; }
+    const g0 = M.getState().gender;
+    box.innerHTML = `<p class="t6" style="margin-top:12px">${hits.length}개${hits.length >= 20 ? ' 이상' : ''} · 브랜드·품명에 적은 말이 모두 든 상품</p>
+      ${hits.map((p) => { const g = has(p.id); return `<div class="srow${g ? ' done' : ''}" data-srow="${p.id}">${productPic(p.id)}<span class="grow"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span><span class="m">${esc(p.colorFromPhoto ? p.kindName : `${p.colorLabel} ${p.kindName}`)}${p.gender !== g0 ? ` · ${p.gender === 'F' ? '여성' : '남성'}` : ''}</span></span>${g ? '<span class="ok"><i class="ph-fill ph-check-circle"></i>옷장에 있어요</span>' : `<button class="btn line sm" data-own-add="${p.id}">가지고 있어요</button>`}</div>`; }).join('')}`;
+  }
+  function drawShelf({ pop = false } = {}) {
+    const st = M.getState(); const mine = st.closet;
+    const out = mine.length ? M.closetOutfits().total : 0;
+    const last = [...mine].slice(-4);
+    $('#bar').innerHTML = `<div class="shelfbar${pop && !K.reduce ? ' pop' : ''}" id="shelf"><div class="in"><span class="ths" aria-hidden="true">${last.map((g) => garmentPic(g)).join('')}${last.length < 4 ? '<span class="ph-box empty"></span>' : ''}</span><span class="grow"><b class="num">옷 ${mine.length}벌</b> · ${out ? `코디 ${out}가지` : '코디는 3종류부터'}</span><button class="btn sm go" data-tabgo="closet">옷장 보기</button></div></div>`;
+  }
+  async function ownAdd(id, btn) {
+    const p = M.product(id); if (!p) return;
+    const before = M.getState().closetCount ? M.closetOutfits().total : 0;
+    let g;
+    try { g = M.addOwnedProduct(id); } catch (err) { K.toast(err.message, { bottom: 110 }); return; }
+    const finish = () => {
+      const after = M.closetOutfits().total; const gain = after - before;
+      const row = $(`.srow[data-srow="${id}"]`);
+      if (row) {
+        const from = row.querySelector('.ph-box')?.getBoundingClientRect();
+        drawShelf({ pop: true });
+        const to = $('#shelf .ths .ph-box:last-child');
+        if (from && to) K.fly(productPic(id), from, to, { radius: 8 });
+        row.classList.add('done');
+        const ok = document.createElement('span'); ok.className = 'ok'; ok.setAttribute('role', 'status');
+        ok.innerHTML = `<i class="ph-fill ph-check-circle"></i>${gain > 0 ? `넣었어요 · 코디 +${gain}` : '옷장에 넣었어요'}`;
+        row.querySelector('[data-own-add]')?.replaceWith(ok);
+      } else drawShelf({ pop: true });
+    };
+    if (!g.color) { pickColor(g.id, p.kindName, null, finish); return; }
+    finish();
   }
   function menu() {
     const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
@@ -1075,6 +1334,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   if (M.boot?.q) K.go('results', { q: M.boot.q });
   else if (/^\/p\/.+/.test(r0.path)) K.go('detail', { id: r0.path.slice(3) });
   else if (r0.path === '/search' && r0.params.q) K.go('results', { q: r0.params.q });
-  else if (['/closet', '/records', '/consult', '/compare'].includes(r0.path)) K.tab(r0.path.slice(1));
+  else if (['/closet', '/records', '/consult', '/looks'].includes(r0.path)) K.tab(r0.path.slice(1));
+  else if (r0.path === '/add') K.go('add', {});
+  else if (r0.path === '/compare') K.go('compare', {});
 })();
 </script>
