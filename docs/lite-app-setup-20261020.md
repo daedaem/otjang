@@ -10,7 +10,8 @@
 - **D1 생성:** 무료 DB `otjang-private`, ID `e3b0965b-a661-4ef0-b6a0-2ed1c12eed99`. 이 ID는 비밀 값이 아니다.
 - **소스 설정:** 같은 DB를 `RANK_DB`와 `CROWD_DB` 두 이름으로 연결한다. DB 생성·설정 파일 작성은 실제 Worker 바인딩·테이블 생성·운영 성공과 별개다.
 - **런타임 Secret:** 두 개 모두 사용자가 저장했고 Secret 유형·반영 배포를 확인했다. 값은 읽지 않았다.
-- **미확인:** 8자 이상 앱 비밀번호 방식의 새 배포와 실제 로그인, Claude 응답, 아이폰 설치 앱의 갱신·로그인·기존 자료 보존. 로컬 검사 성공을 이 단계들의 완료로 해석하지 않는다.
+- **실제 연결:** PR #30의 master `df81646` → 운영 버전 `2b531003` 배포, 대표 직접 로그인, Haiku 5.5 상담·상품 AI 순위·상세 이유를 Chrome에서 확인했다. 상담의 모델·토큰 수·요청 ID가 같은 Console 로그 성공 행과 일치했다. 상담 아래 ‘AI 응답 정보’를 펼치면 직접 볼 수 있다.
+- **미확인:** Console 토큰 합계 0의 원인, 아이폰 설치 앱의 갱신·로그인·기존 자료 보존, 추천 품질 전반. 호출 성공을 이 단계들의 완료로 해석하지 않는다.
 
 ## 배포 설정과 안전한 순서
 
@@ -39,7 +40,7 @@
 | `PRIVATE_APP_ACCESS_KEY` | 앱 로그인 비밀번호. 공백 없는 영문·숫자·기호(ASCII) 8~128자. 12자 이상 무작위 암호를 권장하며 AI API 키와 다른 값 사용 |
 | `ANTHROPIC_API_KEY` | Claude API 호출. 브라우저·앱 코드로 보내지 않음 |
 
-Cloudflare의 일반 Secret 저장은 새 배포를 만들 수 있다. 그래서 **보호 코드 선배포 → 런타임 Secret 입력** 순서를 지킨다. API 키 자체의 유효성·잔액은 실제 응답을 확인하기 전까지 미검증이다. [Cloudflare Secrets 공식 안내](https://developers.cloudflare.com/workers/configuration/secrets/)
+Cloudflare의 일반 Secret 저장은 새 배포를 만들 수 있다. 그래서 **보호 코드 선배포 → 런타임 Secret 입력** 순서를 지킨다. 현재 런타임 키의 실제 응답은 확인했지만 향후 잔액·만료·폐기 여부는 별도 관리한다. [Cloudflare Secrets 공식 안내](https://developers.cloudflare.com/workers/configuration/secrets/)
 
 ## 본인 로그인과 AI 한도
 

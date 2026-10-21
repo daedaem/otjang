@@ -26,6 +26,15 @@
     }
   };
 
+  // Button-triggered official retailer search. No wardrobe/history/photos or API secret in the browser request.
+  window.EOUL_RAKUTEN = async (query) => {
+    const res = await fetch(`/api/rakuten?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(12000) });
+    const body = await res.json().catch(() => null);
+    resumeLogin(res, body);
+    if (!res.ok || !Array.isArray(body?.items)) throw new Error(body?.message || '라쿠텐 검색을 불러오지 못했어요.');
+    return body;
+  };
+
   // 사용자 등록 카탈로그(/api/catalog/*). 화면은 window.EOUL_CROWD가 있을 때만 공유 등록을 쓰고, 없으면(링크 시안) 이 기기에만 둔다.
   // 실패는 {code}로 돌려준다: not_configured(DB 미연결)·offline·invalid·daily_limit·error. 기기 id는 이 브라우저에만 있는 무작위 값.
   const deviceId = () => {

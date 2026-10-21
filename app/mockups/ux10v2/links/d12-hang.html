@@ -578,6 +578,14 @@ a { color: inherit; text-decoration: none; }
   const saveReg = () => { try { localStorage.setItem(REG_KEY, JSON.stringify(REG)); } catch {} };
   const normKey = (brand, name) => `${brand} ${name}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
   const regOf = (gid) => REG.items[gid] || null;
+  // 공개 DB에서 선택한 정보는 개인 등록에 출처를 남기고 공용(3명 확인) 목록에 재전송하지 않는다.
+  const opfNotice = (source) => source?.provider === 'opf' && /^\d{6,24}$/.test(source.code)
+    ? `<p class="t6" style="margin:10px 0">Open Products Facts에서 가져온 정보 · <a href="https://world.openproductsfacts.org/product/${source.code}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">원본 확인</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">ODbL</a><br>종류·색과 실제로 가진 상품인지 확인해 주세요. 상품 사진·가격은 제공하지 않아요.</p>` : '';
+  const rakutenLink = (q) => {
+    const text = String(q || '').trim().slice(0, 120);
+    const url = text ? `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(text)}/` : null;
+    return url ? `<section class="section" data-rakuten-panel><h2 class="h3">라쿠텐에서도 찾아보기</h2><p class="t6">같은 문구로 라쿠텐 전체를 검색해요. 앱의 예산·종류 조건은 적용되지 않아요.</p>${window.EOUL_RAKUTEN ? `<button class="btn line sm" data-rakuten-search data-rakuten-q="${esc(text)}">라쿠텐 상품 불러오기</button><div data-rakuten-results aria-live="polite"></div>` : ''}<a class="row" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><span class="grow t5">라쿠텐 사이트에서 직접 검색</span><i class="ph ph-arrow-up-right arr"></i></a></section>` : '';
+  };
   const crowd = () => (window.EOUL_CROWD && typeof window.EOUL_CROWD.submit === 'function' ? window.EOUL_CROWD : null);
   // 등록 상태 한 줄: 서버가 답하면 그 숫자, 아니면 이 기기 숫자.
   const crowdLine = (c) => {
@@ -1028,7 +1036,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           <p class="sub t5" style="margin-top:6px">${esc(note || (r.understood ? '다른 옷으로 바꿔 채우지 않았어요.' : '종류를 넣어 다시 말해 주세요. 예: 셔츠, 코트, 운동화'))}</p>
           ${rel.length ? `<div style="margin-top:12px">${rel.map((x) => `<button class="row" data-relax='${esc(JSON.stringify(x.drop))}'><span class="grow t5">${esc(x.title)}</span><i class="ph ph-caret-right arr"></i></button>`).join('')}</div>` : ''}
           ${alts.length ? `<p class="t6" style="margin-top:20px">대신 이렇게 볼 수도 있어요</p><div class="chips">${alts.map((a) => `<button class="chip ex" data-q="${esc(a.q)}">${esc(a.label)}</button>`).join('')}</div>` : ''}
-          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>`;
+          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${rakutenLink(q)}`;
       }
       S.result = r;
       const basis = M.judge(r.products[0].id)?.basisLabel || '';
@@ -1040,7 +1048,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         <div class="chips scroll" aria-label="조건"><span class="cnt num">${r.products.length}개 · ${esc(basis.replace(' 판단했어요', ''))}</span>${chips}</div>
         <div class="ai ${order ? '' : 'wait'}" id="ai" role="status">${order ? `<i class="ph-fill ph-sparkle"></i><span>${esc(S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요')}</span>` : '<i class="ph ph-circle-notch"></i><span>AI가 후보 순서를 정하는 중이에요</span>'}</div>
         <div class="grid" id="grid">${gridHtml(sorted)}</div>
-        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}`;
+        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}${rakutenLink(q)}`;
     },
 
     consult() {
@@ -1148,7 +1156,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     // 옷장 넣기: 브랜드·품명으로 찾아 ‘가지고 있어요’. 목록(이 앱이 아는 상품) 밖이면 직접 등록(브랜드·상품명·종류·색).
     add({ q = '' } = {}) {
       return `${top({ mid: `<form class="qform" id="af" role="search"><input id="aq" value="${esc(q)}" enterkeyhint="search" autocomplete="off" placeholder="브랜드나 상품명으로 찾기 · ${esc(M.catalog.store)} ${M.catalog.count}개" aria-label="브랜드나 상품명"></form>` })}
-        <div id="ares"></div>
+        <div id="ares"></div><div id="aopen" aria-live="polite"></div>
         <button class="row" data-reg-open style="margin-top:8px"><span class="grow"><span class="t5">목록에 없어요 → 직접 등록</span><span class="t6" style="display:block">브랜드·상품명·종류·색만 적어요</span></span><i class="ph ph-caret-right arr"></i></button>`;
     },
 
@@ -1160,10 +1168,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const g0 = M.getState().gender || 'M';
       const thumbColor = (kid) => ['white', 'black', 'navy', 'grey', 'indigo', 'blue', 'beige'].find((c) => K.CUT[`${g0}|${kid}|${c}`]) || 'black';
       return `${top({ mid: '<span class="sp"></span>' })}
-        <h1 class="h2" style="margin-top:8px">목록에 없는 옷 직접 등록</h1>
+        <h1 class="h2" style="margin-top:8px">${R.source ? '찾은 상품으로 옷장에 넣기' : '목록에 없는 옷 직접 등록'}</h1>
+        ${opfNotice(R.source)}
         <form id="rf" autocomplete="off">
           <div class="field"><label for="rb">브랜드</label><input id="rb" value="${esc(R.brand)}" placeholder="예: 유니클로" enterkeyhint="next"></div>
-          <div class="field"><label for="rn">상품명</label><input id="rn" value="${esc(R.name)}" placeholder="예: 옥스포드 슬림핏 셔츠" enterkeyhint="next"><div class="hint">택이나 주문 내역의 이름이면 다른 사람과 같은 옷으로 모여요</div></div>
+          <div class="field"><label for="rn">상품명</label><input id="rn" value="${esc(R.name)}" placeholder="예: 옥스포드 슬림핏 셔츠" enterkeyhint="next"><div class="hint">${R.source ? '내 옷과 같은 상품인지 확인하고, 필요한 내용만 수정해 주세요' : '택이나 주문 내역의 이름이면 다른 사람과 같은 옷으로 모여요'}</div></div>
           <div id="rdup"></div>
           <div class="regk"><div class="label"><span>종류</span></div><div class="kinds">${kinds.map((k) => `<button type="button" data-k="${k.id}" aria-pressed="${R.kind === k.id}">${garmentPic({ kind: k.id, kindName: k.name, color: thumbColor(k.id), gender: g0 })}${esc(k.name)}</button>`).join('')}</div></div>
           <div class="regk"><div class="label"><span>색</span></div><div class="colors">${M.colorChoices().map((c) => `<button type="button" data-c="${c.id}" aria-pressed="${R.color === c.id}" aria-label="${esc(c.label)}"><i style="background:${c.hex}"></i>${esc(c.label)}</button>`).join('')}</div></div>
@@ -1345,9 +1354,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add]');
+    const t = e.target.closest('[data-back],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search]');
     if (!t) return;
     if (t.hasAttribute('data-back')) K.back();
+    else if (t.hasAttribute('data-rakuten-search')) searchRakuten(t);
     else if (t.hasAttribute('data-add-open')) K.go('add', {});
     else if (t.hasAttribute('data-add-q')) K.go('add', { q: t.dataset.addQ });
     else if (t.hasAttribute('data-reg-open')) { S.reg = null; K.go('reg', { q: t.dataset.regQ || '' }); }
@@ -1515,7 +1525,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const seen = new Set(); const sets = with_.filter((o) => !seen.has(o.key) && seen.add(o.key)).slice(0, 2);
     const cat = reg ? REG.catalog[reg.key] : null;
     const sh = sheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span style="width:84px;display:block;flex:none">${garmentPic(g)}</span><div style="min-width:0"><h2 class="h2" style="margin:0">${esc(g.label)}</h2><div class="t6">${esc([brand, g.color ? g.colorLabel : null, g.kindName, g.trial ? '체험용' : g.productId ? '판매처 사진' : reg ? '직접 등록 · 비슷한 상품 사진' : '비슷한 상품 사진'].filter(Boolean).join(' · '))}</div></div></div>
-      ${cat ? `<div class="crowd" style="margin:0 0 14px"><i class="ph ph-users-three"></i><span>${crowdLine(cat)}${cat.url ? ` · <a href="${esc(cat.url)}" target="_blank" rel="noopener" style="text-decoration:underline">판매처 링크</a>` : ''}</span></div>` : ''}
+      ${reg?.source ? opfNotice(reg.source) : cat ? `<div class="crowd" style="margin:0 0 14px"><i class="ph ph-users-three"></i><span>${crowdLine(cat)}${cat.url ? ` · <a href="${esc(cat.url)}" target="_blank" rel="noopener" style="text-decoration:underline">판매처 링크</a>` : ''}</span></div>` : ''}
       ${g.detailMissing === '색 미확인' ? `<div class="notice" style="margin:0 0 12px"><span class="grow">색을 알려 주시면 코디에 셀 수 있어요</span><button data-gcolor>색 고르기</button></div>` : ''}
       <h3 class="h3" style="margin-bottom:4px">이 옷으로 입을 수 있는 코디 <span class="num acc">${with_.length}</span>가지</h3>
       ${sets.length ? `<div class="lks" style="margin-top:8px">${sets.map((o) => lookHtml(o, { sub: o.formulaLook ? '코디 공식' : '기본 조합' })).join('')}</div>` : `<p class="t6">${g.detailMissing ? '색을 채우면 조합을 셀 수 있어요.' : '상의·하의·신발이 한 벌씩 있으면 조합이 생겨요.'}</p>`}
@@ -1539,6 +1549,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   function renderAddResults(q) {
     const box = $('#ares'); if (!box) return;
     const text = String(q || '').trim();
+    openProductSearch(text);
     const mine = M.getState().closet;
     const has = (id) => mine.find((g) => g.productId === id);
     if (!text) {
@@ -1554,8 +1565,53 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const rows = hits.map((p) => { const g = has(p.id); return `<div class="srow${g ? ' done' : ''}" data-srow="${p.id}">${productPic(p.id)}<span class="grow"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span><span class="m">${esc(p.colorFromPhoto ? p.kindName : `${p.colorLabel} ${p.kindName}`)}${p.gender !== g0 ? ` · ${p.gender === 'F' ? '여성' : '남성'}` : ''}</span></span>${g ? '<span class="ok"><i class="ph-fill ph-check-circle"></i>옷장에 있어요</span>' : `<button class="btn line sm" data-own-add="${p.id}">가지고 있어요</button>`}</div>`; }).join('');
     box.innerHTML = hits.length
       ? `<p class="t6" style="margin-top:12px">${hits.length}개${hits.length >= 20 ? ' 이상' : ''}</p>${rows}<div id="acrowd"></div>`
+      : window.EOUL_OPEN_PRODUCTS ? `<div id="acrowd"></div><p class="t6" style="margin-top:12px">기존 상품 목록(${M.catalog.count}건)에는 없어요. 아래 공개 상품 정보도 확인해 보세요.</p>`
       : `<div id="acrowd"></div><div class="empty" style="margin-top:24px"><h2 class="h2">‘${esc(text)}’로 찾은 상품이 없어요</h2><p class="t5 sub" style="margin-top:6px">이 앱이 아는 상품 ${M.catalog.count}개 안에서만 찾아요.</p><button class="btn go wide sm" data-reg-open data-reg-q="${esc(text)}" style="margin-top:14px"><i class="ph ph-plus"></i>‘${esc(text)}’ 직접 등록</button></div>`;
     crowdSearch(text);
+  }
+  // 공개 데이터는 별도 파일에서 이 기기 안에서 검색한다. 입력할 때마다 외부 API를 호출하지 않는다.
+  let openSeq = 0;
+  window.addEventListener('eoul-open-products-ready', () => { if ($('#aq') && $('#ares')) renderAddResults($('#aq').value); });
+  async function openProductSearch(text) {
+    const seq = ++openSeq;
+    const box = $('#aopen'), provider = window.EOUL_OPEN_PRODUCTS;
+    if (!box || !provider) return;
+    if (!text) {
+      box.innerHTML = `<section class="section"><h2 class="h3">공개 상품 정보로 찾아 넣기</h2><p class="t6">브랜드·이름을 찾아 등록할 수 있어요. 가격·재고 정보는 없어요.</p><div class="chips">${['유니클로', '리바이스', 'Brandit', 'Guess'].map((q) => `<button class="chip ex" data-opq="${esc(q)}">${esc(q)}</button>`).join('')}</div></section>`;
+      $$('[data-opq]', box).forEach((b) => { b.onclick = () => { $('#aq').value = b.dataset.opq; renderAddResults(b.dataset.opq); }; });
+      return;
+    }
+    box.innerHTML = '<p class="t6" role="status">공개 상품 정보를 찾고 있어요…</p>';
+    try {
+      const data = await provider.search(text);
+      if (seq !== openSeq || box !== $('#aopen')) return;
+      box.innerHTML = `<section class="section"><h2 class="h3">공개 상품 정보 <span class="t6">${data.items.length}개${data.items.length === 12 ? ' 이상' : ''}</span></h2>
+        <p class="t6">Open Products Facts · ${esc(data.fetchedAt.slice(0, 10))} 기준 ${data.usableCount}건 안에서 검색 · 가격·재고 없음<br>커뮤니티가 등록한 정보예요. 원본과 내 옷을 확인해 주세요.</p>
+        ${data.items.length ? data.items.map((x, i) => `<div class="srow"><i class="ph ph-tag" aria-hidden="true" style="font-size:28px;flex:none"></i><span class="grow"><span class="b">${esc(x.brand)}</span><span class="n">${esc(x.name)}</span><span class="m">상품 코드 ${esc(x.code)} · <a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">원본</a></span></span><button class="btn line sm" data-opf-add="${i}">이 정보로 등록</button></div>`).join('') : '<p class="t5">이 공개 목록에는 일치하는 상품이 없어요.</p>'}
+        <p class="t6"><a href="https://world.openproductsfacts.org" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Open Products Facts 및 기여자</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">ODbL</a> · <a href="/data/open-products/clothing.json" download style="text-decoration:underline">사용한 공개 데이터 받기</a> · <a href="/data/open-products/README.md" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">출처·변경 내역</a></p></section>${rakutenLink(text)}`;
+      $$('[data-opf-add]', box).forEach((b) => { b.onclick = () => {
+        const draft = provider.draft(data.items[Number(b.dataset.opfAdd)]);
+        if (!draft) return;
+        S.reg = draft; K.go('reg', {});
+      }; });
+    } catch {
+      if (seq !== openSeq || box !== $('#aopen')) return;
+      box.innerHTML = `<p class="t6" role="status">공개 상품 정보를 불러오지 못했어요. 검색어를 다시 입력하거나 직접 등록해 주세요.</p>${rakutenLink(text)}`;
+    }
+  }
+  async function searchRakuten(button) {
+    if (button.disabled || !window.EOUL_RAKUTEN) return;
+    const box = $('[data-rakuten-results]', button.closest('[data-rakuten-panel]'));
+    button.disabled = true;
+    box.innerHTML = '<p class="t6" role="status">라쿠텐 상품을 불러오는 중이에요…</p>';
+    try {
+      const data = await window.EOUL_RAKUTEN(button.dataset.rakutenQ);
+      box.innerHTML = `<p class="t6">라쿠텐 제공 순서 · 가격은 일본 엔(JPY) · ${esc(data.fetchedAt?.slice(0, 10) || '')} 조회</p>${data.items.length ? data.items.map((p) => `<a class="srow" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" style="object-fit:contain;flex:none">` : ''}<span class="grow"><span class="n">${esc(p.name)}</span><span class="m">${esc(p.shop)} · ¥${Number(p.price).toLocaleString('ja-JP')} JPY${p.taxFlag === 1 ? ' (세전)' : ''}</span></span><i class="ph ph-arrow-up-right"></i></a>`).join('') : '<p class="t5">라쿠텐에서 일치하는 상품을 찾지 못했어요.</p>'}
+        <!-- Rakuten Web Services Attribution Snippet FROM HERE -->
+        <a href="https://developers.rakuten.com/" target="_blank">Supported by Rakuten Developers</a>
+        <!-- Rakuten Web Services Attribution Snippet TO HERE -->`;
+    } catch (error) { box.innerHTML = `<p class="t6" role="status">${esc(error.message || '라쿠텐 검색을 불러오지 못했어요.')} 아래 링크로 직접 검색할 수 있어요.</p>`; }
+    finally { button.disabled = false; }
   }
   // 설치 앱이 공용 목록(EOUL_CROWD.search)을 주면 '사용자 등록 · n명 확인' 줄을 덧붙인다. 없으면 이 기기에서 직접 등록한 옷만 보인다.
   let crowdSeq = 0;
@@ -1632,6 +1688,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     let t;
     const findDup = () => {
       R.brand = rb.value.trim(); R.name = rn.value.trim();
+      if (R.source) { dup.innerHTML = ''; return; }
       clearTimeout(t); t = setTimeout(() => {
         if (!R.brand || R.name.length < 2) { dup.innerHTML = ''; return; }
         let hits = [];
@@ -1652,13 +1709,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const before = M.getState().closetCount ? M.closetOutfits().total : 0;
       let g; try { g = M.addGarment({ kind: R.kind, color: R.color, slot: M.slotChoices(R.kind)[0]?.id || null, label: R.name.slice(0, 80) }); } catch (err) { K.toast(err.message, { bottom: 96 }); return; }
       const key = normKey(R.brand, R.name);
-      const c = REG.catalog[key] || { key, brand: R.brand, name: R.name, kind: R.kind, color: R.color, url: '', count: 0, mine: false, at: new Date().toISOString() };
+      const c = (!R.source && REG.catalog[key]) || { key, brand: R.brand, name: R.name, kind: R.kind, color: R.color, url: '', count: 0, mine: false, at: new Date().toISOString() };
       if (!c.mine) { c.count = Math.min(NEED, (c.count || 0) + 1); c.mine = true; } // 같은 사람이 또 등록해도 한 명으로 센다.
       if (R.url) c.url = R.url;
-      REG.catalog[key] = c; REG.items[g.id] = { brand: R.brand, name: R.name, kind: R.kind, kindName: M.kindChoices().find((k) => k.id === R.kind)?.name || '', color: R.color, url: R.url, key, at: new Date().toISOString() }; saveReg();
+      // 공개 원본을 사용자 3명 확인 목록과 합치거나 독립 확인으로 세지 않는다.
+      if (!R.source) REG.catalog[key] = c;
+      REG.items[g.id] = { brand: R.brand, name: R.name, kind: R.kind, kindName: M.kindChoices().find((k) => k.id === R.kind)?.name || '', color: R.color, url: R.url, key, at: new Date().toISOString(), ...(R.source ? { source: R.source } : {}) }; saveReg();
       // 설치 앱의 공용 목록. 답이 오면 그 숫자로, 못 보내면(not_configured·offline) 이 기기 숫자 그대로.
       const cr = crowd();
-      if (cr) { try { const r = await cr.submit({ brand: R.brand, name: R.name, kind: R.kind, color: R.color, link: R.url }); if (r && Number.isFinite(+r.count)) { c.server = true; c.serverCount = +r.count; c.serverMin = +r.min || NEED; c.searchable = !!r.searchable; saveReg(); } } catch {} }
+      if (cr && !R.source) { try { const r = await cr.submit({ brand: R.brand, name: R.name, kind: R.kind, color: R.color, link: R.url }); if (r && Number.isFinite(+r.count)) { c.server = true; c.serverCount = +r.count; c.serverMin = +r.min || NEED; c.searchable = !!r.searchable; saveReg(); } } catch {} }
       const gain = M.closetOutfits().total - before;
       S.reg = null;
       K.tab('closet');
