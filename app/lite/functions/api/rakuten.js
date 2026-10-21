@@ -54,7 +54,9 @@ export async function handleRakuten(request, env, { fetcher = fetch, now = Date.
   try {
     // Race also bounds a test/upstream fetcher that ignores AbortSignal.
     const upstream = async () => {
-      const res = await fetcher(api.toString(), { headers: { accessKey, Accept: 'application/json', Origin: APP_ORIGIN, Referer: `${APP_ORIGIN}/` }, redirect: 'error', cache: 'no-store', signal: controller.signal });
+      // Workers does not implement redirect:'error'. Manual mode plus the status
+      // check below rejects redirects without forwarding either credential.
+      const res = await fetcher(api.toString(), { headers: { accessKey, Accept: 'application/json', Origin: APP_ORIGIN, Referer: `${APP_ORIGIN}/` }, redirect: 'manual', cache: 'no-store', signal: controller.signal });
       if (!res.ok) return { status: res.status };
       // Bound memory as well as elapsed time. Never expose an upstream error body.
       const reader = res.body?.getReader();

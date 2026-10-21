@@ -51,7 +51,7 @@ test('official request uses only a bounded keyword and server credentials, retur
     assert.equal(options.headers.accessKey, config.RAKUTEN_ACCESS_KEY);
     assert.equal(options.headers.Origin, APP_ORIGIN);
     assert.equal(options.headers.Referer, `${APP_ORIGIN}/`);
-    assert.equal(options.redirect, 'error');
+    assert.equal(options.redirect, 'manual');
     return Response.json({ items: [item, { ...item, itemName: 'Second', itemPrice: 100 }] });
   } });
   assert.equal(response.status, 200);
@@ -137,4 +137,17 @@ test('current documented lowercase item wrappers and flat version 2 are parsed w
   assert.equal(offers({ items: [{ ...item, mediumImageUrls: [item.mediumImageUrls[0].imageUrl] }] })[0].image, item.mediumImageUrls[0].imageUrl);
   assert.deepEqual(offers({ items: [] }), []);
   assert.equal(offers({ items: {} }), null);
+});
+
+test('redirects are rejected in Workers-compatible manual mode without following or reflecting a Location', async () => {
+  let calls = 0;
+  const res = await handleRakuten(request(), env(), { fetcher: async (url, options) => {
+    calls++;
+    assert.equal(new URL(url).origin, 'https://openapi.rakuten.co.jp');
+    assert.equal(options.redirect, 'manual');
+    return new Response(null, { status: 302, headers: { Location: 'https://attacker.test/synthetic-test-access-key' } });
+  } });
+  assert.equal(calls, 1);
+  assert.equal(res.status, 502);
+  assert.doesNotMatch(await res.text(), /attacker|synthetic/);
 });
