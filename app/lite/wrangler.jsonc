@@ -5,6 +5,8 @@
   "main": "./worker.js",
   "compatibility_date": "2026-10-01",
   "keep_vars": true,
+  // Keep API requests near the Korean service region; default edge routing reached HKG.
+  "placement": { "region": "aws:ap-northeast-2" },
   "preview_urls": false,
   "vars": {
     "PRIVATE_AUTH_MODE": "session",
