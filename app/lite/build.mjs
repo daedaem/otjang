@@ -1,4 +1,4 @@
-// 설치형 앱 묶기: 시안 화면(SCREEN, 지금은 d16 "옷장 렌즈")을 그대로 쓰고, 홈 화면 설치·오프라인·AI 순위 서버 함수 연결만 더해 dist/에 만든다.
+// 설치형 앱 묶기: 시안 화면(SCREEN, 지금은 d12 "걸어 보고 사기")을 그대로 쓰고, 홈 화면 설치·오프라인·AI 순위 서버 함수 연결만 더해 dist/에 만든다.
 // Cloudflare Pages 설정: 루트 디렉터리 app/lite, 빌드 명령 `npm run build`, 출력 디렉터리 dist (functions/는 Pages가 알아서 올린다).
 // 상품 사진은 판매처 이미지 서버 주소를 그대로 쓴다(저장소·배포본에 사진 파일 없음). 글꼴은 npm 패키지(OFL·MIT)에서 복사한다.
 import { assertBuildAllowed } from './deployment-policy.mjs';
@@ -58,7 +58,7 @@ for (const f of ICONS) copy(path.join(HERE, '../public/icons', f), `icons/${f}`)
 
 // 4) 화면: 시안 본문 조각을 완전한 문서로 감싼다. 링크 페이지 전용 줄(사진 폴더, claude 메타, 제목)은 뺀다.
 //    저장 키(EOUL_MOCK_KEY)는 남겨서 링크 시안과 같은 이름으로 이 기기에 저장한다.
-export const SCREEN = 'd16-lens.html';
+export const SCREEN = 'd12-hang.html';
 const body = read(path.join(UX, 'links', SCREEN))
   .replace(/<title>[^<]*<\/title>\n?/, '')
   .replace(/<meta name="claude:[^>]*>\n?/, '')

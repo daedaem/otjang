@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const lite = fs.readFileSync(new URL('../src/lite.js', import.meta.url), 'utf8');
 const rank = fs.readFileSync(new URL('../../mockups/ux10v2/links/shared/ai-rank.js', import.meta.url), 'utf8');
-const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d16-lens.html', import.meta.url), 'utf8');
+const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
 const consult = page.slice(page.indexOf('  const REFUSE ='), page.indexOf('  const recCard ='));
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const storage = () => {
