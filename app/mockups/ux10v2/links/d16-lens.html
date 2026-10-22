@@ -1034,14 +1034,16 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     dress: { outer: [2, 6, 44, 62], dress: [48, 3, 48, 74], shoes: [10, 70, 36, 28] },
   };
   function stageHtml(o, { cls = 'stage', missing = null, cap = '', candId = null } = {}) {
-    const pieces = o ? o.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)) : [];
+    // 코어가 '겉옷이 없다'고 하면 가장 가까운 조합에 든 안 맞는 겉옷은 치우고 그 자리를 빈 자리로 보여 준다.
+    const pieces = o ? o.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role) && !(missing && x.role === missing.role)) : [];
     const roles = new Set(pieces.map((x) => x.role));
     const pos = roles.has('dress') ? STAGE_POS.dress : (roles.has('outer') || missing?.role === 'outer') ? STAGE_POS.full : STAGE_POS.noOuter;
     const box = ([l, t, w, h]) => `left:${l}%;top:${t}%;width:${w}%;height:${h}%`;
     const used = new Set();
     const pcs = pieces.filter((x) => pos[x.role] && !used.has(x.role) && used.add(x.role)).map((x, i) => `<div class="pc${x.candidate || !x.owned ? ' cand' : ''}" style="${box(pos[x.role])};--i:${i}" title="${esc(x.label)}">${x.candidate && candId ? productPic(candId) : piecePic(x)}</div>`).join('');
     const miss = missing && pos[missing.role] && !roles.has(missing.role) ? `<div class="miss" style="${box(pos[missing.role])}"><span><b>${esc(missing.label)}</b> 자리가 비어 있어요</span><button class="quiet" data-q="${esc(missing.query)}">채우기<i class="ph ph-caret-right"></i></button></div>` : '';
-    return `<div class="${cls}" role="img" aria-label="${esc(o ? o.title : '빈 코디')}">${pcs}${miss}${cap ? `<span class="cap">${esc(cap)}</span>` : ''}</div>`;
+    // 빈 자리의 '채우기' 버튼이 눌리도록 role은 img가 아니라 group으로 둔다.
+    return `<div class="${cls}" role="group" aria-label="${esc(o ? o.title : '빈 코디')}">${pcs}${miss}${cap ? `<span class="cap">${esc(cap)}</span>` : ''}</div>`;
   }
   // 코디 한 벌(목록용): 미니 무대 + 제목. 후보가 섞이면 '후보 · 가격'.
   function lookHtml(o, { title = '', sub = '', owned = true, candId = null } = {}) {
