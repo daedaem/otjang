@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Anthropic from '@anthropic-ai/sdk';
-import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode, providerFailureDiagnostics, CONSULT_MAX, clipAnswer } from '../functions/api/rank.js';
+import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode, providerFailureDiagnostics, CONSULT_MAX, clipAnswer, parseBudget, priceCheck } from '../functions/api/rank.js';
 import { PRODUCTS } from '../../src/data/products.js';
 const p = PRODUCTS[0];
 const post = (body, headers = {}) => new Request('https://x.test/api/rank', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
@@ -135,6 +135,49 @@ test('consult answers longer than the stated limit are clipped at a sentence end
   assert.equal(clipAnswer('짧은 답이에요.'), '짧은 답이에요.');
   assert.ok(clipAnswer('가'.repeat(600)).endsWith('…'));
   assert.equal(clipAnswer('가'.repeat(600)).length, CONSULT_MAX);
+});
+test('budget phrases are read from Korean text and unreadable or declined budgets give null', () => {
+  assert.deepEqual(parseBudget('출근용 셔츠 10만원 이하'), { max: 100000 });
+  assert.deepEqual(parseBudget('50,000원 안에서 바지'), { max: 50000 });
+  assert.deepEqual(parseBudget('3만원 이상 7만원 이내 니트'), { min: 30000, max: 70000 });
+  assert.deepEqual(parseBudget('5만원대 바지'), { min: 50000, max: 59999 });
+  assert.deepEqual(parseBudget('10만원대 코트'), { min: 100000, max: 199999 });
+  assert.deepEqual(parseBudget('10만원 미만'), { max: 99999 });
+  assert.equal(parseBudget('예산 상관없이 제일 좋은 코트'), null);
+  assert.equal(parseBudget('네이비 블레이저에 어울리는 바지'), null);
+  assert.equal(parseBudget('100원짜리'), null);
+});
+test('consult answers that contradict the server price facts get a correction line, not a rewrite or a retry', async () => {
+  const name = p.name.replace(/\s*\[[^\]]*\]\s*$/, '');
+  const budget = { max: 100000 };
+  // 19,900원 상품을 예산 10만원 초과라고 말함 → 교정 줄
+  const wrong = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer: `${name}는 예산을 넘어요. 다른 걸 보세요.`, product_ids: [p.id] }));
+  assert.equal(wrong.status, 200);
+  assert.deepEqual(wrong.body.price_check.budget, budget);
+  assert.deepEqual(wrong.body.price_check.items, [{ id: p.id, price: p.price, fit: '예산 안' }]);
+  assert.equal(wrong.body.price_check.lines.length, 1);
+  assert.match(wrong.body.price_check.lines[0], /가격 확인: .*19,900원 · 예산 100,000원 이하 기준 예산 안이에요/);
+  assert.match(wrong.body.answer, /예산을 넘어요/); // 답 문장은 고쳐 쓰지 않는다
+  // 맞게 말하면 교정 줄 없음
+  const right = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer: `${name}는 예산 안이에요.`, product_ids: [p.id] }));
+  assert.equal(right.body.price_check.lines, undefined);
+  // 합계 문장은 한 벌 판정으로 대조하지 않는다
+  const sum = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer: `${name}와 바지를 합쳐 사면 예산을 넘어요.`, product_ids: [p.id] }));
+  assert.equal(sum.body.price_check.lines, undefined);
+  // 예산을 모르면 대조하지 않는다
+  const none = await result(input({ task: 'consult', query: '어울리는 상의' }), fake({ on_topic: true, answer: `${name}는 비싸요.`, product_ids: [p.id] }));
+  assert.equal(none.body.price_check, undefined);
+  // 화면이 보낸 예산(이어 묻기로 바뀐 값)이 질문 문장보다 우선한다
+  const client = fake({ on_topic: true, answer: `${name}는 예산 안이에요.`, product_ids: [p.id] });
+  const changed = await result(input({ task: 'consult', query: '10만원 이하 상의', budget: { max: 15000 } }), client);
+  assert.equal(changed.body.price_check.items[0].fit, '예산 초과');
+  assert.equal(changed.body.price_check.lines.length, 1);
+  const sent = JSON.parse(client.calls[0].messages[0].content);
+  assert.equal(sent.budget.max, 15000); assert.equal(sent.items[0].budgetFit, '예산 초과');
+  // 잘못된 예산 모양은 400, rank에는 예산을 받지 않는다
+  for (const budget of [{ max: 10 }, { max: 'a' }, {}, { max: 1000, min: 2000 }, { max: 100000, extra: 1 }]) assert.equal((await result(input({ task: 'consult', budget }))).status, 400);
+  assert.equal((await result(input({ budget: { max: 100000 } }))).status, 400);
+  assert.equal(priceCheck([], 'x', budget), null);
 });
 test('authentication and quota rejection stop upstream, including dependency failures', async () => {
   const client = fake();

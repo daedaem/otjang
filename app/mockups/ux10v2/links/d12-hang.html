@@ -437,6 +437,8 @@ a { color: inherit; text-decoration: none; }
 .msg.refuse { background: var(--surface); border: 1px dashed var(--ink3); color: var(--ink2); }
 .msg.err { background: var(--surface); border: 1px solid var(--line); color: var(--ink2); }
 .msg .who { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--acc-text); margin-bottom: 4px; white-space: nowrap; min-width: 0; }
+.msg .pcheck { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--ink2); white-space: normal; }
+.msg .pcheck i { flex: none; font-size: 15px; color: var(--acc-text); margin-top: 1px; }
 .msg .ai-info { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--ink2); white-space: normal; }
 .ai-info summary { cursor: pointer; min-height: 28px; }
 .ai-info dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 4px 0 0; }
@@ -832,6 +834,7 @@ a { color: inherit; text-decoration: none; }
 앱 목록에 없는 브랜드(유니클로 등)를 물으면 거절하지 말고, 그 브랜드의 대표 제품군·핏 경향·대략적인 가격대 같은 일반 지식으로 답하세요. 이때 '앱에서 확인한 정보는 아니에요'라고 한 번 밝히고, 지금 가격·재고·품번·출시 여부는 말하지 마세요. 그다음 앱 후보 중 가장 비슷한 것을 권하세요.
 주의 문구는 꼭 필요할 때 한 문장만 쓰세요. 가격 수집일은 화면 카드에 보이니 문장에서 반복하지 마세요. '참고' 줄(앱에 없는 브랜드 등)은 짧게 알려 주세요.
 해요체로 5문장, 550자 이내로 답하세요. 참고 줄에 '맞는 상품이 없어요'가 있으면 다른 종류의 상품을 대신 권하지 말고 없다고 말하세요.
+예산 판단은 '예산' 줄과 후보의 budgetFit(앱이 가격을 비교한 사실)만 쓰고 직접 계산하거나 반대로 말하지 마세요. 예산은 상품 한 벌 기준이며 여러 벌을 더해 말할 때는 '합계'라고 밝히세요.
 JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids": ["ms-..."]}`;
 
   // 상담 후보 찾기: 질문을 검색어로 바로 못 알아들어도 상황(장례식→격식·검정)·브랜드·앞선 질문을 이어 붙여 다시 찾고,
@@ -852,6 +855,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const alias = (t) => BRAND_ALIAS.reduce((x, [re, to]) => x.replace(re, to), t);
     const parse = (t) => { try { return t ? M.ask(t) : null; } catch { return null; } };
     const ask = (t) => { const r = parse(t); return r && r.understood && r.products?.length ? r.products : null; };
+    // 예산은 엔진이 읽은 검색 조건(criteria)에서만 가져온다(원 단위 정수). 이번 질문에 없으면 최근 3번 질문 중 가장 가까운 예산을 이어 간다.
+    const wonOk = (n) => Number.isInteger(n) && n >= 1000 && n <= 100000000;
+    const budgetOf = (r) => { const c = r?.criteria; if (!c) return null; const b = {}; if (wonOk(c.maxPrice)) b.max = c.maxPriceExclusive ? c.maxPrice - 1 : c.maxPrice; if (wonOk(c.minPrice)) b.min = c.minPriceExclusive ? c.minPrice + 1 : c.minPrice; return (b.max || b.min) && !(b.max && b.min && b.min > b.max) ? b : null; };
     const recent = hist.filter((m) => m.role === 'user').map((m) => m.content).slice(-3);
     // 상황(장례식 등)은 최근 3번 질문까지 이어 가고, 브랜드는 바로 앞 질문에서만 이어 간다.
     const prevUser = recent.at(-1) || '';
@@ -859,6 +865,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const hint = hintOf(q) || prevHint;
     const wantsMusinsa = brandIn(q) || (!hintOf(q) && brandIn(prevUser));
     const own = parse(alias(q));
+    const NO_BUDGET = /예산\s*(없|상관|무관)/;
+    // '예산 상관없이'라고 한 뒤로는 그 앞 질문의 예산을 더 이어 가지 않는다.
+    const inherited = () => { for (const t of [...recent].reverse()) { if (NO_BUDGET.test(t)) return null; const b = budgetOf(parse(alias(t))); if (b) return b; } return null; };
+    const budget = NO_BUDGET.test(q) ? null : budgetOf(own) || inherited();
     let mode = GAP_RE.test(q) ? 'gap' : own?.understood && own.products?.length ? 'q' : own?.understood ? 'none' : hintOf(q) || brandIn(q) ? 'hint' : 'follow';
     const ctxText = wantsMusinsa && ask(`${prevHint} ${alias(q)} 무신사 스탠다드`) ? `${prevHint} ${alias(q)} 무신사 스탠다드` : `${prevHint} ${alias(q)}`;
     if (mode === 'q' && !hintOf(q) && prevHint && ask(ctxText)) mode = 'q-context';
@@ -888,19 +898,22 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const brandText = mode === 'gap' ? q : `${prevUser} ${q}`;
     for (const [re, name] of BRAND_ABSENT) if (re.test(brandText)) notes.push(`${name} 상품은 이 앱 목록에 없어요(일반 지식으로만 답하기)`);
     const cands = (list || []).slice(0, 8).map(pick);
+    if (budget) for (const c of cands) c.budgetFit = budget.max !== undefined && c.price > budget.max ? '예산 초과' : budget.min !== undefined && c.price < budget.min ? '예산 미만' : '예산 안';
     const closet = M.getState().closet.slice(0, 200).map((g) => `${g.colorLabel} ${g.kindName}${g.trial ? '(체험용)' : ''}`.slice(0, 80));
     // 앱 목록에 없는 브랜드를 물었으면 국내 쇼핑몰(애드픽 공식 API) 검색어를 만든다. 검색은 사용자가 눌렀을 때만 하고, 결과는 AI에 넘기지 않는다.
     const absent = BRAND_ABSENT.find(([re]) => re.test(q)) || (mode !== 'gap' && BRAND_ABSENT.find(([re]) => re.test(prevUser)));
     const shop = absent ? `${absent[2]} ${cands[0]?.kind || ''}`.trim().slice(0, 40) : '';
-    return { cands, closet, shop, notes: notes.map((n) => n.slice(0, 80)).slice(0, 6) };
+    return { cands, closet, shop, budget, notes: notes.map((n) => n.slice(0, 80)).slice(0, 6) };
   }
   function chatHistory() {
     const hist = C.turns.filter((t) => t.role === 'user' || t.role === 'assistant').slice(-6).map((t) => ({ role: t.role, content: String(t.text || (t.role === 'assistant' ? REFUSE : '')).slice(0, 700) }));
     while (hist.length && hist[0].role !== 'user') hist.shift();
     return hist;
   }
+  const wonText = (n) => `${Number(n).toLocaleString('ko-KR')}원`;
+  const budgetText = (b) => b.min !== undefined && b.max !== undefined ? `${wonText(b.min)}~${wonText(b.max)}` : b.max !== undefined ? `${wonText(b.max)} 이하` : `${wonText(b.min)} 이상`;
   function chatMessages(q, data, hist) {
-    const ref = `참고 자료\n사용자 옷장(${data.closet.length}벌): ${data.closet.join(', ') || '비어 있음'}\n후보 상품: ${data.cands.length ? JSON.stringify(data.cands) : '없음(이번 질문에서 찾은 상품 없음)'}${data.notes.length ? `\n참고: ${data.notes.join(' / ')}` : ''}`;
+    const ref = `참고 자료\n사용자 옷장(${data.closet.length}벌): ${data.closet.join(', ') || '비어 있음'}\n후보 상품: ${data.cands.length ? JSON.stringify(data.cands) : '없음(이번 질문에서 찾은 상품 없음)'}${data.notes.length ? `\n참고: ${data.notes.join(' / ')}` : ''}${data.budget ? `\n예산(상품 한 벌 기준): ${budgetText(data.budget)}` : ''}`;
     const msgs = [...hist, { role: 'user', content: `${ref}\n\n사용자 질문: ${q}` }];
     msgs[0] = { role: 'user', content: `${RULES}\n\n${msgs[0].content}` };
     return msgs.reduce((a, m) => { const last = a[a.length - 1]; if (last && last.role === m.role) last.content += `\n\n${m.content}`; else a.push({ ...m }); return a; }, []);
@@ -919,7 +932,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       let out;
       const fromServer = typeof window.EOUL_SERVER_AI === 'function';
       if (fromServer) {
-        out = await window.EOUL_SERVER_AI({ task: 'consult', query: q, items: data.cands.map((p) => ({ id: p.id, closet: String(p.closet || '').slice(0, 120) })), closet: data.closet, conditions: data.notes, history });
+        out = await window.EOUL_SERVER_AI({ task: 'consult', query: q, items: data.cands.map((p) => ({ id: p.id, closet: String(p.closet || '').slice(0, 120) })), closet: data.closet, conditions: data.notes, history, ...(data.budget ? { budget: data.budget } : {}) });
       } else {
         const sample = await getSampler();
         if (!sample) throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
@@ -931,6 +944,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         const ids = [...new Set((Array.isArray(out.product_ids) ? out.product_ids : []).map(String))].filter((id) => ok.has(id)).slice(0, 4);
         turn = { role: 'assistant', text: out.answer.trim().slice(0, 550), ids };
         if (data.shop) turn.shop = data.shop;
+        // 서버가 답과 실제 가격을 대조해 어긋난 후보를 알려 주면 답 아래에 사실 줄로 붙인다(답 문장은 고치지 않는다).
+        const lines = Array.isArray(out.price_check?.lines) ? out.price_check.lines.filter((l) => typeof l === 'string' && l.trim()).slice(0, 4).map((l) => l.slice(0, 160)) : [];
+        if (lines.length) turn.check = lines;
         const ai = fromServer ? aiResponseInfo(out.ai) : null;
         if (ai) turn.ai = ai;
       }
@@ -944,7 +960,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if (x.role === 'user') return `<div class="msg me">${esc(x.text)}</div>`;
     if (x.role === 'note') return `<div class="msg err" role="status">${esc(x.text)}</div>`;
     if (x.refused) return `<div class="msg bot refuse"><span class="who"><i class="ph ph-hand"></i>상담 범위 밖이에요</span>${esc(x.text)}</div>`;
-    return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}${x.role === 'assistant' ? aiInfoHtml(x.ai) : ''}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}${x.shop && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel data-adpick-q="${esc(x.shop)}"><button class="btn line sm" data-adpick-search><i class="ph ph-magnifying-glass"></i>국내 쇼핑몰에서 '${esc(x.shop)}' 찾기</button><div data-adpick-results aria-live="polite"></div></section>` : ''}`;
+    return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}${Array.isArray(x.check) && x.check.length ? `<div class="pcheck" role="note"><i class="ph ph-seal-check" aria-hidden="true"></i><span>${x.check.map(esc).join('<br>')}</span></div>` : ''}${x.role === 'assistant' ? aiInfoHtml(x.ai) : ''}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}${x.shop && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel data-adpick-q="${esc(x.shop)}"><button class="btn line sm" data-adpick-search><i class="ph ph-magnifying-glass"></i>국내 쇼핑몰에서 '${esc(x.shop)}' 찾기</button><div data-adpick-results aria-live="polite"></div></section>` : ''}`;
   }
   const recCard = (id) => { const p = M.product(id); if (!p) return ''; return `<div class="rc" data-card="${id}"><button class="open-p" data-pid="${id}">${productPic(id)}<div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>${hangToggle(id)}</div>`; };
 
