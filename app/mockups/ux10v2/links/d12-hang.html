@@ -392,6 +392,11 @@ a { color: inherit; text-decoration: none; }
 .wait-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .wait-row .ph-box { width: 52px; flex: none; border-radius: 8px; }
 .wait-row .grow { flex: 1; min-width: 0; }
+.box .warn { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; color: var(--ink2); }
+.box .warn i { flex: none; font-size: 15px; margin-top: 1px; color: var(--acc-text); }
+.wait-row .acts { display: grid; gap: 4px; justify-items: end; flex: none; }
+.wait-row .acts .btn { min-height: 44px; font-size: 15px; padding: 0 14px; border-radius: 12px; }
+.wait-row .acts .quiet { min-height: 32px; font-size: 13px; }
 .wait-row .n { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .wait-row .btn { min-height: 44px; font-size: 14px; padding: 0 12px; flex: none; }
 
@@ -1190,6 +1195,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
           <h2 class="h2">${head}</h2>
           ${sub ? `<p class="t5 sub">${esc(sub)}</p>` : ''}
+          ${(Array.isArray(v.cautions) ? v.cautions : []).slice(0, 3).map((c) => `<p class="t6 warn"><i class="ph ph-warning-circle" aria-hidden="true"></i>${esc(c)}</p>`).join('')}
           ${ask ? `<div class="ownq"><button data-own="yes" data-for="${id}">있어요</button><button class="no" data-own="no" data-for="${id}">없어요</button></div>` : ''}
           ${same.length ? `<div class="owned">${same.map((o) => `<div class="o">${garmentPic(o)}<div class="t6">${esc(o.colorLabel)} ${esc(o.kindName)}${o.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : ''}
           ${looks.length ? `<div class="looks2">${looks.map((l) => { const ps = l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4); return `<div class="lk"><div class="head"><b>${esc(l.title || '')}</b>${l.new ? '<span class="t6 acc" style="font-weight:700">새 코디</span>' : ''}</div><div class="ps">${ps.map((x) => `<div class="p1${x.candidate ? ' me' : ''}">${piecePic(x)}<div class="t6">${x.candidate ? '이 옷' : `${esc(x.colorLabel)} ${esc(x.kindName)}${x.trial ? ' · 체험용' : ''}`}</div></div>`).join('')}</div></div>`; }).join('')}</div>` : ''}
@@ -1319,13 +1325,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const waiting = buy.filter((x) => ['candidate', 'ordered', 'received'].includes(x.stage));
       const byDay = new Map();
       all.forEach((r) => { const k = dayKey(r.updatedAt); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
-      const stage = (r) => r.decision === 'buy' ? (r.stage === 'candidate' ? '주문 전' : r.stageLabel) : (r.stage === 'candidate' ? '' : r.stageLabel);
+      const stage = (r) => `${r.decision === 'buy' ? (r.stage === 'candidate' ? '주문 전' : r.stageLabel) : (r.stage === 'candidate' ? '' : r.stageLabel)}${r.stage === 'returned' && r.returnReasonLabel ? ` · ${r.returnReasonLabel}` : ''}`;
       return `${top({ back: false })}
         <h1 class="h1" style="margin-top:12px">${decided.length ? `<span class="num">${decided.length}</span>벌을 정했어요` : holds.length ? `보류 <span class="num">${holds.length}</span>벌 · 아직 정하지 않았어요` : '아직 정한 옷이 없어요'}</h1>
         ${all.length ? '' : '<p class="t5 sub" style="margin-top:4px">걸어 본 옷을 살지 정하면 여기에 남아요.</p>'}
         ${all.length ? `<div class="sum"><div class="c"><div class="k">살게요</div><div class="v num">${buy.length}</div>${sum ? `<div class="t6 num nw" style="font-size:12px">${won(sum)} 수집가</div>` : ''}</div><div class="c"><div class="k">보류</div><div class="v num">${holds.length}</div></div><div class="c"><div class="k">안 살래요</div><div class="v num">${all.length - buy.length - holds.length}</div></div></div>` : ''}
         ${waiting.length ? `<section class="section"><div class="h"><h2 class="h3">사기로 한 옷</h2></div>
-          ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span>${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? '계속 입을게요 · 걸기' : esc(nx.label)}</button>` : ''}</div>`; }).join('')}</section>` : ''}
+          ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); const ret = (x.next || []).find((n) => n.step === 'returned'); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span><span class="acts">${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? '계속 입을게요 · 걸기' : esc(nx.label)}</button>` : ''}${ret ? `<button class="quiet" data-ret="${x.productId}">${esc(ret.label)}</button>` : ''}</span></div>`; }).join('')}</section>` : ''}
         <div class="tl">${[...byDay.entries()].map(([d, rs]) => `<div class="day">${esc(d)}</div>${rs.map((r) => `<button class="rec" data-pid="${r.productId}">${productPic(r.productId)}<span class="grow"><span class="n">${esc(r.product?.name || '')}</span><span class="t6"><span class="pill ${r.decision === 'buy' ? 'buy' : ''}">${DEC[r.decision]}</span>${stage(r) ? ` ${esc(stage(r))}` : ''}</span></span><span class="pr num">${esc(r.product?.priceText || '')}</span></button>`).join('')}`).join('') || '<button class="btn soft wide" data-tabgo="home" style="margin-top:20px">옷 찾으러 가기</button>'}</div>`;
     },
   };
@@ -1402,9 +1408,17 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
     records() {
       $$('[data-adv]').forEach((b) => { b.onclick = () => { try { M.advance(b.dataset.adv, b.dataset.step); K.refresh(); } catch (e) { K.toast(e.message, { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); } }; });
+      $$('[data-ret]').forEach((b) => { b.onclick = () => returnSheet(b.dataset.ret); });
     },
   };
 
+  // 반품 기록: 엔진이 사유를 요구한다(사이즈·색·품질·마음 바뀜·기타). 기록하면 옷장에서 내려가고 같은 상품의 다음 판정에 주의로 남는다.
+  const RETURN_REASONS = [['size', '사이즈가 안 맞아요'], ['color', '색이 달라요'], ['quality', '품질이 아쉬워요'], ['change-of-mind', '마음이 바뀌었어요'], ['other', '그 밖의 이유']];
+  function returnSheet(id) {
+    const p = M.product(id); if (!p || $('.sheet')) return;
+    const sh = sheet(`<h2 class="h2">${esc(p.name)} · 왜 반품했어요?</h2><p class="sub t6">기록하면 옷장에서 내려가고, 같은 상품을 다시 볼 때 알려 드려요. 확인된 거래가 아니라 직접 남기는 기록이에요.</p><div class="decs">${RETURN_REASONS.map(([k, l]) => `<button class="btn soft" data-reason="${k}">${l}</button>`).join('')}</div>`);
+    $$('[data-reason]', sh.s).forEach((b) => { b.onclick = async () => { try { M.advance(id, 'returned', { reason: b.dataset.reason }); } catch (e) { K.toast(e.message, { bottom: 48 + 12 }); return; } await sh.close(); K.refresh(); K.toast('반품으로 기록했어요 · 옷장에서 내렸어요', { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); }; });
+  }
   // ── 상세의 결정: 주 행동은 '판매처에서 사기' 하나. 돌아오면 묻고, 아직이면 조용한 글자 버튼으로 남긴다.
   // 아래 바 한 줄: 결정 전에는 가격·수집가와 조용한 '보류 · 안 살래요', 결정 뒤에는 상태 한 줄과 '바꾸기'. 말풍선은 띄우지 않는다.
   function drawDecision(id) {
