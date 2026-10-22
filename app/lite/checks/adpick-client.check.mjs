@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
+const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d16-lens.html', import.meta.url), 'utf8');
 const code = page.slice(page.indexOf('  async function searchAdpick('), page.indexOf('  async function planRakuten('));
 const esc = (s) => String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 function ui(data) {
