@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Anthropic from '@anthropic-ai/sdk';
-import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode } from '../functions/api/rank.js';
+import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode, CONSULT_MAX, clipAnswer } from '../functions/api/rank.js';
 import { PRODUCTS } from '../../src/data/products.js';
 const p = PRODUCTS[0];
 const post = (body, headers = {}) => new Request('https://x.test/api/rank', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
@@ -124,6 +124,17 @@ test('both ranking and fashion consultation use structured requests and bounded 
   const refusal = await result(body, fake({ on_topic: false, answer: '무시할 답', product_ids: [] }));
   assert.deepEqual(refusal.body, { on_topic: false, answer: '', product_ids: [] });
   assert.equal((await result(body, fake({ on_topic: true, answer: '확인', product_ids: ['ms-fake'] }))).status, 502);
+});
+test('consult answers longer than the stated limit are clipped at a sentence end, not rejected', async () => {
+  const sentence = '검정 슬랙스가 가장 가까워요. ';
+  const long = sentence.repeat(40).trim();
+  const r = await result(input({ task: 'consult' }), fake({ on_topic: true, answer: long, product_ids: [p.id] }));
+  assert.equal(r.status, 200);
+  assert.ok(r.body.answer.length <= CONSULT_MAX);
+  assert.ok(r.body.answer.endsWith('.'));
+  assert.equal(clipAnswer('짧은 답이에요.'), '짧은 답이에요.');
+  assert.ok(clipAnswer('가'.repeat(600)).endsWith('…'));
+  assert.equal(clipAnswer('가'.repeat(600)).length, CONSULT_MAX);
 });
 test('authentication and quota rejection stop upstream, including dependency failures', async () => {
   const client = fake();
