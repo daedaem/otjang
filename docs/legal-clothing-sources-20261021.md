@@ -1,8 +1,10 @@
 # Rakuten · Open Products Facts 적용 인계 (2026-10-21)
 
-## 요청·완료 기준 / 이슈 초안
+> **현재 기준(2026-10-23):** Rakuten 키는 대표가 발급·저장했고 실제 상품 12개 검색과 AI 일본어 검색어 제안까지 확인했다. OPF는 이후 별도 D1 194건 저장·내보내기·AI 후보 비교로 확장됐다. API 성공을 모든 상용/AI 권리 확인으로 해석하지 않는다. 최신 구조·운영 절차는 [시스템 인수인계](system-handover.md), 다음 작업은 [문서 안내](README.md)를 먼저 본다. 아래 날짜별 대기/실패/검사 수는 당시 기록이며 최신 상태로 소급 해석하지 않는다.
 
-대표 요청: 기존 관심 브랜드에만 한정하지 않고 합법적으로 쓸 수 있는 상품을 적용한다. 두 공급원의 실제 의류를 확인하고, 가능한 기능을 앱에 연결한다. 대표는 Rakuten 키가 없으며 직접 발급하겠다고 했다. 이번 작업은 개발·로컬 검증이며 공개 출시·계정 생성·사진 외부 전송을 승인한 작업이 아니다. 별도 GitHub 이슈는 만들지 않았다.
+## 최초 요청·완료 기준 / 이슈 초안 (당시 기록)
+
+대표 요청: 기존 관심 브랜드에만 한정하지 않고 합법적으로 쓸 수 있는 상품을 적용한다. 두 공급원의 실제 의류를 확인하고, 가능한 기능을 앱에 연결한다. 최초 요청 당시 대표는 Rakuten 키가 없으며 직접 발급하겠다고 했다. 이번 작업은 개발·로컬 검증이며 공개 출시·계정 생성·사진 외부 전송을 승인한 작업이 아니다. 별도 GitHub 이슈는 만들지 않았다.
 
 완료 기준: 실제 데이터 증거, 공급원별 권리·제약 기록, 키 없이 가능한 공개 검색·선택·등록, 키를 서버에만 두는 Rakuten 검색 연결부, 0건/실패/미설정 표시, 기존 저장소·구매 기록 보존. 실제 Rakuten API 응답과 운영 반영은 키 입력·배포 후 별도 확인해야 한다.
 
@@ -36,11 +38,11 @@
 
 검색어 동명이인 주의: 발견한 `Bronson Logo S/S Tee`는 NHS 브랜드여서 대표가 말한 Bronson Mfg 입점을 입증하지 않는다. WANNA의 `POTTERY SHIRTS`도 한국 POTTERY 브랜드 입점 근거로 세지 않는다. 실응답에서 브랜드가 별도 확정되지 않은 Rakuten 상품명에서 브랜드를 추정하지 않는다.
 
-## 왜 이렇게 연결했나
+## 최초 연결 설계와 이유 (OPF D1 후속 변경은 아래 안내)
 
 OPF는 상업 재사용이 가능한 공개 데이터이며 출처·ODbL 조건을 유지해야 한다. 공급자가 게시한 [dataset 설명](https://www.data.gouv.fr/datasets/open-products-facts), [공식 라이선스 안내](https://openfoodfacts.github.io/openfoodfacts-server/api/tutorials/license-be-on-the-legal-side/), [다른 프로젝트 API 설명](https://openfoodfacts.github.io/openfoodfacts-server/api/tutorials/scanning-cosmetics-pet-food-and-other-products/)을 확인했다. 데이터베이스 ODbL·개별 내용 DbCL·사진 CC BY-SA를 구분한다. 이번에는 사진을 재사용하지 않는다.
 
-소스·라이선스·수정 설명과 원본 링크를 공개 데이터 파일에 남기고 UI에 데이터 다운로드를 제공한다. 판매처 937건 DB, 서버 AI 후보와 합치지 않는다. 이 정도 크기는 파일 한 번을 받아 기기 안에서 찾을 수 있으므로 검색어마다 외부 API를 호출할 이유가 없다. 사용자가 선택한 사실만 개인 등록 폼에 미리 채우고, 종류·색·실제 보유를 확인한 뒤 등록한다. 출처를 `REG.items`의 선택적인 `source` 필드로 남기며 기존 저장 키·구매 기록은 바꾸지 않는다. 공개 DB를 3명의 독립된 사용자 확인으로 오해하지 않도록 OPF에서 시작한 등록은 공용 집계로 보내지 않는다.
+소스·라이선스·수정 설명과 원본 링크를 공개 데이터 파일에 남기고 UI에 데이터 다운로드를 제공한다. 최초 구현은 판매처 937건 DB·서버 AI 후보와 합치지 않고 독립 파일을 기기 안에서 검색했다. **10-22 후속 변경:** OPF를 별도 D1 스냅샷에 저장·내보내고 `open_rank`로 이름·브랜드·분류만 AI 비교한다. 판매처·개인 DB와 분리는 유지한다. [현재 저장·AI 경계](automatic-search-open-catalog-20261022.md). 사용자가 선택한 사실만 개인 등록 폼에 미리 채우고, 종류·색·실제 보유를 확인한 뒤 등록한다. 출처를 `REG.items`의 선택적인 `source` 필드로 남기며 기존 저장 키·구매 기록은 바꾸지 않는다. 공개 DB를 3명의 독립된 사용자 확인으로 오해하지 않도록 OPF에서 시작한 등록은 공용 집계로 보내지 않는다.
 
 라쿠텐은 [공식 FAQ](https://webservice.faq.rakuten.net/hc/en-us/articles/900001971983-Are-Rakuten-Webservice-APIs-free-to-use)에서 현재 API 무료라고 안내한다. [이용 용도 안내](https://webservice.faq.rakuten.net/hc/en-us/articles/900001974363-How-can-the-information-returned-by-the-Rakuten-Webservice-APIs-be-used)는 소프트웨어에서 상품을 소개하고 해당 라쿠텐 상품으로 연결하는 용도를 명시한다. 그래서 결과를 제공자 순서로 표시하고 원문 제목·JPY 가격·사진 주소·상점·원본 링크를 쓴다. AI 재정렬·외부 모델 전송·상품 DB 복제·사진 가공·다른 제휴 링크 전환은 이번 연결에 포함하지 않는다. 그런 확장은 명시된 용도를 벗어나는지 따로 확인할 일이며, 일반 API 표시 자체가 불법이라는 결론이 아니다. [브랜드 표시 공식 스니펫](https://webservice.rakuten.co.jp/guide/credit)을 성공 응답에 그대로 넣는다.
 
@@ -54,15 +56,15 @@ OPF는 상업 재사용이 가능한 공개 데이터이며 출처·ODbL 조건�
 - `app/lite/functions/api/rakuten.js`: `20260701` 공식 endpoint로만 연결, Access Key는 헤더, App ID는 제공자 규격의 쿼리. 임의 호스트·URL은 입력받지 않는다. GET/길이/UTF-8 바이트 제한, 12개·1MB·8초 상한, 안전한 상품/이미지 호스트만 허용. raw 오류·키를 응답·로그에 남기지 않는다. DB에는 상품·검색어가 아닌 120초 만료 요청 카운터만 저장한다. 전역 초당 1회·분당 시도 10회(거절된 동시 시도도 분 한도에 포함). API 실패 시 가짜 상품을 반환하지 않는다.
 - `app/lite/worker.js`: 기존 본인 인증 뒤에 `/api/rakuten` 경로를 둔다. Pages entry도 별도로 인증 실패 시 닫힌다. 새로운 외부 JS SDK나 유료 패키지를 추가하지 않았다.
 
-## 대표가 키를 만들 때
+## 당시 키 발급 절차 (현재는 저장 완료, 재발급 지시 아님)
 
 1. [Rakuten Web Service](https://webservice.rakuten.co.jp/) 로그인 → 앱 등록. [등록 안내](https://webservice.rakuten.co.jp/guide).
-2. Application URL / allowed website에는 실제 앱의 `https://otjang.tg8685.workers.dev`를 등록하고, 애플리케이션 타입은 서버에서 호출하는 실제 방식에 맞춘다. 사용 목적에는 ‘패션 상품 검색 후 라쿠텐 상품 원문·가격·상점·이미지·구매 링크 표시’를 사실대로 기재한다. API access scope는 Ichiba Item Search, 요청량은 초당 최대 1회·분당 최대 10회로 기재한다. 사이트/접근 허용 조건은 발급 화면의 실제 안내를 따른다.
+2. Application URL / allowed website에는 본인용 Worker의 실제 Origin를 등록하고, 애플리케이션 타입은 서버에서 호출하는 실제 방식에 맞춘다. 사용 목적에는 ‘패션 상품 검색 후 라쿠텐 상품 원문·가격·상점·이미지·구매 링크 표시’를 사실대로 기재한다. API access scope는 Ichiba Item Search, 요청량은 초당 최대 1회·분당 최대 10회로 기재한다. 사이트/접근 허용 조건은 발급 화면의 실제 안내를 따른다.
 3. 발급되는 Application ID와 Access Key는 애드픽·Anthropic 키와 별개다. **채팅·Git·브라우저 번들·빌드 변수에 넣지 않는다.**
 4. Cloudflare → Workers & Pages → `otjang` → Settings → Variables and Secrets에서 **Secret** 두 개: `RAKUTEN_APPLICATION_ID`, `RAKUTEN_ACCESS_KEY`. 기존 `ANTHROPIC_API_KEY`, `PRIVATE_APP_ACCESS_KEY`, `PRIVATE_AUTH_MODE`는 그대로 둔다. 새 비밀값 입력·확인·제출은 대표가 직접 한다. 이 문서 작성 시에는 아직 입력하지 않았다.
 5. 키를 넣는 것과 새 코드 배포는 별개다. 대표의 Git push/병합 지시에 맞춰 비공개 master 배포 후 실제 본인 로그인에서 1회 상품 검색, JPY·원본 링크·사진·출처·0건/실패를 확인한다. 등록한 allowed website/서버 방식에서 인증이 거절되면 공식 오류 문서와 허용 설정을 먼저 확인한다. 새 인증·운영 성공을 추정하지 않는다.
 
-## 검증과 남은 일
+## 최초 구현의 검증과 남은 일 (아래 운영 기록에서 일부 완료)
 
 - 공개 API 240건 실응답 및 받은 독립 JSON 194건: 확인.
 - lite 자동 검사: **105/105 통과**. 서버 키/권한/입력/URL·응답 크기·시간·실제 SQLite 카운터 상한을 합성 데이터로 검사한다. 유료 AI나 Rakuten 실키는 사용하지 않는다.
@@ -79,11 +81,11 @@ OPF는 상업 재사용이 가능한 공개 데이터이며 출처·ODbL 조건�
 - `WRANGLER_SEND_METRICS=false npx --yes wrangler@4.151.0 deploy --dry-run --outdir /private/tmp/otjang-open-sources-dryrun`: 성공. 실제 업로드/운영 Secret 변경 없음.
 - `git diff --check`: 통과. GitHub CI·운영 배포 검사를 실행한 것으로 쓰지 않는다.
 
-## 키 발급 이후 연결 작업 (같은 날, 진행 중)
+## 키 발급 이후 연결 작업 기록 (2026-10-21 당시 진행 중)
 
 대표가 ‘발급 완료했어요 이제 연결해주세요 그리고 무료가 맞는지’ 요청했다. 라쿠텐 공식 무료 FAQ를 다시 확인했다. API 무료와 기존 Claude API·Cloudflare 자원 비용은 별개이며, 라쿠텐 검색 경로는 Claude를 호출하지 않는다.
 
-대표가 라쿠텐의 Web Application 등록·약관/CAPTCHA·발급을 직접 완료했다. 등록 사이트는 `otjang.tg8685.workers.dev`다. 서버 전용 타입은 고정 IP 목록을 요구하므로 현재 Workers 구성에서 해당 타입으로 인증된다고 주장하지 않는다. 실제 등록한 웹 앱의 고정 Origin/Referer를 서버에서 보내되, 사용자 요청의 Origin을 넘기거나 키를 프런트로 옮기지 않는다. 허용 여부는 실제 제공자 응답으로 확인한다.
+대표가 라쿠텐의 Web Application 등록·약관/CAPTCHA·발급을 직접 완료했다. 등록 사이트는 당시 본인용 Worker의 실제 Origin이다. 서버 전용 타입은 고정 IP 목록을 요구하므로 현재 Workers 구성에서 해당 타입으로 인증된다고 주장하지 않는다. 실제 등록한 웹 앱의 고정 Origin/Referer를 서버에서 보내되, 사용자 요청의 Origin을 넘기거나 키를 프런트로 옮기지 않는다. 허용 여부는 실제 제공자 응답으로 확인한다.
 
 대표가 Cloudflare 런타임 Secret 2개의 값 입력·저장·배포를 직접 완료했다. Codex는 입력 창이 닫힌 뒤 `RAKUTEN_APPLICATION_ID`, `RAKUTEN_ACCESS_KEY` 두 행의 ‘비밀 / 암호화된 값’ 표시만 확인했다. 새 비밀값을 읽거나 출력하지 않았다. 본인 로그인·기존 AI 키/한도·공개 차단을 유지한다. 제공자 인증 실패는 raw 본문 대신 안전한 `provider_auth`·HTTP 상태만 표시한다.
 
@@ -113,7 +115,7 @@ fetch를 manual 리디렉션 모드로 바꾸고 3xx를 즉시 거절한다. Loc
 
 PR #33 head `cfb3a63`의 GitHub push/PR 검사 6개가 통과했고 master `6f6f5ee3434982f9c46b6ff3725c1ad1be337296`로 병합했다. 별도 Cloudflare 브랜치 preview 검사는 실패 상태이며 운영 성공과 혼동하지 않는다. 운영 master 빌드 `5a0b4841-a0a5-4ffa-a5f8-0beb8b1be858`가 41초에 준비되었고 활성 Worker는 `32b51c34`다.
 
-로그인한 Chrome의 실제 `https://otjang.tg8685.workers.dev/#/add`에서 새로고침 → `Levis 501` 입력 → ‘라쿠텐 상품 불러오기’를 눌러 공식 상품 12개를 확인했다. 사진, 일본어 원본 상품명, 판매처, 엔화(JPY) 가격, 원본 상품 링크, `Supported by Rakuten Developers`가 표시된다. 동일 앱의 인증된 `/api/rakuten`에서도 정규화된 성공 JSON을 확인했다. 제공자 인증과 실제 데이터 경로가 동작한다는 증거다. 상품 등록·구매·AI 호출·개인 사진 전송은 하지 않았고 기존 옷장 자료를 수정하지 않았다. PC 화면의 사진 표시를 확인했으며 실제 iPhone 설치 앱에서는 아직 재검증하지 않았다.
+로그인한 Chrome의 본인용 Worker `/#/add`에서 새로고침 → `Levis 501` 입력 → ‘라쿠텐 상품 불러오기’를 눌러 공식 상품 12개를 확인했다. 사진, 일본어 원본 상품명, 판매처, 엔화(JPY) 가격, 원본 상품 링크, `Supported by Rakuten Developers`가 표시된다. 동일 앱의 인증된 `/api/rakuten`에서도 정규화된 성공 JSON을 확인했다. 제공자 인증과 실제 데이터 경로가 동작한다는 증거다. 상품 등록·구매·AI 호출·개인 사진 전송은 하지 않았고 기존 옷장 자료를 수정하지 않았다. PC 화면의 사진 표시를 확인했으며 실제 iPhone 설치 앱에서는 아직 재검증하지 않았다.
 
 첫 실패에는 두 구현 결함이 있었다. 20260701의 소문자 items/item 응답을 반영하지 않았고, Workers가 지원하지 않는 redirect:error로 요청 생성 자체가 실패했다. Node mock/정적 배포 통과를 연결 성공으로 판단하지 않는다. 현행 응답 파싱·manual 리디렉션 거절·시간/크기/호출 제한은 유지한다. 키는 런타임 Secret에만 남고 프런트·Git·공급자 오류 원문에 싣지 않는다.
 
