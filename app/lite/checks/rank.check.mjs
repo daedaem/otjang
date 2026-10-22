@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Anthropic from '@anthropic-ai/sdk';
-import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode, CONSULT_MAX, clipAnswer } from '../functions/api/rank.js';
+import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode, providerFailureDiagnostics, CONSULT_MAX, clipAnswer } from '../functions/api/rank.js';
 import { PRODUCTS } from '../../src/data/products.js';
 const p = PRODUCTS[0];
 const post = (body, headers = {}) => new Request('https://x.test/api/rank', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
@@ -218,4 +218,19 @@ test('optional metadata is individually validated and configured API key cannot 
   const text = await optionalSecret.text();
   assert.ok(!text.includes(SYNTHETIC_SECRET));
   assert.equal(Object.hasOwn(JSON.parse(text).ai, 'providerRequestId'), false);
+});
+
+// Operational diagnostics must not turn upstream error bodies into a secret leak.
+test('provider error evidence is bounded and excludes raw bodies, headers and credential echoes', () => {
+  const secret = 'syntheticOnly';
+  const error = new Anthropic.PermissionDeniedError(403, { error: { type: 'forbidden', message: secret } }, secret,
+    new Headers({ 'content-type': 'application/json', 'request-id': 'req_safe123', 'cf-ray': '0123456789abcdef-ICN', 'x-api-key': secret }));
+  assert.deepEqual(providerFailureDiagnostics(error, secret), { status: 403, type: 'forbidden', format: 'json', requestId: 'req_safe123', providerColo: 'ICN' });
+  error.requestID = 'req_' + secret;
+  error.type = secret;
+  const out = providerFailureDiagnostics(error, secret);
+  assert.ok(!JSON.stringify(out).includes(secret));
+  assert.equal(out.type, 'unknown');
+  assert.equal(out.requestId, undefined);
+  assert.deepEqual(providerFailureDiagnostics({ status: 403, message: '<html>secret</html>', headers: new Headers({ 'content-type': 'text/html' }) }), { status: 403, type: 'unknown', format: 'html' });
 });

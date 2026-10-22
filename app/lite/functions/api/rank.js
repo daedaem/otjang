@@ -151,6 +151,23 @@ export function providerFailureCode(error) {
   if (typeof status === 'number' && status >= 500) return 'provider_unavailable';
   return 'error';
 }
+// Safe operational evidence only: no raw errors, messages, URLs, headers or input.
+export function providerFailureDiagnostics(error, secret) {
+  const allowed = new Set(['permission_error', 'forbidden', 'authentication_error', 'not_found_error', 'invalid_request_error', 'rate_limit_error', 'overloaded_error', 'api_error']);
+  const type = error?.type || error?.error?.error?.type || error?.error?.type;
+  const contentType = error?.headers?.get?.('content-type') || '';
+  const diagnostic = {
+    status: Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599 ? error.status : null,
+    type: allowed.has(type) ? type : 'unknown',
+    format: contentType.includes('json') ? 'json' : contentType.includes('html') ? 'html' : 'unknown',
+  };
+  const id = error?.requestID;
+  if (typeof id === 'string' && /^req_[A-Za-z0-9_-]{1,124}$/.test(id) && !(secret && id.includes(secret))) diagnostic.requestId = id;
+  const ray = error?.headers?.get?.('cf-ray') || '';
+  const colo = ray.match(/^[a-f0-9]{16,32}-([A-Z]{3})$/)?.[1];
+  if (colo) diagnostic.providerColo = colo;
+  return diagnostic;
+}
 // Injection hooks below are used only by local tests, never derived from an HTTP request.
 export async function handle(request, env, { client, authorize = authorizePrivateRequest, reserve = reserveRankBudget, openFacts = openProductFacts } = {}) {
   if (request.method !== 'POST') return fail(405, 'bad_request');
@@ -177,6 +194,7 @@ export async function handle(request, env, { client, authorize = authorizePrivat
   } catch (e) {
     if (e instanceof Anthropic.RateLimitError) return fail(429, 'rate_limited');
     if (e instanceof Anthropic.AuthenticationError) return fail(503, 'not_configured');
+    console.warn('ai_provider_failure', JSON.stringify(providerFailureDiagnostics(e, env.ANTHROPIC_API_KEY)));
     return fail(502, providerFailureCode(e));
   }
   if (res?.stop_reason !== 'end_turn' || !Array.isArray(res?.content)) return fail(502, 'error');

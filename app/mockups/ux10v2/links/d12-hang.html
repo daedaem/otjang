@@ -815,6 +815,11 @@ a { color: inherit; text-decoration: none; }
     daily_limit: '오늘 AI 사용 한도에 도달했어요. 내일 다시 물어봐 주세요.',
     monthly_limit: '이번 달 AI 사용 한도에 도달했어요.',
     budget_unavailable: 'AI 사용량을 확인할 수 없어 상담을 잠시 멈췄어요.',
+    provider_access_denied: 'AI 제공자가 연결을 거절했어요. 잠시 뒤 다시 물어봐 주세요.',
+    provider_timeout: 'AI 서버 응답이 늦어요. 잠시 뒤 다시 물어봐 주세요.',
+    provider_unavailable: 'AI 제공자 연결이 원활하지 않아요. 잠시 뒤 다시 물어봐 주세요.',
+    credit_unavailable: 'API 크레딧을 확인해 주세요.',
+    model_unavailable: '설정된 AI 모델에 연결하지 못했어요.',
     bad_request: '상담 요청 형식이 맞지 않아요. 앱을 새로고침하고 다시 시도해 주세요.',
     timeout: 'AI 응답이 늦어요. 잠시 뒤에 다시 물어봐 주세요.',
     offline: '연결이 없어요. 연결한 뒤 다시 물어봐 주세요.',
@@ -1712,7 +1717,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         draw(ranked.ranking.map((r) => byId.get(r.id)), new Map(ranked.ranking.map((r) => [r.id, r.reason])), `AI 후보 비교 · ${ranked.summary}`, ranked.ai);
       } catch (error) {
         const code = error.code || (error.name === 'TypeError' ? 'screen_error' : 'error');
-        const failures = { credit_unavailable: 'API 크레딧을 확인해 주세요.', model_unavailable: '설정된 AI 모델에 연결하지 못했어요.', provider_access_denied: 'API 사용 권한을 확인해 주세요.', effort_unsupported: '모델의 추론 옵션을 확인하고 있어요.', output_config_invalid: '모델 응답 옵션을 확인하고 있어요.', provider_request_rejected: 'AI 서버가 요청 형식을 거절했어요.', provider_timeout: 'AI 서버 응답 시간이 길어졌어요.', provider_unavailable: 'AI 제공자 연결이 원활하지 않아요.', screen_error: '후보 비교 화면을 확인하고 있어요.' };
+        const failures = { credit_unavailable: 'API 크레딧을 확인해 주세요.', model_unavailable: '설정된 AI 모델에 연결하지 못했어요.', provider_access_denied: 'AI 제공자가 연결을 거절했어요. 잠시 뒤 다시 시도해 주세요.', effort_unsupported: '모델의 추론 옵션을 확인하고 있어요.', output_config_invalid: '모델 응답 옵션을 확인하고 있어요.', provider_request_rejected: 'AI 서버가 요청 형식을 거절했어요.', provider_timeout: 'AI 서버 응답 시간이 길어졌어요.', provider_unavailable: 'AI 제공자 연결이 원활하지 않아요.', screen_error: '후보 비교 화면을 확인하고 있어요.' };
         if (box === $('[data-open-recommendations]')) draw(data.items, new Map(), `AI 비교를 완료하지 못해 상품 코드 순서로 보여드려요. ${failures[code] || AIRank.whyText(code)} (${code})`);
       }
     } catch { if (box === $('[data-open-recommendations]')) box.innerHTML = '<p class="t6" role="status">공개 상품 DB에 연결하지 못했어요. 다시 검색해 주세요.</p>'; }
