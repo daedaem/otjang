@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 af9b350) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 293930d) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 937개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -3969,7 +3969,7 @@ function weatherBand(min) {
   return { label: '아주 추운 날', advice: '패딩이나 두꺼운 코트가 필요해요.', outerMin: 3, outerMax: 4, need: '패딩이나 코트', query: '패딩' };
 }
 
-function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
+function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
   const DECISION_LABEL = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const RETURN_LABEL = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '마음이 바뀜', other: '기타' };
   const FINE = '종류·색과 코디 공식으로 비교했어요. 소재·핏·사이즈·현재 가격은 판매처에서 확인해요.';
@@ -4040,7 +4040,13 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
     }
   }
   function save() {
-    try { storage?.setItem(key, JSON.stringify(S)); } catch { /* 저장이 막힌 브라우저에서도 화면은 동작한다. */ }
+    if (!storage && !requireStorage) return; // 명시적인 메모리 전용 시안/검사.
+    try {
+      if (!storage) throw new Error('unavailable');
+      storage.setItem(key, JSON.stringify(S));
+    } catch {
+      throw Object.assign(new Error('저장하지 못했어요. 기존 기록은 그대로예요. 저장 공간·브라우저 설정을 확인한 뒤 다시 시도해 주세요.'), { code: 'storage_write_failed' });
+    }
   }
   function notify() {
     for (const fn of [...listeners]) {
@@ -4052,12 +4058,12 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
     try {
       change();
       buildState(S); // 엔진 검증을 통과해야만 저장한다.
+      save(); // 저장 성공 전에는 버전·구독자에게 변경을 공개하지 않는다.
     } catch (error) {
       S = before;
       throw error;
     }
     version++;
-    save();
     notify();
   }
   function engineState() {
@@ -4251,8 +4257,9 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
       const g = gender === 'F' ? 'F' : 'M';
       if (!GARMENT_KINDS.some((k) => k.id === kind)) throw new Error('옷 종류를 골라 주세요.');
       const s = slot && SLOT_BY_ID[slot]?.shape === kind && SLOT_BY_ID[slot]?.g === g ? slot : null;
-      const garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
+      let garment;
       commit(() => {
+        garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
@@ -4356,7 +4363,11 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
         examples: api.examples(r.gender),
       };
       lastAsk = { ids: new Set(r.items.map((x) => x.product.id)), criteria: r.criteria };
-      if (!drop.length && said !== S.recent[0]) { S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5); save(); }
+      if (!drop.length && said !== S.recent[0]) {
+        const before = S.recent;
+        S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5);
+        try { save(); } catch { S.recent = before; } // 검색 결과는 반환하되 저장되지 않은 이력은 남기지 않는다.
+      }
       return result;
     },
 
@@ -4584,8 +4595,9 @@ function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () 
       if (!slot) throw new Error('상품을 다시 확인해 주세요.');
       const dup = S.garments.find((g) => g.productId === p.id);
       if (dup) return garmentView(dup);
-      const garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
+      let garment;
       commit(() => {
+        garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
@@ -4904,7 +4916,10 @@ const bootPhotos = bootParams.get('photos') !== '0';
 const bootPreview = bootParams.get('preview') === '1';
 // 한 주소에서 여러 시안을 열 때 기록이 섞이지 않게, 페이지가 코어보다 먼저 window.EOUL_MOCK_KEY를 적으면 그 이름으로 저장한다.
 const bootKey = typeof window !== 'undefined' && typeof window.EOUL_MOCK_KEY === 'string' && window.EOUL_MOCK_KEY ? window.EOUL_MOCK_KEY : undefined;
-const mock = createMock({ storage: bootPreview ? null : bootStorage, key: bootKey, reset: bootParams.get('reset') === '1' || bootPreview, photos: bootPhotos });
+const mock = createMock({ storage: bootPreview ? null : bootStorage, requireStorage: !bootPreview, key: bootKey, photos: bootPhotos });
+let bootStorageError = null;
+const bootChange = (fn) => { try { fn(); } catch (error) { if (error.code !== 'storage_write_failed') throw error; bootStorageError = error.message; } };
+if (bootParams.get('reset') === '1' || bootPreview) bootChange(() => mock.reset());
 // 검색 엔진에 실리지 않게 한다(접근 통제는 아니다. 링크를 아는 사람은 열 수 있다).
 if (typeof document !== 'undefined' && document.head && !document.querySelector('meta[name="robots"]')) {
   const meta = document.createElement('meta');
@@ -4913,8 +4928,9 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
   document.head.appendChild(meta);
 }
 const bootGender = bootParams.get('g');
-if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
-if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "af9b350" };
+if (bootGender === 'M' || bootGender === 'F') bootChange(() => mock.setGender(bootGender));
+if (bootParams.get('closet') === 'trial') bootChange(() => mock.loadTrialCloset(bootGender || undefined));
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "293930d" };
 window.EoulMock = mock;
+mock.boot.storageError = bootStorageError;
 })();

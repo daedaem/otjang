@@ -35,7 +35,7 @@ export function weatherBand(min) {
   return { label: '아주 추운 날', advice: '패딩이나 두꺼운 코트가 필요해요.', outerMin: 3, outerMax: 4, need: '패딩이나 코트', query: '패딩' };
 }
 
-export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
+export function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
   const DECISION_LABEL = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const RETURN_LABEL = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '마음이 바뀜', other: '기타' };
   const FINE = '종류·색과 코디 공식으로 비교했어요. 소재·핏·사이즈·현재 가격은 판매처에서 확인해요.';
@@ -106,7 +106,13 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
     }
   }
   function save() {
-    try { storage?.setItem(key, JSON.stringify(S)); } catch { /* 저장이 막힌 브라우저에서도 화면은 동작한다. */ }
+    if (!storage && !requireStorage) return; // 명시적인 메모리 전용 시안/검사.
+    try {
+      if (!storage) throw new Error('unavailable');
+      storage.setItem(key, JSON.stringify(S));
+    } catch {
+      throw Object.assign(new Error('저장하지 못했어요. 기존 기록은 그대로예요. 저장 공간·브라우저 설정을 확인한 뒤 다시 시도해 주세요.'), { code: 'storage_write_failed' });
+    }
   }
   function notify() {
     for (const fn of [...listeners]) {
@@ -118,12 +124,12 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
     try {
       change();
       buildState(S); // 엔진 검증을 통과해야만 저장한다.
+      save(); // 저장 성공 전에는 버전·구독자에게 변경을 공개하지 않는다.
     } catch (error) {
       S = before;
       throw error;
     }
     version++;
-    save();
     notify();
   }
   function engineState() {
@@ -317,8 +323,9 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       const g = gender === 'F' ? 'F' : 'M';
       if (!GARMENT_KINDS.some((k) => k.id === kind)) throw new Error('옷 종류를 골라 주세요.');
       const s = slot && SLOT_BY_ID[slot]?.shape === kind && SLOT_BY_ID[slot]?.g === g ? slot : null;
-      const garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
+      let garment;
       commit(() => {
+        garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
@@ -422,7 +429,11 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
         examples: api.examples(r.gender),
       };
       lastAsk = { ids: new Set(r.items.map((x) => x.product.id)), criteria: r.criteria };
-      if (!drop.length && said !== S.recent[0]) { S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5); save(); }
+      if (!drop.length && said !== S.recent[0]) {
+        const before = S.recent;
+        S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5);
+        try { save(); } catch { S.recent = before; } // 검색 결과는 반환하되 저장되지 않은 이력은 남기지 않는다.
+      }
       return result;
     },
 
@@ -650,8 +661,9 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       if (!slot) throw new Error('상품을 다시 확인해 주세요.');
       const dup = S.garments.find((g) => g.productId === p.id);
       if (dup) return garmentView(dup);
-      const garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
+      let garment;
       commit(() => {
+        garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });

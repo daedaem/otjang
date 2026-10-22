@@ -563,6 +563,13 @@ a { color: inherit; text-decoration: none; }
 <script>
 (() => {
   const { M, esc, $, $$ } = K;
+  // 기존 동기/비동기 이벤트 중 개별 catch가 없는 곳도 저장 실패를 사용자에게 알린다.
+  const reportStorageError = (event, error) => {
+    if (!['storage_write_failed', 'registration_write_failed'].includes(error?.code)) return;
+    event.preventDefault(); K.toast(error.message, { bottom: 128 });
+  };
+  window.addEventListener('error', (event) => reportStorageError(event, event.error));
+  window.addEventListener('unhandledrejection', (event) => reportStorageError(event, event.reason));
   const DESIGN = '걸어 보고 사기';
   const UI_KEY = 'eoul-d12-hang:ui';
   const S = { ai: {}, aiOrder: {}, result: null, snackT: 0, asking: null, pending: null, ui: { absent: {} } };
@@ -575,7 +582,17 @@ a { color: inherit; text-decoration: none; }
   const NEED = 3;
   const REG = { items: {}, catalog: {} };
   try { const v = JSON.parse(localStorage.getItem(REG_KEY) || '{}'); Object.assign(REG, { items: v.items || {}, catalog: v.catalog || {} }); } catch {}
-  const saveReg = () => { try { localStorage.setItem(REG_KEY, JSON.stringify(REG)); } catch {} };
+  let savedReg = structuredClone(REG);
+  const saveReg = () => {
+    try {
+      const next = structuredClone(REG);
+      localStorage.setItem(REG_KEY, JSON.stringify(next));
+      savedReg = next;
+    } catch {
+      Object.assign(REG, structuredClone(savedReg));
+      throw Object.assign(new Error('추가 정보를 저장하지 못했어요. 옷장 변경은 이미 저장됐을 수 있어요.'), { code: 'registration_write_failed' });
+    }
+  };
   const normKey = (brand, name) => `${brand} ${name}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
   const regOf = (gid) => REG.items[gid] || null;
   // 공개 DB에서 선택한 정보는 개인 등록에 출처를 남기고 공용(3명 확인) 목록에 재전송하지 않는다.
@@ -1796,12 +1813,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const kind = M.kindChoices().some((k) => k.id === x.kind) ? x.kind : null;
     if (!kind) { K.toast('옷 종류를 알 수 없어서 직접 등록으로 넣어 주세요', { bottom: 110 }); return; }
     const before = M.getState().closetCount ? M.closetOutfits().total : 0;
-    let g; try { g = M.addGarment({ kind, color: x.color || null, slot: M.slotChoices(kind)[0]?.id || null, label: String(x.name).slice(0, 80) }); } catch (err) { K.toast(err.message, { bottom: 110 }); return; }
+    let g; try { g = x.savedGarment || M.addGarment({ kind, color: x.color || null, slot: M.slotChoices(kind)[0]?.id || null, label: String(x.name).slice(0, 80) }); } catch (err) { K.toast(err.message, { bottom: 110 }); return; }
+    x.savedGarment = g; // 부가정보만 실패하면 같은 화면에서 같은 옷으로 재시도한다.
     const key = normKey(x.brand, x.name);
     const c = REG.catalog[key] || { key, brand: x.brand, name: x.name, kind, color: x.color || null, url: '', count: 0, mine: false, at: new Date().toISOString() };
     if (!c.mine) { c.count = Math.min(NEED, (c.count || 0) + 1); c.mine = true; }
     if (x.server) { c.server = true; c.serverCount = x.count || c.serverCount; }
-    REG.catalog[key] = c; REG.items[g.id] = { brand: x.brand, name: x.name, kind, color: x.color || null, key, at: new Date().toISOString() }; saveReg();
+    REG.catalog[key] = c; REG.items[g.id] = { brand: x.brand, name: x.name, kind, color: x.color || null, key, at: new Date().toISOString() };
+    try { saveReg(); } catch (err) { btn.textContent = '추가 정보 다시 저장'; K.toast('옷은 저장됐어요. 추가 정보 저장에 실패해 다시 시도해 주세요.', { bottom: 110 }); return; }
     const row = btn.closest('.srow'); if (row) { row.classList.add('done'); const ok = document.createElement('span'); ok.className = 'ok'; ok.innerHTML = '<i class="ph-fill ph-check-circle"></i>옷장에 넣었어요'; btn.replaceWith(ok); }
     drawShelf({ pop: true });
     const gain = M.closetOutfits().total - before;
@@ -1860,19 +1879,25 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     ru.oninput = () => { R.url = ru.value.trim(); };
     $$('[data-k]').forEach((b) => { b.onclick = () => { R.kind = b.dataset.k; $$('[data-k]').forEach((x) => x.setAttribute('aria-pressed', x === b)); upd(); }; });
     $$('[data-c]').forEach((b) => { b.onclick = () => { R.color = b.dataset.c; $$('[data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b)); upd(); }; });
+    const lockSavedFields = () => { if (!R.savedGarment) return; clearTimeout(t); dup.innerHTML = ''; rb.readOnly = rn.readOnly = ru.readOnly = true; $$('[data-k], [data-c], [data-dup-own]').forEach((b) => { b.disabled = true; }); };
+    lockSavedFields();
     const done = async () => {
+      if (R.saving) return;
       R.brand = rb.value.trim(); R.name = rn.value.trim(); R.url = ru.value.trim();
       if (!okAll()) { K.toast('브랜드·상품명·종류·색을 채워 주세요', { bottom: 96 }); return; }
       if (R.url && !/^https?:\/\/\S+$/i.test(R.url)) { K.toast('링크는 https://로 시작해야 해요', { bottom: 96 }); ru.focus(); return; }
       const before = M.getState().closetCount ? M.closetOutfits().total : 0;
-      let g; try { g = M.addGarment({ kind: R.kind, color: R.color, slot: M.slotChoices(R.kind)[0]?.id || null, label: R.name.slice(0, 80) }); } catch (err) { K.toast(err.message, { bottom: 96 }); return; }
+      let g; try { g = R.savedGarment || M.addGarment({ kind: R.kind, color: R.color, slot: M.slotChoices(R.kind)[0]?.id || null, label: R.name.slice(0, 80) }); } catch (err) { K.toast(err.message, { bottom: 96 }); return; }
+      R.savedGarment = g; lockSavedFields();
       const key = normKey(R.brand, R.name);
       const c = (!R.source && REG.catalog[key]) || { key, brand: R.brand, name: R.name, kind: R.kind, color: R.color, url: '', count: 0, mine: false, at: new Date().toISOString() };
       if (!c.mine) { c.count = Math.min(NEED, (c.count || 0) + 1); c.mine = true; } // 같은 사람이 또 등록해도 한 명으로 센다.
       if (R.url) c.url = R.url;
       // 공개 원본을 사용자 3명 확인 목록과 합치거나 독립 확인으로 세지 않는다.
       if (!R.source) REG.catalog[key] = c;
-      REG.items[g.id] = { brand: R.brand, name: R.name, kind: R.kind, kindName: M.kindChoices().find((k) => k.id === R.kind)?.name || '', color: R.color, url: R.url, key, at: new Date().toISOString(), ...(R.source ? { source: R.source } : {}) }; saveReg();
+      REG.items[g.id] = { brand: R.brand, name: R.name, kind: R.kind, kindName: M.kindChoices().find((k) => k.id === R.kind)?.name || '', color: R.color, url: R.url, key, at: new Date().toISOString(), ...(R.source ? { source: R.source } : {}) };
+      try { saveReg(); } catch (err) { $('#rdone').textContent = '추가 정보 다시 저장'; K.toast('옷은 저장됐어요. 브랜드·링크 저장에 실패했어요. 이 화면에서 다시 시도해 주세요.', { bottom: 96 }); return; }
+      R.saving = true; $('#rdone').disabled = true;
       // 설치 앱의 공용 목록. 답이 오면 그 숫자로, 못 보내면(not_configured·offline) 이 기기 숫자 그대로.
       const cr = crowd();
       if (cr && !R.source) { try { const r = await cr.submit({ brand: R.brand, name: R.name, kind: R.kind, color: R.color, link: R.url }); if (r && Number.isFinite(+r.count)) { c.server = true; c.serverCount = +r.count; c.serverMin = +r.min || NEED; c.searchable = !!r.searchable; saveReg(); } } catch {} }
@@ -1884,7 +1909,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     };
     $('#rdone').onclick = done;
     $('#rf').onsubmit = (e) => { e.preventDefault(); if (document.activeElement === rb) rn.focus(); else if (okAll()) done(); };
-    upd(); if (R.brand && R.name) findDup();
+    upd(); if (R.brand && R.name && !R.savedGarment) findDup();
     if (!R.brand) setTimeout(() => rb.focus(), 60);
   }
 
@@ -1921,6 +1946,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
   const r0 = M.route.current();
   K.start(render, { view: 'home', params: {} });
+  if (M.boot?.storageError) K.toast(M.boot.storageError, { bottom: 128 });
   if (M.boot?.q) K.go('results', { q: M.boot.q });
   else if (/^\/p\/.+/.test(r0.path)) K.go('detail', { id: r0.path.slice(3) });
   else if (r0.path === '/search' && r0.params.q) K.go('results', { q: r0.params.q });
