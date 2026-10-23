@@ -91,7 +91,7 @@ flowchart LR
 
 - **추천 엔진은 기기 안에서 돌아요.** 서버가 없어도 찾기·옷장·코디는 동작하고, AI·날씨·상품 검색만 서버를 거쳐요.
 - **서버의 역할.** 키와 인증을 보호하고, 요청 검증·사용량 예약·공개 데이터 검색과 AI 후보 근거 확인을 해요. 공개 데이터 비교는 `open_rank`로 분리돼요.
-- 이 구조는 `app/lite` 기준이에요. `app`·`server`의 별도 계정·사진 동기화·커뮤니티 기능이 설치 앱에 모두 합쳐진 것은 아니에요.
+- 이 구조는 `app/lite` 기준이에요. 저장소 정리 검토본에서는 이전 앱·자체 서버·배포 묶음을 `legacy/`에 분리했어요. 별도 계정·사진 동기화·커뮤니티 기능의 설치 앱 통합 여부는 [현행 개발 계획](docs/development-plan.md)을 따릅니다.
 
 <br>
 
@@ -101,7 +101,7 @@ flowchart LR
 - 상품 순위는 서버가 확인한 후보 사실로 제한해요. 상담에는 질문·제한된 대화 이력·옷장 속성도 보내며, 목록 밖 브랜드의 일반 지식은 확인된 상품 사실과 구분해요. 사진은 보내지 않아요.
 - AI 답은 형식을 검사해요. 후보에 없는 상품 id, 빠진 후보, 중복이 있으면 버리고 기본 순서로 돌아가요.
 - 옷과 무관한 질문은 AI가 `on_topic: false`로 표시하고, 화면은 정해진 거절 문구만 보여 줘요.
-- 형식 검사는 답변 내용 전체의 정확성을 보장하지 않아요. 발견한 예산 설명 오류와 실제 검증 범위는 [AI 인수인계](docs/ai-provider-403-20261022.md)에 남겼어요.
+- 형식 검사는 답변 내용 전체의 정확성을 보장하지 않아요. 발견한 예산 설명 오류와 실제 검증 범위는 [AI 인수인계](docs/log/2026-10/ai-provider-403-20261022.md)에 남겼어요.
 
 **2. 비용과 남용 막기**
 - 하루·한 달·분당 AI 호출 수를 D1에서 SQL 한 번으로 확인하고 예약해요. 요청이 동시에 몰려도 한도를 넘지 않아요(한도 1에 동시 65요청 → 1건만 통과하는 검사).
@@ -119,7 +119,7 @@ flowchart LR
 
 **5. 출시용 상품 데이터의 사용 범위 나누기**
 - 신규 공급은 국내 애드픽·일본 Rakuten 공식 API와 ODbL 공개 데이터를 연결했어요. 공급처마다 표시·저장·AI 처리·이미지·공개 출시 권한은 따로 확인해요.
-- 과거 수집한 앱 카탈로그 937개는 비공개 시험용이고 공개 출시 권리가 확인되지 않았어요. 애드픽·Rakuten의 전체 상품 DB 저장·외부 AI 가공 권한도 확보됐다고 쓰지 않아요. [공급처별 상태](docs/legal-clothing-sources-20261021.md)를 참고해 주세요.
+- 과거 수집한 앱 카탈로그 937개는 비공개 시험용이고 공개 출시 권리가 확인되지 않았어요. 애드픽·Rakuten의 전체 상품 DB 저장·외부 AI 가공 권한도 확보됐다고 쓰지 않아요. [공급처별 상태](docs/log/2026-10/legal-clothing-sources-20261021.md)를 참고해 주세요.
 - 목록에 없는 옷은 사용자가 직접 등록하고, 현재는 서로 다른 기기 ID 3개가 같은 옷을 등록하면 검색에 나와요. 실제 3명을 검증하는 장치는 아니어서 공개 운영 전 보완해야 해요.
 
 <br>
@@ -142,7 +142,7 @@ flowchart LR
 
 | 영역 | 사용한 것 |
 |---|---|
-| 화면 | Vanilla JS, PWA(서비스 워커), Pretendard, Phosphor Icons |
+| 화면 | Vanilla JS 라우터·Vite/React/TypeScript 직접 입력, PWA(서비스 워커), Pretendard, Phosphor Icons |
 | 서버 | Cloudflare Workers, D1(SQLite), Wrangler |
 | AI | Anthropic Claude Haiku (`@anthropic-ai/sdk`) |
 | 외부 데이터 | Open-Meteo, 애드픽 API, Rakuten API, Open Products Facts |
@@ -156,12 +156,13 @@ flowchart LR
 | 폴더 | 무엇이 있나요 |
 |---|---|
 | `app/lite` | 아이폰에 설치하는 앱과 서버 함수 |
-| `app/mockups/ux10v2` | 화면 시안과, 모든 화면이 함께 쓰는 추천 엔진 묶음 |
-| `app` | 첫 버전 웹 앱, 추천 엔진, 상품 목록 도구 ([설명](app/README.md)) |
-| `server` | 계정·동기화·커뮤니티용 자체 서버 ([설명](server/README.md)) |
-| `deploy` | 자체 서버 운영 묶음 ([설명](deploy/README.md)) |
+| `app/lite/src` | 운영 화면·코어·활성 도메인·입력 상태. 코어 번들은 빌드 때 생성 |
+| `docs/design/mockups` | 운영 빌드에서 분리한 화면 시안·참고 자료 |
+| `legacy/app` | 첫 버전 웹 앱, 상품 목록 도구 ([설명](legacy/app/README.md)) |
+| `legacy/server` | 계정·동기화·커뮤니티용 자체 서버 ([설명](legacy/server/README.md)) |
+| `legacy/deploy` | 자체 서버 운영 묶음 ([설명](legacy/deploy/README.md)) |
 | `experiments` | 가상 착용 같은 로컬 실험 |
-| `docs` | 결정 기록과 설계 문서 |
+| `docs` | 현행 문서 5개, `log/YYYY-MM` 날짜 기록, `design` 참고 자료 |
 
 <br>
 
@@ -177,9 +178,9 @@ npm run build
 node dev.mjs --fake   # http://127.0.0.1:8790
 ```
 
-기준 master의 로컬 개발 서버는 `.mjs` MIME 매핑이 빠져 OPF 모듈 로드에 문제가 생길 수 있어요. 수정안은 PR #48 검토 대기이며, 위 명령의 성공을 실제 서비스 연결 검증으로 보지 않아요.
+개발 서버의 `.mjs` MIME 수정은 종료한 #48에서 [정리 PR #62](https://github.com/daedaem/otjang/pull/62)로 분리했어요. 위 폴더 안내는 정리 검토본 기준이며, #59~#64는 미병합·미배포 상태예요. 로컬 명령 성공을 실제 서비스 연결·실기기 검증으로 보지 않아요.
 
-실제 AI·로그인·DB 연결과 이전 두 앱의 차이는 [현재 시스템 인수인계](docs/system-handover.md)를 먼저 읽고, [설치 앱 안내](docs/lite-app-setup-20261020.md)의 날짜별 절차를 참고해요.
+실제 AI·로그인·DB 연결과 이전 두 앱의 차이는 [현재 시스템 인수인계](docs/system-handover.md)를 먼저 읽고, [설치 앱 안내](docs/log/2026-10/lite-app-setup-20261020.md)의 날짜별 절차를 참고해요.
 
 <br>
 
