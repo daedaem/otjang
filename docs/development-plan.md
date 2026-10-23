@@ -122,3 +122,7 @@ Vite/React/TypeScript를 lite 빌드에 붙이고 직접 등록만 브랜드·�
 ### A(c) PR #48 로컬 .mjs MIME 분리
 
 `dev.mjs`가 `.mjs`를 `text/javascript; charset=utf-8`로 제공하게 하는 한 항목만 분리했다. 로컬 fake 모드 8794 포트에서 `/shared/open-products.mjs` HEAD 응답 `200`, 올바른 content-type을 확인했다. 운영 API/인증/번들 변경은 없고 테스트 수는 A(b)의 lite170/app688/server50/E2E13과 같다.
+
+### B 운영 코드·legacy 위치 정리
+
+운영 화면/코어/브라우저 보조·도메인20개·아이콘을 app/lite 내부로 옮기고, 코어 번들은 test/build 때 생성해 Git에서 제외한다. 시안은 docs/design/mockups, 기존 앱/서버/배포키트는 legacy로 분리한다. [이동 전 의존성·경로·검사 대응](lite-code-layout-20261023.md). 기존 날씨 검사5개를 app→lite로 옮겨 legacy앱683/lite175/server50, 합계908개를 유지한다. 테스트 삭제 없음. 모바일E2E13개와 legacy Docker/빌드 검사를 유지한다.

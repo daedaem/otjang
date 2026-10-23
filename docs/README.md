@@ -117,3 +117,5 @@
 | [wear-diary-20261015.md](wear-diary-20261015.md) | 착용 기록과 결과 반영 — 2026-10-15 |
 
 - [원격 브랜치 정리 목록·미머지 커밋](branch-cleanup-20261023.md)
+
+- [lite 이동 전 의존성·운영/legacy 경계·검사 이전](lite-code-layout-20261023.md)
