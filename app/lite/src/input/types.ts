@@ -18,7 +18,7 @@ export interface InputHost {
   initial?: Partial<Registration>;
   back(): void;
   next(step: number): void;
-  saved(garment: Garment, input?: Registration): void;
+  saved(garment: Garment, input?: Registration, warning?: string): void;
   assertWritable(): void;
 }
 export interface RegistrationRepository {

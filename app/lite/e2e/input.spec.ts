@@ -89,3 +89,47 @@ test('React stages: browser back retains values, subscription updates, 200% text
   await page.addStyleTag({content:'.ri {font-size:32px} .ri input {font-size:32px}'});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+test('React draft: reload restores the selected stage and draftId; successful save removes it', async ({page}) => {
+  const d=driver(page,'react'); await d.openManual(); await d.fillManual();
+  const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!));
+  expect(before.step).toBe(2);
+  await page.reload(); await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'이대로 옷장에 넣을까요?'})).toBeVisible();
+  await expect(page.getByText(garmentName,{exact:true})).toBeVisible();
+  const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!));
+  expect(after.values.draftId).toBe(before.values.draftId);
+  await d.save(); await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:input-draft:v1'))).toBe(null);
+});
+test('React draft: future schema is preserved until explicit discard',async({page})=>{
+  await page.goto('/?photos=0');
+  const raw=JSON.stringify({v:99,privateUnknown:'synthetic'});
+  await page.evaluate(raw=>localStorage.setItem('eoul-d12-hang:input-draft:v1',raw),raw);
+  await page.goto('/?photos=0#/reg'); await page.reload();
+  await expect(page.getByText(/초안을 읽지 못했어요/)).toBeVisible();
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:input-draft:v1'))).toBe(raw);
+  await page.getByRole('button',{name:'초안 지우고 새로 입력',exact:true}).click();
+  await expect(page.getByLabel('브랜드',{exact:true})).toHaveValue('');
+});
+test('React draft: failed draft write is visible, wardrobe save can still succeed',async({page})=>{
+  await page.addInitScript(()=>{
+    const original=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(k,v){if(k==='eoul-d12-hang:input-draft:v1')throw new DOMException('quota','QuotaExceededError');return original.call(this,k,v);};
+  });
+  const d=driver(page,'react'); await d.openManual(); await d.fillManual();
+  await expect(page.getByText(/초안을 이 기기에 보관하지 못했어요/)).toBeVisible();
+  await d.save(); await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+});
+test('React draft: cleanup failure does not duplicate an already committed registration',async({page})=>{
+  await page.addInitScript(()=>{
+    const original=Storage.prototype.removeItem;
+    Storage.prototype.removeItem=function(k){if(k==='eoul-d12-hang:input-draft:v1')throw new DOMException('denied','SecurityError');return original.call(this,k);};
+  });
+  const d=driver(page,'react'); await d.openManual(); await d.fillManual(); await d.save();
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+  await expect(page.getByText(/옷은 저장했지만 초안을 정리하지 못했어요/)).toBeVisible();
+  await page.goto('/?photos=0&input=react#/reg'); await page.reload();
+  await page.getByRole('button',{name:'이어서 입력',exact:true}).click(); await d.save();
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+});

@@ -12,7 +12,7 @@
 .ri .ri-swatch { display:inline-block; width:16px; height:16px; border:1px solid currentColor; border-radius:50%; margin-right:6px; vertical-align:middle; }
 .ri p { color:var(--ink2); }
 .ri .ri-error { padding:12px; border:2px solid currentColor; border-radius:8px; }
-.ri footer { padding-top:24px; }
+.ri footer { padding-top:24px; display:grid; gap:12px; }
 .ri .ri-primary { width:100%; background:var(--btn-bg); color:var(--btn-fg); border-color:var(--btn-bg); font-weight:700; white-space:normal; }
 .ri :disabled { opacity:.65; cursor:wait; }
 .ri :focus-visible { outline:3px solid var(--ink); outline-offset:3px; }
