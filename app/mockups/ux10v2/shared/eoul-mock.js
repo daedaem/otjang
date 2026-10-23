@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 7c72169) 19개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 0cc1657) 20개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 937개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -3935,6 +3935,42 @@ function clearOffers(storage) {
   try { storage?.removeItem(OFFER_STORE_KEY); } catch {}
 }
 
+// ── src/lite-registration.js
+// Versioned registration records live inside the core snapshot: one durable write
+// commits the garment, its metadata and the idempotency receipt together.
+const REGISTRATION_SCHEMA = 1;
+function registrationInput(value) {
+  const text = (key, min, max) => {
+    const s = typeof value[key] === 'string' ? value[key].trim() : '';
+    if (s.length < min || s.length > max) throw new Error('입력한 옷 정보를 다시 확인해 주세요.');
+    return s;
+  };
+  const draftId = text('draftId', 1, 100);
+  if (!/^[a-zA-Z0-9_-]+$/.test(draftId)) throw new Error('등록 번호를 다시 확인해 주세요.');
+  const input = { draftId, brand: text('brand', 1, 80), name: text('name', 2, 80), kind: text('kind', 1, 40), color: text('color', 1, 40), url: text('url', 0, 2000) };
+  if (input.url) {
+    let url; try { url = new URL(input.url); } catch { throw new Error('링크를 다시 확인해 주세요.'); }
+    if (!['https:', 'http:'].includes(url.protocol)) throw new Error('링크는 https:// 또는 http://로 시작해야 해요.');
+  }
+  if (value.source) {
+    if (value.source.provider !== 'opf' || !/^\d{6,24}$/.test(value.source.code)) throw new Error('상품 출처를 다시 확인해 주세요.');
+    input.source = { provider: 'opf', code: value.source.code };
+  }
+  return input;
+}
+function readRegistrations(value) {
+  if (value === undefined) return { v: REGISTRATION_SCHEMA, receipts: [] };
+  if (value?.v !== REGISTRATION_SCHEMA || !Array.isArray(value.receipts) || value.receipts.length > 2000) throw new Error('unsupported_registration_schema');
+  const ids = new Set();
+  for (const r of value.receipts) {
+    if (!r || typeof r.garmentId !== 'string' || typeof r.at !== 'string') throw new Error('invalid_registration');
+    const input = registrationInput(r.input);
+    if (ids.has(input.draftId)) throw new Error('duplicate_registration');
+    ids.add(input.draftId);
+  }
+  return structuredClone(value);
+}
+
 // ── mockups/ux10v2/src/core.mjs
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -3943,6 +3979,7 @@ function clearOffers(storage) {
 // 종류·색만 아는 옷은 '비슷한 상품 사진'), 안내문은 짧게 줄이고 자세한 고지는 한 곳(disclosure)에 모은다,
 // 주소(#/...)로 화면을 옮겨 브라우저 뒤로가기가 동작하게 하는 route를 둔다.
 // 저장은 이 브라우저에만, 앱과 다른 키로 한다. 앱 저장소·서버는 건드리지 않는다.
+
 
 
 
@@ -4047,6 +4084,7 @@ function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup
       const next = { ...blank(), ...v, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
         compare: Array.isArray(v.compare) ? v.compare.filter((id) => PRODUCT_BY_ID[id]).slice(0, 4) : [], recent: Array.isArray(v.recent) ? v.recent.filter((x) => typeof x === 'string').slice(0, 5) : [] };
       next.gender = next.gender === 'F' ? 'F' : 'M';
+      next.registrations = readRegistrations(v.registrations);
       buildState(next);
       return next;
     } catch {
@@ -4293,6 +4331,37 @@ function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup
     slotChoices: (kind, gender = S.gender) => SLOTS.filter((s) => s.g === (gender === 'F' ? 'F' : 'M') && s.shape === kind).map((s) => ({ id: s.id, name: s.name })),
     colorChoices: () => Object.entries(COLORS).map(([id, c]) => ({ id, label: c.label, hex: c.hex, light: c.light ?? 50 })),
     formatPrice,
+
+    registrationMetadata(id) {
+      const receipt = S.registrations?.receipts.find((r) => r.garmentId === id);
+      if (!receipt) return null;
+      const { draftId, ...input } = receipt.input;
+      return { ...structuredClone(input), kindName: garmentKindName(input.kind),
+        key: `${input.brand} ${input.name}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' '), at: receipt.at };
+    },
+    registerGarment(value) {
+      const input = registrationInput(value);
+      if (!GARMENT_KINDS.some((k) => k.id === input.kind) || !COLORS[input.color]) throw new Error('종류·색을 다시 골라 주세요.');
+      const registrations = readRegistrations(S.registrations);
+      const previous = registrations.receipts.find((r) => r.input.draftId === input.draftId);
+      if (previous) {
+        if (JSON.stringify(previous.input) !== JSON.stringify(input)) throw Object.assign(new Error('이미 저장한 등록의 내용이 달라요. 새 등록으로 시작해 주세요.'), { code: 'registration_conflict' });
+        const garment = S.garments.find((g) => g.id === previous.garmentId);
+        if (!garment) throw new Error('이미 등록한 뒤 삭제한 옷이에요. 새 등록으로 시작해 주세요.');
+        return garmentView(garment);
+      }
+      if (registrations.receipts.length >= 2000) throw new Error('등록 기록 한도에 도달했어요. 자료를 내보낸 뒤 정리해 주세요.');
+      let garment;
+      commit(() => {
+        const slot = SLOTS.find((s) => s.shape === input.kind && s.g === S.gender)?.id || null;
+        garment = makeGarment({ id: nextId('g'), slot, kind: input.kind, gender: S.gender, color: input.color,
+          brand: input.brand, label: input.name, source: 'user', createdAt: iso() });
+        S.garments = [...S.garments, garment];
+        registrations.receipts.push({ input, garmentId: garment.id, at: iso() });
+        S.registrations = registrations;
+      });
+      return garmentView(garment);
+    },
 
     addGarment({ kind, color = null, slot = null, gender = S.gender, label = '', trial = false } = {}) {
       const g = gender === 'F' ? 'F' : 'M';
@@ -4971,7 +5040,7 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') bootChange(() => mock.setGender(bootGender));
 if (bootParams.get('closet') === 'trial') bootChange(() => mock.loadTrialCloset(bootGender || undefined));
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "7c72169" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "0cc1657" };
 window.EoulMock = mock;
 // 저장소를 쓸 수 없거나 저장된 원문을 읽지 못한 상태도 첫 화면에서 알린다(빈 옷장을 새 사용자로 오해하지 않게).
 mock.boot.storageError = bootStorageError || mock.storageIssue()?.message || null;

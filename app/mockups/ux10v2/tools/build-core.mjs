@@ -17,7 +17,7 @@ const ORDER = [
   'src/legacy-purchase-v4.js', 'src/purchase-journey.js', 'src/wear-log.js', 'src/wardrobe.js', 'src/outfit-copy.js',
   'src/search-follow-up.js', 'src/closet-view.js', 'src/query.js', 'src/engine.js', 'src/purchase-candidate.js',
   'src/related-returns.js', 'src/wardrobe-plan.js', 'src/purchase-plan-context.js', 'src/offers.js', 'src/offer-store.js',
-  'src/icons.js',
+  'src/icons.js', 'src/lite-registration.js',
 ];
 const importsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^import[\s\S]*?from\s+['"]([^'"]+)['"];?\s*$/gm)].map((m) => path.resolve(path.dirname(file), m[1]));
 const need = new Set();
