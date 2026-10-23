@@ -6,7 +6,7 @@
 
 ## 후속 저장 계약 (2026-10-23 KST, 작업 브랜치)
 
-이번 기준은 master `293930d`. 아직 머지·배포하지 않은 save 오류 처리 변경은 코어 저장 실패 시 메모리/버전/구독을 롤백하고 등록 부가정보 실패를 명시한다. 직접 등록은 현재 화면에서 같은 옷 ID로 부가정보만 재시도한다. `eoul-d12-hang:v1`과 `:reg` 키/스키마는 유지한다. 두 키의 원자성·새로고침 후 미완료 등록 복원·다중 탭 충돌은 해결하지 않았다. D1 개인 옷장 이전은 계획이며 실제 DB·Worker·Access·비용 설정은 변경하지 않았다. [인수할 한계와 후속 저장 인터페이스](react-storage-plan-20261022.md).
+이번 기준은 master `293930d`. 아직 머지·배포하지 않은 save 오류 처리 변경은 코어 저장 실패 시 메모리/버전/구독을 롤백하고 등록 부가정보 실패를 명시한다. 직접 등록은 현재 화면에서 같은 옷 ID로 부가정보만 재시도한다. `eoul-d12-hang:v1`과 `:reg` 키/스키마는 유지한다. 두 키의 원자성·새로고침 후 미완료 등록 복원·다중 탭 충돌은 해결하지 않았다. D1 개인 옷장 이전은 계획이며 실제 DB·Worker·Access·비용 설정은 변경하지 않았다. [인수할 한계와 후속 저장 인터페이스](log/2026-10/react-storage-plan-20261022.md).
 
 PR #48은 재확인 head `9ab4b09`, OPEN. 기존 아래 `19a5eee8` 기록은 이전 확인 시점이며 최신 diff에는 배포 화면 교체가 없으며 JSON 백업/복원이 추가됐다. 후속 저장 PR과 중복하므로 분리 후 재사용을 검토한다.
 
@@ -59,7 +59,7 @@ flowchart LR
 
 직접 등록의 현재 기본 집계는 서로 다른 무작위 **기기 ID 3개**다. 실제 사람 3명이나 인증 계정 3개를 확인한 것이 아니며 기기 ID는 위조할 수 있다. 본인 전용 테스트의 임시 집계로 유지하고 공개 전에 계정 기반 중복·남용 방지를 설계해야 한다. [현재 구현](../app/lite/functions/api/catalog.js).
 
-OPF는 최초 인증된 조회에서 배포 스냅샷을 멱등하게 넣고, 이후 검색·내보내기는 DB 행을 읽는다. 20행씩 묶어 D1 Free의 호출/바인딩 상한 안에 둔다. 스냅샷 교체는 유지보수 작업이며 자동 전 상품 수집이 아니다. [선택 이유·운영 내보내기 증거](automatic-search-open-catalog-20261022.md).
+OPF는 최초 인증된 조회에서 배포 스냅샷을 멱등하게 넣고, 이후 검색·내보내기는 DB 행을 읽는다. 20행씩 묶어 D1 Free의 호출/바인딩 상한 안에 둔다. 스냅샷 교체는 유지보수 작업이며 자동 전 상품 수집이 아니다. [선택 이유·운영 내보내기 증거](log/2026-10/automatic-search-open-catalog-20261022.md).
 
 ## 3. 실제 상품 검색과 AI의 역할
 
@@ -70,7 +70,7 @@ OPF는 최초 인증된 조회에서 배포 스냅샷을 멱등하게 넣고, �
 - `retailer_search`는 사용자 문구만 일본어 검색어로 제안한다. 상품·사진·옷장·대화 이력은 받지 않는다. 사용자가 제안어를 확인한 다음 Rakuten을 조회한다.
 - 기존 937개 수집 카탈로그는 **공개 출시 권리 미확인**이다. 공식 API 연결이나 OPF 라이선스가 기존 카탈로그의 권리를 해결하지 않는다. 현재가·정품·재고·정확한 핏·동일 상품 최저가를 보장하지 않는다.
 
-[공급처별 권리·미완료 범위](automatic-search-open-catalog-20261022.md#공급원-판단)와 [Rakuten 검토](legal-clothing-sources-20261021.md)를 함께 본다. API가 무료인 것과 앱의 상용 출시·상품 저장·AI 처리 허용은 별개다.
+[공급처별 권리·미완료 범위](log/2026-10/automatic-search-open-catalog-20261022.md#공급원-판단)와 [Rakuten 검토](log/2026-10/legal-clothing-sources-20261021.md)를 함께 본다. API가 무료인 것과 앱의 상용 출시·상품 저장·AI 처리 허용은 별개다.
 
 ## 4. 인증·비밀값·한도
 
@@ -108,7 +108,7 @@ OPF는 최초 인증된 조회에서 배포 스냅샷을 멱등하게 넣고, �
 | 최종 후속 질문 | 셔츠에 어울리는 5만원 이하 바지 → 수집가 21,890원 상품 카드. 실제 Haiku 5.5 입력/출력 2607/1274토큰 |
 | 미인증 접근 | 실제 API 401. 인증 해제 없이 확인 |
 
-근거는 [403 기록](ai-provider-403-20261022.md), [최종 완료 댓글](https://github.com/daedaem/otjang/pull/47#issuecomment-6339905634)이다. 전체 제공자 요청 ID·계정 정보·비공개 앱 주소는 이 문서에 싣지 않는다.
+근거는 [403 기록](log/2026-10/ai-provider-403-20261022.md), [최종 완료 댓글](https://github.com/daedaem/otjang/pull/47#issuecomment-6339905634)이다. 전체 제공자 요청 ID·계정 정보·비공개 앱 주소는 이 문서에 싣지 않는다.
 
 기본 배치의 JSON `forbidden`·HKG 응답 이후 배치만 바꿔 성공했다. 실행/연결 경로 가설을 지지하지만 제공자 내부의 IP 판정·국가 차단 규칙은 확정하지 못했다. 공식 배치 힌트를 사용했고 새 AI 중계 서버·임의 프록시·재시도는 추가하지 않았다. 중계 추가는 키 접근 주체·로그·비용·장애 지점을 늘리므로 근거 없이 채택하지 않는다. 장기 가용성과 데이터의 물리 위치를 보장하는 설정도 아니다.
 
@@ -148,12 +148,12 @@ PR #47 때 프리뷰 **기본값**을 고친 뒤에도 이미 생성된 브랜�
 
 ## 관련 실행 기록
 
-- [설치 앱 설정](lite-app-setup-20261020.md)
-- [자체 로그인·첫 실제 AI](private-ai-connect-20261021.md)
-- [국내 애드픽 연결](adpick-domestic-search-20261021.md)
-- [Rakuten·OPF 최초 연결](legal-clothing-sources-20261021.md)
-- [한 번 검색·OPF D1](automatic-search-open-catalog-20261022.md)
-- [403 수정과 최종 배포](ai-provider-403-20261022.md)
+- [설치 앱 설정](log/2026-10/lite-app-setup-20261020.md)
+- [자체 로그인·첫 실제 AI](log/2026-10/private-ai-connect-20261021.md)
+- [국내 애드픽 연결](log/2026-10/adpick-domestic-search-20261021.md)
+- [Rakuten·OPF 최초 연결](log/2026-10/legal-clothing-sources-20261021.md)
+- [한 번 검색·OPF D1](log/2026-10/automatic-search-open-catalog-20261022.md)
+- [403 수정과 최종 배포](log/2026-10/ai-provider-403-20261022.md)
 
 ## 등록 저장 준비 (2026-10-23, 후속 작업 브랜치)
 
@@ -187,4 +187,8 @@ Cloudflare `app/lite`의 기존 `npm run build`/`dist` 설정을 유지한다. �
 
 ### B 운영 경로 정리 (PR 검토본)
 
-Cloudflare 루트 app/lite와 npm run build/dist 설정은 같다. 소스는 lite/src/screen.html, src/core.mjs, src/domain, src/browser, public/icons에 모았다. 생성기는 tools/build-core.mjs이며 .generated/core-bundle.js는 테스트/빌드가 만들고 Git에는 올리지 않는다. legacy/app/server/deploy는 별도 검사하며 활성 규칙 모듈은 lite의 단일 원본을 공유한다. 시안 자료는 docs/design/mockups로 격리해 운영 입력에서 제외한다. 저장 키/스키마/API 인증/D1은 바꾸지 않는다. [전체 의존성·검사 이전](lite-code-layout-20261023.md).
+Cloudflare 루트 app/lite와 npm run build/dist 설정은 같다. 소스는 lite/src/screen.html, src/core.mjs, src/domain, src/browser, public/icons에 모았다. 생성기는 tools/build-core.mjs이며 .generated/core-bundle.js는 테스트/빌드가 만들고 Git에는 올리지 않는다. legacy/app/server/deploy는 별도 검사하며 활성 규칙 모듈은 lite의 단일 원본을 공유한다. 시안 자료는 docs/design/mockups로 격리해 운영 입력에서 제외한다. 저장 키/스키마/API 인증/D1은 바꾸지 않는다. [전체 의존성·검사 이전](log/2026-10/lite-code-layout-20261023.md).
+
+### 날짜 기록 보존 경로 (2026-10-23, 문서 PR 검토본)
+
+현행 다섯 문서만 docs 루트에 남기고 날짜별 운영·설계·의사결정 근거는 `docs/log/YYYY-MM/`으로 옮겼다. 기존 자료와 새 브랜치 감사·lite 의존성 기록을 포함해 2026-10 기록 77개를 이동했다. design 참고 자료는 `docs/design/`에 별도로 남긴다. 코드·테스트·저장 자료·운영 DB는 이 문서 정리에서 변경하지 않는다. 루트와 legacy/design README의 실제 이동 파일 링크도 함께 갱신했다. PR #48 CLOSED 및 분리 #60/#61/#62와 B #63·C #64의 미병합·미배포 상태를 현행 목차에 명시한다.

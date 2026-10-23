@@ -147,7 +147,7 @@ docker compose up -d --build
 
 - `backup` 컨테이너가 데이터베이스의 변경분을 1초마다 `EOUL_BACKUP_DIR`에 복제합니다.
 - 하루에 한 번 전체 사본을 만들고, **7일 전 시점까지** 되돌릴 수 있습니다(`litestream.yml`의 `retention`).
-- 탈퇴한 회원의 자료도 백업에는 최대 7일 남습니다. [처리방침 초안](../docs/privacy-policy-draft-20261015.md)의 백업 보관 기간과 맞춰 적으세요.
+- 탈퇴한 회원의 자료도 백업에는 최대 7일 남습니다. [처리방침 초안](../../docs/log/2026-10/privacy-policy-draft-20261015.md)의 백업 보관 기간과 맞춰 적으세요.
 
 ### 집 밖 백업 (권장, 클라우드로 옮긴 뒤에는 필수)
 
@@ -218,4 +218,4 @@ docker compose up -d
 - **방문자 주소는 터널 컨테이너에게서만 믿음**: 서버는 시도 횟수 제한을 방문자 주소로 셉니다. Cloudflare가 붙이는 `CF-Connecting-IP`는 고정 주소(`EOUL_TUNNEL_ADDRESS`)의 터널 컨테이너가 보낸 요청에서만 믿고, 같은 네트워크의 다른 컨테이너나 `localhost:8787`로 들어온 요청에서는 무시합니다.
 - **이 PC에서만 열리는 포트**: `localhost:8787`은 `127.0.0.1`에만 열려 같은 공유기의 다른 기기에서도 들어올 수 없습니다.
 - **서버 배경 지우기(선택)**: `.env`에서 `EOUL_WITH_PHOTO_MASK=true`로 바꾸고 `docker compose up -d --build` 한 뒤 `docker compose exec eoul node server/cli.mjs fetch-model`로 모델을 받습니다. 모델은 `eoul-models` 볼륨에 남습니다.
-- 검증 기록: [운영 묶음 검증](../docs/deploy-kit-20261015.md)
+- 검증 기록: [운영 묶음 검증](../../docs/log/2026-10/deploy-kit-20261015.md)
