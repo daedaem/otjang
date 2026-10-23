@@ -549,6 +549,10 @@ a { color: inherit; text-decoration: none; }
   .lks { grid-template-columns: 1fr 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .view, .hg.swing, .strip.pop, .hangt.pop span, .shelfbar.pop .ths .ph-box:last-child { animation: none !important; } .btn, .top, .hangt span { transition: none; } }
+.bk .decs .btn { justify-content: flex-start; }
+.bk-ta { width: 100%; min-height: 120px; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--well); color: var(--ink); font: inherit; font-size: 12px; line-height: 18px; resize: vertical; }
+.bk-preview:not([hidden]) { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--well); display: grid; gap: 10px; }
+.bk-msg { margin-top: 10px; min-height: 18px; }
 </style>
 
 <main class="app" id="app"></main>
@@ -567,8 +571,9 @@ a { color: inherit; text-decoration: none; }
   const { M, esc, $, $$ } = K;
   // 기존 동기/비동기 이벤트 중 개별 catch가 없는 곳도 저장 실패를 사용자에게 알린다.
   const reportStorageError = (event, error) => {
-    if (!['storage_write_failed', 'storage_unreadable', 'registration_write_failed'].includes(error?.code)) return;
+    if (!['storage_write_failed', 'storage_unreadable', 'storage_recovery_pending', 'registration_write_failed'].includes(error?.code)) return;
     event.preventDefault(); K.toast(error.message, { bottom: 128 });
+    if (error.code === 'storage_recovery_pending') backupRecoveryNotice();
   };
   window.addEventListener('error', (event) => reportStorageError(event, event.error));
   window.addEventListener('unhandledrejection', (event) => reportStorageError(event, event.reason));
@@ -576,7 +581,7 @@ a { color: inherit; text-decoration: none; }
   const UI_KEY = 'eoul-d12-hang:ui';
   const S = { ai: {}, aiOrder: {}, result: null, snackT: 0, asking: null, pending: null, ui: { absent: {} } };
   try { S.ui = { absent: {}, ...JSON.parse(localStorage.getItem(UI_KEY) || '{}') }; } catch {}
-  const saveUi = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(S.ui)); } catch {} };
+  const saveUi = () => { try { if (localStorage.getItem('eoul-backup:transaction') !== null) return; localStorage.setItem(UI_KEY, JSON.stringify(S.ui)); } catch {} };
 
   // ── 직접 등록한 옷(목록에 없는 옷, R15): 브랜드·상품명·종류·색·링크만, 사진 없음. 이 기기에 저장(eoul-d12-hang:reg).
   // 설치 앱이 window.EOUL_CROWD를 주면 공용 목록에도 보낸다(같은 옷 3명 → 모두 검색). 없으면 '이 기기에만 1/3'로 정직하게 센다.
@@ -600,6 +605,7 @@ a { color: inherit; text-decoration: none; }
   let savedReg = structuredClone(REG);
   const regFailed = (message) => Object.assign(new Error(message), { code: 'registration_write_failed' });
   const startFreshReg = () => {
+    if (localStorage.getItem('eoul-backup:transaction') !== null) throw regFailed('복원 복구를 먼저 진행해 주세요.');
     if (regRaw === null) return null;
     const keep = regFailed('브랜드·링크 원문을 따로 보관하지 못해 새로 시작하지 않았어요. 원문 파일을 먼저 받아 주세요.');
     let current; try { current = localStorage.getItem(REG_KEY); } catch { throw keep; }
@@ -614,6 +620,7 @@ a { color: inherit; text-decoration: none; }
     return archiveKey;
   };
   const saveReg = () => {
+    if (localStorage.getItem('eoul-backup:transaction') !== null) throw regFailed('끝내지 못한 복원이 있어 저장을 멈췄어요. 복원 복구를 먼저 진행해 주세요.');
     if (regRaw !== null) { Object.assign(REG, structuredClone(savedReg)); throw regFailed(REG_UNREADABLE); }
     try {
       const next = structuredClone(REG);
@@ -855,7 +862,7 @@ a { color: inherit; text-decoration: none; }
   }
   const C = { threads: [], cur: null, busy: false, get turns() { return this.thread()?.turns || []; }, thread() { return this.threads.find((t) => t.id === this.cur) || null; } };
   try { const v = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}'); C.threads = Array.isArray(v.threads) ? v.threads : []; C.cur = C.threads.some((t) => t.id === v.cur) ? v.cur : null; } catch { C.threads = []; C.cur = null; }
-  const saveChat = () => { try { C.threads.forEach((t) => { t.turns = t.turns.slice(-40); }); C.threads = C.threads.slice(-30); localStorage.setItem(CHAT_KEY, JSON.stringify({ threads: C.threads, cur: C.cur })); } catch {} };
+  const saveChat = () => { try { if (localStorage.getItem('eoul-backup:transaction') !== null) return; C.threads.forEach((t) => { t.turns = t.turns.slice(-40); }); C.threads = C.threads.slice(-30); localStorage.setItem(CHAT_KEY, JSON.stringify({ threads: C.threads, cur: C.cur })); } catch {} };
   const pushTurn = (turn) => { let t = C.thread(); if (!t) { t = { id: `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: String(turn.text || '').slice(0, 60), at: new Date().toISOString(), turns: [] }; C.threads.push(t); C.cur = t.id; } t.turns.push(turn); t.at = new Date().toISOString(); saveChat(); };
   const delThread = (id) => { C.threads = C.threads.filter((t) => t.id !== id); if (C.cur === id) C.cur = null; saveChat(); };
   const whenText = (iso) => { const d = new Date(iso); const now = new Date(); return d.toDateString() === now.toDateString() ? `오늘 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : `${d.getMonth() + 1}월 ${d.getDate()}일`; };
@@ -1224,7 +1231,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           <p class="t5 sub" style="margin-top:4px">옷·코디 이야기만 답해요</p>
           <div class="chips">${CHAT_EX.map((q) => `<button class="chip ex" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>
           ${list.length ? `<section class="section"><div class="h"><h2 class="h3">이전 상담 <span class="t6 num">${list.length}</span></h2></div>
-            <div class="hist">${list.map((t) => `<div class="hrow"><button class="grow" data-thread="${t.id}"><span class="n">${esc(t.title)}</span><span class="t6">${esc(whenText(t.at))} · 주고받은 말 ${t.turns.filter((x) => x.role !== 'note').length}개</span></button><button class="icon" data-delthread="${t.id}" aria-label="이 상담 지우기"><i class="ph ph-trash"></i></button></div>`).join('')}</div></section>` : ''}`;
+            <div class="hist">${list.map((t) => `<div class="hrow"><button class="grow" data-thread="${esc(t.id)}"><span class="n">${esc(t.title)}</span><span class="t6">${esc(whenText(t.at))} · 주고받은 말 ${t.turns.filter((x) => x.role !== 'note').length}개</span></button><button class="icon" data-delthread="${esc(t.id)}" aria-label="이 상담 지우기"><i class="ph ph-trash"></i></button></div>`).join('')}</div></section>` : ''}`;
       }
       const body = th.turns.map(chatTurnHtml).join('');
       return `${top({ back: false, right: '<button class="tbtn" data-chatlist><i class="ph ph-list-bullets"></i>이전 상담</button><button class="tbtn" data-newchat>새 상담</button>' })}
@@ -2009,9 +2016,207 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       apply({ mode: 'fixed', name: '저장한 위치', lat: c.lat, lon: c.lon });
     };
   }
+  // ── 백업·복원(개발 계획 2번): 이 기기 저장소의 개인 자료(옷장·기록·상담·직접 등록·날씨 지역·기기 ID)를 글자 파일 하나로 내보내고 되돌린다.
+  // 사진은 저장하지 않으므로 글자 자료만 있다. 값은 저장된 원문 그대로 담아 다시 해석하며 잃는 것이 없게 한다.
+  // 복원은 키 단위로 바꾸기 전에 현재 값을 '복원 전 보관'에 남겨 한 번 되돌릴 수 있다. 모양이 다른 파일은 아무것도 바꾸지 않고 거절한다.
+  const BK = {
+    APP: 'eoul-lite', FORMAT: 1, STASH: 'eoul-backup:stash', TXN: 'eoul-backup:transaction', MAX_BYTES: 5 * 1024 * 1024,
+    skip: (k) => typeof k !== 'string' || !k.startsWith('eoul-') || k.startsWith('eoul-backup:') || /:(last|probe)$/.test(k),
+    keys() { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!BK.skip(k)) out.push(k); } return out.sort(); },
+    snapshot() { const data = {}; for (const k of BK.keys()) { const v = localStorage.getItem(k); if (typeof v === 'string') data[k] = v; } return data; },
+    make() { return { app: BK.APP, format: BK.FORMAT, screen: 'd12-hang', at: new Date().toISOString(), data: BK.snapshot() }; },
+    stamp() { const d = new Date(); const z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`; },
+    read(text) {
+      if (typeof text !== 'string' || !text.trim()) throw new Error('파일이 비어 있어요.');
+      if (text.length > BK.MAX_BYTES) throw new Error('파일이 너무 커요(5MB 초과).');
+      let v; try { v = JSON.parse(text); } catch { throw new Error('이 앱의 백업 파일(JSON)이 아니에요.'); }
+      if (!v || typeof v !== 'object' || v.app !== BK.APP || v.format !== BK.FORMAT || !v.data || typeof v.data !== 'object' || Array.isArray(v.data)) throw new Error('이 앱의 백업 파일이 아니에요.');
+      const data = {};
+      for (const [k, val] of Object.entries(v.data)) {
+        if (BK.skip(k)) throw new Error(`백업에 모르는 항목이 있어요: ${String(k).slice(0, 40)}`);
+        if (typeof val !== 'string') throw new Error(`항목 값이 글자가 아니에요: ${k.slice(0, 40)}`);
+        data[k] = val;
+      }
+      if (!Object.keys(data).length) throw new Error('백업에 자료가 없어요.');
+      const safeId = (id) => typeof id === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(id);
+      const linkOk = (url) => { if (url === undefined || url === null || url === '') return true; try { return typeof url === 'string' && ['https:', 'http:'].includes(new URL(url).protocol); } catch { return false; } };
+      const chat = data[CHAT_KEY];
+      if (chat !== undefined) {
+        let v; try { v = JSON.parse(chat); } catch {}
+        if (!obj(v) || !Array.isArray(v.threads) || (v.cur !== null && v.cur !== undefined && !safeId(v.cur)) || v.threads.some(t => !obj(t) || !safeId(t.id) || typeof t.title !== 'string' || typeof t.at !== 'string' || !Array.isArray(t.turns) || t.turns.some(x => !obj(x) || !['user','assistant','note'].includes(x.role) || typeof x.text !== 'string' || (x.ids !== undefined && (!Array.isArray(x.ids) || x.ids.some(id => !safeId(id)))) || (x.check !== undefined && (!Array.isArray(x.check) || x.check.some(line => typeof line !== 'string'))) || (x.shop !== undefined && typeof x.shop !== 'string')))) throw new Error('상담 자료를 읽을 수 없어요. 아무것도 바꾸지 않았어요.');
+      }
+      const engine = data[window.EOUL_MOCK_KEY];
+      if (engine !== undefined) { try {
+        M.validateSnapshot(engine); const state = JSON.parse(engine);
+        if (state.garments.some(g => !safeId(g.id)) || state.journeys.some(j => !safeId(j.id) || !linkOk(j.candidate?.url) || !linkOk(j.candidate?.originalUrl))) throw new Error('unsafe_record');
+      } catch { throw new Error('옷장 자료를 읽을 수 없어요. 아무것도 바꾸지 않았어요.'); } }
+      const reg = data[REG_KEY];
+      if (reg !== undefined) { let v; try { v = JSON.parse(reg); } catch {} if (!obj(v) || (v.items !== undefined && !obj(v.items)) || (v.catalog !== undefined && !obj(v.catalog)) || [...Object.values(v.items || {}), ...Object.values(v.catalog || {})].some(x => !obj(x) || !linkOk(x.url) || ['brand','name','kind','color','key','at'].some(k => x[k] !== undefined && x[k] !== null && typeof x[k] !== 'string') || ['count','serverCount','serverMin'].some(k => x[k] !== undefined && (!Number.isSafeInteger(x[k]) || x[k] < 0)) || ['mine','server','searchable'].some(k => x[k] !== undefined && typeof x[k] !== 'boolean') || (x.source !== undefined && (!obj(x.source) || x.source.provider !== 'opf' || typeof x.source.code !== 'string' || !/^\d{6,24}$/.test(x.source.code))))) throw new Error('브랜드·링크 자료를 읽을 수 없어요. 아무것도 바꾸지 않았어요.'); }
+      const draft = data['eoul-d12-hang:input-draft:v1'];
+      if (draft !== undefined) {
+        let v; try { v = JSON.parse(draft); } catch {}
+        const x = v?.values;
+        if (v?.v !== 1 || !Number.isInteger(v.step) || v.step < 0 || v.step > 2 || !obj(x) || typeof x.draftId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(x.draftId) ||
+          !['brand','name','kind','color','url'].every(k => typeof x[k] === 'string' && x[k].length <= (k === 'url' ? 2000 : 80)) ||
+          (x.source && (x.source.provider !== 'opf' || !/^\d{6,24}$/.test(x.source.code))) || typeof v.updatedAt !== 'string' || !Number.isFinite(Date.parse(v.updatedAt))) throw new Error('입력 초안을 읽을 수 없어요. 아무것도 바꾸지 않았어요.');
+      }
+      return { at: typeof v.at === 'string' ? v.at : '', data };
+    },
+    count(data) {
+      const n = { garments: 0, journeys: 0, threads: 0, reg: 0 };
+      const registered = new Set();
+      try { const st = JSON.parse(data[window.EOUL_MOCK_KEY] || 'null'); if (st) { const trial = new Set(Array.isArray(st.trialIds) ? st.trialIds : []); n.garments = (st.garments || []).filter((g) => !g.trial && !trial.has(g.id)).length; n.journeys = (st.journeys || []).length; for (const r of st.registrations?.receipts || []) if ((st.garments || []).some(g => g.id === r.garmentId)) registered.add(r.garmentId); } } catch {}
+      try { n.threads = (JSON.parse(data[CHAT_KEY] || '{}').threads || []).length; } catch {}
+      try { for (const id of Object.keys(JSON.parse(data[REG_KEY] || '{}').items || {})) registered.add(id); } catch {}
+      n.reg = registered.size;
+      return n;
+    },
+    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 직접 등록 ${n.reg}건`,
+    // localStorage has no multi-key transaction. Journal exact original bytes first,
+    // write every replacement before deleting obsolete keys, and compensate on failure.
+    // The journal remains authoritative until both data and its cleanup succeed.
+    pending() { return localStorage.getItem(BK.TXN) !== null; },
+    assertReady() { if (BK.pending()) throw new Error('끝내지 못한 복원이 있어요. 복원 복구를 먼저 진행해 주세요.'); },
+    rawData(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('복구 보관본을 읽지 못했어요.');
+      for (const [k, v] of Object.entries(data)) if (BK.skip(k) || typeof v !== 'string') throw new Error('복구 보관본을 읽지 못했어요.');
+      return data;
+    },
+    exact(data) {
+      BK.rawData(data);
+      // Never clear a key to make room: failed overwrites must leave its old bytes.
+      for (const [k, v] of Object.entries(data)) {
+        if (localStorage.getItem(k) !== v) localStorage.setItem(k, v);
+        if (localStorage.getItem(k) !== v) throw new Error('write_mismatch');
+      }
+      for (const k of BK.keys()) if (!Object.hasOwn(data, k)) {
+        localStorage.removeItem(k);
+        if (localStorage.getItem(k) !== null) throw new Error('remove_mismatch');
+      }
+    },
+    stashRaw(value) {
+      if (localStorage.getItem(BK.STASH) === value) return;
+      if (value === null) localStorage.removeItem(BK.STASH); else localStorage.setItem(BK.STASH, value);
+      if (localStorage.getItem(BK.STASH) !== value) throw new Error('stash_mismatch');
+    },
+    transaction() {
+      const raw = localStorage.getItem(BK.TXN); if (raw === null) return null;
+      let tx; try { tx = JSON.parse(raw); } catch {}
+      if (!tx || tx.v !== 1 || !['restore', 'undo'].includes(tx.operation) || (tx.stash !== null && typeof tx.stash !== 'string')) throw new Error('복구 원문을 읽지 못했어요. 원문을 먼저 받아 주세요.');
+      BK.rawData(tx.before);
+      return tx;
+    },
+    finishJournal() {
+      localStorage.removeItem(BK.TXN);
+      if (localStorage.getItem(BK.TXN) !== null) throw new Error('journal_cleanup_failed');
+    },
+    apply(data, operation) {
+      BK.assertReady(); BK.rawData(data);
+      const before = BK.snapshot(), priorStash = localStorage.getItem(BK.STASH);
+      const journal = JSON.stringify({ v: 1, operation, at: new Date().toISOString(), before, stash: priorStash });
+      try {
+        localStorage.setItem(BK.TXN, journal);
+        if (localStorage.getItem(BK.TXN) !== journal) throw new Error('journal_mismatch');
+      } catch { throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
+      try {
+        if (operation === 'restore') BK.stashRaw(JSON.stringify({ at: new Date().toISOString(), data: before }));
+        BK.exact(data);
+        if (operation === 'undo') BK.stashRaw(null);
+        BK.finishJournal();
+      } catch {
+        try {
+          BK.exact(before); BK.stashRaw(priorStash); BK.finishJournal();
+        } catch { throw new Error('복원 중 저장에 실패했고 되돌리기도 끝내지 못했어요. 원문은 복구 보관함에 남겼어요. 복원 복구를 진행해 주세요.'); }
+        throw new Error('저장하지 못해 복원을 되돌렸어요. 기존 자료는 그대로예요.');
+      }
+      return before;
+    },
+    restore(data) {
+      // Calls outside the preview UI must meet the same validation contract.
+      const checked = BK.read(JSON.stringify({ app: BK.APP, format: BK.FORMAT, data })).data;
+      return BK.apply(checked, 'restore');
+    },
+    stash() { try { const st = JSON.parse(localStorage.getItem(BK.STASH) || 'null'); return st && st.data && typeof st.data === 'object' && !Array.isArray(st.data) ? st : null; } catch { return null; } },
+    undo() {
+      BK.assertReady(); const st = BK.stash(); if (!st) throw new Error('되돌릴 보관본이 없어요.');
+      // Originals can intentionally be corrupt/future records: restore their exact
+      // bytes and let normal startup protection block writes rather than erase them.
+      BK.apply(BK.rawData(st.data), 'undo');
+    },
+    archiveUnreadableRecovery() {
+      const raw = localStorage.getItem(BK.TXN); if (raw === null) return;
+      let unreadable = false; try { BK.transaction(); } catch { unreadable = true; }
+      if (!unreadable) throw new Error('복원 전 자료로 복구를 먼저 진행해 주세요.');
+      const key = `${BK.TXN}:unreadable:${new Date().toISOString()}`;
+      try { localStorage.setItem(key, raw); if (localStorage.getItem(key) !== raw) throw new Error('mismatch'); BK.finishJournal(); }
+      catch { throw new Error('복구 원문을 따로 보관하지 못했어요. 원문 받기를 먼저 사용해 주세요.'); }
+      return key;
+    },
+    recover() {
+      const tx = BK.transaction(); if (!tx) throw new Error('복구할 보관본이 없어요.');
+      try { BK.exact(tx.before); BK.stashRaw(tx.stash); BK.finishJournal(); }
+      catch { throw new Error('복구를 끝내지 못했어요. 원문은 복구 보관함에 그대로 있어요. 저장 공간을 확인한 뒤 다시 시도해 주세요.'); }
+    },
+  };
+  function backupRecoveryNotice() {
+    let raw; try { raw = localStorage.getItem(BK.TXN); } catch { return; }
+    if (raw === null || document.getElementById('eo-backup-recovery')) return;
+    const el = document.createElement('div');
+    el.id = 'eo-backup-recovery'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'eo-backup-title');
+    el.style.cssText = 'position:fixed;inset:0;z-index:1000;background:var(--bg);color:var(--ink);padding:32px 20px;overflow:auto';
+    el.innerHTML = '<h1 id="eo-backup-title" class="h2">끝내지 못한 복원이 있어요</h1><p>기존 기록을 지키도록 입력을 멈췄어요. 복원 전 자료로 복구한 뒤 계속할 수 있어요.</p><div class="decs"><button class="btn go" data-bk-recover>복원 전 자료로 복구</button><button class="btn line" data-bk-raw>복구 원문 받기</button></div><p role="status"></p>';
+    const status = el.querySelector('[role="status"]');
+    el.querySelector('[data-bk-raw]').onclick = () => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = `closet-recovery-${BK.stamp()}.json`;
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+    el.querySelector('[data-bk-recover]').onclick = () => { try { BK.recover(); location.reload(); } catch (e) { status.textContent = e.message; } };
+    try { BK.transaction(); } catch {
+      const archive = document.createElement('button'); archive.type = 'button'; archive.className = 'btn line'; archive.textContent = '읽지 못한 복구 원문을 따로 보관하고 계속';
+      archive.onclick = () => { try { BK.archiveUnreadableRecovery(); location.reload(); } catch (e) { status.textContent = e.message; } };
+      el.querySelector('.decs').append(archive);
+    }
+    document.body.append(el); el.querySelector('button').focus();
+    // Background DOM remains rendered for state continuity but cannot take focus.
+    for (const root of document.body.children) if (root !== el) root.inert = true;
+  }
+  function backupSheet() {
+    const n = BK.count(BK.snapshot());
+    const stash = BK.stash();
+    const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요.</p>
+      <div class="decs"><button class="btn go" data-bk-save><i class="ph ph-download-simple"></i>파일로 내보내기</button><button class="btn line" data-bk-copy><i class="ph ph-copy"></i>글자로 복사</button><label class="btn line" for="bkfile"><i class="ph ph-upload-simple"></i>파일로 복원<input id="bkfile" type="file" accept=".json,application/json,text/plain" hidden></label><button class="btn line" data-bk-paste><i class="ph ph-clipboard-text"></i>붙여넣어 복원</button>${stash ? `<button class="btn line" data-bk-undo><i class="ph ph-arrow-counter-clockwise"></i>복원 전(${esc(whenText(stash.at))})으로 되돌리기</button>` : ''}</div>
+      <textarea class="bk-ta" hidden aria-label="백업 글자" spellcheck="false" autocapitalize="off"></textarea>
+      <div class="bk-preview" hidden></div>
+      <p class="bk-msg t6" role="status" aria-live="polite"></p></div>`);
+    const ta = $('.bk-ta', sh.s), pv = $('.bk-preview', sh.s), msg = (t) => { $('.bk-msg', sh.s).textContent = t; };
+    const showText = (text) => { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); };
+    $('[data-bk-save]', sh.s).onclick = async () => {
+      const text = JSON.stringify(BK.make()); const name = `closet-backup-${BK.stamp()}.json`; // 파일 이름은 영문으로: 일부 브라우저가 한글 이름을 'download'로 바꾼다
+      try {
+        const file = new File([text], name, { type: 'application/json' });
+        if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); msg('공유 창에서 파일에 저장하거나 다른 기기로 보내세요.'); return; }
+      } catch (e) { if (e?.name === 'AbortError') return; }
+      try {
+        const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+        msg(`${name} 파일을 내보냈어요. 아이폰은 파일 앱의 다운로드 폴더에 저장돼요.`);
+      } catch { showText(text); msg('내려받기가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); }
+    };
+    $('[data-bk-copy]', sh.s).onclick = async () => { const text = JSON.stringify(BK.make()); try { await navigator.clipboard.writeText(text); msg('백업 글자를 복사했어요. 메모 앱 등에 붙여 두세요.'); } catch { showText(text); msg('복사가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); } };
+    const preview = (text) => {
+      let b; try { b = BK.read(text); } catch (e) { pv.hidden = true; msg(e.message); return; }
+      const cur = BK.count(BK.snapshot()), nb = BK.count(b.data);
+      pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div><div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">지금 자료는 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
+      $('[data-bk-go]', pv).onclick = () => { try { BK.restore(b.data); } catch (e) { msg(e.message); backupRecoveryNotice(); return; } msg('복원했어요. 다시 불러와요.'); location.reload(); };
+      msg('');
+    };
+    $('#bkfile', sh.s).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > BK.MAX_BYTES) { msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => preview(String(r.result || '')); r.onerror = () => msg('파일을 읽지 못했어요.'); r.readAsText(f); };
+    $('[data-bk-paste]', sh.s).onclick = () => { ta.hidden = false; ta.value = ''; ta.placeholder = '백업 글자를 붙여 넣으세요'; ta.focus(); pv.hidden = false; pv.innerHTML = '<button class="btn line wide" data-bk-read>붙여 넣은 글자 확인</button>'; $('[data-bk-read]', pv).onclick = () => preview(ta.value); };
+    const un = $('[data-bk-undo]', sh.s); if (un) un.onclick = () => { try { BK.undo(); } catch (e) { msg(e.message); backupRecoveryNotice(); return; } msg('복원 전으로 되돌렸어요. 다시 불러와요.'); location.reload(); };
+  }
   function menu() {
-    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
+    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
+    $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
     const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
     $('[data-theme]', sh.s).onclick = async () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; await sh.close(); };
     $('[data-reset]', sh.s).onclick = async () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; await sh.close(); K.tab('home'); };
@@ -2056,6 +2261,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     return true;
   };
   M.subscribe(() => { if (document.getElementById('eo-storage-issue') || M.storageIssue?.()) storageNotice(); });
+  backupRecoveryNotice();
   if (!storageNotice() && M.boot?.storageError) K.toast(M.boot.storageError, { bottom: 128 });
   if (M.boot?.q) K.go('results', { q: M.boot.q });
   else if (/^\/p\/.+/.test(r0.path)) K.go('detail', { id: r0.path.slice(3) });
