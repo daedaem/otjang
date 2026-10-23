@@ -119,4 +119,7 @@ Vite/React/TypeScript를 lite 빌드에 붙이고 직접 등록만 브랜드·�
 
 등록 영수증 스키마와 상담/등록 링크 등의 가져오기 검증, React 등록 미리보기 건수도 확인한다. 추가 구매/반품 UI는 포함하지 않는다. 기준 lite158에서 백업 검사12개가 더해져170개, 모바일E2E11에서 백업 흐름2개가 더해져13개가 된다. app688/server50 기존 검사는 유지하고 테스트 삭제는 없다.
 
+### A(c) PR #48 로컬 .mjs MIME 분리
+
+`dev.mjs`가 `.mjs`를 `text/javascript; charset=utf-8`로 제공하게 하는 한 항목만 분리했다. 로컬 fake 모드 8794 포트에서 `/shared/open-products.mjs` HEAD 응답 `200`, 올바른 content-type을 확인했다. 운영 API/인증/번들 변경은 없고 테스트 수는 A(b)의 lite170/app688/server50/E2E13과 같다.
 A(b) WebKit 실패 저장 E2E에서 기존 기록 주입의 구독 렌더와 폼 입력이 겹치는 간헐 실패를 발견했다. 기존 기록을 저장한 뒤 재접속해 초기 상태를 고정하고, 그 다음 quota 실패를 주입하도록 준비 순서를 수정했다. 시나리오를 제거하거나 retry/sleep으로 숨기지 않는다.
