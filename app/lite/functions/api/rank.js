@@ -89,7 +89,7 @@ export function parseBudget(text) {
     const n = amount(m); if (!won(n)) continue;
     const q = m[5] || '';
     if (!m[4] && !q) continue; // '2026년'처럼 '원'도 이하·이상 같은 말도 없는 숫자는 예산이 아니다.
-    if (q === '대') { min = n; max = n + 10 ** Math.floor(Math.log10(n)) - 1; } // 5만원대 → 50,000~59,999 (엔진과 같은 기준)
+    if (q === '대') { min = n; max = n + (n % 100000 === 0 ? 100000 : 10000) - 1; } // app/src/query.js와 같은 기준: 5만원대 50,000~59,999 · 10만원대 100,000~199,999 · 15만원대 150,000~159,999
     else if (['이상', '부터'].includes(q)) min = n;
     else if (['넘는', '넘게', '초과'].includes(q)) min = n + 1; // '10만원 초과'는 100,000원을 포함하지 않는다.
     else if (q === '미만') max = n - 1;

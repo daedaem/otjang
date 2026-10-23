@@ -142,6 +142,7 @@ test('budget phrases are read from Korean text and unreadable or declined budget
   assert.deepEqual(parseBudget('3만원 이상 7만원 이내 니트'), { min: 30000, max: 70000 });
   assert.deepEqual(parseBudget('5만원대 바지'), { min: 50000, max: 59999 });
   assert.deepEqual(parseBudget('10만원대 코트'), { min: 100000, max: 199999 });
+  assert.deepEqual(parseBudget('15만원대 코트'), { min: 150000, max: 159999 }); // 엔진(app/src/query.js)과 같은 기준
   assert.deepEqual(parseBudget('10만원 미만'), { max: 99999 });
   assert.equal(parseBudget('예산 상관없이 제일 좋은 코트'), null);
   assert.equal(parseBudget('네이비 블레이저에 어울리는 바지'), null);
