@@ -134,7 +134,7 @@ PR #47 때 프리뷰 **기본값**을 고친 뒤에도 이미 생성된 브랜�
 5. 실제 AI 요청은 유료 사용량과 앱 예약을 소비한다. 문서·로컬 검사로 확인할 수 있는 단계에서는 호출하지 않는다. 필요한 최소 실호출은 기존 승인·크레딧·한도 안에서만 하고 모델 메타데이터와 제공자 로그를 대조한다. ‘AI’ 배지만으로 호출 성공을 판정하지 않는다.
 6. 롤백은 마지막으로 확인한 **인증 보호가 있는** 버전을 사용한다. DB 초기화·원래 옷장 교체·앱/사이트 데이터 삭제를 복구 절차로 삼지 않는다. 배포 롤백이 기기 자료나 DB를 자동 복구하는 것도 아니다.
 
-로컬 검사는 저장소 루트에서 `cd app/lite` 후 `npm ci`, `npm test`, `npm run build`로 수행한다. `node dev.mjs --fake`는 loopback의 합성 AI 화면 시험용이다. 실제 Worker의 로그인·D1·외부 상품 API까지 모두 재현하는 서버가 아니며 터널로 공개하지 않는다. 기준 master의 `dev.mjs`에는 `.mjs` MIME 매핑이 없어 OPF 모듈 응답이 `application/octet-stream`으로 나가는 코드상 문제가 있다. [PR #48](https://github.com/daedaem/otjang/pull/48)에 수정이 포함됐으나 미병합이다. 이번 문서 정리에서 실브라우저 오류를 다시 재현하거나 수정 코드를 반영한 것은 아니다. 실행하지 않은 검사 수치를 최신 결과로 복사하지 않는다.
+로컬 검사는 저장소 루트에서 `cd app/lite` 후 `npm ci`, `npm test`, `npm run build`로 수행한다. `node dev.mjs --fake`는 loopback의 합성 AI 화면 시험용이다. 실제 Worker의 로그인·D1·외부 상품 API까지 모두 재현하는 서버가 아니며 터널로 공개하지 않는다. `dev.mjs`의 `.mjs` MIME 매핑 누락(OPF 모듈 응답이 `application/octet-stream`으로 나가던 문제)은 PR #66(`9826dac`)으로 master에 반영돼 해결됐다. 10-23에 `node dev.mjs --fake`로 `200 text/javascript; charset=utf-8` 응답을 확인했다. 실행하지 않은 검사 수치를 최신 결과로 복사하지 않는다.
 
 ## 8. 개인정보·보존·아직 남은 일
 
