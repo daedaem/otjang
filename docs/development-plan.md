@@ -126,3 +126,4 @@ Vite/React/TypeScript를 lite 빌드에 붙이고 직접 등록만 브랜드·�
 ### B 운영 코드·legacy 위치 정리
 
 운영 화면/코어/브라우저 보조·도메인20개·아이콘을 app/lite 내부로 옮기고, 코어 번들은 test/build 때 생성해 Git에서 제외한다. 시안은 docs/design/mockups, 기존 앱/서버/배포키트는 legacy로 분리한다. [이동 전 의존성·경로·검사 대응](lite-code-layout-20261023.md). 기존 날씨 검사5개를 app→lite로 옮겨 legacy앱683/lite175/server50, 합계908개를 유지한다. 테스트 삭제 없음. 모바일E2E13개와 legacy Docker/빌드 검사를 유지한다.
+A(b) WebKit 실패 저장 E2E에서 기존 기록 주입의 구독 렌더와 폼 입력이 겹치는 간헐 실패를 발견했다. 기존 기록을 저장한 뒤 재접속해 초기 상태를 고정하고, 그 다음 quota 실패를 주입하도록 준비 순서를 수정했다. 시나리오를 제거하거나 retry/sleep으로 숨기지 않는다.
