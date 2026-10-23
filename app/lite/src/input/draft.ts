@@ -19,7 +19,9 @@ export function readDraft(): DraftRead {
     } } };
   } catch { return { type: 'blocked', message: '이전에 쓰던 초안을 읽지 못했어요. 초안을 지우기 전까지 원문은 그대로 보관해요.' }; }
 }
+const assertWritable = () => { if (localStorage.getItem('eoul-backup:transaction') !== null) throw new Error('복원 복구를 먼저 진행해 주세요.'); };
 export function writeDraft(values: Registration, step: number) {
+  assertWritable();
   localStorage.setItem(DRAFT_KEY, JSON.stringify({ v: 1, values, step, updatedAt: new Date().toISOString() } satisfies StoredDraft));
 }
-export function clearDraft() { localStorage.removeItem(DRAFT_KEY); }
+export function clearDraft() { assertWritable(); localStorage.removeItem(DRAFT_KEY); }

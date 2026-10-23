@@ -19,7 +19,13 @@ function driver(page: Page, mode: string) {
         await page.getByRole('button',{name:'다음',exact:true}).click();
       } else {
         await page.locator('#rb').fill('합성 브랜드'); await page.locator('#rn').fill(garmentName);
-        await page.locator('[data-k="shirt"]').click(); await page.locator('[data-c="white"]').click();
+        // The asynchronous duplicate suggestions appear above the choice grid.
+        // Wait for that layout change before tapping the kind and color.
+        await expect(page.locator('#rdup [data-dup-own]').first()).toBeVisible();
+        await page.locator('#rf [data-k="shirt"]').click();
+        await expect(page.locator('#rf [data-k="shirt"]')).toHaveAttribute('aria-pressed','true');
+        await page.locator('#rf [data-c="white"]').click();
+        await expect(page.locator('#rf [data-c="white"]')).toHaveAttribute('aria-pressed','true');
       }
     },
     async save() { await (mode === 'vanilla' ? page.locator('#rdone') : page.getByRole('button',{name:'옷장에 넣기',exact:true})).click(); },
@@ -44,14 +50,36 @@ for (const mode of ['vanilla','react']) {
     expect(await page.evaluate(()=>window.K.M.getState().closet[0].label)).toBe(garmentName);
   });
   test(`${mode}: failed save preserves old purchase records and allows retry`, async ({page})=>{
-    const d=driver(page,mode); await d.openManual();
+    // Inject a Storage-shaped adapter before core boot, rather than replacing
+    // WebKit's native Storage prototype across document lifetimes.
+    await page.addInitScript(() => {
+      const disk = window.localStorage;
+      const adapter = {
+        get length() { return disk.length; },
+        key(index: number) { return disk.key(index); },
+        getItem(k: string) { return disk.getItem(k); },
+        setItem(k: string, v: string) {
+          if (window.__fail && k === 'eoul-d12-hang:v1') throw new DOMException('quota','QuotaExceededError');
+          disk.setItem(k,v);
+        },
+        removeItem(k: string) { disk.removeItem(k); },
+      };
+      Object.defineProperty(window, 'localStorage', { configurable: true, get: () => adapter });
+      window.__fail = false;
+    });
+    const d=driver(page,mode);
+    await page.goto(`/?photos=0&input=${mode}`);
+    await page.waitForFunction(() => !!window.K?.M);
     await page.evaluate(() => {
       window.K.M.addGarment({kind:'pants',color:'black'});
       window.K.M.decide('ms-728000','buy'); window.K.M.advance('ms-728000','ordered');
+      // Prepare the existing wardrobe before navigating into a fresh form.
+      window.K.go('reg', {});
+    });
+    await expect(mode === 'react' ? page.getByLabel('브랜드',{exact:true}) : page.locator('#rb')).toBeVisible();
+    await page.evaluate(() => {
       window.__before=localStorage.getItem('eoul-d12-hang:v1');
-      const original=Storage.prototype.setItem;
       window.__fail=true;
-      Storage.prototype.setItem=function(k,v){ if(window.__fail && k==='eoul-d12-hang:v1') throw new DOMException('quota','QuotaExceededError'); return original.call(this,k,v); };
     });
     await d.fillManual(); await d.save();
     await expect(page.getByText(/저장하지 못했어요/).first()).toBeVisible();
@@ -134,4 +162,49 @@ test('React draft: cleanup failure does not duplicate an already committed regis
   await page.goto('/?photos=0&input=react#/reg'); await page.reload();
   await page.getByRole('button',{name:'이어서 입력',exact:true}).click(); await d.save();
   await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+});
+
+
+test('backup UI previews, restores exact records, and undo restores the prior snapshot after reload',async({page})=>{
+  await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
+  const saved=await page.evaluate(()=>{
+    window.K.M.addGarment({kind:'shirt',color:'white'});
+    window.K.M.decide('ms-728000','buy');window.K.M.advance('ms-728000','ordered');
+    return localStorage.getItem('eoul-d12-hang:v1')!;
+  });
+  await page.evaluate(()=>window.K.M.addGarment({kind:'pants',color:'black'}));
+  const before=await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'));
+  const open=async()=>{
+    await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
+    await expect(page.getByRole('heading',{name:'백업 · 복원',exact:true})).toBeVisible();
+  };
+  await open();
+  await page.locator('#bkfile').setInputFiles({name:'synthetic-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'eoul-lite',format:1,data:{'eoul-d12-hang:v1':saved}}))});
+  await expect(page.locator('[data-bk-go]')).toBeVisible();
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(before);
+  await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-go]').click()]);
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+  const restored=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+  expect(restored.garments).toEqual(JSON.parse(saved).garments); expect(restored.journeys).toEqual(JSON.parse(saved).journeys);
+  expect(await page.evaluate(()=>window.K.M.getState().records[0].stage)).toBe('ordered');
+  await open();await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-undo]').click()]);
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(2);
+  const undone=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+  expect(undone.garments).toEqual(JSON.parse(before!).garments); expect(undone.journeys).toEqual(JSON.parse(before!).journeys);
+});
+test('interrupted restore shows a persistent recovery screen and explicit recovery restores original raw',async({page})=>{
+  await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
+  const raw=await page.evaluate(()=>{
+    window.K.M.addGarment({kind:'shirt',color:'white'});
+    const before=localStorage.getItem('eoul-d12-hang:v1')!;
+    window.K.M.addGarment({kind:'pants',color:'black'});
+    localStorage.setItem('eoul-backup:transaction',JSON.stringify({v:1,operation:'restore',before:{'eoul-d12-hang:v1':before},stash:null}));
+    return before;
+  });
+  await page.reload();await expect(page.getByRole('alertdialog')).toBeVisible();
+  expect(await page.locator('#app').evaluate(el=>(el as HTMLElement).inert)).toBe(true);
+  await Promise.all([page.waitForEvent('load'),page.getByRole('button',{name:'복원 전 자료로 복구',exact:true}).click()]);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+  const recovered=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+  expect(recovered.garments).toEqual(JSON.parse(raw).garments); expect(recovered.journeys).toEqual(JSON.parse(raw).journeys);
 });
