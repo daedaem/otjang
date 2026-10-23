@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Anthropic from '@anthropic-ai/sdk';
 import { handle, MODEL, MAX_BODY, CLIENT_OPTIONS, providerFailureCode, providerFailureDiagnostics, CONSULT_MAX, clipAnswer, parseBudget, priceCheck } from '../functions/api/rank.js';
-import { PRODUCTS } from '../../src/data/products.js';
+import { PRODUCTS } from '../src/domain/data/products.js';
 const p = PRODUCTS[0];
 const post = (body, headers = {}) => new Request('https://x.test/api/rank', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
 const input = (extra = {}) => ({ task: 'rank', query: '출근용 옷', closet: [], items: [{ id: p.id, closet: '옷장 정보 없음' }], ...extra });

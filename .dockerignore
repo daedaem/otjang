@@ -16,3 +16,13 @@ experiments
 app/test
 server/test
 server/policy
+
+legacy/app/dist
+legacy/app/test
+legacy/server/data
+legacy/server/models
+legacy/server/test
+legacy/server/policy
+legacy/deploy/.env
+legacy/deploy/backups
+app/lite/.generated

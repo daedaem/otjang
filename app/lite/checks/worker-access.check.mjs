@@ -20,7 +20,7 @@ function harness(authorize, { privateSession = async () => null, extraEnv = {} }
 
 const routes = [
   ['/', 'GET', 'assets'], ['/index.html', 'GET', 'assets'],
-  ['/shared/eoul-mock.js', 'GET', 'assets'], ['/icons/icon.svg', 'GET', 'assets'],
+  ['/shared/core-bundle.js', 'GET', 'assets'], ['/icons/icon.svg', 'GET', 'assets'],
   ['/sw.js', 'GET', 'assets'], ['/manifest.webmanifest', 'GET', 'assets'],
   ['/api/rank', 'POST', 'rank'], ['/api/weather?lat=37.5&lon=127.0', 'GET', 'weather'],
   ['/api/catalog/search?q=shirt', 'GET', 'catalog'], ['/api/catalog/submit', 'POST', 'catalog'],
@@ -84,7 +84,7 @@ test('deployed default cannot replace authentication using environment or reques
 
 test('deployed default rejects a forged JWT even when Access configuration is present', async () => {
   let assets = 0;
-  const response = await worker.fetch(new Request('https://private.example/shared/eoul-mock.js', {
+  const response = await worker.fetch(new Request('https://private.example/shared/core-bundle.js', {
     headers: { 'Cf-Access-Jwt-Assertion': 'fake', Authorization: 'Bearer owner-approved' },
   }), {
     ACCESS_TEAM_DOMAIN: 'wardrobe-owner.cloudflareaccess.com', ACCESS_AUD: 'private-app-audience',
@@ -139,7 +139,7 @@ test('only the four exact private authentication paths may answer before authori
   }
   assert.deepEqual(sessionCalls, endpoints);
   assert.equal(calls.authorize, 0);
-  for (const path of ['/_private', '/_private/login/', '/_private/session/extra', '/_private/login.json', '/_private/%6cogin', '/shared/eoul-mock.js']) {
+  for (const path of ['/_private', '/_private/login/', '/_private/session/extra', '/_private/login.json', '/_private/%6cogin', '/shared/core-bundle.js']) {
     const response = await app.fetch(new Request(`https://private.example${path}`), env);
     assert.equal(response.status, 401);
   }
@@ -165,7 +165,7 @@ test('unsupported session routes and handler errors fail through or fail closed'
 });
 
 test('explicit mode selection does not fall back to another authentication mechanism', async () => {
-  const request = new Request('https://private.example/shared/eoul-mock.js', {
+  const request = new Request('https://private.example/shared/core-bundle.js', {
     headers: { 'Cf-Access-Jwt-Assertion': 'forged', Authorization: 'Bearer owner-approved' },
   });
   const access = {
@@ -216,7 +216,7 @@ test('real session login opens private routes only with its signed cookie and ne
   const env = { PRIVATE_AUTH_MODE: 'session', PRIVATE_APP_ACCESS_KEY: secret, RANK_DB, ASSETS: { fetch: endpoint('assets') } };
   try {
     assert.equal((await app.fetch(new Request('https://private.example/'), env)).status, 303);
-    assert.equal((await app.fetch(new Request('https://private.example/shared/eoul-mock.js'), env)).status, 401);
+    assert.equal((await app.fetch(new Request('https://private.example/shared/core-bundle.js'), env)).status, 401);
     const login = await app.fetch(new Request('https://private.example/_private/session', {
       method: 'POST', headers: { Origin: 'https://private.example', 'Content-Type': 'application/json', 'CF-Connecting-IP': '192.0.2.1' },
       body: JSON.stringify({ password: secret }),
@@ -237,7 +237,7 @@ test('real session login opens private routes only with its signed cookie and ne
     assert.match(settings[0].seed, /^[A-Za-z0-9_-]{43}$/);
     assert.notEqual(settings[0].seed, secret);
     assert.equal(login.headers.get('set-cookie').includes(settings[0].seed), false);
-    const changedPassword = await app.fetch(new Request('https://private.example/shared/eoul-mock.js', {
+    const changedPassword = await app.fetch(new Request('https://private.example/shared/core-bundle.js', {
       headers: { Cookie: cookie },
     }), { ...env, PRIVATE_APP_ACCESS_KEY: 'updated-Pass8!' });
     assert.equal(changedPassword.status, 401);

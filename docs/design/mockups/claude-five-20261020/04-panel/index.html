@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="theme-color" content="#ffffff">
+<title>시안 04 · 사진과 선택 패널</title>
+<!-- 시안 04(사진 + 선택 패널): 옷 한 벌을 크게 무대에 올리고, 옆(PC)·아래(휴대폰) 선택 패널에 브랜드·품명·수집가·이유·내 옷과·주행동을 모은다.
+     공유하는 것은 데이터·로직(eoul-mock.js, cutouts.js, photo-kinds.js)뿐이고 화면(CSS·JS)은 이 폴더 안에서만 만든다. -->
+<script>window.EOUL_MOCK_KEY = 'eoul-five-04:v1'; // 시안마다 저장을 따로 둔다(한 주소에서 열어도 기록이 섞이지 않게).</script>
+<script src="../../ux10v2/shared/eoul-mock.js"></script>
+<script src="../../../../../app/lite/src/browser/cutouts.js"></script>
+<script src="../../../../../app/lite/src/browser/photo-kinds.js"></script>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="top">
+  <div class="top-in">
+    <a class="mark" href="#/" data-flow="nav-ask" aria-label="처음 화면에서 찾기">옷 고르기</a>
+    <button class="tag" type="button" data-flow="mock-label">시안 04</button>
+    <nav class="nav" aria-label="주요 화면">
+      <a href="#/compare" data-flow="compare-open" data-nav="compare">비교 <b id="cmp-n">0</b></a>
+      <a href="#/closet" data-flow="nav-closet" data-nav="closet">옷장</a>
+      <a href="#/records" data-flow="nav-records" data-nav="records">기록</a>
+    </nav>
+  </div>
+</header>
+<main id="main" tabindex="-1"></main>
+<div id="layer"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="panel.js"></script>
+</body>
+</html>

@@ -184,3 +184,7 @@ Cloudflare `app/lite`의 기존 `npm run build`/`dist` 설정을 유지한다. �
 ### 저장소 정리 A: JSON 백업 저장 계약
 
 백업 UI 추출본은 `eoul-backup:transaction`에 원문 journal을 남긴 뒤 값을 쓰며, 성공한 뒤 이전 키를 삭제한다. 보상 실패/정리 실패는 성공으로 표시하지 않고 복구 화면과 원문 다운로드를 제공한다. 미완료 journal 동안 core/등록/상담/UI/입력 초안 저장을 막는다. 기존 stash는 undo를 위한 한 단계 보관이며 여러 탭 동시 복원을 직렬화하는 잠금은 아니다. 가져온 상담 ID·등록 수·URL·코어 스키마를 검증하고 React 등록 영수증도 미리보기에서 센다. 운영 데이터 이동이나 D1 복원 기능은 아니다.
+
+### B 운영 경로 정리 (PR 검토본)
+
+Cloudflare 루트 app/lite와 npm run build/dist 설정은 같다. 소스는 lite/src/screen.html, src/core.mjs, src/domain, src/browser, public/icons에 모았다. 생성기는 tools/build-core.mjs이며 .generated/core-bundle.js는 테스트/빌드가 만들고 Git에는 올리지 않는다. legacy/app/server/deploy는 별도 검사하며 활성 규칙 모듈은 lite의 단일 원본을 공유한다. 시안 자료는 docs/design/mockups로 격리해 운영 입력에서 제외한다. 저장 키/스키마/API 인증/D1은 바꾸지 않는다. [전체 의존성·검사 이전](lite-code-layout-20261023.md).
