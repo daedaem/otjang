@@ -579,6 +579,13 @@ a { color: inherit; text-decoration: none; }
   window.addEventListener('unhandledrejection', (event) => reportStorageError(event, event.reason));
   const DESIGN = '걸어 보고 사기';
   const UI_KEY = 'eoul-d12-hang:ui';
+  // Access storage inside the controller's guarded operations, including browsers
+  // whose localStorage getter itself throws (private/blocked site storage).
+  const Input = window.EOUL_INPUT_STATE.create({
+    getItem: (key) => localStorage.getItem(key),
+    setItem: (key, value) => localStorage.setItem(key, value),
+    removeItem: (key) => localStorage.removeItem(key),
+  });
   const S = { ai: {}, aiOrder: {}, result: null, snackT: 0, asking: null, pending: null, ui: { absent: {} } };
   try { S.ui = { absent: {}, ...JSON.parse(localStorage.getItem(UI_KEY) || '{}') }; } catch {}
   const saveUi = () => { try { if (localStorage.getItem('eoul-backup:transaction') !== null) return; localStorage.setItem(UI_KEY, JSON.stringify(S.ui)); } catch {} };
@@ -1032,6 +1039,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     inputUnmount?.(); inputUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
+    if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
     $('#bar').innerHTML = '';
     const reactInput = view === 'reg' && window.EOUL_INPUT_LOAD && new URLSearchParams(location.search).get('input') !== 'vanilla';
     const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
@@ -1043,15 +1051,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
     if (reactInput) {
-      const initial = S.reg || (() => { const [brand, ...name] = (params.q || '').split(' '); return { brand, name: name.join(' ') }; })();
-      S.reg = initial; // Keep the incoming search/OPF seed stable while moving between stages.
       window.EOUL_INPUT_LOAD().then(({ mount }) => {
         if (epoch !== inputEpoch) return;
-        inputUnmount = mount({ element: $('#react-input'), core: M, initial, step: Number(params.step || 0),
+        inputUnmount = mount({ element: $('#react-input'), core: M, input: Input, step: Number(params.step || 0),
           back: () => K.back(), next: (step) => K.go('reg', { step }),
           assertWritable: () => { if (regRaw !== null) throw regFailed(REG_UNREADABLE); },
           saved: (g, input, warning) => {
-            S.reg = null; K.tab('closet'); K.toast(warning || '옷장에 넣었어요', { bottom: 128 });
+            K.tab('closet'); K.toast(warning || '옷장에 넣었어요', { bottom: 128 });
             if (!g.color) pickColor(g.id, M.kindChoices().find(k => k.id === g.kind)?.name || '옷');
             // Public-catalog submission is best effort, after private storage succeeds.
             if (input && !input.source) crowd()?.submit({ brand: input.brand, name: input.name, kind: input.kind, color: input.color, link: input.url }).catch(() => {});
@@ -1333,14 +1339,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
     // 직접 등록: 한 화면에 브랜드·상품명·종류·색·링크(선택). 사진은 받지 않는다. 넣으면 옷장에 걸리고, 같은 옷 등록 수(3명)를 센다.
     reg({ q = '' } = {}) {
-      const R = S.reg || (S.reg = { brand: '', name: '', kind: '', color: '', url: '' });
-      if (q && !R.brand && !R.name) { const [b, ...rest] = q.split(' '); R.brand = b; R.name = rest.join(' '); }
+      const state = Input.getSnapshot(), R = state.values;
+      if (state.pending) return `${top()}<h1 class="h2">쓰던 입력이 있어요</h1><p>${esc(state.pending.type === 'ready' ? `${state.pending.value.values.brand} ${state.pending.value.values.name} · ${state.pending.value.step + 1}/3단계` : state.pending.message)}</p>${state.pending.type === 'ready' ? '<button class="btn go" data-input-restore>이어서 입력</button>' : ''}<button class="btn" data-input-restart>초안 지우고 새로 입력</button><p data-input-notice role="alert"></p>`;
       const kinds = M.kindChoices().filter((k) => PIC.includes(k.id)).sort((a, b) => PIC.indexOf(a.id) - PIC.indexOf(b.id));
       const g0 = M.getState().gender || 'M';
       const thumbColor = (kid) => ['white', 'black', 'navy', 'grey', 'indigo', 'blue', 'beige'].find((c) => K.CUT[`${g0}|${kid}|${c}`]) || 'black';
       return `${top({ mid: '<span class="sp"></span>' })}
         <h1 class="h2" style="margin-top:8px">${R.source ? '찾은 상품으로 옷장에 넣기' : '목록에 없는 옷 직접 등록'}</h1>
         ${opfNotice(R.source)}
+        <p data-input-notice role="alert">${esc(state.notice)}</p>
         <form id="rf" autocomplete="off">
           <div class="field"><label for="rb">브랜드</label><input id="rb" value="${esc(R.brand)}" placeholder="예: 유니클로" enterkeyhint="next"></div>
           <div class="field"><label for="rn">상품명</label><input id="rn" value="${esc(R.name)}" placeholder="예: 옥스포드 슬림핏 셔츠" enterkeyhint="next"><div class="hint">${R.source ? '내 옷과 같은 상품인지 확인하고, 필요한 내용만 수정해 주세요' : '택이나 주문 내역의 이름이면 다른 사람과 같은 옷으로 모여요'}</div></div>
@@ -1535,7 +1542,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     else if (t.hasAttribute('data-adpick-search')) searchAdpick(t);
     else if (t.hasAttribute('data-add-open')) K.go('add', {});
     else if (t.hasAttribute('data-add-q')) K.go('add', { q: t.dataset.addQ });
-    else if (t.hasAttribute('data-reg-open')) { S.reg = null; K.go('reg', { q: t.dataset.regQ || '' }); }
+    else if (t.hasAttribute('data-reg-open')) { Input.reset(); K.go('reg', { q: t.dataset.regQ || '' }); }
     else if (t.dataset.crowdAdd) crowdAdd(t.dataset.crowdAdd, t);
     else if (t.hasAttribute('data-addkind')) addFlow();
     else if (t.dataset.ownAdd) ownAdd(t.dataset.ownAdd, t);
@@ -1777,7 +1784,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       $$('[data-opf-add]', box).forEach((b) => { b.onclick = () => {
         const draft = provider.draft(data.items[Number(b.dataset.opfAdd)]);
         if (!draft) return;
-        S.reg = draft; K.go('reg', {});
+        Input.reset(); Input.enter(draft); K.go('reg', {});
       }; });
     } catch {
       if (seq !== openSeq || box !== $('#aopen')) return;
@@ -1937,14 +1944,21 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
   // ── 직접 등록 화면의 동작: 브랜드·상품명을 적으면 비슷한 등록(이 앱이 아는 상품·사용자 등록)을 먼저 보여 주고, 넣기는 아래 고정 버튼 하나.
   function wireReg() {
-    const R = S.reg;
+    if (Input.getSnapshot().pending) {
+      const notice = () => { $('[data-input-notice]').textContent = Input.getSnapshot().notice; };
+      const restore = $('[data-input-restore]'); if (restore) restore.onclick = () => { Input.restore(); K.refresh(); };
+      $('[data-input-restart]').onclick = () => { try { Input.restart(); K.refresh(); } catch { notice(); } };
+      return;
+    }
+    const R = Input.values;
+    const changed = () => { Input.changed(); const el = $('[data-input-notice]'); if (el) el.textContent = Input.getSnapshot().notice; };
     const rb = $('#rb'), rn = $('#rn'), ru = $('#ru'), dup = $('#rdup');
     $('#bar').innerHTML = '<div class="regbar"><div class="in"><button class="btn go" id="rdone" disabled><i class="ph ph-coat-hanger"></i>옷장에 넣기</button></div></div>';
     const okAll = () => rb.value.trim().length >= 1 && rn.value.trim().length >= 2 && !!R.kind && !!R.color;
     const upd = () => { $('#rdone').disabled = !okAll(); };
     let t;
     const findDup = () => {
-      R.brand = rb.value.trim(); R.name = rn.value.trim();
+      R.brand = rb.value.trim(); R.name = rn.value.trim(); changed();
       if (R.source) { dup.innerHTML = ''; return; }
       clearTimeout(t); t = setTimeout(() => {
         if (!R.brand || R.name.length < 2) { dup.innerHTML = ''; return; }
@@ -1952,13 +1966,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         try { const tries = [`${R.brand} ${R.name}`, R.name, ...R.name.split(/\s+/).filter((w) => w.length >= 2).sort((a, b) => b.length - a.length)]; for (const q of tries) { hits = M.findProducts(q, { limit: 3 }); if (hits.length) break; } } catch {}
         const mineHas = (id) => M.getState().closet.some((g) => g.productId === id);
         dup.innerHTML = hits.length ? `<div class="section" style="margin-top:14px"><div class="h"><h2 class="h3">혹시 이 옷이에요?</h2></div>${hits.map((p) => `<div class="srow" data-srow="${p.id}">${productPic(p.id)}<span class="grow"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span><span class="m">판매처 사진으로 들어가요</span></span>${mineHas(p.id) ? '<span class="ok"><i class="ph-fill ph-check-circle"></i>옷장에 있어요</span>' : `<button type="button" class="btn line sm" data-dup-own="${p.id}">이거예요</button>`}</div>`).join('')}</div>` : '';
-        $$('[data-dup-own]', dup).forEach((b) => { b.onclick = () => { let g; try { g = M.addOwnedProduct(b.dataset.dupOwn); } catch (err) { K.toast(err.message, { bottom: 96 }); return; } S.reg = null; const done = () => { K.back(); K.toast('옷장에 넣었어요', { bottom: 100 }); }; if (!g.color) pickColor(g.id, M.product(b.dataset.dupOwn)?.kindName || '옷', null, done); else done(); }; });
+        $$('[data-dup-own]', dup).forEach((b) => { b.onclick = () => { let g; try { g = M.addOwnedProduct(b.dataset.dupOwn); } catch (err) { K.toast(err.message, { bottom: 96 }); return; } const warning = Input.finish(); const done = () => { K.back(); K.toast(warning || '옷장에 넣었어요', { bottom: 100 }); }; if (!g.color) pickColor(g.id, M.product(b.dataset.dupOwn)?.kindName || '옷', null, done); else done(); }; });
       }, 160);
     };
     rb.oninput = rn.oninput = () => { findDup(); upd(); };
-    ru.oninput = () => { R.url = ru.value.trim(); };
-    $$('[data-k]').forEach((b) => { b.onclick = () => { R.kind = b.dataset.k; $$('[data-k]').forEach((x) => x.setAttribute('aria-pressed', x === b)); upd(); }; });
-    $$('[data-c]').forEach((b) => { b.onclick = () => { R.color = b.dataset.c; $$('[data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b)); upd(); }; });
+    ru.oninput = () => { R.url = ru.value.trim(); changed(); };
+    $$('[data-k]').forEach((b) => { b.onclick = () => { R.kind = b.dataset.k; changed(); $$('[data-k]').forEach((x) => x.setAttribute('aria-pressed', x === b)); upd(); }; });
+    $$('[data-c]').forEach((b) => { b.onclick = () => { R.color = b.dataset.c; changed(); $$('[data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b)); upd(); }; });
     const lockSavedFields = () => { if (!R.savedGarment) return; clearTimeout(t); dup.innerHTML = ''; rb.readOnly = rn.readOnly = ru.readOnly = true; $$('[data-k], [data-c], [data-dup-own]').forEach((b) => { b.disabled = true; }); };
     lockSavedFields();
     const done = async () => {
@@ -1982,9 +1996,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const cr = crowd();
       if (cr && !R.source) { try { const r = await cr.submit({ brand: R.brand, name: R.name, kind: R.kind, color: R.color, link: R.url }); if (r && Number.isFinite(+r.count)) { c.server = true; c.serverCount = +r.count; c.serverMin = +r.min || NEED; c.searchable = !!r.searchable; saveReg(); } } catch {} }
       const gain = M.closetOutfits().total - before;
-      S.reg = null;
+      const warning = Input.finish();
       K.tab('closet');
-      K.toast(`옷장에 넣었어요${gain > 0 ? ` · 코디 +${gain}` : ''}`, { bottom: 128 });
+      K.toast(warning || `옷장에 넣었어요${gain > 0 ? ` · 코디 +${gain}` : ''}`, { bottom: 128 });
       setTimeout(() => garmentSheet(g.id), 350);
     };
     $('#rdone').onclick = done;

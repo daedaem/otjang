@@ -188,3 +188,47 @@ test('interrupted restore shows a persistent recovery screen and explicit recove
   const recovered=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
   expect(recovered.garments).toEqual(JSON.parse(raw).garments); expect(recovered.journeys).toEqual(JSON.parse(raw).journeys);
 });
+
+for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {
+  test(`shared draft: ${from} input resumes in ${to} with the same identity`,async({page})=>{
+    const d=driver(page,from); await d.openManual(); await d.fillManual();
+    await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.color)).toBe('white');
+    const id=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.draftId);
+    await page.goto(`/?photos=0&input=${to}#/reg`);
+    await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+    if(to==='vanilla') await expect(page.locator('#rn')).toHaveValue(garmentName);
+    else await expect(page.getByLabel('상품명',{exact:true})).toHaveValue(garmentName);
+    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.draftId)).toBe(id);
+    expect(await page.evaluate(()=>window.K.M.getState().closetCount)).toBe(0);
+  });
+}
+test('input assets load only on entering the React input screen',async({page})=>{
+  const assets:string[]=[]; page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/react/'))assets.push(r.url());});
+  await page.goto('/?photos=0'); await page.waitForFunction(()=>!!window.K?.M);
+  expect(assets).toEqual([]);
+  await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
+  await page.locator('[data-reg-open]').click();
+  await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+  expect(assets.some(url=>url.endsWith('.js'))).toBe(true);
+  expect(assets.some(url=>url.endsWith('.css'))).toBe(true);
+});
+test.describe('input runtime caching',()=>{
+  test.use({serviceWorkers:'allow'});
+  test('worker downloads React assets on first visit and keeps visited input available offline',async({page,context})=>{
+    await page.goto('/?photos=0');
+    await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready; if(!navigator.serviceWorker.controller)await new Promise<void>(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true}));});
+    const cachedInput=()=>page.evaluate(async()=>{const paths=[];for(const key of await caches.keys()){if(!key.startsWith('lite-'))continue;const c=await caches.open(key);for(const r of await c.keys())if(new URL(r.url).pathname.startsWith('/react/'))paths.push(new URL(r.url).pathname);}return paths;});
+    expect(await cachedInput()).toEqual([]);
+    await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
+  await page.locator('[data-reg-open]').click();
+    await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    await expect.poll(async()=>{const paths=await cachedInput();return paths.some(p=>p.endsWith('.js'))&&paths.some(p=>p.endsWith('.css'));}).toBe(true);
+    // A new document must load the module from the worker cache, rather than an existing React root.
+    await context.setOffline(true); const offline=await context.newPage();
+    await offline.goto('/?photos=0#/reg');
+    await expect(offline.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
+    await offline.getByRole('button',{name:'이어서 입력',exact:true}).click();
+    await expect(offline.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    await offline.close(); await context.setOffline(false);
+  });
+});

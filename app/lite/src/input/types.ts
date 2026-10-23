@@ -11,11 +11,22 @@ export interface Core {
   registerGarment(input: Registration): Garment;
   addOwnedProduct(id: string): Garment;
 }
+export type StoredDraft = { v: 1; step: number; values: Registration; updatedAt: string };
+export type InputState = { values: Registration; step: number; pending: { type: 'ready'; value: StoredDraft } | { type: 'blocked'; message: string } | null; notice: string };
+export interface InputSession {
+  subscribe(listener: () => void): () => void;
+  getSnapshot(): InputState;
+  change(key: keyof Registration, value: string): void;
+  setStep(step: number): void;
+  restore(): number;
+  restart(): InputState;
+  finish(): string | undefined;
+}
 export interface InputHost {
+  input: InputSession;
   element: HTMLElement;
   core: Core;
   step: number;
-  initial?: Partial<Registration>;
   back(): void;
   next(step: number): void;
   saved(garment: Garment, input?: Registration, warning?: string): void;
