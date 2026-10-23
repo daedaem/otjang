@@ -4,6 +4,7 @@
 import { assertBuildAllowed } from './deployment-policy.mjs';
 import { versionedAssetPath } from './asset-version.mjs';
 import fs from 'node:fs';
+import { build as buildInput } from 'vite';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -69,12 +70,19 @@ const body = read(path.join(UX, 'links', SCREEN))
   .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>')
   .replace(/(<script\b[^>]*\bsrc=")(shared\/[^"<>]+)(")/g, (all, before, rel, after) => scriptPaths.has(rel) ? `${before}${scriptPaths.get(rel)}${after}` : all);
 if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes(scriptPaths.get('shared/lite.js'))) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);
+// Keep the existing private Worker/PWA build. Vite only builds the input island.
+await buildInput({ configFile: path.join(HERE, 'vite.config.mjs') });
+const inputManifest = JSON.parse(read(path.join(OUT, 'react/.vite/manifest.json')));
+const inputEntry = Object.values(inputManifest).find((entry) => entry.isEntry);
+if (!inputEntry) throw new Error('React input entry missing');
+const inputAssets = `${(inputEntry.css || []).map((file) => `<link rel="stylesheet" href="/react/${file}">`).join('')}<script>window.EOUL_INPUT_LOAD=()=>import('/react/${inputEntry.file}');</script>`;
 const html = `<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${APP_NAME}</title>
+${inputAssets}
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">

@@ -44,3 +44,6 @@ shots/
 /deploy/backups-staging/
 /deploy/policy/
 /server/policy/
+
+/app/lite/test-results/
+/app/lite/playwright-report/

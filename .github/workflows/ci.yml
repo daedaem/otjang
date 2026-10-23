@@ -127,3 +127,24 @@ jobs:
           Builds `deploy/Dockerfile` without the optional ONNX runtime, runs it as the non-root `node` user and checks health, the brotli app page and the install files.
           The Cloudflare Tunnel connection and Litestream backup/restore are not exercised here; see `docs/deploy-kit-20261015.md` for the manual drill.
           SUMMARY
+
+  lite-input:
+    name: Lite input Chromium and WebKit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/lite
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/lite/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
