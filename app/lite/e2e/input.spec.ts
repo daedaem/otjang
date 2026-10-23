@@ -243,14 +243,16 @@ test.describe('input runtime caching',()=>{
   await page.locator('[data-reg-open]').click();
     await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
     await expect.poll(async()=>{const paths=await cachedInput();return paths.some(p=>p.endsWith('.js'))&&paths.some(p=>p.endsWith('.css'));}).toBe(true);
-    // Reload a controlled client into a fresh document/React root. A new offline
-    // tab has no controller yet in WebKit and cannot perform its initial navigation.
+    // Fail the upstream transport instead of disabling WebKit's networking
+    // process (which also prevents its service worker navigation in automation).
     await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
-    await context.setOffline(true);
-    await page.reload();
-    await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
-    await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
-    await context.setOffline(false);
+    await page.setExtraHTTPHeaders({'x-e2e-network-down':'1'});
+    try {
+      expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
+      await page.reload(); // a new document/React root must come from the worker cache
+      await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
+      await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+      await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    } finally { await page.setExtraHTTPHeaders({}); }
   });
 });
