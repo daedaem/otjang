@@ -933,17 +933,20 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     // '예산 상관없이'라고 한 뒤로는 그 앞 질문의 예산을 더 이어 가지 않는다.
     const inherited = () => { for (const t of [...recent].reverse()) { if (NO_BUDGET.test(t)) return null; const b = budgetOf(parse(alias(t))); if (b) return b; } return null; };
     const budget = NO_BUDGET.test(q) ? null : budgetOf(own) || inherited();
+    // '가격 상관없이'라고 했으면 앞 질문을 이어 붙여 후보를 찾을 때도 앞 질문의 가격 조건을 빼야 한다(안 그러면 옛 예산으로 후보가 걸러진다).
+    const PRICE_TEXT = /\d[\d.,]*\s*[~〜～-]\s*(?=\d)|\d[\d.,]*\s*(?:만\s*원|만|천\s*원|천|원)\s*(?:대|이하|이내|미만|까지|이상|부터|초과|안에서|안에|안|정도|쯤|넘지\s*(?:않|말)[가-힣]*|안\s*넘[가-힣]*|넘[가-힣]*)?/g;
+    const prevForJoin = NO_BUDGET.test(q) ? prevUser.replace(PRICE_TEXT, ' ').replace(/\s+/g, ' ').trim() : prevUser;
     let mode = GAP_RE.test(q) ? 'gap' : own?.understood && own.products?.length ? 'q' : own?.understood ? 'none' : hintOf(q) || brandIn(q) ? 'hint' : 'follow';
     const ctxText = wantsMusinsa && ask(`${prevHint} ${alias(q)} 무신사 스탠다드`) ? `${prevHint} ${alias(q)} 무신사 스탠다드` : `${prevHint} ${alias(q)}`;
     if (mode === 'q' && !hintOf(q) && prevHint && ask(ctxText)) mode = 'q-context';
     const notes = [];
     let list = null;
     if (mode === 'follow') {
-      const joined = prevUser && ask(`${alias(prevUser)} ${alias(q)}`);
+      const joined = prevForJoin && ask(`${alias(prevForJoin)} ${alias(q)}`);
       if (prevUser && GAP_RE.test(prevUser)) mode = 'gap';
       else if (joined) { list = joined; notes.push('후보는 바로 앞 질문에 이어서 고른 상품이에요'); }
       else if (prevHint) mode = 'hint';
-      else if (prevUser && ask(alias(prevUser))) { list = ask(alias(prevUser)); notes.push('후보는 바로 앞 질문에 이어서 고른 상품이에요'); }
+      else if (prevForJoin && ask(alias(prevForJoin))) { list = ask(alias(prevForJoin)); notes.push('후보는 바로 앞 질문에 이어서 고른 상품이에요'); }
       else mode = 'gap';
     }
     if (mode === 'hint') {

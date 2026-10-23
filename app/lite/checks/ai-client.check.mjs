@@ -178,6 +178,26 @@ test('상담은 엔진이 읽은 예산(원 단위)만 서버에 보내고, 서�
   }
 });
 
+test("'가격 상관없이' 이어 묻기는 앞 질문의 가격 조건을 빼고 후보를 다시 찾는다", async () => {
+  const asked = [];
+  // '셔츠'가 들어간 말만 알아듣는 엔진: 이어 묻기('가격 상관없이 더 좋은 걸')는 앞 질문에 붙여서 찾게 된다.
+  const M = { ...engine(), ask: (t) => { asked.push(t); return /셔츠/.test(t) ? { understood: true, products: [product('ms-1')], criteria: { maxPrice: /5만원/.test(t) ? 50000 : null, minPrice: null } } : { understood: false, products: [] }; } };
+  let sent;
+  const chat = runConsult({ EOUL_SERVER_AI: async (body) => { sent = plain(body); return { on_topic: true, answer: '답이에요.', product_ids: [] }; } }, storage(), M);
+  chat.C.threads = [{ id: 't', turns: [{ role: 'user', text: '셔츠 5만원 이하' }, { role: 'assistant', text: '답' }] }]; chat.C.cur = 't';
+  await chat.askConsult('가격 상관없이 더 좋은 걸');
+  assert.equal('budget' in sent, false);
+  const joins = asked.filter((t) => /셔츠/.test(t) && /상관없이/.test(t));
+  assert.ok(joins.length, '앞 질문에 이어 붙여 찾아야 한다');
+  assert.ok(joins.every((t) => !/5만원|이하/.test(t)), joins.join(' / '));
+  // 예산을 지우지 않은 이어 묻기는 앞 질문 그대로 이어 붙인다.
+  asked.length = 0;
+  const keep = runConsult({ EOUL_SERVER_AI: async () => ({ on_topic: true, answer: '답이에요.', product_ids: [] }) }, storage(), M);
+  keep.C.threads = [{ id: 'k', turns: [{ role: 'user', text: '셔츠 5만원 이하' }, { role: 'assistant', text: '답' }] }]; keep.C.cur = 'k';
+  await keep.askConsult('더 밝은 색');
+  assert.ok(asked.some((t) => /셔츠 5만원 이하/.test(t)), asked.join(' / '));
+});
+
 test('링크 상담도 현재 질문을 sample 메시지에 한 번만 포함한다', async () => {
   let messages;
   const chat = runConsult({ claude: { use: async () => ({ json: async (body) => { messages = plain(body); return { on_topic: false }; } }) } });
