@@ -78,7 +78,7 @@ function validBudget(b) {
 // 예산 문구는 앱 검색 엔진(app/src/query.js)의 priceBounds와 똑같이 읽는다. 화면이 budget을 보내지 않은(이전 버전) 경우에만 쓰인다.
 // 서버에 따로 규칙을 두면 '5~10만원'·'N만원대'·'넘지 않게' 같은 표현에서 화면과 서버의 해석이 갈라지기 때문이다.
 export function parseBudget(text) {
-  if (typeof text !== 'string' || /예산\s*(없|상관|무관)/.test(text)) return null;
+  if (typeof text !== 'string' || /(예산|가격|금액)\s*(?:은|는|이|가|도|에)?\s*(없이|상관|무관|신경\s*(?:안|쓰지)|안\s*따)/.test(text)) return null;
   const { minPrice, maxPrice, minPriceExclusive, maxPriceExclusive } = priceBounds(text);
   const b = {};
   if (Number.isFinite(maxPrice)) b.max = maxPriceExclusive ? maxPrice - 1 : maxPrice;
@@ -93,9 +93,9 @@ const budgetFit = (price, b) => (b.max !== undefined && price > b.max ? '예산 
 // 오탐을 줄이는 규칙: ① 문장이 정확히 한 후보만 가리킬 때만 대조한다(이름 전체, 또는 그 후보에만 있는 낱말).
 // ② '넘지 않아요·안 넘어요·비싸지 않아요' 같은 부정은 '예산 안'으로 읽는다. ③ 합계·여러 벌 문장은 한 벌 판정으로 대조하지 않는다.
 const OVER = /(예산|가격|금액).{0,10}(초과|넘|벗어|오버)|비싸|넘어요|넘네요|넘습니다|넘는/;
-const NOT_OVER = /(넘|초과하|벗어나|비싸)지\s*(않|안)|안\s*(넘|비싸)/;
+const NOT_OVER = /(넘|초과하|벗어나|비싸)지\s*(?:는|도|만|가)?\s*(않|안)|안\s*(넘|비싸)/;
 // '예산에 맞지 않아요·안 맞아요·예산 밖'은 예산을 벗어났다는 말이다('맞' 글자만 보고 예산 안으로 읽지 않는다).
-const NOT_FIT = /맞지\s*않|맞지\s*못|안\s*맞|못\s*맞|예산\s*밖/;
+const NOT_FIT = /맞지\s*(?:는|도|가)?\s*(않|못)|안\s*맞|못\s*맞|예산\s*밖/;
 const WITHIN = /(예산|가격|금액).{0,10}(안에|안이|안으로|안쪽|이내|이하|맞|여유|충분)|저렴|싸요|쌉니다|합리적/;
 const SUM = /합계|합쳐|총액|총 |전부 사|모두 사|다 사면|두 벌|세 벌|같이 사면|함께 사면/;
 // '예산 미만'(최소 예산보다 쌈) 후보: 초과라고 하거나 예산에 맞는다고 하면 틀린 말, 싸다·못 미친다고 하면 맞는 말.

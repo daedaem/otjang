@@ -929,7 +929,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const hint = hintOf(q) || prevHint;
     const wantsMusinsa = brandIn(q) || (!hintOf(q) && brandIn(prevUser));
     const own = parse(alias(q));
-    const NO_BUDGET = /예산\s*(없|상관|무관)/;
+    const NO_BUDGET = /(예산|가격|금액)\s*(?:은|는|이|가|도|에)?\s*(없이|상관|무관|신경\s*(?:안|쓰지)|안\s*따)/;
     // '예산 상관없이'라고 한 뒤로는 그 앞 질문의 예산을 더 이어 가지 않는다.
     const inherited = () => { for (const t of [...recent].reverse()) { if (NO_BUDGET.test(t)) return null; const b = budgetOf(parse(alias(t))); if (b) return b; } return null; };
     const budget = NO_BUDGET.test(q) ? null : budgetOf(own) || inherited();
@@ -2099,13 +2099,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     // 깨끗이 되돌려졌으면 NEXT만 지운다(앞선 STASH 그대로). 일부만 바뀌었으면 NEXT를 복구 지점으로 남긴다.
     // 올리기(③)가 막혀도 NEXT가 남아 있어 되돌리기는 NEXT를 쓴다.
     restore(data) {
-      // 앞선 복원의 임시 칸이 아직 남아 있으면(올리기가 막혔던 경우) 그것이 지금의 되돌리기 지점이다.
-      // 덮어쓰지 않도록 먼저 STASH로 올리고 확인한다. 올리지 못하면 이번 복원을 시작하지 않는다.
+      // 앞선 복원의 임시 칸이 남아 있으면(일부만 바뀌었거나 올리기가 막힘) 그것이 유일한 깨끗한 복구 지점일 수 있다.
+      // 어느 경우든 새 복원으로 덮지 않도록, 먼저 '복원 전으로 되돌리기'를 하게 하고 이번 복원은 시작하지 않는다.
       let pending = null; try { pending = localStorage.getItem(BK.NEXT); } catch {}
-      if (pending !== null) {
-        try { localStorage.setItem(BK.STASH, pending); if (localStorage.getItem(BK.STASH) !== pending) throw new Error('verify'); localStorage.removeItem(BK.NEXT); }
-        catch { throw new Error("앞선 복원의 되돌리기 지점을 정리하지 못해 복원하지 않았어요. 저장 공간을 비우거나 먼저 '복원 전으로 되돌리기'를 해 주세요."); }
-      }
+      if (pending !== null) throw Object.assign(new Error("앞선 복원이 끝까지 정리되지 않았어요. 먼저 '복원 전으로 되돌리기'를 한 뒤 다시 복원해 주세요."), { code: 'pending' });
       const before = BK.snapshot();
       const text = JSON.stringify({ at: new Date().toISOString(), data: before });
       const dropNext = () => { try { localStorage.removeItem(BK.NEXT); } catch {} };
@@ -2156,7 +2153,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       let b; try { b = BK.read(text); } catch (e) { pv.hidden = true; msg(e.message); return; }
       const cur = BK.count(BK.snapshot()), nb = BK.count(b.data);
       pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div><div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">지금 자료는 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
-      $('[data-bk-go]', pv).onclick = async () => { try { BK.restore(b.data); } catch (e) { if (e.code === 'partial') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; } msg('복원했어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
+      $('[data-bk-go]', pv).onclick = async () => { try { BK.restore(b.data); } catch (e) { if (e.code === 'partial' || e.code === 'pending') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; } msg('복원했어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
       msg('');
     };
     $('#bkfile', sh.s).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > BK.MAX_BYTES) { msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => preview(String(r.result || '')); r.onerror = () => msg('파일을 읽지 못했어요.'); r.readAsText(f); };

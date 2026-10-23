@@ -159,6 +159,12 @@ test('상담은 엔진이 읽은 예산(원 단위)만 서버에 보내고, 서�
   assert.deepEqual(sent.budget, { min: 50000, max: 59999 });
   await follow.askConsult('예산 상관없이 제일 좋은 건?');
   assert.equal('budget' in sent, false);
+  for (const q of ['예산은 상관없이 더 좋은 걸로', '가격 상관없이 보여줘']) {
+    const again = run({ on_topic: true, answer: '답이에요.', product_ids: [] });
+    again.C.threads = [{ id: 't2', turns: [{ role: 'user', text: '5만원대 바지' }, { role: 'assistant', text: '답' }] }]; again.C.cur = 't2';
+    await again.askConsult(q);
+    assert.equal('budget' in sent, false, q);
+  }
   await follow.askConsult('더 밝은 색은?'); // '예산 상관없이' 뒤에는 그 앞의 5만원대를 다시 이어 가지 않는다
   assert.equal('budget' in sent, false);
   const tiny = run({ on_topic: true, answer: '답이에요.', product_ids: [] });

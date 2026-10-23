@@ -243,6 +243,17 @@ test('bare numbers without 원 or a budget word are not budgets, and "맞지 않
   assert.equal(below.body.price_check.items[0].fit, '예산 미만');
   assert.equal(below.body.price_check.lines, undefined);
 });
+test('particles inside negations and natural no-budget phrases', async () => {
+  const name = p.name.replace(/\s*\[[^\]]*\]\s*$/, ''); // 19,900원
+  for (const answer of [`${name}는 예산을 넘지는 않아요.`, `${name}는 예산을 초과하지는 않아요.`, `${name}는 비싸지도 않아요.`]) {
+    const r = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer, product_ids: [p.id] }));
+    assert.equal(r.body.price_check.lines, undefined, answer);
+  }
+  const notFit = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer: `${name}는 예산에 맞지는 않아요.`, product_ids: [p.id] }));
+  assert.equal(notFit.body.price_check.lines.length, 1);
+  for (const q of ['예산은 상관없이 10만원 셔츠', '가격 상관없이 좋은 셔츠', '금액은 신경 안 써요 10만원']) assert.equal(parseBudget(q), null, q);
+  assert.deepEqual(parseBudget('예산이 없어서 3만원 이하로'), { max: 30000 }); // '없어서'는 예산이 빠듯하다는 말
+});
 test('authentication and quota rejection stop upstream, including dependency failures', async () => {
   const client = fake();
   for (const outcome of [{ ok: false, status: 429, code: 'monthly_limit' }, { ok: false, status: 503, code: 'budget_unavailable' }]) {
