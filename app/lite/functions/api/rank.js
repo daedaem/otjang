@@ -83,11 +83,12 @@ export function parseBudget(text) {
     if (m[3]) return parseInt(m[3].replace(/,/g, ''), 10);
     return NaN;
   };
-  const re = /(?:(\d+(?:\.\d+)?)\s*만|(\d+(?:\.\d+)?)\s*천|(\d{1,3}(?:,\d{3})+|\d{4,}))\s*원?\s*(대|이하|이내|아래|까지|안으로|안에서|안에|안|미만|넘지|정도|쯤|이상|넘는|넘게|부터|초과)?/g;
+  const re = /(?:(\d+(?:\.\d+)?)\s*만|(\d+(?:\.\d+)?)\s*천|(\d{1,3}(?:,\d{3})+|\d{4,}))\s*(원)?\s*(대|이하|이내|아래|까지|안으로|안에서|안에|안|미만|넘지|정도|쯤|이상|넘는|넘게|부터|초과)?/g;
   let max, min, m;
   while ((m = re.exec(text))) {
     const n = amount(m); if (!won(n)) continue;
-    const q = m[4] || '';
+    const q = m[5] || '';
+    if (!m[4] && !q) continue; // '2026년'처럼 '원'도 이하·이상 같은 말도 없는 숫자는 예산이 아니다.
     if (q === '대') { min = n; max = n + 10 ** Math.floor(Math.log10(n)) - 1; } // 5만원대 → 50,000~59,999 (엔진과 같은 기준)
     else if (['이상', '부터'].includes(q)) min = n;
     else if (['넘는', '넘게', '초과'].includes(q)) min = n + 1; // '10만원 초과'는 100,000원을 포함하지 않는다.
@@ -106,6 +107,8 @@ const budgetFit = (price, b) => (b.max !== undefined && price > b.max ? '예산 
 // ② '넘지 않아요·안 넘어요·비싸지 않아요' 같은 부정은 '예산 안'으로 읽는다. ③ 합계·여러 벌 문장은 한 벌 판정으로 대조하지 않는다.
 const OVER = /(예산|가격|금액).{0,10}(초과|넘|벗어|오버)|비싸|넘어요|넘네요|넘습니다|넘는/;
 const NOT_OVER = /(넘|초과하|벗어나|비싸)지\s*(않|안)|안\s*(넘|비싸)/;
+// '예산에 맞지 않아요·안 맞아요·예산 밖'은 예산을 벗어났다는 말이다('맞' 글자만 보고 예산 안으로 읽지 않는다).
+const NOT_FIT = /맞지\s*않|맞지\s*못|안\s*맞|못\s*맞|예산\s*밖/;
 const WITHIN = /(예산|가격|금액).{0,10}(안에|안이|안으로|안쪽|이내|이하|맞|여유|충분)|저렴|싸요|쌉니다|합리적/;
 const SUM = /합계|합쳐|총액|총 |전부 사|모두 사|다 사면|두 벌|세 벌|같이 사면|함께 사면/;
 // '예산 미만'(최소 예산보다 쌈) 후보: 초과라고 하거나 예산에 맞는다고 하면 틀린 말, 싸다·못 미친다고 하면 맞는 말.
@@ -135,12 +138,14 @@ export function priceCheck(items, answer, budget) {
     const i = hit[0];
     if (flagged.has(i)) continue;
     const negated = NOT_OVER.test(sen);
-    const over = OVER.test(sen) && !negated;
-    const within = WITHIN.test(sen) || negated;
+    const notFit = NOT_FIT.test(sen);
+    const strictOver = OVER.test(sen) && !negated;
+    const over = strictOver || notFit;
+    const within = (WITHIN.test(sen) && !notFit) || negated;
     const fit = budgetFit(items[i].price, budget);
     const wrong = fit === '예산 안' ? over && !within
       : fit === '예산 초과' ? within && !over
-        : !BELOW.test(sen) && (over || WITHIN_FIT.test(sen));
+        : !BELOW.test(sen) && (strictOver || (WITHIN_FIT.test(sen) && !notFit)); // '예산에 맞지 않아요'는 미만에도 맞는 말
     if (wrong) { flagged.add(i); corrections.push({ ...items[i], fit }); }
   }
   if (!corrections.length) return null;

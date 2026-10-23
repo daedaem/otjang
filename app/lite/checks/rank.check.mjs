@@ -219,6 +219,24 @@ test('below-minimum candidates are corrected when called over budget or within b
     assert.equal(r.body.price_check.lines, undefined, answer);
   }
 });
+test('bare numbers without 원 or a budget word are not budgets, and "맞지 않아요" means outside the budget', async () => {
+  assert.equal(parseBudget('2026년 봄 코트 추천'), null);
+  assert.equal(parseBudget('1990년대 스타일 청바지'), null);
+  assert.deepEqual(parseBudget('10만 이하 셔츠'), { max: 100000 });
+  assert.deepEqual(parseBudget('30000원짜리 니트'), { max: 30000 });
+  const year = await result(input({ task: 'consult', query: '2026년 봄 코트 추천' }), fake({ on_topic: true, answer: '좋아요.', product_ids: [p.id] }));
+  assert.equal(year.body.price_check, undefined);
+  const name = p.name.replace(/\s*\[[^\]]*\]\s*$/, ''); // 19,900원
+  const wrong = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer: `${name}는 예산에 맞지 않아요.`, product_ids: [p.id] }));
+  assert.equal(wrong.body.price_check.lines.length, 1);
+  assert.match(wrong.body.price_check.lines[0], /예산 안이에요/);
+  const right = await result(input({ task: 'consult', query: '1만원 이하 상의' }), fake({ on_topic: true, answer: `${name}는 예산에 안 맞아요.`, product_ids: [p.id] }));
+  assert.equal(right.body.price_check.items[0].fit, '예산 초과');
+  assert.equal(right.body.price_check.lines, undefined);
+  const below = await result(input({ task: 'consult', query: '5만원 이상 상의' }), fake({ on_topic: true, answer: `${name}는 예산에 맞지 않아요.`, product_ids: [p.id] }));
+  assert.equal(below.body.price_check.items[0].fit, '예산 미만');
+  assert.equal(below.body.price_check.lines, undefined);
+});
 test('authentication and quota rejection stop upstream, including dependency failures', async () => {
   const client = fake();
   for (const outcome of [{ ok: false, status: 429, code: 'monthly_limit' }, { ok: false, status: 503, code: 'budget_unavailable' }]) {
