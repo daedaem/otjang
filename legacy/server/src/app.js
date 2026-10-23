@@ -569,7 +569,7 @@ ${link}
     try {
       page = preparedApp();
     } catch {
-      send(res, 404, { error: { code: 'app-not-built', message: '앱을 먼저 빌드해 주세요: node app/tools/build.mjs' } });
+      send(res, 404, { error: { code: 'app-not-built', message: '앱을 먼저 빌드해 주세요: node legacy/app/tools/build.mjs' } });
       return;
     }
     const headers = {

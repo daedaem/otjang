@@ -1,6 +1,6 @@
 // 콘셉트 시안(app/proto/<id>/)을 HTML 파일 하나로 묶는다. 실제 상품 목록과 비교 엔진을 그대로 쓰고,
 // 화면은 시안마다 처음부터 따로 만든다. 기록은 그 브라우저에만 남는다.
-// 사용: node app/tools/build-proto.mjs <id> [--images thumbs.json] [--fragment] [--out file]
+// 사용: node legacy/app/tools/build-proto.mjs <id> [--images thumbs.json] [--fragment] [--out file]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -1,11 +1,11 @@
 // app/ 의 모듈을 HTML 파일 하나로 묶는다. 빌드 도구는 외부 의존성 없음.
 // 선택 기능인 사진 분석은 고정된 공개 런타임·모델을 다운로드한다.
-// 사용: node app/tools/build.mjs                         →  app/dist/index.html
-//       node app/tools/build.mjs --images thumbs.json   →  상품 이미지 주소를 thumbs.json의 data: URI로 바꿔 넣는다
+// 사용: node legacy/app/tools/build.mjs                         →  app/dist/index.html
+//       node legacy/app/tools/build.mjs --images thumbs.json   →  상품 이미지 주소를 thumbs.json의 data: URI로 바꿔 넣는다
 //                                                          (외부 이미지를 막는 환경에서 미리보기할 때)
-//       node app/tools/build.mjs --fragment             →  <html>·<head>·<body> 없이 본문만 (페이지 뼈대를 씌워 주는 호스팅용)
-//       node app/tools/build.mjs --server https://…     →  그 주소의 어울 서버로 계정·동기화를 켠다
-//       node app/tools/build.mjs --theme deulim         →  app/themes/deulim.json·.css의 이름·글꼴·색·판단 요약으로 만든다(디자인 비교용)
+//       node legacy/app/tools/build.mjs --fragment             →  <html>·<head>·<body> 없이 본문만 (페이지 뼈대를 씌워 주는 호스팅용)
+//       node legacy/app/tools/build.mjs --server https://…     →  그 주소의 어울 서버로 계정·동기화를 켠다
+//       node legacy/app/tools/build.mjs --theme deulim         →  app/themes/deulim.json·.css의 이름·글꼴·색·판단 요약으로 만든다(디자인 비교용)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

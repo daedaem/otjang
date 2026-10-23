@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 어울을 이 PC에서 켜고, 휴대폰에서 열 https 주소를 만들어요(혼자 시험용, macOS·Linux).
-#   bash deploy/try-local.sh           # 휴대폰까지 (Cloudflare 임시 터널)
-#   bash deploy/try-local.sh --local   # 이 PC에서만 (http://localhost:8787)
+#   bash legacy/deploy/try-local.sh           # 휴대폰까지 (Cloudflare 임시 터널)
+#   bash legacy/deploy/try-local.sh --local   # 이 PC에서만 (http://localhost:8787)
 # 시험 데이터는 server/data-try/에 따로 저장돼요. 끝내려면 Ctrl+C.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -35,13 +35,13 @@ if [ "$LOCAL" = 0 ] && ! command -v cloudflared >/dev/null 2>&1; then
   fi
   command -v cloudflared >/dev/null 2>&1 || {
     echo "설치 안내: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
-    echo "또는 이 PC에서만 열기: bash deploy/try-local.sh --local"
+    echo "또는 이 PC에서만 열기: bash legacy/deploy/try-local.sh --local"
     exit 1
   }
 fi
 
 if curl -fsS "http://127.0.0.1:$PORT/v1/health" >/dev/null 2>&1; then
-  echo "포트 $PORT에서 이미 서버가 돌고 있어요. 그 창을 닫거나 EOUL_PORT=8788 bash deploy/try-local.sh 처럼 바꿔 주세요."
+  echo "포트 $PORT에서 이미 서버가 돌고 있어요. 그 창을 닫거나 EOUL_PORT=8788 bash legacy/deploy/try-local.sh 처럼 바꿔 주세요."
   exit 1
 fi
 
