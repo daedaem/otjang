@@ -228,3 +228,30 @@ test('앞선 되돌리기 지점은 이번 복원이 끝까지 성공하기 전�
   assert.deepEqual(a.dump(), original);
   assert.ok(afterFirst);
 });
+
+test('앞선 복원의 임시 칸이 남아 있으면 새 복원 전에 되돌리기 지점으로 올리고, 올리지 못하면 시작하지 않는다', () => {
+  const a = storage(); seed(a); const BK = run(a);
+  const original = JSON.parse(JSON.stringify(BK.snapshot()));
+  a.sets = 0; a.failSetAt = 4; // 첫 복원: 임시 칸(0) + 바꾸기(1~3) 성공, 올리기(4) 막힘 → 임시 칸이 되돌리기 지점
+  BK.restore(BK.read(other()).data);
+  a.failSetAt = undefined;
+  const pending = a.getItem('eoul-backup:stash-next');
+  assert.ok(pending);
+  // 두 번째 복원이 중간에 막혀 깨끗이 되돌려져도, 첫 복원 전 상태(=임시 칸 내용)는 STASH에 올라가 남는다.
+  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = 'y'.repeat(30);
+  a.sets = 0; a.failSetAt = 2; // 올리기(0)·새 임시 칸(1) 성공, 바꾸기(2) 막힘
+  assert.throws(() => BK.restore(BK.read(JSON.stringify(second)).data), /바꾸지 않았어요/);
+  a.failSetAt = undefined;
+  assert.equal(a.getItem('eoul-backup:stash'), pending);
+  assert.equal(a.getItem('eoul-backup:stash-next'), null);
+  BK.undo();
+  assert.deepEqual(JSON.parse(JSON.stringify(BK.snapshot())), original);
+  // 남은 임시 칸을 올리지 못하면 새 복원을 시작하지 않고 아무것도 바꾸지 않는다.
+  const b = storage(); seed(b); const BK2 = run(b);
+  b.sets = 0; b.failSetAt = 4; BK2.restore(BK2.read(other()).data); b.failSetAt = undefined;
+  const bNow = b.dump();
+  b.sets = 0; b.failSetAt = 0;
+  assert.throws(() => BK2.restore(BK2.read(other()).data), /정리하지 못해 복원하지 않았어요/);
+  b.failSetAt = undefined;
+  assert.deepEqual(b.dump(), bNow);
+});

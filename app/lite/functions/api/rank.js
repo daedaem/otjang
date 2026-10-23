@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PRODUCTS } from '../../../src/data/products.js';
 import { COLORS, SLOTS } from '../../../src/data/slots.js';
+import { priceBounds } from '../../../src/query.js';
 import { authorizePrivateRequest } from '../lib/private-access.js';
 import { reserveRankBudget } from '../lib/rank-budget.js';
 import { openProductFacts } from '../lib/open-products-store.js';
@@ -74,29 +75,15 @@ function validBudget(b) {
   if (b.max === undefined && b.min === undefined) return false;
   return b.max === undefined || b.min === undefined || b.min <= b.max;
 }
-// 한국어 예산 표현만 읽는다: "10만원 이하", "5만원대", "3만원 이상 7만원 이내", "50,000원 안". 못 읽으면 null(예산 없음으로 취급).
+// 예산 문구는 앱 검색 엔진(app/src/query.js)의 priceBounds와 똑같이 읽는다. 화면이 budget을 보내지 않은(이전 버전) 경우에만 쓰인다.
+// 서버에 따로 규칙을 두면 '5~10만원'·'N만원대'·'넘지 않게' 같은 표현에서 화면과 서버의 해석이 갈라지기 때문이다.
 export function parseBudget(text) {
   if (typeof text !== 'string' || /예산\s*(없|상관|무관)/.test(text)) return null;
-  const amount = (m) => {
-    if (m[1]) return Math.round(parseFloat(m[1]) * 10000);
-    if (m[2]) return Math.round(parseFloat(m[2]) * 1000);
-    if (m[3]) return parseInt(m[3].replace(/,/g, ''), 10);
-    return NaN;
-  };
-  const re = /(?:(\d+(?:\.\d+)?)\s*만|(\d+(?:\.\d+)?)\s*천|(\d{1,3}(?:,\d{3})+|\d{4,}))\s*(원)?\s*(대|이하|이내|아래|까지|안으로|안에서|안에|안|미만|넘지|정도|쯤|이상|넘는|넘게|부터|초과)?/g;
-  let max, min, m;
-  while ((m = re.exec(text))) {
-    const n = amount(m); if (!won(n)) continue;
-    const q = m[5] || '';
-    if (!m[4] && !q) continue; // '2026년'처럼 '원'도 이하·이상 같은 말도 없는 숫자는 예산이 아니다.
-    if (q === '대') { min = n; max = n + (n % 100000 === 0 ? 100000 : 10000) - 1; } // app/src/query.js와 같은 기준: 5만원대 50,000~59,999 · 10만원대 100,000~199,999 · 15만원대 150,000~159,999
-    else if (['이상', '부터'].includes(q)) min = n;
-    else if (['넘는', '넘게', '초과'].includes(q)) min = n + 1; // '10만원 초과'는 100,000원을 포함하지 않는다.
-    else if (q === '미만') max = n - 1;
-    else max = n;
-  }
-  if (max === undefined && min === undefined) return null;
-  const b = {}; if (max !== undefined) b.max = max; if (min !== undefined) b.min = min;
+  const { minPrice, maxPrice, minPriceExclusive, maxPriceExclusive } = priceBounds(text);
+  const b = {};
+  if (Number.isFinite(maxPrice)) b.max = maxPriceExclusive ? maxPrice - 1 : maxPrice;
+  if (Number.isFinite(minPrice)) b.min = minPriceExclusive ? minPrice + 1 : minPrice;
+  if (b.max === undefined && b.min === undefined) return null;
   return validBudget(b) ? b : null;
 }
 const wonText = (n) => `${n.toLocaleString('ko-KR')}원`;

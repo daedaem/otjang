@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 02a12cd) 20개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 b3fbd0b) 20개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 937개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -1851,6 +1851,7 @@ const priceLabel = (amount) => (amount % 10000 === 0 ? `${amount / 10000}만원`
 const AMOUNT =
   '(\\d{1,3}(?:,\\d{3})+|\\d+(?:\\.\\d+)?)\\s*(만\\s*원|만(?=\\s*(?:이상|이하|미만|초과|넘|안\\s*넘|대|까지|부터|이내|[~〜～-]|$))|원)';
 
+// 서버(app/lite/functions/api/rank.js)도 같은 해석을 쓰도록 내보낸다.
 function priceBounds(text) {
   let minPrice = null,
     maxPrice = null,
@@ -1884,7 +1885,7 @@ function priceBounds(text) {
   }
   for (const match of text.matchAll(
     new RegExp(
-      `${AMOUNT}\\s*(넘지\\s*않는|안\\s*넘는|넘(?:는|어|을|으면|게)?|이상|이하|미만|초과|대|까지|부터|이내)?`,
+      `${AMOUNT}\\s*(넘지\\s*(?:않|말)[가-힣]*|안\\s*넘[가-힣]*|넘(?:는|어|을|으면|게)?|이상|이하|미만|초과|대|까지|부터|이내)?`,
       'g',
     ),
   )) {
@@ -5049,7 +5050,7 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') bootChange(() => mock.setGender(bootGender));
 if (bootParams.get('closet') === 'trial') bootChange(() => mock.loadTrialCloset(bootGender || undefined));
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "02a12cd" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "b3fbd0b" };
 window.EoulMock = mock;
 // 저장소를 쓸 수 없거나 저장된 원문을 읽지 못한 상태도 첫 화면에서 알린다(빈 옷장을 새 사용자로 오해하지 않게).
 mock.boot.storageError = bootStorageError || mock.storageIssue()?.message || null;

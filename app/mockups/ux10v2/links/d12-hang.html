@@ -2099,6 +2099,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     // 깨끗이 되돌려졌으면 NEXT만 지운다(앞선 STASH 그대로). 일부만 바뀌었으면 NEXT를 복구 지점으로 남긴다.
     // 올리기(③)가 막혀도 NEXT가 남아 있어 되돌리기는 NEXT를 쓴다.
     restore(data) {
+      // 앞선 복원의 임시 칸이 아직 남아 있으면(올리기가 막혔던 경우) 그것이 지금의 되돌리기 지점이다.
+      // 덮어쓰지 않도록 먼저 STASH로 올리고 확인한다. 올리지 못하면 이번 복원을 시작하지 않는다.
+      let pending = null; try { pending = localStorage.getItem(BK.NEXT); } catch {}
+      if (pending !== null) {
+        try { localStorage.setItem(BK.STASH, pending); if (localStorage.getItem(BK.STASH) !== pending) throw new Error('verify'); localStorage.removeItem(BK.NEXT); }
+        catch { throw new Error("앞선 복원의 되돌리기 지점을 정리하지 못해 복원하지 않았어요. 저장 공간을 비우거나 먼저 '복원 전으로 되돌리기'를 해 주세요."); }
+      }
       const before = BK.snapshot();
       const text = JSON.stringify({ at: new Date().toISOString(), data: before });
       const dropNext = () => { try { localStorage.removeItem(BK.NEXT); } catch {} };
