@@ -44,6 +44,23 @@ for (const mode of ['vanilla','react']) {
     expect(await page.evaluate(()=>window.K.M.getState().closet[0].label)).toBe(garmentName);
   });
   test(`${mode}: failed save preserves old purchase records and allows retry`, async ({page})=>{
+    // Inject a Storage-shaped adapter before core boot, rather than replacing
+    // WebKit's native Storage prototype across document lifetimes.
+    await page.addInitScript(() => {
+      const disk = window.localStorage;
+      const adapter = {
+        get length() { return disk.length; },
+        key(index: number) { return disk.key(index); },
+        getItem(k: string) { return disk.getItem(k); },
+        setItem(k: string, v: string) {
+          if (window.__fail && k === 'eoul-d12-hang:v1') throw new DOMException('quota','QuotaExceededError');
+          disk.setItem(k,v);
+        },
+        removeItem(k: string) { disk.removeItem(k); },
+      };
+      Object.defineProperty(window, 'localStorage', { configurable: true, get: () => adapter });
+      window.__fail = false;
+    });
     const d=driver(page,mode); await d.openManual();
     await page.evaluate(() => {
       window.K.M.addGarment({kind:'pants',color:'black'});
@@ -56,15 +73,12 @@ for (const mode of ['vanilla','react']) {
     await expect(mode === 'react' ? page.getByLabel('브랜드',{exact:true}) : page.locator('#rb')).toBeVisible();
     await page.evaluate(() => {
       window.__before=localStorage.getItem('eoul-d12-hang:v1');
-      const original=Storage.prototype.setItem;
-      window.__originalSetItem=original;
       window.__fail=true;
-      Storage.prototype.setItem=function(k,v){ if(window.__fail && k==='eoul-d12-hang:v1') throw new DOMException('quota','QuotaExceededError'); return original.call(this,k,v); };
     });
     await d.fillManual(); await d.save();
     await expect(page.getByText(/저장하지 못했어요/).first()).toBeVisible();
     expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1')===window.__before)).toBe(true);
-    await page.evaluate(()=>{window.__fail=false; Storage.prototype.setItem=window.__originalSetItem;}); await d.save();
+    await page.evaluate(()=>window.__fail=false); await d.save();
     await expect(page.locator('.shelf [data-g]')).toHaveCount(2);
     await page.reload();
     await expect.poll(()=>page.evaluate(()=>window.K.M.getState().records[0].stage)).toBe('ordered');
