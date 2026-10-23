@@ -118,3 +118,7 @@ Vite/React/TypeScript를 lite 빌드에 붙이고 직접 등록만 브랜드·�
 현재 localStorage 원문을 내보내고, 가져오기 미리보기·확인·되돌리기를 제공하는 #48 변경만 분리했다. 복원/undo는 검증과 원문 journal 보관 → 대체값 쓰기 → 불필요 키 삭제 순서로 처리한다. 실패하면 원문으로 보상하며 보상 실패 시 journal을 유지하고 새 저장을 막아 명시적 복구를 안내한다. localStorage의 여러 키를 하나의 트랜잭션으로 만든 것은 아니며 다중 탭 동시 복원/오래된 탭의 저장 충돌은 후속 한계다.
 
 등록 영수증 스키마와 상담/등록 링크 등의 가져오기 검증, React 등록 미리보기 건수도 확인한다. 추가 구매/반품 UI는 포함하지 않는다. 기준 lite158에서 백업 검사12개가 더해져170개, 모바일E2E11에서 백업 흐름2개가 더해져13개가 된다. app688/server50 기존 검사는 유지하고 테스트 삭제는 없다.
+
+### A(c) PR #48 로컬 .mjs MIME 분리
+
+`dev.mjs`가 `.mjs`를 `text/javascript; charset=utf-8`로 제공하게 하는 한 항목만 분리했다. 로컬 fake 모드 8794 포트에서 `/shared/open-products.mjs` HEAD 응답 `200`, 올바른 content-type을 확인했다. 운영 API/인증/번들 변경은 없고 테스트 수는 A(b)의 lite170/app688/server50/E2E13과 같다.
