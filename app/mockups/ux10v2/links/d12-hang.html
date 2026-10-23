@@ -2033,7 +2033,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // 사진은 저장하지 않으므로 글자 자료만 있다. 값은 저장된 원문 그대로 담아 다시 해석하며 잃는 것이 없게 한다.
   // 복원은 키 단위로 바꾸기 전에 현재 값을 '복원 전 보관'에 남겨 한 번 되돌릴 수 있다. 모양이 다른 파일은 아무것도 바꾸지 않고 거절한다.
   const BK = {
-    APP: 'eoul-lite', FORMAT: 1, STASH: 'eoul-backup:stash', MAX_BYTES: 5 * 1024 * 1024,
+    APP: 'eoul-lite', FORMAT: 1, STASH: 'eoul-backup:stash', NEXT: 'eoul-backup:stash-next', MAX_BYTES: 5 * 1024 * 1024,
     skip: (k) => typeof k !== 'string' || !k.startsWith('eoul-') || k.startsWith('eoul-backup:') || /:(last|probe)$/.test(k),
     keys() { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!BK.skip(k)) out.push(k); } return out.sort(); },
     snapshot() { const data = {}; for (const k of BK.keys()) { const v = localStorage.getItem(k); if (typeof v === 'string') data[k] = v; } return data; },
@@ -2094,25 +2094,33 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }
     },
     // 복원: 현재 값을 보관본(가장 최근 한 벌)으로 먼저 저장·확인한 뒤에만 바꾼다.
-    // 이번 복원이 끝나지 못하고 깨끗이 되돌려졌으면 이전 보관본(앞선 복원의 되돌리기 지점)을 원래대로 둔다.
-    // 일부만 바뀐(partial) 경우에는 지금 보관본이 유일한 복구 지점이라 그대로 남긴다.
+    // 보관본 두 칸: 지금 되돌리기 지점(STASH)은 이번 복원이 끝까지 성공하기 전에는 절대 건드리지 않는다.
+    // ① 이번 복원 전 상태를 NEXT 칸에 쓰고 확인 → ② 바꾸기 → ③ 성공하면 NEXT를 STASH로 올리고 NEXT를 지운다.
+    // 깨끗이 되돌려졌으면 NEXT만 지운다(앞선 STASH 그대로). 일부만 바뀌었으면 NEXT를 복구 지점으로 남긴다.
+    // 올리기(③)가 막혀도 NEXT가 남아 있어 되돌리기는 NEXT를 쓴다.
     restore(data) {
       const before = BK.snapshot();
-      let prev = null; try { prev = localStorage.getItem(BK.STASH); } catch {}
       const text = JSON.stringify({ at: new Date().toISOString(), data: before });
-      const putBack = () => { try { if (prev === null) localStorage.removeItem(BK.STASH); else localStorage.setItem(BK.STASH, prev); } catch {} };
-      try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); } catch { putBack(); throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
-      try { BK.apply(data); } catch (e) { if (e.code !== 'partial') putBack(); throw e; }
+      const dropNext = () => { try { localStorage.removeItem(BK.NEXT); } catch {} };
+      try { localStorage.setItem(BK.NEXT, text); if (localStorage.getItem(BK.NEXT) !== text) throw new Error('verify'); } catch { dropNext(); throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
+      try { BK.apply(data); } catch (e) { if (e.code !== 'partial') dropNext(); throw e; }
+      try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); localStorage.removeItem(BK.NEXT); } catch { /* NEXT가 남아 되돌리기 지점 역할을 한다 */ }
       return before;
     },
-    stash() { try { const st = JSON.parse(localStorage.getItem(BK.STASH) || 'null'); return st && st.data && typeof st.data === 'object' && !Array.isArray(st.data) ? st : null; } catch { return null; } },
+    // 되돌리기 지점: 아직 올리지 못했거나 일부만 바뀐 복원의 NEXT가 있으면 그것이 가장 최근 지점이다.
+    stash() {
+      for (const k of [BK.NEXT, BK.STASH]) {
+        try { const st = JSON.parse(localStorage.getItem(k) || 'null'); if (st && st.data && typeof st.data === 'object' && !Array.isArray(st.data)) return { ...st, key: k }; } catch {}
+      }
+      return null;
+    },
     // 되돌리기: 보관본 상태로 같은 방식(확인·부분 되돌림)으로 바꾸고, 끝까지 성공했을 때만 보관본을 지운다.
     undo() {
       const st = BK.stash(); if (!st) throw new Error('되돌릴 보관본이 없어요.');
       const target = {};
       for (const [k, v] of Object.entries(st.data)) if (!BK.skip(k) && typeof v === 'string') target[k] = v;
       BK.apply(target);
-      try { localStorage.removeItem(BK.STASH); } catch {}
+      try { localStorage.removeItem(st.key); } catch {}
     },
   };
   function backupSheet(note = '') {

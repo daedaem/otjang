@@ -196,5 +196,35 @@ test('복원이 깨끗이 되돌려지면 앞선 복원의 되돌리기 지점(�
   c.sets = 0; c.failSetsAfter = 2;
   assert.throws(() => BK3.restore(BK3.read(other()).data), (e) => e.code === 'partial');
   c.failSetsAfter = undefined;
-  assert.deepEqual(JSON.parse(c.getItem('eoul-backup:stash')).data, cBefore);
+  assert.deepEqual(JSON.parse(JSON.stringify(BK3.stash().data)), cBefore);
+});
+
+test('앞선 되돌리기 지점은 이번 복원이 끝까지 성공하기 전에는 다시 쓰지 않는다(저장 공간이 거의 찬 경우 포함)', () => {
+  const a = storage(); seed(a); const BK = run(a);
+  const original = a.dump();
+  BK.restore(BK.read(other()).data);
+  const firstStash = a.getItem('eoul-backup:stash');
+  assert.equal(a.getItem('eoul-backup:stash-next'), null, '성공하면 임시 칸을 지운다');
+  // 바꾸는 중 실패하고 이후 쓰기도 계속 막히는(되돌림은 지우기·작은 쓰기로 끝나는) 상황에서도 앞선 지점은 그대로다.
+  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = 'x'.repeat(50);
+  a.sets = 0; a.failSetAt = 1; // 임시 칸(0)은 쓰였고, 바뀌는 키 하나(1)를 쓰다 막힘 → 깨끗이 되돌림
+  assert.throws(() => BK.restore(BK.read(JSON.stringify(second)).data), /바꾸지 않았어요/);
+  a.failSetAt = undefined;
+  assert.equal(a.getItem('eoul-backup:stash'), firstStash);
+  assert.equal(a.getItem('eoul-backup:stash-next'), null);
+  // 올리기(STASH로 옮기기)가 막혀도 복원은 끝났고, 임시 칸이 되돌리기 지점이 된다.
+  const afterFirst = a.dump();
+  const b = storage(); seed(b); const BK2 = run(b);
+  const bOriginal = JSON.parse(JSON.stringify(BK2.snapshot()));
+  b.sets = 0; b.failSetAt = 4; // 임시 칸(0) + 바꾸기 3번(1~3) 뒤 올리기(4)에서 막힘
+  BK2.restore(BK2.read(other()).data);
+  b.failSetAt = undefined;
+  assert.equal(b.getItem('eoul-backup:stash'), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(BK2.stash().data)), bOriginal);
+  BK2.undo();
+  assert.equal(b.getItem('eoul-backup:stash-next'), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(BK2.snapshot())), bOriginal);
+  BK.undo();
+  assert.deepEqual(a.dump(), original);
+  assert.ok(afterFirst);
 });
