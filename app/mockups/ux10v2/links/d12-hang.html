@@ -1021,13 +1021,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
     if (reactInput) {
       const initial = S.reg || (() => { const [brand, ...name] = (params.q || '').split(' '); return { brand, name: name.join(' ') }; })();
+      S.reg = initial; // Keep the incoming search/OPF seed stable while moving between stages.
       window.EOUL_INPUT_LOAD().then(({ mount }) => {
         if (epoch !== inputEpoch) return;
         inputUnmount = mount({ element: $('#react-input'), core: M, initial, step: Number(params.step || 0),
           back: () => K.back(), next: (step) => K.go('reg', { step }),
           assertWritable: () => { if (regRaw !== null) throw regFailed(REG_UNREADABLE); },
-          saved: (g, input) => {
-            S.reg = null; K.tab('closet'); K.toast('옷장에 넣었어요', { bottom: 128 });
+          saved: (g, input, warning) => {
+            S.reg = null; K.tab('closet'); K.toast(warning || '옷장에 넣었어요', { bottom: 128 });
             if (!g.color) pickColor(g.id, M.kindChoices().find(k => k.id === g.kind)?.name || '옷');
             // Public-catalog submission is best effort, after private storage succeeds.
             if (input && !input.source) crowd()?.submit({ brand: input.brand, name: input.name, kind: input.kind, color: input.color, link: input.url }).catch(() => {});
