@@ -61,15 +61,15 @@ for (const mode of ['vanilla','react']) {
       Object.defineProperty(window, 'localStorage', { configurable: true, get: () => adapter });
       window.__fail = false;
     });
-    const d=driver(page,mode); await d.openManual();
+    const d=driver(page,mode);
+    await page.goto(`/?photos=0&input=${mode}`);
+    await page.waitForFunction(() => !!window.K?.M);
     await page.evaluate(() => {
       window.K.M.addGarment({kind:'pants',color:'black'});
       window.K.M.decide('ms-728000','buy'); window.K.M.advance('ms-728000','ordered');
-      // Finish preparing existing records before typing: core notifications can
-      // schedule a vanilla redraw. Reload makes the saved fixture the boot state.
-      localStorage.removeItem('eoul-d12-hang:input-draft:v1');
+      // Prepare the existing wardrobe before navigating into a fresh form.
+      window.K.go('reg', {});
     });
-    await page.reload();
     await expect(mode === 'react' ? page.getByLabel('브랜드',{exact:true}) : page.locator('#rb')).toBeVisible();
     await page.evaluate(() => {
       window.__before=localStorage.getItem('eoul-d12-hang:v1');
