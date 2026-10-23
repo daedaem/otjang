@@ -35,7 +35,7 @@ export function weatherBand(min) {
   return { label: '아주 추운 날', advice: '패딩이나 두꺼운 코트가 필요해요.', outerMin: 3, outerMax: 4, need: '패딩이나 코트', query: '패딩' };
 }
 
-export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
+export function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup-ux10v2:v1', clock = () => new Date(), reset = false, photos = true } = {}) {
   const DECISION_LABEL = { buy: '사기로 함', hold: '보류', skip: '안 사기로 함' };
   const RETURN_LABEL = { size: '사이즈', color: '색', quality: '품질', 'change-of-mind': '마음이 바뀜', other: '기타' };
   const FINE = '종류·색과 코디 공식으로 비교했어요. 소재·핏·사이즈·현재 가격은 판매처에서 확인해요.';
@@ -90,23 +90,46 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
     };
     return { ...wardrobeView(base), now: today() };
   }
+  // 저장된 원문을 읽지 못하면 빈 옷장으로 보여 주되, 다음 저장이 그 원문을 덮어쓰지 않게 막는다.
+  // (미래 형식·잘린 JSON·엔진 검증 실패·읽기 예외). 사용자가 원문을 따로 보관하고 새로 시작할 때만 풀린다.
+  const UNREADABLE = '저장된 옷장 기록을 읽지 못했어요. 기록을 지우지 않도록 저장을 멈췄어요. 원문을 받아 두거나 따로 보관한 뒤 새로 시작할 수 있어요.';
+  const UNAVAILABLE = '이 브라우저 저장소를 쓸 수 없어요. 지금 화면의 변경은 저장되지 않아요. 브라우저 설정·저장 공간을 확인해 주세요.';
+  let storageIssue = null; // { code: 'storage_unreadable'|'storage_unavailable', message, raw }
   function load() {
+    storageIssue = null;
+    if (!storage) {
+      if (requireStorage) storageIssue = { code: 'storage_unavailable', message: UNAVAILABLE, raw: null };
+      return blank();
+    }
+    let raw;
+    try { raw = storage.getItem(key); } catch {
+      storageIssue = { code: 'storage_unavailable', message: UNAVAILABLE, raw: null }; // 무엇이 저장돼 있는지 모르면 쓰지 않는다.
+      return blank();
+    }
+    if (raw === null || raw === undefined || raw === '') return blank();
     try {
-      const raw = storage?.getItem(key);
-      if (!raw) return blank();
       const v = JSON.parse(raw);
-      if (v?.v !== 1 || !Array.isArray(v.garments) || !Array.isArray(v.journeys)) return blank();
+      if (v?.v !== 1 || !Array.isArray(v.garments) || !Array.isArray(v.journeys)) throw new Error('unsupported');
       const next = { ...blank(), ...v, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
         compare: Array.isArray(v.compare) ? v.compare.filter((id) => PRODUCT_BY_ID[id]).slice(0, 4) : [], recent: Array.isArray(v.recent) ? v.recent.filter((x) => typeof x === 'string').slice(0, 5) : [] };
       next.gender = next.gender === 'F' ? 'F' : 'M';
-      buildState(next); // 읽을 수 없는 기록이면 처음 상태로 시작한다.
+      buildState(next);
       return next;
     } catch {
+      storageIssue = { code: 'storage_unreadable', message: UNREADABLE, raw: String(raw) };
       return blank();
     }
   }
   function save() {
-    try { storage?.setItem(key, JSON.stringify(S)); } catch { /* 저장이 막힌 브라우저에서도 화면은 동작한다. */ }
+    if (storageIssue?.code === 'storage_unreadable') throw Object.assign(new Error(UNREADABLE), { code: 'storage_unreadable' });
+    if (storageIssue) throw Object.assign(new Error(UNAVAILABLE), { code: 'storage_write_failed' });
+    if (!storage && !requireStorage) return; // 명시적인 메모리 전용 시안/검사.
+    try {
+      if (!storage) throw new Error('unavailable');
+      storage.setItem(key, JSON.stringify(S));
+    } catch {
+      throw Object.assign(new Error('저장하지 못했어요. 기존 기록은 그대로예요. 저장 공간·브라우저 설정을 확인한 뒤 다시 시도해 주세요.'), { code: 'storage_write_failed' });
+    }
   }
   function notify() {
     for (const fn of [...listeners]) {
@@ -118,12 +141,12 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
     try {
       change();
       buildState(S); // 엔진 검증을 통과해야만 저장한다.
+      save(); // 저장 성공 전에는 버전·구독자에게 변경을 공개하지 않는다.
     } catch (error) {
       S = before;
       throw error;
     }
     version++;
-    save();
     notify();
   }
   function engineState() {
@@ -292,6 +315,30 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
     returnReasons: JOURNEY_RETURN_REASONS.map((id) => ({ id, label: RETURN_LABEL[id] })),
     version: () => version,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    storageIssue: () => (storageIssue ? { code: storageIssue.code, message: storageIssue.message } : null),
+    unreadableRaw: () => (storageIssue?.code === 'storage_unreadable' ? storageIssue.raw : null),
+    // 읽지 못한 원문을 같은 기기의 별도 키에 그대로 보관한 것을 확인한 뒤에만 빈 기록으로 새로 시작한다.
+    startFresh() {
+      const issue = storageIssue;
+      if (issue?.code !== 'storage_unreadable') throw new Error('새로 시작할 필요가 없어요.');
+      const keep = Object.assign(new Error('원문을 따로 보관하지 못해 새로 시작하지 않았어요. 기존 기록은 그대로예요. 원문 파일을 먼저 받아 주세요.'), { code: 'storage_write_failed' });
+      let current;
+      try { current = storage.getItem(key); } catch { throw keep; }
+      if (current !== issue.raw) { // 그 사이 다른 탭이 기록을 바꿨다면 덮어쓰지 않고 다시 읽는다.
+        S = load(); version++; lastAsk = null; notify();
+        throw Object.assign(new Error('다른 화면에서 기록이 바뀌어 다시 불러왔어요. 다시 확인해 주세요.'), { code: 'storage_changed' });
+      }
+      const archiveKey = `${key}:unreadable:${iso()}`;
+      try {
+        storage.setItem(archiveKey, issue.raw);
+        if (storage.getItem(archiveKey) !== issue.raw) throw new Error('mismatch');
+      } catch { throw keep; }
+      const before = S;
+      storageIssue = null; S = blank();
+      try { save(); } catch (error) { storageIssue = issue; S = before; throw error; }
+      version++; lastAsk = null; notify();
+      return archiveKey;
+    },
     getState() {
       const st = engineState();
       const closet = st.closet.map(garmentView);
@@ -317,8 +364,9 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       const g = gender === 'F' ? 'F' : 'M';
       if (!GARMENT_KINDS.some((k) => k.id === kind)) throw new Error('옷 종류를 골라 주세요.');
       const s = slot && SLOT_BY_ID[slot]?.shape === kind && SLOT_BY_ID[slot]?.g === g ? slot : null;
-      const garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
+      let garment;
       commit(() => {
+        garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
@@ -422,7 +470,11 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
         examples: api.examples(r.gender),
       };
       lastAsk = { ids: new Set(r.items.map((x) => x.product.id)), criteria: r.criteria };
-      if (!drop.length && said !== S.recent[0]) { S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5); save(); }
+      if (!drop.length && said !== S.recent[0]) {
+        const before = S.recent;
+        S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5);
+        try { save(); } catch { S.recent = before; } // 검색 결과는 반환하되 저장되지 않은 이력은 남기지 않는다.
+      }
       return result;
     },
 
@@ -650,8 +702,9 @@ export function createMock({ storage = null, key = 'eoul-mockup-ux10v2:v1', cloc
       if (!slot) throw new Error('상품을 다시 확인해 주세요.');
       const dup = S.garments.find((g) => g.productId === p.id);
       if (dup) return garmentView(dup);
-      const garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
+      let garment;
       commit(() => {
+        garment = makeGarment({ id: nextId('g'), slot: slot.id, kind: slot.shape, gender: slot.g, color: p.colorSource === 'image' ? null : p.color, brand: p.brand, productId: p.id, label: p.name.slice(0, 80), source: 'user', createdAt: iso() });
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
