@@ -6,21 +6,29 @@ import vm from 'node:vm';
 
 const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
 const start = page.indexOf('  const BK = {');
-const end = page.indexOf('  function backupSheet()');
+const end = page.indexOf('  function backupSheet(');
 assert.ok(start > 0 && end > start, 'd12 백업 블록(BK)을 찾아야 한다');
 const block = page.slice(start, end);
 
+// failSetsAfter: 그 횟수만큼 setItem이 성공한 뒤부터 계속 실패한다(저장 공간이 찬 상황). failSetAt: 그 순번의 setItem 한 번만 실패.
 const storage = () => {
   const m = new Map();
   return {
+    sets: 0,
     get length() { return m.size; }, key: (i) => [...m.keys()][i] ?? null,
-    getItem: (k) => (m.has(k) ? m.get(k) : null), setItem(k, v) { if (this.quota !== undefined && String(v).length > this.quota) throw new Error('QuotaExceededError'); m.set(k, String(v)); },
-    removeItem: (k) => { m.delete(k); }, dump: () => Object.fromEntries([...m.entries()].sort()),
+    getItem: (k) => (m.has(k) ? m.get(k) : null),
+    setItem(k, v) {
+      if (this.quota !== undefined && String(v).length > this.quota) throw new Error('QuotaExceededError');
+      if (this.failSetsAfter !== undefined && this.sets >= this.failSetsAfter) throw new Error('QuotaExceededError');
+      if (this.failSetAt !== undefined && this.sets === this.failSetAt) { this.sets++; throw new Error('QuotaExceededError'); } // 그 한 번만 실패
+      this.sets++; m.set(k, String(v));
+    },
+    removeItem(k) { if (this.failRemoves) throw new Error('SecurityError'); m.delete(k); }, dump: () => Object.fromEntries([...m.entries()].sort()),
   };
 };
 const ENGINE = 'eoul-d12-hang:v1';
-const run = (local) => {
-  const context = { localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg' };
+const run = (local, M) => {
+  const context = { localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg', ...(M ? { M } : {}) };
   vm.runInNewContext(`${block}\nglobalThis.BK = BK;`, context);
   return context.BK;
 };
@@ -83,8 +91,8 @@ test('이 앱 파일이 아니거나 옷장 자료를 읽을 수 없으면 아�
     ['', /비어 있어요/], ['not json', /JSON/], ['[]', /이 앱의 백업/], [JSON.stringify({ ...ok, app: 'x' }), /이 앱의 백업/], [JSON.stringify({ ...ok, format: 2 }), /이 앱의 백업/],
     [JSON.stringify({ ...ok, data: [] }), /이 앱의 백업/], [JSON.stringify({ ...ok, data: {} }), /자료가 없어요/],
     [JSON.stringify({ ...ok, data: { 'other-app:key': 'x' } }), /모르는 항목/], [JSON.stringify({ ...ok, data: { 'eoul-backup:stash': 'x' } }), /모르는 항목/],
-    [JSON.stringify({ ...ok, data: { [ENGINE]: 5 } }), /글자가 아니에요/], [JSON.stringify({ ...ok, data: { [ENGINE]: 'broken' } }), /옷장 자료를 읽을 수 없어요/],
-    [JSON.stringify({ ...ok, data: { [ENGINE]: '{"v":2,"garments":[],"journeys":[]}' } }), /옷장 자료를 읽을 수 없어요/],
+    [JSON.stringify({ ...ok, data: { [ENGINE]: 5 } }), /글자가 아니에요/], [JSON.stringify({ ...ok, data: { [ENGINE]: 'broken' } }), /이 앱이 읽을 수 없어요/],
+    [JSON.stringify({ ...ok, data: { [ENGINE]: '{"v":2,"garments":[],"journeys":[]}' } }), /이 앱이 읽을 수 없어요/],
     ['x'.repeat(5 * 1024 * 1024 + 1), /너무 커요/],
   ];
   for (const [text, re] of bad) assert.throws(() => BK.read(text), re, text.slice(0, 40));
@@ -93,4 +101,71 @@ test('이 앱 파일이 아니거나 옷장 자료를 읽을 수 없으면 아�
   const full = storage(); seed(full); const BKf = run(full); full.quota = 10;
   assert.throws(() => BKf.restore(BKf.read(JSON.stringify(ok)).data), /보관본을 저장하지 못해/);
   assert.deepEqual(full.dump(), before);
+});
+
+const other = () => { const o = storage(); o.setItem(ENGINE, engineState(5)); o.setItem('eoul-d12-hang:consult', '{"threads":[],"cur":null}'); o.setItem('eoul-d12-hang:input-draft:v1', '{"v":1}'); return JSON.stringify(run(o).make()); };
+const without = (d, k) => { const x = { ...d }; delete x[k]; return x; };
+
+test('복원 중간에 저장이 막히면 바꾼 키만 원래 값으로 되돌리고 지금 자료를 그대로 둔다', () => {
+  for (let n = 0; n <= 3; n++) { // n=0: 보관본 쓰기 실패, 1~3: 바꾸는 중 n번째 쓰기 실패(되돌리기 쓰기는 성공)
+    const a = storage(); seed(a); const BK = run(a);
+    const before = a.dump(); const data = BK.read(other()).data;
+    a.sets = 0; a.failSetAt = n;
+    assert.throws(() => BK.restore(data), n === 0 ? /보관본을 저장하지 못해/ : /바꾸지 않았어요/, `n=${n}`);
+    a.failSetAt = undefined;
+    const now = a.dump(); delete now['eoul-backup:stash'];
+    assert.deepEqual(now, before, `n=${n}`);
+  }
+});
+
+test('되돌리기까지 막히면 partial 오류로 알리고 보관본을 남겨 나중에 되돌릴 수 있다', () => {
+  const a = storage(); seed(a); const BK = run(a);
+  const before = a.dump(); const data = BK.read(other()).data;
+  a.sets = 0; a.failSetsAfter = 2; // 보관본 + 한 키만 쓰고 막힘. 되돌리기 쓰기도 막힌다.
+  assert.throws(() => BK.restore(data), (e) => e.code === 'partial' && /보관본에 남아 있어요/.test(e.message));
+  assert.ok(BK.stash(), '보관본이 남아 있어야 한다');
+  a.failSetsAfter = undefined; // 공간을 비운 뒤
+  BK.undo();
+  assert.deepEqual(a.dump(), before);
+  assert.equal(a.getItem('eoul-backup:stash'), null);
+});
+
+test('되돌리기 중간에 막히면 보관본을 지우지 않고 지금 자료도 그대로 둔다', () => {
+  const a = storage(); seed(a); const BK = run(a);
+  BK.restore(BK.read(other()).data);
+  const restored = a.dump();
+  for (let n = 0; n <= 1; n++) {
+    a.sets = 0; a.failSetAt = n;
+    assert.throws(() => BK.undo(), /바꾸지 않았어요/, `n=${n}`);
+    a.failSetAt = undefined;
+  }
+  assert.deepEqual(a.dump(), restored);
+  assert.ok(BK.stash());
+});
+
+test('읽지 못한 원문 보관 키와 모르는 eoul- 키는 복원·되돌리기가 지우지 않는다', () => {
+  const a = storage(); seed(a);
+  const archive = `${ENGINE}:unreadable:2026-10-23T00:00:00.000Z`;
+  a.setItem(archive, '{"v":9,"원문":"그대로"}');
+  const BK = run(a);
+  assert.ok(Object.keys(BK.make().data).includes(archive), '보관 원문도 백업에 들어간다');
+  const data = without(BK.read(other()).data, archive);
+  BK.restore(data);
+  assert.equal(a.getItem(archive), '{"v":9,"원문":"그대로"}');
+  assert.equal(a.getItem('eoul-d12-hang:reg'), null, '이 화면 키는 백업 시점 그대로 지운다');
+  assert.equal(a.getItem('eoul-crowd:device'), 'abcdef0123456789abcdef0123456789', '기기 ID는 지우지 않는다');
+  BK.undo();
+  assert.equal(a.getItem(archive), '{"v":9,"원문":"그대로"}');
+});
+
+test('옷장 자료는 지금 엔진의 읽기 규칙(canReadSaved)으로 먼저 검사한다', () => {
+  const a = storage(); seed(a);
+  const seen = [];
+  const BK = run(a, { canReadSaved: (raw) => { seen.push(raw); return !raw.includes('"bad"'); } });
+  const ok = BK.make(); BK.read(JSON.stringify(ok));
+  assert.equal(seen.at(-1), ok.data[ENGINE]);
+  const bad = { ...ok, data: { ...ok.data, [ENGINE]: JSON.stringify({ v: 1, garments: [{ id: 'bad' }], journeys: [] }) } };
+  const before = a.dump();
+  assert.throws(() => BK.read(JSON.stringify(bad)), /이 앱이 읽을 수 없어요/);
+  assert.deepEqual(a.dump(), before);
 });

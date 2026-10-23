@@ -179,6 +179,32 @@ test('consult answers that contradict the server price facts get a correction li
   assert.equal((await result(input({ budget: { max: 100000 } }))).status, 400);
   assert.equal(priceCheck([], 'x', budget), null);
 });
+test('exclusive budget words and price-check false positives (negation, shared names, ambiguous sentences)', async () => {
+  // '초과·넘는'은 그 금액을 포함하지 않고 '이상'은 포함한다.
+  assert.deepEqual(parseBudget('10만원 초과 코트'), { min: 100001 });
+  assert.deepEqual(parseBudget('10만원 넘는 코트'), { min: 100001 });
+  assert.deepEqual(parseBudget('10만원 이상 코트'), { min: 100000 });
+  assert.deepEqual(parseBudget('10만원 넘지 않게'), { max: 100000 });
+  // 부정 표현은 '예산 안'으로 읽는다(19,900원, 예산 10만원).
+  const name = p.name.replace(/\s*\[[^\]]*\]\s*$/, '');
+  for (const answer of [`${name}는 예산을 넘지 않아요.`, `${name}는 비싸지 않아요.`, `${name}는 예산을 안 넘어요.`]) {
+    const r = await result(input({ task: 'consult', query: '10만원 이하 상의' }), fake({ on_topic: true, answer, product_ids: [p.id] }));
+    assert.equal(r.body.price_check.lines, undefined, answer);
+  }
+  // 이름이 같고 색만 다른 두 재킷(79,900원·55,890원), 예산 6만원 이하.
+  const deep = PRODUCTS.find((x) => x.id === 'ms-2725419'), sky = PRODUCTS.find((x) => x.id === 'ms-4572250');
+  assert.ok(deep && sky && deep.price > 60000 && sky.price <= 60000, 'fixture products');
+  const two = (answer) => result(input({ task: 'consult', query: '6만원 이하 재킷', items: [{ id: deep.id, closet: '옷장 정보 없음' }, { id: sky.id, closet: '옷장 정보 없음' }] }), fake({ on_topic: true, answer, product_ids: [deep.id, sky.id] }));
+  const right = await two('딥 인디고 트러커 재킷은 예산을 넘어요. 스카이 블루는 예산 안이에요.');
+  assert.equal(right.body.price_check.lines, undefined); // 예전에는 공통 낱말 때문에 스카이 블루도 '넘어요' 문장에 걸렸다.
+  const wrong = await two('딥 인디고는 예산 안이에요. 스카이 블루도 좋아요.');
+  assert.equal(wrong.body.price_check.lines.length, 1);
+  assert.match(wrong.body.price_check.lines[0], /딥 인디고.*79,900원.*예산 초과/);
+  const vague = await two('릴렉스드 데님 트러커 재킷은 예산을 넘어요.'); // 어느 색인지 모르면 판단하지 않는다.
+  assert.equal(vague.body.price_check.lines, undefined);
+  const both = await two('딥 인디고와 스카이 블루 둘 다 예산 안이에요.'); // 두 후보를 한 문장에서 말하면 판단하지 않는다.
+  assert.equal(both.body.price_check.lines, undefined);
+});
 test('authentication and quota rejection stop upstream, including dependency failures', async () => {
   const client = fake();
   for (const outcome of [{ ok: false, status: 429, code: 'monthly_limit' }, { ok: false, status: 503, code: 'budget_unavailable' }]) {

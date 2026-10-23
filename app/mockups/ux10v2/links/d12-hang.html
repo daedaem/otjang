@@ -2051,7 +2051,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }
       if (!Object.keys(data).length) throw new Error('백업에 자료가 없어요.');
       const engine = data[window.EOUL_MOCK_KEY];
-      if (engine !== undefined) { let st = null; try { st = JSON.parse(engine); } catch {} if (!st || st.v !== 1 || !Array.isArray(st.garments) || !Array.isArray(st.journeys)) throw new Error('옷장 자료를 읽을 수 없어요. 아무것도 바꾸지 않았어요.'); }
+      if (engine !== undefined) {
+        // 불러올 때와 같은 엔진 규칙으로 먼저 읽어 본다. 읽지 못할 자료로 바꾸면 앱이 그 기록을 '읽지 못함'으로 멈추기 때문이다.
+        let ok;
+        if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
+        else { let st = null; try { st = JSON.parse(engine); } catch {} ok = !!st && st.v === 1 && Array.isArray(st.garments) && Array.isArray(st.journeys); }
+        if (!ok) throw new Error('옷장 자료를 이 앱이 읽을 수 없어요. 아무것도 바꾸지 않았어요.');
+      }
       return { at: typeof v.at === 'string' ? v.at : '', data };
     },
     count(data) {
@@ -2062,29 +2068,49 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       return n;
     },
     countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 직접 등록 ${n.reg}건`,
-    // 복원: 현재 값을 먼저 보관(가장 최근 한 벌) → 백업 키를 전부 쓰기 → 백업에 없는 현재 키는 지운다(백업 시점 그대로). 쓰다 막히면 보관본으로 되돌린다.
+    // 복원·되돌리기가 지울 수 있는 키: 이 화면이 쓰는 키와 날씨 지역뿐. 읽지 못한 원문 보관(':unreadable:')·모르는 키는 지우지 않는다.
+    removable: (k) => (k.startsWith('eoul-d12-hang:') && !k.includes(':unreadable:')) || k === 'eoul-weather:place',
+    // 목표 상태(target)로 바꾼다. 백업에 없는 '지울 수 있는 키'는 지우고, 쓴 뒤 다시 읽어 확인한다.
+    // 중간에 막히면 바꾼 키만 원래 값으로 되돌린다. 되돌리기까지 막히면 partial 오류(보관본은 그대로 남는다).
+    apply(target) {
+      const before = BK.snapshot();
+      const drop = Object.keys(before).filter((k) => !(k in target) && BK.removable(k));
+      const touched = [];
+      try {
+        for (const k of drop) { touched.push(k); localStorage.removeItem(k); }
+        for (const [k, v] of Object.entries(target)) { if (before[k] === v) continue; touched.push(k); localStorage.setItem(k, v); }
+        for (const k of drop) if (localStorage.getItem(k) !== null) throw new Error('verify');
+        for (const [k, v] of Object.entries(target)) if (localStorage.getItem(k) !== v) throw new Error('verify');
+      } catch {
+        try {
+          for (const k of touched) if (!(k in before)) localStorage.removeItem(k); // 새로 생긴 키부터 지워 공간을 비운다.
+          for (const k of touched) if (k in before) localStorage.setItem(k, before[k]);
+          for (const k of touched) if (localStorage.getItem(k) !== (k in before ? before[k] : null)) throw new Error('verify');
+        } catch {
+          throw Object.assign(new Error("중간에 저장이 막혀 일부만 바뀌었어요. 바꾸기 전 자료는 보관본에 남아 있어요. 저장 공간을 비운 뒤 '복원 전으로 되돌리기'를 눌러 주세요."), { code: 'partial' });
+        }
+        throw new Error('저장 공간이 부족하거나 저장이 막혀 바꾸지 않았어요. 지금 자료는 그대로예요.');
+      }
+    },
+    // 복원: 현재 값을 보관본(가장 최근 한 벌)으로 먼저 저장·확인한 뒤에만 바꾼다.
     restore(data) {
       const before = BK.snapshot();
-      try { localStorage.setItem(BK.STASH, JSON.stringify({ at: new Date().toISOString(), data: before })); } catch { throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
-      try {
-        for (const k of Object.keys(before)) if (!(k in data)) localStorage.removeItem(k);
-        for (const [k, v] of Object.entries(data)) localStorage.setItem(k, v);
-      } catch {
-        for (const k of BK.keys()) localStorage.removeItem(k);
-        for (const [k, v] of Object.entries(before)) localStorage.setItem(k, v);
-        throw new Error('저장 공간이 부족해 복원을 되돌렸어요.');
-      }
+      const text = JSON.stringify({ at: new Date().toISOString(), data: before });
+      try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); } catch { throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
+      BK.apply(data);
       return before;
     },
     stash() { try { const st = JSON.parse(localStorage.getItem(BK.STASH) || 'null'); return st && st.data && typeof st.data === 'object' && !Array.isArray(st.data) ? st : null; } catch { return null; } },
+    // 되돌리기: 보관본 상태로 같은 방식(확인·부분 되돌림)으로 바꾸고, 끝까지 성공했을 때만 보관본을 지운다.
     undo() {
       const st = BK.stash(); if (!st) throw new Error('되돌릴 보관본이 없어요.');
-      for (const k of BK.keys()) localStorage.removeItem(k);
-      for (const [k, v] of Object.entries(st.data)) if (!BK.skip(k) && typeof v === 'string') localStorage.setItem(k, v);
-      localStorage.removeItem(BK.STASH);
+      const target = {};
+      for (const [k, v] of Object.entries(st.data)) if (!BK.skip(k) && typeof v === 'string') target[k] = v;
+      BK.apply(target);
+      try { localStorage.removeItem(BK.STASH); } catch {}
     },
   };
-  function backupSheet() {
+  function backupSheet(note = '') {
     const n = BK.count(BK.snapshot());
     const stash = BK.stash();
     const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요.</p>
@@ -2110,11 +2136,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       let b; try { b = BK.read(text); } catch (e) { pv.hidden = true; msg(e.message); return; }
       const cur = BK.count(BK.snapshot()), nb = BK.count(b.data);
       pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div><div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">지금 자료는 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
-      $('[data-bk-go]', pv).onclick = () => { try { BK.restore(b.data); } catch (e) { msg(e.message); return; } msg('복원했어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
+      $('[data-bk-go]', pv).onclick = async () => { try { BK.restore(b.data); } catch (e) { if (e.code === 'partial') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; } msg('복원했어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
       msg('');
     };
     $('#bkfile', sh.s).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > BK.MAX_BYTES) { msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => preview(String(r.result || '')); r.onerror = () => msg('파일을 읽지 못했어요.'); r.readAsText(f); };
     $('[data-bk-paste]', sh.s).onclick = () => { ta.hidden = false; ta.value = ''; ta.placeholder = '백업 글자를 붙여 넣으세요'; ta.focus(); pv.hidden = false; pv.innerHTML = '<button class="btn line wide" data-bk-read>붙여 넣은 글자 확인</button>'; $('[data-bk-read]', pv).onclick = () => preview(ta.value); };
+    if (note) msg(note);
     const un = $('[data-bk-undo]', sh.s); if (un) un.onclick = () => { try { BK.undo(); } catch (e) { msg(e.message); return; } msg('복원 전으로 되돌렸어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
   }
   function menu() {

@@ -89,7 +89,8 @@ export function parseBudget(text) {
     const n = amount(m); if (!won(n)) continue;
     const q = m[4] || '';
     if (q === '대') { min = n; max = n + 10 ** Math.floor(Math.log10(n)) - 1; } // 5만원대 → 50,000~59,999 (엔진과 같은 기준)
-    else if (['이상', '넘는', '넘게', '부터', '초과'].includes(q)) min = n;
+    else if (['이상', '부터'].includes(q)) min = n;
+    else if (['넘는', '넘게', '초과'].includes(q)) min = n + 1; // '10만원 초과'는 100,000원을 포함하지 않는다.
     else if (q === '미만') max = n - 1;
     else max = n;
   }
@@ -101,24 +102,40 @@ const wonText = (n) => `${n.toLocaleString('ko-KR')}원`;
 const budgetText = (b) => b.min !== undefined && b.max !== undefined ? `${wonText(b.min)}~${wonText(b.max)}` : b.max !== undefined ? `${wonText(b.max)} 이하` : `${wonText(b.min)} 이상`;
 const budgetFit = (price, b) => (b.max !== undefined && price > b.max ? '예산 초과' : b.min !== undefined && price < b.min ? '예산 미만' : '예산 안');
 // 답 문장이 후보의 예산 판정과 어긋나면 그 후보의 실제 가격·판정을 한 줄로 돌려준다(문장을 고쳐 쓰거나 다시 호출하지 않는다).
+// 오탐을 줄이는 규칙: ① 문장이 정확히 한 후보만 가리킬 때만 대조한다(이름 전체, 또는 그 후보에만 있는 낱말).
+// ② '넘지 않아요·안 넘어요·비싸지 않아요' 같은 부정은 '예산 안'으로 읽는다. ③ 합계·여러 벌 문장은 한 벌 판정으로 대조하지 않는다.
+const OVER = /(예산|가격|금액).{0,10}(초과|넘|벗어|오버)|비싸|넘어요|넘네요|넘습니다|넘는/;
+const NOT_OVER = /(넘|초과하|벗어나|비싸)지\s*(않|안)|안\s*(넘|비싸)/;
+const WITHIN = /(예산|가격|금액).{0,10}(안에|안이|안으로|안쪽|이내|이하|맞|여유|충분)|저렴|싸요|쌉니다|합리적/;
+const SUM = /합계|합쳐|총액|총 |전부 사|모두 사|다 사면|두 벌|세 벌|같이 사면|함께 사면/;
+const plainName = (name) => name.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
+const wordsOf = (name) => name.replace(/[[\]()\-·,]/g, ' ').split(/\s+/).filter((t) => t.length >= 2); // [딥 인디고] 같은 색 표기도 구분 낱말로 쓴다.
 export function priceCheck(items, answer, budget) {
   if (!budget || !items.length) return null;
   const sentences = String(answer).split(/(?<=[.!?。])\s+|\n+/);
-  const OVER = /(예산|가격|금액).{0,10}(초과|넘|벗어|오버)|비싸|넘어요|넘네요|넘습니다|넘는/;
-  const WITHIN = /(예산|가격|금액).{0,10}(안|이내|이하|맞|여유|충분)|저렴|싸요|쌉니다|합리적/;
-  const SUM = /합계|합쳐|총액|총 |전부 사|모두 사|다 사면|두 벌|세 벌/;
+  // 후보마다 '그 후보에만 있는 낱말'(다른 후보 이름에 없는 낱말)을 고른다. 공통 낱말(셔츠·베이식 등)로는 가리키지 않는다.
+  const words = items.map((it) => wordsOf(it.name));
+  const own = words.map((ws, i) => ws.filter((w) => !words.some((other, j) => j !== i && other.includes(w))));
+  const full = items.map((it) => it.name.trim());
+  const plain = items.map((it) => plainName(it.name));
+  const pointsAt = (sen) => {
+    const exact = items.map((_, i) => sen.includes(full[i])).flatMap((hit, i) => (hit ? [i] : []));
+    if (exact.length) return exact;
+    return items.map((_, i) => (own[i].length && own[i].filter((w) => sen.includes(w)).length >= Math.min(2, own[i].length)) || (plain[i] && sen.includes(plain[i]) && !plain.some((p, j) => j !== i && p === plain[i]))).flatMap((hit, i) => (hit ? [i] : []));
+  };
   const corrections = [];
-  for (const it of items) {
-    const fit = budgetFit(it.price, budget);
-    const name = it.name.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
-    const tokens = name.split(/\s+/).filter((t) => t.length >= 2);
-    const mentioned = (s) => s.includes(name) || tokens.filter((t) => s.includes(t)).length >= Math.min(2, tokens.length);
-    const wrong = sentences.some((sen) => {
-      if (SUM.test(sen) || !mentioned(sen)) return false;
-      const over = OVER.test(sen), within = WITHIN.test(sen);
-      return (fit === '예산 안' && over && !within) || (fit === '예산 초과' && within && !over);
-    });
-    if (wrong) corrections.push({ id: it.id, name: it.name, price: it.price, fit });
+  const flagged = new Set();
+  for (const sen of sentences) {
+    if (SUM.test(sen)) continue;
+    const hit = pointsAt(sen);
+    if (hit.length !== 1) continue; // 두 후보 이상을 함께 말하거나 아무도 가리키지 않으면 판단하지 않는다.
+    const i = hit[0];
+    if (flagged.has(i)) continue;
+    const negated = NOT_OVER.test(sen);
+    const over = OVER.test(sen) && !negated;
+    const within = WITHIN.test(sen) || negated;
+    const fit = budgetFit(items[i].price, budget);
+    if ((fit === '예산 안' && over && !within) || (fit !== '예산 안' && within && !over)) { flagged.add(i); corrections.push({ ...items[i], fit }); }
   }
   if (!corrections.length) return null;
   return corrections.map((c) => `가격 확인: ${c.name} ${wonText(c.price)} · 예산 ${budgetText(budget)} 기준 ${c.fit}이에요`);

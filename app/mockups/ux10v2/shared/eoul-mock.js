@@ -1,5 +1,5 @@
 /* 자동 생성 파일: app/mockups/ux10v2/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
-   내용: 어울 앱 엔진(app/src, 커밋 0cc1657) 20개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
+   내용: 어울 앱 엔진(app/src, 커밋 02a12cd) 20개 모듈 + 목업 코어 2판(app/mockups/ux10v2/src/core.mjs).
    상품 사진 937개는 파일이 아니라 무신사 이미지 서버 주소다(사용 권리 미확인). ?photos=0이면 사진 없이 본다.
    window.EoulMock 하나만 내보낸다. */
 (function () {
@@ -4066,6 +4066,17 @@ function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup
   const UNREADABLE = '저장된 옷장 기록을 읽지 못했어요. 기록을 지우지 않도록 저장을 멈췄어요. 원문을 받아 두거나 따로 보관한 뒤 새로 시작할 수 있어요.';
   const UNAVAILABLE = '이 브라우저 저장소를 쓸 수 없어요. 지금 화면의 변경은 저장되지 않아요. 브라우저 설정·저장 공간을 확인해 주세요.';
   let storageIssue = null; // { code: 'storage_unreadable'|'storage_unavailable', message, raw }
+  // 저장 원문 하나를 엔진 규칙으로 읽는다. 읽을 수 없으면 던진다. 불러오기와 백업 복원 전 검사가 같은 규칙을 쓴다.
+  function readSaved(raw) {
+    const v = JSON.parse(raw);
+    if (v?.v !== 1 || !Array.isArray(v.garments) || !Array.isArray(v.journeys)) throw new Error('unsupported');
+    const next = { ...blank(), ...v, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
+      compare: Array.isArray(v.compare) ? v.compare.filter((id) => PRODUCT_BY_ID[id]).slice(0, 4) : [], recent: Array.isArray(v.recent) ? v.recent.filter((x) => typeof x === 'string').slice(0, 5) : [] };
+    next.gender = next.gender === 'F' ? 'F' : 'M';
+    next.registrations = readRegistrations(v.registrations);
+    buildState(next);
+    return next;
+  }
   function load() {
     storageIssue = null;
     if (!storage) {
@@ -4079,14 +4090,7 @@ function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup
     }
     if (raw === null || raw === undefined || raw === '') return blank();
     try {
-      const v = JSON.parse(raw);
-      if (v?.v !== 1 || !Array.isArray(v.garments) || !Array.isArray(v.journeys)) throw new Error('unsupported');
-      const next = { ...blank(), ...v, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
-        compare: Array.isArray(v.compare) ? v.compare.filter((id) => PRODUCT_BY_ID[id]).slice(0, 4) : [], recent: Array.isArray(v.recent) ? v.recent.filter((x) => typeof x === 'string').slice(0, 5) : [] };
-      next.gender = next.gender === 'F' ? 'F' : 'M';
-      next.registrations = readRegistrations(v.registrations);
-      buildState(next);
-      return next;
+      return readSaved(raw);
     } catch {
       storageIssue = { code: 'storage_unreadable', message: UNREADABLE, raw: String(raw) };
       return blank();
@@ -4289,6 +4293,11 @@ function createMock({ storage = null, requireStorage = false, key = 'eoul-mockup
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     storageIssue: () => (storageIssue ? { code: storageIssue.code, message: storageIssue.message } : null),
     unreadableRaw: () => (storageIssue?.code === 'storage_unreadable' ? storageIssue.raw : null),
+    // 백업 복원 전 검사: 이 원문을 지금 엔진이 그대로 읽을 수 있는지(저장소는 건드리지 않는다).
+    canReadSaved(raw) {
+      if (typeof raw !== 'string' || !raw) return false;
+      try { readSaved(raw); return true; } catch { return false; }
+    },
     // 읽지 못한 원문을 같은 기기의 별도 키에 그대로 보관한 것을 확인한 뒤에만 빈 기록으로 새로 시작한다.
     startFresh() {
       const issue = storageIssue;
@@ -5040,7 +5049,7 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') bootChange(() => mock.setGender(bootGender));
 if (bootParams.get('closet') === 'trial') bootChange(() => mock.loadTrialCloset(bootGender || undefined));
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "0cc1657" };
+mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: "02a12cd" };
 window.EoulMock = mock;
 // 저장소를 쓸 수 없거나 저장된 원문을 읽지 못한 상태도 첫 화면에서 알린다(빈 옷장을 새 사용자로 오해하지 않게).
 mock.boot.storageError = bootStorageError || mock.storageIssue()?.message || null;
