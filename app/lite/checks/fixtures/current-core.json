@@ -1,0 +1,57 @@
+{
+  "ids": [
+    "ms-728000",
+    "ms-854339",
+    "ms-4982765",
+    "ms-3879282"
+  ],
+  "judgment": {
+    "basis": "mine",
+    "basisLabel": "내 옷 3벌 기준",
+    "tone": "stop",
+    "title": "비슷한 옷이 이미 있어요",
+    "lean": "hold",
+    "lines": [
+      "화이트 옥스퍼드·베이직 셔츠 · 같은 종류·색이에요. 새로 더할 이유가 있는지 먼저 확인해 주세요."
+    ],
+    "reasons": [],
+    "owned": [
+      {
+        "id": "garment-id",
+        "kind": "shirt",
+        "kindName": "셔츠",
+        "slot": "m-oxford",
+        "slotName": "옥스퍼드·베이직 셔츠",
+        "label": "옥스퍼드·베이직 셔츠",
+        "gender": "M",
+        "color": "white",
+        "colorLabel": "화이트",
+        "colorHex": "#F6F5F0",
+        "trial": false,
+        "bought": false,
+        "productId": null,
+        "sourceLabel": "내 옷",
+        "detailMissing": null,
+        "photo": null,
+        "relation": "same-color",
+        "relationLabel": "같은 세부 종류·색"
+      }
+    ],
+    "looks": [],
+    "newLookCount": 0,
+    "existingLookCount": 0,
+    "companion": null,
+    "ask": null,
+    "addSuggestion": {
+      "kind": "shirt",
+      "kindName": "셔츠",
+      "slot": "m-oxford",
+      "slotName": "옥스퍼드·베이직 셔츠",
+      "gender": "M",
+      "color": "white"
+    },
+    "cautions": [],
+    "record": null,
+    "fine": "종류·색과 코디 공식으로 비교했어요. 소재·핏·사이즈·현재 가격은 판매처에서 확인해요."
+  }
+}

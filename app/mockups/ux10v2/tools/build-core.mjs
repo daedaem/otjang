@@ -17,7 +17,7 @@ const ORDER = [
   'src/legacy-purchase-v4.js', 'src/purchase-journey.js', 'src/wear-log.js', 'src/wardrobe.js', 'src/outfit-copy.js',
   'src/search-follow-up.js', 'src/closet-view.js', 'src/query.js', 'src/engine.js', 'src/purchase-candidate.js',
   'src/related-returns.js', 'src/wardrobe-plan.js', 'src/purchase-plan-context.js', 'src/offers.js', 'src/offer-store.js',
-  'src/icons.js',
+  'src/icons.js', 'src/lite-registration.js',
 ];
 const importsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^import[\s\S]*?from\s+['"]([^'"]+)['"];?\s*$/gm)].map((m) => path.resolve(path.dirname(file), m[1]));
 const need = new Set();
@@ -52,7 +52,10 @@ const bootPhotos = bootParams.get('photos') !== '0';
 const bootPreview = bootParams.get('preview') === '1';
 // 한 주소에서 여러 시안을 열 때 기록이 섞이지 않게, 페이지가 코어보다 먼저 window.EOUL_MOCK_KEY를 적으면 그 이름으로 저장한다.
 const bootKey = typeof window !== 'undefined' && typeof window.EOUL_MOCK_KEY === 'string' && window.EOUL_MOCK_KEY ? window.EOUL_MOCK_KEY : undefined;
-const mock = createMock({ storage: bootPreview ? null : bootStorage, key: bootKey, reset: bootParams.get('reset') === '1' || bootPreview, photos: bootPhotos });
+const mock = createMock({ storage: bootPreview ? null : bootStorage, requireStorage: !bootPreview, key: bootKey, photos: bootPhotos });
+let bootStorageError = null;
+const bootChange = (fn) => { try { fn(); } catch (error) { if (!['storage_write_failed', 'storage_unreadable'].includes(error.code)) throw error; bootStorageError = error.message; } };
+if (bootParams.get('reset') === '1' || bootPreview) bootChange(() => mock.reset());
 // 검색 엔진에 실리지 않게 한다(접근 통제는 아니다. 링크를 아는 사람은 열 수 있다).
 if (typeof document !== 'undefined' && document.head && !document.querySelector('meta[name="robots"]')) {
   const meta = document.createElement('meta');
@@ -61,10 +64,12 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
   document.head.appendChild(meta);
 }
 const bootGender = bootParams.get('g');
-if (bootGender === 'M' || bootGender === 'F') mock.setGender(bootGender);
-if (bootParams.get('closet') === 'trial') mock.loadTrialCloset(bootGender || undefined);
+if (bootGender === 'M' || bootGender === 'F') bootChange(() => mock.setGender(bootGender));
+if (bootParams.get('closet') === 'trial') bootChange(() => mock.loadTrialCloset(bootGender || undefined));
 mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: ${JSON.stringify(commit)} };
 window.EoulMock = mock;
+// 저장소를 쓸 수 없거나 저장된 원문을 읽지 못한 상태도 첫 화면에서 알린다(빈 옷장을 새 사용자로 오해하지 않게).
+mock.boot.storageError = bootStorageError || mock.storageIssue()?.message || null;
 })();
 `;
 fs.writeFileSync(path.join(mock, 'shared/eoul-mock.js'), out);
