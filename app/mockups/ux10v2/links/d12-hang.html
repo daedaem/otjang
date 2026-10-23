@@ -392,6 +392,11 @@ a { color: inherit; text-decoration: none; }
 .wait-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .wait-row .ph-box { width: 52px; flex: none; border-radius: 8px; }
 .wait-row .grow { flex: 1; min-width: 0; }
+.box .warn { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; color: var(--ink2); }
+.box .warn i { flex: none; font-size: 15px; margin-top: 1px; color: var(--acc-text); }
+.wait-row .acts { display: grid; gap: 4px; justify-items: end; flex: none; }
+.wait-row .acts .btn { min-height: 44px; font-size: 15px; padding: 0 14px; border-radius: 12px; }
+.wait-row .acts .quiet { min-height: 32px; font-size: 13px; }
 .wait-row .n { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .wait-row .btn { min-height: 44px; font-size: 14px; padding: 0 12px; flex: none; }
 
@@ -427,6 +432,11 @@ a { color: inherit; text-decoration: none; }
 .decs { display: grid; gap: 8px; }
 .decs .btn { min-height: 54px; }
 .menu .row { min-height: 52px; }
+/* 백업·복원 */
+.bk .decs .btn { justify-content: flex-start; }
+.bk-ta { width: 100%; min-height: 120px; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--well); color: var(--ink); font: inherit; font-size: 12px; line-height: 18px; resize: vertical; }
+.bk-preview:not([hidden]) { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--well); display: grid; gap: 10px; }
+.bk-msg { margin-top: 10px; min-height: 18px; }
 .k-toast { width: max-content; }
 
 /* 코디 상담 */
@@ -437,6 +447,8 @@ a { color: inherit; text-decoration: none; }
 .msg.refuse { background: var(--surface); border: 1px dashed var(--ink3); color: var(--ink2); }
 .msg.err { background: var(--surface); border: 1px solid var(--line); color: var(--ink2); }
 .msg .who { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--acc-text); margin-bottom: 4px; white-space: nowrap; min-width: 0; }
+.msg .pcheck { display: flex; gap: 6px; align-items: flex-start; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--ink2); white-space: normal; }
+.msg .pcheck i { flex: none; font-size: 15px; color: var(--acc-text); margin-top: 1px; }
 .msg .ai-info { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--ink2); white-space: normal; }
 .ai-info summary { cursor: pointer; min-height: 28px; }
 .ai-info dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 4px 0 0; }
@@ -886,6 +898,7 @@ a { color: inherit; text-decoration: none; }
 앱 목록에 없는 브랜드(유니클로 등)를 물으면 거절하지 말고, 그 브랜드의 대표 제품군·핏 경향·대략적인 가격대 같은 일반 지식으로 답하세요. 이때 '앱에서 확인한 정보는 아니에요'라고 한 번 밝히고, 지금 가격·재고·품번·출시 여부는 말하지 마세요. 그다음 앱 후보 중 가장 비슷한 것을 권하세요.
 주의 문구는 꼭 필요할 때 한 문장만 쓰세요. 가격 수집일은 화면 카드에 보이니 문장에서 반복하지 마세요. '참고' 줄(앱에 없는 브랜드 등)은 짧게 알려 주세요.
 해요체로 5문장, 550자 이내로 답하세요. 참고 줄에 '맞는 상품이 없어요'가 있으면 다른 종류의 상품을 대신 권하지 말고 없다고 말하세요.
+예산 판단은 '예산' 줄과 후보의 budgetFit(앱이 가격을 비교한 사실)만 쓰고 직접 계산하거나 반대로 말하지 마세요. 예산은 상품 한 벌 기준이며 여러 벌을 더해 말할 때는 '합계'라고 밝히세요.
 JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids": ["ms-..."]}`;
 
   // 상담 후보 찾기: 질문을 검색어로 바로 못 알아들어도 상황(장례식→격식·검정)·브랜드·앞선 질문을 이어 붙여 다시 찾고,
@@ -906,6 +919,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const alias = (t) => BRAND_ALIAS.reduce((x, [re, to]) => x.replace(re, to), t);
     const parse = (t) => { try { return t ? M.ask(t) : null; } catch { return null; } };
     const ask = (t) => { const r = parse(t); return r && r.understood && r.products?.length ? r.products : null; };
+    // 예산은 엔진이 읽은 검색 조건(criteria)에서만 가져온다(원 단위 정수). 이번 질문에 없으면 최근 3번 질문 중 가장 가까운 예산을 이어 간다.
+    const wonOk = (n) => Number.isInteger(n) && n >= 1000 && n <= 100000000;
+    const budgetOf = (r) => { const c = r?.criteria; if (!c) return null; const b = {}; if (wonOk(c.maxPrice)) b.max = c.maxPriceExclusive ? c.maxPrice - 1 : c.maxPrice; if (wonOk(c.minPrice)) b.min = c.minPriceExclusive ? c.minPrice + 1 : c.minPrice; return (b.max || b.min) && !(b.max && b.min && b.min > b.max) ? b : null; };
     const recent = hist.filter((m) => m.role === 'user').map((m) => m.content).slice(-3);
     // 상황(장례식 등)은 최근 3번 질문까지 이어 가고, 브랜드는 바로 앞 질문에서만 이어 간다.
     const prevUser = recent.at(-1) || '';
@@ -913,17 +929,24 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const hint = hintOf(q) || prevHint;
     const wantsMusinsa = brandIn(q) || (!hintOf(q) && brandIn(prevUser));
     const own = parse(alias(q));
+    const NO_BUDGET = /(예산|가격|금액)\s*(?:은|는|이|가|도|에)?\s*(없이|상관|무관|신경\s*(?:안|쓰지)|안\s*따)/;
+    // '예산 상관없이'라고 한 뒤로는 그 앞 질문의 예산을 더 이어 가지 않는다.
+    const inherited = () => { for (const t of [...recent].reverse()) { if (NO_BUDGET.test(t)) return null; const b = budgetOf(parse(alias(t))); if (b) return b; } return null; };
+    const budget = NO_BUDGET.test(q) ? null : budgetOf(own) || inherited();
+    // '가격 상관없이'라고 했으면 앞 질문을 이어 붙여 후보를 찾을 때도 앞 질문의 가격 조건을 빼야 한다(안 그러면 옛 예산으로 후보가 걸러진다).
+    const PRICE_TEXT = /\d[\d.,]*\s*[~〜～-]\s*(?=\d)|\d[\d.,]*\s*(?:만\s*원|만|천\s*원|천|원)\s*(?:대|이하|이내|미만|까지|이상|부터|초과|안에서|안에|안|정도|쯤|넘지\s*(?:않|말)[가-힣]*|안\s*넘[가-힣]*|넘[가-힣]*)?/g;
+    const prevForJoin = NO_BUDGET.test(q) ? prevUser.replace(PRICE_TEXT, ' ').replace(/\s+/g, ' ').trim() : prevUser;
     let mode = GAP_RE.test(q) ? 'gap' : own?.understood && own.products?.length ? 'q' : own?.understood ? 'none' : hintOf(q) || brandIn(q) ? 'hint' : 'follow';
     const ctxText = wantsMusinsa && ask(`${prevHint} ${alias(q)} 무신사 스탠다드`) ? `${prevHint} ${alias(q)} 무신사 스탠다드` : `${prevHint} ${alias(q)}`;
     if (mode === 'q' && !hintOf(q) && prevHint && ask(ctxText)) mode = 'q-context';
     const notes = [];
     let list = null;
     if (mode === 'follow') {
-      const joined = prevUser && ask(`${alias(prevUser)} ${alias(q)}`);
+      const joined = prevForJoin && ask(`${alias(prevForJoin)} ${alias(q)}`);
       if (prevUser && GAP_RE.test(prevUser)) mode = 'gap';
       else if (joined) { list = joined; notes.push('후보는 바로 앞 질문에 이어서 고른 상품이에요'); }
       else if (prevHint) mode = 'hint';
-      else if (prevUser && ask(alias(prevUser))) { list = ask(alias(prevUser)); notes.push('후보는 바로 앞 질문에 이어서 고른 상품이에요'); }
+      else if (prevForJoin && ask(alias(prevForJoin))) { list = ask(alias(prevForJoin)); notes.push('후보는 바로 앞 질문에 이어서 고른 상품이에요'); }
       else mode = 'gap';
     }
     if (mode === 'hint') {
@@ -942,19 +965,22 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const brandText = mode === 'gap' ? q : `${prevUser} ${q}`;
     for (const [re, name] of BRAND_ABSENT) if (re.test(brandText)) notes.push(`${name} 상품은 이 앱 목록에 없어요(일반 지식으로만 답하기)`);
     const cands = (list || []).slice(0, 8).map(pick);
+    if (budget) for (const c of cands) c.budgetFit = budget.max !== undefined && c.price > budget.max ? '예산 초과' : budget.min !== undefined && c.price < budget.min ? '예산 미만' : '예산 안';
     const closet = M.getState().closet.slice(0, 200).map((g) => `${g.colorLabel} ${g.kindName}${g.trial ? '(체험용)' : ''}`.slice(0, 80));
     // 앱 목록에 없는 브랜드를 물었으면 국내 쇼핑몰(애드픽 공식 API) 검색어를 만든다. 검색은 사용자가 눌렀을 때만 하고, 결과는 AI에 넘기지 않는다.
     const absent = BRAND_ABSENT.find(([re]) => re.test(q)) || (mode !== 'gap' && BRAND_ABSENT.find(([re]) => re.test(prevUser)));
     const shop = absent ? `${absent[2]} ${cands[0]?.kind || ''}`.trim().slice(0, 40) : '';
-    return { cands, closet, shop, notes: notes.map((n) => n.slice(0, 80)).slice(0, 6) };
+    return { cands, closet, shop, budget, notes: notes.map((n) => n.slice(0, 80)).slice(0, 6) };
   }
   function chatHistory() {
     const hist = C.turns.filter((t) => t.role === 'user' || t.role === 'assistant').slice(-6).map((t) => ({ role: t.role, content: String(t.text || (t.role === 'assistant' ? REFUSE : '')).slice(0, 700) }));
     while (hist.length && hist[0].role !== 'user') hist.shift();
     return hist;
   }
+  const wonText = (n) => `${Number(n).toLocaleString('ko-KR')}원`;
+  const budgetText = (b) => b.min !== undefined && b.max !== undefined ? `${wonText(b.min)}~${wonText(b.max)}` : b.max !== undefined ? `${wonText(b.max)} 이하` : `${wonText(b.min)} 이상`;
   function chatMessages(q, data, hist) {
-    const ref = `참고 자료\n사용자 옷장(${data.closet.length}벌): ${data.closet.join(', ') || '비어 있음'}\n후보 상품: ${data.cands.length ? JSON.stringify(data.cands) : '없음(이번 질문에서 찾은 상품 없음)'}${data.notes.length ? `\n참고: ${data.notes.join(' / ')}` : ''}`;
+    const ref = `참고 자료\n사용자 옷장(${data.closet.length}벌): ${data.closet.join(', ') || '비어 있음'}\n후보 상품: ${data.cands.length ? JSON.stringify(data.cands) : '없음(이번 질문에서 찾은 상품 없음)'}${data.notes.length ? `\n참고: ${data.notes.join(' / ')}` : ''}${data.budget ? `\n예산(상품 한 벌 기준): ${budgetText(data.budget)}` : ''}`;
     const msgs = [...hist, { role: 'user', content: `${ref}\n\n사용자 질문: ${q}` }];
     msgs[0] = { role: 'user', content: `${RULES}\n\n${msgs[0].content}` };
     return msgs.reduce((a, m) => { const last = a[a.length - 1]; if (last && last.role === m.role) last.content += `\n\n${m.content}`; else a.push({ ...m }); return a; }, []);
@@ -973,7 +999,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       let out;
       const fromServer = typeof window.EOUL_SERVER_AI === 'function';
       if (fromServer) {
-        out = await window.EOUL_SERVER_AI({ task: 'consult', query: q, items: data.cands.map((p) => ({ id: p.id, closet: String(p.closet || '').slice(0, 120) })), closet: data.closet, conditions: data.notes, history });
+        out = await window.EOUL_SERVER_AI({ task: 'consult', query: q, items: data.cands.map((p) => ({ id: p.id, closet: String(p.closet || '').slice(0, 120) })), closet: data.closet, conditions: data.notes, history, ...(data.budget ? { budget: data.budget } : {}) });
       } else {
         const sample = await getSampler();
         if (!sample) throw Object.assign(new Error('unavailable'), { code: 'unavailable' });
@@ -985,6 +1011,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         const ids = [...new Set((Array.isArray(out.product_ids) ? out.product_ids : []).map(String))].filter((id) => ok.has(id)).slice(0, 4);
         turn = { role: 'assistant', text: out.answer.trim().slice(0, 550), ids };
         if (data.shop) turn.shop = data.shop;
+        // 서버가 답과 실제 가격을 대조해 어긋난 후보를 알려 주면 답 아래에 사실 줄로 붙인다(답 문장은 고치지 않는다).
+        const lines = Array.isArray(out.price_check?.lines) ? out.price_check.lines.filter((l) => typeof l === 'string' && l.trim()).slice(0, 4).map((l) => l.slice(0, 160)) : [];
+        if (lines.length) turn.check = lines;
         const ai = fromServer ? aiResponseInfo(out.ai) : null;
         if (ai) turn.ai = ai;
       }
@@ -998,7 +1027,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if (x.role === 'user') return `<div class="msg me">${esc(x.text)}</div>`;
     if (x.role === 'note') return `<div class="msg err" role="status">${esc(x.text)}</div>`;
     if (x.refused) return `<div class="msg bot refuse"><span class="who"><i class="ph ph-hand"></i>상담 범위 밖이에요</span>${esc(x.text)}</div>`;
-    return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}${x.role === 'assistant' ? aiInfoHtml(x.ai) : ''}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}${x.shop && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel data-adpick-q="${esc(x.shop)}"><button class="btn line sm" data-adpick-search><i class="ph ph-magnifying-glass"></i>국내 쇼핑몰에서 '${esc(x.shop)}' 찾기</button><div data-adpick-results aria-live="polite"></div></section>` : ''}`;
+    return `<div class="msg bot"><span class="who"><i class="ph-fill ph-sparkle"></i>AI 코디 상담</span>${esc(x.text)}${Array.isArray(x.check) && x.check.length ? `<div class="pcheck" role="note"><i class="ph ph-seal-check" aria-hidden="true"></i><span>${x.check.map(esc).join('<br>')}</span></div>` : ''}${x.role === 'assistant' ? aiInfoHtml(x.ai) : ''}</div>${x.ids?.length ? `<div class="recs">${x.ids.map(recCard).join('')}</div>` : ''}${x.shop && window.EOUL_ADPICK ? `<section class="section" data-adpick-panel data-adpick-q="${esc(x.shop)}"><button class="btn line sm" data-adpick-search><i class="ph ph-magnifying-glass"></i>국내 쇼핑몰에서 '${esc(x.shop)}' 찾기</button><div data-adpick-results aria-live="polite"></div></section>` : ''}`;
   }
   const recCard = (id) => { const p = M.product(id); if (!p) return ''; return `<div class="rc" data-card="${id}"><button class="open-p" data-pid="${id}">${productPic(id)}<div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div><div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>${hangToggle(id)}</div>`; };
 
@@ -1243,6 +1272,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
           <h2 class="h2">${head}</h2>
           ${sub ? `<p class="t5 sub">${esc(sub)}</p>` : ''}
+          ${(Array.isArray(v.cautions) ? v.cautions : []).slice(0, 3).map((c) => `<p class="t6 warn"><i class="ph ph-warning-circle" aria-hidden="true"></i>${esc(c)}</p>`).join('')}
           ${ask ? `<div class="ownq"><button data-own="yes" data-for="${id}">있어요</button><button class="no" data-own="no" data-for="${id}">없어요</button></div>` : ''}
           ${same.length ? `<div class="owned">${same.map((o) => `<div class="o">${garmentPic(o)}<div class="t6">${esc(o.colorLabel)} ${esc(o.kindName)}${o.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : ''}
           ${looks.length ? `<div class="looks2">${looks.map((l) => { const ps = l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4); return `<div class="lk"><div class="head"><b>${esc(l.title || '')}</b>${l.new ? '<span class="t6 acc" style="font-weight:700">새 코디</span>' : ''}</div><div class="ps">${ps.map((x) => `<div class="p1${x.candidate ? ' me' : ''}">${piecePic(x)}<div class="t6">${x.candidate ? '이 옷' : `${esc(x.colorLabel)} ${esc(x.kindName)}${x.trial ? ' · 체험용' : ''}`}</div></div>`).join('')}</div></div>`; }).join('')}</div>` : ''}
@@ -1372,13 +1402,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const waiting = buy.filter((x) => ['candidate', 'ordered', 'received'].includes(x.stage));
       const byDay = new Map();
       all.forEach((r) => { const k = dayKey(r.updatedAt); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
-      const stage = (r) => r.decision === 'buy' ? (r.stage === 'candidate' ? '주문 전' : r.stageLabel) : (r.stage === 'candidate' ? '' : r.stageLabel);
+      const stage = (r) => `${r.decision === 'buy' ? (r.stage === 'candidate' ? '주문 전' : r.stageLabel) : (r.stage === 'candidate' ? '' : r.stageLabel)}${r.stage === 'returned' && r.returnReasonLabel ? ` · ${r.returnReasonLabel}` : ''}`;
       return `${top({ back: false })}
         <h1 class="h1" style="margin-top:12px">${decided.length ? `<span class="num">${decided.length}</span>벌을 정했어요` : holds.length ? `보류 <span class="num">${holds.length}</span>벌 · 아직 정하지 않았어요` : '아직 정한 옷이 없어요'}</h1>
         ${all.length ? '' : '<p class="t5 sub" style="margin-top:4px">걸어 본 옷을 살지 정하면 여기에 남아요.</p>'}
         ${all.length ? `<div class="sum"><div class="c"><div class="k">살게요</div><div class="v num">${buy.length}</div>${sum ? `<div class="t6 num nw" style="font-size:12px">${won(sum)} 수집가</div>` : ''}</div><div class="c"><div class="k">보류</div><div class="v num">${holds.length}</div></div><div class="c"><div class="k">안 살래요</div><div class="v num">${all.length - buy.length - holds.length}</div></div></div>` : ''}
         ${waiting.length ? `<section class="section"><div class="h"><h2 class="h3">사기로 한 옷</h2></div>
-          ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span>${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? '계속 입을게요 · 걸기' : esc(nx.label)}</button>` : ''}</div>`; }).join('')}</section>` : ''}
+          ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); const ret = (x.next || []).find((n) => n.step === 'returned'); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span><span class="acts">${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? '계속 입을게요 · 걸기' : esc(nx.label)}</button>` : ''}${ret ? `<button class="quiet" data-ret="${x.productId}">${esc(ret.label)}</button>` : ''}</span></div>`; }).join('')}</section>` : ''}
         <div class="tl">${[...byDay.entries()].map(([d, rs]) => `<div class="day">${esc(d)}</div>${rs.map((r) => `<button class="rec" data-pid="${r.productId}">${productPic(r.productId)}<span class="grow"><span class="n">${esc(r.product?.name || '')}</span><span class="t6"><span class="pill ${r.decision === 'buy' ? 'buy' : ''}">${DEC[r.decision]}</span>${stage(r) ? ` ${esc(stage(r))}` : ''}</span></span><span class="pr num">${esc(r.product?.priceText || '')}</span></button>`).join('')}`).join('') || '<button class="btn soft wide" data-tabgo="home" style="margin-top:20px">옷 찾으러 가기</button>'}</div>`;
     },
   };
@@ -1455,9 +1485,17 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
     records() {
       $$('[data-adv]').forEach((b) => { b.onclick = () => { try { M.advance(b.dataset.adv, b.dataset.step); K.refresh(); } catch (e) { K.toast(e.message, { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); } }; });
+      $$('[data-ret]').forEach((b) => { b.onclick = () => returnSheet(b.dataset.ret); });
     },
   };
 
+  // 반품 기록: 엔진이 사유를 요구한다(사이즈·색·품질·마음 바뀜·기타). 기록하면 옷장에서 내려가고 같은 상품의 다음 판정에 주의로 남는다.
+  const RETURN_REASONS = [['size', '사이즈가 안 맞아요'], ['color', '색이 달라요'], ['quality', '품질이 아쉬워요'], ['change-of-mind', '마음이 바뀌었어요'], ['other', '그 밖의 이유']];
+  function returnSheet(id) {
+    const p = M.product(id); if (!p || $('.sheet')) return;
+    const sh = sheet(`<h2 class="h2">${esc(p.name)} · 왜 반품했어요?</h2><p class="sub t6">기록하면 옷장에서 내려가고, 같은 상품을 다시 볼 때 알려 드려요. 확인된 거래가 아니라 직접 남기는 기록이에요.</p><div class="decs">${RETURN_REASONS.map(([k, l]) => `<button class="btn soft" data-reason="${k}">${l}</button>`).join('')}</div>`);
+    $$('[data-reason]', sh.s).forEach((b) => { b.onclick = async () => { try { M.advance(id, 'returned', { reason: b.dataset.reason }); } catch (e) { K.toast(e.message, { bottom: 48 + 12 }); return; } await sh.close(); K.refresh(); K.toast('반품으로 기록했어요 · 옷장에서 내렸어요', { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); }; });
+  }
   // ── 상세의 결정: 주 행동은 '판매처에서 사기' 하나. 돌아오면 묻고, 아직이면 조용한 글자 버튼으로 남긴다.
   // 아래 바 한 줄: 결정 전에는 가격·수집가와 조용한 '보류 · 안 살래요', 결정 뒤에는 상태 한 줄과 '바꾸기'. 말풍선은 띄우지 않는다.
   function drawDecision(id) {
@@ -1466,12 +1504,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const nvu = M.newVsUsed(id);
     const dec = rec?.decision;
     const meta = dec
-      ? `<span class="fb" role="status"><i class="ph-fill ph-check-circle"></i><span class="nt" style="color:inherit">${esc(DEC[dec])}로 남겼어요${rec.stage !== 'candidate' ? ` · ${esc(rec.stageLabel)}` : dec === 'buy' ? ' · 주문·도착은 기록에서' : ''}</span></span><span class="qs">${rec.stage === 'candidate' ? '<button class="quiet" data-redecide>바꾸기</button>' : '<button class="quiet" data-tabgo="records">기록</button>'}</span>`
+      ? `<span class="fb" role="status"><i class="ph-fill ph-check-circle"></i><span class="nt" style="color:inherit">${esc(DEC[dec])}로 남겼어요${rec.stage !== 'candidate' ? ` · ${esc(rec.stageLabel)}` : dec === 'buy' ? ' · 주문·도착은 기록에서' : ''}</span></span><span class="qs">${rec.stage === 'candidate' ? '<button class="quiet" data-redecide>바꾸기</button>' : `${rec.stage === 'kept' && (rec.next || []).some((n) => n.step === 'returned') ? `<button class="quiet" data-ret="${esc(id)}">반품했어요</button>` : ''}<button class="quiet" data-tabgo="records">기록</button>`}</span>`
       : `<span class="pr"><b class="num">${esc(p.priceText)}</b><span class="nt">${esc(p.priceShort)} · ${esc(nvu.fresh.store)}</span></span><span class="qs"><button class="quiet" data-dec="hold">보류</button><button class="quiet" data-dec="skip">안 살래요</button></span>`;
     $('#bar').innerHTML = `<div class="buybar"><div class="in"><div class="meta">${meta}</div>
       <a class="btn go wide" href="${esc(p.url)}" target="_blank" rel="noopener" data-seller="${id}">판매처에서 사기<i class="ph ph-arrow-up-right"></i></a></div></div>`;
     $$('[data-dec]').forEach((b) => { b.onclick = () => decide(id, b.dataset.dec); });
     $('[data-redecide]') && ($('[data-redecide]').onclick = () => decisionSheet(id, { title: '어떻게 할까요?' }));
+    $('#bar [data-ret]') && ($('#bar [data-ret]').onclick = () => returnSheet(id)); // 계속 입기로 한 뒤에도 반품을 남길 수 있게
     $('[data-seller]').onclick = () => { S.pending = { id, t: Date.now() }; };
   }
   function decide(id, dec) {
@@ -1993,9 +2032,142 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       apply({ mode: 'fixed', name: '저장한 위치', lat: c.lat, lon: c.lon });
     };
   }
+  // ── 백업·복원(개발 계획 2번): 이 기기 저장소의 개인 자료(옷장·기록·상담·직접 등록·날씨 지역·기기 ID)를 글자 파일 하나로 내보내고 되돌린다.
+  // 사진은 저장하지 않으므로 글자 자료만 있다. 값은 저장된 원문 그대로 담아 다시 해석하며 잃는 것이 없게 한다.
+  // 복원은 키 단위로 바꾸기 전에 현재 값을 '복원 전 보관'에 남겨 한 번 되돌릴 수 있다. 모양이 다른 파일은 아무것도 바꾸지 않고 거절한다.
+  const BK = {
+    APP: 'eoul-lite', FORMAT: 1, STASH: 'eoul-backup:stash', NEXT: 'eoul-backup:stash-next', MAX_BYTES: 5 * 1024 * 1024,
+    skip: (k) => typeof k !== 'string' || !k.startsWith('eoul-') || k.startsWith('eoul-backup:') || /:(last|probe)$/.test(k),
+    keys() { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!BK.skip(k)) out.push(k); } return out.sort(); },
+    snapshot() { const data = {}; for (const k of BK.keys()) { const v = localStorage.getItem(k); if (typeof v === 'string') data[k] = v; } return data; },
+    make() { return { app: BK.APP, format: BK.FORMAT, screen: 'd12-hang', at: new Date().toISOString(), data: BK.snapshot() }; },
+    stamp() { const d = new Date(); const z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`; },
+    read(text) {
+      if (typeof text !== 'string' || !text.trim()) throw new Error('파일이 비어 있어요.');
+      if (text.length > BK.MAX_BYTES) throw new Error('파일이 너무 커요(5MB 초과).');
+      let v; try { v = JSON.parse(text); } catch { throw new Error('이 앱의 백업 파일(JSON)이 아니에요.'); }
+      if (!v || typeof v !== 'object' || v.app !== BK.APP || v.format !== BK.FORMAT || !v.data || typeof v.data !== 'object' || Array.isArray(v.data)) throw new Error('이 앱의 백업 파일이 아니에요.');
+      const data = {};
+      for (const [k, val] of Object.entries(v.data)) {
+        if (BK.skip(k)) throw new Error(`백업에 모르는 항목이 있어요: ${String(k).slice(0, 40)}`);
+        if (typeof val !== 'string') throw new Error(`항목 값이 글자가 아니에요: ${k.slice(0, 40)}`);
+        data[k] = val;
+      }
+      if (!Object.keys(data).length) throw new Error('백업에 자료가 없어요.');
+      const engine = data[window.EOUL_MOCK_KEY];
+      if (engine !== undefined) {
+        // 불러올 때와 같은 엔진 규칙으로 먼저 읽어 본다. 읽지 못할 자료로 바꾸면 앱이 그 기록을 '읽지 못함'으로 멈추기 때문이다.
+        let ok;
+        if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
+        else { let st = null; try { st = JSON.parse(engine); } catch {} ok = !!st && st.v === 1 && Array.isArray(st.garments) && Array.isArray(st.journeys); }
+        if (!ok) throw new Error('옷장 자료를 이 앱이 읽을 수 없어요. 아무것도 바꾸지 않았어요.');
+      }
+      return { at: typeof v.at === 'string' ? v.at : '', data };
+    },
+    count(data) {
+      const n = { garments: 0, journeys: 0, threads: 0, reg: 0 };
+      try { const st = JSON.parse(data[window.EOUL_MOCK_KEY] || 'null'); if (st) { const trial = new Set(Array.isArray(st.trialIds) ? st.trialIds : []); n.garments = (st.garments || []).filter((g) => !g.trial && !trial.has(g.id)).length; n.journeys = (st.journeys || []).length; } } catch {}
+      try { n.threads = (JSON.parse(data[CHAT_KEY] || '{}').threads || []).length; } catch {}
+      try { n.reg = Object.keys(JSON.parse(data[REG_KEY] || '{}').items || {}).length; } catch {}
+      return n;
+    },
+    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 직접 등록 ${n.reg}건`,
+    // 복원·되돌리기가 지울 수 있는 키: 이 화면이 쓰는 키와 날씨 지역뿐. 읽지 못한 원문 보관(':unreadable:')·모르는 키는 지우지 않는다.
+    removable: (k) => (k.startsWith('eoul-d12-hang:') && !k.includes(':unreadable:')) || k === 'eoul-weather:place',
+    // 목표 상태(target)로 바꾼다. 백업에 없는 '지울 수 있는 키'는 지우고, 쓴 뒤 다시 읽어 확인한다.
+    // 중간에 막히면 바꾼 키만 원래 값으로 되돌린다. 되돌리기까지 막히면 partial 오류(보관본은 그대로 남는다).
+    apply(target) {
+      const before = BK.snapshot();
+      const drop = Object.keys(before).filter((k) => !(k in target) && BK.removable(k));
+      const touched = [];
+      try {
+        for (const k of drop) { touched.push(k); localStorage.removeItem(k); }
+        for (const [k, v] of Object.entries(target)) { if (before[k] === v) continue; touched.push(k); localStorage.setItem(k, v); }
+        for (const k of drop) if (localStorage.getItem(k) !== null) throw new Error('verify');
+        for (const [k, v] of Object.entries(target)) if (localStorage.getItem(k) !== v) throw new Error('verify');
+      } catch {
+        try {
+          for (const k of touched) if (!(k in before)) localStorage.removeItem(k); // 새로 생긴 키부터 지워 공간을 비운다.
+          for (const k of touched) if (k in before) localStorage.setItem(k, before[k]);
+          for (const k of touched) if (localStorage.getItem(k) !== (k in before ? before[k] : null)) throw new Error('verify');
+        } catch {
+          throw Object.assign(new Error("중간에 저장이 막혀 일부만 바뀌었어요. 바꾸기 전 자료는 보관본에 남아 있어요. 저장 공간을 비운 뒤 '복원 전으로 되돌리기'를 눌러 주세요."), { code: 'partial' });
+        }
+        throw new Error('저장 공간이 부족하거나 저장이 막혀 바꾸지 않았어요. 지금 자료는 그대로예요.');
+      }
+    },
+    // 복원: 현재 값을 보관본(가장 최근 한 벌)으로 먼저 저장·확인한 뒤에만 바꾼다.
+    // 보관본 두 칸: 지금 되돌리기 지점(STASH)은 이번 복원이 끝까지 성공하기 전에는 절대 건드리지 않는다.
+    // ① 이번 복원 전 상태를 NEXT 칸에 쓰고 확인 → ② 바꾸기 → ③ 성공하면 NEXT를 STASH로 올리고 NEXT를 지운다.
+    // 깨끗이 되돌려졌으면 NEXT만 지운다(앞선 STASH 그대로). 일부만 바뀌었으면 NEXT를 복구 지점으로 남긴다.
+    // 올리기(③)가 막혀도 NEXT가 남아 있어 되돌리기는 NEXT를 쓴다.
+    restore(data) {
+      // 앞선 복원의 임시 칸이 남아 있으면(일부만 바뀌었거나 올리기가 막힘) 그것이 유일한 깨끗한 복구 지점일 수 있다.
+      // 어느 경우든 새 복원으로 덮지 않도록, 먼저 '복원 전으로 되돌리기'를 하게 하고 이번 복원은 시작하지 않는다.
+      let pending = null; try { pending = localStorage.getItem(BK.NEXT); } catch {}
+      if (pending !== null) throw Object.assign(new Error("앞선 복원이 끝까지 정리되지 않았어요. 먼저 '복원 전으로 되돌리기'를 한 뒤 다시 복원해 주세요."), { code: 'pending' });
+      const before = BK.snapshot();
+      const text = JSON.stringify({ at: new Date().toISOString(), data: before });
+      const dropNext = () => { try { localStorage.removeItem(BK.NEXT); } catch {} };
+      try { localStorage.setItem(BK.NEXT, text); if (localStorage.getItem(BK.NEXT) !== text) throw new Error('verify'); } catch { dropNext(); throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
+      try { BK.apply(data); } catch (e) { if (e.code !== 'partial') dropNext(); throw e; }
+      try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); localStorage.removeItem(BK.NEXT); } catch { /* NEXT가 남아 되돌리기 지점 역할을 한다 */ }
+      return before;
+    },
+    // 되돌리기 지점: 아직 올리지 못했거나 일부만 바뀐 복원의 NEXT가 있으면 그것이 가장 최근 지점이다.
+    stash() {
+      for (const k of [BK.NEXT, BK.STASH]) {
+        try { const st = JSON.parse(localStorage.getItem(k) || 'null'); if (st && st.data && typeof st.data === 'object' && !Array.isArray(st.data)) return { ...st, key: k }; } catch {}
+      }
+      return null;
+    },
+    // 되돌리기: 보관본 상태로 같은 방식(확인·부분 되돌림)으로 바꾸고, 끝까지 성공했을 때만 보관본을 지운다.
+    undo() {
+      const st = BK.stash(); if (!st) throw new Error('되돌릴 보관본이 없어요.');
+      const target = {};
+      for (const [k, v] of Object.entries(st.data)) if (!BK.skip(k) && typeof v === 'string') target[k] = v;
+      BK.apply(target);
+      try { localStorage.removeItem(st.key); } catch {}
+    },
+  };
+  function backupSheet(note = '') {
+    const n = BK.count(BK.snapshot());
+    const stash = BK.stash();
+    const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요.</p>
+      <div class="decs"><button class="btn go" data-bk-save><i class="ph ph-download-simple"></i>파일로 내보내기</button><button class="btn line" data-bk-copy><i class="ph ph-copy"></i>글자로 복사</button><label class="btn line" for="bkfile"><i class="ph ph-upload-simple"></i>파일로 복원<input id="bkfile" type="file" accept=".json,application/json,text/plain" hidden></label><button class="btn line" data-bk-paste><i class="ph ph-clipboard-text"></i>붙여넣어 복원</button>${stash ? `<button class="btn line" data-bk-undo><i class="ph ph-arrow-counter-clockwise"></i>복원 전(${esc(whenText(stash.at))})으로 되돌리기</button>` : ''}</div>
+      <textarea class="bk-ta" hidden aria-label="백업 글자" spellcheck="false" autocapitalize="off"></textarea>
+      <div class="bk-preview" hidden></div>
+      <p class="bk-msg t6" role="status" aria-live="polite"></p></div>`);
+    const ta = $('.bk-ta', sh.s), pv = $('.bk-preview', sh.s), msg = (t) => { $('.bk-msg', sh.s).textContent = t; };
+    const showText = (text) => { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); };
+    $('[data-bk-save]', sh.s).onclick = async () => {
+      const text = JSON.stringify(BK.make()); const name = `closet-backup-${BK.stamp()}.json`; // 파일 이름은 영문으로: 일부 브라우저가 한글 이름을 'download'로 바꾼다
+      try {
+        const file = new File([text], name, { type: 'application/json' });
+        if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); msg('공유 창에서 파일에 저장하거나 다른 기기로 보내세요.'); return; }
+      } catch (e) { if (e?.name === 'AbortError') return; }
+      try {
+        const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+        msg(`${name} 파일을 내보냈어요. 아이폰은 파일 앱의 다운로드 폴더에 저장돼요.`);
+      } catch { showText(text); msg('내려받기가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); }
+    };
+    $('[data-bk-copy]', sh.s).onclick = async () => { const text = JSON.stringify(BK.make()); try { await navigator.clipboard.writeText(text); msg('백업 글자를 복사했어요. 메모 앱 등에 붙여 두세요.'); } catch { showText(text); msg('복사가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); } };
+    const preview = (text) => {
+      let b; try { b = BK.read(text); } catch (e) { pv.hidden = true; msg(e.message); return; }
+      const cur = BK.count(BK.snapshot()), nb = BK.count(b.data);
+      pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div><div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">지금 자료는 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
+      $('[data-bk-go]', pv).onclick = async () => { try { BK.restore(b.data); } catch (e) { if (e.code === 'partial' || e.code === 'pending') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; } msg('복원했어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
+      msg('');
+    };
+    $('#bkfile', sh.s).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > BK.MAX_BYTES) { msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => preview(String(r.result || '')); r.onerror = () => msg('파일을 읽지 못했어요.'); r.readAsText(f); };
+    $('[data-bk-paste]', sh.s).onclick = () => { ta.hidden = false; ta.value = ''; ta.placeholder = '백업 글자를 붙여 넣으세요'; ta.focus(); pv.hidden = false; pv.innerHTML = '<button class="btn line wide" data-bk-read>붙여 넣은 글자 확인</button>'; $('[data-bk-read]', pv).onclick = () => preview(ta.value); };
+    if (note) msg(note);
+    const un = $('[data-bk-undo]', sh.s); if (un) un.onclick = () => { try { BK.undo(); } catch (e) { msg(e.message); return; } msg('복원 전으로 되돌렸어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
+  }
   function menu() {
-    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
+    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
+    $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
     const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
     $('[data-theme]', sh.s).onclick = async () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; await sh.close(); };
     $('[data-reset]', sh.s).onclick = async () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; await sh.close(); K.tab('home'); };

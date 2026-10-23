@@ -194,7 +194,8 @@ const priceLabel = (amount) => (amount % 10000 === 0 ? `${amount / 10000}만원`
 const AMOUNT =
   '(\\d{1,3}(?:,\\d{3})+|\\d+(?:\\.\\d+)?)\\s*(만\\s*원|만(?=\\s*(?:이상|이하|미만|초과|넘|안\\s*넘|대|까지|부터|이내|[~〜～-]|$))|원)';
 
-function priceBounds(text) {
+// 서버(app/lite/functions/api/rank.js)도 같은 해석을 쓰도록 내보낸다.
+export function priceBounds(text) {
   let minPrice = null,
     maxPrice = null,
     minPriceExclusive = false,
@@ -227,7 +228,7 @@ function priceBounds(text) {
   }
   for (const match of text.matchAll(
     new RegExp(
-      `${AMOUNT}\\s*(넘지\\s*않는|안\\s*넘는|넘(?:는|어|을|으면|게)?|이상|이하|미만|초과|대|까지|부터|이내)?`,
+      `${AMOUNT}\\s*(넘지\\s*(?:않|말)[가-힣]*|안\\s*넘[가-힣]*|넘(?:는|어|을|으면|게)?|이상|이하|미만|초과|대|까지|부터|이내)?`,
       'g',
     ),
   )) {
