@@ -10,7 +10,7 @@
 /private/
 
 # Dependencies and generated outputs
-node_modules/
+node_modules
 .venv/
 __pycache__/
 *.pyc
@@ -47,3 +47,17 @@ shots/
 
 /app/lite/test-results/
 /app/lite/playwright-report/
+
+# Active core bundle and preserved legacy private/runtime files
+/app/lite/.generated/
+/legacy/app/data/wardrobe.json
+/legacy/app/data/wardrobe-with-photos.json
+/legacy/server/data/
+/legacy/server/data-try/
+/legacy/server/data-phone-20261019/
+/legacy/server/models/
+/legacy/server/policy/
+/legacy/deploy/backups/
+/legacy/deploy/backups-staging/
+/legacy/deploy/policy/
+/docs/design/mockups/**/shared/eoul-mock.js
