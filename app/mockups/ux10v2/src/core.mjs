@@ -5,6 +5,7 @@
 // 종류·색만 아는 옷은 '비슷한 상품 사진'), 안내문은 짧게 줄이고 자세한 고지는 한 곳(disclosure)에 모은다,
 // 주소(#/...)로 화면을 옮겨 브라우저 뒤로가기가 동작하게 하는 route를 둔다.
 // 저장은 이 브라우저에만, 앱과 다른 키로 한다. 앱 저장소·서버는 건드리지 않는다.
+import { registrationInput, readRegistrations } from '../../../src/lite-registration.js';
 import { CATALOG, PRODUCTS } from '../../../src/data/products.js';
 import { SLOT_BY_ID, SLOTS, COLORS, STYLES } from '../../../src/data/slots.js';
 import { ROLE_LABEL, ROLE_ORDER } from '../../../src/data/looks.js';
@@ -113,6 +114,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       const next = { ...blank(), ...v, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
         compare: Array.isArray(v.compare) ? v.compare.filter((id) => PRODUCT_BY_ID[id]).slice(0, 4) : [], recent: Array.isArray(v.recent) ? v.recent.filter((x) => typeof x === 'string').slice(0, 5) : [] };
       next.gender = next.gender === 'F' ? 'F' : 'M';
+      next.registrations = readRegistrations(v.registrations);
       buildState(next);
       return next;
     } catch {
@@ -359,6 +361,37 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     slotChoices: (kind, gender = S.gender) => SLOTS.filter((s) => s.g === (gender === 'F' ? 'F' : 'M') && s.shape === kind).map((s) => ({ id: s.id, name: s.name })),
     colorChoices: () => Object.entries(COLORS).map(([id, c]) => ({ id, label: c.label, hex: c.hex, light: c.light ?? 50 })),
     formatPrice,
+
+    registrationMetadata(id) {
+      const receipt = S.registrations?.receipts.find((r) => r.garmentId === id);
+      if (!receipt) return null;
+      const { draftId, ...input } = receipt.input;
+      return { ...structuredClone(input), kindName: garmentKindName(input.kind),
+        key: `${input.brand} ${input.name}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' '), at: receipt.at };
+    },
+    registerGarment(value) {
+      const input = registrationInput(value);
+      if (!GARMENT_KINDS.some((k) => k.id === input.kind) || !COLORS[input.color]) throw new Error('종류·색을 다시 골라 주세요.');
+      const registrations = readRegistrations(S.registrations);
+      const previous = registrations.receipts.find((r) => r.input.draftId === input.draftId);
+      if (previous) {
+        if (JSON.stringify(previous.input) !== JSON.stringify(input)) throw Object.assign(new Error('이미 저장한 등록의 내용이 달라요. 새 등록으로 시작해 주세요.'), { code: 'registration_conflict' });
+        const garment = S.garments.find((g) => g.id === previous.garmentId);
+        if (!garment) throw new Error('이미 등록한 뒤 삭제한 옷이에요. 새 등록으로 시작해 주세요.');
+        return garmentView(garment);
+      }
+      if (registrations.receipts.length >= 2000) throw new Error('등록 기록 한도에 도달했어요. 자료를 내보낸 뒤 정리해 주세요.');
+      let garment;
+      commit(() => {
+        const slot = SLOTS.find((s) => s.shape === input.kind && s.g === S.gender)?.id || null;
+        garment = makeGarment({ id: nextId('g'), slot, kind: input.kind, gender: S.gender, color: input.color,
+          brand: input.brand, label: input.name, source: 'user', createdAt: iso() });
+        S.garments = [...S.garments, garment];
+        registrations.receipts.push({ input, garmentId: garment.id, at: iso() });
+        S.registrations = registrations;
+      });
+      return garmentView(garment);
+    },
 
     addGarment({ kind, color = null, slot = null, gender = S.gender, label = '', trial = false } = {}) {
       const g = gender === 'F' ? 'F' : 'M';

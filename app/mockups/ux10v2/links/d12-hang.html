@@ -623,7 +623,7 @@ a { color: inherit; text-decoration: none; }
     }
   };
   const normKey = (brand, name) => `${brand} ${name}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
-  const regOf = (gid) => REG.items[gid] || null;
+  const regOf = (gid) => M.registrationMetadata?.(gid) || REG.items[gid] || null;
   // 공개 DB에서 선택한 정보는 개인 등록에 출처를 남기고 공용(3명 확인) 목록에 재전송하지 않는다.
   const opfNotice = (source) => source?.provider === 'opf' && /^\d{6,24}$/.test(source.code)
     ? `<p class="t6" style="margin:10px 0">Open Products Facts에서 가져온 정보 · <a href="https://world.openproductsfacts.org/product/${source.code}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">원본 확인</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">ODbL</a><br>종류·색과 실제로 가진 상품인지 확인해 주세요. 상품 사진·가격은 제공하지 않아요.</p>` : '';
