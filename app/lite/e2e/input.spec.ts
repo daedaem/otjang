@@ -92,6 +92,8 @@ test('React stages: browser back retains values, subscription updates, 200% text
 
 test('React draft: reload restores the selected stage and draftId; successful save removes it', async ({page}) => {
   const d=driver(page,'react'); await d.openManual(); await d.fillManual();
+  await expect(page.getByRole('heading',{name:'이대로 옷장에 넣을까요?'})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).step)).toBe(2);
   const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!));
   expect(before.step).toBe(2);
   await page.reload(); await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
