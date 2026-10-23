@@ -22,8 +22,8 @@ const runLite = (fetcher, extra = {}) => {
   return window;
 };
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const runConsult = (window, local = storage()) => {
-  const context = { window, M: engine(), K: { refresh() {} }, $: () => null, localStorage: local, curView: 'consult', esc: escape, recCard: () => '<span>추천 상품</span>' };
+const runConsult = (window, local = storage(), M = engine()) => {
+  const context = { window, M, K: { refresh() {} }, $: () => null, localStorage: local, curView: 'consult', esc: escape, recCard: () => '<span>추천 상품</span>' };
   vm.runInNewContext(`${consult}\nglobalThis.chatTest = { C, askConsult, CHAT_ERR, aiResponseInfo, aiInfoHtml, chatTurnHtml };`, context);
   return context.chatTest;
 };
@@ -129,6 +129,47 @@ test('상담은 이전 6턴만 보내고 현재 질문·상품 사실을 중복 
   assert.ok(!JSON.stringify(sent).includes('not-sent.jpg'));
   assert.deepEqual(plain(chat.C.turns.at(-1).ids), ['ms-1']);
   assert.equal(chat.C.busy, false);
+});
+
+test('상담은 엔진이 읽은 예산(원 단위)만 서버에 보내고, 서버의 가격 확인 줄을 답 아래 사실 줄로 붙인다', async () => {
+  const crit = (maxPrice = null, minPrice = null, extra = {}) => ({ understood: true, products: [product('ms-1')], criteria: { maxPrice, minPrice, maxPriceExclusive: false, minPriceExclusive: false, ...extra } });
+  const asked = [];
+  const M = { ...engine(), ask: (t) => { asked.push(t); return /10만원/.test(t) ? crit(100000) : /5만원대/.test(t) ? crit(59999, 50000) : /만원/.test(t) ? crit(1) : crit(); } };
+  let sent;
+  const run = (reply) => runConsult({ EOUL_SERVER_AI: async (body) => { sent = plain(body); return reply; } }, storage(), M);
+  // 1) 이번 질문의 예산 → budget 전송, 후보에 budgetFit, 서버 lines → turn.check(최대 4줄·160자) → 화면 줄
+  const check = ['가격 확인: 셔츠 10,000원 · 예산 100,000원 이하 기준 예산 안이에요', 'x'.repeat(200), '', 3, 'c', 'd', 'e'];
+  const chat = run({ on_topic: true, answer: '셔츠는 예산을 넘어요.', product_ids: ['ms-1'], price_check: { budget: { max: 100000 }, items: [], lines: check } });
+  await chat.askConsult('10만원 이하 셔츠');
+  assert.deepEqual(sent.budget, { max: 100000 });
+  const turn = chat.C.turns.at(-1);
+  assert.deepEqual(plain(turn.check), [check[0], 'x'.repeat(160), 'c', 'd']);
+  const html = chat.chatTurnHtml(turn);
+  assert.match(html, /<div class="pcheck" role="note">/);
+  assert.ok(html.includes('예산 100,000원 이하 기준 예산 안이에요') && html.includes('예산을 넘어요.'));
+  // 2) 예산 없는 질문은 budget을 보내지 않고, 확인 줄이 없으면 pcheck도 없다
+  const plainChat = run({ on_topic: true, answer: '답이에요.', product_ids: [] });
+  await plainChat.askConsult('네이비 바지');
+  assert.equal('budget' in sent, false);
+  assert.ok(!plainChat.chatTurnHtml(plainChat.C.turns.at(-1)).includes('pcheck'));
+  // 3) 이어 묻기는 앞 질문의 예산을 이어 가고, '예산 상관없이'는 예산을 지운다. 1,000원 미만 같은 못 쓰는 값은 보내지 않는다.
+  const follow = run({ on_topic: true, answer: '답이에요.', product_ids: [] });
+  follow.C.threads = [{ id: 't', turns: [{ role: 'user', text: '5만원대 바지' }, { role: 'assistant', text: '답' }] }]; follow.C.cur = 't';
+  await follow.askConsult('더 어두운 색은?');
+  assert.deepEqual(sent.budget, { min: 50000, max: 59999 });
+  await follow.askConsult('예산 상관없이 제일 좋은 건?');
+  assert.equal('budget' in sent, false);
+  await follow.askConsult('더 밝은 색은?'); // '예산 상관없이' 뒤에는 그 앞의 5만원대를 다시 이어 가지 않는다
+  assert.equal('budget' in sent, false);
+  const tiny = run({ on_topic: true, answer: '답이에요.', product_ids: [] });
+  await tiny.askConsult('1만원'); // 가짜 엔진이 maxPrice 1을 돌려줌 → 1,000원 미만은 버린다
+  assert.equal('budget' in sent, false);
+  // 4) 서버 price_check가 이상한 모양이면 무시한다
+  for (const price_check of [null, 'x', { lines: 'x' }, { lines: [1, null] }]) {
+    const odd = run({ on_topic: true, answer: '답이에요.', product_ids: [], price_check });
+    await odd.askConsult('10만원 이하 셔츠');
+    assert.equal(odd.C.turns.at(-1).check, undefined);
+  }
 });
 
 test('링크 상담도 현재 질문을 sample 메시지에 한 번만 포함한다', async () => {
