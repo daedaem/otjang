@@ -2,16 +2,11 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registrationRepository, type InputHost, type Registration } from './types';
 import './input.css';
-import { readDraft, writeDraft, clearDraft } from './draft';
 
-let draft: Registration | null = null;
-let initialKey = '';
-const empty = (initial: Partial<Registration> = {}): Registration => ({ brand: '', name: '', kind: '', color: '', url: '', ...initial, draftId: crypto.randomUUID() });
 const message = (error: unknown) => error instanceof Error ? error.message : '저장하지 못했어요. 입력은 그대로 두었으니 다시 시도해 주세요.';
 function RegistrationScreen({ host }: { host: InputHost }) {
-  const [pending, setPending] = useState(() => draft ? null : readDraft());
-  const [values, setValues] = useState<Registration>(() => draft ?? empty(host.initial));
-  const [draftNotice, setDraftNotice] = useState('');
+  const input = useSyncExternalStore(host.input.subscribe, host.input.getSnapshot, host.input.getSnapshot);
+  const { values, pending, notice: draftNotice } = input;
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const busy = useRef(false);
@@ -23,27 +18,10 @@ function RegistrationScreen({ host }: { host: InputHost }) {
   void coreVersion;
   const count = host.core.getState().closetCount;
   useEffect(() => { heading.current?.focus(); return () => { alive.current = false; }; }, []);
-  useEffect(() => {
-    if (pending) return;
-    draft = values;
-    try { writeDraft(values, step); setDraftNotice(''); }
-    catch { setDraftNotice('초안을 이 기기에 보관하지 못했어요. 이 화면을 닫으면 입력을 잃을 수 있어요.'); }
-  }, [values, step, pending]);
-  const restore = () => {
-    if (pending?.type !== 'ready') return;
-    draft = pending.value.values; setValues(draft);
-    const savedStep = pending.value.step;
-    setPending(null); host.next(savedStep);
-  };
-  const restart = () => {
-    try { clearDraft(); }
-    catch { setDraftNotice('초안을 지우지 못했어요. 저장 공간과 브라우저 설정을 확인해 주세요.'); return; }
-    draft = empty(host.initial); setValues(draft); setPending(null); host.next(0);
-  };
-  const change = (key: keyof Registration, value: string) => {
-    const next = { ...values, [key]: value };
-    draft = next; setValues(next); setError('');
-  };
+  useEffect(() => { if (!pending) host.input.setStep(step); }, [host.input, step, pending]);
+  const restore = () => host.next(host.input.restore());
+  const restart = () => { try { host.input.restart(); host.next(0); } catch {} };
+  const change = (key: keyof Registration, value: string) => { host.input.change(key, value); setError(''); };
   const valid = () => {
     if (!values.brand.trim() || values.name.trim().length < 2) return '브랜드와 두 글자 이상의 상품명을 적어 주세요.';
     if (step > 0 && (!values.kind || !values.color)) return '옷 종류와 색을 골라 주세요.';
@@ -59,9 +37,7 @@ function RegistrationScreen({ host }: { host: InputHost }) {
     try {
       host.assertWritable();
       const garment = productId ? host.core.addOwnedProduct(productId) : await registrationRepository(host.core, host.assertWritable).execute(values);
-      draft = null;
-      let warning: string | undefined;
-      try { clearDraft(); } catch { warning = '옷은 저장했지만 초안을 정리하지 못했어요. 다시 열면 새로 입력을 선택해 주세요.'; }
+      const warning = host.input.finish();
       if (alive.current) host.saved(garment, productId ? undefined : values, warning);
     } catch (e) { if (alive.current) setError(message(e)); }
     finally { busy.current = false; if (alive.current) setSaving(false); }
@@ -102,8 +78,6 @@ function RegistrationScreen({ host }: { host: InputHost }) {
   </section>;
 }
 export function mount(host: InputHost) {
-  const key = JSON.stringify(host.initial || {});
-  if (key !== initialKey) { draft = null; initialKey = key; }
   const root = createRoot(host.element);
   root.render(<RegistrationScreen host={host} />);
   return () => root.unmount();
