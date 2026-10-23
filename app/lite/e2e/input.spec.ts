@@ -57,13 +57,14 @@ for (const mode of ['vanilla','react']) {
     await page.evaluate(() => {
       window.__before=localStorage.getItem('eoul-d12-hang:v1');
       const original=Storage.prototype.setItem;
+      window.__originalSetItem=original;
       window.__fail=true;
       Storage.prototype.setItem=function(k,v){ if(window.__fail && k==='eoul-d12-hang:v1') throw new DOMException('quota','QuotaExceededError'); return original.call(this,k,v); };
     });
     await d.fillManual(); await d.save();
     await expect(page.getByText(/저장하지 못했어요/).first()).toBeVisible();
     expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1')===window.__before)).toBe(true);
-    await page.evaluate(()=>window.__fail=false); await d.save();
+    await page.evaluate(()=>{window.__fail=false; Storage.prototype.setItem=window.__originalSetItem;}); await d.save();
     await expect(page.locator('.shelf [data-g]')).toHaveCount(2);
     await page.reload();
     await expect.poll(()=>page.evaluate(()=>window.K.M.getState().records[0].stage)).toBe('ordered');
