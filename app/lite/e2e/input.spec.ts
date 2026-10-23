@@ -243,12 +243,14 @@ test.describe('input runtime caching',()=>{
   await page.locator('[data-reg-open]').click();
     await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
     await expect.poll(async()=>{const paths=await cachedInput();return paths.some(p=>p.endsWith('.js'))&&paths.some(p=>p.endsWith('.css'));}).toBe(true);
-    // A new document must load the module from the worker cache, rather than an existing React root.
-    await context.setOffline(true); const offline=await context.newPage();
-    await offline.goto('/?photos=0#/reg');
-    await expect(offline.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
-    await offline.getByRole('button',{name:'이어서 입력',exact:true}).click();
-    await expect(offline.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
-    await offline.close(); await context.setOffline(false);
+    // Reload a controlled client into a fresh document/React root. A new offline
+    // tab has no controller yet in WebKit and cannot perform its initial navigation.
+    await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    await context.setOffline(false);
   });
 });
