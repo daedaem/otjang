@@ -108,6 +108,9 @@ const OVER = /(예산|가격|금액).{0,10}(초과|넘|벗어|오버)|비싸|넘
 const NOT_OVER = /(넘|초과하|벗어나|비싸)지\s*(않|안)|안\s*(넘|비싸)/;
 const WITHIN = /(예산|가격|금액).{0,10}(안에|안이|안으로|안쪽|이내|이하|맞|여유|충분)|저렴|싸요|쌉니다|합리적/;
 const SUM = /합계|합쳐|총액|총 |전부 사|모두 사|다 사면|두 벌|세 벌|같이 사면|함께 사면/;
+// '예산 미만'(최소 예산보다 쌈) 후보: 초과라고 하거나 예산에 맞는다고 하면 틀린 말, 싸다·못 미친다고 하면 맞는 말.
+const BELOW = /(예산|최소|하한|기준).{0,10}(미만|못 미|모자|아래|밑)|저렴|싸요|쌉니다|싼 편/;
+const WITHIN_FIT = /(예산|가격|금액).{0,10}(안에|안이|안으로|안쪽|이내|맞|충분)/;
 const plainName = (name) => name.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
 const wordsOf = (name) => name.replace(/[[\]()\-·,]/g, ' ').split(/\s+/).filter((t) => t.length >= 2); // [딥 인디고] 같은 색 표기도 구분 낱말로 쓴다.
 export function priceCheck(items, answer, budget) {
@@ -135,7 +138,10 @@ export function priceCheck(items, answer, budget) {
     const over = OVER.test(sen) && !negated;
     const within = WITHIN.test(sen) || negated;
     const fit = budgetFit(items[i].price, budget);
-    if ((fit === '예산 안' && over && !within) || (fit !== '예산 안' && within && !over)) { flagged.add(i); corrections.push({ ...items[i], fit }); }
+    const wrong = fit === '예산 안' ? over && !within
+      : fit === '예산 초과' ? within && !over
+        : !BELOW.test(sen) && (over || WITHIN_FIT.test(sen));
+    if (wrong) { flagged.add(i); corrections.push({ ...items[i], fit }); }
   }
   if (!corrections.length) return null;
   return corrections.map((c) => `가격 확인: ${c.name} ${wonText(c.price)} · 예산 ${budgetText(budget)} 기준 ${c.fit}이에요`);

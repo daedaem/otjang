@@ -1501,12 +1501,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const nvu = M.newVsUsed(id);
     const dec = rec?.decision;
     const meta = dec
-      ? `<span class="fb" role="status"><i class="ph-fill ph-check-circle"></i><span class="nt" style="color:inherit">${esc(DEC[dec])}로 남겼어요${rec.stage !== 'candidate' ? ` · ${esc(rec.stageLabel)}` : dec === 'buy' ? ' · 주문·도착은 기록에서' : ''}</span></span><span class="qs">${rec.stage === 'candidate' ? '<button class="quiet" data-redecide>바꾸기</button>' : '<button class="quiet" data-tabgo="records">기록</button>'}</span>`
+      ? `<span class="fb" role="status"><i class="ph-fill ph-check-circle"></i><span class="nt" style="color:inherit">${esc(DEC[dec])}로 남겼어요${rec.stage !== 'candidate' ? ` · ${esc(rec.stageLabel)}` : dec === 'buy' ? ' · 주문·도착은 기록에서' : ''}</span></span><span class="qs">${rec.stage === 'candidate' ? '<button class="quiet" data-redecide>바꾸기</button>' : `${rec.stage === 'kept' && (rec.next || []).some((n) => n.step === 'returned') ? `<button class="quiet" data-ret="${esc(id)}">반품했어요</button>` : ''}<button class="quiet" data-tabgo="records">기록</button>`}</span>`
       : `<span class="pr"><b class="num">${esc(p.priceText)}</b><span class="nt">${esc(p.priceShort)} · ${esc(nvu.fresh.store)}</span></span><span class="qs"><button class="quiet" data-dec="hold">보류</button><button class="quiet" data-dec="skip">안 살래요</button></span>`;
     $('#bar').innerHTML = `<div class="buybar"><div class="in"><div class="meta">${meta}</div>
       <a class="btn go wide" href="${esc(p.url)}" target="_blank" rel="noopener" data-seller="${id}">판매처에서 사기<i class="ph ph-arrow-up-right"></i></a></div></div>`;
     $$('[data-dec]').forEach((b) => { b.onclick = () => decide(id, b.dataset.dec); });
     $('[data-redecide]') && ($('[data-redecide]').onclick = () => decisionSheet(id, { title: '어떻게 할까요?' }));
+    $('#bar [data-ret]') && ($('#bar [data-ret]').onclick = () => returnSheet(id)); // 계속 입기로 한 뒤에도 반품을 남길 수 있게
     $('[data-seller]').onclick = () => { S.pending = { id, t: Date.now() }; };
   }
   function decide(id, dec) {
@@ -2093,11 +2094,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }
     },
     // 복원: 현재 값을 보관본(가장 최근 한 벌)으로 먼저 저장·확인한 뒤에만 바꾼다.
+    // 이번 복원이 끝나지 못하고 깨끗이 되돌려졌으면 이전 보관본(앞선 복원의 되돌리기 지점)을 원래대로 둔다.
+    // 일부만 바뀐(partial) 경우에는 지금 보관본이 유일한 복구 지점이라 그대로 남긴다.
     restore(data) {
       const before = BK.snapshot();
+      let prev = null; try { prev = localStorage.getItem(BK.STASH); } catch {}
       const text = JSON.stringify({ at: new Date().toISOString(), data: before });
-      try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); } catch { throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
-      BK.apply(data);
+      const putBack = () => { try { if (prev === null) localStorage.removeItem(BK.STASH); else localStorage.setItem(BK.STASH, prev); } catch {} };
+      try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); } catch { putBack(); throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
+      try { BK.apply(data); } catch (e) { if (e.code !== 'partial') putBack(); throw e; }
       return before;
     },
     stash() { try { const st = JSON.parse(localStorage.getItem(BK.STASH) || 'null'); return st && st.data && typeof st.data === 'object' && !Array.isArray(st.data) ? st : null; } catch { return null; } },

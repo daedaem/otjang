@@ -169,3 +169,32 @@ test('옷장 자료는 지금 엔진의 읽기 규칙(canReadSaved)으로 먼저
   assert.throws(() => BK.read(JSON.stringify(bad)), /이 앱이 읽을 수 없어요/);
   assert.deepEqual(a.dump(), before);
 });
+
+test('복원이 깨끗이 되돌려지면 앞선 복원의 되돌리기 지점(보관본)을 그대로 둔다. 일부만 바뀌면 새 보관본을 남긴다', () => {
+  const a = storage(); seed(a); const BK = run(a);
+  const original = a.dump();
+  BK.restore(BK.read(other()).data); // 첫 복원: 보관본 = 원래 자료
+  const firstStash = a.getItem('eoul-backup:stash');
+  const afterFirst = a.dump();
+  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = '{"threads":[{"id":"x","turns":[]}],"cur":null}';
+  a.sets = 0; a.failSetAt = 1; // 두 번째 복원: 보관본은 쓰였지만 바꾸는 중 실패 → 깨끗이 되돌림
+  assert.throws(() => BK.restore(BK.read(JSON.stringify(second)).data), /바꾸지 않았어요/);
+  a.failSetAt = undefined;
+  assert.equal(a.getItem('eoul-backup:stash'), firstStash, '앞선 되돌리기 지점이 남아 있어야 한다');
+  assert.deepEqual(a.dump(), afterFirst);
+  BK.undo();
+  assert.deepEqual(a.dump(), original);
+  // 보관본이 없던 상태에서 깨끗이 되돌려지면 새 보관본도 남기지 않는다.
+  const b = storage(); seed(b); const BK2 = run(b);
+  b.sets = 0; b.failSetAt = 1;
+  assert.throws(() => BK2.restore(BK2.read(other()).data), /바꾸지 않았어요/);
+  b.failSetAt = undefined;
+  assert.equal(b.getItem('eoul-backup:stash'), null);
+  // 일부만 바뀌면 이번 보관본이 유일한 복구 지점이라 남긴다.
+  const c = storage(); seed(c); const BK3 = run(c);
+  const cBefore = JSON.parse(JSON.stringify(BK3.snapshot())); // 보관본은 캐시·다른 앱 키를 뺀 스냅숏이다
+  c.sets = 0; c.failSetsAfter = 2;
+  assert.throws(() => BK3.restore(BK3.read(other()).data), (e) => e.code === 'partial');
+  c.failSetsAfter = undefined;
+  assert.deepEqual(JSON.parse(c.getItem('eoul-backup:stash')).data, cBefore);
+});

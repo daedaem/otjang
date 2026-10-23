@@ -205,6 +205,20 @@ test('exclusive budget words and price-check false positives (negation, shared n
   const both = await two('딥 인디고와 스카이 블루 둘 다 예산 안이에요.'); // 두 후보를 한 문장에서 말하면 판단하지 않는다.
   assert.equal(both.body.price_check.lines, undefined);
 });
+test('below-minimum candidates are corrected when called over budget or within budget, not when called cheaper', async () => {
+  const name = p.name.replace(/\s*\[[^\]]*\]\s*$/, ''); // 19,900원, 최소 예산 5만원
+  const ask = (answer) => result(input({ task: 'consult', query: '5만원 이상 상의' }), fake({ on_topic: true, answer, product_ids: [p.id] }));
+  for (const answer of [`${name}는 예산을 초과해요.`, `${name}는 예산 안이에요.`]) {
+    const r = await ask(answer);
+    assert.equal(r.body.price_check.items[0].fit, '예산 미만', answer);
+    assert.equal(r.body.price_check.lines.length, 1, answer);
+    assert.match(r.body.price_check.lines[0], /예산 50,000원 이상 기준 예산 미만이에요/);
+  }
+  for (const answer of [`${name}는 예산보다 저렴해요.`, `${name}는 최소 예산에 못 미쳐요.`, `${name}는 예산을 넘지 않아요.`]) {
+    const r = await ask(answer);
+    assert.equal(r.body.price_check.lines, undefined, answer);
+  }
+});
 test('authentication and quota rejection stop upstream, including dependency failures', async () => {
   const client = fake();
   for (const outcome of [{ ok: false, status: 429, code: 'monthly_limit' }, { ok: false, status: 503, code: 'budget_unavailable' }]) {
