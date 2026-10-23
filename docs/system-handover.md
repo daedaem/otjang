@@ -180,3 +180,7 @@ Cloudflare `app/lite`의 기존 `npm run build`/`dist` 설정을 유지한다. �
 #56의 첫 CI에서 초안 저장 효과보다 먼저 단계를 검사한 1건 실패를 고쳤다. 수정 head `42f9c4c`의 push run [39894177723](https://github.com/daedaem/otjang/actions/runs/39894177723)은 Chromium/WebKit·app/server/image 검사 모두 성공했다. PR별 run은 같은 head라도 따로 실행되므로 설치 지연과 테스트 실패를 혼동하지 않는다. #55 병합 master `21718ba`의 Workers Builds 성공도 확인했다. 최종 기능 master의 배포 결과는 별도 확인하며, GitHub 빌드 성공과 실제 로그인 기기 검증을 구분한다.
 
 현재 클라우드 실행 환경에는 Cloudflare 인증 연결 및 운영 호스트 접근이 없어 활성 버전/로그인 화면을 직접 대조하지 못했다. 기존 master 자동 배포 설정, session 인증, preview_urls:false, D1/Secret/한도는 변경하지 않았다. 실제 iPhone/Galaxy 설치·키보드·복귀·오프라인과 최신 서비스워커 적용은 미검증이다. 앱/사이트 데이터 삭제를 업데이트 방법으로 안내하지 않는다.
+
+### 저장소 정리 A: JSON 백업 저장 계약
+
+백업 UI 추출본은 `eoul-backup:transaction`에 원문 journal을 남긴 뒤 값을 쓰며, 성공한 뒤 이전 키를 삭제한다. 보상 실패/정리 실패는 성공으로 표시하지 않고 복구 화면과 원문 다운로드를 제공한다. 미완료 journal 동안 core/등록/상담/UI/입력 초안 저장을 막는다. 기존 stash는 undo를 위한 한 단계 보관이며 여러 탭 동시 복원을 직렬화하는 잠금은 아니다. 가져온 상담 ID·등록 수·URL·코어 스키마를 검증하고 React 등록 영수증도 미리보기에서 센다. 운영 데이터 이동이나 D1 복원 기능은 아니다.
