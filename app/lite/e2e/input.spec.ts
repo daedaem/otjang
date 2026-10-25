@@ -251,6 +251,26 @@ test('backup promotion failure remains visibly incomplete and undo recovers befo
   expect(await page.evaluate(()=>Object.entries(localStorage).some(([k,v])=>k.startsWith('eoul-d12-hang:reg:unreadable:')&&v==='bad raw'))).toBe(true);
 });
 
+
+test('unreadable boot recovery opens whole backup above its persistent notice without discarding raw',async({page})=>{
+  const raw={engine:'{"v":99,"unknown":"옷장 원문"}',reg:'broken registration raw'};
+  await page.addInitScript(({engine,reg})=>{
+    localStorage.setItem('eoul-d12-hang:v1',engine);localStorage.setItem('eoul-d12-hang:reg',reg);
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).__bkCopied=text;}}});
+  },raw);
+  await page.goto('/?photos=0#/closet');await expect(page.locator('#eo-storage-issue')).toBeVisible();
+  const before=await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
+  await page.getByRole('button',{name:'전체 백업 열기',exact:true}).click();
+  await expect(page.locator('[data-bk-report]').first()).toContainText('원문 보관 2개');
+  await page.locator('[data-bk-copy]').click();await expect(page.locator('.bk-msg')).toContainText('복사했어요');
+  const copied=await page.evaluate(()=>JSON.parse((window as any).__bkCopied));expect(copied.format).toBe(2);
+  expect(copied.data['eoul-d12-hang:v1']).toBeUndefined();expect(copied.data['eoul-d12-hang:reg']).toBeUndefined();
+  expect(Object.entries(copied.data).some(([k,v])=>k.startsWith('eoul-d12-hang:v1:unreadable:')&&v===raw.engine)).toBe(true);
+  expect(Object.entries(copied.data).some(([k,v])=>k.startsWith('eoul-d12-hang:reg:unreadable:')&&v===raw.reg)).toBe(true);
+  expect(await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())))).toBe(before);
+  await page.keyboard.press('Escape');await expect(page.locator('.bk')).toHaveCount(0);await expect(page.locator('#eo-storage-issue')).toBeVisible();
+});
+
 for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {
   test(`shared draft: ${from} input resumes in ${to} with the same identity`,async({page})=>{
     const d=driver(page,from); await d.openManual(); await d.fillManual();
