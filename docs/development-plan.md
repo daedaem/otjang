@@ -6,6 +6,8 @@
 
 무손실 계약의 추가 검사13개는 구현 전12실패·1통과다. #66의 실제 BK 블록을 출처 커밋·SHA256과 함께 fixture로 보존했고, 단순한 동일 기능 mock이 아닌 원본 read/restore/make 왕복에 사용한다. 실패 테스트 커밋 뒤 새 분류·격리 로직을 적용한다.
 
+포맷 비교 결과: #66은 archive-only format1의 새 보존 의도를 이해하지 못해 정상 현재 활성 키를 drop한다. 이 반례를 실제 원본 코드 검사에 추가했다. 새 내보내기는 format2로 표시해 구형 reader가 쓰기 전에 거절하게 하고, 새 reader는 정상/손상 활성 항목이 든 기존 format1을 받아 격리한다. 완전 양방향 format1 호환이라고 쓰지 않는다.
+
 후속 백업 사전 검증은 master `d26a69a`에서 실패 테스트 `0187697`을 먼저 커밋한 뒤 수정했다. 추가8개는 7실패·1통과 → 8통과, 전체 lite199·브라우저40개 로컬 통과다. 후속 수정 PR의 CI·Claude 검토와 실제 master 반영은 구분한다. 이 PR에 진행 중 표시 삭제를 포함하며, master의 표시는 이 PR 머지 때 삭제된다. [검증·호환성·남은 범위](log/2026-10/backup-validation-20261025.md).
 
 갱신: 2026-10-25. 확인한 원격 master는 `d26a69a`다. 테스트 보존 [#69](https://github.com/daedaem/otjang/pull/69) → 코드 위치 [#70](https://github.com/daedaem/otjang/pull/70) → 입력 상태 [#71](https://github.com/daedaem/otjang/pull/71) → 문서 [#73](https://github.com/daedaem/otjang/pull/73)을 매번 새 master CI를 확인하며 순서대로 머지했다. 승인된 백업 사전 검증 후속 수정은 별도 PR의 후보이며 master 병합·배포·실물 검증과 구분한다. 이번 작업에서 운영 API나 실물 휴대폰을 새로 검사하지 않았다.

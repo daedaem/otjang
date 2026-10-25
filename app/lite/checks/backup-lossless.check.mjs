@@ -32,7 +32,7 @@ const rawAt=(data,source)=>archives(data,source).map(([,v])=>v).sort();
 
 test('lossless export quarantines damaged/future active raws with provenance and zero storage writes',()=>{
   const bad=broken(), local=storage({...bad,'eoul-extra:data':'opaque unknown'}),before=local.dump(),bk=run(local);
-  const exported=bk.make();assert.equal(exported.format,1);assert.equal(exported.data['eoul-extra:data'],'opaque unknown');
+  const exported=bk.make();assert.equal(exported.format,2);assert.equal(exported.data['eoul-extra:data'],'opaque unknown');
   for(const [key,raw] of Object.entries(bad)){assert.equal(exported.data[key],undefined);assert.deepEqual(rawAt(exported.data,key),[raw]);}
   assert.deepEqual(local.dump(),before);assert.equal(local.events.length,0);
 });
@@ -124,13 +124,23 @@ test('partial archive compensation and pending promotion preserve the original r
   assert.ok(archives(local.dump(),REG).some(([,v])=>v==='bad reg'));
   local.fault=e=>e.op==='set'&&e.key===bk.STASH;bk.restore({[REG]:'another bad reg'});assert.equal(bk.stash().key,bk.NEXT);
 });
-test('actual #66 format1 reader/restore/re-export retains new opaque archives, and old damaged exports import losslessly',()=>{
+test('actual #66 round-trip is verified and cannot silently apply a new lossless format2 file',()=>{
   const bad=broken();delete bad[ENGINE];
   const original=run(storage({...good(),...bad}),legacy),oldFile=original.make();
   const destination=storage(),modern=run(destination);modern.restore(modern.read(JSON.stringify(oldFile)).data);
   for(const [key,raw] of Object.entries(bad))assert.ok(rawAt(modern.make().data,key).includes(raw));
-  const legacyStore=storage(),older=run(legacyStore,legacy),newFile=modern.make();older.restore(older.read(JSON.stringify(newFile)).data);
-  assert.deepEqual(JSON.parse(JSON.stringify(older.make().data)),JSON.parse(JSON.stringify(newFile.data)));
+  const legacyStore=storage(good()),older=run(legacyStore,legacy),newFile=modern.make(),before=legacyStore.dump();
+  assert.equal(newFile.format,2);assert.throws(()=>older.read(JSON.stringify(newFile)));assert.deepEqual(legacyStore.dump(),before);assert.equal(legacyStore.events.length,0);
+  const normalFile=run(storage(good()),legacy).make(),empty=storage(),oldEmpty=run(empty,legacy);
+  oldEmpty.restore(oldEmpty.read(JSON.stringify(normalFile)).data);assert.deepEqual(JSON.parse(JSON.stringify(oldEmpty.make().data)),JSON.parse(JSON.stringify(normalFile.data)));
   const damagedEngineOld=run(storage({[ENGINE]:broken()[ENGINE]}),legacy).make();
   const modernEmpty=run(storage());assert.doesNotThrow(()=>modernEmpty.read(JSON.stringify(damagedEngineOld)));
+});
+
+test('actual #66 format1 counterexample proves why archive-preservation semantics need a version2 envelope',()=>{
+  const oldReg='{"items":{"existing":{"brand":"정상"}},"catalog":{}}';
+  const local=storage({[REG]:oldReg}),older=run(local,legacy),archive=`${REG}:unreadable:backup-v1:1`;
+  older.restore(older.read(file({[archive]:'damaged raw'})).data);
+  assert.equal(local.getItem(REG),null);assert.equal(local.getItem(archive),'damaged raw');assert.equal(older.stash().data[REG],oldReg);
+  const modern=run(storage({[REG]:'bad metadata'})).make();assert.equal(modern.format,2);
 });
