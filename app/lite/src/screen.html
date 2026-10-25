@@ -2226,7 +2226,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       n.reg = registered.size;
       return n;
     },
-    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 직접 등록 ${n.reg}건`,
+    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)`,
     // 복원·되돌리기가 지울 수 있는 키: 이 화면이 쓰는 키와 날씨 지역뿐. 읽지 못한 원문 보관(':unreadable:')·모르는 키는 지우지 않는다.
     removable: (k) => (k.startsWith('eoul-d12-hang:') && !k.includes(':unreadable:')) || k === 'eoul-weather:place',
     // 목표 상태(target)로 바꾼다. 백업에 없는 '지울 수 있는 키'는 지우고, 쓴 뒤 다시 읽어 확인한다.

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { randomUUID } from 'node:crypto';
 import { createMock } from '../src/core.mjs';
 
 const ENGINE='eoul-d12-hang:v1', DRAFT='eoul-d12-hang:input-draft:v1', REG='eoul-d12-hang:reg', CHAT='eoul-d12-hang:consult';
@@ -82,4 +83,37 @@ test('preview counts the union of legacy garment IDs and atomic receipts, includ
   state.garments=state.garments.filter(g=>g.id!==first.id);
   const data={[ENGINE]:JSON.stringify(state),[REG]:JSON.stringify({items:{[second.id]:{brand:'합성',name:'바지'},'old-garment':{brand:'예전',name:'셔츠'}},catalog:{}})};
   assert.equal(run(storage()).count(data).reg,3);
+});
+
+
+test('backup label distinguishes historical registration receipts from currently owned garments',()=>{
+  const bk=run(storage());
+  assert.match(bk.countText({garments:1,journeys:0,threads:0,reg:2}),/내 옷 1벌.*등록 이력 2건\(삭제한 옷 포함\)/);
+});
+test('backup and actual shared input reader agree on version1 draft field boundaries without writes',()=>{
+  const inputSource=fs.readFileSync(new URL('../src/input-session.js',import.meta.url),'utf8');
+  const values=draft().values, cases=[draft()];
+  for(const field of ['brand','name','kind','color','url']) {
+    const limit=field==='url'?2000:80;
+    for(const value of ['', 'x'.repeat(limit), 'x'.repeat(limit+1), null,42])cases.push({...draft(),values:{...values,[field]:value}});
+  }
+  for(const step of [-1,0,1,2,3,1.5,'1'])cases.push({...draft(),step});
+  for(const v of [0,1,2,99,null])cases.push({...draft(),v});
+  for(const draftId of ['x'.repeat(7),'x'.repeat(8),'x'.repeat(100),'x'.repeat(101),'not.allowed'])cases.push({...draft(),values:{...values,draftId}});
+  for(const source of [null,{provider:'opf',code:'123456'},{provider:'opf',code:'1'.repeat(24)},{provider:'opf',code:'1'.repeat(25)},{provider:'other',code:'123456'},{provider:'opf',code:123456}])cases.push({...draft(),values:{...values,source}});
+  for(const updatedAt of ['','invalid',null,'2026-10-25T00:00:00Z'])cases.push({...draft(),updatedAt});
+  for(const value of [null,[],{},true])cases.push({...draft(),values:value});
+  for(const raw of ['broken','null','[]',...cases.map(x=>JSON.stringify(x))]) {
+    const local=storage({[DRAFT]:raw}),before=local.dump(),context={crypto:{randomUUID}};
+    vm.runInNewContext(inputSource,context);const controller=context.EOUL_INPUT_STATE.create(local);
+    controller.enter();const readable=controller.getSnapshot().pending?.type==='ready';
+    const data=run(local).classify({[DRAFT]:raw}).data;
+    assert.equal(DRAFT in data,readable,raw);assert.deepEqual(local.dump(),before);assert.equal(local.writes,0);
+  }
+  // Duplicate members are deliberately stricter at the backup boundary: do not
+  // silently pick one raw interpretation when exporting/importing an opaque file.
+  const duplicate=JSON.stringify(draft()).replace('"v":1','"v":99,"v":1');
+  const local=storage({[DRAFT]:duplicate}),ctx={crypto:{randomUUID}};vm.runInNewContext(inputSource,ctx);
+  const host=ctx.EOUL_INPUT_STATE.create(local);host.enter();assert.equal(host.getSnapshot().pending.type,'ready');
+  assert.equal(DRAFT in run(local).classify({[DRAFT]:duplicate}).data,false);assert.equal(local.writes,0);
 });

@@ -196,7 +196,7 @@ test('backup exports damaged raw, previews format2 quarantine without writes, an
     return localStorage.getItem('eoul-d12-hang:v1')!;
   },badDraft);
   await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
-  await expect(page.locator('.bk .sub').first()).toContainText('직접 등록 1건');
+  await expect(page.locator('.bk .sub').first()).toContainText('등록 이력 1건(삭제한 옷 포함)');
   await expect(page.locator('[data-bk-report]').first()).toContainText('원문 보관 1개(활성화 안 됨)');
   await page.locator('[data-bk-copy]').click();await expect(page.locator('.bk-msg')).toContainText('복사했어요');
   const exported=await page.evaluate(()=>JSON.parse((window as any).__bkCopied));expect(exported.format).toBe(2);
