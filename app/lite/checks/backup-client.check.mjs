@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { createMock } from '../../mockups/ux10v2/src/core.mjs';
 
 const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
 const start = page.indexOf('  const BK = {');
@@ -18,12 +19,14 @@ const storage = () => {
     get length() { return m.size; }, key: (i) => [...m.keys()][i] ?? null,
     getItem: (k) => (m.has(k) ? m.get(k) : null),
     setItem(k, v) {
+      this.trace?.push(['set', k, String(v)]);
+      this.fault?.('set', k, String(v));
       if (this.quota !== undefined && String(v).length > this.quota) throw new Error('QuotaExceededError');
       if (this.failSetsAfter !== undefined && this.sets >= this.failSetsAfter) throw new Error('QuotaExceededError');
       if (this.failSetAt !== undefined && this.sets === this.failSetAt) { this.sets++; throw new Error('QuotaExceededError'); } // 그 한 번만 실패
       this.sets++; m.set(k, String(v));
     },
-    removeItem(k) { if (this.failRemoves) throw new Error('SecurityError'); m.delete(k); }, dump: () => Object.fromEntries([...m.entries()].sort()),
+    removeItem(k) { this.trace?.push(['remove', k]); this.fault?.('remove', k); if (this.failRemoves) throw new Error('SecurityError'); m.delete(k); }, dump: () => Object.fromEntries([...m.entries()].sort()),
   };
 };
 const ENGINE = 'eoul-d12-hang:v1';
@@ -248,5 +251,100 @@ test('앞선 복원의 임시 칸이 남아 있으면(일부만 바뀜·올리�
     assert.deepEqual(JSON.parse(JSON.stringify(BK.snapshot())), original, label);
     assert.equal(a.getItem('eoul-backup:stash-next'), null);
     BK.restore(BK.read(other()).data); // 이제 다시 복원할 수 있다
+  }
+});
+
+const copyStorage = (snapshot) => {
+  const local = storage();
+  for (const [k, v] of Object.entries(snapshot)) local.setItem(k, v);
+  return local;
+};
+// STASH 승격·NEXT 정리 실패는 위 #66 계약으로 검사한다. 아래는 개인 자료 apply의 모든 set/remove를 검사한다.
+const personalOperations = (trace) => trace.filter(([, k]) => !k.startsWith('eoul-backup:'));
+const failPersonalOperation = (local, at) => {
+  let calls = 0;
+  local.fault = (_op, k) => {
+    if (!k.startsWith('eoul-backup:') && ++calls === at) throw new Error('injected personal write failure');
+  };
+};
+const mutationTarget = () => ({
+  [ENGINE]: engineState(5),
+  'eoul-d12-hang:new': '새 원문 ☃',
+  'eoul-d12-hang:empty': '빈 문자열을 바꾼 값',
+  'eoul-crowd:device': 'abcdef0123456789abcdef0123456789', // 바뀌지 않는 키도 원문 보존
+});
+
+test('복원 apply의 각 set/remove 실패는 기존 보관본과 빈 문자열을 포함한 전체 원문을 보존한다', () => {
+  const initial = storage(); seed(initial);
+  initial.setItem('eoul-d12-hang:empty', '');
+  initial.setItem('eoul-backup:stash', JSON.stringify({ at: '2026-10-23', data: { [ENGINE]: engineState(2) } }));
+  const before = initial.dump(), target = mutationTarget();
+  const success = copyStorage(before); success.trace = [];
+  run(success).restore(target);
+  const operations = personalOperations(success.trace);
+  assert.ok(operations.some(([op]) => op === 'set'));
+  assert.ok(operations.some(([op]) => op === 'remove'));
+  for (let at = 1; at <= operations.length; at++) {
+    const local = copyStorage(before); failPersonalOperation(local, at);
+    assert.throws(() => run(local).restore(target), /바꾸지 않았어요/, `restore operation ${at}`);
+    assert.deepEqual(local.dump(), before, `restore operation ${at}: 모든 원문과 기존 stash`);
+    assert.equal(local.getItem('eoul-d12-hang:empty'), '');
+    assert.equal(local.getItem('eoul-backup:stash-next'), null);
+  }
+});
+
+test('undo apply의 각 set/remove 실패는 현재 원문과 보관본을 보존하며 재시도하면 복원 전 전체 자료로 돌아간다', () => {
+  const initial = storage(); seed(initial); initial.setItem('eoul-d12-hang:empty', '');
+  const before = initial.dump(), bk = run(initial);
+  bk.restore(mutationTarget());
+  const ready = initial.dump(); initial.trace = [];
+  bk.undo();
+  assert.deepEqual(initial.dump(), before);
+  const operations = personalOperations(initial.trace);
+  assert.ok(operations.some(([op]) => op === 'set'));
+  assert.ok(operations.some(([op]) => op === 'remove'));
+  for (let at = 1; at <= operations.length; at++) {
+    const local = copyStorage(ready); failPersonalOperation(local, at);
+    assert.throws(() => run(local).undo(), /바꾸지 않았어요/, `undo operation ${at}`);
+    assert.deepEqual(local.dump(), ready, `undo operation ${at}: 현재 원문과 stash`);
+    local.fault = null;
+    run(local).undo();
+    assert.deepEqual(local.dump(), before, `undo operation ${at}: 재시도 후 모든 원문`);
+    assert.equal(local.getItem('eoul-d12-hang:empty'), '');
+    assert.equal(local.getItem('eoul-backup:stash'), null);
+    assert.equal(local.getItem('eoul-backup:stash-next'), null);
+  }
+});
+
+test('실제 코어의 React 등록 영수증과 입력 초안은 파일 가져오기를 거쳐 글자 단위로 왕복한다', () => {
+  const local = storage();
+  const model = createMock({ storage: local, key: ENGINE });
+  model.registerGarment({ draftId: 'draft-abcdefgh', brand: '합성', name: '합성 셔츠', kind: 'shirt', color: 'white', url: '' });
+  const draft = JSON.stringify({ v: 1, step: 1, updatedAt: '2026-10-25T00:00:00Z', values: { draftId: 'draft-ijklmnop', brand: '초안', name: '입력 중 ☃', kind: '', color: '', url: '' } });
+  local.setItem('eoul-d12-hang:input-draft:v1', draft);
+  const source = run(local, model), file = source.make();
+  const destination = storage();
+  const client = run(destination, createMock());
+  client.restore(client.read(JSON.stringify(file)).data);
+  assert.deepEqual(JSON.parse(JSON.stringify(client.snapshot())), JSON.parse(JSON.stringify(source.snapshot())));
+  assert.equal(destination.getItem(ENGINE), local.getItem(ENGINE));
+  assert.equal(destination.getItem('eoul-d12-hang:input-draft:v1'), draft);
+  assert.equal(JSON.parse(destination.getItem(ENGINE)).registrations.receipts[0].input.draftId, 'draft-abcdefgh');
+});
+
+test('손상·미래 버전 기존 원문 위에 복원한 뒤 undo하면 원문과 코어 쓰기 보호가 복구된다', () => {
+  const valid = storage(); const model = createMock({ storage: valid, key: ENGINE });
+  model.addGarment({ kind: 'shirt', color: 'white' });
+  const file = JSON.stringify(run(valid, model).make());
+  for (const raw of ['broken', '{"v":99,"unknown":"원문 그대로 ☃"}']) {
+    const local = storage(); seed(local);
+    local.setItem(ENGINE, raw); local.setItem('eoul-d12-hang:reg', 'unreadable reg');
+    const before = local.dump(), client = run(local, createMock());
+    client.restore(client.read(file).data); client.undo();
+    assert.deepEqual(local.dump(), before);
+    const restored = createMock({ storage: local, key: ENGINE });
+    assert.equal(restored.storageIssue().code, 'storage_unreadable');
+    assert.throws(() => restored.addGarment({ kind: 'shirt', color: 'white' }), (e) => e.code === 'storage_unreadable');
+    assert.equal(local.getItem(ENGINE), raw);
   }
 });

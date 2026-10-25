@@ -135,3 +135,46 @@ test('React draft: cleanup failure does not duplicate an already committed regis
   await page.getByRole('button',{name:'이어서 입력',exact:true}).click(); await d.save();
   await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
 });
+
+test('backup UI previews without writes, restores garment and purchase IDs, and undo survives reload', async ({page}) => {
+  await page.goto('/?photos=0#/closet');
+  await page.waitForFunction(() => !!window.K?.M);
+  const saved = await page.evaluate(() => {
+    window.K.M.registerGarment({draftId:'draft-e2e-backup',brand:'합성 브랜드',name:'백업 셔츠',kind:'shirt',color:'white',url:''});
+    window.K.M.decide('ms-728000','buy');
+    window.K.M.advance('ms-728000','ordered');
+    return localStorage.getItem('eoul-d12-hang:v1')!;
+  });
+  await page.evaluate(() => window.K.M.addGarment({kind:'pants',color:'black'}));
+  const before = await page.evaluate(() => localStorage.getItem('eoul-d12-hang:v1')!);
+  const openBackup = async () => {
+    await page.getByRole('button',{name:'더보기',exact:true}).click();
+    await page.locator('[data-backup]').click();
+    await expect(page.getByRole('heading',{name:'백업 · 복원',exact:true})).toBeVisible();
+  };
+  await openBackup();
+  await page.locator('#bkfile').setInputFiles({
+    name:'synthetic-backup.json',mimeType:'application/json',
+    buffer:Buffer.from(JSON.stringify({app:'eoul-lite',format:1,data:{'eoul-d12-hang:v1':saved}})),
+  });
+  await expect(page.locator('[data-bk-go]')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('eoul-d12-hang:v1'))).toBe(before);
+  await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-go]').click()]);
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+  const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+  const source = JSON.parse(saved);
+  expect(restored.garments).toEqual(source.garments);
+  expect(restored.journeys).toEqual(source.journeys);
+  expect(restored.registrations).toEqual(source.registrations);
+  expect(await page.evaluate(() => window.K.M.getState().records[0].stage)).toBe('ordered');
+  await openBackup();
+  await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-undo]').click()]);
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(2);
+  const undone = await page.evaluate(() => JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+  const prior = JSON.parse(before);
+  expect(undone.garments).toEqual(prior.garments);
+  expect(undone.journeys).toEqual(prior.journeys);
+  expect(undone.registrations).toEqual(prior.registrations);
+  expect(await page.evaluate(() => localStorage.getItem('eoul-backup:stash'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('eoul-backup:stash-next'))).toBeNull();
+});
