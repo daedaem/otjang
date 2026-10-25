@@ -30,6 +30,7 @@
 - [#59 당시 브랜치 감사·SHA 명세](log/2026-10/branch-cleanup-20261023.md)
 - [누락 검토 근거 16개 회수](log/2026-10/reference-recovery-20261023.md)
 - [디자인 관찰 원장 241개](log/2026-10/research/design-reference-ledger-20261020.md) — 당시 단일 AI의 관찰이며 새 수상 검증·실제 전문가 자문이 아님
+- [옷장 레일·구매 비교·가상 착용 설계 제안](log/2026-10/wardrobe-rail-tryon-design-20261025.md) — 요구사항 R22에 대한 Claude 제안이며 대표 확정·구현 전
 
 ## 작업 후 갱신
 

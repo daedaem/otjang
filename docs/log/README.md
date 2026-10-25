@@ -87,4 +87,5 @@
 | [validation-kit-20261017.md](2026-10/validation-kit-20261017.md) | 검증 자료: 모집 글 · 구매 사례 인터뷰 · 측정 이벤트 명세 (2026-10-17) |
 | [photo-recognition-20261014.json](2026-10/validation/photo-recognition-20261014.json) | photo-recognition-20261014.json |
 | [wardrobe-first-comparison-20261014.md](2026-10/wardrobe-first-comparison-20261014.md) | 옷 등록·옷장 사용 경험 비교와 보정 — 2026-10-14 |
+| [wardrobe-rail-tryon-design-20261025.md](2026-10/wardrobe-rail-tryon-design-20261025.md) | 옷장 레일·구매 비교·가상 착용 설계 제안 (2026-10-25, Claude) |
 | [wear-diary-20261015.md](2026-10/wear-diary-20261015.md) | 착용 기록과 결과 반영 — 2026-10-15 |
