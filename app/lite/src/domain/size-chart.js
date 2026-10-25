@@ -121,9 +121,10 @@ function readColumns(lines, ctx) {
     rows.push({ ...label, nums });
   }
   if (!labels || !rows.length) return [];
+  const usable = rows.filter((r) => r.nums.length === labels.length || (ctx.warnings.push(`${MEASURES[r.key]} 줄의 숫자 개수가 사이즈 개수와 달라 뺐어요.`), false));
   return labels.map((label, i) => ({
     label,
-    values: rows.filter((r) => r.nums.length === labels.length).map((r) => ({ key: r.key, circ: r.circ, value: r.nums[i] })),
+    values: usable.map((r) => ({ key: r.key, circ: r.circ, value: r.nums[i] })),
   }));
 }
 

@@ -71,6 +71,9 @@ test('size chart: rows with a header, columns, one-size-per-line, units and circ
   const inch = parseSizeChart('Size Length(inch) Chest(inch)\nM 28 21');
   assert.equal(inch.sizes[0].measures.length, 71.1);
   assert.ok(inch.warnings.some((w) => /인치/.test(w)));
+  const short = parseSizeChart('구분 S M L\n총장 70 72 74\n가슴단면 52 55');
+  assert.deepEqual(short.sizes[1].measures, { length: 72 });
+  assert.ok(short.warnings.some((w) => /가슴단면 줄의 숫자 개수/.test(w)));
   const none = parseSizeChart('정사이즈예요. 편하게 입기 좋아요.');
   assert.deepEqual(none.sizes, []);
   assert.match(none.warnings.at(-1), /직접 넣어/);
