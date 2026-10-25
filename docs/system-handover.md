@@ -189,3 +189,8 @@ vanilla도 기존 원자 `registerGarment` 명령을 쓰므로, 옷 저장 뒤 �
 코드 후보 `3b4a51f`에서 로컬 lite217·Chromium21/WebKit21=42개와 독립 CI 두 실행/check11개가 통과했다. CI Node950개 중949통과·기존 실모델1skip이다. 이후 손상 부팅의 백업 진입 경로를 추가해 최종 로컬 lite217·Chromium22/WebKit22=44개·빌드를 통과했다. 최종 추가 head/CI는 PR에서 확인한다. Claude 최종 검토·병합/배포와 구분한다. 보존 대조는 `python3 tools/repository-cleanup/check-preserved.py --backup-validation`의15항목을 쓴다. 정확히 승인한 포맷/분류 기대와 fixture/카운터 확장만 허용하며 apply·보상·stash·undo·예산·반품·MIME 원문을 대조한다. 옵션 없는 도구는 확장 전 정리 전용 원문 검사다. [테스트·CI·실물 미검증](log/2026-10/backup-validation-20261025.md)을 함께 본다.
 
 전체 React 전환은 #74 다음의 승인된 개발 방향이다. [화면별 단계·보존 계약·복귀 경로](development-plan.md#전체-react-전환-2026-10-25-확정)를 먼저 읽는다. 전환 완료나 배포 완료로 해석하지 않는다.
+
+
+## 12. R22 순차 통합 인계
+
+#74는 검토 보완 f3a17af/CI11개 성공 후 master e0afa11에 병합했다. 등록 수는 ‘등록 이력(삭제한 옷 포함)’으로 보유 수와 구분하며 실제 초안 reader와 BK의 경계 교차 검사를 추가했다. #75는 그 위에서 새 도메인7개를 통합·검증 중이다. 도메인 함수가 존재한다고 화면·저장·AI·사진 백업에 연결된 것은 아니다. [검토 수정](log/2026-10/wardrobe-rail-integration-review-20261025.md)과 [B1~B6 명세](log/2026-10/wardrobe-rail-handoff-20261025.md)를 따른다. 이전11장의 ‘#74 미병합’은 당시 상태다. 사진은 기기 내 보관이며 상품 사진 가공은 R20 확인 전 금지한다. 최종 조합 순위·이유는 R2의 AI가 결정한다.
