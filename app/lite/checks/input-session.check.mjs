@@ -53,9 +53,9 @@ test('draft length boundaries round-trip; oversized edits keep the last readable
   const f=fixture(), input=f.create(); input.enter();
   for (const [field, limit] of [['brand',80], ['name',80], ['url',2000]]) {
     input.change(field,'x'.repeat(limit));
-    const before=f.values.get(f.key);
     const loaded=f.create(); loaded.enter(); assert.equal(loaded.getSnapshot().pending.type,'ready');
     loaded.restore(); assert.equal(loaded.values[field],'x'.repeat(limit));
+    const before=f.values.get(f.key); // restore() legitimately refreshes updatedAt before the oversized edit
     input.change(field,'x'.repeat(limit+1));
     assert.equal(f.values.get(f.key),before);
     assert.equal(input.values[field].length,limit+1); // no silent truncation of the in-memory input
