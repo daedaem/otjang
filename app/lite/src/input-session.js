@@ -1,5 +1,5 @@
 // One host-owned input session is shared by the vanilla and React views.
-// The persisted v1 draft remains compatible with the first React rollout.
+// v1 drafts are read without storage writes; explicit edits save v2 profiles.
 (function (scope) {
   const KEY = 'eoul-d12-hang:input-draft:v1';
   const UNREADABLE = '이전에 쓰던 초안을 읽지 못했어요. 초안을 지우기 전까지 원문은 그대로 보관해요.';
@@ -7,22 +7,26 @@
   const CLEAR_FAILED = '초안을 지우지 못했어요. 저장 공간과 브라우저 설정을 확인해 주세요.';
   const TOO_LONG = '브랜드·상품명은 80자, 링크는 2000자까지 초안으로 보관할 수 있어요. 길이를 줄여 주세요.';
   const fresh = (initial) => ({ brand: '', name: '', kind: '', color: '', url: '', ...initial, draftId: scope.crypto.randomUUID() });
-  const clean = (v) => ({ draftId: v.draftId, brand: v.brand, name: v.name, kind: v.kind, color: v.color, url: v.url, ...(v.source ? { source: { provider: 'opf', code: v.source.code } } : {}) });
+  const clean = (v) => ({ draftId: v.draftId, brand: v.brand, name: v.name, kind: v.kind, color: v.color, url: v.url, ...(v.source ? { source: { provider: 'opf', code: v.source.code } } : {}), ...(v.profile !== undefined ? { profile: structuredClone(v.profile) } : {}) });
   const readableText = (v) => ['brand', 'name', 'kind', 'color', 'url'].every(k => typeof v[k] === 'string' && v[k].length <= (k === 'url' ? 2000 : 80));
-  function read(storage) {
-    try {
-      const raw = storage.getItem(KEY);
-      if (raw === null) return null;
+  function fallbackRead(raw) {
       const x = JSON.parse(raw), v = x?.values;
-      if (x.v !== 1 || !Number.isInteger(x.step) || x.step < 0 || x.step > 2 || !v ||
+      if (v?.profile !== undefined) throw new Error('옷 정보 판독기가 필요해요.');
+      return validateBasic(x, v);
+  }
+  function validateBasic(x, v) {
+      if (![1, 2].includes(x.v) || !Number.isInteger(x.step) || x.step < 0 || x.step > 2 || !v ||
         typeof v.draftId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(v.draftId) ||
         !readableText(v) ||
         (v.source && (v.source.provider !== 'opf' || typeof v.source.code !== 'string' || !/^\d{6,24}$/.test(v.source.code))) ||
         typeof x.updatedAt !== 'string' || !Number.isFinite(Date.parse(x.updatedAt))) throw new Error();
-      return { type: 'ready', value: { v: 1, values: clean(v), step: x.step, updatedAt: x.updatedAt } };
-    } catch { return { type: 'blocked', message: UNREADABLE }; }
+      return { v: 2, values: clean(v), step: x.step, updatedAt: x.updatedAt };
   }
-  function create(storage) {
+  function read(storage, decode) {
+    try { const raw = storage.getItem(KEY); if (raw === null) return null; return { type: 'ready', value: decode(raw) }; }
+    catch { return { type: 'blocked', message: UNREADABLE }; }
+  }
+  function create(storage, { readRecord = fallbackRead } = {}) {
     let initial = {}, initialKey = '', active = false;
     let state = { values: fresh({}), step: 0, pending: null, notice: '' };
     const listeners = new Set();
@@ -33,7 +37,10 @@
       // Search/OPF seeds and programmatic updates can bypass HTML maxlength.
       // Keep the last readable draft and the full in-memory input until corrected.
       if (!readableText(state.values)) { state.notice = TOO_LONG; return; }
-      try { assertWritable(); storage.setItem(KEY, JSON.stringify({ v: 1, values: clean(state.values), step: state.step, updatedAt: new Date().toISOString() })); state.notice = ''; }
+      let raw;
+      try { raw = JSON.stringify({ v: 2, values: clean(state.values), step: state.step, updatedAt: new Date().toISOString() }); readRecord(raw); }
+      catch (error) { state.notice = error?.message || '옷 정보를 다시 확인해 주세요.'; return; }
+      try { assertWritable(); storage.setItem(KEY, raw); state.notice = ''; }
       catch (error) { state.notice = error?.code === 'storage_recovery_pending' ? error.message : WRITE_FAILED; }
     };
     const controller = {
@@ -45,7 +52,7 @@
         const key = JSON.stringify(seed);
         if (!active || key !== initialKey) {
           initial = { ...seed }; initialKey = key; active = true;
-          state = { values: fresh(seed), step: 0, pending: read(storage), notice: '' };
+          state = { values: fresh(seed), step: 0, pending: read(storage, readRecord), notice: '' };
           if (!state.pending && (['brand', 'name', 'kind', 'color', 'url'].some(key => state.values[key]) || state.values.source)) persist();
         }
         if (!state.pending && Number.isInteger(step)) state.step = Math.max(0, Math.min(2, step));

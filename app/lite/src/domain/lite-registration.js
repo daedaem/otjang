@@ -1,6 +1,7 @@
+import { validateProfile } from './garment-profile.js';
 // Versioned registration records live inside the core snapshot: one durable write
 // commits the garment, its metadata and the idempotency receipt together.
-export const REGISTRATION_SCHEMA = 1;
+export const REGISTRATION_SCHEMA = 2;
 export function registrationInput(value) {
   if (value?.url !== undefined && typeof value.url !== 'string') throw new Error('링크를 다시 확인해 주세요.');
   const text = (key, min, max) => {
@@ -19,11 +20,12 @@ export function registrationInput(value) {
     if (value.source.provider !== 'opf' || !/^\d{6,24}$/.test(value.source.code)) throw new Error('상품 출처를 다시 확인해 주세요.');
     input.source = { provider: 'opf', code: value.source.code };
   }
+  if (value.profile !== undefined) input.profile = validateProfile(value.profile, { kind: input.kind });
   return input;
 }
 export function readRegistrations(value) {
   if (value === undefined) return { v: REGISTRATION_SCHEMA, receipts: [] };
-  if (value?.v !== REGISTRATION_SCHEMA || !Array.isArray(value.receipts) || value.receipts.length > 2000) throw new Error('unsupported_registration_schema');
+  if (![1, REGISTRATION_SCHEMA].includes(value?.v) || !Array.isArray(value.receipts) || value.receipts.length > 2000) throw new Error('unsupported_registration_schema');
   const ids = new Set();
   for (const r of value.receipts) {
     if (!r || typeof r.garmentId !== 'string' || typeof r.at !== 'string') throw new Error('invalid_registration');
@@ -31,5 +33,5 @@ export function readRegistrations(value) {
     if (ids.has(input.draftId)) throw new Error('duplicate_registration');
     ids.add(input.draftId);
   }
-  return structuredClone(value);
+  return { ...structuredClone(value), v: REGISTRATION_SCHEMA };
 }

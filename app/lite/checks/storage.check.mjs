@@ -120,7 +120,7 @@ const store = (init = {}) => {
 const optsFor = (storage) => ({ storage, requireStorage: true, key: 'test', clock: () => new Date('2026-10-22T12:00:00Z') });
 const unreadable = (fn) => assert.throws(fn, (e) => e.code === 'storage_unreadable');
 const UNREADABLE_RECORDS = {
-  'future schema': JSON.stringify({ v: 2, gender: 'M', garments: [{ id: 'g1', kind: 'shirt', label: '내 셔츠' }], journeys: [] }),
+  'future schema': JSON.stringify({ v: 99, gender: 'M', garments: [{ id: 'g1', kind: 'shirt', label: '내 셔츠' }], journeys: [] }),
   'truncated JSON': '{"v":1,"gender":"M","garments":[{"id":"g1"',
   'non-object JSON': '"text"',
 };
@@ -163,7 +163,7 @@ test('start fresh keeps the exact unreadable bytes in a separate key before writ
   const archiveKey = m.startFresh();
   assert.equal(s.values.get(archiveKey), raw);
   assert.equal(m.storageIssue(), null);
-  assert.equal(JSON.parse(s.values.get('test')).v, 1);
+  assert.equal(JSON.parse(s.values.get('test')).v, 2);
   m.addGarment({ kind: 'shirt' });
   assert.equal(JSON.parse(s.values.get('test')).garments.length, 1);
   assert.equal(s.values.get(archiveKey), raw);

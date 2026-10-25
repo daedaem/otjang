@@ -14,6 +14,7 @@ function backup(f){const ctx={TextEncoder,URL,localStorage:f.storage,window:{EOU
 test('B1 old v1 opens without writes; first explicit change upgrades in memory to snapshot2',()=>{
  const source=fixture();source.m.addGarment({kind:'shirt',color:'white'});const old=JSON.parse(source.map.get(KEY));old.v=1;old.annotation={keep:'unknown root attribute'};
  const raw=` ${JSON.stringify(old)} \n`,f=fixture({[KEY]:raw});assert.equal(f.m.getState().closetCount,1);assert.equal(f.map.get(KEY),raw);assert.equal(f.writes,0);
+ f.m.ask('셔츠');assert.equal(f.writes,0,'initial rendered search must not migrate legacy raw');assert.equal(f.map.get(KEY),raw);
  f.m.setGender('F');const stored=JSON.parse(f.map.get(KEY));assert.equal(stored.v,2);assert.deepEqual(stored.annotation,old.annotation);assert.equal(stored.garments[0].profile,undefined);
 });
 test('B1 profile, metadata and receipt persist in one write, survive reload and do not leak mutable views',()=>{
@@ -50,7 +51,7 @@ test('B1 invalid profile input is rejected before registration mutates or stores
  }
 });
 test('B1 actual draft controller and core decoder resume profile values and keep future raw blocked',()=>{
- const f=fixture(),ctx={crypto:{randomUUID}},src=fs.readFileSync(new URL('../src/input-session.js',import.meta.url),'utf8');vm.runInNewContext(src,ctx);
+ const f=fixture(),ctx={crypto:{randomUUID},structuredClone},src=fs.readFileSync(new URL('../src/input-session.js',import.meta.url),'utf8');vm.runInNewContext(src,ctx);
  assert.equal(typeof f.m.readInputDraft,'function');const make=()=>ctx.EOUL_INPUT_STATE.create(f.storage,{readRecord:f.m.readInputDraft});
  const c=make();c.enter();for(const[k,v]of Object.entries(input()))if(k!=='draftId')c.change(k,v);c.setStep(2);
  const saved=JSON.parse(f.map.get(DRAFT));assert.equal(saved.v,2);assert.deepEqual(saved.values.profile,profile());const again=make();again.enter();assert.equal(again.getSnapshot().pending.type,'ready');again.restore();assert.deepEqual(JSON.parse(JSON.stringify(again.values.profile)),profile());
@@ -61,4 +62,19 @@ test('B1 profile snapshot and draft round-trip through format2 backup, new boot 
  assert.equal(exported.data[KEY],original);assert.equal(exported.data[DRAFT],draftRaw);const target=fixture();const bk=backup(target);bk.restore(bk.read(JSON.stringify(exported)).data);
  assert.equal(target.map.get(KEY),original);assert.equal(target.map.get(DRAFT),draftRaw);assert.deepEqual(createMock(target.options).getState().closet[0].profile,profile());
  bk.undo();assert.equal(target.map.get(KEY),undefined);assert.equal(target.map.get(DRAFT),undefined);
+});
+
+
+test('B1 invalid draft profile keeps the last valid bytes and exposes its validation message',()=>{
+ const f=fixture(),ctx={crypto:{randomUUID},structuredClone};vm.runInNewContext(fs.readFileSync(new URL('../src/input-session.js',import.meta.url),'utf8'),ctx);
+ const c=ctx.EOUL_INPUT_STATE.create(f.storage,{readRecord:f.m.readInputDraft});c.enter();c.change('kind','shirt');const raw=f.map.get(DRAFT),writes=f.writes;
+ c.change('profile',{v:1,measures:{length:{cm:72,source:'ai'}}});assert.equal(f.map.get(DRAFT),raw);assert.equal(f.writes,writes);assert.match(c.getSnapshot().notice,/실측.*출처/);
+ c.change('profile',profile());assert.equal(c.getSnapshot().notice,'');assert.deepEqual(JSON.parse(f.map.get(DRAFT)).values.profile,profile());
+});
+
+test('B1 preserves the actual #66/#74 backup apply compensation, stash and undo bodies',()=>{
+ const old=fs.readFileSync(new URL('fixtures/backup66-block.txt',import.meta.url),'utf8');
+ const region=(src,start,end)=>{const at=src.indexOf(start);assert.ok(at>=0);const stop=src.indexOf(end,at);assert.ok(stop>at);return src.slice(at,stop);};
+ assert.equal(region(block,'    removable:','    restore(data) {'),region(old,'    removable:','    restore(data) {'));
+ assert.equal(region(block,'    stash() {','  };\n'),region(old,'    stash() {','  };\n'));
 });

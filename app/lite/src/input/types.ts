@@ -1,5 +1,5 @@
 export type Choice = { id: string; name?: string; label?: string; hex?: string };
-export type Registration = { draftId: string; brand: string; name: string; kind: string; color: string; url: string; source?: { provider: 'opf'; code: string } };
+export type Registration = { draftId: string; brand: string; name: string; kind: string; color: string; url: string; source?: { provider: 'opf'; code: string }; profile?: { v: 1; [key: string]: unknown } };
 export type Garment = { id: string; label: string; kind: string; color: string | null };
 export interface Core {
   version(): number;
@@ -11,12 +11,12 @@ export interface Core {
   registerGarment(input: Registration): Garment;
   addOwnedProduct(id: string): Garment;
 }
-export type StoredDraft = { v: 1; step: number; values: Registration; updatedAt: string };
+export type StoredDraft = { v: 1 | 2; step: number; values: Registration; updatedAt: string };
 export type InputState = { values: Registration; step: number; pending: { type: 'ready'; value: StoredDraft } | { type: 'blocked'; message: string } | null; notice: string };
 export interface InputSession {
   subscribe(listener: () => void): () => void;
   getSnapshot(): InputState;
-  change(key: keyof Registration, value: string): void;
+  change(key: keyof Registration, value: Registration[keyof Registration]): void;
   setStep(step: number): void;
   restore(): number;
   restart(): InputState;

@@ -95,7 +95,7 @@ test('파일 경계는 거절하고 읽지 못한 옷장은 원문 보관하며 
     ['x'.repeat(5 * 1024 * 1024 + 1), /너무 커요/],
   ];
   for (const [text, re] of bad) assert.throws(() => BK.read(text), re, text.slice(0, 40));
-  for (const raw of ['broken', '{"v":2,"garments":[],"journeys":[]}']) {
+  for (const raw of ['broken', '{"v":99,"garments":[],"journeys":[]}']) {
     const classified = BK.read(JSON.stringify({ ...ok, data: { [ENGINE]: raw } })).data;
     assert.equal(classified[ENGINE], undefined);
     assert.ok(Object.entries(classified).some(([k,v]) => k.startsWith(`${ENGINE}:unreadable:`) && v === raw));

@@ -28,5 +28,8 @@ test('current core golden: fixed wardrobe and date preserve search candidates an
   for(const g of [{kind:'shirt',color:'white',slot:'m-oxford'},{kind:'pants',color:'beige',slot:'m-chino'},{kind:'loafer',color:'brown',slot:'m-loafer'}])m.addGarment(g);
   const ids=m.ask('출근용 셔츠 10만원 이하').products.slice(0,4).map(p=>p.id);
   const judgment=JSON.parse(JSON.stringify(m.judge(ids[0])).replace(/g_mock_[a-z0-9]+_[a-z0-9]+/g,'garment-id'));
+  // New profile read-model metadata has its own persistence assertions. Keep
+  // this golden focused on unchanged search IDs and legacy judgment behavior.
+  judgment.owned = judgment.owned.map(({profile,brand,addedAt,photoId,...oldView})=>oldView);
   assert.deepEqual({ids,judgment},JSON.parse(fs.readFileSync(new URL('fixtures/current-core.json',import.meta.url))));
 });

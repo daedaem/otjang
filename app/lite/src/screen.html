@@ -590,7 +590,7 @@ a { color: inherit; text-decoration: none; }
     getItem: (key) => localStorage.getItem(key),
     setItem: (key, value) => localStorage.setItem(key, value),
     removeItem: (key) => localStorage.removeItem(key),
-  });
+  }, { readRecord: typeof M !== 'undefined' ? M.readInputDraft : undefined });
   const S = { ai: {}, aiOrder: {}, result: null, snackT: 0, asking: null, pending: null, ui: { absent: {} } };
   try { S.ui = { absent: {}, ...JSON.parse(localStorage.getItem(UI_KEY) || '{}') }; } catch {}
   const saveUi = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(S.ui)); } catch {} };
@@ -2166,6 +2166,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         if (!v) return true;
         try { return ['http:', 'https:'].includes(new URL(v).protocol); } catch { return false; }
       };
+      const draftRaw = data['eoul-d12-hang:input-draft:v1'];
+      if (draftRaw !== undefined && typeof M !== 'undefined' && typeof M.canReadInputDraft === 'function') {
+        if (BK.duplicates(draftRaw) || !M.canReadInputDraft(draftRaw)) reject('입력 초안');
+      } else {
       const draft = parse('eoul-d12-hang:input-draft:v1', '입력 초안');
       if (draft !== undefined) {
         const v = draft.values;
@@ -2175,6 +2179,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           (v.source && (v.source.provider !== 'opf' || typeof v.source.code !== 'string' || !/^\d{6,24}$/.test(v.source.code))) ||
           typeof draft.updatedAt !== 'string' || !Number.isFinite(Date.parse(draft.updatedAt))) reject('입력 초안');
         // An unfinished link is valid while editing; do not require HTTP(S) here.
+      }
       }
       const reg = parse(REG_KEY, '브랜드·링크');
       if (reg !== undefined) {
