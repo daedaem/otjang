@@ -32,3 +32,11 @@
 - 보존 도구15항목·공백·내부 문서 링크 검사를 사용한다. legacy683/server50(49통과·기존 실모델1skip)을 포함한 최종 CI는 PR에서 확인한다. 자동 검사 수를 실제 사용자·보안 인증·실물 복구 훈련으로 쓰지 않는다.
 
 후속 수정 PR의 번호·head를 Claude 검토에 전달한다. 이 문서의 로컬 구현·검증을 master 반영·운영 배포로 쓰지 않는다. 실제 iPhone/Galaxy의 파일 공유·재설치·PWA 저장 영역·복구 왕복은 남았다. 진행 중 표시 삭제는 후속 PR에 포함하며 실제 master에서는 PR 머지 후 반영된다.
+
+## WebKit 단절 주입 후속 확인
+
+#74의 `a00eb93`에서 한 CI 실행은40개 성공했으나 다른 실행과 동일 조건 재실행은 기존 오프라인 재진입 한 곳의 `WebKit encountered an internal error`로39/40이었다. 새 백업 사례의 실패가 아니며, 재진입 방식 변경만으로 이 내부 오류를 없앴다고 쓰지 않는다.
+
+테스트 서버의 전송 단절을 HTTP 응답 없이 소켓을 종료하는 `end()`로 바꾸고, 기존 두 uncached 요청 실패·새 Document·SW 응답·controller·초안/React 복원 검증을 유지했다. 제품 SW·검사 retry/skip/timeout·CI 설정은 바꾸지 않는다. 조정 후 로컬 Chromium/WebKit 대상2개가 통과했으며 Linux 효과는 해당 head의 CI로 확인한다.
+
+참고로 [Playwright의 별도 offline-emulation 보고](https://github.com/microsoft/playwright/issues/42775)는 service-worker 탐색의 같은 내부 오류를 다루며 origin 중지와 offline 플래그를 구분한다. 그 보고는1.63이고 현재 앱은1.56.1·전송 단절 방식을 쓰므로 같은 원인이라고 단정하지 않는다.
