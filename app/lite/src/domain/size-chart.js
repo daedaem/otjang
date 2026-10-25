@@ -61,6 +61,8 @@ function finish(rawSizes, { defaultUnit, ignored, warnings }) {
   let inch = false;
   for (const { label, values } of rawSizes) {
     const measures = {};
+    const observed = new Map();
+    const conflicting = new Set();
     for (const { key, circ, unit: columnUnit, value } of values) {
       const unit = columnUnit || defaultUnit;
       if (!unit) {
@@ -78,6 +80,14 @@ function finish(rawSizes, { defaultUnit, ignored, warnings }) {
         warnings.push(`${label} ${MEASURES[key]} 값(${value})은 읽을 수 있는 범위가 아니라 뺐어요.`);
         continue;
       }
+      if (conflicting.has(key)) continue;
+      if (observed.has(key) && observed.get(key) !== cm) {
+        conflicting.add(key);
+        delete measures[key];
+        warnings.push(`${label} ${MEASURES[key]} 값이 ${observed.get(key)}cm와 ${cm}cm로 다르게 적혀 있어 뺐어요. 원문을 확인해 주세요.`);
+        continue;
+      }
+      observed.set(key, cm);
       measures[key] = cm;
     }
     if (Object.keys(measures).length) sizes.push({ label, measures });

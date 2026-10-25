@@ -70,6 +70,14 @@ export function closestSize(options, reference, item) {
   const usable = ranked.filter((r) => r.shared >= 2).sort((a, b) => a.meanDiff - b.meanDiff || a.index - b.index);
   if (!usable.length)
     return { ranked, best: null, reason: '기준 옷과 같이 잰 실측이 2개 이상인 사이즈가 없어요.', note: NOTE };
+  const sharedFields = new Set(usable.map((r) => r.comparison.rows.filter((row) => row.diff !== null).map((row) => row.key).join('|')));
+  if (sharedFields.size > 1)
+    return {
+      ranked: [...usable, ...ranked.filter((r) => r.shared < 2)],
+      best: null,
+      reason: '사이즈마다 비교 가능한 실측 항목이 달라 하나를 고르지 않았어요. 같은 항목을 채운 뒤 비교해 주세요.',
+      note: NOTE,
+    };
   const tied = usable.filter((r) => r.meanDiff === usable[0].meanDiff);
   return {
     ranked: [...usable, ...ranked.filter((r) => r.shared < 2)],

@@ -5,7 +5,7 @@
 // which answer leads, and owning something similar is not a penalty when the
 // purpose is 소장. Rarity (단종·한정) is only shown when a seller or brand says
 // so; this module never infers it.
-import { CHOICES, CHOICE_LABELS, PURPOSES, detailKey, garmentShape } from './garment-profile.js';
+import { CHOICES, CHOICE_LABELS, PURPOSES, SOURCES, detailKey, garmentShape } from './garment-profile.js';
 
 // Colors people usually call "the same" on a rail. Editorial and conservative.
 const NEAR_COLORS = [
@@ -20,9 +20,11 @@ export function colorMatch(a, b) {
 
 const sameText = (a, b) => detailKey(a) === detailKey(b);
 const ATTRS = ['silhouette', 'fabric', 'thickness', 'surface', 'pattern'];
+const confirmed = (attr) => !!attr && Object.hasOwn(SOURCES, attr.source) && attr.source !== 'ai';
 function attrText(key, attr) {
   if (!attr) return null;
-  return key === 'fabric' ? attr.value : CHOICES[key][attr.value];
+  const text = key === 'fabric' ? attr.value : CHOICES[key][attr.value];
+  return attr.source === 'ai' ? `${text} (${SOURCES.ai})` : text;
 }
 
 // Attribute by attribute: same, different or unknown. Details are compared as
@@ -33,17 +35,28 @@ export function detailDiff(candidate, owned) {
     const c = candidate?.[key];
     const o = owned?.[key];
     let state = 'unknown';
-    if (c && o) state = key === 'fabric' ? (sameText(c.value, o.value) ? 'same' : 'different') : c.value === o.value ? 'same' : 'different';
-    return { key, label: CHOICE_LABELS[key], candidate: attrText(key, c), owned: attrText(key, o), state };
+    if (confirmed(c) && confirmed(o)) state = key === 'fabric' ? (sameText(c.value, o.value) ? 'same' : 'different') : c.value === o.value ? 'same' : 'different';
+    return { key, label: CHOICE_LABELS[key], candidate: attrText(key, c), owned: attrText(key, o),
+      candidateSource: c?.source || null, ownedSource: o?.source || null, state };
   });
-  const cDetails = candidate?.details || [];
-  const oDetails = owned?.details || [];
+  const candidateDetails = candidate?.details || [];
+  const ownedDetails = owned?.details || [];
+  const cDetails = candidateDetails.filter(confirmed);
+  const oDetails = ownedDetails.filter(confirmed);
+  const unconfirmed = {
+    candidate: candidateDetails.filter((d) => !confirmed(d)).map((d) => ({ ...d })),
+    owned: ownedDetails.filter((d) => !confirmed(d)).map((d) => ({ ...d })),
+  };
   const has = (list, d) => list.some((x) => sameText(x.text, d.text));
+  const onlyCandidate = oDetails.length ? cDetails.filter((d) => !has(oDetails, d)) : [];
+  const onlyOwned = cDetails.length ? oDetails.filter((d) => !has(cDetails, d)) : [];
   return {
     attrs,
-    onlyCandidate: oDetails.length ? cDetails.filter((d) => !has(oDetails, d)).map((d) => d.text) : [],
-    onlyOwned: cDetails.length ? oDetails.filter((d) => !has(cDetails, d)).map((d) => d.text) : [],
-    detailsUnknown: !cDetails.length || !oDetails.length,
+    onlyCandidate: onlyCandidate.map((d) => d.text),
+    onlyOwned: onlyOwned.map((d) => d.text),
+    detailFacts: { onlyCandidate: onlyCandidate.map((d) => ({ ...d })), onlyOwned: onlyOwned.map((d) => ({ ...d })) },
+    detailsUnknown: !cDetails.length || !oDetails.length || !!unconfirmed.candidate.length || !!unconfirmed.owned.length,
+    unconfirmed,
   };
 }
 
@@ -66,10 +79,18 @@ const seriesKey = (s) => (typeof s === 'string' && s.trim() ? detailKey(s) : nul
 export function valueAxes({ candidate, owned, purpose = null, newOutfits = null }) {
   if (purpose !== null && !Object.hasOwn(PURPOSES, purpose)) throw new Error('목적을 다시 골라 주세요.');
   const similar = similarOwned(candidate, owned);
-  const closest = similar[0];
-  const differences = closest
-    ? [...closest.diff.attrs.filter((a) => a.state === 'different').map((a) => a.label), ...closest.diff.onlyCandidate]
-    : [];
+  // The summary describes the whole list, so evidence from a later garment
+  // must not disappear because an earlier one has fewer recorded attributes.
+  const comparisons = similar.map((s) => ({
+    garmentId: s.garment.id,
+    differences: [...new Set([
+      ...s.diff.attrs.filter((a) => a.state === 'different').map((a) => a.label),
+      ...s.diff.onlyCandidate,
+      ...s.diff.onlyOwned.map((text) => `내 옷에만 ${text}`),
+    ])],
+    unknown: s.color === 'unknown' || s.diff.attrs.some((a) => a.state === 'unknown') || s.diff.detailsUnknown,
+  }));
+  const differences = [...new Set(comparisons.flatMap((c) => c.differences))];
   const series = candidate.profile?.series || null;
   const inSeries = seriesKey(series)
     ? (owned || []).filter((g) => seriesKey(g.profile?.series) === seriesKey(series)).length
@@ -80,19 +101,23 @@ export function valueAxes({ candidate, owned, purpose = null, newOutfits = null 
   const similarLine = !similar.length
     ? '비슷한 옷은 없어요.'
     : differences.length
-      ? `비슷한 옷 ${similar.length}벌: 다른 점은 ${differences.join('·')}.`
-      : `비슷한 옷 ${similar.length}벌: 기록된 차이는 없어요.`;
+      ? `비슷한 옷 ${similar.length}벌: 옷별로 기록된 차이는 ${differences.join('·')}.`
+      : comparisons.some((c) => c.unknown)
+        ? `비슷한 옷 ${similar.length}벌: 모르는 속성이 있어 다른 점은 아직 확인 전이에요.`
+        : `비슷한 옷 ${similar.length}벌: 기록된 차이는 없어요.`;
   const wearLine = newOutfits === null ? '착용용이면 새로 생기는 조합은 아직 계산 전이에요' : `착용용이면 새 조합 +${newOutfits}`;
   const collectLine = series ? `소장용이면 '${series}' ${collection.position}번째` : '소장용이면 비슷한 옷이 있어도 감점하지 않아요';
   const order = purpose === 'collect' ? [collectLine, wearLine] : [wearLine, collectLine];
   return {
     similar,
+    comparisons,
     differences,
     usage,
     collection,
     summary: `${similarLine} ${order.join(', ')}.`,
-    // Only a wear-only purchase with nothing recorded as different is flagged.
-    duplicateWarning: purpose === 'wear' && similar.length > 0 && differences.length === 0,
+    // Only fully recorded matching evidence can establish a duplicate. An
+    // unknown field or an AI estimate cannot supply the missing evidence.
+    duplicateWarning: purpose === 'wear' && comparisons.some((c, i) => similar[i].color === 'same' && !c.unknown && c.differences.length === 0),
   };
 }
 

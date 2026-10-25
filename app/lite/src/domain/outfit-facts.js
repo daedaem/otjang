@@ -7,7 +7,7 @@
 // says nothing. Rules marked `editorial` are an editor's judgment, not a measurement.
 import { SLOT_BY_ID, OCCASIONS } from './data/slots.js';
 import { harmony, styleScore, josa, SEASON_LABEL } from './engine.js';
-import { CHOICES, CHOICE_LABELS } from './garment-profile.js';
+import { CHOICES, CHOICE_LABELS, SOURCES } from './garment-profile.js';
 
 // Formality 1 (relaxed) .. 5 (formal) that each occasion usually expects. Editorial.
 export const OCCASION_FORMALITY = { daily: [1, 3], weekend: [1, 2], date: [2, 4], work: [3, 4], formal: [4, 5] };
@@ -44,13 +44,17 @@ export function outfitFacts({ items, occasion = null, season = null, styles = []
   const top = entries.find((e) => ['top', 'outer', 'dress'].includes(e.slot.cat) && e.item.profile?.silhouette);
   const bottom = entries.find((e) => e.slot.cat === 'bottom' && e.item.profile?.silhouette);
   if (top && bottom) {
-    const t = top.item.profile.silhouette.value;
-    const b = bottom.item.profile.silhouette.value;
+    const topAttr = top.item.profile.silhouette;
+    const bottomAttr = bottom.item.profile.silhouette;
+    const t = topAttr.value;
+    const b = bottomAttr.value;
+    const confirmed = [topAttr, bottomAttr].every((attr) => Object.hasOwn(SOURCES, attr.source) && attr.source !== 'ai');
     const heavy = (t === 'over' || t === 'wide') && b === 'wide';
     facts.push({
       dim: 'silhouette', label: '실루엣', editorial: true,
-      verdict: heavy ? 'volume-heavy' : t === 'slim' && b === 'slim' ? 'all-slim' : 'balanced',
-      basis: `상의 ${CHOICES.silhouette[t]} · 하의 ${CHOICES.silhouette[b]}`,
+      confirmed,
+      verdict: !confirmed ? 'unknown' : heavy ? 'volume-heavy' : t === 'slim' && b === 'slim' ? 'all-slim' : 'balanced',
+      basis: `상의 ${CHOICES.silhouette[t]} (${SOURCES[topAttr.source] || '출처 확인 전'}) · 하의 ${CHOICES.silhouette[b]} (${SOURCES[bottomAttr.source] || '출처 확인 전'})${confirmed ? '' : ' · 확인 전 속성이 있어 판단을 보류했어요'}`,
     });
   } else facts.push({ dim: 'silhouette', label: '실루엣', editorial: true, verdict: 'unknown', basis: '상의·하의 실루엣이 기록되지 않았어요' });
 
@@ -237,9 +241,15 @@ export function attributeClaimCheck(answer, candidates) {
     const others = named.filter((o) => o !== c && !c.name.includes(o.name)).map((o) => o.name);
     for (const sentence of sentences) {
       for (const { claim, negated } of claimsAbout(sentence, c.name, others)) {
-        const holds = claimHolds(claim, c.profile);
         const label = CHOICE_LABELS[claim.key];
         const subject = `${c.name}의 ${label}${josa(label, '은', '는')}`;
+        // An unconfirmed estimate is not evidence that the answer is wrong.
+        // Keep its status visible without asserting the guessed value as fact.
+        if (c.profile?.[claim.key]?.source === 'ai') {
+          lines.push(`확인: ${subject} AI 추정 · 확인 전이에요.`);
+          continue;
+        }
+        const holds = claimHolds(claim, c.profile);
         if (holds === null) {
           if (!negated) lines.push(`확인: ${subject} 기록되지 않았어요.`);
         } else if (holds === negated) {
