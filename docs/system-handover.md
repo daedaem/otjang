@@ -16,10 +16,11 @@ PR #48은 10-23 03:35 UTC에 병합 없이 닫혔다(head `29e05e7`). 그 안의
 | 코드 | 역할 | 현재 확인 상태 |
 |---|---|---|
 | `app/lite` | 본인 전용 설치형 PWA, Cloudflare Worker API·D1 연결 | master에 병합·비공개 배포. 실제 Chrome 로그인·AI·일부 상품 검색 확인 |
-| `app/mockups/ux10v2/links/d12-hang.html` | 설치 앱의 화면 원본, ‘걸어 보고 사기’ | `app/lite/build.mjs`의 `SCREEN`이 이 파일을 사용 |
-| `app/mockups/ux10v2/shared/eoul-mock.js` | 공유 추천·옷장 코어 | 로컬 후보 검색·코디 규칙·기기 저장. 서버 AI 및 외부 상품 검색과 별도 |
-| `app` | 기존 독립 웹 앱, 전체 백업·복원 등 기존 기능 | lite와 같은 제품의 모든 기능이 자동으로 연결된 것은 아님 |
-| `server`·`deploy` | Node 자체 서버, 계정·동기화·커뮤니티·운영 도구 | 이 코드가 있다는 사실을 Worker 앱의 가입·자동 동기화·커뮤니티 제공으로 해석하지 않음 |
+| `app/lite/src/screen.html` | d12 화면 원본 | #70 후보의 새 위치. `build.mjs`는 시안 폴더를 읽지 않음 |
+| `app/lite/src/core.mjs`·`src/domain` | 기기 내 검색·코디·저장, 공유 도메인 원본 20파일 | #66 정본을 이동. 빌드·pretest가 `.generated/core-bundle.js` 생성, 생성물은 Git 제외 |
+| `app/lite/src/browser`·`public/icons` | 브라우저 보조와 아이콘 | 기존 원본 이동. 저장 키·API 경로·Worker 빌드 루트는 유지 |
+| `legacy/app` | 기존 독립 웹 앱, 전체 백업·복원 등 기존 기능 | lite와 모든 기능·자료가 자동 연결된 것은 아님 |
+| `legacy/server`·`legacy/deploy` | Node 자체 서버, 계정·동기화·커뮤니티·Docker 도구 | 공유 도메인은 lite의 같은 원본을 읽음. Worker의 가입·자동 동기화·커뮤니티 완성을 뜻하지 않음 |
 | 시안·실험 브랜치 | 디자인 대안·VTON 등 | master 병합·설치 앱 채택·배포·실물 검증과 구분 |
 
 d16 시안은 PR #48이 닫히며 채택되지 않았다. 현재 화면을 d16으로 인계하지 않는다.
