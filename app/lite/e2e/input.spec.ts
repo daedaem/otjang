@@ -262,6 +262,7 @@ test('unreadable boot recovery opens whole backup above its persistent notice wi
   const before=await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
   await page.getByRole('button',{name:'전체 백업 열기',exact:true}).click();
   await expect(page.locator('[data-bk-report]').first()).toContainText('원문 보관 2개');
+  expect(await page.evaluate(()=>!!document.activeElement?.closest('.bk'))).toBe(true);
   await page.locator('[data-bk-copy]').click();await expect(page.locator('.bk-msg')).toContainText('복사했어요');
   const copied=await page.evaluate(()=>JSON.parse((window as any).__bkCopied));expect(copied.format).toBe(2);
   expect(copied.data['eoul-d12-hang:v1']).toBeUndefined();expect(copied.data['eoul-d12-hang:reg']).toBeUndefined();
@@ -269,6 +270,7 @@ test('unreadable boot recovery opens whole backup above its persistent notice wi
   expect(Object.entries(copied.data).some(([k,v])=>k.startsWith('eoul-d12-hang:reg:unreadable:')&&v===raw.reg)).toBe(true);
   expect(await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())))).toBe(before);
   await page.keyboard.press('Escape');await expect(page.locator('.bk')).toHaveCount(0);await expect(page.locator('#eo-storage-issue')).toBeVisible();
+  await page.getByRole('button',{name:'전체 백업 열기',exact:true}).click();await expect(page.locator('.bk')).toHaveCount(1);
 });
 
 for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {

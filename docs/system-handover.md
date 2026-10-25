@@ -176,6 +176,7 @@ vanilla도 기존 원자 `registerGarment` 명령을 쓰므로, 옷 저장 뒤 �
 
 정리 #73 이후 master `d26a69a`에서 `fix/backup-validation-20261025`로 진행한다. 초기 ‘손상 원문 때문에 전체 내보내기 거절’ 구현은 대표의 무손실 계약으로 대체됐다. 아직 #74를 master에 병합하거나 운영에 배포하지 않았다.
 
+- 손상 자료 부팅 경고의 ‘전체 백업 열기’로 초기화 없이 내보낼 수 있다. 백업 창만 경고 위에 열고 닫으면 경고는 그대로 남는다. 중복 창을 막고 내부로 키보드 초점을 옮긴다.
 - `make`: snapshot → 순수 `classify` → format2 봉투 → UTF-8 전체 직렬화5MB 검사. 원문은 정규화하지 않는다. 정상 known 값은 활성 키에, 읽을 수 없는 값은 `원래키:unreadable:backup-v1:N`에 정확한 문자열로 보관한다. 알 수 없는 소유 키·역사 보관 suffix는 opaque로 유지한다.
 - `read`: 원본 파일 UTF-8 크기/중복 멤버/봉투·소유 키·문자열·금지 원래키 검사 → format1/2 분류 → 격리 후 크기 검사. 원문 보관을 금지 키 포장 우회에 쓰지 못한다. `classify`와 미리보기는 저장소 쓰기/삭제0이다.
 - `prepareRestore`: 수입 보관본과 기존 보관본의 충돌을 결정적 suffix로 해결하고 같은 출처·원문 재수입은 재사용한다. 새 격리 출처에 정상 수입 활성 값이 없으면 해당 기존 정상/손상 활성 값을 유지한다. 역사 archive만 있다고 일반 전체 복원을 자동 병합으로 바꾸지 않는다. 다른 기존 손상 값이 명시적으로 교체/제거되면 같은 거래에 먼저 원문 보관을 포함하며 미리보기에 알린다.
@@ -185,6 +186,6 @@ vanilla도 기존 원자 `registerGarment` 명령을 쓰므로, 옷 저장 뒤 �
 
 새 format2는 구 #66이 쓰기 전에 거절한다. 구 #66에 archive-only format1을 적용하면 기존 활성 키가 지워지는 실제 반례 때문에 버전을 올렸다. 새 reader는 기존 format1을 수신한다. ‘완전한 양방향 format1 호환’이 아니다. 실제 #66 BK 소스와 출처/SHA를 고정 fixture로 두고 왕복·구버전 거절을 검사한다.
 
-코드 후보 `3b4a51f`에서 로컬 lite217·Chromium21/WebKit21=42개와 독립 CI 두 실행/check11개가 통과했다. CI Node950개 중949통과·기존 실모델1skip이다. Claude 최종 검토·병합/배포와 구분한다. 보존 대조는 `python3 tools/repository-cleanup/check-preserved.py --backup-validation`의15항목을 쓴다. 정확히 승인한 포맷/분류 기대와 fixture/카운터 확장만 허용하며 apply·보상·stash·undo·예산·반품·MIME 원문을 대조한다. 옵션 없는 도구는 확장 전 정리 전용 원문 검사다. [테스트·CI·실물 미검증](log/2026-10/backup-validation-20261025.md)을 함께 본다.
+코드 후보 `3b4a51f`에서 로컬 lite217·Chromium21/WebKit21=42개와 독립 CI 두 실행/check11개가 통과했다. CI Node950개 중949통과·기존 실모델1skip이다. 이후 손상 부팅의 백업 진입 경로를 추가해 최종 로컬 lite217·Chromium22/WebKit22=44개·빌드를 통과했다. 최종 추가 head/CI는 PR에서 확인한다. Claude 최종 검토·병합/배포와 구분한다. 보존 대조는 `python3 tools/repository-cleanup/check-preserved.py --backup-validation`의15항목을 쓴다. 정확히 승인한 포맷/분류 기대와 fixture/카운터 확장만 허용하며 apply·보상·stash·undo·예산·반품·MIME 원문을 대조한다. 옵션 없는 도구는 확장 전 정리 전용 원문 검사다. [테스트·CI·실물 미검증](log/2026-10/backup-validation-20261025.md)을 함께 본다.
 
 전체 React 전환은 #74 다음의 승인된 개발 방향이다. [화면별 단계·보존 계약·복귀 경로](development-plan.md#전체-react-전환-2026-10-25-확정)를 먼저 읽는다. 전환 완료나 배포 완료로 해석하지 않는다.

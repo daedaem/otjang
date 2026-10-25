@@ -2289,6 +2289,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
   };
   function backupSheet(note = '') {
+    if (document.querySelector('.bk')) return;
     let current; try { current = BK.classify(BK.snapshot()); } catch (e) { K.toast(`백업 자료를 읽지 못했어요. ${e.message}`, { bottom: 128 }); return; }
     const n = BK.count(current.data);
     const stash = BK.stash();
@@ -2298,6 +2299,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       <textarea class="bk-ta" hidden aria-label="백업 글자" spellcheck="false" autocapitalize="off"></textarea>
       <div class="bk-preview" hidden></div>
       <p class="bk-msg t6" role="status" aria-live="polite"></p></div>`);
+    // Recovery notice remains underneath; never dismiss it or reset raw storage to export.
+    $('.scrim', sh.w).style.zIndex = '96'; sh.s.style.zIndex = '97';
+    $('[data-bk-save]', sh.s).focus();
     const ta = $('.bk-ta', sh.s), pv = $('.bk-preview', sh.s), msg = (t) => { $('.bk-msg', sh.s).textContent = t; };
     const showText = (text) => { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); };
     const makeText = () => { try { return JSON.stringify(BK.make()); } catch (e) { msg(e.message); return null; } };
@@ -2359,6 +2363,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     el.innerHTML = lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('');
     const bar = document.createElement('div'); bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
     const button = (text, onclick) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.style.cssText = 'min-height:40px;padding:0 12px;border:0;border-radius:10px;background:#3d2600;color:#fff;font:600 13px system-ui,sans-serif'; b.onclick = onclick; bar.append(b); return b; };
+    button('전체 백업 열기', () => backupSheet());
     for (const r of raws) button(`원문 받기(${r.name === 'closet' ? '옷장' : '브랜드·링크'})`, () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([r.text], { type: 'application/json' }));
