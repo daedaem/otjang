@@ -93,3 +93,5 @@
 | [wear-diary-20261015.md](2026-10/wear-diary-20261015.md) | 착용 기록과 결과 반영 — 2026-10-15 |
 
 - [R22 도메인 통합 검토와 회귀 검사](2026-10/wardrobe-rail-integration-review-20261025.md)
+
+- [R22 B1 저장 계약과 실패 복구](2026-10/r22-b1-storage-20261025.md)
