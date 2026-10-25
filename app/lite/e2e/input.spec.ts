@@ -19,7 +19,13 @@ function driver(page: Page, mode: string) {
         await page.getByRole('button',{name:'다음',exact:true}).click();
       } else {
         await page.locator('#rb').fill('합성 브랜드'); await page.locator('#rn').fill(garmentName);
-        await page.locator('[data-k="shirt"]').click(); await page.locator('[data-c="white"]').click();
+        // The duplicate rows are inserted above the choices asynchronously.
+        // Wait for that actual layout change, then verify both taps registered.
+        await expect(page.locator('#rdup .srow').first()).toBeVisible();
+        await page.locator('#rf [data-k="shirt"]').click();
+        await expect(page.locator('#rf [data-k="shirt"]')).toHaveAttribute('aria-pressed', 'true');
+        await page.locator('#rf [data-c="white"]').click();
+        await expect(page.locator('#rf [data-c="white"]')).toHaveAttribute('aria-pressed', 'true');
       }
     },
     async save() { await (mode === 'vanilla' ? page.locator('#rdone') : page.getByRole('button',{name:'옷장에 넣기',exact:true})).click(); },
