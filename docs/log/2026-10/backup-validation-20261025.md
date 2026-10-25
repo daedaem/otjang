@@ -40,3 +40,5 @@
 테스트 서버의 전송 단절을 HTTP 응답 없이 소켓을 종료하는 `end()`로 바꾸고, 기존 두 uncached 요청 실패·새 Document·SW 응답·controller·초안/React 복원 검증을 유지했다. 제품 SW·검사 retry/skip/timeout·CI 설정은 바꾸지 않는다. 조정 후 로컬 Chromium/WebKit 대상2개가 통과했으며 Linux 효과는 해당 head의 CI로 확인한다.
 
 참고로 [Playwright의 별도 offline-emulation 보고](https://github.com/microsoft/playwright/issues/42775)는 service-worker 탐색의 같은 내부 오류를 다루며 origin 중지와 offline 플래그를 구분한다. 그 보고는1.63이고 현재 앱은1.56.1·전송 단절 방식을 쓰므로 같은 원인이라고 단정하지 않는다.
+
+`ee68d8d`에서도 한 실행만 성공하고 다른 실행은 같은 내부 오류로 실패했다. 연결 종료 방식만으로 해결된 것은 아니다. 이후 실제 SW 재진입 직전에 catch-all page.route 중개를 제거하고, 시험 서버의 정상 응답에 no-store를 붙여 HTTP 캐시를 통한 통과도 막았다. [Playwright 요청 중개 문서](https://playwright.dev/docs/network#how-request-interception-works)에서 중개가 네트워크 스택 앞에서 동작한다는 경계를 확인했으며 현재 앱의 내부 원인 확정과 구분한다. 기존 네트워크 실패 두 번·새 문서·SW 응답·초안/React 복원 조건을 모두 유지한 로컬 대상2개가 통과했다. 제품의 요청/캐시 정책·retry/skip/검사 수는 변경하지 않았다.

@@ -245,6 +245,9 @@ test.describe('input runtime caching',()=>{
     // Fail the upstream transport instead of disabling WebKit's networking
     // process (which also prevents its service worker navigation in automation).
     await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+    // Exercise the native SW path, without Playwright's catch-all page routing.
+    // All app assets are local/cached and this isolated case makes no AI calls.
+    await page.unrouteAll({behavior:'wait'});
     const reopenUrl=page.url();
     await page.evaluate(()=>document.documentElement.dataset.e2eOldDocument='true');
     await page.setExtraHTTPHeaders({'x-e2e-network-down':'1'});
