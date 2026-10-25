@@ -2,7 +2,7 @@
 
 # 현재 개발 계획과 완료 기준
 
-갱신: 2026-10-25. 확인한 원격 master는 `c02ea9a`(PR #66 구현·#67 문서 포함)다. 저장소 정리 후보는 테스트 보존 [#69](https://github.com/daedaem/otjang/pull/69) → 코드 위치 [#70](https://github.com/daedaem/otjang/pull/70) → 입력 상태 [#71](https://github.com/daedaem/otjang/pull/71) → 이 문서 정리 순서다. 검사 통과·병합 준비와 실제 master 병합·배포를 구분한다. 이 문서 작업에서 운영 API나 실물 휴대폰을 새로 검사하지 않았다.
+갱신: 2026-10-25. 확인한 원격 master는 `f620c35`다. 테스트 보존 [#69](https://github.com/daedaem/otjang/pull/69) → 코드 위치 [#70](https://github.com/daedaem/otjang/pull/70) → 입력 상태 [#71](https://github.com/daedaem/otjang/pull/71)은 매번 새 master CI를 확인한 뒤 순서대로 머지했다. 남은 문서 [#73](https://github.com/daedaem/otjang/pull/73)을 검사·머지한 뒤 승인된 백업 사전 검증을 별도 PR로 수행한다. master 병합·배포·실물 검증은 구분한다. 이 문서 작업에서 운영 API나 실물 휴대폰을 새로 검사하지 않았다.
 
 [대표 요구사항](owner-requirements.md)과 [사업 계획](business-plan.md)이 목표의 기준이며, [시스템 인수인계](system-handover.md)가 구현·운영 경계를 설명한다. 이전의 상세 판단·검사 이력은 [정리 전 개발 계획](log/2026-10/development-plan-before-cleanup-20261025.md)과 [재작업 기록](log/2026-10/repository-cleanup-rework-20261025.md)에 보존한다.
 
@@ -19,7 +19,7 @@
 | 상담 예산 | #66의 엔진 `priceBounds` 공유, 후보별 `budgetFit`, 모순 문장 아래 `price_check` 사실 줄. 재시도·추가 AI 호출 없음 | 이름 없는 지칭·합계로 포장한 오류·핏/색 등 자유문장 전체를 검증하지 못함. 실제 답의 정확도 별도 확인 |
 | 개인 백업 | #66의 JSON 내보내기·미리보기·복원·undo와 STASH/NEXT 실패 보상. 기존 UI가 없다는 설명은 과거 상태 | 아이폰 파일 앱/공유/복원·PWA 저장 영역 실물 확인 필요. D1 자동 개인 백업·사진 백업 아님 |
 | 구매 기록 | #66의 카탈로그 후보 검색→상세→비교→직접 주문·수령·보유/반품과 사유 기록 | 외부 애드픽/Rakuten/OPF 후보는 링크 이동이며 같은 상세 판정·기록 흐름에 아직 연결되지 않음. 방문을 주문으로 자동 확정하지 않음 |
-| 입력 | #52·#54~#56의 저장 보호·원자 등록·React 직접 입력·초안 복원 | 정리 후보 #71은 두 입력 화면의 상태·진입 로딩을 통합. 실제 iPhone/Galaxy 검증 전 vanilla 플래그 유지 |
+| 입력 | #52·#54~#56의 저장 보호·원자 등록·React 직접 입력·초안 복원과 #71의 두 입력 화면 상태·진입 로딩 통합 | 실제 iPhone/Galaxy 검증 전 vanilla 플래그 유지 |
 | 상품 공급 | 국내 애드픽·Rakuten 검색, 별도 OPF 194건 검색·AI 비교의 기존 증거 | 표시/저장/상품별 외부 AI/이미지/공개 권한은 각각 확인. 과거 937건 공개 권리 미확인 |
 | 실행 오류·화면 | #66이 dev.mjs의 `.mjs` MIME 수정. d12 유지, #48은 CLOSED | d16은 참고 시안이며 채택·배포 완료로 쓰지 않음 |
 
