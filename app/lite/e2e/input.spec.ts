@@ -222,10 +222,19 @@ test.describe('input runtime caching',()=>{
     // Fail the upstream transport instead of disabling WebKit's networking
     // process (which also prevents its service worker navigation in automation).
     await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+    const reopenUrl=page.url();
+    await page.evaluate(()=>document.documentElement.dataset.e2eOldDocument='true');
     await page.setExtraHTTPHeaders({'x-e2e-network-down':'1'});
     try {
       expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
-      await page.reload(); // a new document/React root must come from the worker cache
+      // Linux WebKit can abort reload internally when the upstream socket fails.
+      // Reopen from a blank document instead, and require an actual SW response.
+      await page.goto('about:blank');
+      const response=await page.goto(reopenUrl);
+      expect(response?.fromServiceWorker()).toBe(true);
+      expect(await page.evaluate(()=>document.documentElement.dataset.e2eOldDocument)).toBeUndefined();
+      expect(await page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+      expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
       await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
       await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
       await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
