@@ -185,27 +185,70 @@ test('backup UI previews, restores exact records, and undo restores the prior sn
   expect(undone.garments).toEqual(JSON.parse(before!).garments); expect(undone.journeys).toEqual(JSON.parse(before!).journeys);
 });
 
-test('backup refuses unreadable drafts and unsafe consultation files with a visible error and no export or writes',async({page})=>{
+test('backup exports damaged raw, previews format2 quarantine without writes, and preserves existing active bytes on restore',async({page})=>{
   await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
-  const saved=await page.evaluate(()=>{
+  const badDraft='{"v":99,"unknown":"원문 보존"}';
+  const saved=await page.evaluate((raw)=>{
     window.K.M.registerGarment({draftId:'draft-backup-test',brand:'합성 브랜드',name:'합성 셔츠',kind:'shirt',color:'white',url:''});
-    localStorage.setItem('eoul-d12-hang:input-draft:v1','{"v":99,"unknown":"원문 보존"}');
-    (window as any).__bkCopied=0;
-    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{(window as any).__bkCopied++;}}});
+    window.K.M.ask('출근용 셔츠 10만원 이하'); // existing screen boot search; make raw stable across reload
+    localStorage.setItem('eoul-d12-hang:input-draft:v1',raw);
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).__bkCopied=text;}}});
     return localStorage.getItem('eoul-d12-hang:v1')!;
-  });
-  let downloads=0;page.on('download',()=>downloads++);
+  },badDraft);
   await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
   await expect(page.locator('.bk .sub').first()).toContainText('직접 등록 1건');
-  for(const action of ['[data-bk-save]','[data-bk-copy]']) {
-    await page.locator(action).click();await expect(page.locator('.bk-msg')).toContainText('입력 초안 자료를 이 앱이 읽을 수 없어요');
-  }
+  await expect(page.locator('[data-bk-report]').first()).toContainText('원문 보관 1개(활성화 안 됨)');
+  await page.locator('[data-bk-copy]').click();await expect(page.locator('.bk-msg')).toContainText('복사했어요');
+  const exported=await page.evaluate(()=>JSON.parse((window as any).__bkCopied));expect(exported.format).toBe(2);
+  expect(exported.data['eoul-d12-hang:input-draft:v1']).toBeUndefined();
+  expect(Object.entries(exported.data).some(([k,v])=>k.startsWith('eoul-d12-hang:input-draft:v1:unreadable:')&&v===badDraft)).toBe(true);
+  const goodDraft=JSON.stringify({v:1,step:1,updatedAt:'2026-10-25T00:00:00Z',values:{draftId:'draft-existing-valid',brand:'기존 브랜드',name:'기존 바지',kind:'pants',color:'black',url:''}});
+  const goodChat='{"threads":[{"id":"existing-thread","turns":[{"role":"user","text":"기존 상담"}]}],"cur":"existing-thread"}';
+  const before=await page.evaluate(({draft,chat})=>{
+    localStorage.setItem('eoul-d12-hang:input-draft:v1',draft);localStorage.setItem('eoul-d12-hang:consult',chat);
+    const originalSet=Storage.prototype.setItem,originalRemove=Storage.prototype.removeItem;(window as any).__bkWrites=0;
+    Storage.prototype.setItem=function(k,v){(window as any).__bkWrites++;return originalSet.call(this,k,v);};
+    Storage.prototype.removeItem=function(k){(window as any).__bkWrites++;return originalRemove.call(this,k);};
+    return JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort()));
+  },{draft:goodDraft,chat:goodChat});
   const unsafeChat=JSON.stringify({threads:[{id:'x" onclick="bad',turns:[]}]});
-  await page.locator('#bkfile').setInputFiles({name:'synthetic-invalid-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'eoul-lite',format:1,data:{'eoul-d12-hang:v1':saved,'eoul-d12-hang:consult':unsafeChat}}))});
-  await expect(page.locator('.bk-msg')).toContainText('상담 자료를 이 앱이 읽을 수 없어요');
+  exported.data['eoul-d12-hang:consult']=unsafeChat;
+  await page.locator('#bkfile').setInputFiles({name:'synthetic-lossless-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(exported))});
+  await expect(page.locator('.bk-preview [data-bk-report]')).toContainText('기존 활성 자료 유지 2개');
+  expect(await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())))).toBe(before);
+  expect(await page.evaluate(()=>(window as any).__bkWrites)).toBe(0);expect(await page.locator('.bk-preview [onclick]').count()).toBe(0);
+  await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-go]').click()]);
   expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(saved);
-  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:input-draft:v1'))).toBe('{"v":99,"unknown":"원문 보존"}');
-  expect(await page.evaluate(()=>(window as any).__bkCopied)).toBe(0);expect(downloads).toBe(0);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:input-draft:v1'))).toBe(goodDraft);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:consult'))).toBe(goodChat);
+  const archived=await page.evaluate(()=>Object.entries(localStorage).filter(([k])=>k.includes(':unreadable:')));
+  expect(archived.some(([,v])=>v===badDraft)).toBe(true);expect(archived.some(([,v])=>v===unsafeChat)).toBe(true);
+  await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
+  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).__bkCopied=text;}}}));
+  await page.locator('[data-bk-copy]').click();
+  const again=await page.evaluate(()=>JSON.parse((window as any).__bkCopied));
+  expect(again.data['eoul-d12-hang:input-draft:v1']).toBe(goodDraft);expect(again.data['eoul-d12-hang:consult']).toBe(goodChat);
+  expect(Object.entries(again.data).some(([k,v])=>k.includes(':unreadable:')&&v===badDraft)).toBe(true);
+});
+
+test('backup promotion failure remains visibly incomplete and undo recovers before another restore',async({page})=>{
+  await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
+  const before=await page.evaluate(()=>{
+    window.K.M.registerGarment({draftId:'draft-promotion-test',brand:'합성 브랜드',name:'합성 바지',kind:'pants',color:'black',url:''});
+    window.K.M.ask('출근용 셔츠 10만원 이하');
+    const set=Storage.prototype.setItem;(window as any).__bkSet=set;
+    Storage.prototype.setItem=function(k,v){if(k==='eoul-backup:stash')throw new Error('synthetic quota');return set.call(this,k,v);};
+    return localStorage.getItem('eoul-d12-hang:v1');
+  });
+  await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
+  await page.locator('#bkfile').setInputFiles({name:'synthetic-quarantine.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'eoul-lite',format:1,data:{'eoul-d12-hang:reg':'bad raw'}}))});
+  await page.locator('[data-bk-go]').click();await expect(page.locator('.bk-msg')).toContainText('복구 지점 정리가 끝나지 않았어요');
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-backup:stash-next'))).not.toBeNull();
+  await page.evaluate(()=>{Storage.prototype.setItem=(window as any).__bkSet;});
+  await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-undo]').click()]);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(before);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-backup:stash-next'))).toBeNull();
+  expect(await page.evaluate(()=>Object.entries(localStorage).some(([k,v])=>k.startsWith('eoul-d12-hang:reg:unreadable:')&&v==='bad raw'))).toBe(true);
 });
 
 for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {

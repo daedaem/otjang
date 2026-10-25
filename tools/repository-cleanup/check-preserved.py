@@ -2,7 +2,8 @@
 """Compare PR #66; --backup-validation permits the approved boundary extension.
 
 The default checks the cleanup-only snapshot. The opt-in mode still requires
-identical transaction bodies, with exactly one target-validation guard added.
+identical apply/stash/undo and transaction bodies, allowing only the pure
+restore plan and in-memory report at the approved boundary.
 """
 from pathlib import Path
 import hashlib
@@ -48,6 +49,21 @@ if validation:
     added_assertion = "  assert.equal(a.sets, 3, 'NEXT 저장·대상 쓰기 실패·보상 쓰기까지 실행해야 한다');\n"
     assert backup_actual.count(added_assertion) == 1
     approved = [
+        ('const context = { TextEncoder, localStorage:', 'const context = { localStorage:'),
+        ('assert.equal(file.format, 2)', 'assert.equal(file.format, 1)'),
+        ('파일 경계는 거절하고 읽지 못한 옷장은 원문 보관하며 저장소를 바꾸지 않는다', '이 앱 파일이 아니거나 옷장 자료를 읽을 수 없으면 아무것도 바꾸지 않고 거절한다'),
+        ("{ ...ok, format: 99 }", "{ ...ok, format: 2 }"),
+        ("    [JSON.stringify({ ...ok, data: { [ENGINE]: 5 } }), /글자가 아니에요/],\n", "    [JSON.stringify({ ...ok, data: { [ENGINE]: 5 } }), /글자가 아니에요/], [JSON.stringify({ ...ok, data: { [ENGINE]: 'broken' } }), /이 앱이 읽을 수 없어요/],\n    [JSON.stringify({ ...ok, data: { [ENGINE]: '{\"v\":2,\"garments\":[],\"journeys\":[]}' } }), /이 앱이 읽을 수 없어요/],\n"),
+        ("""  for (const raw of ['broken', '{"v":2,"garments":[],"journeys":[]}']) {
+    const classified = BK.read(JSON.stringify({ ...ok, data: { [ENGINE]: raw } })).data;
+    assert.equal(classified[ENGINE], undefined);
+    assert.ok(Object.entries(classified).some(([k,v]) => k.startsWith(`${ENGINE}:unreadable:`) && v === raw));
+  }
+""", ''),
+        ("""  const classified = BK.read(JSON.stringify(bad)).data;
+  assert.equal(classified[ENGINE], undefined);
+  assert.ok(Object.entries(classified).some(([k,v]) => k.startsWith(`${ENGINE}:unreadable:`) && v === bad.data[ENGINE]));
+""", "  assert.throws(() => BK.read(JSON.stringify(bad)), /이 앱이 읽을 수 없어요/);\n"),
         ('// A normal editable v1 draft needs the same fields as the actual input reader.\n', ''),
         ("JSON.stringify({ v: 1, step: 0, updatedAt: '2026-10-25T00:00:00Z', values: { draftId: 'draft-abcdefgh', brand: '', name: '', kind: '', color: '', url: '' } })", """'{"v":1}'"""),
         ("JSON.stringify({ threads: [{ id: 't-second', turns: [{ role: 'assistant', text: 'x'.repeat(50), ids: [] }] }], cur: 't-second' })", "'x'.repeat(50)"),
@@ -63,11 +79,12 @@ same('canonical budget tests: only domain URL may change',
 before = original('app/mockups/ux10v2/links/d12-hang.html')
 after = current('app/lite/src/screen.html')
 if validation:
-    same('BK keys and snapshot', region(before, '    APP:', '    make()'), region(after, '    APP:', '    make()'))
+    same('BK keys and snapshot', region(before, '    APP:', '    make()'), region(after, '    APP:', '    make()').replace("FORMAT: 2,", "FORMAT: 1,"))
     same('BK removable and apply compensation', region(before, '    removable:', '    restore(data) {'), region(after, '    removable:', '    restore(data) {'))
-    guard = '      BK.validate(data); // Only the incoming target, before any NEXT/STASH write.\n'
-    assert after.count(guard) == 1
-    same('BK STASH/NEXT restore: only one target validation guard', region(before, '    restore(data) {', '    stash() {'), region(after, '    restore(data) {', '    stash() {').replace(guard, ''))
+    plan = '      const prepared = BK.prepareRestore(data, before);\n      data = prepared.data;\n'
+    report = '      BK.lastReport = prepared.report;\n'
+    assert after.count(plan) == 1 and after.count(report) == 1
+    same('BK STASH/NEXT restore: pure plan before writes, memory report after transaction', region(before, '    restore(data) {', '    stash() {'), region(after, '    restore(data) {', '    stash() {').replace(plan, '').replace(report, ''))
     same('BK stash and undo', region(before, '    stash() {', '  };\n'), region(after, '    stash() {', '  };\n'))
 for label, start, end in [
     ('BK restore and undo', '  const BK = {', '  function backupSheet('),

@@ -14,7 +14,7 @@ function storage(initial={}) {
     dump:()=>Object.fromEntries([...values.entries()].sort()) };
 }
 function run(local) {
-  const context={localStorage:local,window:{EOUL_MOCK_KEY:ENGINE},CHAT_KEY:CHAT,REG_KEY:REG,URL,M:createMock()};
+  const context={TextEncoder, localStorage:local,window:{EOUL_MOCK_KEY:ENGINE},CHAT_KEY:CHAT,REG_KEY:REG,URL,M:createMock()};
   vm.runInNewContext(`${block}\nglobalThis.BK=BK;`,context); return context.BK;
 }
 const draft=()=>({v:1,step:1,updatedAt:'2026-10-25T00:00:00Z',values:{draftId:'draft-abcdefgh',brand:'합성 브랜드',name:'합성 셔츠',kind:'shirt',color:'white',url:''}});
@@ -26,30 +26,34 @@ function registered() {
 }
 const baseline=()=>({[ENGINE]:registered().raw,[REG]:JSON.stringify({items:{},catalog:{}}),[CHAT]:JSON.stringify({threads:[],cur:null})});
 const envelope=data=>JSON.stringify({app:'eoul-lite',format:1,data});
-function refuses(key,raw) {
+function quarantines(key,raw) {
   const good=baseline(), bad={...good,[key]:raw};
   for(const method of ['make','read','restore']) {
     const local=storage(method==='make'?bad:good), bk=run(local), before=local.dump(), writes=local.writes;
-    assert.throws(()=>method==='make'?bk.make():method==='read'?bk.read(envelope(bad)):bk.restore(bad),`${method}: ${key}`);
-    assert.deepEqual(local.dump(),before,`${method} changed raw data`);assert.equal(local.writes,writes,`${method} wrote before validation`);
+    let data;
+    if(method==='make') data=bk.make().data;
+    else if(method==='read') data=bk.read(envelope(bad)).data;
+    else { bk.restore(bad); data=bk.make().data; assert.equal(local.getItem(key),before[key]??null,`${method} lost existing active`); }
+    assert.ok(Object.entries(data).some(([k,v])=>k.startsWith(`${key}:unreadable:`)&&v===raw),`${method}: ${key} lost raw`);
+    if(method!=='restore'){assert.equal(data[key],undefined);assert.deepEqual(local.dump(),before);assert.equal(local.writes,writes);}
   }
 }
 
-test('export, file read and direct restore reject damaged/future input drafts before any write',()=>{
+test('export, file read and direct restore quarantine damaged/future input drafts without discarding raw',()=>{
   const valid=draft();
-  for(const raw of ['broken','null','[]',JSON.stringify({...valid,v:99}),JSON.stringify({...valid,step:3}),JSON.stringify({...valid,values:{...valid.values,name:'x'.repeat(81)}}),JSON.stringify({...valid,updatedAt:'invalid'})]) refuses(DRAFT,raw);
+  for(const raw of ['broken','null','[]',JSON.stringify({...valid,v:99}),JSON.stringify({...valid,step:3}),JSON.stringify({...valid,values:{...valid.values,name:'x'.repeat(81)}}),JSON.stringify({...valid,updatedAt:'invalid'})]) quarantines(DRAFT,raw);
 });
-test('export, file read and direct restore reject damaged/future registration metadata without replacing raw data',()=>{
-  for(const raw of ['broken','[]','null','{"v":99,"items":{},"catalog":{}}','{"items":[]}','{"catalog":[]}','{"items":{"g1":null}}','{"catalog":{"brand item":[]}}']) refuses(REG,raw);
+test('export, file read and direct restore quarantine damaged/future registration metadata without replacing raw data',()=>{
+  for(const raw of ['broken','[]','null','{"v":99,"items":{},"catalog":{}}','{"items":[]}','{"catalog":[]}','{"items":{"g1":null}}','{"catalog":{"brand item":[]}}']) quarantines(REG,raw);
 });
 test('registration links are HTTP(S) strings when present, for both items and catalog',()=>{
   for(const collection of ['items','catalog']) for(const url of [123,null,{},[], 'javascript:alert(1)','data:text/html,test','file:///tmp/test','not a URL']) {
-    refuses(REG,JSON.stringify({items:{},catalog:{},[collection]:{'g1':{brand:'합성',name:'셔츠',url}}}));
+    quarantines(REG,JSON.stringify({items:{},catalog:{},[collection]:{'g1':{brand:'합성',name:'셔츠',url}}}));
   }
 });
-test('consultation IDs and turn product-ID containers reject active markup while preserving historical IDs',()=>{
+test('consultation IDs and turn product-ID containers quarantine active markup while preserving historical IDs',()=>{
   const thread={id:'old.thread:1',title:'지난 상담',at:'2026-10-25T00:00:00Z',turns:[{role:'assistant',text:'과거 상품',ids:['discontinued:123'],unknown:'keep'},{role:'note',kind:'err',text:'답을 받지 못했어요. 잠시 뒤에 다시 물어봐 주세요.'}]};
-  for(const value of [{threads:'broken'}, {threads:[{...thread,id:'x" onclick="bad'}]}, {threads:[{...thread,turns:[{role:'assistant',text:'답',ids:'ms-1'}]}]}, {threads:[{...thread,turns:[{role:'assistant',text:'답',ids:['x<svg>']}]}]}, {threads:[thread],cur:'bad"id'}]) refuses(CHAT,JSON.stringify(value));
+  for(const value of [{threads:'broken'}, {threads:[{...thread,id:'x" onclick="bad'}]}, {threads:[{...thread,turns:[{role:'assistant',text:'답',ids:'ms-1'}]}]}, {threads:[{...thread,turns:[{role:'assistant',text:'답',ids:['x<svg>']}]}]}, {threads:[thread],cur:'bad"id'}]) quarantines(CHAT,JSON.stringify(value));
   const local=storage({[CHAT]:JSON.stringify({threads:[thread],cur:thread.id})});
   assert.equal(run(local).read(JSON.stringify(run(local).make())).data[CHAT],local.getItem(CHAT));
 });
@@ -70,7 +74,7 @@ test('direct restore validates manifest types, key ownership and value types bef
 test('atomic registration receipt URLs cannot hide malformed values behind optional empty-link handling',()=>{
   for(const url of [null,123,{},[], 'javascript:alert(1)','data:text/html,test']) {
     const state=JSON.parse(registered().raw);state.registrations.receipts[0].input.url=url;
-    refuses(ENGINE,JSON.stringify(state));
+    quarantines(ENGINE,JSON.stringify(state));
   }
 });
 test('preview counts the union of legacy garment IDs and atomic receipts, including a removed garment receipt',()=>{

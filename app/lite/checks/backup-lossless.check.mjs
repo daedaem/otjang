@@ -123,6 +123,9 @@ test('partial archive compensation and pending promotion preserve the original r
   local.fault=null;bk.undo();for(const [key,raw] of Object.entries(before))assert.equal(local.getItem(key),raw);
   assert.ok(archives(local.dump(),REG).some(([,v])=>v==='bad reg'));
   local.fault=e=>e.op==='set'&&e.key===bk.STASH;bk.restore({[REG]:'another bad reg'});assert.equal(bk.stash().key,bk.NEXT);
+  local.fault=null;bk.undo();for(const [key,raw] of Object.entries(before))assert.equal(local.getItem(key),raw);
+  assert.equal(local.getItem(bk.NEXT),null);assert.ok(rawAt(bk.make().data,REG).includes('another bad reg'));
+  assert.doesNotThrow(()=>bk.restore(good()));
 });
 test('actual #66 round-trip is verified and cannot silently apply a new lossless format2 file',()=>{
   const bad=broken();delete bad[ENGINE];
@@ -143,4 +146,44 @@ test('actual #66 format1 counterexample proves why archive-preservation semantic
   older.restore(older.read(file({[archive]:'damaged raw'})).data);
   assert.equal(local.getItem(REG),null);assert.equal(local.getItem(archive),'damaged raw');assert.equal(older.stash().data[REG],oldReg);
   const modern=run(storage({[REG]:'bad metadata'})).make();assert.equal(modern.format,2);
+});
+
+
+test('new format2 archive-only provenance survives modern preview, restore, reload and repeated re-export',()=>{
+  const initial={...good(),[DRAFT]:'existing bad draft'},local=storage(initial),bk=run(local);
+  const outgoing=run(storage(broken())).make(),before=local.dump();
+  const read=bk.read(JSON.stringify(outgoing)),plan=bk.prepareRestore(read.data,bk.snapshot());
+  assert.equal(plan.report.preserved.length,4);assert.equal(local.events.length,0);assert.deepEqual(local.dump(),before);
+  bk.restore(read.data);
+  bk.restore(bk.read(JSON.stringify(bk.make())).data); // first export also preserves the kept damaged local raw
+  const once=JSON.parse(JSON.stringify(bk.snapshot()));
+  for(const key of Object.keys(broken()))assert.equal(local.getItem(key),initial[key]);
+  assert.equal(local.getItem(UI),null);
+  for(let i=0;i<4;i++){const reloaded=run(local),next=reloaded.make();assert.equal(next.format,2);reloaded.restore(reloaded.read(JSON.stringify(next)).data);}
+  assert.deepEqual(JSON.parse(JSON.stringify(bk.snapshot())),once);
+  for(const [key,raw] of Object.entries(broken()))assert.ok(rawAt(bk.make().data,key).includes(raw));
+});
+test('duplicate escaped member names are rejected but opaque inner JSON is never scanned as an envelope',()=>{
+  const bk=run(storage());
+  assert.throws(()=>bk.read('{"app":"eoul-lite","format":1,"data":{"eoul-x":"first","eoul-\\u0078":"second"}}'),/중복|모호/);
+  const raw='{"x":1,"x":2,"brace":"}\\"{"}';
+  assert.equal(bk.read(file({'eoul-extra:data':raw})).data['eoul-extra:data'],raw);
+  const duplicateReg='{"items":{},"items":[]}';const read=bk.read(file({[REG]:duplicateReg}));
+  assert.equal(read.data[REG],undefined);assert.deepEqual(rawAt(read.data,REG),[duplicateReg]);
+});
+test('classification projection overflow and storage-read failures never mutate or truncate',()=>{
+  const raw={[REG]:'bad'},local=storage(),bk=run(local),text=file(raw);
+  const projected=JSON.stringify(run(storage(raw)).make());assert.ok(Buffer.byteLength(projected)>Buffer.byteLength(text));
+  bk.MAX_BYTES=Buffer.byteLength(text);assert.throws(()=>bk.read(text),/5MB|크/);assert.equal(local.events.length,0);
+  bk.MAX_BYTES=Buffer.byteLength(JSON.stringify(bk.envelope(raw)));assert.throws(()=>bk.restore(raw),/5MB|크/);assert.equal(local.events.length,0);
+  const failing=storage(good());failing.getItem=()=>{throw new Error('storage blocked');};const blocked=run(failing);
+  assert.throws(()=>blocked.make(),/storage blocked/);assert.throws(()=>blocked.restore(good()),/storage blocked/);assert.equal(failing.events.length,0);
+});
+
+
+test('archive collision permutations keep the report attached to each original raw',()=>{
+  const k1=`${REG}:unreadable:backup-v1:1`,k2=`${REG}:unreadable:backup-v1:2`;
+  const bk=run(storage({[k1]:'A',[k2]:'B'})),plan=bk.prepareRestore({[k1]:'B',[k2]:'C'},bk.snapshot());
+  assert.equal(plan.report.archives.length,2);assert.equal(new Set(plan.report.archives.map(a=>a.key)).size,2);
+  assert.equal(plan.data[plan.report.archives[0].key],'B');assert.equal(plan.data[plan.report.archives[1].key],'C');
 });

@@ -2052,15 +2052,101 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // 사진은 저장하지 않으므로 글자 자료만 있다. 값은 저장된 원문 그대로 담아 다시 해석하며 잃는 것이 없게 한다.
   // 복원은 키 단위로 바꾸기 전에 현재 값을 '복원 전 보관'에 남겨 한 번 되돌릴 수 있다. 모양이 다른 파일은 아무것도 바꾸지 않고 거절한다.
   const BK = {
-    APP: 'eoul-lite', FORMAT: 1, STASH: 'eoul-backup:stash', NEXT: 'eoul-backup:stash-next', MAX_BYTES: 5 * 1024 * 1024,
+    APP: 'eoul-lite', FORMAT: 2, STASH: 'eoul-backup:stash', NEXT: 'eoul-backup:stash-next', MAX_BYTES: 5 * 1024 * 1024,
     skip: (k) => typeof k !== 'string' || !k.startsWith('eoul-') || k.startsWith('eoul-backup:') || /:(last|probe)$/.test(k),
     keys() { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!BK.skip(k)) out.push(k); } return out.sort(); },
     snapshot() { const data = {}; for (const k of BK.keys()) { const v = localStorage.getItem(k); if (typeof v === 'string') data[k] = v; } return data; },
-    make() { return { app: BK.APP, format: BK.FORMAT, screen: 'd12-hang', at: new Date().toISOString(), data: BK.validate(BK.snapshot()) }; },
+    make() { const b = BK.envelope(BK.classify(BK.snapshot()).data); BK.requireSize(JSON.stringify(b)); return b; },
     stamp() { const d = new Date(); const z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`; },
-    // Validate only active known records at the API boundary. Unknown keys and
-    // unreadable archives stay opaque; undo must still recover an old damaged raw.
-    validate(data) {
+    envelope(data) { return { app: BK.APP, format: BK.FORMAT, screen: 'd12-hang', at: new Date().toISOString(), data }; },
+    requireSize(text) { if (new TextEncoder().encode(text).byteLength > BK.MAX_BYTES) throw new Error('백업 파일이 너무 커요(5MB 초과). 아무것도 바꾸지 않았어요.'); },
+    // JSON syntax is checked by JSON.parse first. Scan member names, never JSON
+    // embedded inside a raw string; escaped spellings of the same name also collide.
+    duplicates(text) {
+      const stack = [];
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '"') {
+          const start = i++;
+          for (; i < text.length; i++) { if (text[i] === '\\') i++; else if (text[i] === '"') break; }
+          let next = i + 1; while (/\s/.test(text[next] || '') && next < text.length) next++;
+          if (text[next] === ':') { const names = stack[stack.length - 1]; const key = JSON.parse(text.slice(start, i + 1)); if (names?.has(key)) return true; names?.add(key); }
+        } else if (c === '{') stack.push(new Set()); else if (c === '[') stack.push(null); else if (c === '}' || c === ']') stack.pop();
+      }
+      return false;
+    },
+    archiveInfo(key) {
+      const at = key.indexOf(':unreadable:'); if (at < 0) return null;
+      const source = key.slice(0, at), suffix = key.slice(at + ':unreadable:'.length);
+      if (BK.skip(source) || !suffix) throw new Error('백업 보관 항목의 원래 위치를 확인할 수 없어요.');
+      return { source, preserve: /^backup-v1:[1-9]\d*$/.test(suffix) };
+    },
+    manifest(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('이 앱의 백업 자료 모양이 아니에요.');
+      for (const [key, raw] of Object.entries(data)) {
+        if (BK.skip(key)) throw new Error('백업에 모르는 항목이 있어요.');
+        if (typeof raw !== 'string') throw new Error('백업 항목 값이 글자가 아니에요.');
+        BK.archiveInfo(key);
+      }
+    },
+    allocator(occupied, reserved) {
+      const used = { ...occupied }, taken = new Set(reserved);
+      return (source, raw, preserve, preferred) => {
+        if (preferred && (!(preferred in used) || used[preferred] === raw)) { used[preferred] = raw; taken.add(preferred); return preferred; }
+        for (const [key, value] of Object.entries(used)) { const info = BK.archiveInfo(key); if (info?.source === source && info.preserve === preserve && value === raw) return key; }
+        const prefix = `${source}:unreadable:${preserve ? 'backup-v1' : 'backup-history-v1'}:`;
+        let n = 1; while (taken.has(prefix + n) || (prefix + n) in used) n++;
+        const key = prefix + n; used[key] = raw; taken.add(key); return key;
+      };
+    },
+    classify(data) {
+      BK.manifest(data);
+      const target = {}, bad = [], report = { active: [], archives: [], preserved: [], archivedCurrent: [] };
+      for (const [key, raw] of Object.entries(data)) {
+        const info = BK.archiveInfo(key);
+        if (info) { target[key] = raw; report.archives.push({ key, ...info, reason: '보관 원문 · 활성화 안 됨' }); continue; }
+        try { BK.validateActive({ [key]: raw }); target[key] = raw; report.active.push(key); }
+        catch (e) { bad.push({ source: key, raw, reason: e.message }); }
+      }
+      const allocate = BK.allocator(target, Object.keys(data));
+      for (const { source, raw, reason } of bad) {
+        const key = allocate(source, raw, true); target[key] = raw;
+        if (!report.archives.some(a => a.key === key)) report.archives.push({ key, source, preserve: true, reason });
+      }
+      return { data: target, report };
+    },
+    prepareRestore(data, before) {
+      BK.manifest(data); BK.manifest(before);
+      BK.requireSize(JSON.stringify(BK.envelope(data)));
+      const classified = BK.classify(data), target = {}, report = classified.report, archiveKeys = new Map();
+      const allocate = BK.allocator(before, Object.keys(classified.data));
+      for (const [key, raw] of Object.entries(classified.data)) {
+        const info = BK.archiveInfo(key);
+        if (!info) { target[key] = raw; continue; }
+        const dest = allocate(info.source, raw, info.preserve, key); target[dest] = raw;
+        archiveKeys.set(key, dest);
+      }
+      report.archives = report.archives.map(a => ({ ...a, key: archiveKeys.get(a.key) }));
+      for (const a of report.archives) if (a.preserve && !(a.source in target) && a.source in before) { target[a.source] = before[a.source]; report.preserved.push(a.source); }
+      for (const [key, raw] of Object.entries(before)) {
+        if (BK.archiveInfo(key) || target[key] === raw || (!(key in target) && !BK.removable(key))) continue;
+        try { BK.validateActive({ [key]: raw }); }
+        catch (e) {
+          const dest = allocate(key, raw, true); target[dest] = raw;
+          report.archivedCurrent.push({ source: key, key: dest, action: key in target ? '교체' : '제거', reason: e.message });
+        }
+      }
+      // apply retains old archives and unknown keys. Include those, plus the
+      // classification overhead of any deliberately kept damaged active value.
+      const post = { ...before };
+      for (const key of Object.keys(post)) if (!(key in target) && BK.removable(key)) delete post[key];
+      Object.assign(post, target);
+      BK.requireSize(JSON.stringify(BK.envelope(BK.classify(post).data)));
+      return { data: target, report };
+    },
+    // Content failures are quarantined. Manifest/ownership/size failures remain
+    // hard errors; neither classification nor preview changes browser storage.
+    validateActive(data) {
       const object = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
       const reject = (label) => { throw new Error(`${label} 자료를 이 앱이 읽을 수 없어요. 아무것도 바꾸지 않았어요.`); };
       if (!object(data)) reject('백업');
@@ -2070,7 +2156,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }
       const parse = (key, label) => {
         if (data[key] === undefined) return undefined;
-        let v; try { v = JSON.parse(data[key]); } catch { reject(label); }
+        let v; try { v = JSON.parse(data[key]); if (BK.duplicates(data[key])) reject(label); } catch { reject(label); }
         if (!object(v)) reject(label);
         return v;
       };
@@ -2122,17 +2208,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
     read(text) {
       if (typeof text !== 'string' || !text.trim()) throw new Error('파일이 비어 있어요.');
-      if (text.length > BK.MAX_BYTES) throw new Error('파일이 너무 커요(5MB 초과).');
+      BK.requireSize(text);
       let v; try { v = JSON.parse(text); } catch { throw new Error('이 앱의 백업 파일(JSON)이 아니에요.'); }
-      if (!v || typeof v !== 'object' || v.app !== BK.APP || v.format !== BK.FORMAT || !v.data || typeof v.data !== 'object' || Array.isArray(v.data)) throw new Error('이 앱의 백업 파일이 아니에요.');
-      const data = {};
-      for (const [k, val] of Object.entries(v.data)) {
-        if (BK.skip(k)) throw new Error(`백업에 모르는 항목이 있어요: ${String(k).slice(0, 40)}`);
-        if (typeof val !== 'string') throw new Error(`항목 값이 글자가 아니에요: ${k.slice(0, 40)}`);
-        data[k] = val;
-      }
-      if (!Object.keys(data).length) throw new Error('백업에 자료가 없어요.');
-      return { at: typeof v.at === 'string' ? v.at : '', data: BK.validate(data) };
+      if (BK.duplicates(text)) throw new Error('중복된 항목이 있어 모호한 백업 파일이에요.');
+      if (!v || typeof v !== 'object' || v.app !== BK.APP || ![1, BK.FORMAT].includes(v.format)) throw new Error('이 앱의 백업 파일이 아니에요.');
+      const result = BK.classify(v.data);
+      if (!Object.keys(result.data).length) throw new Error('백업에 자료가 없어요.');
+      BK.requireSize(JSON.stringify(BK.envelope(result.data)));
+      return { at: typeof v.at === 'string' ? v.at : '', ...result, sourceFormat: v.format };
     },
     count(data) {
       const n = { garments: 0, journeys: 0, threads: 0, reg: 0 };
@@ -2178,13 +2261,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       // 어느 경우든 새 복원으로 덮지 않도록, 먼저 '복원 전으로 되돌리기'를 하게 하고 이번 복원은 시작하지 않는다.
       let pending = null; try { pending = localStorage.getItem(BK.NEXT); } catch {}
       if (pending !== null) throw Object.assign(new Error("앞선 복원이 끝까지 정리되지 않았어요. 먼저 '복원 전으로 되돌리기'를 한 뒤 다시 복원해 주세요."), { code: 'pending' });
-      BK.validate(data); // Only the incoming target, before any NEXT/STASH write.
       const before = BK.snapshot();
+      const prepared = BK.prepareRestore(data, before);
+      data = prepared.data;
       const text = JSON.stringify({ at: new Date().toISOString(), data: before });
       const dropNext = () => { try { localStorage.removeItem(BK.NEXT); } catch {} };
       try { localStorage.setItem(BK.NEXT, text); if (localStorage.getItem(BK.NEXT) !== text) throw new Error('verify'); } catch { dropNext(); throw new Error('되돌릴 보관본을 저장하지 못해 복원하지 않았어요. 저장 공간을 확인해 주세요.'); }
       try { BK.apply(data); } catch (e) { if (e.code !== 'partial') dropNext(); throw e; }
       try { localStorage.setItem(BK.STASH, text); if (localStorage.getItem(BK.STASH) !== text) throw new Error('verify'); localStorage.removeItem(BK.NEXT); } catch { /* NEXT가 남아 되돌리기 지점 역할을 한다 */ }
+      BK.lastReport = prepared.report;
       return before;
     },
     // 되돌리기 지점: 아직 올리지 못했거나 일부만 바뀐 복원의 NEXT가 있으면 그것이 가장 최근 지점이다.
@@ -2204,9 +2289,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
   };
   function backupSheet(note = '') {
-    const n = BK.count(BK.snapshot());
+    let current; try { current = BK.classify(BK.snapshot()); } catch (e) { K.toast(`백업 자료를 읽지 못했어요. ${e.message}`, { bottom: 128 }); return; }
+    const n = BK.count(current.data);
     const stash = BK.stash();
-    const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요.</p>
+    const reportText = (report) => `<div class="t6" data-bk-report>정상 자료 ${report.active.length}개 항목 · 원문 보관 ${report.archives.length}개(활성화 안 됨)${report.preserved.length ? ` · 기존 활성 자료 유지 ${report.preserved.length}개` : ''}${report.archivedCurrent.length ? ` · 기존 원문 ${report.archivedCurrent.length}개는 보관 후 활성에서 교체/제거` : ''}</div>${report.archives.length || report.archivedCurrent.length ? `<ul class="t6">${[...report.archives, ...report.archivedCurrent].map(a => `<li>${esc(a.source)}: ${esc(a.reason)}${a.action ? ` · 보관 후 ${esc(a.action)}` : ''}</li>`).join('')}</ul>` : ''}`;
+    const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요. 읽을 수 없는 원문은 따로 보관하며 옷·상담으로 활성화하지 않아요. 새 백업은 최신 앱에서 복원해 주세요.</p>${reportText(current.report)}
       <div class="decs"><button class="btn go" data-bk-save><i class="ph ph-download-simple"></i>파일로 내보내기</button><button class="btn line" data-bk-copy><i class="ph ph-copy"></i>글자로 복사</button><label class="btn line" for="bkfile"><i class="ph ph-upload-simple"></i>파일로 복원<input id="bkfile" type="file" accept=".json,application/json,text/plain" hidden></label><button class="btn line" data-bk-paste><i class="ph ph-clipboard-text"></i>붙여넣어 복원</button>${stash ? `<button class="btn line" data-bk-undo><i class="ph ph-arrow-counter-clockwise"></i>복원 전(${esc(whenText(stash.at))})으로 되돌리기</button>` : ''}</div>
       <textarea class="bk-ta" hidden aria-label="백업 글자" spellcheck="false" autocapitalize="off"></textarea>
       <div class="bk-preview" hidden></div>
@@ -2227,10 +2314,18 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     };
     $('[data-bk-copy]', sh.s).onclick = async () => { const text = makeText(); if (text === null) return; try { await navigator.clipboard.writeText(text); msg('백업 글자를 복사했어요. 메모 앱 등에 붙여 두세요.'); } catch { showText(text); msg('복사가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); } };
     const preview = (text) => {
-      let b; try { b = BK.read(text); } catch (e) { pv.hidden = true; msg(e.message); return; }
-      const cur = BK.count(BK.snapshot()), nb = BK.count(b.data);
-      pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div><div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">지금 자료는 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
-      $('[data-bk-go]', pv).onclick = async () => { try { BK.restore(b.data); } catch (e) { if (e.code === 'partial' || e.code === 'pending') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; } msg('복원했어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
+      let b, plan, cur;
+      try { b = BK.read(text); const snapshot = BK.snapshot(); plan = BK.prepareRestore(b.data, snapshot); cur = BK.count(BK.classify(snapshot).data); }
+      catch (e) { pv.hidden = true; msg(e.message); return; }
+      const nb = BK.count(b.data);
+      pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div>${reportText(plan.report)}<div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">원문 보관만 있는 항목은 이 기기의 기존 활성 자료를 유지해요. 그 밖의 활성 자료는 파일 기준으로 바뀌며 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
+      $('[data-bk-go]', pv).onclick = async () => {
+        try { BK.restore(b.data); }
+        catch (e) { if (e.code === 'partial' || e.code === 'pending') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; }
+        if (localStorage.getItem(BK.NEXT) !== null) { await sh.close(); backupSheet("자료는 적용했지만 복구 지점 정리가 끝나지 않았어요. '복원 전으로 되돌리기'가 가능하며 새 복원은 잠시 막았어요."); return; }
+        msg(`복원했어요. 원문 ${new Set([...BK.lastReport.archives, ...BK.lastReport.archivedCurrent].map(a => a.key)).size}개 보관 · 기존 활성 자료 ${BK.lastReport.preserved.length}개 유지. 다시 불러와요.`);
+        setTimeout(() => location.reload(), 300);
+      };
       msg('');
     };
     $('#bkfile', sh.s).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > BK.MAX_BYTES) { msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => preview(String(r.result || '')); r.onerror = () => msg('파일을 읽지 못했어요.'); r.readAsText(f); };

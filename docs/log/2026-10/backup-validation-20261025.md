@@ -1,3 +1,39 @@
+# 무손실 백업 후속 수정 — 2026-10-25
+
+현재 후보는 [PR #74](https://github.com/daedaem/otjang/pull/74), 브랜치 `fix/backup-validation-20261025`다. 정리 #69/#70/#71/#73은 순차 머지했고 기준 master는 `d26a69a`다. 대표는 이 채팅의 구현·검증·커밋·push를 직접 허용했으며 **#74 머지·배포는 제외**했다. 아래 초기 강경 거절 구현은 무손실 계약으로 대체된 이력이다.
+
+## 현재 계약과 실패 재현
+
+- `ea3a425`: 무손실13개 중12실패·1통과를 구현 전 커밋했다. `ee82d22`에는 실제 #66의 format1 반례와 format2 기대를 추가했다. 이후 새 왕복·경계·보고서 충돌 검사를 보강했다.
+- 손상/미래 active 문자열은 원래 source를 가진 unreadable archive로 보존하며 활성화하지 않는다. 정상 active·opaque archive 분류와 read/미리보기는 쓰기0이다. 파일 내부/기존 archive 충돌은 다른 문자열 둘 다 남기고 같은 출처/문자열 반복 수입은 증식하지 않는다.
+- 격리 수입 source의 기존 정상/손상 active는 정상 수입 active가 없는 경우만 유지한다. 그 외 전체 복원 의미는 유지한다. 명시적으로 교체/제거할 기존 손상 값은 같은 거래의 보관 원문으로 남기며 미리보기에 ‘보관 후 활성에서 교체/제거’를 표시한다.
+- 금지 키/소유권/문자열 값/중복 봉투 멤버는 거절한다. archive의 첫 원래키도 다시 검사하되 뒤 suffix는 opaque로 읽는다. UTF-8 전체 봉투5MB를 make/read/direct restore/복원 후 남는 archive·unknown 값까지 일관되게 적용한다.
+- #66 apply·보상·STASH/NEXT·undo 본문은 유지한다. 쓰기 전 계획과 메모리 보고서만 restore 경계에 추가했다. archive 쓰기 실패, 보상까지 실패, promotion 실패 뒤 undo와 재시도도 검사한다. NEXT 잔류는 완전 성공 표시·자동 재시작 대신 복구 안내를 한다.
+
+## 형식 선택의 실제 근거
+
+`checks/fixtures/backup66-block.txt`는 #66 `9826dacf5d2766691d8b3509d7d03c436254d300`의 실제 BK 소스다. fixture SHA256은 `3a679efff0dae874f86d0249cfacd29f3cc88472a3d106e90532b7440086227d`이며 테스트가 확인한다. 원본 read/restore/make로 정상 format1 왕복과 손상 자료의 새 reader 수입을 실행한다.
+
+원본 #66에 archive-only format1을 복원하면 기존 정상 source가 active에서 삭제돼 STASH에만 남는다. 새 보존 의도를 구 reader가 알지 못하므로 새 내보내기는 **format2**로 올려 구 #66이 쓰기 전에 거절하게 했다. 새 reader는 기존 format1과 새 format2를 받고 손상 원문을 분류한다. 완전 양방향 format1 호환이라고 쓰지 않는다.
+
+## 검사 수와 결과
+
+최종 후보의 로컬 전체 검사·빌드·두 브라우저 결과와 CI는 실행 후 이 절에 갱신한다. 기존 백업11개·보존5개·상세 경계8개는 삭제하지 않았다. 상세 손상 사례의 기대는 거절에서 격리/기존 active 유지로 바뀌었다. 손상 로컬 undo 검사는 기존 active 원문 일치와 새 archive 보존을 함께 확인한다. 거래 실패 카운터(`sets===3`)는 그대로다.
+
+## WebKit 검사 수정의 증거
+
+최종 서버 단절 방식 `b06d2eb`는 앱 origin8792를 실제로 멈추고 별도 loopback 제어8793으로 다시 켠다. 브라우저 networking/offline 플래그는 건드리지 않고 SW 재진입 전 catch-all route를 제거했다. uncached 요청 전/후 실패, 새 Document, SW response/controller, 초안/React 복원을 유지했다. 검사 retry0·timeout·skip·CI 설정을 완화하지 않았다.
+
+이 head의 독립 CI 두 실행 `40173545572`, `40173549096` 모두 재실행 없이 성공했고 각 Chromium20/WebKit20=40개를 통과했다. 이것은 아래 중간 실패 가설과 다르며 전역 WebKit 버그 원인을 확정한 증거는 아니다. 새 무손실 UI 검사가 든 최종 head는 별도로 CI를 확인한다.
+
+## 남은 경계
+
+최종 CI·Claude 검토·master 병합·실제 배포를 구분한다. 실제 iPhone/Galaxy의 파일 앱·공유·PWA 저장 영역·재설치·비행기 모드 왕복은 미검증이다. 공개 개인 원문이나 실제 API/DB는 사용하지 않았다. 전체 React 전환은 대표의 다음 개발 결정이며 #74 마무리 후 진행한다.
+
+---
+
+# 초기 후보 이력 — 현재 계약으로 대체됨
+
 # 백업 사전 검증 후속 수정 — 2026-10-25
 
 대표가 전달한 Claude 승인에 따라 정리 #69 → #70 → #71 → #73을 모두 머지한 master `d26a69a52750cbd1734e6266e7c28b52ac28fc71`에서 시작했다. 브랜치는 `fix/backup-validation-20261025`다. #72는 이 스레드에서 추가 변경하지 않았다.

@@ -29,7 +29,7 @@ const storage = (initial = {}) => {
   };
 };
 const run = (local) => {
-  const context = { localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg' };
+  const context = { TextEncoder, localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg' };
   vm.runInNewContext(`${block}\nglobalThis.BK = BK;`, context);
   return context.BK;
 };
@@ -104,6 +104,10 @@ test('손상·미래 형식 기존 원문도 정상 백업으로 바꾼 뒤 되�
     const local = storage({ [ENGINE]: raw, 'eoul-d12-hang:reg': 'unreadable reg', [UI]: '' }); const before = local.dump();
     const bk = run(local); bk.restore({ [ENGINE]: engineState(2) });
     run(local).undo();
-    assert.deepEqual(local.dump(), before);
+    for (const [key, value] of Object.entries(before)) assert.equal(local.getItem(key), value);
+    const archives = Object.entries(local.dump()).filter(([key]) => key.includes(':unreadable:'));
+    assert.equal(archives.length, 2); // #66 keeps new raw archives even after undo.
+    assert.ok(archives.some(([,value]) => value === raw));
+    assert.ok(archives.some(([,value]) => value === 'unreadable reg'));
   }
 });
