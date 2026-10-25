@@ -166,6 +166,8 @@ vanilla도 기존 원자 `registerGarment` 명령을 쓰므로, 옷 저장 뒤 �
 
 ## 10. 이번 정리의 검증과 재개
 
+재개 시 `git fetch origin refs/heads/master:refs/remotes/origin/master`로 실제 원격 master 추적 ref를 갱신하고 HEAD·PR 상태를 대조한다. 이번 체크아웃의 fetch 설정은 Claude 브랜치 하나만 추적했으므로 `git fetch origin master`는 FETCH_HEAD만 갱신하고 origin/master가 예전 값으로 남을 수 있었다. 실제 병합마다 추적 ref와 GitHub mergeCommit을 다시 확인했다.
+
 새 코드 위치 #70과 입력 #71의 로컬 Node 검사 수는 legacy683/lite191/server50(49통과·기존 실모델1skip), Chromium19/WebKit19=38개다. app에서 날씨5개를 lite로 이전했으므로 검사 삭제가 아니다. #66 정본은 `python3 tools/repository-cleanup/check-preserved.py`의 12항목으로 비교한다. 실제 사용자는 아니며 실물 휴대폰·개인 운영 API를 검증한 결과로 쓰지 않는다.
 
 중복·교체 PR, 검사별 제외 사유와 실패/재검사 근거는 [재작업 로그](log/2026-10/repository-cleanup-rework-20261025.md)·[백업 비교표](log/2026-10/backup-tests-reconciliation-20261025.md)에 둔다. 한 영역을 다른 에이전트와 동시에 수정하지 말고 개발 계획의 진행 중 표시를 확인한다. 새 PR의 실제 병합·master 자동 배포가 뒤에 일어나면 커밋·검사·배포 증거를 따로 대조해 인수인계를 갱신한다. GitHub CI 성공을 활성 버전·실제 로그인·실제 제공자 호출의 증거로 대신하지 않는다.
