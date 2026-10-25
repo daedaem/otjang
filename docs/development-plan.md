@@ -2,6 +2,8 @@
 
 # 현재 개발 계획과 완료 기준
 
+후속 백업 사전 검증 시작: 정리 #73까지 머지된 master `d26a69a` 기준이다. 먼저 추가한 검사8개에서 손상/미래 메타데이터·상담 ID/등록 URL·직접 복원 사전 거절·React 영수증 집계의 7개 실패와 정상 원문 왕복1개 통과를 확인했다. 실패 테스트 커밋 뒤 구현을 수정하며 완료 전 진행 중 표시는 유지한다.
+
 갱신: 2026-10-25. 확인한 원격 master는 `f620c35`다. 테스트 보존 [#69](https://github.com/daedaem/otjang/pull/69) → 코드 위치 [#70](https://github.com/daedaem/otjang/pull/70) → 입력 상태 [#71](https://github.com/daedaem/otjang/pull/71)은 매번 새 master CI를 확인한 뒤 순서대로 머지했다. 남은 문서 [#73](https://github.com/daedaem/otjang/pull/73)을 검사·머지한 뒤 승인된 백업 사전 검증을 별도 PR로 수행한다. master 병합·배포·실물 검증은 구분한다. 이 문서 작업에서 운영 API나 실물 휴대폰을 새로 검사하지 않았다.
 
 [대표 요구사항](owner-requirements.md)과 [사업 계획](business-plan.md)이 목표의 기준이며, [시스템 인수인계](system-handover.md)가 구현·운영 경계를 설명한다. 이전의 상세 판단·검사 이력은 [정리 전 개발 계획](log/2026-10/development-plan-before-cleanup-20261025.md)과 [재작업 기록](log/2026-10/repository-cleanup-rework-20261025.md)에 보존한다.
