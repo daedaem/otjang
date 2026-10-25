@@ -2,6 +2,7 @@
 // commits the garment, its metadata and the idempotency receipt together.
 export const REGISTRATION_SCHEMA = 1;
 export function registrationInput(value) {
+  if (value?.url !== undefined && typeof value.url !== 'string') throw new Error('링크를 다시 확인해 주세요.');
   const text = (key, min, max) => {
     const s = typeof value[key] === 'string' ? value[key].trim() : '';
     if (s.length < min || s.length > max) throw new Error('입력한 옷 정보를 다시 확인해 주세요.');

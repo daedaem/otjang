@@ -29,7 +29,7 @@ const storage = (initial = {}) => {
   };
 };
 const run = (local) => {
-  const context = { localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg' };
+  const context = { TextEncoder, localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg' };
   vm.runInNewContext(`${block}\nglobalThis.BK = BK;`, context);
   return context.BK;
 };
@@ -90,7 +90,7 @@ test('되돌리기와 그 보상까지 실패해도 보관본 원문을 유지�
 test('등록 영수증·입력 초안·모르는 속성은 백업과 복원 후에도 원문 그대로 남는다', () => {
   const state = JSON.parse(engineState(1));
   state.registrations = { v: 1, receipts: [{ garmentId: 'g0', at: '2026-10-23T00:00:00Z', input: { draftId: 'draft-abcdefgh', brand: '합성', name: '합성 셔츠', kind: 'shirt', color: 'white', url: '' } }] };
-  const draft = '{ "v": 1, "step": 1, "values": {"draftId":"draft-abcdefgh","name":"합성 셔츠"}, "unknown":"保留 ☃" }';
+  const draft = '{ "v": 1, "step": 1, "updatedAt":"2026-10-25T00:00:00Z", "values": {"draftId":"draft-abcdefgh","brand":"합성","name":"합성 셔츠","kind":"shirt","color":"white","url":""}, "unknown":"保留 ☃" }';
   const local = storage({ [ENGINE]: JSON.stringify(state), 'eoul-d12-hang:input-draft:v1': draft, 'eoul-d12-hang:reg': '{"items":{},"catalog":{},"unknown":"원문"}' });
   const file = run(local).make(), destination = storage(); const bk = run(destination);
   bk.restore(bk.read(JSON.stringify(file)).data);
@@ -104,6 +104,10 @@ test('손상·미래 형식 기존 원문도 정상 백업으로 바꾼 뒤 되�
     const local = storage({ [ENGINE]: raw, 'eoul-d12-hang:reg': 'unreadable reg', [UI]: '' }); const before = local.dump();
     const bk = run(local); bk.restore({ [ENGINE]: engineState(2) });
     run(local).undo();
-    assert.deepEqual(local.dump(), before);
+    for (const [key, value] of Object.entries(before)) assert.equal(local.getItem(key), value);
+    const archives = Object.entries(local.dump()).filter(([key]) => key.includes(':unreadable:'));
+    assert.equal(archives.length, 2); // #66 keeps new raw archives even after undo.
+    assert.ok(archives.some(([,value]) => value === raw));
+    assert.ok(archives.some(([,value]) => value === 'unreadable reg'));
   }
 });

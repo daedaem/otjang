@@ -28,7 +28,7 @@ const storage = () => {
 };
 const ENGINE = 'eoul-d12-hang:v1';
 const run = (local, M) => {
-  const context = { localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg', ...(M ? { M } : {}) };
+  const context = { TextEncoder, localStorage: local, window: { EOUL_MOCK_KEY: ENGINE }, CHAT_KEY: 'eoul-d12-hang:consult', REG_KEY: 'eoul-d12-hang:reg', ...(M ? { M } : {}) };
   vm.runInNewContext(`${block}\nglobalThis.BK = BK;`, context);
   return context.BK;
 };
@@ -48,7 +48,7 @@ const seed = (local) => {
 test('내보내기는 eoul- 개인 자료 키의 원문을 그대로 담고 캐시·다른 앱 키는 빼며, 복원하면 글자 하나까지 같다', () => {
   const a = storage(); seed(a); const BK = run(a);
   const file = BK.make();
-  assert.equal(file.app, 'eoul-lite'); assert.equal(file.format, 1); assert.match(file.at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(file.app, 'eoul-lite'); assert.equal(file.format, 2); assert.match(file.at, /^\d{4}-\d{2}-\d{2}T/);
   assert.deepEqual(Object.keys(file.data), ['eoul-crowd:device', 'eoul-d12-hang:consult', 'eoul-d12-hang:reg', 'eoul-d12-hang:ui', 'eoul-d12-hang:v1', 'eoul-weather:place']);
   assert.equal(file.data[ENGINE], a.getItem(ENGINE));
   assert.deepEqual(JSON.parse(JSON.stringify(BK.count(file.data))), { garments: 2, journeys: 1, threads: 1, reg: 1 }); // 체험용(trialIds) 옷은 세지 않는다
@@ -83,19 +83,23 @@ test('복원은 현재 자료를 먼저 보관하고 백업 시점 그대로 바
   assert.throws(() => BK.undo(), /보관본이 없어요/);
 });
 
-test('이 앱 파일이 아니거나 옷장 자료를 읽을 수 없으면 아무것도 바꾸지 않고 거절한다', () => {
+test('파일 경계는 거절하고 읽지 못한 옷장은 원문 보관하며 저장소를 바꾸지 않는다', () => {
   const a = storage(); seed(a); const BK = run(a);
   const before = a.dump();
   const ok = BK.make();
   const bad = [
-    ['', /비어 있어요/], ['not json', /JSON/], ['[]', /이 앱의 백업/], [JSON.stringify({ ...ok, app: 'x' }), /이 앱의 백업/], [JSON.stringify({ ...ok, format: 2 }), /이 앱의 백업/],
+    ['', /비어 있어요/], ['not json', /JSON/], ['[]', /이 앱의 백업/], [JSON.stringify({ ...ok, app: 'x' }), /이 앱의 백업/], [JSON.stringify({ ...ok, format: 99 }), /이 앱의 백업/],
     [JSON.stringify({ ...ok, data: [] }), /이 앱의 백업/], [JSON.stringify({ ...ok, data: {} }), /자료가 없어요/],
     [JSON.stringify({ ...ok, data: { 'other-app:key': 'x' } }), /모르는 항목/], [JSON.stringify({ ...ok, data: { 'eoul-backup:stash': 'x' } }), /모르는 항목/],
-    [JSON.stringify({ ...ok, data: { [ENGINE]: 5 } }), /글자가 아니에요/], [JSON.stringify({ ...ok, data: { [ENGINE]: 'broken' } }), /이 앱이 읽을 수 없어요/],
-    [JSON.stringify({ ...ok, data: { [ENGINE]: '{"v":2,"garments":[],"journeys":[]}' } }), /이 앱이 읽을 수 없어요/],
+    [JSON.stringify({ ...ok, data: { [ENGINE]: 5 } }), /글자가 아니에요/],
     ['x'.repeat(5 * 1024 * 1024 + 1), /너무 커요/],
   ];
   for (const [text, re] of bad) assert.throws(() => BK.read(text), re, text.slice(0, 40));
+  for (const raw of ['broken', '{"v":2,"garments":[],"journeys":[]}']) {
+    const classified = BK.read(JSON.stringify({ ...ok, data: { [ENGINE]: raw } })).data;
+    assert.equal(classified[ENGINE], undefined);
+    assert.ok(Object.entries(classified).some(([k,v]) => k.startsWith(`${ENGINE}:unreadable:`) && v === raw));
+  }
   assert.deepEqual(a.dump(), before);
   // 보관본을 쓸 수 없으면 복원하지 않는다
   const full = storage(); seed(full); const BKf = run(full); full.quota = 10;
@@ -103,7 +107,8 @@ test('이 앱 파일이 아니거나 옷장 자료를 읽을 수 없으면 아�
   assert.deepEqual(full.dump(), before);
 });
 
-const other = () => { const o = storage(); o.setItem(ENGINE, engineState(5)); o.setItem('eoul-d12-hang:consult', '{"threads":[],"cur":null}'); o.setItem('eoul-d12-hang:input-draft:v1', '{"v":1}'); return JSON.stringify(run(o).make()); };
+// A normal editable v1 draft needs the same fields as the actual input reader.
+const other = () => { const o = storage(); o.setItem(ENGINE, engineState(5)); o.setItem('eoul-d12-hang:consult', '{"threads":[],"cur":null}'); o.setItem('eoul-d12-hang:input-draft:v1', JSON.stringify({ v: 1, step: 0, updatedAt: '2026-10-25T00:00:00Z', values: { draftId: 'draft-abcdefgh', brand: '', name: '', kind: '', color: '', url: '' } })); return JSON.stringify(run(o).make()); };
 const without = (d, k) => { const x = { ...d }; delete x[k]; return x; };
 
 test('복원 중간에 저장이 막히면 바꾼 키만 원래 값으로 되돌리고 지금 자료를 그대로 둔다', () => {
@@ -166,7 +171,9 @@ test('옷장 자료는 지금 엔진의 읽기 규칙(canReadSaved)으로 먼저
   assert.equal(seen.at(-1), ok.data[ENGINE]);
   const bad = { ...ok, data: { ...ok.data, [ENGINE]: JSON.stringify({ v: 1, garments: [{ id: 'bad' }], journeys: [] }) } };
   const before = a.dump();
-  assert.throws(() => BK.read(JSON.stringify(bad)), /이 앱이 읽을 수 없어요/);
+  const classified = BK.read(JSON.stringify(bad)).data;
+  assert.equal(classified[ENGINE], undefined);
+  assert.ok(Object.entries(classified).some(([k,v]) => k.startsWith(`${ENGINE}:unreadable:`) && v === bad.data[ENGINE]));
   assert.deepEqual(a.dump(), before);
 });
 
@@ -206,9 +213,10 @@ test('앞선 되돌리기 지점은 이번 복원이 끝까지 성공하기 전�
   const firstStash = a.getItem('eoul-backup:stash');
   assert.equal(a.getItem('eoul-backup:stash-next'), null, '성공하면 임시 칸을 지운다');
   // 바꾸는 중 실패하고 이후 쓰기도 계속 막히는(되돌림은 지우기·작은 쓰기로 끝나는) 상황에서도 앞선 지점은 그대로다.
-  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = 'x'.repeat(50);
+  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = JSON.stringify({ threads: [{ id: 't-second', turns: [{ role: 'assistant', text: 'x'.repeat(50), ids: [] }] }], cur: 't-second' });
   a.sets = 0; a.failSetAt = 1; // 임시 칸(0)은 쓰였고, 바뀌는 키 하나(1)를 쓰다 막힘 → 깨끗이 되돌림
   assert.throws(() => BK.restore(BK.read(JSON.stringify(second)).data), /바꾸지 않았어요/);
+  assert.equal(a.sets, 3, 'NEXT 저장·대상 쓰기 실패·보상 쓰기까지 실행해야 한다');
   a.failSetAt = undefined;
   assert.equal(a.getItem('eoul-backup:stash'), firstStash);
   assert.equal(a.getItem('eoul-backup:stash-next'), null);

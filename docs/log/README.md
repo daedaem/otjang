@@ -16,6 +16,7 @@
 | [automatic-search-open-catalog-20261022.md](2026-10/automatic-search-open-catalog-20261022.md) | 한 번 검색 · 공개 상품 DB · AI 후보 비교 (2026-10-22) |
 | [background-removal-20261015.md](2026-10/background-removal-20261015.md) | 배경 지우기 시험과 적용 (2026-10-15, Claude) |
 | [backup-tests-reconciliation-20261025.md](2026-10/backup-tests-reconciliation-20261025.md) | PR #61 백업 검사 보존 비교 |
+| [backup-validation-20261025.md](2026-10/backup-validation-20261025.md) | 정리 병합 후 백업 사전 검증·실패 테스트·호환성 |
 | [branch-cleanup-20261023.md](2026-10/branch-cleanup-20261023.md) | 원격 브랜치 정리 (2026-10-23) |
 | [branch-reconciliation-20261016.md](2026-10/branch-reconciliation-20261016.md) | 갈라진 줄기 정리와 합칠 목록 (2026-10-16) |
 | [business-roadmap-20261015.md](2026-10/business-roadmap-20261015.md) | 어울 사업 로드맵 — 2026-10-15 |
