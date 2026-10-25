@@ -30,5 +30,12 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => caches.match('/').then((hit) => hit || Response.error())));
     return;
   }
-  event.respondWith(caches.match(request, { ignoreSearch: true }).then((hit) => hit || fetch(request)));
+  event.respondWith(caches.match(request, { ignoreSearch: true }).then((hit) => hit || fetch(request).then((response) => {
+    // React input assets are cached only after this device visits that screen.
+    if (response.ok && /^\/react\/.+\.(js|css)$/.test(url.pathname) && /(?:javascript|text\/css)/.test(response.headers.get('content-type') || '')) {
+      const copy = response.clone();
+      event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)));
+    }
+    return response;
+  })));
 });

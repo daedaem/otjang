@@ -163,3 +163,73 @@ test('backup UI previews, restores exact records, and undo restores the prior sn
   const undone=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
   expect(undone.garments).toEqual(JSON.parse(before!).garments); expect(undone.journeys).toEqual(JSON.parse(before!).journeys);
 });
+
+for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {
+  test(`shared draft: ${from} input resumes in ${to} with the same identity`,async({page})=>{
+    const d=driver(page,from); await d.openManual(); await d.fillManual();
+    await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.color)).toBe('white');
+    const id=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.draftId);
+    await page.goto(`/?photos=0&input=${to}#/reg`);
+    await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+    if(to==='vanilla') await expect(page.locator('#rn')).toHaveValue(garmentName);
+    else await expect(page.getByLabel('상품명',{exact:true})).toHaveValue(garmentName);
+    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.draftId)).toBe(id);
+    expect(await page.evaluate(()=>window.K.M.getState().closetCount)).toBe(0);
+  });
+}
+test('input assets load only on entering the React input screen',async({page})=>{
+  const assets:string[]=[]; page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/react/'))assets.push(r.url());});
+  await page.goto('/?photos=0'); await page.waitForFunction(()=>!!window.K?.M);
+  expect(assets).toEqual([]);
+  await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
+  await page.locator('[data-reg-open]').click();
+  await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+  expect(assets.some(url=>url.endsWith('.js'))).toBe(true);
+  expect(assets.some(url=>url.endsWith('.css'))).toBe(true);
+});
+test.describe('input runtime caching',()=>{
+  test.use({serviceWorkers:'allow'});
+  test('worker downloads React assets on first visit and keeps visited input available offline',async({page,context})=>{
+    await page.goto('/?photos=0');
+    await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready; if(!navigator.serviceWorker.controller)await new Promise<void>(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true}));});
+    const cachedInput=()=>page.evaluate(async()=>{const paths=[];for(const key of await caches.keys()){if(!key.startsWith('lite-'))continue;const c=await caches.open(key);for(const r of await c.keys())if(new URL(r.url).pathname.startsWith('/react/'))paths.push(new URL(r.url).pathname);}return paths;});
+    expect(await cachedInput()).toEqual([]);
+    await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
+  await page.locator('[data-reg-open]').click();
+    await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    await expect.poll(async()=>{const paths=await cachedInput();return paths.some(p=>p.endsWith('.js'))&&paths.some(p=>p.endsWith('.css'));}).toBe(true);
+    // Fail the upstream transport instead of disabling WebKit's networking
+    // process (which also prevents its service worker navigation in automation).
+    await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+    await page.setExtraHTTPHeaders({'x-e2e-network-down':'1'});
+    try {
+      expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
+      await page.reload(); // a new document/React root must come from the worker cache
+      await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
+      await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+      await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    } finally { await page.setExtraHTTPHeaders({}); }
+  });
+});
+
+for (const retryMode of ['vanilla', 'react']) {
+  test(`vanilla durable draft: cleanup failure then ${retryMode} retry keeps one garment`, async ({page}) => {
+    await page.addInitScript(() => {
+      const remove = Storage.prototype.removeItem;
+      Storage.prototype.removeItem = function(k) {
+        if (k === 'eoul-d12-hang:input-draft:v1') throw new DOMException('denied', 'SecurityError');
+        return remove.call(this, k);
+      };
+    });
+    const first = driver(page, 'vanilla'); await first.openManual(); await first.fillManual(); await first.save();
+    await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+    await expect(page.getByText(/옷은 저장했지만 초안을 정리하지 못했어요/)).toBeVisible();
+    const draftId = await page.evaluate(() => JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.draftId);
+    await page.goto(`/?photos=0&input=${retryMode}#/reg`); await page.reload();
+    await page.getByRole('button', {name:'이어서 입력', exact:true}).click();
+    const retry = driver(page, retryMode); await retry.fillManual(); await retry.save();
+    await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+    const data = await page.evaluate(() => JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+    expect(data.registrations.receipts.filter((r: {input: {draftId: string}}) => r.input.draftId === draftId)).toHaveLength(1);
+  });
+}
