@@ -95,6 +95,17 @@ test('attribute claim check flags unrecorded or contradicted claims only in sent
   assert.deepEqual(attributeClaimCheck('치노 팬츠는 울 소재예요.', [{ name: '치노 팬츠', profile: p({ fabric: { value: '면', source: 'seller' } }) }]),
     ["확인: 치노 팬츠의 소재는 '면'으로 기록돼 있어요."]);
   assert.deepEqual(attributeClaimCheck('치노 팬츠가 셔츠와 잘 어울려요. 사이즈를 체크해 보세요.', candidates), []);
+  const shirt = (fabric) => [{ name: '셔츠', profile: p({ fabric: { value: fabric, source: 'seller' } }) }];
+  assert.deepEqual(attributeClaimCheck('셔츠는 울 소재가 아니라 면 소재예요.', shirt('면')), []);
+  assert.deepEqual(attributeClaimCheck('셔츠는 울 소재가 아니에요.', shirt('울')), ["확인: 셔츠의 소재는 '울'로 기록돼 있어요."]);
+  const pair = [
+    { name: '셔츠', profile: p({ silhouette: { value: 'regular', source: 'seller' } }) },
+    { name: '팬츠', profile: p({ silhouette: { value: 'wide', source: 'seller' } }) },
+  ];
+  assert.deepEqual(attributeClaimCheck('셔츠는 레귤러이고 팬츠는 와이드예요.', pair), []);
+  assert.deepEqual(attributeClaimCheck('셔츠는 와이드 팬츠와 잘 어울려요.', [pair[0]]), []);
+  assert.deepEqual(attributeClaimCheck('셔츠와 와이드 팬츠를 입어요.', [pair[0]]), []);
+  assert.deepEqual(attributeClaimCheck('와이드 셔츠가 좋아요.', [pair[0]]), ["확인: 셔츠의 실루엣은 '레귤러'로 기록돼 있어요."]);
   assert.deepEqual(attributeClaimCheck('와이드 바지가 좋아요.', candidates), []);
 });
 

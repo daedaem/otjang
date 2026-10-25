@@ -10,7 +10,7 @@
 |---|---|---|
 | `garment-profile.js` | 옷 한 벌의 실측·실루엣·소재·두께·표면·무늬·디테일·목적·컬렉션·기준 옷 표시. 값마다 출처(판매처 표기/직접 잼/직접 고름/AI 추정·확인 전). 없는 값은 모름. **cm는 판매처 표기나 직접 잰 값만**(AI 추정 불가) | `validateProfile`, `profileFromForm`, `profileFacts`, `profileFactLines`, `confirmEstimate`, `measureFieldsFor` |
 | `measure-compare.js` | 기준 옷과 후보의 실측 차이 문장, 사이즈 옵션 중 가장 가까운 것, 같은 축척의 평면 도식(SVG path, cm 단위) | `compareMeasures`, `closestSize`, `flatSketch`, `overlaySketches`, `NOTE` |
-| `size-chart.js` | 사용자가 붙여 넣은 사이즈표 글자를 cm로 읽기(행·열·한 줄씩 세 형식, 둘레→단면, 인치→cm 경고) | `parseSizeChart`, `sizeChartOptions` |
+| `size-chart.js` | 사용자가 붙여 넣은 사이즈표 글자를 cm로 읽기(행·열·한 줄씩 세 형식, 둘레→단면, 인치→cm 경고, 단위는 열마다 읽고 모르면 뺌) | `parseSizeChart`, `sizeChartOptions` |
 | `collection-value.js` | 활용 축(새 조합 수·비슷한 옷)과 수집 축(목적·컬렉션 순번·다른 점)을 **따로** 계산. 소장 목적이면 중복 경고 없음. 진열장 빈칸은 사용자가 정한 목표만 | `valueAxes`, `similarOwned`, `detailDiff`, `seriesShelves`, `wearExpectation`, `costPerWear` |
 | `outfit-facts.js` | 조합의 차원별 사실(색·격식·실루엣·계절·스타일, 모두 편집 규칙 표시), 조합 반응 검증·실제 집계, 답변 속 속성 주장 대조 | `outfitFacts`, `outfitFactLines`, `validateReactions`, `tasteSummary`, `attributeClaimCheck`, `REACTION_REASONS` |
 | `rail-layout.js` | 아우터·상의(원피스 포함)·하의 레일 배치와 실측 총장 비례 높이, 실측 없음 표시, 신발·소품 선반, 정렬 5가지 | `railLayout`, `RAILS`, `SORTS` |
@@ -71,7 +71,7 @@
 - 조합 카드에 좋아요/별로 + 이유 칩(`REACTION_REASONS`). 저장 전 `validateReactions`.
 - `/api/rank` consult(또는 조합 전용 task)에 텍스트만 더한다: 후보 조합마다 `outfitFactLines(outfitFacts(...), tasteSummary(...))`, 옷마다 `profileFactLines`. 사진은 보내지 않는다.
 - **최종 순위와 이유는 AI가 정한다.** 엔진 차원 점수는 입력 사실이다. 엔진만으로 순위를 정하려면 대표의 R2 예외 결정이 필요하다.
-- 답이 온 뒤 서버가 `attributeClaimCheck(answer, candidates)`로 확인 줄을 만들어 `price_check`처럼 답 아래에 붙인다. 답을 고쳐 쓰거나 다시 묻지 않는다.
+- 답이 온 뒤 서버가 `attributeClaimCheck(answer, candidates)`로 확인 줄을 만들어 `price_check`처럼 답 아래에 붙인다. 답을 고쳐 쓰거나 다시 묻지 않는다. 이 대조는 정확도를 우선해 이름 바로 앞의 말과 이름 뒤 첫 서술만 읽고, 부정문은 반대로 대조하며, 대상이 애매한 문장은 건너뛴다. 놓치는 주장이 있다는 뜻이므로 "모든 문장을 검증했다"고 표시하지 않는다.
 - 검증: 대표가 20개 상황에서 이유를 보지 않고 두 조합 중 하나를 고르고, 최종(AI) 1위 일치와 이유 납득도(1~5)를 기록한다. 엔진 점수 1위도 함께 적는다.
 
 ### B6. L0 거울 콜라주

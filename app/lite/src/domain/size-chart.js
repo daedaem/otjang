@@ -3,7 +3,9 @@
 //
 // It only reads what is written. A column it does not recognise is reported,
 // not guessed; 둘레 (circumference) is halved to 단면 and inches converted, each
-// with a warning. Nothing is fetched: the text comes from the user.
+// with a warning. Units are read per column; a column whose unit cannot be told
+// (inch and cm both appear in the table, and the column names neither) is left
+// out rather than guessed. Nothing is fetched: the text comes from the user.
 import { MEASURES, measureFieldsFor, measureOK } from './garment-profile.js';
 import { josa } from './engine.js';
 
@@ -38,9 +40,10 @@ function cellsOf(line) {
   return cells.map((c) => c.replace(/\s+/g, ''));
 }
 const bare = (cell) => cell.toLowerCase().replace(/\((?:cm|㎝|inch|인치)\)|(?:cm|㎝)$/g, '').replace(/[():]/g, '');
+const unitOf = (cell) => (/inch|인치/i.test(cell) ? 'inch' : /cm|㎝|센티/i.test(cell) ? 'cm' : null);
 function labelOf(cell) {
   const lower = bare(cell);
-  for (const [name, key, circ] of LABELS) if (lower === name) return { key, circ: !!circ };
+  for (const [name, key, circ] of LABELS) if (lower === name) return { key, circ: !!circ, unit: unitOf(cell) };
   return null;
 }
 const isOther = (cell) => KNOWN_OTHER.includes(bare(cell));
@@ -51,13 +54,21 @@ const numberOf = (cell) => {
 };
 const isSizeLabel = (cell) => SIZE_LABEL.test(cell) && !labelOf(cell);
 
-function finish(rawSizes, { inch, ignored, warnings }) {
+function finish(rawSizes, { defaultUnit, ignored, warnings }) {
   const sizes = [];
   const seenCirc = new Set();
+  const unknownUnit = new Set();
+  let inch = false;
   for (const { label, values } of rawSizes) {
     const measures = {};
-    for (const { key, circ, value } of values) {
-      let cm = inch ? value * 2.54 : value;
+    for (const { key, circ, unit: columnUnit, value } of values) {
+      const unit = columnUnit || defaultUnit;
+      if (!unit) {
+        unknownUnit.add(MEASURES[key]);
+        continue;
+      }
+      if (unit === 'inch') inch = true;
+      let cm = unit === 'inch' ? value * 2.54 : value;
       if (circ) {
         cm /= 2;
         seenCirc.add(MEASURES[key]);
@@ -72,6 +83,10 @@ function finish(rawSizes, { inch, ignored, warnings }) {
     if (Object.keys(measures).length) sizes.push({ label, measures });
   }
   if (inch) warnings.push('인치로 적힌 값을 cm로 바꿨어요(1인치 = 2.54cm).');
+  if (unknownUnit.size) {
+    const names = [...unknownUnit].join('·');
+    warnings.push(`${names}${josa(names, '은', '는')} cm인지 인치인지 알 수 없어 뺐어요. 직접 넣어 주세요.`);
+  }
   if (seenCirc.size) {
     const names = [...seenCirc].join('·');
     warnings.push(`${names}${josa(names, '은', '는')} 둘레로 적혀 있어 반으로 나눠 단면으로 바꿨어요.`);
@@ -124,7 +139,7 @@ function readColumns(lines, ctx) {
   const usable = rows.filter((r) => r.nums.length === labels.length || (ctx.warnings.push(`${MEASURES[r.key]} 줄의 숫자 개수가 사이즈 개수와 달라 뺐어요.`), false));
   return labels.map((label, i) => ({
     label,
-    values: usable.map((r) => ({ key: r.key, circ: r.circ, value: r.nums[i] })),
+    values: usable.map((r) => ({ key: r.key, circ: r.circ, unit: r.unit, value: r.nums[i] })),
   }));
 }
 
@@ -151,9 +166,11 @@ function readPairs(lines, ctx) {
 
 export function parseSizeChart(text) {
   const normalized = normalize(text);
-  const inch = /inch|인치/i.test(normalized);
+  const hasInch = /inch|인치/i.test(normalized);
+  const hasCm = /cm|㎝|센티/i.test(normalized);
   const lines = normalized.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const ctx = { inch, ignored: [], warnings: [] };
+  // A column without its own unit takes the table's; with both units present it has none.
+  const ctx = { defaultUnit: hasInch ? (hasCm ? null : 'inch') : 'cm', ignored: [], warnings: [] };
   const h = lines.findIndex((l) => cellsOf(l).filter((c) => labelOf(c)).length >= 2);
   let sizes = [];
   if (h >= 0) sizes = readRows(lines, h, ctx);

@@ -147,20 +147,70 @@ export function outfitFactLines(facts, taste = null) {
 }
 
 // ── Attribute claim check ────────────────────────────────────────────────────
-// Like the price check: only sentences that name a candidate are read, and a
-// fact line is added under the answer; the answer itself is not rewritten.
-// A word counts only when it does not continue another Hangul word, so "어울려요"
-// is not read as 울 and "체크해 보세요" is not read as a check pattern.
-const word = (w, after = '') => new RegExp(`(?<![가-힣])${w}${after}`);
+// Like the price check: a fact line is added under the answer; the answer
+// itself is not rewritten. It prefers missing a claim to flagging a sound
+// sentence, so it reads only two narrow shapes and skips everything else:
+//   "와이드 치노 팬츠"        a word right before the candidate's name
+//   "치노 팬츠는 울 소재라"   the first such word after the candidate's name,
+//                             before another candidate or a clause break
+// A word followed by another noun ("셔츠는 와이드 팬츠와") describes that noun
+// and is skipped, and so is anything after "와/과/랑". A negated claim ("울
+// 소재가 아니에요") is checked the other way round. Words count only when they
+// do not continue another Hangul word, so "어울려요" is not 울.
 const CLAIM_WORDS = [
-  ...Object.entries(CHOICES.silhouette).map(([value, w]) => ({ key: 'silhouette', value, re: word(w) })),
-  ...Object.entries(CHOICES.pattern)
-    .filter(([v]) => v !== 'solid')
-    .map(([value, w]) => ({ key: 'pattern', value, re: word(w, value === 'check' ? '(?!해|하|를|리스트|아웃)' : '') })),
-  { key: 'fabric', value: '울', re: word('울', '(?=\\s|$|[.,!?·)%\\d]|니트|코트|소재|원단|혼방|블렌드|이|은|로|과|을)') },
-  ...['린넨', '코듀로이', '캐시미어', '나일론', '가죽', '스웨이드', '데님', '옥스퍼드', '플란넬', '코튼']
-    .map((w) => ({ key: 'fabric', value: w, re: word(w) })),
+  ...Object.entries(CHOICES.silhouette).map(([value, w]) => ({ key: 'silhouette', value, w })),
+  ...Object.entries(CHOICES.pattern).filter(([v]) => v !== 'solid').map(([value, w]) => ({ key: 'pattern', value, w })),
+  ...['울', '린넨', '코듀로이', '캐시미어', '나일론', '가죽', '스웨이드', '데님', '옥스퍼드', '플란넬', '코튼']
+    .map((w) => ({ key: 'fabric', value: w, w })),
 ];
+const NOT_A_PATTERN = /^(?:해|하|를|리스트|아웃)/; // "체크해 보세요"
+const ATTACHED = /^(?:핏|소재|원단|무늬|패턴|이에요|예요|이라|라서|라|이고|고|하고|한|해요|이며|며|입니다|이다|으로|로|이|가|은|는|에|[.,!?)]|$)/;
+const SPACED = /^\s+(?:핏|소재|원단|무늬|패턴|느낌|스타일|계열)/;
+const NEGATION = /아니|않|없|말고/;
+const BREAK = /지만|는데|[,;]|그리고|반면/;
+const WINDOW = 24;
+const NEAR = 16;
+
+function firstWord(text) {
+  let best = null;
+  for (const claim of CLAIM_WORDS) {
+    for (const m of text.matchAll(new RegExp(`(?<![가-힣])${claim.w}`, 'g'))) {
+      const after = text.slice(m.index + claim.w.length);
+      if (claim.value === 'check' && NOT_A_PATTERN.test(after)) continue;
+      if (!best || m.index < best.index || (m.index === best.index && claim.w.length > best.claim.w.length))
+        best = { claim, index: m.index, after };
+      break;
+    }
+  }
+  return best;
+}
+function prefixClaim(before) {
+  const found = CLAIM_WORDS.find((claim) => new RegExp(`(?<![가-힣])${claim.w}\\s?$`).test(before));
+  return found ? { claim: found, negated: false } : null;
+}
+function predicateClaim(window) {
+  const found = firstWord(window);
+  if (!found || found.index > NEAR) return null;
+  const suffix = found.after.match(ATTACHED) || found.after.match(SPACED);
+  if (!suffix) return null;
+  return { claim: found.claim, negated: NEGATION.test(found.after.slice(suffix[0].length, suffix[0].length + 10)) };
+}
+function claimsAbout(sentence, name, otherNames) {
+  const claims = [];
+  for (let at = sentence.indexOf(name); at !== -1; at = sentence.indexOf(name, at + name.length)) {
+    const prefix = prefixClaim(sentence.slice(Math.max(0, at - 10), at));
+    if (prefix) claims.push(prefix);
+    let window = sentence.slice(at + name.length, at + name.length + WINDOW);
+    const particle = window.match(/^(?:이랑|랑|하고|와|과|은|는|이|가|도|의)?/)[0];
+    if (['이랑', '랑', '하고', '와', '과'].includes(particle)) continue;
+    window = window.slice(particle.length);
+    const cuts = [window.search(BREAK), ...otherNames.map((n) => window.indexOf(n))].filter((i) => i >= 0);
+    if (cuts.length) window = window.slice(0, Math.min(...cuts));
+    const claim = predicateClaim(window);
+    if (claim) claims.push(claim);
+  }
+  return claims;
+}
 function claimHolds(claim, profile) {
   const attr = profile?.[claim.key];
   if (!attr) return null;
@@ -181,19 +231,18 @@ function recorded(claim, profile) {
 export function attributeClaimCheck(answer, candidates) {
   if (typeof answer !== 'string' || !answer) return [];
   const sentences = answer.split(/(?<=[.!?。])\s+|\n+/);
+  const named = (candidates || []).filter((c) => c?.name);
   const lines = [];
-  for (const c of candidates || []) {
-    if (!c?.name) continue;
+  for (const c of named) {
+    const others = named.filter((o) => o !== c && !c.name.includes(o.name)).map((o) => o.name);
     for (const sentence of sentences) {
-      if (!sentence.includes(c.name)) continue;
-      const rest = sentence.split(c.name).join(' ');
-      for (const claim of CLAIM_WORDS) {
-        if (!claim.re.test(rest)) continue;
+      for (const { claim, negated } of claimsAbout(sentence, c.name, others)) {
         const holds = claimHolds(claim, c.profile);
         const label = CHOICE_LABELS[claim.key];
         const subject = `${c.name}의 ${label}${josa(label, '은', '는')}`;
-        if (holds === null) lines.push(`확인: ${subject} 기록되지 않았어요.`);
-        else if (!holds) {
+        if (holds === null) {
+          if (!negated) lines.push(`확인: ${subject} 기록되지 않았어요.`);
+        } else if (holds === negated) {
           const value = recorded(claim, c.profile);
           lines.push(`확인: ${subject} '${value}'${ro(value)} 기록돼 있어요.`);
         }
