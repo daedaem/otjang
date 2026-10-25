@@ -32,11 +32,11 @@ test('details compare as sets; one side without details is unknown, not differen
 
 test('value axes stay separate; purpose orders them; collecting never flags a duplicate', () => {
   const collect = valueAxes({ candidate, owned, purpose: 'collect', newOutfits: 1 });
-  assert.equal(collect.summary, "비슷한 옷 2벌: 다른 점은 두께·버튼 플라이. 소장용이면 'lvc501' 3번째, 착용용이면 새 조합 +1.");
+  assert.equal(collect.summary, "비슷한 옷 2벌: 옷별로 기록된 차이는 두께·버튼 플라이·셀비지·내 옷에만 지퍼 플라이. 소장용이면 'lvc501' 3번째, 착용용이면 새 조합 +1.");
   assert.equal(collect.duplicateWarning, false);
   const wear = valueAxes({ candidate: { kind: 'jeans', color: 'black' }, owned, purpose: 'wear' });
-  assert.equal(wear.duplicateWarning, true);
-  assert.match(wear.summary, /^비슷한 옷 1벌: 기록된 차이는 없어요\. 착용용이면 새로 생기는 조합은 아직 계산 전이에요/);
+  assert.equal(wear.duplicateWarning, false, 'missing attributes do not establish a duplicate');
+  assert.match(wear.summary, /^비슷한 옷 1벌: 모르는 속성이 있어 다른 점은 아직 확인 전이에요\. 착용용이면 새로 생기는 조합은 아직 계산 전이에요/);
   assert.throws(() => valueAxes({ candidate, owned, purpose: 'resell' }), /목적/);
   assert.equal(wearExpectation('collect'), 'not-expected');
   assert.equal(costPerWear(100000, 4), 25000);
@@ -137,4 +137,69 @@ test('collage scale comes from the user\'s height and photo; lengths scale the c
   assert.equal(pants.y, 100 + Math.round(175 * 0.42 * 10));
   assert.equal(placeGarment({ item: { kind: 'sneaker' }, image: { width: 1, height: 1 }, scale, centerX: 0 }), null);
   assert.throws(() => bodyScale({ heightCm: 90, headTopY: 0, feetY: 900 }), /키/);
+});
+
+test('unconfirmed AI attributes stay labelled and cannot establish an outfit verdict or corrective fact', () => {
+  const facts = outfitFacts({ items: [
+    { slot: 'm-oxford', color: 'white', profile: p({ silhouette: { value: 'over', source: 'ai' } }) },
+    { slot: 'm-chino', color: 'beige', profile: p({ silhouette: { value: 'wide', source: 'chosen' } }) },
+  ] });
+  const silhouette = facts.find((f) => f.dim === 'silhouette');
+  assert.equal(silhouette.verdict, 'unknown');
+  assert.ok(outfitFactLines(facts).some((line) => /AI 추정 · 확인 전/.test(line)));
+  const check = attributeClaimCheck('셔츠는 코튼 소재예요.', [
+    { name: '셔츠', profile: p({ fabric: { value: '울', source: 'ai' } }) },
+  ]);
+  assert.ok(check.some((line) => /AI 추정 · 확인 전/.test(line)));
+  assert.ok(check.every((line) => !/'울'.*기록돼/.test(line)), 'an estimate cannot correct a claim as a verified record');
+});
+
+test('attribute differences retain provenance and estimates stay unknown until confirmed', () => {
+  const estimated = p({ fabric: { value: '울', source: 'ai' }, details: [{ text: '셀비지', source: 'ai' }] });
+  const recorded = p({ fabric: { value: '코튼', source: 'seller' }, details: [{ text: '체인스티치', source: 'chosen' }] });
+  const diff = detailDiff(estimated, recorded);
+  const fabric = diff.attrs.find((a) => a.key === 'fabric');
+  assert.equal(fabric.state, 'unknown');
+  assert.equal(fabric.candidateSource, 'ai');
+  assert.equal(fabric.ownedSource, 'seller');
+  assert.match(fabric.candidate, /AI 추정 · 확인 전/);
+  assert.deepEqual(diff.onlyCandidate, []);
+  assert.deepEqual(diff.unconfirmed.candidate, [{ text: '셀비지', source: 'ai' }]);
+  assert.equal(diff.detailsUnknown, true);
+  const chosen = { ...estimated, fabric: { value: '울', source: 'chosen' }, details: [{ text: '셀비지', source: 'chosen' }] };
+  const confirmed = detailDiff(chosen, recorded);
+  assert.equal(confirmed.attrs.find((a) => a.key === 'fabric').state, 'different');
+  assert.deepEqual(confirmed.detailFacts.onlyCandidate, [{ text: '셀비지', source: 'chosen' }]);
+  assert.equal(estimated.fabric.source, 'ai', 'comparison must not confirm or mutate the original');
+});
+
+test('value summary examines every similar garment and never treats unknown attributes as a duplicate', () => {
+  const candidate = { kind: 'jeans', color: 'indigo', profile: p({ fabric: { value: '데님', source: 'seller' } }) };
+  const list = [
+    { id: 'unknown', kind: 'jeans', color: 'indigo' },
+    { id: 'known', kind: 'jeans', color: 'indigo', profile: p({ fabric: { value: '코듀로이', source: 'chosen' } }) },
+  ];
+  for (const garments of [list, [...list].reverse()]) {
+    const result = valueAxes({ candidate, owned: garments, purpose: 'wear' });
+    assert.ok(result.differences.includes('소재'));
+    assert.match(result.summary, /소재/);
+    assert.equal(result.duplicateWarning, false);
+  }
+  const unknown = valueAxes({ candidate: { kind: 'jeans', color: 'indigo' }, owned: [list[0]], purpose: 'wear' });
+  assert.equal(unknown.duplicateWarning, false);
+  assert.match(unknown.summary, /모르는|확인 전/);
+});
+
+test('duplicate warning needs a fully recorded same-color match and still respects collecting', () => {
+  const profile = p({
+    silhouette: { value: 'regular', source: 'chosen' }, fabric: { value: '데님', source: 'seller' },
+    thickness: { value: 'mid', source: 'chosen' }, surface: { value: 'textured', source: 'chosen' },
+    pattern: { value: 'solid', source: 'chosen' }, details: [{ text: '셀비지', source: 'chosen' }],
+  });
+  const candidate = { kind: 'jeans', color: 'indigo', profile };
+  const owned = [{ ...candidate, id: 'matching' }];
+  assert.equal(valueAxes({ candidate, owned, purpose: 'wear' }).duplicateWarning, true);
+  assert.equal(valueAxes({ candidate, owned, purpose: 'collect' }).duplicateWarning, false);
+  const unconfirmed = { ...candidate, profile: { ...profile, surface: { value: 'textured', source: 'ai' } } };
+  assert.equal(valueAxes({ candidate: unconfirmed, owned, purpose: 'wear' }).duplicateWarning, false);
 });

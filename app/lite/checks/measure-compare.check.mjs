@@ -91,3 +91,33 @@ test('size chart options keep only this garment\'s measurements, sourced to the 
   assert.equal(options[0].measures.length.source, 'seller');
   assert.ok(warnings.some((w) => /가슴단면/.test(w)));
 });
+
+test('conflicting repeated size-chart measurements are reported and omitted instead of overwritten', () => {
+  const parsed = parseSizeChart('Size Length(cm) Length(inch) Chest(cm) Chest(inch) Shoulder(cm)\nM 72 28 55 21 47');
+  assert.deepEqual(parsed.sizes[0].measures, { shoulder: 47 });
+  assert.ok(parsed.warnings.some((w) => /M.*총장.*다르/.test(w)));
+  assert.ok(parsed.warnings.some((w) => /M.*가슴단면.*다르/.test(w)));
+  assert.deepEqual(sizeChartOptions(parsed, shirt).options[0].measures, { shoulder: { cm: 47, source: 'seller' } });
+  const repeated = parseSizeChart('M 총장 72 총장 75 총장 72 어깨 47');
+  assert.deepEqual(repeated.sizes[0].measures, { shoulder: 47 }, 'a later repetition must not reinstate a conflicted field');
+  const same = parseSizeChart('Size Length(cm) Length(inch) Chest(cm)\nM 76.2 30 55');
+  assert.deepEqual(same.sizes[0].measures, { length: 76.2, chest: 55 });
+});
+
+test('closest size refuses incomparable measurement coverage instead of rewarding missing measurements', () => {
+  const options = [
+    { label: 'S', measures: { length: 72, shoulder: 47 } },
+    { label: 'M', measures: { length: 72, shoulder: 47, chest: 56, sleeve: 62 } },
+  ];
+  for (const variants of [options, [...options].reverse()]) {
+    const result = closestSize(variants, myShirt, shirt);
+    assert.equal(result.best, null);
+    assert.match(result.reason, /항목.*달라/);
+  }
+  const differentPairs = closestSize([
+    { label: 'S', measures: { length: 72, chest: 55 } },
+    { label: 'M', measures: { shoulder: 47, sleeve: 62 } },
+  ], myShirt, shirt);
+  assert.equal(differentPairs.best, null);
+  assert.match(differentPairs.reason, /항목.*달라/);
+});
