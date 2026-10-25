@@ -5,8 +5,10 @@
   const UNREADABLE = '이전에 쓰던 초안을 읽지 못했어요. 초안을 지우기 전까지 원문은 그대로 보관해요.';
   const WRITE_FAILED = '초안을 이 기기에 보관하지 못했어요. 이 화면을 닫으면 입력을 잃을 수 있어요.';
   const CLEAR_FAILED = '초안을 지우지 못했어요. 저장 공간과 브라우저 설정을 확인해 주세요.';
+  const TOO_LONG = '브랜드·상품명은 80자, 링크는 2000자까지 초안으로 보관할 수 있어요. 길이를 줄여 주세요.';
   const fresh = (initial) => ({ brand: '', name: '', kind: '', color: '', url: '', ...initial, draftId: scope.crypto.randomUUID() });
   const clean = (v) => ({ draftId: v.draftId, brand: v.brand, name: v.name, kind: v.kind, color: v.color, url: v.url, ...(v.source ? { source: { provider: 'opf', code: v.source.code } } : {}) });
+  const readableText = (v) => ['brand', 'name', 'kind', 'color', 'url'].every(k => typeof v[k] === 'string' && v[k].length <= (k === 'url' ? 2000 : 80));
   function read(storage) {
     try {
       const raw = storage.getItem(KEY);
@@ -14,7 +16,7 @@
       const x = JSON.parse(raw), v = x?.values;
       if (x.v !== 1 || !Number.isInteger(x.step) || x.step < 0 || x.step > 2 || !v ||
         typeof v.draftId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(v.draftId) ||
-        !['brand', 'name', 'kind', 'color', 'url'].every(k => typeof v[k] === 'string' && v[k].length <= (k === 'url' ? 2000 : 80)) ||
+        !readableText(v) ||
         (v.source && (v.source.provider !== 'opf' || typeof v.source.code !== 'string' || !/^\d{6,24}$/.test(v.source.code))) ||
         typeof x.updatedAt !== 'string' || !Number.isFinite(Date.parse(x.updatedAt))) throw new Error();
       return { type: 'ready', value: { v: 1, values: clean(v), step: x.step, updatedAt: x.updatedAt } };
@@ -28,6 +30,9 @@
     const assertWritable = () => { if (storage.getItem('eoul-backup:stash-next') !== null) throw Object.assign(new Error('복원 복구를 먼저 진행해 주세요.'), { code: 'storage_recovery_pending' }); };
     const persist = () => {
       if (state.pending) return;
+      // Search/OPF seeds and programmatic updates can bypass HTML maxlength.
+      // Keep the last readable draft and the full in-memory input until corrected.
+      if (!readableText(state.values)) { state.notice = TOO_LONG; return; }
       try { assertWritable(); storage.setItem(KEY, JSON.stringify({ v: 1, values: clean(state.values), step: state.step, updatedAt: new Date().toISOString() })); state.notice = ''; }
       catch (error) { state.notice = error?.code === 'storage_recovery_pending' ? error.message : WRITE_FAILED; }
     };

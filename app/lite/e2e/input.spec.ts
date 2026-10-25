@@ -85,6 +85,21 @@ for (const mode of ['vanilla','react']) {
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   });
 }
+test('vanilla text limits keep a boundary-length draft readable when resumed in React',async({page})=>{
+  await driver(page,'vanilla').openManual();
+  const brand='브'.repeat(80), name='옷'.repeat(80), url='https://example.test/'+ 'x'.repeat(1979);
+  await page.locator('#rb').fill(brand+'x'); await expect(page.locator('#rb')).toHaveValue(brand);
+  await page.locator('#rn').fill(name+'x'); await expect(page.locator('#rn')).toHaveValue(name);
+  await page.locator('#ru').fill(url+'x'); await expect(page.locator('#ru')).toHaveValue(url);
+  const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!));
+  expect(stored.values).toMatchObject({brand,name,url});
+  await page.goto('/?photos=0&input=react#/reg');
+  await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+  await expect(page.getByLabel('브랜드',{exact:true})).toHaveValue(brand);
+  await expect(page.getByLabel('상품명',{exact:true})).toHaveValue(name);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')!).values.url)).toBe(url);
+});
+
 test('React stages: browser back retains values, subscription updates, 200% text fits',async({page})=>{
   const d=driver(page,'react'); await d.openManual();
   await page.getByLabel('브랜드',{exact:true}).fill('브랜드'); await page.getByLabel('상품명',{exact:true}).fill(garmentName);

@@ -1356,12 +1356,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         ${opfNotice(R.source)}
         <p data-input-notice role="alert">${esc(state.notice)}</p>
         <form id="rf" autocomplete="off">
-          <div class="field"><label for="rb">브랜드</label><input id="rb" value="${esc(R.brand)}" placeholder="예: 유니클로" enterkeyhint="next"></div>
-          <div class="field"><label for="rn">상품명</label><input id="rn" value="${esc(R.name)}" placeholder="예: 옥스포드 슬림핏 셔츠" enterkeyhint="next"><div class="hint">${R.source ? '내 옷과 같은 상품인지 확인하고, 필요한 내용만 수정해 주세요' : '택이나 주문 내역의 이름이면 다른 사람과 같은 옷으로 모여요'}</div></div>
+          <div class="field"><label for="rb">브랜드</label><input id="rb" maxlength="80" value="${esc(R.brand)}" placeholder="예: 유니클로" enterkeyhint="next"></div>
+          <div class="field"><label for="rn">상품명</label><input id="rn" maxlength="80" value="${esc(R.name)}" placeholder="예: 옥스포드 슬림핏 셔츠" enterkeyhint="next"><div class="hint">${R.source ? '내 옷과 같은 상품인지 확인하고, 필요한 내용만 수정해 주세요' : '택이나 주문 내역의 이름이면 다른 사람과 같은 옷으로 모여요'}</div></div>
           <div id="rdup"></div>
           <div class="regk"><div class="label"><span>종류</span></div><div class="kinds">${kinds.map((k) => `<button type="button" data-k="${k.id}" aria-pressed="${R.kind === k.id}">${garmentPic({ kind: k.id, kindName: k.name, color: thumbColor(k.id), gender: g0 })}${esc(k.name)}</button>`).join('')}</div></div>
           <div class="regk"><div class="label"><span>색</span></div><div class="colors">${M.colorChoices().map((c) => `<button type="button" data-c="${c.id}" aria-pressed="${R.color === c.id}" aria-label="${esc(c.label)}"><i style="background:${c.hex}"></i>${esc(c.label)}</button>`).join('')}</div></div>
-          <div class="field"><label for="ru">판매처 링크 <span style="font-weight:500;color:var(--ink3)">선택</span></label><input id="ru" value="${esc(R.url)}" inputmode="url" placeholder="https://" enterkeyhint="done"></div>
+          <div class="field"><label for="ru">판매처 링크 <span style="font-weight:500;color:var(--ink3)">선택</span></label><input id="ru" maxlength="2000" value="${esc(R.url)}" inputmode="url" placeholder="https://" enterkeyhint="done"></div>
         </form>`;
     },
 
