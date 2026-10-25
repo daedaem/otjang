@@ -1,9 +1,9 @@
 // Private AI gateway: server-owned instructions and catalog facts; no raw prompt proxy.
 // Paid calls require a verified Access JWT and an atomic, shared D1 reservation.
 import Anthropic from '@anthropic-ai/sdk';
-import { PRODUCTS } from '../../../src/data/products.js';
-import { COLORS, SLOTS } from '../../../src/data/slots.js';
-import { priceBounds } from '../../../src/query.js';
+import { PRODUCTS } from '../../src/domain/data/products.js';
+import { COLORS, SLOTS } from '../../src/domain/data/slots.js';
+import { priceBounds } from '../../src/domain/query.js';
 import { authorizePrivateRequest } from '../lib/private-access.js';
 import { reserveRankBudget } from '../lib/rank-budget.js';
 import { openProductFacts } from '../lib/open-products-store.js';

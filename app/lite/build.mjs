@@ -2,6 +2,7 @@
 // Cloudflare Pages 설정: 루트 디렉터리 app/lite, 빌드 명령 `npm run build`, 출력 디렉터리 dist (functions/는 Pages가 알아서 올린다).
 // 상품 사진은 판매처 이미지 서버 주소를 그대로 쓴다(저장소·배포본에 사진 파일 없음). 글꼴은 npm 패키지(OFL·MIT)에서 복사한다.
 import { assertBuildAllowed } from './deployment-policy.mjs';
+import { buildCore, CORE_BUNDLE } from './tools/build-core.mjs';
 import { versionedAssetPath } from './asset-version.mjs';
 import fs from 'node:fs';
 import { build as buildInput } from 'vite';
@@ -12,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 assertBuildAllowed();
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const UX = path.join(HERE, '../mockups/ux10v2');
+const SOURCE = path.join(HERE, 'src');
 const OUT = path.join(HERE, 'dist');
 const NM = path.join(HERE, 'node_modules');
 export const APP_NAME = '옷 고르기';
@@ -29,14 +30,15 @@ const copy = (from, rel) => put(rel, fs.readFileSync(from));
 fs.rmSync(OUT, { recursive: true, force: true });
 
 // 1) 공통 코어·화면 보조 파일(시안과 같은 파일)
-copy(path.join(UX, 'shared/eoul-mock.js'), 'shared/eoul-mock.js');
-copy(path.join(UX, 'design/cutouts.js'), 'shared/cutouts.js');
-for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js']) copy(path.join(UX, 'links/shared', f), `shared/${f}`);
+buildCore();
+copy(CORE_BUNDLE, 'shared/core-bundle.js');
+copy(path.join(SOURCE, 'browser/cutouts.js'), 'shared/cutouts.js');
+for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js']) copy(path.join(SOURCE, 'browser', f), `shared/${f}`);
 copy(path.join(HERE, 'src/lite.js'), 'shared/lite.js');
 copy(path.join(HERE, 'src/open-products.mjs'), 'shared/open-products.mjs');
 for (const f of ['clothing.json', 'README.md']) copy(path.join(HERE, 'data/open-products', f), `data/open-products/${f}`);
 const scriptPaths = new Map();
-for (const f of ['eoul-mock.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'lite.js', 'open-products.mjs']) {
+for (const f of ['core-bundle.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'lite.js', 'open-products.mjs']) {
   const rel = `shared/${f}`, bytes = fs.readFileSync(path.join(OUT, rel));
   const versioned = versionedAssetPath(rel, bytes);
   put(versioned, bytes);
@@ -55,12 +57,12 @@ for (const [dir, name, css] of [['regular', 'Phosphor', 'regular.css'], ['fill',
 
 // 3) 아이콘(기존 앱과 같은 옷걸이 그림)
 const ICONS = ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'maskable-512.png', 'icon.svg'];
-for (const f of ICONS) copy(path.join(HERE, '../public/icons', f), `icons/${f}`);
+for (const f of ICONS) copy(path.join(HERE, 'public/icons', f), `icons/${f}`);
 
 // 4) 화면: 시안 본문 조각을 완전한 문서로 감싼다. 링크 페이지 전용 줄(사진 폴더, claude 메타, 제목)은 뺀다.
 //    저장 키(EOUL_MOCK_KEY)는 남겨서 링크 시안과 같은 이름으로 이 기기에 저장한다.
-export const SCREEN = 'd12-hang.html';
-const body = read(path.join(UX, 'links', SCREEN))
+export const SCREEN = 'screen.html';
+const body = read(path.join(SOURCE, SCREEN))
   .replace(/<title>[^<]*<\/title>\n?/, '')
   .replace(/<meta name="claude:[^>]*>\n?/, '')
   .replace(/window\.EOUL_PHOTO_BASE\s*=\s*'[^']*';\s*/, '')

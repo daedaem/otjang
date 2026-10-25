@@ -18,13 +18,13 @@ env:
   CI: 'true'
 
 jobs:
-  app:
-    name: App tests and build (Node 22)
+  legacy-app:
+    name: Legacy app tests and build (Node 22)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: app
+        working-directory: legacy/app
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: app/package-lock.json
+          cache-dependency-path: legacy/app/package-lock.json
       - name: Check whitespace errors
         run: git diff --check HEAD^ HEAD
       - name: Install locked app dependencies
@@ -43,9 +43,6 @@ jobs:
         run: npm test
       - name: Build the standalone app
         run: npm run build
-      - name: Check and build the installable lite app
-        working-directory: app/lite
-        run: npm ci && npm test && npm run build
       - name: Record validation scope
         if: always()
         run: |
@@ -55,13 +52,13 @@ jobs:
           This does not verify real mobile layout, camera/HEIC support, photo recognition quality, or a deployed service.
           SUMMARY
 
-  server:
-    name: Server tests without optional model runtime (Node 22)
+  legacy-server:
+    name: Legacy server tests without optional model runtime (Node 22)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: server
+        working-directory: legacy/server
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -71,7 +68,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: legacy/server/package-lock.json
       - name: Install locked server dependencies without optional ONNX runtime
         run: npm ci --omit=optional
       - name: Run server tests
@@ -86,8 +83,8 @@ jobs:
           A passing job therefore does not establish real-model background-removal quality. Run that test separately with the pinned model and runtime installed.
           SUMMARY
 
-  image:
-    name: Server image builds and answers (Docker)
+  legacy-image:
+    name: Legacy server image builds and answers (Docker)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -95,12 +92,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Check the compose file with the example settings
-        working-directory: deploy
+        working-directory: legacy/deploy
         run: |
           cp .env.example .env
           docker compose config --quiet
       - name: Build the server image
-        run: docker build --file deploy/Dockerfile --tag eoul:ci .
+        run: docker build --file legacy/deploy/Dockerfile --tag eoul:ci .
       - name: Start the image and wait for its health check
         run: |
           docker run --detach --name eoul --publish 127.0.0.1:8787:8787 eoul:ci
@@ -124,7 +121,7 @@ jobs:
         run: |
           cat <<'SUMMARY' >> "$GITHUB_STEP_SUMMARY"
           ### Image validation scope
-          Builds `deploy/Dockerfile` without the optional ONNX runtime, runs it as the non-root `node` user and checks health, the brotli app page and the install files.
+          Builds `legacy/deploy/Dockerfile` without the optional ONNX runtime, runs it as the non-root `node` user and checks health, the brotli app page and the install files.
           The Cloudflare Tunnel connection and Litestream backup/restore are not exercised here; see `docs/deploy-kit-20261015.md` for the manual drill.
           SUMMARY
 
@@ -148,3 +145,24 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
+
+  lite:
+    name: Lite checks and build (Node 22)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: app/lite
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/lite/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

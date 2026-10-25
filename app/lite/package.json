@@ -2,12 +2,13 @@
   "name": "eoul-lite",
   "private": true,
   "type": "module",
-  "description": "d12 v3 \uc124\uce58 \uc571: \uae30\uae30 \ub0b4 \uc637\uc7a5\uacfc Cloudflare Worker API",
+  "description": "d12 v3 설치 앱: 기기 내 옷장과 Cloudflare Worker API",
   "scripts": {
     "build": "npm run typecheck && node build.mjs",
     "test": "node --test checks/*.check.mjs",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "pretest": "node tools/build-core.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",

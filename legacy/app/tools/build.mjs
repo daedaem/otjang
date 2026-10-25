@@ -1,0 +1,154 @@
+// app/ 의 모듈을 HTML 파일 하나로 묶는다. 빌드 도구는 외부 의존성 없음.
+// 선택 기능인 사진 분석은 고정된 공개 런타임·모델을 다운로드한다.
+// 사용: node legacy/app/tools/build.mjs                         →  app/dist/index.html
+//       node legacy/app/tools/build.mjs --images thumbs.json   →  상품 이미지 주소를 thumbs.json의 data: URI로 바꿔 넣는다
+//                                                          (외부 이미지를 막는 환경에서 미리보기할 때)
+//       node legacy/app/tools/build.mjs --fragment             →  <html>·<head>·<body> 없이 본문만 (페이지 뼈대를 씌워 주는 호스팅용)
+//       node legacy/app/tools/build.mjs --server https://…     →  그 주소의 어울 서버로 계정·동기화를 켠다
+//       node legacy/app/tools/build.mjs --theme deulim         →  app/themes/deulim.json·.css의 이름·글꼴·색·판단 요약으로 만든다(디자인 비교용)
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { CATALOG } from '../../../app/lite/src/domain/data/products.js';
+
+// This only prevents accidentally publishing unverified catalog material.
+// A recorded approval is not a technical guarantee of public-service readiness.
+if (process.env.EOUL_PUBLIC_BUILD === '1' &&
+    (CATALOG.rights !== 'verified-public' || !CATALOG.rightsEvidence?.trim()))
+  throw new Error(`공개 빌드 중단: ${CATALOG.store || '이름 없는 카탈로그'} 자료의 공개 사용 권리와 근거가 확인되지 않았어요. 승인된 자료로 교체해 주세요. 개인 시험 빌드는 유지됩니다.`);
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const args = process.argv.slice(2);
+const flag = (name) => args.includes(name);
+const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
+
+const order = [
+  '../../app/lite/src/domain/data/slots.js',
+  '../../app/lite/src/domain/data/looks.js',
+  '../../app/lite/src/domain/data/products.js',
+  '../../app/lite/src/domain/catalog-policy.js',
+  '../../app/lite/src/domain/legacy-wardrobe.js',
+  '../../app/lite/src/domain/legacy-purchase-v4.js',
+  '../../app/lite/src/domain/purchase-journey.js',
+  '../../app/lite/src/domain/wear-log.js',
+  '../../app/lite/src/domain/wardrobe.js',
+  '../../app/lite/src/domain/outfit-copy.js',
+  '../../app/lite/src/domain/search-follow-up.js',
+  'src/closet-view.js',
+  'src/wardrobe-store.js',
+  'src/order-import.js',
+  'src/wardrobe-erase.js',
+  'src/garment-photo.js',
+  'src/photo-recognition.js',
+  'src/mask-cleanup.js',
+  'src/background-removal.js',
+  'src/photo-identity.js',
+  'src/owned-catalog.js',
+  'src/storage-health.js',
+  'src/account.js',
+  'src/legacy-photos.js',
+  '../../app/lite/src/domain/query.js',
+  '../../app/lite/src/domain/engine.js',
+  '../../app/lite/src/domain/purchase-candidate.js',
+  '../../app/lite/src/domain/related-returns.js',
+  '../../app/lite/src/domain/wardrobe-plan.js',
+  '../../app/lite/src/domain/purchase-plan-context.js',
+  '../../app/lite/src/domain/offers.js',
+  '../../app/lite/src/domain/offer-store.js',
+  'src/record-cleanup.js',
+  'src/draft-keeper.js',
+  'src/community-post.js',
+  'src/jpeg-clean.js',
+  'src/icons.js',
+  'src/brand.js',
+  'src/zip-store.js',
+  'src/main.js',
+];
+let js = order
+  .map((file) => {
+    const src = fs
+      .readFileSync(path.join(root, file), 'utf8')
+      .replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
+      .replace(/^export\s+(const|function|async function|let|class)\s/gm, '$1 ');
+    return `// ── ${file}\n${src}`;
+  })
+  .join('\n');
+
+const imagesFile = option('--images');
+if (imagesFile) {
+  const map = JSON.parse(fs.readFileSync(imagesFile, 'utf8'));
+  let replaced = 0;
+  for (const [url, data] of Object.entries(map)) {
+    if (js.includes(url)) {
+      js = js.split(JSON.stringify(url)).join(JSON.stringify(data));
+      replaced += 1;
+    }
+  }
+  console.log(`images inlined: ${replaced}`);
+}
+
+// --theme <id>: the same app under another name and look (app/themes/<id>.json and .css).
+const themeId = option('--theme');
+const theme = themeId ? JSON.parse(fs.readFileSync(path.join(root, 'themes', `${themeId}.json`), 'utf8')) : null;
+if (theme) {
+  const before = js;
+  js = js.replace(/const BRAND = \{[\s\S]*?\n\};/, () => `const BRAND = ${JSON.stringify(theme.brand)};`);
+  if (js === before) throw new Error('BRAND를 찾지 못했어요.');
+}
+let css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+// A theme may build on shared parts (themes/<name>.css listed in "include") before its own file.
+if (theme) for (const name of [...(theme.include || []), themeId]) css += `\n/* ── theme: ${name} */\n${fs.readFileSync(path.join(root, 'themes', `${name}.css`), 'utf8')}`;
+const script = `<script type="module">\n(() => {\n${js}\n})();\n</script>`;
+let html;
+if (flag('--fragment')) {
+  const source = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const title = source.match(/<title>[\s\S]*?<\/title>/)[0];
+  const body = source.match(/<body>([\s\S]*?)<script/)[1].trim();
+  html = `${title}\n<style>\n${css}</style>\n${body}\n${script}\n`;
+} else {
+  html = fs
+    .readFileSync(path.join(root, 'index.html'), 'utf8')
+    .replace('<link rel="stylesheet" href="./styles.css">', () => `<style>\n${css}</style>`)
+    .replace('<script type="module" src="./src/main.js"></script>', () => script);
+}
+
+// --server https://… : 다른 곳(예: GitHub Pages)에 올린 앱이 이 주소의 어울 서버를 쓰게 한다.
+// 서버가 직접 앱을 내보낼 때는 서버가 같은 주소 표시를 넣으므로 필요 없다.
+const serverURL = option('--server');
+if (serverURL) {
+  const url = new URL(serverURL);
+  if (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('--server는 https 주소여야 해요.');
+  if (flag('--fragment')) html = `<meta name="eoul-api" content="${url.origin}">\n${html}`;
+  else html = html.replace(/<head>/, () => `<head>\n  <meta name="eoul-api" content="${url.origin}">`);
+}
+
+if (theme) {
+  const name = theme.brand.name;
+  html = html
+    .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${name} · ${theme.brand.tagline}</title>`)
+    .replace(/(<meta name="(?:application-name|apple-mobile-web-app-title)" content=")[^"]*(")/g, (_, a, b) => `${a}${name}${b}`)
+    .replace(/어울에서 옷장부터/, () => `${name}에서 옷장부터`);
+  // A theme has one fixed palette, light or dark, so the browser bar takes its one background.
+  if (theme.themeColor) {
+    html = html
+      .replace(/\s*<meta name="theme-color" content="[^"]*" media="\(prefers-color-scheme: dark\)">/, '')
+      .replace(/<meta name="theme-color" content="[^"]*"[^>]*>/, () => `<meta name="theme-color" content="${theme.themeColor}">`);
+  }
+  if (theme.fonts) {
+    const link = `<link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="stylesheet" href="${theme.fonts}">`;
+    html = flag('--fragment') ? `${link}\n${html}` : html.replace(/<\/head>/, () => `  ${link}\n</head>`);
+  }
+}
+
+const out = option('--out') || path.join(root, 'dist/index.html');
+fs.mkdirSync(path.dirname(out), { recursive: true });
+fs.writeFileSync(out, html);
+console.log(`${path.relative(process.cwd(), out)} ${(html.length / 1024).toFixed(0)} KB`);
+
+// The installable-app files (manifest, service worker, icons) sit next to the
+// page. The server sends only these named files; a page hosted elsewhere
+// simply has no install support.
+if (!flag('--fragment')) fs.cpSync(path.join(root, 'public'), path.dirname(out), { recursive: true });
+
+// Legacy install assets share the active icon source.
+if (!flag('--fragment')) fs.cpSync(new URL('../../../app/lite/public/icons', import.meta.url), path.join(path.dirname(out), 'icons'), { recursive: true });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { createMock } from '../../mockups/ux10v2/src/core.mjs';
+import { createMock } from '../src/core.mjs';
 const input = { draftId: 'test-draft', brand: '브랜드', name: '흰 셔츠', kind: 'shirt', color: 'white', url: '' };
 const key = 'test';
 test('registration writes garment + metadata + receipt atomically, retries across reload, detects changed payload', () => {

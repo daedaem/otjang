@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="referrer" content="no-referrer">
+<title>한 줄 · 시안 02</title>
+<!-- 시안 02 "한 줄 스레드": 한 줄로 묻고, 한 번에 한 질문만 이어 가는 결정 스레드. 공통 코어(데이터·규칙)만 공유하고 화면은 이 폴더만으로 그린다. -->
+<link rel="stylesheet" href="app.css">
+<script>window.EOUL_MOCK_KEY = 'eoul-five-02:v1'; // 시안마다 저장을 따로 둔다(한 주소에서 열어도 기록이 섞이지 않게).</script>
+<script src="../../ux10v2/shared/eoul-mock.js"></script>
+<script src="../../../../../app/lite/src/browser/cutouts.js"></script>
+<script src="../../../../../app/lite/src/browser/photo-kinds.js"></script>
+</head>
+<body data-view="home">
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="top">
+  <a class="mark" href="#/" data-flow="nav-ask" aria-label="한 줄 · 처음부터 묻기">한 줄</a>
+  <button class="tag" type="button" data-flow="mock-label" onclick="EoulMock.openDisclosure()">시안 02 · 정보</button>
+  <nav class="menu" aria-label="메뉴">
+    <a href="#/compare" data-flow="compare-open" data-nav="compare">비교<span class="count" id="cmp-n" hidden>0</span></a>
+    <a href="#/closet" data-flow="nav-closet" data-nav="closet">옷장</a>
+    <a href="#/records" data-flow="nav-records" data-nav="records">기록</a>
+  </nav>
+</header>
+<div class="shell">
+  <main id="main" tabindex="-1"></main>
+  <aside class="aside" id="aside" aria-label="지금 보는 후보"></aside>
+</div>
+<div class="composer-wrap" id="composer-wrap">
+  <div class="composer-in">
+    <div class="composer-col">
+      <div class="sugs" id="sugs" role="listbox" aria-label="검색 제안" hidden></div>
+      <form class="composer" id="composer" role="search" autocomplete="off">
+        <label class="vh" for="ask">찾을 옷을 한 줄로</label>
+        <input id="ask" name="q" data-flow="ask-input" placeholder="예: 출근용 셔츠 10만원 이하" enterkeyhint="search" aria-describedby="ask-hint">
+        <button type="submit" data-flow="ask-submit">찾기</button>
+      </form>
+      <p class="vh" id="ask-hint">입력하면 아래로 이어서 결과가 붙어요.</p>
+    </div>
+  </div>
+</div>
+<div id="overlay"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
