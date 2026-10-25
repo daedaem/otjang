@@ -233,7 +233,8 @@ test('input assets load only on entering the React input screen',async({page})=>
 });
 test.describe('input runtime caching',()=>{
   test.use({serviceWorkers:'allow'});
-  test('worker downloads React assets on first visit and keeps visited input available offline',async({page,context})=>{
+  test.afterEach(async({request})=>{const response=await request.post('http://127.0.0.1:8793/start');expect(response.ok()).toBe(true);});
+  test('worker downloads React assets on first visit and keeps visited input available offline',async({page,request})=>{
     await page.goto('/?photos=0');
     await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready; if(!navigator.serviceWorker.controller)await new Promise<void>(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true}));});
     const cachedInput=()=>page.evaluate(async()=>{const paths=[];for(const key of await caches.keys()){if(!key.startsWith('lite-'))continue;const c=await caches.open(key);for(const r of await c.keys())if(new URL(r.url).pathname.startsWith('/react/'))paths.push(new URL(r.url).pathname);}return paths;});
@@ -242,29 +243,26 @@ test.describe('input runtime caching',()=>{
   await page.locator('[data-reg-open]').click();
     await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
     await expect.poll(async()=>{const paths=await cachedInput();return paths.some(p=>p.endsWith('.js'))&&paths.some(p=>p.endsWith('.css'));}).toBe(true);
-    // Fail the upstream transport instead of disabling WebKit's networking
-    // process (which also prevents its service worker navigation in automation).
+    // Stop the actual origin, leaving the browser's SW networking enabled.
     await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
     // Exercise the native SW path, without Playwright's catch-all page routing.
     // All app assets are local/cached and this isolated case makes no AI calls.
     await page.unrouteAll({behavior:'wait'});
     const reopenUrl=page.url();
     await page.evaluate(()=>document.documentElement.dataset.e2eOldDocument='true');
-    await page.setExtraHTTPHeaders({'x-e2e-network-down':'1'});
-    try {
-      expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
-      // Linux WebKit can abort reload internally when the upstream socket fails.
-      // Reopen from a blank document instead, and require an actual SW response.
-      await page.goto('about:blank');
-      const response=await page.goto(reopenUrl);
-      expect(response?.fromServiceWorker()).toBe(true);
-      expect(await page.evaluate(()=>document.documentElement.dataset.e2eOldDocument)).toBeUndefined();
-      expect(await page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
-      expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
-      await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
-      await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
-      await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
-    } finally { await page.setExtraHTTPHeaders({}); }
+    const stopped=await request.post('http://127.0.0.1:8793/stop');
+    expect(stopped.ok()).toBe(true);expect(await stopped.json()).toEqual({online:false});
+    expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
+    // Reopen a fresh document and require a real service-worker response.
+    await page.goto('about:blank');
+    const response=await page.goto(reopenUrl);
+    expect(response?.fromServiceWorker()).toBe(true);
+    expect(await page.evaluate(()=>document.documentElement.dataset.e2eOldDocument)).toBeUndefined();
+    expect(await page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+    expect(await page.evaluate(()=>fetch('/__uncached_network_probe').then(()=>true,()=>false))).toBe(false);
+    await expect(page.getByRole('button',{name:'이어서 입력',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
   });
 });
 
