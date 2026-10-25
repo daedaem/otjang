@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const page = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
+const page = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
 const start = page.indexOf('  const BK = {');
 const end = page.indexOf('  function backupSheet(');
 assert.ok(start > 0 && end > start);

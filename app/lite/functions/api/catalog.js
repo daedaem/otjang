@@ -7,8 +7,8 @@
 //   GET  /api/catalog/status?keys=k1,k2 → {min, items:{key: count}}
 // 판매처 링크는 기록만 하고 남에게 보여 주지 않는다(모르는 사람이 넣은 주소를 퍼뜨리지 않기). 운영자가 확인할 때만 쓴다.
 // 기기 id는 화면이 만든 무작위 값이라 위조할 수 있다: 혼자 시험·포트폴리오 단계의 장치이고, 공개 운영 전에는 계정 확인으로 바꾼다.
-import { GARMENT_KINDS } from '../../../src/wardrobe.js';
-import { COLORS } from '../../../src/data/slots.js';
+import { GARMENT_KINDS } from '../../src/domain/wardrobe.js';
+import { COLORS } from '../../src/domain/data/slots.js';
 
 export const CROWD_MIN = 3;
 const DAY = 24 * 60 * 60 * 1000;

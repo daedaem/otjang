@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { createMock } from '../../mockups/ux10v2/src/core.mjs';
-import { PRODUCTS } from '../../src/data/products.js';
+import { createMock } from '../src/core.mjs';
+import { PRODUCTS } from '../src/domain/data/products.js';
 
 function fixture() {
   const values = new Map();
@@ -81,14 +81,14 @@ test('unavailable persistent storage rejects writes; explicit memory mode remain
 test('generated browser core retains saved state when boot reset cannot be persisted', () => {
   const f = fixture(); f.m.addGarment({ kind: 'shirt' }); f.fail(true);
   const window = { localStorage: f.storage, EOUL_MOCK_KEY: 'test', location: { search: '?reset=1' }, addEventListener() {} };
-  vm.runInNewContext(fs.readFileSync(new URL('../../mockups/ux10v2/shared/eoul-mock.js', import.meta.url), 'utf8'), { window, location: window.location, URLSearchParams, structuredClone, TextEncoder, console });
+  vm.runInNewContext(fs.readFileSync(new URL('../.generated/core-bundle.js', import.meta.url), 'utf8'), { window, location: window.location, URLSearchParams, structuredClone, TextEncoder, console });
   assert.equal(window.EoulMock.getState().closetCount, 1);
   assert.match(window.EoulMock.boot.storageError, /저장하지 못/);
   failed(() => window.EoulMock.addGarment({ kind: 'shirt' }));
 });
 
 test('registration metadata throws on failure, restores memory, and retries without erasing prior metadata', () => {
-  const html = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
+  const html = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
   const source = html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
   const f = fixture();
   f.storage.setItem('eoul-d12-hang:reg', JSON.stringify({ items: { old: { brand: 'existing' } }, catalog: {} }));
@@ -191,7 +191,7 @@ test('a failed read blocks writes even if writing would succeed', () => {
   assert.equal(s.values.get('test'), raw);
 });
 
-const bootCore = (window) => vm.runInNewContext(fs.readFileSync(new URL('../../mockups/ux10v2/shared/eoul-mock.js', import.meta.url), 'utf8'), { window, location: window.location, URLSearchParams, structuredClone, TextEncoder, console });
+const bootCore = (window) => vm.runInNewContext(fs.readFileSync(new URL('../.generated/core-bundle.js', import.meta.url), 'utf8'), { window, location: window.location, URLSearchParams, structuredClone, TextEncoder, console });
 
 test('generated core reports inaccessible storage at boot instead of looking like a new user', () => {
   const window = { get localStorage() { throw new Error('SecurityError'); }, location: { search: '' }, addEventListener() {} };
@@ -222,7 +222,7 @@ test('generated core boots with an unreadable record, reports it, and survives ?
 });
 
 const regContext = (s) => {
-  const html = fs.readFileSync(new URL('../../mockups/ux10v2/links/d12-hang.html', import.meta.url), 'utf8');
+  const html = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
   const source = html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
   const ctx = vm.createContext({ localStorage: s.storage, structuredClone });
   vm.runInContext(source + '\nglobalThis.reg = REG; globalThis.save = saveReg; globalThis.fresh = startFreshReg; globalThis.raw = () => regRaw;', ctx);

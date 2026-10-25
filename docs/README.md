@@ -118,3 +118,5 @@
 
 - [백업 검사 대조·저장소 정리 재작업](backup-tests-reconciliation-20261025.md)
 - [PR #59 당시 브랜치 감사 명세](branch-cleanup-20261023.md)
+
+- [저장소 정리 재작업·정본 보존](repository-cleanup-rework-20261025.md)
