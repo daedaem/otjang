@@ -115,3 +115,6 @@
 | [validation-kit-20261017.md](validation-kit-20261017.md) | 검증 자료: 모집 글 · 구매 사례 인터뷰 · 측정 이벤트 명세 (2026-10-17) |
 | [wardrobe-first-comparison-20261014.md](wardrobe-first-comparison-20261014.md) | 옷 등록·옷장 사용 경험 비교와 보정 — 2026-10-14 |
 | [wear-diary-20261015.md](wear-diary-20261015.md) | 착용 기록과 결과 반영 — 2026-10-15 |
+
+- [백업 검사 대조·저장소 정리 재작업](backup-tests-reconciliation-20261025.md)
+- [PR #59 당시 브랜치 감사 명세](branch-cleanup-20261023.md)
