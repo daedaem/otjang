@@ -45,7 +45,13 @@ for label, start, end in [
     ('consultation and budget', '  const RULES = ', '  function render('),
     ('return and purchase flow', '  function returnSheet(', '  function toggleHang('),
 ]:
-    same(label, region(before, start, end), region(after, start, end))
+    expected = region(before, start, end)
+    if label == 'return and purchase flow':
+        # This broad region also contains the common input-entry dispatcher.
+        # Permit that one host-state substitution; protect every other byte.
+        expected = expected.replace("{ S.reg = null; K.go('reg', { q: t.dataset.regQ || '' }); }",
+                                    "{ Input.reset(); K.go('reg', { q: t.dataset.regQ || '' }); }")
+    same(label, expected, region(after, start, end))
 builder_before = original('app/mockups/ux10v2/tools/build-core.mjs')
 builder_after = current('app/lite/tools/build-core.mjs')
 same('generated core bootstrap', region(builder_before, 'const bootChange =', '})();'),

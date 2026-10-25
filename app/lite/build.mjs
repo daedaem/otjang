@@ -35,10 +35,11 @@ copy(CORE_BUNDLE, 'shared/core-bundle.js');
 copy(path.join(SOURCE, 'browser/cutouts.js'), 'shared/cutouts.js');
 for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js']) copy(path.join(SOURCE, 'browser', f), `shared/${f}`);
 copy(path.join(HERE, 'src/lite.js'), 'shared/lite.js');
+copy(path.join(HERE, 'src/input-session.js'), 'shared/input-session.js');
 copy(path.join(HERE, 'src/open-products.mjs'), 'shared/open-products.mjs');
 for (const f of ['clothing.json', 'README.md']) copy(path.join(HERE, 'data/open-products', f), `data/open-products/${f}`);
 const scriptPaths = new Map();
-for (const f of ['core-bundle.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'lite.js', 'open-products.mjs']) {
+for (const f of ['core-bundle.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'lite.js', 'input-session.js', 'open-products.mjs']) {
   const rel = `shared/${f}`, bytes = fs.readFileSync(path.join(OUT, rel));
   const versioned = versionedAssetPath(rel, bytes);
   put(versioned, bytes);
@@ -69,7 +70,7 @@ const body = read(path.join(SOURCE, SCREEN))
   .replace(/<script>\s*<\/script>\n?/, '')
   // 예전 설치 앱(d7, 기본 저장 키)에 옷장이 있으면 새 화면의 저장 키로 한 번 옮긴다(덮어쓰지 않음).
   .replace(/<script>window\.EOUL_MOCK_KEY='([^']+)';<\/script>/, (m, key) => `<script>window.EOUL_MOCK_KEY='${key}';try{var o=localStorage.getItem('eoul-mockup-ux10v2:v1');if(o&&!localStorage.getItem('${key}'))localStorage.setItem('${key}',o)}catch(e){}</script>`)
-  .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/ai-rank.js"></script>')
+  .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/input-session.js"></script>\n<script src="shared/ai-rank.js"></script>')
   .replace(/(<script\b[^>]*\bsrc=")(shared\/[^"<>]+)(")/g, (all, before, rel, after) => scriptPaths.has(rel) ? `${before}${scriptPaths.get(rel)}${after}` : all);
 if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes(scriptPaths.get('shared/lite.js'))) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);
 // Keep the existing private Worker/PWA build. Vite only builds the input island.
@@ -77,7 +78,7 @@ await buildInput({ configFile: path.join(HERE, 'vite.config.mjs') });
 const inputManifest = JSON.parse(read(path.join(OUT, 'react/.vite/manifest.json')));
 const inputEntry = Object.values(inputManifest).find((entry) => entry.isEntry);
 if (!inputEntry) throw new Error('React input entry missing');
-const inputAssets = `${(inputEntry.css || []).map((file) => `<link rel="stylesheet" href="/react/${file}">`).join('')}<script>window.EOUL_INPUT_LOAD=()=>import('/react/${inputEntry.file}');</script>`;
+const inputAssets = `<script>window.EOUL_INPUT_LOAD=(()=>{let loading;return ()=>loading||=Promise.all(${JSON.stringify(inputEntry.css || [])}.map(file=>new Promise((resolve,reject)=>{const href='/react/'+file;const loaded=[...document.querySelectorAll('link[data-input-style]')].find(link=>new URL(link.href).pathname===href);if(loaded&&loaded.dataset.ready==='1')return resolve();const link=loaded||Object.assign(document.createElement('link'),{rel:'stylesheet',href});link.dataset.inputStyle='1';link.onload=()=>{link.dataset.ready='1';resolve()};link.onerror=()=>{link.remove();reject(new Error('input style unavailable'))};if(!loaded)document.head.append(link)}))).then(()=>import('/react/${inputEntry.file}')).catch(error=>{loading=null;throw error})})();</script>`;
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -147,7 +148,7 @@ const walk = (dir) => {
   }
 };
 walk(OUT);
-const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
+const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && !f.startsWith('react/') && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
 const hash = crypto.createHash('sha256');
 for (const f of files.sort()) hash.update(f).update(fs.readFileSync(path.join(OUT, f)));
 const version = hash.digest('hex').slice(0, 12);
