@@ -185,6 +185,29 @@ test('backup UI previews, restores exact records, and undo restores the prior sn
   expect(undone.garments).toEqual(JSON.parse(before!).garments); expect(undone.journeys).toEqual(JSON.parse(before!).journeys);
 });
 
+test('backup refuses unreadable drafts and unsafe consultation files with a visible error and no export or writes',async({page})=>{
+  await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
+  const saved=await page.evaluate(()=>{
+    window.K.M.registerGarment({draftId:'draft-backup-test',brand:'합성 브랜드',name:'합성 셔츠',kind:'shirt',color:'white',url:''});
+    localStorage.setItem('eoul-d12-hang:input-draft:v1','{"v":99,"unknown":"원문 보존"}');
+    (window as any).__bkCopied=0;
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{(window as any).__bkCopied++;}}});
+    return localStorage.getItem('eoul-d12-hang:v1')!;
+  });
+  let downloads=0;page.on('download',()=>downloads++);
+  await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
+  await expect(page.locator('.bk .sub').first()).toContainText('직접 등록 1건');
+  for(const action of ['[data-bk-save]','[data-bk-copy]']) {
+    await page.locator(action).click();await expect(page.locator('.bk-msg')).toContainText('입력 초안 자료를 이 앱이 읽을 수 없어요');
+  }
+  const unsafeChat=JSON.stringify({threads:[{id:'x" onclick="bad',turns:[]}]});
+  await page.locator('#bkfile').setInputFiles({name:'synthetic-invalid-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'eoul-lite',format:1,data:{'eoul-d12-hang:v1':saved,'eoul-d12-hang:consult':unsafeChat}}))});
+  await expect(page.locator('.bk-msg')).toContainText('상담 자료를 이 앱이 읽을 수 없어요');
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(saved);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:input-draft:v1'))).toBe('{"v":99,"unknown":"원문 보존"}');
+  expect(await page.evaluate(()=>(window as any).__bkCopied)).toBe(0);expect(downloads).toBe(0);
+});
+
 for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {
   test(`shared draft: ${from} input resumes in ${to} with the same identity`,async({page})=>{
     const d=driver(page,from); await d.openManual(); await d.fillManual();

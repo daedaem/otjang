@@ -2056,8 +2056,70 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     skip: (k) => typeof k !== 'string' || !k.startsWith('eoul-') || k.startsWith('eoul-backup:') || /:(last|probe)$/.test(k),
     keys() { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!BK.skip(k)) out.push(k); } return out.sort(); },
     snapshot() { const data = {}; for (const k of BK.keys()) { const v = localStorage.getItem(k); if (typeof v === 'string') data[k] = v; } return data; },
-    make() { return { app: BK.APP, format: BK.FORMAT, screen: 'd12-hang', at: new Date().toISOString(), data: BK.snapshot() }; },
+    make() { return { app: BK.APP, format: BK.FORMAT, screen: 'd12-hang', at: new Date().toISOString(), data: BK.validate(BK.snapshot()) }; },
     stamp() { const d = new Date(); const z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`; },
+    // Validate only active known records at the API boundary. Unknown keys and
+    // unreadable archives stay opaque; undo must still recover an old damaged raw.
+    validate(data) {
+      const object = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+      const reject = (label) => { throw new Error(`${label} 자료를 이 앱이 읽을 수 없어요. 아무것도 바꾸지 않았어요.`); };
+      if (!object(data)) reject('백업');
+      for (const [key, value] of Object.entries(data)) {
+        if (BK.skip(key)) throw new Error('백업에 모르는 항목이 있어요.');
+        if (typeof value !== 'string') throw new Error('백업 항목 값이 글자가 아니에요.');
+      }
+      const parse = (key, label) => {
+        if (data[key] === undefined) return undefined;
+        let v; try { v = JSON.parse(data[key]); } catch { reject(label); }
+        if (!object(v)) reject(label);
+        return v;
+      };
+      const id = (v) => typeof v === 'string' && /^[A-Za-z0-9_.:-]{1,160}$/.test(v);
+      const link = (v) => {
+        if (typeof v !== 'string') return false;
+        if (!v) return true;
+        try { return ['http:', 'https:'].includes(new URL(v).protocol); } catch { return false; }
+      };
+      const draft = parse('eoul-d12-hang:input-draft:v1', '입력 초안');
+      if (draft !== undefined) {
+        const v = draft.values;
+        if (draft.v !== 1 || !Number.isInteger(draft.step) || draft.step < 0 || draft.step > 2 || !object(v) ||
+          typeof v.draftId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(v.draftId) ||
+          !['brand', 'name', 'kind', 'color', 'url'].every(k => typeof v[k] === 'string' && v[k].length <= (k === 'url' ? 2000 : 80)) ||
+          (v.source && (v.source.provider !== 'opf' || typeof v.source.code !== 'string' || !/^\d{6,24}$/.test(v.source.code))) ||
+          typeof draft.updatedAt !== 'string' || !Number.isFinite(Date.parse(draft.updatedAt))) reject('입력 초안');
+        // An unfinished link is valid while editing; do not require HTTP(S) here.
+      }
+      const reg = parse(REG_KEY, '브랜드·링크');
+      if (reg !== undefined) {
+        if ((reg.v !== undefined && reg.v !== 1) || (reg.items !== undefined && !object(reg.items)) || (reg.catalog !== undefined && !object(reg.catalog))) reject('브랜드·링크');
+        for (const records of [reg.items || {}, reg.catalog || {}]) for (const value of Object.values(records)) {
+          if (!object(value)) reject('브랜드·링크');
+          for (const key of ['brand', 'name', 'kind', 'key', 'at']) if (value[key] !== undefined && typeof value[key] !== 'string') reject('브랜드·링크');
+          if (value.color !== undefined && value.color !== null && typeof value.color !== 'string') reject('브랜드·링크');
+          if (value.url !== undefined && !link(value.url)) reject('브랜드·링크');
+        }
+      }
+      const chat = parse(CHAT_KEY, '상담');
+      if (chat !== undefined) {
+        if ((chat.v !== undefined && chat.v !== 1) || (chat.threads !== undefined && !Array.isArray(chat.threads)) || (chat.cur != null && chat.cur !== '' && !id(chat.cur))) reject('상담');
+        for (const thread of chat.threads || []) {
+          if (!object(thread) || !id(thread.id) || !Array.isArray(thread.turns)) reject('상담');
+          for (const turn of thread.turns) {
+            if (!object(turn) || !['user', 'assistant', 'note'].includes(turn.role) || typeof turn.text !== 'string' ||
+              (turn.ids != null && (!Array.isArray(turn.ids) || !turn.ids.every(id)))) reject('상담');
+          }
+        }
+      }
+      const engine = data[window.EOUL_MOCK_KEY];
+      if (engine !== undefined) {
+        let ok;
+        if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
+        else { let st = null; try { st = JSON.parse(engine); } catch {} ok = !!st && st.v === 1 && Array.isArray(st.garments) && Array.isArray(st.journeys); }
+        if (!ok) reject('옷장');
+      }
+      return data; // No normalization, migration, writes, or raw-byte replacement.
+    },
     read(text) {
       if (typeof text !== 'string' || !text.trim()) throw new Error('파일이 비어 있어요.');
       if (text.length > BK.MAX_BYTES) throw new Error('파일이 너무 커요(5MB 초과).');
@@ -2070,21 +2132,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         data[k] = val;
       }
       if (!Object.keys(data).length) throw new Error('백업에 자료가 없어요.');
-      const engine = data[window.EOUL_MOCK_KEY];
-      if (engine !== undefined) {
-        // 불러올 때와 같은 엔진 규칙으로 먼저 읽어 본다. 읽지 못할 자료로 바꾸면 앱이 그 기록을 '읽지 못함'으로 멈추기 때문이다.
-        let ok;
-        if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
-        else { let st = null; try { st = JSON.parse(engine); } catch {} ok = !!st && st.v === 1 && Array.isArray(st.garments) && Array.isArray(st.journeys); }
-        if (!ok) throw new Error('옷장 자료를 이 앱이 읽을 수 없어요. 아무것도 바꾸지 않았어요.');
-      }
-      return { at: typeof v.at === 'string' ? v.at : '', data };
+      return { at: typeof v.at === 'string' ? v.at : '', data: BK.validate(data) };
     },
     count(data) {
       const n = { garments: 0, journeys: 0, threads: 0, reg: 0 };
-      try { const st = JSON.parse(data[window.EOUL_MOCK_KEY] || 'null'); if (st) { const trial = new Set(Array.isArray(st.trialIds) ? st.trialIds : []); n.garments = (st.garments || []).filter((g) => !g.trial && !trial.has(g.id)).length; n.journeys = (st.journeys || []).length; } } catch {}
+      const registered = new Set();
+      try { const st = JSON.parse(data[window.EOUL_MOCK_KEY] || 'null'); if (st) { const trial = new Set(Array.isArray(st.trialIds) ? st.trialIds : []); n.garments = (st.garments || []).filter((g) => !g.trial && !trial.has(g.id)).length; n.journeys = (st.journeys || []).length; for (const r of st.registrations?.receipts || []) if (typeof r?.garmentId === 'string') registered.add(r.garmentId); } } catch {}
       try { n.threads = (JSON.parse(data[CHAT_KEY] || '{}').threads || []).length; } catch {}
-      try { n.reg = Object.keys(JSON.parse(data[REG_KEY] || '{}').items || {}).length; } catch {}
+      try { for (const key of Object.keys(JSON.parse(data[REG_KEY] || '{}').items || {})) registered.add(key); } catch {}
+      n.reg = registered.size;
       return n;
     },
     countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 직접 등록 ${n.reg}건`,
@@ -2122,6 +2178,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       // 어느 경우든 새 복원으로 덮지 않도록, 먼저 '복원 전으로 되돌리기'를 하게 하고 이번 복원은 시작하지 않는다.
       let pending = null; try { pending = localStorage.getItem(BK.NEXT); } catch {}
       if (pending !== null) throw Object.assign(new Error("앞선 복원이 끝까지 정리되지 않았어요. 먼저 '복원 전으로 되돌리기'를 한 뒤 다시 복원해 주세요."), { code: 'pending' });
+      BK.validate(data); // Only the incoming target, before any NEXT/STASH write.
       const before = BK.snapshot();
       const text = JSON.stringify({ at: new Date().toISOString(), data: before });
       const dropNext = () => { try { localStorage.removeItem(BK.NEXT); } catch {} };
@@ -2156,8 +2213,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       <p class="bk-msg t6" role="status" aria-live="polite"></p></div>`);
     const ta = $('.bk-ta', sh.s), pv = $('.bk-preview', sh.s), msg = (t) => { $('.bk-msg', sh.s).textContent = t; };
     const showText = (text) => { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); };
+    const makeText = () => { try { return JSON.stringify(BK.make()); } catch (e) { msg(e.message); return null; } };
     $('[data-bk-save]', sh.s).onclick = async () => {
-      const text = JSON.stringify(BK.make()); const name = `closet-backup-${BK.stamp()}.json`; // 파일 이름은 영문으로: 일부 브라우저가 한글 이름을 'download'로 바꾼다
+      const text = makeText(); if (text === null) return; const name = `closet-backup-${BK.stamp()}.json`; // 파일 이름은 영문으로: 일부 브라우저가 한글 이름을 'download'로 바꾼다
       try {
         const file = new File([text], name, { type: 'application/json' });
         if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); msg('공유 창에서 파일에 저장하거나 다른 기기로 보내세요.'); return; }
@@ -2167,7 +2225,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         msg(`${name} 파일을 내보냈어요. 아이폰은 파일 앱의 다운로드 폴더에 저장돼요.`);
       } catch { showText(text); msg('내려받기가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); }
     };
-    $('[data-bk-copy]', sh.s).onclick = async () => { const text = JSON.stringify(BK.make()); try { await navigator.clipboard.writeText(text); msg('백업 글자를 복사했어요. 메모 앱 등에 붙여 두세요.'); } catch { showText(text); msg('복사가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); } };
+    $('[data-bk-copy]', sh.s).onclick = async () => { const text = makeText(); if (text === null) return; try { await navigator.clipboard.writeText(text); msg('백업 글자를 복사했어요. 메모 앱 등에 붙여 두세요.'); } catch { showText(text); msg('복사가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); } };
     const preview = (text) => {
       let b; try { b = BK.read(text); } catch (e) { pv.hidden = true; msg(e.message); return; }
       const cur = BK.count(BK.snapshot()), nb = BK.count(b.data);

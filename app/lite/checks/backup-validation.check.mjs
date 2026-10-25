@@ -48,7 +48,7 @@ test('registration links are HTTP(S) strings when present, for both items and ca
   }
 });
 test('consultation IDs and turn product-ID containers reject active markup while preserving historical IDs',()=>{
-  const thread={id:'old.thread:1',title:'지난 상담',at:'2026-10-25T00:00:00Z',turns:[{role:'assistant',text:'과거 상품',ids:['discontinued:123'],unknown:'keep'}]};
+  const thread={id:'old.thread:1',title:'지난 상담',at:'2026-10-25T00:00:00Z',turns:[{role:'assistant',text:'과거 상품',ids:['discontinued:123'],unknown:'keep'},{role:'note',kind:'err',text:'답을 받지 못했어요. 잠시 뒤에 다시 물어봐 주세요.'}]};
   for(const value of [{threads:'broken'}, {threads:[{...thread,id:'x" onclick="bad'}]}, {threads:[{...thread,turns:[{role:'assistant',text:'답',ids:'ms-1'}]}]}, {threads:[{...thread,turns:[{role:'assistant',text:'답',ids:['x<svg>']}]}]}, {threads:[thread],cur:'bad"id'}]) refuses(CHAT,JSON.stringify(value));
   const local=storage({[CHAT]:JSON.stringify({threads:[thread],cur:thread.id})});
   assert.equal(run(local).read(JSON.stringify(run(local).make())).data[CHAT],local.getItem(CHAT));

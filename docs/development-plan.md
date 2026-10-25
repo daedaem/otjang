@@ -1,10 +1,8 @@
-진행 중: 저장소 정리 재작업(담당 Codex)
-
 # 현재 개발 계획과 완료 기준
 
-후속 백업 사전 검증 시작: 정리 #73까지 머지된 master `d26a69a` 기준이다. 먼저 추가한 검사8개에서 손상/미래 메타데이터·상담 ID/등록 URL·직접 복원 사전 거절·React 영수증 집계의 7개 실패와 정상 원문 왕복1개 통과를 확인했다. 실패 테스트 커밋 뒤 구현을 수정하며 완료 전 진행 중 표시는 유지한다.
+후속 백업 사전 검증은 master `d26a69a`에서 실패 테스트 `0187697`을 먼저 커밋한 뒤 수정했다. 추가8개는 7실패·1통과 → 8통과, 전체 lite199·브라우저40개 로컬 통과다. 후속 수정 PR의 CI·Claude 검토와 실제 master 반영은 구분한다. 이 PR에 진행 중 표시 삭제를 포함하며, master의 표시는 이 PR 머지 때 삭제된다. [검증·호환성·남은 범위](log/2026-10/backup-validation-20261025.md).
 
-갱신: 2026-10-25. 확인한 원격 master는 `f620c35`다. 테스트 보존 [#69](https://github.com/daedaem/otjang/pull/69) → 코드 위치 [#70](https://github.com/daedaem/otjang/pull/70) → 입력 상태 [#71](https://github.com/daedaem/otjang/pull/71)은 매번 새 master CI를 확인한 뒤 순서대로 머지했다. 남은 문서 [#73](https://github.com/daedaem/otjang/pull/73)을 검사·머지한 뒤 승인된 백업 사전 검증을 별도 PR로 수행한다. master 병합·배포·실물 검증은 구분한다. 이 문서 작업에서 운영 API나 실물 휴대폰을 새로 검사하지 않았다.
+갱신: 2026-10-25. 확인한 원격 master는 `d26a69a`다. 테스트 보존 [#69](https://github.com/daedaem/otjang/pull/69) → 코드 위치 [#70](https://github.com/daedaem/otjang/pull/70) → 입력 상태 [#71](https://github.com/daedaem/otjang/pull/71) → 문서 [#73](https://github.com/daedaem/otjang/pull/73)을 매번 새 master CI를 확인하며 순서대로 머지했다. 승인된 백업 사전 검증 후속 수정은 별도 PR의 후보이며 master 병합·배포·실물 검증과 구분한다. 이번 작업에서 운영 API나 실물 휴대폰을 새로 검사하지 않았다.
 
 [대표 요구사항](owner-requirements.md)과 [사업 계획](business-plan.md)이 목표의 기준이며, [시스템 인수인계](system-handover.md)가 구현·운영 경계를 설명한다. 이전의 상세 판단·검사 이력은 [정리 전 개발 계획](log/2026-10/development-plan-before-cleanup-20261025.md)과 [재작업 기록](log/2026-10/repository-cleanup-rework-20261025.md)에 보존한다.
 
@@ -42,8 +40,11 @@
 | #70 위치 정리 | 683 | 184 | 50 | 24 통과 |
 | #71 입력 통합 | 683 | 191 | 50 | 38 통과 |
 | 문서 정리 | 683 | 191 | 50 | 38개 유지, 최종 CI로 확인 |
+| 백업 사전 검증 후속 후보 | 683 | 199 | 50 | 40 로컬 통과 |
 
 app에서 줄어든 5개는 날씨 검사로 lite에 이동했다. 전체 Node 검사는 912 → 917 → 917 → 924개이며 server의 실제 ONNX 모델/런타임 미설치 1skip은 기존과 같다. #71의 추가 입력·캐시·길이 검사는 7개, 영속 vanilla 초안의 중복 재시도 문제는 기존 원자 등록 명령으로 수정하고 브라우저 4실행을 보강했다. 길이 초과 입력의 마지막 정상 초안 보존·고친 뒤 재개도 검사한다. 더 자세한 실패·재검사 근거는 재작업 기록을 따른다.
+
+후속 후보는 Node8개·브라우저2실행을 더해 Node932개(기존1skip 포함), 브라우저40개다. 기존 검사 삭제는 없고 손상된 합성 초안2개·상담1개를 실제 reader 계약에 맞는 정상 fixture로 고쳤다. 복원/undo 보호와 예산·반품·MIME는 `python3 tools/repository-cleanup/check-preserved.py --backup-validation`의 15항목으로 대조한다. 옵션 없는 명령은 사전 검증 확장 전의 정리 전용 원문 검사용이다.
 
 ## 정리 후 이어갈 우선순위
 

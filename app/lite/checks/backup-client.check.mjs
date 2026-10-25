@@ -103,7 +103,8 @@ test('이 앱 파일이 아니거나 옷장 자료를 읽을 수 없으면 아�
   assert.deepEqual(full.dump(), before);
 });
 
-const other = () => { const o = storage(); o.setItem(ENGINE, engineState(5)); o.setItem('eoul-d12-hang:consult', '{"threads":[],"cur":null}'); o.setItem('eoul-d12-hang:input-draft:v1', '{"v":1}'); return JSON.stringify(run(o).make()); };
+// A normal editable v1 draft needs the same fields as the actual input reader.
+const other = () => { const o = storage(); o.setItem(ENGINE, engineState(5)); o.setItem('eoul-d12-hang:consult', '{"threads":[],"cur":null}'); o.setItem('eoul-d12-hang:input-draft:v1', JSON.stringify({ v: 1, step: 0, updatedAt: '2026-10-25T00:00:00Z', values: { draftId: 'draft-abcdefgh', brand: '', name: '', kind: '', color: '', url: '' } })); return JSON.stringify(run(o).make()); };
 const without = (d, k) => { const x = { ...d }; delete x[k]; return x; };
 
 test('복원 중간에 저장이 막히면 바꾼 키만 원래 값으로 되돌리고 지금 자료를 그대로 둔다', () => {
@@ -206,9 +207,10 @@ test('앞선 되돌리기 지점은 이번 복원이 끝까지 성공하기 전�
   const firstStash = a.getItem('eoul-backup:stash');
   assert.equal(a.getItem('eoul-backup:stash-next'), null, '성공하면 임시 칸을 지운다');
   // 바꾸는 중 실패하고 이후 쓰기도 계속 막히는(되돌림은 지우기·작은 쓰기로 끝나는) 상황에서도 앞선 지점은 그대로다.
-  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = 'x'.repeat(50);
+  const second = JSON.parse(other()); second.data['eoul-d12-hang:consult'] = JSON.stringify({ threads: [{ id: 't-second', turns: [{ role: 'assistant', text: 'x'.repeat(50), ids: [] }] }], cur: 't-second' });
   a.sets = 0; a.failSetAt = 1; // 임시 칸(0)은 쓰였고, 바뀌는 키 하나(1)를 쓰다 막힘 → 깨끗이 되돌림
   assert.throws(() => BK.restore(BK.read(JSON.stringify(second)).data), /바꾸지 않았어요/);
+  assert.equal(a.sets, 3, 'NEXT 저장·대상 쓰기 실패·보상 쓰기까지 실행해야 한다');
   a.failSetAt = undefined;
   assert.equal(a.getItem('eoul-backup:stash'), firstStash);
   assert.equal(a.getItem('eoul-backup:stash-next'), null);
