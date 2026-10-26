@@ -248,3 +248,20 @@ for (const [name, raw] of Object.entries({ 'truncated JSON': '{"items":{"g_old":
     assert.equal(JSON.parse(s.values.get('eoul-d12-hang:reg')).items.g_new.brand, 'B');
   });
 }
+
+test('generated preview never probes private storage and shares only an empty memory UI store', () => {
+  let reads = 0;
+  const window = { get localStorage() { reads++; throw new Error('private getter'); }, location: { search: '?preview=1&reset=1' }, addEventListener() {} };
+  vm.runInNewContext(fs.readFileSync(new URL('../.generated/core-bundle.js', import.meta.url), 'utf8'), { window, location: window.location, URLSearchParams, structuredClone, TextEncoder, console });
+  const ui = window.EOUL_UI_STORAGE;
+  assert.equal(ui.length, 0);
+  assert.equal(ui.getItem('eoul-backup:photos-pending'), null);
+  ui.setItem('draft', 'memory');
+  assert.equal(ui.key(0), 'draft');
+  assert.equal(ui.getItem('draft'), 'memory');
+  ui.removeItem('draft');
+  assert.equal(ui.length, 0);
+  window.EoulMock.addGarment({ kind: 'shirt' });
+  assert.equal(window.EoulMock.getState().closetCount, 1);
+  assert.equal(reads, 0);
+});

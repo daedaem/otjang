@@ -31,12 +31,16 @@ export async function saveGarmentPhoto({
   width = null,
   height = null,
 }) {
+  if (core.boot?.preview) throw new Error('미리보기에서는 개인 사진을 저장하지 않아요.');
   core.assertPhotoReady();
   const record = await photoRecord(file, { role: "garment", width, height });
   const repository = await photoLibrary(namespace);
-  await repository.put(record);
-  core.assertPhotoReady();
-  return core.updateGarmentPhoto(garmentId, record.id);
+  return repository.withLock(async () => {
+    core.assertPhotoReady();
+    await repository.put(record);
+    core.assertPhotoReady();
+    return core.updateGarmentPhoto(garmentId, record.id);
+  });
 }
 export async function mountPhotoBackup({
   element,

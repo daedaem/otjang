@@ -294,3 +294,16 @@ test('잘못된 상담 요청 오류는 질문 길이를 탓하지 않고 새로
   assert.equal(chat.C.turns.at(-1).text, '상담 요청 형식이 맞지 않아요. 앱을 새로고침하고 다시 시도해 주세요.');
   assert.doesNotMatch(chat.C.turns.at(-1).text, /짧게|길이|300자/);
 });
+
+test('preview rejects real AI and shared catalog writes without requests or persistent storage', async () => {
+  let requests = 0, privateReads = 0;
+  const memory = storage();
+  const window = { EOUL_UI_STORAGE: memory, EoulMock: { boot: { preview: true } }, get localStorage() { privateReads++; throw Error('private'); } };
+  runLite(async () => { requests++; throw Error('unexpected network'); }, { window, crypto: { randomUUID: () => 'preview-device' } });
+  await assert.rejects(window.EOUL_SERVER_AI({ task: 'consult' }), (e) => e.code === 'preview');
+  assert.equal((await window.EOUL_CROWD.submit({ name: 'preview' })).code, 'preview');
+  assert.equal((await window.EOUL_CROWD.withdraw('test')).code, 'preview');
+  assert.equal(await window.EOUL_WEATHER(), null);
+  window.EOUL_WEATHER_PLACE.set({ mode: 'here' });
+  assert.equal(requests, 0); assert.equal(privateReads, 0);
+});

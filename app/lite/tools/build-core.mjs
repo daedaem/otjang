@@ -46,11 +46,26 @@ ${body}
 // ── lite/src/core.mjs
 ${core}
 const bootParams = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+// Preview is isolated before even probing the private browser storage.
+const bootPreview = bootParams.get('preview') === '1';
 let bootStorage = null;
-try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; }
+if (!bootPreview) { try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; } }
 const bootPhotos = bootParams.get('photos') !== '0';
 // ?preview=1: 갤러리 미리보기. 저장하지 않고 메모리에서만 동작해 다른 창의 기록과 섞이지 않는다.
-const bootPreview = bootParams.get('preview') === '1';
+const previewValues = new Map();
+window.EOUL_UI_STORAGE = bootPreview ? {
+  get length() { return previewValues.size; },
+  key: (index) => [...previewValues.keys()][index] ?? null,
+  getItem: (key) => previewValues.get(String(key)) ?? null,
+  setItem: (key, value) => { previewValues.set(String(key), String(value)); },
+  removeItem: (key) => { previewValues.delete(String(key)); },
+} : {
+  get length() { return window.localStorage.length; },
+  key: (index) => window.localStorage.key(index),
+  getItem: (key) => window.localStorage.getItem(key),
+  setItem: (key, value) => window.localStorage.setItem(key, value),
+  removeItem: (key) => window.localStorage.removeItem(key),
+};
 // 한 주소에서 여러 시안을 열 때 기록이 섞이지 않게, 페이지가 코어보다 먼저 window.EOUL_MOCK_KEY를 적으면 그 이름으로 저장한다.
 const bootKey = typeof window !== 'undefined' && typeof window.EOUL_MOCK_KEY === 'string' && window.EOUL_MOCK_KEY ? window.EOUL_MOCK_KEY : undefined;
 const mock = createMock({ storage: bootPreview ? null : bootStorage, requireStorage: !bootPreview, key: bootKey, photos: bootPhotos });

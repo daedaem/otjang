@@ -1,6 +1,12 @@
 // 설치형 앱 연결부: 후보 id·옷장 비교만 서버에 보내고, 상품 사실·AI 지시는 서버가 채운다.
 // 링크 페이지의 Claude sample 기능은 덮어쓰지 않는다. 서비스 워커도 여기서 등록한다.
 (() => {
+  const localStorage = window.EOUL_UI_STORAGE || {
+    getItem: (key) => window.localStorage.getItem(key),
+    setItem: (key, value) => window.localStorage.setItem(key, value),
+    removeItem: (key) => window.localStorage.removeItem(key),
+  };
+  const preview = () => !!window.EoulMock?.boot?.preview;
   const ERR = { 400: 'bad_request', 401: 'unauthorized', 403: 'unauthorized', 413: 'bad_request', 429: 'rate_limited', 503: 'not_configured' };
   const resumeLogin = (res, body) => {
     if (res.status === 401 && body?.login === '/_private/login' && typeof window.location?.replace === 'function') {
@@ -8,6 +14,7 @@
     }
   };
   window.EOUL_SERVER_AI = async (request) => {
+    if (preview()) throw Object.assign(new Error('미리보기에서는 실제 AI 상담을 요청하지 않아요.'), { code: 'preview' });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
@@ -67,6 +74,7 @@
     } catch { return null; }
   };
   const api = async (path, body) => {
+    if (body && preview()) return { code: 'preview', message: '미리보기에서는 공유 등록을 보내지 않아요.' };
     let res;
     try {
       res = await fetch(`/api/catalog/${path}`, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -116,6 +124,7 @@
     here: where,
   };
   window.EOUL_WEATHER = async () => {
+    if (preview()) return null;
     const place = readPlace();
     const sig = place.mode === 'fixed' ? `${place.lat},${place.lon}` : 'here';
     try {

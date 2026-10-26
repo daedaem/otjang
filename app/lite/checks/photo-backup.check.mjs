@@ -496,3 +496,10 @@ for (const query of [
     assert.doesNotMatch(window.recoveryUrl, /reset=|closet=|g=/);
   });
 }
+
+test('preview photo save refuses before opening a photo repository or committing a reference', async () => {
+  const { saveGarmentPhoto } = await import('../src/photos/index.js');
+  let touched = false;
+  await assert.rejects(saveGarmentPhoto({ core: { boot: { preview: true }, assertPhotoReady() { touched = true; } }, garmentId: 'preview', file: png() }), /미리보기/);
+  assert.equal(touched, false);
+});

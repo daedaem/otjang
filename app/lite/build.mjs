@@ -69,7 +69,7 @@ const body = read(path.join(SOURCE, SCREEN))
   .replace(/window\.EOUL_PHOTO_BASE\s*=\s*'[^']*';\s*/, '')
   .replace(/<script>\s*<\/script>\n?/, '')
   // 예전 설치 앱(d7, 기본 저장 키)에 옷장이 있으면 새 화면의 저장 키로 한 번 옮긴다(덮어쓰지 않음).
-  .replace(/<script>window\.EOUL_MOCK_KEY='([^']+)';<\/script>/, (m, key) => `<script>window.EOUL_MOCK_KEY='${key}';try{var o=localStorage.getItem('eoul-mockup-ux10v2:v1');if(o&&!localStorage.getItem('eoul-backup:photos-pending')&&!localStorage.getItem('${key}'))localStorage.setItem('${key}',o)}catch(e){}</script>`)
+  .replace(/<script>window\.EOUL_MOCK_KEY='([^']+)';<\/script>/, (m, key) => `<script>window.EOUL_MOCK_KEY='${key}';try{if(new URLSearchParams(location.search).get('preview')!=='1'){var o=localStorage.getItem('eoul-mockup-ux10v2:v1');if(o&&!localStorage.getItem('eoul-backup:photos-pending')&&!localStorage.getItem('${key}'))localStorage.setItem('${key}',o)}}catch(e){}</script>`)
   .replace('<script src="shared/ai-rank.js"></script>', '<script type="module" src="shared/open-products.mjs"></script>\n<script src="shared/lite.js"></script>\n<script src="shared/input-session.js"></script>\n<script src="shared/ai-rank.js"></script>')
   .replace(/(<script\b[^>]*\bsrc=")(shared\/[^"<>]+)(")/g, (all, before, rel, after) => scriptPaths.has(rel) ? `${before}${scriptPaths.get(rel)}${after}` : all);
 if (/EOUL_PHOTO_BASE\s*=(?!=)/.test(body) || !body.includes(scriptPaths.get('shared/lite.js'))) throw new Error(`${SCREEN} 화면 구조가 바뀌었어요. build.mjs의 바꾸기 규칙을 확인해 주세요.`);

@@ -578,6 +578,12 @@ a { color: inherit; text-decoration: none; }
 <script>
 (() => {
   const { M, esc, $, $$ } = K;
+  // One storage facade is shared by the host and optional adapters. Preview
+  // uses an empty in-memory store; private/blocked storage stays lazily guarded.
+  const localStorage = window.EOUL_UI_STORAGE || {
+    get length() { return window.localStorage.length; }, key: (i) => window.localStorage.key(i),
+    getItem: (k) => window.localStorage.getItem(k), setItem: (k, v) => window.localStorage.setItem(k, v), removeItem: (k) => window.localStorage.removeItem(k),
+  };
   // 기존 동기/비동기 이벤트 중 개별 catch가 없는 곳도 저장 실패를 사용자에게 알린다.
   const reportStorageError = (event, error) => {
     if (!['storage_write_failed', 'storage_unreadable', 'registration_write_failed', 'photo_recovery_pending'].includes(error?.code)) return;
@@ -2311,6 +2317,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   BK.undo = () => { photoTextGuard(); return plainTextUndo(); };
   BK.withPhotoTransaction = (fn) => { photoTransactionDepth++; try { const result = fn(); if (result && typeof result.then === 'function') throw new Error('글자 적용 콜백은 동기 작업이어야 해요.'); return result; } finally { photoTransactionDepth--; } };
   function backupSheet(note = '') {
+    if (M.boot?.preview) { K.toast('미리보기에서는 개인 백업을 열지 않아요. 실제 앱에서 이용해 주세요.', { bottom: 128 }); return; }
     if (document.querySelector('.bk')) return;
     let current; try { current = BK.classify(BK.snapshot()); } catch (e) { K.toast(`백업 자료를 읽지 못했어요. ${e.message}`, { bottom: 128 }); return; }
     const n = BK.count(current.data);
