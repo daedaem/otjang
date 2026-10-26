@@ -1,0 +1,33 @@
+{
+  "base": "77bfebb7a05041d3f61f504a9fba1138b99313d9",
+  "date": "2026-10-27",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "captures": [
+    "before-mobile-owned.png",
+    "after-mobile-owned.png",
+    "after-mobile-attributes.png",
+    "after-mobile-resume.png",
+    "after-mobile-cleanup-warning.png",
+    "before-desktop-owned.png",
+    "after-desktop-owned.png",
+    "after-desktop-attributes.png",
+    "after-desktop-resume.png",
+    "after-desktop-cleanup-warning.png"
+  ],
+  "sourceSha256": {
+    "src/profile/index.tsx": "2bf4090eb63b08876e18c6a22c02c22b91c46d81522b3dccd94b4c1bc6d96bf1",
+    "src/profile/Fields.tsx": "f50b3a3dbfaafe3c87bd968ddde91ab6adab022b9f9cf6853dacb533919c5abf",
+    "src/profile/Summary.tsx": "c4fb3a5ead3e4333e3b287f83031501d646920e125e95520f2ed6d81b7c08119",
+    "src/profile/Outfits.tsx": "0f5ce1e0485e73728ef891d5ae32475c2f45c8c26d9149a8b7d17f406a1dc25a",
+    "src/profile/profile.css": "51381d8de28da939b02c8d72b0147bed59057a63a93d17699dfde49129d7f2e0",
+    "src/profile/draft-session.js": "f80026173781007bdde4cb0d45f0d93befef77bc8148b7620dca44e5e18cf2c2",
+    "src/profile/types.ts": "c8994167d12969927a95fa1e5ff9a024d8de8a1f7986da963f98fa1259534ee5",
+    "src/photos/OwnedPhoto.tsx": "d36847fe8b1fbf2850ad4afcee1e1fc27b6ce8dfce72d41ac77a84213038042a",
+    "src/photos/owned-photo.css": "f22c45685f3142052b5cb76706bf3747d2412467f6c02ac564af7a7baf463a7b",
+    "src/screen.html": "daf932e246df48728e5de4b7051a03e91e0fe7d193576b3fd80a6847b73a8431",
+    "src/browser/kit.js": "cd78f1ea93c3a2be57cf34b3fadd6e71110898c7f7f8af8e55daf440ad2a5207",
+    "src/core.mjs": "d373108c83d7cb337e8f57de2211d63717f9e58eb0915767b5fb6200cab6881d",
+    "build.mjs": "74e21b77ef6717418ef04ea3ef9c78ce77a7322fa376a5a26874a8fa52e787e1"
+  }
+}

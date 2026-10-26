@@ -1,0 +1,422 @@
+.rp.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0 auto;
+  border: 0;
+  width: min(100%, 640px);
+  max-width: 640px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  padding: 0 22px calc(22px + env(safe-area-inset-bottom, 0px));
+  border-radius: 24px 24px 0 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+}
+.rp::backdrop {
+  background: var(--dim);
+}
+.rp button,
+.rp input,
+.rp select,
+.rp textarea {
+  font: inherit;
+  color: inherit;
+}
+.rp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 3;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink2);
+}
+.rp-top button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  font-size: 22px;
+  background: var(--well);
+}
+.rp-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 22px 0 14px;
+}
+.rp-head > div:last-child {
+  min-width: 0;
+  flex: 1;
+}
+.rp h2 {
+  font-size: 22px;
+  line-height: 1.4;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+.rp h2:focus {
+  outline: none;
+}
+.rp h3 {
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.rp-head p {
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--ink2);
+}
+.rp-head p.rp-brand {
+  font-weight: 650;
+  color: var(--ink);
+  font-size: 12px;
+}
+.rp-photo {
+  width: 90px;
+  height: 116px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--well);
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 8px;
+}
+.rp-note {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink2);
+  margin: 8px 0 16px;
+}
+.rp a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rp-link {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 16px;
+  color: var(--ink2);
+}
+.rp-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin-top: 22px;
+  scrollbar-width: thin;
+}
+.rp-tabs button {
+  flex: 1;
+  min-height: 48px;
+  padding: 8px 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  color: var(--ink2);
+}
+.rp-tabs button[aria-selected="true"] {
+  border-color: var(--acc);
+  color: var(--ink);
+  font-weight: 700;
+}
+.rp-fields {
+  border: 0;
+  padding: 14px 0 0;
+  margin: 0;
+  min-width: 0;
+}
+.rp-fields:disabled {
+  opacity: 0.65;
+}
+.rp-reference {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--well);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 18px 0;
+}
+.rp input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--acc);
+  margin: 1px 0 0;
+  flex: none;
+}
+.rp-reference span {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.rp-reference small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink2);
+  margin-top: 4px;
+}
+.rp-measure {
+  display: grid;
+  grid-template-columns: minmax(60px, 1fr) minmax(70px, 1fr) minmax(
+      100px,
+      1.1fr
+    );
+  gap: 8px;
+  align-items: center;
+  margin: 14px 0;
+}
+.rp-measure label {
+  font-size: 14px;
+}
+.rp input:not([type="checkbox"]),
+.rp select,
+.rp textarea {
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 10px 12px;
+  min-width: 0;
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.rp input::placeholder,
+.rp textarea::placeholder {
+  color: var(--ink3);
+}
+.rp select {
+  padding-right: 20px;
+  font-size: 13px;
+}
+.rp-attribute {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(120px, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin: 18px 0;
+}
+.rp-attribute > label:first-child {
+  font-size: 14px;
+}
+.rp-attribute small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink2);
+  margin-top: 4px;
+}
+.rp-confirm {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--ink2);
+}
+.rp-line {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  margin: 18px 0;
+}
+.rp textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+.rp-colours {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+.rp-colours button {
+  min-height: 64px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.rp-colours button[aria-pressed="true"] {
+  outline: 2px solid var(--acc);
+  outline-offset: 1px;
+}
+.rp-colours button span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+.rp-error,
+.rp-status {
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  border-radius: 12px;
+  margin: 12px 0;
+  background: var(--well);
+}
+.rp-error {
+  border: 1px solid var(--acc-text);
+  color: var(--acc-text);
+}
+.rp-autosave {
+  font-size: 12px;
+  color: var(--ink2);
+  line-height: 1.6;
+  margin: 16px 0;
+}
+.rp-footer {
+  position: sticky;
+  bottom: calc(-22px - env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+}
+.rp-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.rp-actions .btn {
+  font-size: 14px;
+}
+.rp-message {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  line-height: 1.7;
+}
+.rp-message .btn {
+  margin: 8px 8px 4px 0;
+  font-size: 14px;
+}
+.rp-confirmation {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.rp-confirmation > div {
+  display: grid;
+  gap: 8px;
+}
+.rp button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.rp button:focus-visible,
+.rp input:focus-visible,
+.rp select:focus-visible,
+.rp textarea:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+@media (min-width: 700px) {
+  .rp.sheet {
+    inset: 5vh 0 auto;
+    max-height: 90vh;
+    border-radius: 22px;
+    padding: 0 28px 24px;
+  }
+  .rp-footer {
+    bottom: -24px;
+  }
+  .rp-measure {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.rp-seller-photo {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.rp-seller-photo img {
+  width: 100%;
+  height: calc(100% - 20px);
+  object-fit: contain;
+}
+.rp-seller-photo span {
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--ink2);
+}
+.rp-looks {
+  margin: 20px 0;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.rp-looks summary {
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+}
+.rp-look-grid {
+  display: grid;
+  gap: 12px;
+}
+.rp-look-grid article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  min-width: 0;
+}
+.rp-look-grid h3 {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.rp-look-pieces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 8px;
+}
+.rp-look-photo {
+  height: 86px;
+  display: grid;
+  place-items: center;
+}
+.rp-look-pieces p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 4px 0;
+  color: var(--ink2);
+  overflow-wrap: anywhere;
+}
+.rp-error p {
+  margin: 0;
+}
+.rp-error .quiet {
+  font-size: 12px;
+}
