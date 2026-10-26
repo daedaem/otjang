@@ -1,0 +1,32 @@
+{
+  "base": "7493826d5e77a31e75502ebb6117ef5583f24c3f",
+  "date": "2026-10-27",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "captures": [
+    "before-mobile-product.png",
+    "after-mobile-manual.png",
+    "after-mobile-tie.png",
+    "after-mobile-diagram.png",
+    "before-desktop-product.png",
+    "after-desktop-manual.png",
+    "after-desktop-tie.png",
+    "after-desktop-diagram.png"
+  ],
+  "sourceSha256": {
+    "src/measure/index.tsx": "9399311e03e2c24af6838b453b6ae1f7eb3a1cab710b16d05ec621572470687b",
+    "src/measure/CandidateInputs.tsx": "ff963a71536eaa29890981e5940484dc1362990b599f52f4ec1d435148760d6a",
+    "src/measure/Comparison.tsx": "214c6bb5c4a8318c513892c8ae7885264cc3e17134809373b064381075523171",
+    "src/measure/measure.css": "7dd508b6f89b3b8963fc239602ce7e12110b56d1252017fff6cd1890fec875bb",
+    "src/measure/session.js": "a2c0dac720cfe785728c33009de90ff1758ab1512b6dce64902ca1f7b90a0437",
+    "src/measure/types.ts": "659fd0bd52ccaeb1ce37529b561bffe11681998f1771a4973383bbc59e25f0e3",
+    "src/domain/measurement-draft.js": "b896a2eb0b5238281d1c69b47af394cade13444ee5f09e748a22f2c8f3723b8b",
+    "src/domain/json-members.js": "706fb4bc7fcf8b964150a99d69b085d757b827b9f92568a5ea66d0b271b740dc",
+    "src/domain/profile-edit.js": "bb6159e01980939189d06d3fb97b3f761744221a954a079f1b281f66bfca48ec",
+    "src/core.mjs": "4af4535ab397de22e5bdcd33f823b7d81f71066b0d3400b23d0fe165871a8a3f",
+    "src/screen.html": "2aab22c1ade873971a7b2a6a545980932d56ca47ecd5639d07ae6d2c0f6c2521",
+    "tools/build-core.mjs": "c5bca08203e64d3b6cce7540fcfde6b2bcb6dd3db28bddb6ad20ecee8aac5909",
+    "build.mjs": "40482afb39a2f398022aac5f88b42cb555f4501664553c3edd95b7d6109cc534",
+    "src/browser/kit.js": "986dd29c74343c3be1f3d854b96c774c909a4b6e616f826f4610764845a6cd23"
+  }
+}

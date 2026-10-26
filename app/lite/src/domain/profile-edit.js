@@ -1,3 +1,4 @@
+import { hasDuplicateJsonMembers } from "./json-members.js";
 // An owned garment edit has its own versioned draft. Raw unfinished input is
 // never confused with confirmed measurements, nor with the registration draft.
 import {
@@ -153,7 +154,7 @@ export function validateProfileEdit(d) {
 export function readProfileDrafts(raw) {
   if (raw === null || raw === undefined) return { v: 1, edits: {} };
   const x = JSON.parse(raw);
-  if (profileEditDuplicateMembers(raw))
+  if (hasDuplicateJsonMembers(raw))
     throw Error("옷 정보 초안에 같은 이름이 두 번 있어 원문을 보존했어요.");
   profileEditKeys(x, ["v", "edits"]);
   if (
@@ -248,29 +249,4 @@ export function profileFromEdit(d) {
   if (f.reference) p.reference = true;
   else delete p.reference;
   return validateProfile(p, { kind: d.kind });
-}
-
-function profileEditDuplicateMembers(text) {
-  const stack = [];
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      const start = i++;
-      for (; i < text.length; i++) {
-        if (text[i] === "\\") i++;
-        else if (text[i] === '"') break;
-      }
-      let next = i + 1;
-      while (next < text.length && /\s/.test(text[next])) next++;
-      if (text[next] === ":") {
-        const names = stack[stack.length - 1],
-          key = JSON.parse(text.slice(start, i + 1));
-        if (names?.has(key)) return true;
-        names?.add(key);
-      }
-    } else if (c === "{") stack.push(new Set());
-    else if (c === "[") stack.push(null);
-    else if (c === "}" || c === "]") stack.pop();
-  }
-  return false;
 }

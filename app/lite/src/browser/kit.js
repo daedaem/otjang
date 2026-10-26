@@ -50,12 +50,29 @@
   // ── 화면 이동: 페이지 안에서만 쓰는 쌓기식 이동. 브라우저 뒤로가기도 따라간다.
   const stack = [];
   let onRender = () => {};
-  let navigationGuard = null, checkingNavigation = false, lastHref = location.href;
-  function setNavigationGuard(check) { const previous = navigationGuard; navigationGuard = check; return () => { if (navigationGuard === check) navigationGuard = previous; }; }
+  const navigationGuards = [];
+  let checkingNavigation = false, lastHref = location.href;
+  function setNavigationGuard(check) {
+    navigationGuards.push(check);
+    return () => { const index = navigationGuards.indexOf(check); if (index !== -1) navigationGuards.splice(index, 1); };
+  }
   function authorizeNavigation(run, cancel = () => {}) {
-    if (!navigationGuard) { run(); return; }
     if (checkingNavigation) { cancel(); return; }
-    let allowed; try { allowed = navigationGuard(); } catch { cancel(); return; }
+    // A modal checks first, but cannot replace the screen's unsaved-input guard.
+    // Keep the synchronous route path when every active guard is synchronous.
+    const checks = [...navigationGuards].reverse();
+    function allowNext(index) {
+      while (index < checks.length) {
+        let allowed; try { allowed = checks[index](); } catch { return false; }
+        if (allowed && typeof allowed.then === 'function') {
+          return Promise.resolve(allowed).then(ok => ok ? allowNext(index + 1) : false, () => false);
+        }
+        if (!allowed) return false;
+        index++;
+      }
+      return true;
+    }
+    const allowed = allowNext(0);
     if (allowed && typeof allowed.then === 'function') {
       checkingNavigation = true;
       Promise.resolve(allowed).then(ok => { if (ok) run(); else cancel(); }, cancel).finally(() => { checkingNavigation = false; });
@@ -78,7 +95,10 @@
     });
   }
   function tab(view, params = {}) { authorizeNavigation(() => { stack.length = 0; stack.push({ view, params }); draw('tab'); }); }
-  function back() { if (stack.length > 1) { try { history.back(); } catch { authorizeNavigation(() => { stack.pop(); draw('back'); }); } } }
+  function back(fallback = null) {
+    if (stack.length > 1) { try { history.back(); } catch { authorizeNavigation(() => { stack.pop(); draw('back'); }); } }
+    else if (fallback) go(fallback.view, fallback.params || {}, { replace: true });
+  }
   const current = () => stack[stack.length - 1];
   function draw(dir) {
     const cur = current();
