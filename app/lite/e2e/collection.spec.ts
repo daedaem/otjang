@@ -194,6 +194,16 @@ test("an unfinished explicit goal warns before navigation and keeps its raw text
   await expect(page.getByLabel("진열 목표 수량", { exact: true })).toHaveValue(
     "3x",
   );
+  await page.getByLabel("진열 목표 수량", { exact: true }).fill("3");
+  await page.getByLabel("목표 시리즈 이름", { exact: true }).fill("---");
+  await page.getByRole("button", { name: "목표 저장", exact: true }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByLabel("목표 시리즈 이름", { exact: true }),
+  ).toHaveValue("---");
+  await expect(page.getByLabel("진열 목표 수량", { exact: true })).toHaveValue(
+    "3",
+  );
   expect(await page.evaluate((k) => localStorage.getItem(k), NOTE)).toBeNull();
 });
 test("purchase records display collecting intent without turning zero wear into a failure or changing journey data", async ({
@@ -319,6 +329,77 @@ test("future import keeps current collection settings and undo restores the exac
   await page.locator("[data-bk-undo]").click();
   await page.waitForFunction(() => !document.querySelector(".bk"));
   expect(await page.evaluate((k) => localStorage.getItem(k), NOTE)).toBe(raw);
+});
+test("a garment removed by another window keeps the open profile and its saved draft recoverable", async ({
+  page,
+}) => {
+  const id = await own(page);
+  await shelves(page);
+  await page.locator(`[data-collection-g="${id}"]`).click();
+  await page.getByLabel("총장 (cm)", { exact: true }).fill("72.");
+  await expect(page.locator("[data-profile-editor]")).toHaveAttribute(
+    "data-draft-saved",
+    "true",
+  );
+  const draft = await page.evaluate(() =>
+    localStorage.getItem("eoul-d12-hang:profile-drafts:v1"),
+  );
+  const other = await page.context().newPage();
+  await other.route("**/*", (route) =>
+    new URL(route.request().url()).origin === "http://127.0.0.1:8792"
+      ? route.continue()
+      : route.abort(),
+  );
+  try {
+    await other.goto("/?photos=0&window=delete#/closet");
+    await other.waitForFunction(() => !!(window as any).K?.M);
+    await other.evaluate((id) => (window as any).K.M.removeGarment(id), id);
+    await expect(page.locator("[data-profile-editor]")).toBeVisible();
+    await expect(page.locator("[data-profile-editor]")).toContainText(
+      "현재 옷장에 없어요",
+    );
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("eoul-d12-hang:profile-drafts:v1"),
+      ),
+    ).toBe(draft);
+  } finally {
+    await other.close();
+  }
+});
+test("a successful earlier goal save never clears text typed while that write was pending", async ({
+  page,
+}) => {
+  await shelves(page);
+  await page.getByText("목표 직접 정하기", { exact: true }).click();
+  await page.getByLabel("목표 시리즈 이름", { exact: true }).fill("First Goal");
+  await page.getByLabel("진열 목표 수량", { exact: true }).fill("3");
+  await page.evaluate(() => {
+    const m = (window as any).K.M,
+      run = m.withStorageLock;
+    m.withStorageLock = (fn: () => unknown) =>
+      new Promise((resolve) => {
+        (window as any).releaseGoal = () => resolve(run(fn));
+      });
+  });
+  await page.getByRole("button", { name: "목표 저장", exact: true }).click();
+  await page.waitForFunction(() => !!(window as any).releaseGoal);
+  await page
+    .getByLabel("목표 시리즈 이름", { exact: true })
+    .fill("Second Goal");
+  await page.getByLabel("진열 목표 수량", { exact: true }).fill("4");
+  await page.evaluate(() => (window as any).releaseGoal());
+  await expect(
+    page.locator('[data-collection-shelf="First Goal"]'),
+  ).toContainText("직접 정한 목표 3벌");
+  await expect(
+    page.getByLabel("목표 시리즈 이름", { exact: true }),
+  ).toHaveValue("Second Goal");
+  await expect(page.getByLabel("진열 목표 수량", { exact: true })).toHaveValue(
+    "4",
+  );
+  await page.getByRole("button", { name: "뒤로", exact: true }).click();
+  await expect(page.locator("dialog[open]")).toBeVisible();
 });
 test.describe("collection offline", () => {
   test.use({ serviceWorkers: "allow" });
