@@ -177,29 +177,51 @@ test("opening and closing reference editor preserves candidate RAM even if the c
   await expect(page.locator("[data-reference-edit]")).toBeFocused();
 });
 
-test("browser Back checks unsaved comparison input underneath the clean reference editor", async ({ page }) => {
+test("browser Back checks unsaved comparison input underneath the clean reference editor", async ({
+  page,
+}) => {
   await baseline(page);
   await open(page);
   await page.evaluate(() => {
     const set = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
-      if (key === "eoul-d12-hang:measure-drafts:v1") throw new DOMException("quota", "QuotaExceededError");
+      if (key === "eoul-d12-hang:measure-drafts:v1")
+        throw new DOMException("quota", "QuotaExceededError");
       return set.call(this, key, value);
     };
   });
   await page.getByLabel("후보 총장 (cm)", { exact: true }).fill("74");
-  await expect(page.locator("[data-measure-screen]")).toHaveAttribute("data-measure-saved", "false");
-  await page.getByRole("button", { name: "기준 옷 실측 수정", exact: true }).click();
+  await expect(page.locator("[data-measure-screen]")).toHaveAttribute(
+    "data-measure-saved",
+    "false",
+  );
+  await page
+    .getByRole("button", { name: "기준 옷 실측 수정", exact: true })
+    .click();
   await expect(page.locator("[data-profile-editor]")).toBeVisible();
   await page.evaluate(() => history.back());
-  await expect(page.getByRole("heading", { name: "보관하지 못한 비교 입력이 있어요", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "보관하지 못한 비교 입력이 있어요",
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "계속 비교", exact: true }).click();
   await expect(page.locator("[data-profile-editor]")).toBeVisible();
   await page.getByRole("button", { name: "닫기", exact: true }).click();
-  await expect(page.getByLabel("후보 총장 (cm)", { exact: true })).toHaveValue("74");
+  await expect(page.getByLabel("후보 총장 (cm)", { exact: true })).toHaveValue(
+    "74",
+  );
   await page.getByRole("button", { name: "뒤로", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "보관하지 못한 비교 입력이 있어요", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "저장된 초안만 남기고 이동", exact: true }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "보관하지 못한 비교 입력이 있어요",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "저장된 초안만 남기고 이동", exact: true })
+    .click();
   await expect(page.locator(".pdp h1")).toBeVisible();
 });
 
@@ -374,15 +396,13 @@ test("future comparison import preserves the current active note and undo restor
   await page.locator("[data-photo-options]>summary").click();
   await page.locator("[data-bk-paste]").click();
   const future = ' {"v":99,"entries":{}} ';
-  await page
-    .getByLabel("백업 글자", { exact: true })
-    .fill(
-      JSON.stringify({
-        app: "eoul-lite",
-        format: 2,
-        data: { [KEY]: f.core, [DRAFT]: future },
-      }),
-    );
+  await page.getByLabel("백업 글자", { exact: true }).fill(
+    JSON.stringify({
+      app: "eoul-lite",
+      format: 2,
+      data: { [KEY]: f.core, [DRAFT]: future },
+    }),
+  );
   await page.locator("[data-bk-read]").click();
   await expect(page.locator(".bk > .bk-preview")).toContainText(
     "실측 비교 초안",
@@ -405,33 +425,50 @@ test("future comparison import preserves the current active note and undo restor
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(f.core);
 });
 
-test("direct comparison entry and reload return to the product without discarding unsaved input", async ({ page }) => {
+test("direct comparison entry and reload return to the product without discarding unsaved input", async ({
+  page,
+}) => {
   await page.goto("/?photos=0&entry=direct#/measure?id=ms-728000");
   await expect(page.locator("[data-measure-screen]")).toBeVisible();
   await page.getByRole("button", { name: "뒤로", exact: true }).click();
   await expect(page.locator(".pdp h1")).toBeVisible();
   await page.getByRole("button", { name: "뒤로", exact: true }).click();
-  await expect.poll(() => page.evaluate(() => (window as any).K.current().view)).toBe("home");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).K.current().view))
+    .toBe("home");
   await open(page);
   await page.getByLabel("후보 총장 (cm)", { exact: true }).fill("72");
-  await expect(page.locator("[data-measure-screen]")).toHaveAttribute("data-measure-saved", "true");
+  await expect(page.locator("[data-measure-screen]")).toHaveAttribute(
+    "data-measure-saved",
+    "true",
+  );
   await page.reload();
-  await expect(page.getByLabel("후보 총장 (cm)", { exact: true })).toHaveValue("72");
+  await expect(page.getByLabel("후보 총장 (cm)", { exact: true })).toHaveValue(
+    "72",
+  );
   await page.evaluate(() => {
     const set = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
-      if (key === "eoul-d12-hang:measure-drafts:v1") throw new DOMException("quota", "QuotaExceededError");
+      if (key === "eoul-d12-hang:measure-drafts:v1")
+        throw new DOMException("quota", "QuotaExceededError");
       return set.call(this, key, value);
     };
   });
   await page.getByLabel("후보 총장 (cm)", { exact: true }).fill("73");
-  await expect(page.locator("[data-measure-screen]")).toHaveAttribute("data-measure-saved", "false");
+  await expect(page.locator("[data-measure-screen]")).toHaveAttribute(
+    "data-measure-saved",
+    "false",
+  );
   await page.getByRole("button", { name: "뒤로", exact: true }).click();
   await expect(page.locator("dialog[open]")).toBeVisible();
   await page.getByRole("button", { name: "계속 비교", exact: true }).click();
-  await expect(page.getByLabel("후보 총장 (cm)", { exact: true })).toHaveValue("73");
+  await expect(page.getByLabel("후보 총장 (cm)", { exact: true })).toHaveValue(
+    "73",
+  );
   await page.getByRole("button", { name: "뒤로", exact: true }).click();
-  await page.getByRole("button", { name: "저장된 초안만 남기고 이동", exact: true }).click();
+  await page
+    .getByRole("button", { name: "저장된 초안만 남기고 이동", exact: true })
+    .click();
   await expect(page.locator(".pdp h1")).toBeVisible();
 });
 

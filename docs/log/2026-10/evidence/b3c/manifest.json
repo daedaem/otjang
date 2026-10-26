@@ -24,8 +24,9 @@
     "src/domain/json-members.js": "706fb4bc7fcf8b964150a99d69b085d757b827b9f92568a5ea66d0b271b740dc",
     "src/domain/profile-edit.js": "bb6159e01980939189d06d3fb97b3f761744221a954a079f1b281f66bfca48ec",
     "src/core.mjs": "4af4535ab397de22e5bdcd33f823b7d81f71066b0d3400b23d0fe165871a8a3f",
-    "src/screen.html": "88db4b45b318472200d4bdd671fdbf737ee2a520815820f3d595815fb7557279",
+    "src/screen.html": "2aab22c1ade873971a7b2a6a545980932d56ca47ecd5639d07ae6d2c0f6c2521",
     "tools/build-core.mjs": "c5bca08203e64d3b6cce7540fcfde6b2bcb6dd3db28bddb6ad20ecee8aac5909",
-    "build.mjs": "40482afb39a2f398022aac5f88b42cb555f4501664553c3edd95b7d6109cc534"
+    "build.mjs": "40482afb39a2f398022aac5f88b42cb555f4501664553c3edd95b7d6109cc534",
+    "src/browser/kit.js": "986dd29c74343c3be1f3d854b96c774c909a4b6e616f826f4610764845a6cd23"
   }
 }

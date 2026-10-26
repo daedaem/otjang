@@ -165,6 +165,7 @@ try {
     "src/domain/json-members.js",
     "src/domain/profile-edit.js",
     "src/core.mjs",
+    "src/browser/kit.js",
     "src/screen.html",
     "tools/build-core.mjs",
     "build.mjs",
