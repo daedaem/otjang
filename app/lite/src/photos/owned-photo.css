@@ -1,0 +1,32 @@
+.wr-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.wr-placeholder svg {
+  width: 100%;
+  height: calc(100% - 20px);
+  max-width: 150px;
+  min-height: 30px;
+  opacity: 0.75;
+}
+.wr-placeholder > span {
+  font-size: 11px;
+  line-height: 20px;
+  color: var(--ink3);
+}
+
+.wr-photo-live {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wr-photo-live img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

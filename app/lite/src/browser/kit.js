@@ -50,26 +50,40 @@
   // ── 화면 이동: 페이지 안에서만 쓰는 쌓기식 이동. 브라우저 뒤로가기도 따라간다.
   const stack = [];
   let onRender = () => {};
+  let navigationGuard = null, checkingNavigation = false, lastHref = location.href;
+  function setNavigationGuard(check) { const previous = navigationGuard; navigationGuard = check; return () => { if (navigationGuard === check) navigationGuard = previous; }; }
+  function authorizeNavigation(run, cancel = () => {}) {
+    if (!navigationGuard) { run(); return; }
+    if (checkingNavigation) { cancel(); return; }
+    let allowed; try { allowed = navigationGuard(); } catch { cancel(); return; }
+    if (allowed && typeof allowed.then === 'function') {
+      checkingNavigation = true;
+      Promise.resolve(allowed).then(ok => { if (ok) run(); else cancel(); }, cancel).finally(() => { checkingNavigation = false; });
+    } else if (allowed) run(); else cancel();
+  }
   function start(render, first = { view: 'home', params: {} }) {
     onRender = render;
     stack.length = 0; stack.push(first);
     try { history.replaceState({ k: 1 }, ''); } catch {}
-    addEventListener('popstate', () => { if (stack.length > 1) { stack.pop(); draw('back'); } });
+    addEventListener('popstate', () => { authorizeNavigation(() => { if (stack.length > 1) { stack.pop(); draw('back'); } }, () => { try { history.pushState({ k: stack.length }, '', lastHref); } catch {} }); });
     draw('none');
   }
   function go(view, params = {}, { replace = false } = {}) {
+    authorizeNavigation(() => {
     const memo = { ...current(), scroll: scrollY };
     stack[stack.length - 1] = memo;
     if (replace) stack[stack.length - 1] = { view, params };
     else { stack.push({ view, params }); try { history.pushState({ k: stack.length }, ''); } catch {} }
     draw('forward');
+    });
   }
-  function tab(view, params = {}) { stack.length = 0; stack.push({ view, params }); draw('tab'); }
-  function back() { if (stack.length > 1) { try { history.back(); } catch { stack.pop(); draw('back'); } } }
+  function tab(view, params = {}) { authorizeNavigation(() => { stack.length = 0; stack.push({ view, params }); draw('tab'); }); }
+  function back() { if (stack.length > 1) { try { history.back(); } catch { authorizeNavigation(() => { stack.pop(); draw('back'); }); } } }
   const current = () => stack[stack.length - 1];
   function draw(dir) {
     const cur = current();
     onRender(cur.view, cur.params || {}, dir);
+    lastHref = location.href;
     requestAnimationFrame(() => scrollTo(0, dir === 'back' ? cur.scroll || 0 : 0));
   }
   const refresh = () => { const cur = current(); onRender(cur.view, cur.params || {}, 'none'); };
@@ -146,5 +160,5 @@
   @media (prefers-reduced-motion: reduce){.k-odo .k-col{transition:none}}`;
   document.head.appendChild(css);
 
-  window.K = { M, esc, $, $$, reduce, SPRING, spring, productImg, garmentImg, pieceImg, WHITE, CUT, start, go, tab, back, current, refresh, toast, info, reset, odo, rollOdo, fly };
+  window.K = { M, esc, $, $$, reduce, SPRING, spring, productImg, garmentImg, pieceImg, WHITE, CUT, start, go, tab, back, current, refresh, setNavigationGuard, toast, info, reset, odo, rollOdo, fly };
 })();

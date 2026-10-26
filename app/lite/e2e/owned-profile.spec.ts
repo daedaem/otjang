@@ -1,15 +1,258 @@
-import {test,expect,type Page} from '@playwright/test';
-const KEY='eoul-d12-hang:v1',DRAFT='eoul-d12-hang:profile-drafts:v1',INPUT='eoul-d12-hang:input-draft:v1';
-test.beforeEach(async({page})=>{await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!=='http://127.0.0.1:8792')return route.abort();if(u.pathname.startsWith('/api/'))return route.fulfill({status:200,contentType:'application/json',body:'{"items":[]}'});return route.continue();});await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!(window as any).K?.M);});
-async function seed(page:Page){return page.evaluate(()=>{const m=(window as any).K.M,g=m.registerGarment({draftId:'owned-profile-test',brand:'합성 브랜드',name:'합성 옥스퍼드',kind:'shirt',color:'white',url:'https://example.test/own',profile:{v:1,measures:{length:{cm:70,source:'seller'}},fabric:{value:'코튼',source:'ai'}}}),other=m.addGarment({kind:'shirt',color:'blue',label:'다른 기준 셔츠'});m.updateGarmentProfile(other.id,{v:1,reference:true});return {id:g.id,other:other.id};});}
-async function open(page:Page,id:string){await page.locator(`[data-g="${id}"]`).click();await expect(page.locator('[data-profile-editor]')).toBeVisible();}
-test('owned editor saves measurements and one reference atomically without confirming another AI attribute',async({page})=>{
- const f=await seed(page);await open(page,f.id);await page.getByLabel('총장 (cm)',{exact:true}).fill('72');await page.getByLabel('총장 출처',{exact:true}).selectOption('measured');await page.getByLabel('이 종류의 비교 기준 옷',{exact:true}).check();await page.getByRole('button',{name:'옷 정보 저장',exact:true}).click();await expect(page.locator('[data-profile-editor]')).toContainText('옷 정보를 저장했어요');const result=await page.evaluate(({id,other})=>{const m=(window as any).K.M;return {a:m.getState().closet.find((g:any)=>g.id===id),b:m.getState().closet.find((g:any)=>g.id===other),receipt:JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!).registrations.receipts[0]};},f);expect(result.a.profile.measures.length).toEqual({cm:72,source:'measured'});expect(result.a.profile.fabric.source).toBe('ai');expect(result.a.profile.reference).toBe(true);expect(result.b.profile.reference).toBeUndefined();expect(result.receipt.input.profile.measures.length.cm).toBe(70);
- await page.getByRole('button',{name:'닫기',exact:true}).click();await page.reload();await open(page,f.id);await expect(page.getByLabel('총장 (cm)',{exact:true})).toHaveValue('72');
+import { test, expect, type Page } from "@playwright/test";
+const KEY = "eoul-d12-hang:v1",
+  DRAFT = "eoul-d12-hang:profile-drafts:v1",
+  INPUT = "eoul-d12-hang:input-draft:v1";
+test.beforeEach(async ({ page }) => {
+  await page.route("**/*", (route) => {
+    const u = new URL(route.request().url());
+    if (u.origin !== "http://127.0.0.1:8792") return route.abort();
+    if (u.pathname.startsWith("/api/"))
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: '{"items":[]}',
+      });
+    return route.continue();
+  });
+  await page.goto("/?photos=0#/closet");
+  await page.waitForFunction(() => !!(window as any).K?.M);
 });
-test('unfinished owned measurement resumes after reload and leaves the independent registration input untouched',async({page})=>{
- const f=await seed(page);await page.evaluate(k=>localStorage.setItem(k,'registration-original'),INPUT);await open(page,f.id);await page.getByLabel('총장 (cm)',{exact:true}).fill('72.');await expect.poll(()=>page.evaluate(({DRAFT,id})=>{try{return JSON.parse(localStorage.getItem(DRAFT)!).edits[id].form.measures.length;}catch{return null;}},{DRAFT,id:f.id})).toBe('72.');await page.reload();await open(page,f.id);await page.getByRole('button',{name:'이어서 수정',exact:true}).click();await expect(page.getByLabel('총장 (cm)',{exact:true})).toHaveValue('72.');await page.getByRole('button',{name:'옷 정보 저장',exact:true}).click();await expect(page.getByRole('alert')).toContainText('총장');expect(await page.evaluate(k=>localStorage.getItem(k),INPUT)).toBe('registration-original');expect(await page.evaluate(id=>(window as any).K.M.getState().closet.find((g:any)=>g.id===id).profile.measures.length.cm,f.id)).toBe(70);
+async function seed(page: Page) {
+  return page.evaluate(() => {
+    const m = (window as any).K.M,
+      g = m.registerGarment({
+        draftId: "owned-profile-test",
+        brand: "합성 브랜드",
+        name: "합성 옥스퍼드",
+        kind: "shirt",
+        color: "white",
+        url: "https://example.test/own",
+        profile: {
+          v: 1,
+          measures: { length: { cm: 70, source: "seller" } },
+          fabric: { value: "코튼", source: "ai" },
+        },
+      }),
+      other = m.addGarment({
+        kind: "shirt",
+        color: "blue",
+        label: "다른 기준 셔츠",
+      });
+    m.updateGarmentProfile(other.id, { v: 1, reference: true });
+    return { id: g.id, other: other.id };
+  });
+}
+async function open(page: Page, id: string) {
+  await page.locator(`[data-g="${id}"]`).click();
+  await expect(page.locator("[data-profile-editor]")).toBeVisible();
+}
+test("owned editor saves measurements and one reference atomically without confirming another AI attribute", async ({
+  page,
+}) => {
+  const f = await seed(page);
+  await open(page, f.id);
+  await page.getByLabel("총장 (cm)", { exact: true }).fill("72");
+  await page.getByLabel("총장 출처", { exact: true }).selectOption("measured");
+  await page.getByLabel("이 종류의 비교 기준 옷", { exact: true }).check();
+  await page.getByRole("button", { name: "옷 정보 저장", exact: true }).click();
+  await expect(page.locator("[data-profile-editor]")).toContainText(
+    "옷 정보를 저장했어요",
+  );
+  const result = await page.evaluate(({ id, other }) => {
+    const m = (window as any).K.M;
+    return {
+      a: m.getState().closet.find((g: any) => g.id === id),
+      b: m.getState().closet.find((g: any) => g.id === other),
+      receipt: JSON.parse(localStorage.getItem("eoul-d12-hang:v1")!)
+        .registrations.receipts[0],
+    };
+  }, f);
+  expect(result.a.profile.measures.length).toEqual({
+    cm: 72,
+    source: "measured",
+  });
+  expect(result.a.profile.fabric.source).toBe("ai");
+  expect(result.a.profile.reference).toBe(true);
+  expect(result.b.profile.reference).toBeUndefined();
+  expect(result.receipt.input.profile.measures.length.cm).toBe(70);
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.reload();
+  await open(page, f.id);
+  await expect(page.getByLabel("총장 (cm)", { exact: true })).toHaveValue("72");
 });
-test('a failed wardrobe write retains owned draft and existing purchase data then retries once',async({page})=>{
- const f=await seed(page);const raw=await page.evaluate(()=>{const m=(window as any).K.M;m.decide('ms-728000','buy');m.advance('ms-728000','ordered');const before=localStorage.getItem('eoul-d12-hang:v1');const original=Storage.prototype.setItem;(window as any).__failProfile=true;Storage.prototype.setItem=function(k,v){if(k==='eoul-d12-hang:v1'&&(window as any).__failProfile)throw new DOMException('quota','QuotaExceededError');return original.call(this,k,v);};return before;});await open(page,f.id);await page.getByLabel('총장 (cm)',{exact:true}).fill('72');await page.getByRole('button',{name:'옷 정보 저장',exact:true}).click();await expect(page.getByRole('alert')).toContainText('저장하지 못');expect(await page.evaluate(k=>localStorage.getItem(k),KEY)).toBe(raw);await page.evaluate(()=>(window as any).__failProfile=false);await page.getByRole('button',{name:'옷 정보 저장',exact:true}).click();await expect(page.locator('[data-profile-editor]')).toContainText('옷 정보를 저장했어요');expect(await page.evaluate(()=>(window as any).K.M.getState().records[0].stage)).toBe('ordered');
+test("unfinished owned measurement resumes after reload and leaves the independent registration input untouched", async ({
+  page,
+}) => {
+  const f = await seed(page);
+  await page.evaluate(
+    (k) => localStorage.setItem(k, "registration-original"),
+    INPUT,
+  );
+  await open(page, f.id);
+  await page.getByLabel("총장 (cm)", { exact: true }).fill("72.");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ({ DRAFT, id }) => {
+          try {
+            return JSON.parse(localStorage.getItem(DRAFT)!).edits[id].form
+              .measures.length;
+          } catch {
+            return null;
+          }
+        },
+        { DRAFT, id: f.id },
+      ),
+    )
+    .toBe("72.");
+  await page.reload();
+  await open(page, f.id);
+  await page.getByRole("button", { name: "이어서 수정", exact: true }).click();
+  await expect(page.getByLabel("총장 (cm)", { exact: true })).toHaveValue(
+    "72.",
+  );
+  await page.getByRole("button", { name: "옷 정보 저장", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("총장");
+  expect(await page.evaluate((k) => localStorage.getItem(k), INPUT)).toBe(
+    "registration-original",
+  );
+  expect(
+    await page.evaluate(
+      (id) =>
+        (window as any).K.M.getState().closet.find((g: any) => g.id === id)
+          .profile.measures.length.cm,
+      f.id,
+    ),
+  ).toBe(70);
+});
+test("a failed wardrobe write retains owned draft and existing purchase data then retries once", async ({
+  page,
+}) => {
+  const f = await seed(page);
+  const raw = await page.evaluate(() => {
+    const m = (window as any).K.M;
+    m.decide("ms-728000", "buy");
+    m.advance("ms-728000", "ordered");
+    const before = localStorage.getItem("eoul-d12-hang:v1");
+    const original = Storage.prototype.setItem;
+    (window as any).__failProfile = true;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === "eoul-d12-hang:v1" && (window as any).__failProfile)
+        throw new DOMException("quota", "QuotaExceededError");
+      return original.call(this, k, v);
+    };
+    return before;
+  });
+  await open(page, f.id);
+  await page.getByLabel("총장 (cm)", { exact: true }).fill("72");
+  await page.getByRole("button", { name: "옷 정보 저장", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("저장하지 못");
+  expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(raw);
+  await page.evaluate(() => ((window as any).__failProfile = false));
+  await page.getByRole("button", { name: "옷 정보 저장", exact: true }).click();
+  await expect(page.locator("[data-profile-editor]")).toContainText(
+    "옷 정보를 저장했어요",
+  );
+  expect(
+    await page.evaluate(() => (window as any).K.M.getState().records[0].stage),
+  ).toBe("ordered");
+});
+
+for (const navigation of ["back", "route"] as const)
+  test(`unsaved draft quota failure warns before ${navigation} navigation and keeps visible input until a choice`, async ({
+    page,
+  }) => {
+    const f = await seed(page);
+    await page.evaluate(() => {
+      (window as any).K.go("home");
+      (window as any).K.go("closet");
+    });
+    await open(page, f.id);
+    await page.evaluate(() => {
+      const set = Storage.prototype.setItem;
+      (window as any).__draftQuota = true;
+      Storage.prototype.setItem = function (k, v) {
+        if (
+          k === "eoul-d12-hang:profile-drafts:v1" &&
+          (window as any).__draftQuota
+        )
+          throw new DOMException("quota", "QuotaExceededError");
+        return set.call(this, k, v);
+      };
+    });
+    await page.getByLabel("총장 (cm)", { exact: true }).fill("74");
+    await expect(page.locator(".rp-status")).toContainText(
+      "초안을 저장하지 못",
+    );
+    if (navigation === "back") await page.goBack();
+    else await page.evaluate(() => (window as any).K.go("records"));
+    await expect(page.getByRole("alertdialog")).toContainText(
+      "아직 보관하지 못한 입력",
+    );
+    await expect(page.getByLabel("총장 (cm)", { exact: true })).toHaveValue(
+      "74",
+    );
+    await page.getByRole("button", { name: "계속 수정", exact: true }).click();
+    await expect(page.locator("[data-profile-editor]")).toBeVisible();
+    await expect(page.getByLabel("총장 (cm)", { exact: true })).toHaveValue(
+      "74",
+    );
+    await page.evaluate(() => ((window as any).__draftQuota = false));
+    await page
+      .getByRole("button", { name: "옷 정보 저장", exact: true })
+      .click();
+    await expect(page.locator("[data-profile-editor]")).toContainText(
+      "옷 정보를 저장했어요",
+    );
+    expect(
+      await page.evaluate(
+        (id) =>
+          (window as any).K.M.getState().closet.find((g: any) => g.id === id)
+            .profile.measures.length.cm,
+        f.id,
+      ),
+    ).toBe(74);
+  });
+
+test("first concurrent closet and profile loaders resolve after a single shared stylesheet response", async ({
+  page,
+}) => {
+  // The registration view has not requested either garment screen stylesheet.
+  await page.goto("/?photos=0&input=react&loader=concurrent#/reg");
+  await expect(
+    page.getByRole("heading", {
+      name: "어떤 옷을 가지고 있나요?",
+      exact: true,
+    }),
+  ).toBeVisible();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  let requested = false;
+  await page.route("**/react/OwnedPhoto-*.css", async (route) => {
+    requested = true;
+    await gate;
+    await route.continue();
+  });
+  await page.evaluate(() => {
+    (window as any).__closetReady = false;
+    (window as any).__profileReady = false;
+    void (window as any)
+      .EOUL_CLOSET_LOAD()
+      .then(() => ((window as any).__closetReady = true));
+    void (window as any)
+      .EOUL_PROFILE_LOAD()
+      .then(() => ((window as any).__profileReady = true));
+  });
+  await expect.poll(() => requested).toBe(true);
+  release();
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        closet: (window as any).__closetReady,
+        profile: (window as any).__profileReady,
+      })),
+    )
+    .toEqual({ closet: true, profile: true });
 });

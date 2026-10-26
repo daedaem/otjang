@@ -1056,8 +1056,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let curView = 'home', curParams = {};
   let inputUnmount = null, inputEpoch = 0;
   let closetUnmount = null;
+  let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
   function render(view, params, dir) {
+    if (dir !== 'none') profileClose?.(false);
     inputUnmount?.(); inputUnmount = null;
     closetUnmount?.(); closetUnmount = null;
     const epoch = ++inputEpoch;
@@ -1741,9 +1743,28 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }; });
     }; });
   }
-  function garmentSheet(id) {
+  function garmentSheet(id, { vanilla = false } = {}) {
     const g = M.getState().closet.find((x) => x.id === id);
     if (!g) return;
+    if (!vanilla && !g.trial && window.EOUL_PROFILE_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla') {
+      if (profileClose || $('.sheet')) return;
+      const epoch = ++profileEpoch, element = document.createElement('div');
+      element.innerHTML = '<div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"><p role="status">옷 정보를 여는 중이에요…</p><button class="btn line" data-profile-cancel>닫기</button></div>';
+      document.body.append(element);
+      let unmount = null;
+      const close = (refresh = true) => { profileEpoch++; profileClose = null; const dispose = unmount; unmount = null; dispose?.(); element.remove(); if (refresh) { if (!(curView === 'closet' && closetUnmount)) K.refresh(); else try { history.replaceState(history.state, '', '#/closet'); } catch {} requestAnimationFrame(() => { const target = $(`[data-g="${id}"]`) || $('#app h1'); if (target) { if (!target.matches('button')) target.tabIndex = -1; target.focus({preventScroll:true}); } }); } };
+      profileClose = close;
+      $('[data-profile-cancel]', element).onclick = () => close(false);
+      window.EOUL_PROFILE_LOAD().then(({ mount }) => {
+        if (epoch !== profileEpoch) return;
+        const dispose = mount({ element, core: M, storage: localStorage, namespace: window.EOUL_MOCK_KEY, garmentId: id, close,
+          metadata: (gid) => { const reg = regOf(gid); if (!reg) { const owned = M.getState().closet.find(x => x.id === gid), product = owned?.productId ? M.product(owned.productId) : null; return product ? { brand: product.brand, url: product.url } : null; } const cat = registrationCatalog()[reg.key]; return { ...reg, ...(cat && !reg.source ? { community: { label: crowdLine(cat).replace(/<[^>]*>/g, ''), url: cat.url } } : {}) }; },
+          backup: () => { close(false); backupSheet(); }, looks: () => { close(false); K.tab('looks'); }, navigationGuard: (check) => K.setNavigationGuard(check),
+        });
+        if (epoch !== profileEpoch) dispose?.(); else unmount = dispose;
+      }).catch(() => { if (epoch !== profileEpoch) return; close(false); garmentSheet(id, { vanilla: true }); K.toast('옷 편집 화면을 열지 못해 기존 정보 화면으로 열었어요.', {bottom:128}); });
+      return;
+    }
     const reg = regOf(id);
     const brand = g.productId ? M.product(g.productId)?.brand : reg?.brand || null;
     const with_ = M.closetOutfits({ detail: true }).list.filter((o) => o.pieces.some((x) => x.garmentId === id));

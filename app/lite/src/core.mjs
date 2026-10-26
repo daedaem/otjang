@@ -1,7 +1,7 @@
 import { assertPhotoIdle, withPhotoLock, PHOTO_PENDING_KEY, PHOTO_PENDING_MESSAGE } from './domain/photo-pending.js';
-import { validateProfile, garmentCategory } from './domain/garment-profile.js';
+import { validateProfile, garmentCategory, measureFieldsFor, MEASURES, CHOICES, CHOICE_LABELS, PURPOSES, SOURCES, profileFacts, detailKey } from './domain/garment-profile.js';
 import { railLayout, SORTS } from './domain/rail-layout.js';
-import { profileEditDraft, profileFromEdit, readProfileDrafts } from './domain/profile-edit.js';
+import { PROFILE_DRAFT_KEY, profileEditDraft, profileFromEdit, readProfileDrafts } from './domain/profile-edit.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -349,6 +349,10 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     railCategory: (garment) => garmentCategory(garment),
     railSortChoices: () => Object.entries(SORTS),
     profileEditDraft,
+    profileEditInfo(garment) {
+      const facts = profileFacts(garment.profile, garment);
+      return structuredClone({ key: PROFILE_DRAFT_KEY, measures: measureFieldsFor(garment).map(id => ({ id, label: MEASURES[id] })), attributes: Object.entries(CHOICE_LABELS).map(([id, label]) => ({ id, label, choices: CHOICES[id] || null })), purposes: PURPOSES, sources: SOURCES, facts: facts.facts.map(f => ({ ...f, confirmKey: f.key === 'details' ? `detail|${detailKey(f.text)}` : f.key })), unknown: facts.unknown });
+    },
     profileFromEdit,
     readProfileDrafts,
     canReadProfileDrafts(raw) { try { readProfileDrafts(raw); return true; } catch { return false; } },
