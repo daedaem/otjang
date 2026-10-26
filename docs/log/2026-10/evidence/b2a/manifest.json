@@ -1,0 +1,35 @@
+{
+  "baselineCommit": "469255a5a5b387d4e7ce7476a05f775eac478746",
+  "implementationHead": "b345e3e6850528ef300d33281d50ff688b8baecd",
+  "sourceHash": "0da2234dfa6d039e775e2896be8ca546bf3397c5432d4efe682eae7c076ce8ac",
+  "sourceFiles": [
+    "app/lite/src/core.mjs",
+    "app/lite/src/screen.html",
+    "app/lite/src/input-session.js",
+    "app/lite/src/lite.js",
+    "app/lite/src/photos/index.js",
+    "app/lite/src/photos/photo-backup.js",
+    "app/lite/src/photos/photo-repository.js",
+    "app/lite/src/domain/photo-pending.js",
+    "app/lite/build.mjs",
+    "app/lite/vite.config.mjs",
+    "app/lite/tools/compare-photo-backup.mjs"
+  ],
+  "fixture": "Synthetic garment, draft and generated 2x2 pixels only; all external images/API aborted",
+  "viewports": {
+    "mobile": {
+      "width": 390,
+      "height": 844
+    },
+    "desktop": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  "states": [
+    "normal",
+    "preview",
+    "recovery"
+  ],
+  "captureEngine": "Chromium; viewport simulation is not real-device validation"
+}

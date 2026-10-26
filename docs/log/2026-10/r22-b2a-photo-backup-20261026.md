@@ -16,7 +16,7 @@
 
 사진이 있으면 기본 내보내기에 포함하고 기본 복원 버튼도 묶음을 인식한다. 글자만 복사는 계속 사진을 포함하지 않는다. 미리보기는 원문 보관·기존 활성 자료 유지·보관 후 교체/제거와 누락/고아 사진을 함께 알린다. 새 파일 선택 즉시 이전 확인 권한을 없애고 선택 epoch가 다른 지연 응답을 버린다. A 정상→B 손상에서 A 버튼이 남는 문제를 두 실패로 먼저 재현했고 사진/글자/용량 초과 교체 경로를 보완했다.
 
-저널 slot은 IDB 트랜잭션에서 소유 ID를 비교하고 cleanup도 기대 ID가 같을 때만 지운다. 사진 복원·되돌리기·복구와 일반 JSON 복원·undo는 같은 Web Lock을 쓴다. 잠금 미지원 브라우저는 사진 복원을 안전하게 거절한다. 이미 열린 탭의 코어·초안·등록·상담·날씨 쓰기는 pending 표식을 확인하고, 다른 탭은 저장 경고와 inert 화면을 표시한다. 저널 작성과 비동기 사진 보관 뒤에 snapshot/STASH 변경을 다시 확인하며 바뀌었으면 글자를 덮지 않는다. 보통의 두 탭 동시 편집 전체에 서버급 원자 버전 관리를 도입한 것은 아니다.
+저널 slot은 IDB 트랜잭션에서 소유 ID를 비교하고 cleanup도 기대 ID가 같을 때만 지운다. 사진 복원·되돌리기·복구와 일반 JSON 복원·undo는 같은 Web Lock을 쓴다. 잠금 미지원 브라우저는 사진 복원을 안전하게 거절한다. 현재 버전의 이미 열린 탭은 코어·초안·등록·상담·날씨 쓰기 전에 pending 표식을 확인하고, 다른 탭은 저장 경고와 inert 화면을 표시한다. 저널 작성과 비동기 사진 보관 뒤에 snapshot/STASH 변경을 다시 확인하며 바뀌었으면 글자를 덮지 않는다. 보통의 두 탭 동시 편집 전체에 서버급 원자 버전 관리를 도입한 것은 아니다.
 
 #74/#76의 apply 보상·stash·undo 본문은 유지하고 동기 capability adapter 안에서만 사진 저널의 글자를 적용한다. 사진은 추가만 하므로 undo 뒤의 새 사진도 고아 보관본으로 남을 수 있다. 임의 정리/초기화로 공간을 비우지 않는다. 장기 보관은 사용자 버튼의 navigator.storage.persist 결과를 허용/거절/미지원으로 안내하며 영구 보장을 하지 않는다.
 
@@ -30,4 +30,20 @@
 
 초기 새8개는 미구현으로 모두 실패했고 실패 우선 커밋6a8b1fe에 남겼다. 보강한 새15개와 기존 항목을 합친 lite271/271, TypeScript/Vite 빌드, Chromium35/WebKit35=70개가 통과했다. 두 연결이 모두 새 해시가 없다고 읽은 상태를 실제로 관찰한 뒤 동시 최초 삽입, 늦은 저널 cleanup, 다른 탭/일반 JSON의 우회 차단, 원문 격리 UI, 장기 보관 안내, 방문 뒤 실제 origin 정지 오프라인도 포함한다. 기존 검사 삭제·retry/timeout 완화는 없다.
 
-전후 캡처는 동일 합성 옷장/사진·모바일/PC 크기에서 별도로 기록한다. 최종 head/CI는 PR과 후속 인계로 확인한다. 이것은 사진 보존·백업 단계이며 옷장 레일이나 전체 화면 React 전환 완료가 아니다. 실제 사용자 사진·실기기 대용량 성능·실제 Safari/PWA 권한·재설치/기기 이동은 미검증이다. 실제 사진 입력은 B2b에서 열며 R20 미확인 상품 사진 가공이나 서버 전송은 없다.
+## 전후 시각 비교
+
+기준은 B1 master469255a, 이후는 B2a 구현 b345e3e 기반의 최종 표시 보완 작업 트리다. [캡처 명세](evidence/b2a/manifest.json)의 선택 소스 해시로 실제 촬영 코드를 구분한다. 동일한 합성 옷1벌·초안·원본2×2픽셀 사진을 넣고 모바일390×844/PC1440×1000, light/한글/동작 줄이기 조건에서 Chromium으로 촬영했다. 외부 이미지/API를 차단했다. 원본 고객 사진·계정·실거래는 없다.
+
+| 상태 | 모바일 이전 | 모바일 이후 | PC 이전 | PC 이후 |
+|---|---|---|---|---|
+| 기본 | [이전](evidence/b2a/before-mobile-normal.png) | [이후](evidence/b2a/after-mobile-normal.png) | [이전](evidence/b2a/before-desktop-normal.png) | [이후](evidence/b2a/after-desktop-normal.png) |
+| 미리보기 | [이전](evidence/b2a/before-mobile-preview.png) | [이후](evidence/b2a/after-mobile-preview.png) | [이전](evidence/b2a/before-desktop-preview.png) | [이후](evidence/b2a/after-desktop-preview.png) |
+| 복구 | [이전](evidence/b2a/before-mobile-recovery.png) | [이후](evidence/b2a/after-mobile-recovery.png) | [이전](evidence/b2a/before-desktop-recovery.png) | [이후](evidence/b2a/after-desktop-recovery.png) |
+
+미리보기는 같은 미래 초안을 격리하고 기존 초안을 유지하는 자료다. 이전은 글자 파일, 이후는 사진 원문을 포함한 실제 binary 파일을 쓴다. 복구는 이전의 NEXT 잔류와 이후의 사진 승격 실패를 각각 실제 UI로 나타낸다. 내부 키는 사용자용 항목 이름으로 보이고 접힌 복구 진단에서만 확인한다. 기본 화면은 사진 포함 내보내기·복원 두 동작을 우선하고 글자 복사/추가 옵션은 접는다. 원문과 파일 속 키는 바꾸지 않는다.
+
+재현 도구는 `app/lite/tools/compare-photo-backup.mjs`이며 B2A_BASE_DIST 환경변수는 별도로 빌드한469255a를 가리킨다. 픽셀 동일성을 기능 합격이나 세계 최고 디자인의 근거로 쓰지 않는다. 캡처는 viewport 비교이고 실제 iPhone/Galaxy 확인이 아니다.
+
+ 최종 head/CI는 PR과 후속 인계로 확인한다. 이것은 사진 보존·백업 단계이며 옷장 레일이나 전체 화면 React 전환 완료가 아니다. 실제 사용자 사진·실기기 대용량 성능·실제 Safari/PWA 권한·재설치/기기 이동은 미검증이다. 실제 사진 입력은 B2b에서 열며 R20 미확인 상품 사진 가공이나 서버 전송은 없다.
+
+코드 동결 재검증: 최종 표시/추가 옵션 묶음에서도 lite271/271·전체 Chromium35/WebKit35=70개가 다시 통과했다. 선택 소스 해시와 실제 캡처12개 일치를 확인했다. 복구 전에는 오래 캐시된 구형 앱 탭을 닫거나 갱신해야 하며, 새 표식을 모르는 구형 코드까지 동시 편집 안전을 보장하는 것은 아니다.

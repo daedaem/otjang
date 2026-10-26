@@ -16,7 +16,7 @@ async function routes(page: Page) {
     return route.continue();
   });
 }
-async function open(page: Page, pending = false) {
+async function open(page: Page, pending = false, advanced = true) {
   if (pending)
     await page
       .getByRole("button", { name: "전체 백업 열기", exact: true })
@@ -25,7 +25,8 @@ async function open(page: Page, pending = false) {
     await page.getByRole("button", { name: "더보기", exact: true }).click();
     await page.locator("[data-backup]").click();
   }
-  await expect(page.locator("[data-photo-export]")).toBeVisible();
+  await expect(page.locator('[data-photo-ready="true"]')).toBeVisible();
+  if (advanced) await page.locator("[data-photo-options] > summary").click();
 }
 async function seed(page: Page) {
   return page.evaluate(async () => {
@@ -92,9 +93,9 @@ test("personal photo pack downloads, previews without writes, restores and undoe
   page,
 }) => {
   const original = await seed(page);
-  await open(page);
+  await open(page, false, false);
   const downloadPromise = page.waitForEvent("download");
-  await page.locator("[data-photo-export]").click();
+  await page.locator("[data-bk-save]").click();
   const download = await downloadPromise;
   const bytes = await fs.readFile((await download.path())!);
   expect(bytes.subarray(0, 8).toString()).toBe("EOULPH01");
@@ -106,13 +107,11 @@ test("personal photo pack downloads, previews without writes, restores and undoe
   const before = await page.evaluate(() =>
     localStorage.getItem("eoul-d12-hang:v1"),
   );
-  await page
-    .locator("#bkfile")
-    .setInputFiles({
-      name: "synthetic.otjang",
-      mimeType: "application/octet-stream",
-      buffer: bytes,
-    });
+  await page.locator("#bkfile").setInputFiles({
+    name: "synthetic.otjang",
+    mimeType: "application/octet-stream",
+    buffer: bytes,
+  });
   await expect(page.locator("[data-photo-confirm]")).toBeVisible();
   expect(
     await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
@@ -183,13 +182,11 @@ test("promotion interruption survives real IDB restart and recovers the prior wa
       throw Error("synthetic promotion failure");
     };
   });
-  await page
-    .locator("[data-photo-file]")
-    .setInputFiles({
-      name: "synthetic.otjang",
-      mimeType: "application/octet-stream",
-      buffer: bytes,
-    });
+  await page.locator("[data-photo-file]").setInputFiles({
+    name: "synthetic.otjang",
+    mimeType: "application/octet-stream",
+    buffer: bytes,
+  });
   await page.locator("[data-photo-confirm]").click();
   await expect(page.locator("[data-photo-status]")).toContainText(
     "synthetic promotion failure",
@@ -271,19 +268,17 @@ test("another open tab cannot edit or bypass photo recovery with JSON restore wh
     await other.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
   ).toBe(raw);
   await open(other, true);
-  await other
-    .locator("#bkfile")
-    .setInputFiles({
-      name: "synthetic-text.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(
-        JSON.stringify({
-          app: "eoul-lite",
-          format: 2,
-          data: { "eoul-d12-hang:ui": "{}" },
-        }),
-      ),
-    });
+  await other.locator("#bkfile").setInputFiles({
+    name: "synthetic-text.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        app: "eoul-lite",
+        format: 2,
+        data: { "eoul-d12-hang:ui": "{}" },
+      }),
+    ),
+  });
   await other.locator("[data-bk-go]").click();
   await expect(other.locator(".bk-msg")).toContainText("다른 탭");
   expect(
@@ -432,19 +427,27 @@ test("photo restore preview discloses quarantined sources and preserves current 
     },
     photos: [],
   };
-  await page
-    .locator("[data-photo-file]")
-    .setInputFiles({
-      name: "synthetic-quarantine.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(file)),
-    });
+  await page.locator("[data-photo-file]").setInputFiles({
+    name: "synthetic-quarantine.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(file)),
+  });
   await expect(page.locator("[data-photo-report]")).toContainText(
     "원문 보관 2개",
   );
   await expect(page.locator("[data-photo-report]")).toContainText(
     "기존 활성 자료 유지 2개",
   );
+  const draftRow = page.locator(
+    '[data-photo-preview] [data-source="eoul-d12-hang:input-draft:v1"]',
+  );
+  await expect(draftRow).toContainText("입력 초안");
+  await expect(draftRow.locator("code")).not.toBeVisible();
+  await draftRow.getByText("복구 진단", { exact: true }).click();
+  await expect(draftRow.locator("code")).toHaveText(
+    "eoul-d12-hang:input-draft:v1",
+  );
+
   expect(
     await page.evaluate(() =>
       JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())),
@@ -668,14 +671,12 @@ test("persistent browser upgrades old Blob photo rows without changing original 
 }, testInfo) => {
   const dir = testInfo.outputPath("synthetic-legacy-profile");
   await fs.mkdir(dir, { recursive: true });
-  const context = await browser
-    .browserType()
-    .launchPersistentContext(dir, {
-      headless: true,
-      ...(browserName === "chromium" && process.env.CHROMIUM_PATH
-        ? { executablePath: process.env.CHROMIUM_PATH }
-        : {}),
-    });
+  const context = await browser.browserType().launchPersistentContext(dir, {
+    headless: true,
+    ...(browserName === "chromium" && process.env.CHROMIUM_PATH
+      ? { executablePath: process.env.CHROMIUM_PATH }
+      : {}),
+  });
   try {
     const p = await context.newPage();
     await routes(p);
@@ -755,21 +756,17 @@ test("selecting an invalid replacement file revokes the previous restore confirm
     before = await page.evaluate(() =>
       JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())),
     );
-  await page
-    .locator("[data-photo-file]")
-    .setInputFiles({
-      name: "A-valid.otjang",
-      mimeType: "application/octet-stream",
-      buffer: bytes,
-    });
+  await page.locator("[data-photo-file]").setInputFiles({
+    name: "A-valid.otjang",
+    mimeType: "application/octet-stream",
+    buffer: bytes,
+  });
   await expect(page.locator("[data-photo-confirm]")).toBeVisible();
-  await page
-    .locator("[data-photo-file]")
-    .setInputFiles({
-      name: "B-invalid.otjang",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from("invalid replacement"),
-    });
+  await page.locator("[data-photo-file]").setInputFiles({
+    name: "B-invalid.otjang",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("invalid replacement"),
+  });
   await expect(page.locator("[data-photo-status]")).toContainText(
     "JSON이 아니에요",
   );
@@ -779,21 +776,17 @@ test("selecting an invalid replacement file revokes the previous restore confirm
       JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())),
     ),
   ).toBe(before);
-  await page
-    .locator("[data-photo-file]")
-    .setInputFiles({
-      name: "A-valid.otjang",
-      mimeType: "application/octet-stream",
-      buffer: bytes,
-    });
+  await page.locator("[data-photo-file]").setInputFiles({
+    name: "A-valid.otjang",
+    mimeType: "application/octet-stream",
+    buffer: bytes,
+  });
   await expect(page.locator("[data-photo-confirm]")).toBeVisible();
-  await page
-    .locator("#bkfile")
-    .setInputFiles({
-      name: "C-invalid.json",
-      mimeType: "application/json",
-      buffer: Buffer.from("invalid text"),
-    });
+  await page.locator("#bkfile").setInputFiles({
+    name: "C-invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("invalid text"),
+  });
   await expect(page.locator(".bk-msg")).toContainText("JSON");
   await expect(page.locator("[data-photo-confirm]")).toHaveCount(0);
   const validText = Buffer.from(
@@ -803,40 +796,32 @@ test("selecting an invalid replacement file revokes the previous restore confirm
       data: { "eoul-d12-hang:ui": "{}" },
     }),
   );
-  await page
-    .locator("#bkfile")
-    .setInputFiles({
-      name: "D-valid.json",
-      mimeType: "application/json",
-      buffer: validText,
-    });
+  await page.locator("#bkfile").setInputFiles({
+    name: "D-valid.json",
+    mimeType: "application/json",
+    buffer: validText,
+  });
   await expect(page.locator("[data-bk-go]")).toBeVisible();
-  await page
-    .locator("[data-photo-file]")
-    .setInputFiles({
-      name: "B-invalid.otjang",
-      mimeType: "application/octet-stream",
-      buffer: Buffer.from("invalid replacement"),
-    });
+  await page.locator("[data-photo-file]").setInputFiles({
+    name: "B-invalid.otjang",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("invalid replacement"),
+  });
   await expect(page.locator("[data-photo-status]")).toContainText(
     "JSON이 아니에요",
   );
   await expect(page.locator("[data-bk-go]")).toHaveCount(0);
-  await page
-    .locator("#bkfile")
-    .setInputFiles({
-      name: "D-valid.json",
-      mimeType: "application/json",
-      buffer: validText,
-    });
+  await page.locator("#bkfile").setInputFiles({
+    name: "D-valid.json",
+    mimeType: "application/json",
+    buffer: validText,
+  });
   await expect(page.locator("[data-bk-go]")).toBeVisible();
-  await page
-    .locator("#bkfile")
-    .setInputFiles({
-      name: "E-too-large.json",
-      mimeType: "application/json",
-      buffer: Buffer.alloc(5 * 1024 * 1024 + 1, 32),
-    });
+  await page.locator("#bkfile").setInputFiles({
+    name: "E-too-large.json",
+    mimeType: "application/json",
+    buffer: Buffer.alloc(5 * 1024 * 1024 + 1, 32),
+  });
   await expect(page.locator(".bk-msg")).toContainText("5MB");
   await expect(page.locator("[data-bk-go]")).toHaveCount(0);
   expect(

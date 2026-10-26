@@ -83,9 +83,17 @@ export async function mountPhotoBackup({
   const controller = createPhotoBackup({ storage, repository, textBackup });
   clients.set(namespace, { controller, repository });
   let busy = false;
+  const recoveryActions = document.createElement("div");
+  recoveryActions.className = "decs";
+  section.insertBefore(recoveryActions, message);
+  const advanced = document.createElement("details"),
+    advancedTitle = document.createElement("summary");
+  advancedTitle.textContent = "추가 백업 옵션";
+  advanced.dataset.photoOptions = "";
   const actions = document.createElement("div");
   actions.className = "decs";
-  section.insertBefore(actions, message);
+  advanced.append(advancedTitle, actions);
+  section.insertBefore(advanced, message);
   const setMessage = (text) => {
     if (element.isConnected) message.textContent = text;
   };
@@ -106,6 +114,7 @@ export async function mountPhotoBackup({
     }),
   );
   recovery.dataset.photoRecover = "";
+  recoveryActions.append(recovery);
   async function recoveryState() {
     const pending =
       storage.getItem(PHOTO_PENDING_KEY) !== null ||
@@ -233,7 +242,14 @@ export async function mountPhotoBackup({
         for (const row of [...report.archives, ...report.archivedCurrent]) {
           const li = document.createElement("li");
           li.dataset.source = row.source;
-          li.textContent = `${row.source}: ${row.reason}${row.action ? " · 보관 후 " + row.action : ""}`;
+          li.textContent = `${textBackup.sourceLabel?.(row.source) || "기타 보관 자료"}: ${row.reason}${row.action ? " · 보관 후 " + row.action : ""}`;
+          const diagnostics = document.createElement("details"),
+            summary = document.createElement("summary"),
+            key = document.createElement("code");
+          summary.textContent = "복구 진단";
+          key.textContent = row.source;
+          diagnostics.append(summary, key);
+          li.append(diagnostics);
           list.append(li);
         }
         if (list.children.length) preview.append(list);
@@ -268,6 +284,10 @@ export async function mountPhotoBackup({
     const textOnly = primaryExport.onclick;
     primaryExport.textContent = "옷장·사진 전체 파일로 내보내기";
     primaryExport.onclick = exportButton.onclick;
+    for (const selector of ["[data-bk-copy]", "[data-bk-paste]"]) {
+      const control = element.querySelector(selector);
+      if (control) actions.append(control);
+    }
     button("글자 자료만 파일로 내보내기", textOnly);
     const summary = element.querySelector(":scope > .sub");
     if (summary)
@@ -289,6 +309,7 @@ export async function mountPhotoBackup({
     undoButton.dataset.photoUndo = "";
   }
   await recoveryState();
+  section.dataset.photoReady = "true";
   return {
     previewFile,
     invalidatePreview,
