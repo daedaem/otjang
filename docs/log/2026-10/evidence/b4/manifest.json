@@ -1,0 +1,31 @@
+{
+  "base": "1a401f1bcc936505085bb031044a10cccd3dc313",
+  "date": "2026-10-27",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "captures": [
+    "before-mobile-closet.png",
+    "before-mobile-product.png",
+    "after-mobile-candidate.png",
+    "after-mobile-shelves.png",
+    "before-desktop-closet.png",
+    "before-desktop-product.png",
+    "after-desktop-candidate.png",
+    "after-desktop-shelves.png"
+  ],
+  "sourceSha256": {
+    "src/collection/index.tsx": "22cb3c04bcd77fa50f1702690966d7403e835c9b31088e6990bd32c63ec5102f",
+    "src/collection/CandidateValue.tsx": "0e377bbdd6235890644c877662e222fcf8666210e75fe65662a775ae7c6fea9c",
+    "src/collection/Shelves.tsx": "9d80fb7e3642fbac768ea860f94975105be06a71d0085523c1e449f15e3f6dfb",
+    "src/collection/session.js": "cbd0fc4510e391503479a6bb030bb77ccc6d2af91dffbbd2c09c3f3404157035",
+    "src/collection/collection.css": "9bdcf884b4d7ed5859ba41aab306c9dd2c3676f46dae90209480179058ecbdaa",
+    "src/collection/types.ts": "b45784853c179972cf57a012cdb1de5836e20b107b145961398502ab0bdff6b3",
+    "src/domain/collection-settings.js": "268d1da8776f0abe0945f1678d5a53046a55d47d62de9b958f49f3d20453b0ed",
+    "src/domain/collection-value.js": "9e7ace8358462cdebbfca6a47ee2236eabd56afc9c760c4030286db67f3c915c",
+    "src/core.mjs": "f4196959d6e2470e7354852f50c2967d2d854c2f1cf153bb15d8acbb8dcfea1f",
+    "src/screen.html": "26bb9accc2e778f749cb16614d7e8b3496662d27232b6647d62ffaec6c6f8a6e",
+    "src/closet/index.tsx": "070ce7c989bef1a158e97a49c6f33053f10e45488e5fe3f494fe837d834ffdf6",
+    "src/profile/Summary.tsx": "def5df0f7d59e10471e5fb5fa2966640bd804ada37d33bc1514cd6aa2f56f0a7",
+    "build.mjs": "7bc3d1b3247b086cb618615cf0824aff7d05da2614e0b05f2ee89e0aa6f00467"
+  }
+}

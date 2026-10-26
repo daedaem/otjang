@@ -8,14 +8,14 @@
 import { CHOICES, CHOICE_LABELS, PURPOSES, SOURCES, detailKey, garmentShape } from './garment-profile.js';
 
 // Colors people usually call "the same" on a rail. Editorial and conservative.
-const NEAR_COLORS = [
+const COLLECTION_NEAR_COLORS = [
   ['white', 'ivory'], ['ivory', 'beige'], ['navy', 'indigo'],
   ['charcoal', 'black'], ['grey', 'charcoal'], ['olive', 'green'],
 ];
 export function colorMatch(a, b) {
   if (!a || !b) return 'unknown';
   if (a === b) return 'same';
-  return NEAR_COLORS.some(([x, y]) => (x === a && y === b) || (x === b && y === a)) ? 'near' : 'different';
+  return COLLECTION_NEAR_COLORS.some(([x, y]) => (x === a && y === b) || (x === b && y === a)) ? 'near' : 'different';
 }
 
 const sameText = (a, b) => detailKey(a) === detailKey(b);

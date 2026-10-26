@@ -401,6 +401,7 @@ function Closet({ host }: { host: ClosetHost }) {
         </div>
       )}
       <div className="wr-controls">
+        <button type="button" className="quiet" onClick={host.collection}>내 진열장</button>
         <label>
           정렬
           <select

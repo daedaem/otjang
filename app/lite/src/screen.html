@@ -1057,14 +1057,17 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let inputUnmount = null, inputEpoch = 0;
   let closetUnmount = null;
   let measureUnmount = null;
+  let collectionUnmount = null;
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
   function render(view, params, dir) {
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
+    if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
     if (dir !== 'none') profileClose?.(false);
     inputUnmount?.(); inputUnmount = null;
     closetUnmount?.(); closetUnmount = null;
     measureUnmount?.(); measureUnmount = null;
+    collectionUnmount?.(); collectionUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
@@ -1072,7 +1075,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactInput = view === 'reg' && window.EOUL_INPUT_LOAD && new URLSearchParams(location.search).get('input') !== 'vanilla';
     const reactCloset = view === 'closet' && window.EOUL_CLOSET_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla';
     const reactMeasure = view === 'measure' && window.EOUL_MEASURE_LOAD;
-    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const reactCollection = view === 'collection' && window.EOUL_COLLECTION_LOAD;
+    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1080,7 +1084,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if (reactMeasure) {
+    if (reactCollection) {
+      window.EOUL_COLLECTION_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;collectionUnmount=mount({element:$('#react-collection'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,productId:params.id,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),owned:garmentSheet,backup:()=>backupSheet(),shelves:()=>K.go('collection',{}),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-collection').innerHTML='<p role="alert">진열장을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
+    } else if (reactMeasure) {
       window.EOUL_MEASURE_LOAD().then(({mount}) => { if (epoch !== inputEpoch) return; measureUnmount = mount({element:$('#react-measure'),core:M,storage:localStorage,productId:params.id,back:()=>K.back({view:'detail',params:{id:params.id}}),editReference:garmentSheet,backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)}); }).catch(() => { if (epoch === inputEpoch) $('#react-measure').innerHTML = '<p role="alert">실측 비교 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>'; });
     } else if (reactCloset) {
       window.EOUL_CLOSET_LOAD().then(({ mount }) => {
@@ -1088,6 +1094,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         closetUnmount = mount({ element: $('#react-closet'), core: M, namespace: window.EOUL_MOCK_KEY, session: closetSession,
           menu, info: disclose, add: () => K.go('add', {}), quickAdd: addFlow,
           detail: garmentSheet, looks: () => K.tab('looks'), registration: regOf,
+          collection:()=>K.go('collection',{}),
         });
       }).catch(() => { if (epoch !== inputEpoch) return; $('#react-closet').innerHTML = '<p role="status">새 화면을 불러오지 못해 기존 옷장으로 열었어요. 연결되면 다시 열어 주세요.</p>' + V.closet(params); A.closet(params); });
     } else if (reactInput) {
@@ -1106,7 +1113,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }).catch(() => { if (epoch === inputEpoch) $('#react-input').innerHTML = '<p role="alert">입력 화면을 불러오지 못했어요. 연결을 확인한 뒤 다시 열어 주세요.</p><button class="btn" data-back>돌아가기</button>'; });
     } else (A[view] || (() => {}))(params);
     // 주소는 보기용으로만 따라간다(#/p/<id> 등). 이동 자체는 K 라우터의 쌓기식 기록이 맡는다.
-    const hash = view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'home' ? '#/' : `#/${view}`;
+    const hash = view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
     try { if (location.hash !== hash) history.replaceState(history.state, '', hash); } catch {}
   }
   // 위 막대. 설명문은 화면에 늘어놓지 않고 ⓘ 하나로 모은다(탭 첫 화면은 이름 옆, 쌓인 화면은 오른쪽 끝).
@@ -1309,6 +1316,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           <div class="pricetag num"><b>${esc(p.priceText)}</b><small>${esc(p.priceNote)}</small></div>
           <p class="t6" style="margin-top:6px">${esc(p.colorLabel)} · ${esc(p.slotName)}${p.rating ? ` · 평점 ${esc(p.rating)} · 후기 ${Number(p.reviews || 0).toLocaleString('ko-KR')}개` : ''}</p></div>
         <button class="btn line wide" data-measure="${id}" style="margin:14px 0"><i class="ph ph-ruler" aria-hidden="true"></i>내 기준 옷과 실측 비교</button>
+        <button class="quiet" data-collection="${id}" style="margin-bottom:14px">활용·소장 가치 비교 →</button>
         ${ai?.reason ? `<section class="box ai-why" aria-label="AI 이유"><div class="label"><i class="ph-fill ph-sparkle"></i>AI 순위 ${ai.rank}위${ai.fit ? ` · ${esc(ai.fit)}` : ''}</div><p class="h3">${esc(ai.reason)}</p></section>` : ''}
         <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
           <h2 class="h2">${head}</h2>
@@ -1437,6 +1445,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
     records() {
       const all = M.getState().records.filter((r) => r.decision);
+      let collectionBag=null;try {collectionBag=M.readCollectionSettings(localStorage.getItem(M.collectionKey));}catch {}
+      const collectionOf=(id)=>M.collectionRecord(id,collectionBag);
       const decided = all.filter((r) => r.decision !== 'hold');
       const buy = all.filter((r) => r.decision === 'buy');
       const holds = all.filter((r) => r.decision === 'hold');
@@ -1444,14 +1454,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const waiting = buy.filter((x) => ['candidate', 'ordered', 'received'].includes(x.stage));
       const byDay = new Map();
       all.forEach((r) => { const k = dayKey(r.updatedAt); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
-      const stage = (r) => `${r.decision === 'buy' ? (r.stage === 'candidate' ? '주문 전' : r.stageLabel) : (r.stage === 'candidate' ? '' : r.stageLabel)}${r.stage === 'returned' && r.returnReasonLabel ? ` · ${r.returnReasonLabel}` : ''}`;
+      const stage = (r) => `${r.decision === 'buy' ? (r.stage === 'candidate' ? '주문 전' : r.stage==='kept'&&collectionOf(r.productId).purpose==='collect'?'계속 소장하는 내 옷':r.stageLabel) : (r.stage === 'candidate' ? '' : r.stageLabel)}${r.stage === 'returned' && r.returnReasonLabel ? ` · ${r.returnReasonLabel}` : ''}`;
       return `${top({ back: false })}
         <h1 class="h1" style="margin-top:12px">${decided.length ? `<span class="num">${decided.length}</span>벌을 정했어요` : holds.length ? `보류 <span class="num">${holds.length}</span>벌 · 아직 정하지 않았어요` : '아직 정한 옷이 없어요'}</h1>
         ${all.length ? '' : '<p class="t5 sub" style="margin-top:4px">걸어 본 옷을 살지 정하면 여기에 남아요.</p>'}
         ${all.length ? `<div class="sum"><div class="c"><div class="k">살게요</div><div class="v num">${buy.length}</div>${sum ? `<div class="t6 num nw" style="font-size:12px">${won(sum)} 수집가</div>` : ''}</div><div class="c"><div class="k">보류</div><div class="v num">${holds.length}</div></div><div class="c"><div class="k">안 살래요</div><div class="v num">${all.length - buy.length - holds.length}</div></div></div>` : ''}
         ${waiting.length ? `<section class="section"><div class="h"><h2 class="h3">사기로 한 옷</h2></div>
-          ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); const ret = (x.next || []).find((n) => n.step === 'returned'); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span><span class="acts">${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? '계속 입을게요 · 걸기' : esc(nx.label)}</button>` : ''}${ret ? `<button class="quiet" data-ret="${x.productId}">${esc(ret.label)}</button>` : ''}</span></div>`; }).join('')}</section>` : ''}
-        <div class="tl">${[...byDay.entries()].map(([d, rs]) => `<div class="day">${esc(d)}</div>${rs.map((r) => `<button class="rec" data-pid="${r.productId}">${productPic(r.productId)}<span class="grow"><span class="n">${esc(r.product?.name || '')}</span><span class="t6"><span class="pill ${r.decision === 'buy' ? 'buy' : ''}">${DEC[r.decision]}</span>${stage(r) ? ` ${esc(stage(r))}` : ''}</span></span><span class="pr num">${esc(r.product?.priceText || '')}</span></button>`).join('')}`).join('') || '<button class="btn soft wide" data-tabgo="home" style="margin-top:20px">옷 찾으러 가기</button>'}</div>`;
+          ${waiting.map((x) => { const nx = (x.next || []).find((n) => !n.needsReason); const ret = (x.next || []).find((n) => n.step === 'returned'); return `<div class="wait-row">${productPic(x.productId)}<span class="grow"><span class="n">${esc(x.product?.name || '')}</span><span class="t6">${esc(x.stageLabel)}</span></span><span class="acts">${nx ? `<button class="btn ${nx.step === 'kept' ? 'go' : 'soft'}" data-adv="${x.productId}" data-step="${nx.step}">${nx.step === 'kept' ? (collectionOf(x.productId).purpose==='collect'?'계속 소장할게요 · 걸기':'계속 입을게요 · 걸기') : esc(nx.label)}</button>` : ''}${ret ? `<button class="quiet" data-ret="${x.productId}">${esc(ret.label)}</button>` : ''}</span></div>`; }).join('')}</section>` : ''}
+        <div class="tl">${[...byDay.entries()].map(([d, rs]) => `<div class="day">${esc(d)}</div>${rs.map((r) => `<button class="rec" data-pid="${r.productId}">${productPic(r.productId)}<span class="grow"><span class="n">${esc(r.product?.name || '')}</span><span class="t6"><span class="pill ${r.decision === 'buy' ? 'buy' : ''}">${DEC[r.decision]}</span>${stage(r) ? ` ${esc(stage(r))}` : ''}</span>${collectionOf(r.productId).line?`<span class="t6" data-record-collection>${esc(collectionOf(r.productId).line)}${collectionOf(r.productId).note?` · ${esc(collectionOf(r.productId).note)}`:''}</span>`:''}</span><span class="pr num">${esc(r.product?.priceText || '')}</span></button>`).join('')}`).join('') || '<button class="btn soft wide" data-tabgo="home" style="margin-top:20px">옷 찾으러 가기</button>'}</div>`;
     },
   };
 
@@ -1585,9 +1595,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-measure],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
+    const t = e.target.closest('[data-back],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
     if (!t) return;
-    if (t.hasAttribute('data-back')) K.back(curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    if (t.hasAttribute('data-back')) K.back(curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    else if (t.hasAttribute('data-collection')) K.go('collection',t.dataset.collection?{id:t.dataset.collection}:{});
     else if (t.hasAttribute('data-measure')) K.go('measure',{id:t.dataset.measure});
     else if (t.hasAttribute('data-rakuten-search')) searchRakuten(t);
     else if (t.hasAttribute('data-rakuten-plan')) planRakuten(t);
@@ -1760,7 +1771,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       element.innerHTML = '<div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"><p role="status">옷 정보를 여는 중이에요…</p><button class="btn line" data-profile-cancel>닫기</button></div>';
       document.body.append(element);
       let unmount = null;
-      const close = (refresh = true) => { profileEpoch++; profileClose = null; const dispose = unmount; unmount = null; dispose?.(); element.remove(); if (refresh) { if (!((curView === 'closet' && closetUnmount) || (curView === 'measure' && measureUnmount))) K.refresh(); else try { history.replaceState(history.state, '', curView === 'measure' ? M.route.href('/measure',{id:curParams.id}) : '#/closet'); } catch {} requestAnimationFrame(() => { const target = (curView === 'measure' ? $('[data-reference-edit]') : $(`[data-g="${id}"]`)) || $('#app h1'); if (target) { if (!target.matches('button')) target.tabIndex = -1; target.focus({preventScroll:true}); } }); } };
+      const close = (refresh = true) => { profileEpoch++; profileClose = null; const dispose = unmount; unmount = null; dispose?.(); element.remove(); if (refresh) { if (!((curView === 'closet' && closetUnmount) || (curView === 'measure' && measureUnmount) || (curView === 'collection' && collectionUnmount))) K.refresh(); else try { history.replaceState(history.state, '', curView === 'collection' ? M.route.href('/collection',curParams.id?{id:curParams.id}:{}) : curView === 'measure' ? M.route.href('/measure',{id:curParams.id}) : '#/closet'); } catch {} requestAnimationFrame(() => { const target = (curView === 'collection' ? $(`[data-collection-g="${id}"]`) : curView === 'measure' ? $('[data-reference-edit]') : $(`[data-g="${id}"]`)) || $('#app h1'); if (target) { if (!target.matches('button')) target.tabIndex = -1; target.focus({preventScroll:true}); } }); } };
       profileClose = close;
       $('[data-profile-cancel]', element).onclick = () => close(false);
       window.EOUL_PROFILE_LOAD().then(({ mount }) => {
@@ -2263,6 +2274,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       if (profileDrafts !== undefined && (typeof M === 'undefined' || !M.canReadProfileDrafts?.(data['eoul-d12-hang:profile-drafts:v1']))) reject('옷 정보 편집 초안');
       const measureDrafts = parse('eoul-d12-hang:measure-drafts:v1', '실측 비교 초안');
       if (measureDrafts !== undefined && (typeof M === 'undefined' || !M.canReadMeasurementDrafts?.(data['eoul-d12-hang:measure-drafts:v1']))) reject('실측 비교 초안');
+      const collection = parse('eoul-d12-hang:collection:v1', '소장 목적·진열장');
+      if (collection !== undefined && (typeof M === 'undefined' || !M.canReadCollectionSettings?.(data['eoul-d12-hang:collection:v1']))) reject('소장 목적·진열장');
       if (engine !== undefined) {
         let ok;
         if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
@@ -2291,10 +2304,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       n.reg = registered.size;
       if (data['eoul-d12-hang:profile-drafts:v1'] !== undefined) { try { n.profileDrafts = Object.keys(M.readProfileDrafts(data['eoul-d12-hang:profile-drafts:v1']).edits).length; } catch { n.profileDrafts = 0; } }
       if (data['eoul-d12-hang:measure-drafts:v1'] !== undefined) { try { n.measureDrafts = Object.keys(M.readMeasurementDrafts(data['eoul-d12-hang:measure-drafts:v1']).entries).length; } catch { n.measureDrafts = 0; } }
+      if (data['eoul-d12-hang:collection:v1'] !== undefined) { try { const c=M.readCollectionSettings(data['eoul-d12-hang:collection:v1']); n.collectionIntents=Object.keys(c.candidates).length;n.collectionGoals=c.goals.length; } catch { n.collectionIntents=0;n.collectionGoals=0; } }
       return n;
     },
-    sourceLabel: (key) => key === window.EOUL_MOCK_KEY ? '옷장·구매 기록' : ({ 'eoul-d12-hang:reg': '브랜드·링크', 'eoul-d12-hang:consult': '상담 기록', 'eoul-d12-hang:input-draft:v1': '입력 초안', 'eoul-d12-hang:profile-drafts:v1': '옷 정보 편집 초안', 'eoul-d12-hang:measure-drafts:v1':'실측 비교 초안', 'eoul-d12-hang:ui': '화면 설정', 'eoul-weather:place': '날씨 지역', 'eoul-crowd:device': '기기 식별 정보' }[key] || '기타 보관 자료'),
-    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)${n.profileDrafts !== undefined ? ` · 옷 정보 초안 ${n.profileDrafts}개` : ''}${n.measureDrafts !== undefined ? ` · 실측 비교 초안 ${n.measureDrafts}개` : ''}`,
+    sourceLabel: (key) => key === window.EOUL_MOCK_KEY ? '옷장·구매 기록' : ({ 'eoul-d12-hang:reg': '브랜드·링크', 'eoul-d12-hang:consult': '상담 기록', 'eoul-d12-hang:input-draft:v1': '입력 초안', 'eoul-d12-hang:profile-drafts:v1': '옷 정보 편집 초안', 'eoul-d12-hang:measure-drafts:v1':'실측 비교 초안', 'eoul-d12-hang:collection:v1':'소장 목적·진열장', 'eoul-d12-hang:ui': '화면 설정', 'eoul-weather:place': '날씨 지역', 'eoul-crowd:device': '기기 식별 정보' }[key] || '기타 보관 자료'),
+    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)${n.profileDrafts !== undefined ? ` · 옷 정보 초안 ${n.profileDrafts}개` : ''}${n.measureDrafts !== undefined ? ` · 실측 비교 초안 ${n.measureDrafts}개` : ''}${n.collectionIntents !== undefined ? ` · 후보 목적 ${n.collectionIntents}개 · 진열 목표 ${n.collectionGoals}개` : ''}`,
     // 복원·되돌리기가 지울 수 있는 키: 이 화면이 쓰는 키와 날씨 지역뿐. 읽지 못한 원문 보관(':unreadable:')·모르는 키는 지우지 않는다.
     removable: (k) => (k.startsWith('eoul-d12-hang:') && !k.includes(':unreadable:')) || k === 'eoul-weather:place',
     // 목표 상태(target)로 바꾼다. 백업에 없는 '지울 수 있는 키'는 지우고, 쓴 뒤 다시 읽어 확인한다.
@@ -2431,7 +2445,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/measure' ? {id:r0.params.id} : {} });
+  K.start(render, { view: !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   const storageNotice = () => {
     document.getElementById('eo-storage-issue')?.remove();

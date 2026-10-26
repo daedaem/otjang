@@ -20,6 +20,7 @@ export function GarmentSummary({
   heading,
 }: Props) {
   const brand = g.brand || metadata?.brand;
+  const wear = host.core.collectionWear?.(g.id);
   const sellerPhoto =
     !g.photoId && g.productId ? host.core.photo({ id: g.productId }) : null;
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -60,6 +61,13 @@ export function GarmentSummary({
           </button>
         </div>
       </div>
+      {wear && (
+        <p className="rp-note" data-owned-wear>
+          {wear.line}
+          <br />
+          {wear.note}
+        </p>
+      )}
       {metadata?.source?.provider === "opf" &&
         /^\d{6,24}$/.test(metadata.source.code) && (
           <p className="rp-note">
