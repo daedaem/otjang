@@ -261,6 +261,7 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
         </button>
       </header>
       <GarmentSummary
+        exists={!!current}
         heading={heading}
         g={g}
         host={host}

@@ -7,6 +7,7 @@ type Props = {
   metadata: ReturnType<ProfileHost["metadata"]>;
   link: string | null;
   disabled: boolean;
+  exists: boolean;
   onColour(): void;
   heading: RefObject<HTMLHeadingElement | null>;
 };
@@ -16,11 +17,12 @@ export function GarmentSummary({
   metadata,
   link,
   disabled,
+  exists,
   onColour,
   heading,
 }: Props) {
   const brand = g.brand || metadata?.brand;
-  const wear = host.core.collectionWear?.(g.id);
+  const wear = exists ? host.core.collectionWear?.(g.id) : null;
   const sellerPhoto =
     !g.photoId && g.productId ? host.core.photo({ id: g.productId }) : null;
   const [photoFailed, setPhotoFailed] = useState(false);

@@ -56,6 +56,8 @@ function CollectionScreen({ host }: { host: CollectionHost }) {
     goalDirty: goalUnstored,
   });
   latest.current = { persisted: state.persisted, goalDirty: goalUnstored };
+  const goalValues = useRef({ series, target });
+  goalValues.current = { series, target };
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     const remove = host.navigationGuard(() => {
@@ -99,6 +101,7 @@ function CollectionScreen({ host }: { host: CollectionHost }) {
     setError("");
     if (
       !series.trim() ||
+      !host.core.collectionSeriesKey(series.trim()) ||
       !/^\d+$/.test(target) ||
       Number(target) < 1 ||
       Number(target) > 100
@@ -106,8 +109,22 @@ function CollectionScreen({ host }: { host: CollectionHost }) {
       setError("시리즈 이름과 1~100벌의 목표 수량을 확인해 주세요.");
       return;
     }
-    await session.saveGoal(series, Number(target));
-    if (session.getSnapshot().persisted) {
+    const submitted = {
+      series: series.trim(),
+      target: Number(target),
+      rawSeries: series,
+      rawTarget: target,
+    };
+    await session.saveGoal(submitted.series, submitted.target);
+    const saved = session.getSnapshot();
+    if (
+      saved.persisted &&
+      saved.bag.goals.some(
+        (g) => g.series === submitted.series && g.target === submitted.target,
+      ) &&
+      goalValues.current.series === submitted.rawSeries &&
+      goalValues.current.target === submitted.rawTarget
+    ) {
       setSeries("");
       setTarget("");
       setGoalDirty(false);

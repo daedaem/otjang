@@ -14,7 +14,7 @@
     "after-desktop-shelves.png"
   ],
   "sourceSha256": {
-    "src/collection/index.tsx": "22cb3c04bcd77fa50f1702690966d7403e835c9b31088e6990bd32c63ec5102f",
+    "src/collection/index.tsx": "b073ab266a94e9af4a01313162f45a2bbf60afd3bfe78a8073c98e7ca1c2e502",
     "src/collection/CandidateValue.tsx": "0e377bbdd6235890644c877662e222fcf8666210e75fe65662a775ae7c6fea9c",
     "src/collection/Shelves.tsx": "9d80fb7e3642fbac768ea860f94975105be06a71d0085523c1e449f15e3f6dfb",
     "src/collection/session.js": "cbd0fc4510e391503479a6bb030bb77ccc6d2af91dffbbd2c09c3f3404157035",
@@ -25,7 +25,8 @@
     "src/core.mjs": "f4196959d6e2470e7354852f50c2967d2d854c2f1cf153bb15d8acbb8dcfea1f",
     "src/screen.html": "26bb9accc2e778f749cb16614d7e8b3496662d27232b6647d62ffaec6c6f8a6e",
     "src/closet/index.tsx": "070ce7c989bef1a158e97a49c6f33053f10e45488e5fe3f494fe837d834ffdf6",
-    "src/profile/Summary.tsx": "def5df0f7d59e10471e5fb5fa2966640bd804ada37d33bc1514cd6aa2f56f0a7",
+    "src/profile/Summary.tsx": "ca6b5b9c7e7779e1523d165ec1d2d665da1000c9dfeff1aceb728291b238f270",
+    "src/profile/index.tsx": "32f5adcb1e35ce8145df3020fd1928332bb2842f10c3fbad86764893662a552f",
     "build.mjs": "7bc3d1b3247b086cb618615cf0824aff7d05da2614e0b05f2ee89e0aa6f00467"
   }
 }

@@ -164,6 +164,7 @@ try {
     "src/screen.html",
     "src/closet/index.tsx",
     "src/profile/Summary.tsx",
+    "src/profile/index.tsx",
     "build.mjs",
   ];
   manifest.sourceSha256 = Object.fromEntries(
