@@ -18,3 +18,10 @@ test('future drafts and pending photo recovery never get cleared or overwritten 
  const f=fixture();f.map.set(DRAFT,' {"v":99,"edits":{}} ');const s=session(f),before=[...f.map];assert.ok(s.getSnapshot().blocked);await assert.rejects(s.restart());assert.deepEqual([...f.map],before);
  f.map.delete(DRAFT);const next=session(f);f.map.set('eoul-backup:photos-pending','{"v":1,"id":"held"}');await next.change(form=>{form.measures.length='72';});assert.equal(f.map.has(DRAFT),false);await assert.rejects(next.save(),e=>e.code==='photo_recovery_pending');assert.equal(f.map.get(KEY),before.find(([k])=>k===KEY)[1]);
 });
+
+test('editing again after saved-but-cleanup-failed uses the saved profile as its new baseline',async()=>{
+ const f=fixture(),s=session(f);await s.change(form=>{form.measures.length='72';});f.fault((op,k)=>op==='remove'&&k===DRAFT);await s.save();await s.change(form=>{form.measures.chest='56';});f.fault(()=>false);await s.save();const p=f.core.getState().closet[0].profile;assert.equal(p.measures.length.cm,72);assert.equal(p.measures.chest.cm,56);
+});
+test('restarting an edit whose garment was removed keeps the existing draft original',async()=>{
+ const f=fixture(),s=session(f);await s.change(form=>{form.measures.length='72';});const raw=f.map.get(DRAFT);f.core.removeGarment(f.g.id);await assert.rejects(s.restart());assert.equal(f.map.get(DRAFT),raw);
+});
