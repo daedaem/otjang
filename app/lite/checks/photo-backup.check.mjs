@@ -145,6 +145,28 @@ test("photo hashing is immutable and rejects URLs, wrong MIME, oversized data an
   assert.match(record.id, /^p_[a-f0-9]{64}$/);
   assert.equal(record.blob.size, png().size);
   assert.equal(record.role, "garment");
+  let oversizedRead = false;
+  await assert.rejects(
+    () =>
+      api.photoRecord(
+        {
+          size: api.MAX_PHOTO_BYTES + 1,
+          type: "image/png",
+          arrayBuffer: async () => {
+            oversizedRead = true;
+            return new ArrayBuffer(0);
+          },
+        },
+        {},
+        webcrypto,
+      ),
+    /8MB/,
+  );
+  assert.equal(
+    oversizedRead,
+    false,
+    "oversized input is rejected before reading its bytes",
+  );
   await assert.rejects(() =>
     api.photoRecord("https://seller.test/image.jpg", {}, webcrypto),
   );
