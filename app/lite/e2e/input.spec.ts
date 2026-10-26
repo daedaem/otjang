@@ -352,3 +352,42 @@ for (const retryMode of ['vanilla', 'react']) {
     expect(data.registrations.receipts.filter((r: {input: {draftId: string}}) => r.input.draftId === draftId)).toHaveLength(1);
   });
 }
+
+
+test('B1 React resumes profile draft, registers once and restores profile through backup UI',async({page})=>{
+  const profile={v:1,measures:{length:{cm:72,source:'measured'},chest:{cm:55,source:'seller'}},fabric:{value:'옥스퍼드',source:'seller'},reference:true};
+  await page.goto('/?photos=0&input=react#/reg');await page.waitForFunction(()=>!!window.K?.M);
+  await page.evaluate(profile=>localStorage.setItem('eoul-d12-hang:input-draft:v1',JSON.stringify({v:2,step:2,updatedAt:'2026-10-25T00:00:00Z',values:{draftId:'draft-profile-e2e',brand:'합성 브랜드',name:'실측 옥스퍼드 셔츠',kind:'shirt',color:'white',url:'',profile}})),profile);
+  await page.reload();await page.getByRole('button',{name:'이어서 입력',exact:true}).click();
+  await page.getByRole('button',{name:'옷장에 넣기',exact:true}).click();await expect(page.locator('.shelf [data-g]')).toHaveCount(1);
+  const saved=await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1')!);expect(JSON.parse(saved).v).toBe(2);
+  expect(JSON.parse(saved).garments[0].profile).toEqual(profile);expect(JSON.parse(saved).registrations.receipts[0].input.profile).toEqual(profile);
+  const id=JSON.parse(saved).garments[0].id;await page.reload();await page.waitForFunction(()=>!!window.K?.M);
+  expect(await page.evaluate(()=>window.K.M.getState().closet[0].profile)).toEqual(profile);
+  await page.evaluate(()=>window.K.M.reset());await page.reload();
+  await page.getByRole('button',{name:'더보기',exact:true}).click();await page.locator('[data-backup]').click();
+  await page.locator('#bkfile').setInputFiles({name:'synthetic-profile-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'eoul-lite',format:2,data:{'eoul-d12-hang:v1':saved}}))});
+  await expect(page.locator('[data-bk-go]')).toBeVisible();await Promise.all([page.waitForEvent('load'),page.locator('[data-bk-go]').click()]);
+  await expect(page.locator('.shelf [data-g]')).toHaveCount(1);const restored=await page.evaluate(()=>window.K.M.getState().closet[0]);
+  expect(restored.id).toBe(id);expect(restored.profile).toEqual(profile);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!).registrations.receipts.length)).toBe(1);
+});
+
+test('B1 future garment profile is protected on boot and exports as exact inactive raw',async({page})=>{
+  await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
+  const raw=await page.evaluate(()=>{window.K.M.registerGarment({draftId:'draft-future-profile',brand:'합성',name:'합성 셔츠',kind:'shirt',color:'white',url:''});const st=JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!);st.garments[0].profile={v:99,future:'원문 그대로'};const raw=JSON.stringify(st);localStorage.setItem('eoul-d12-hang:v1',raw);return raw;});
+  await page.reload();await expect(page.locator('#eo-storage-issue')).toBeVisible();expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(raw);
+  await page.getByRole('button',{name:'전체 백업 열기',exact:true}).click();
+  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).__bkCopied=text;}}}));
+  await page.locator('[data-bk-copy]').click();await expect(page.locator('.bk-msg')).toContainText('복사했어요');const file=await page.evaluate(()=>JSON.parse((window as any).__bkCopied));
+  expect(file.data['eoul-d12-hang:v1']).toBeUndefined();expect(Object.entries(file.data).some(([k,v])=>k.startsWith('eoul-d12-hang:v1:unreadable:')&&v===raw)).toBe(true);
+  expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(raw);
+});
+
+test('B1 opening a legacy wardrobe preserves exact raw until an explicit wardrobe command',async({page})=>{
+ const raw=' '+JSON.stringify({v:1,gender:'M',garments:[],journeys:[],trialIds:[],absences:{},compare:[],recent:[],seq:0,annotation:{keep:'과거 추가 속성'}})+'\n';
+ await page.addInitScript(raw=>localStorage.setItem('eoul-d12-hang:v1',raw),raw);
+ await page.goto('/?photos=0#/closet');await page.waitForFunction(()=>!!window.K?.M);
+ expect(await page.evaluate(()=>localStorage.getItem('eoul-d12-hang:v1'))).toBe(raw);
+ await page.evaluate(()=>window.K.M.setGender('F'));const st=await page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:v1')!));
+ expect(st.v).toBe(2);expect(st.gender).toBe('F');expect(st.annotation).toEqual({keep:'과거 추가 속성'});
+});

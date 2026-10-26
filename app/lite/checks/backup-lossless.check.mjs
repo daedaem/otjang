@@ -19,12 +19,14 @@ function storage(initial={}) {
     dump:()=>Object.fromEntries([...values.entries()].sort())};
 }
 function run(local,source=block) {
-  const scope={localStorage:local,window:{EOUL_MOCK_KEY:ENGINE},REG_KEY:REG,CHAT_KEY:CHAT,M:createMock(),URL,TextEncoder};
+  const modern=createMock(),M=source===legacy?{canReadSaved(raw){try{const v=JSON.parse(raw);return v.v===1&&(v.registrations===undefined||v.registrations.v===1)&&modern.canReadSaved(raw);}catch{return false;}}}:modern;
+  const scope={localStorage:local,window:{EOUL_MOCK_KEY:ENGINE},REG_KEY:REG,CHAT_KEY:CHAT,M,URL,TextEncoder};
   vm.runInNewContext(`${source}\nglobalThis.BK=BK;`,scope);return scope.BK;
 }
 const file=data=>JSON.stringify({app:'eoul-lite',format:1,data});
 function engine(n=1){const s=storage(),m=createMock({storage:s,key:ENGINE});for(let i=0;i<n;i++)m.addGarment({kind:'shirt',color:'white'});return s.getItem(ENGINE);}
 const good=()=>({[ENGINE]:engine(),[REG]:'{"items":{},"catalog":{}}',[CHAT]:'{"threads":[],"cur":null}',[UI]:'{"absent":{}}'});
+const legacyGood=()=>{const data=good(),st=JSON.parse(data[ENGINE]);st.v=1;if(st.registrations)st.registrations.v=1;data[ENGINE]=JSON.stringify(st);return data;};
 const broken=()=>({[ENGINE]:'{"v":99,"unknown":"옷장 원문 ☃"}',[REG]:' {"v":99,"items":{},"catalog":{},"unknown":"등록"} ',[DRAFT]:' {"v":99,"privateFuture":"초안 그대로"} ',[CHAT]:'{"threads":[{"id":"x\\" onclick=\\"bad","turns":[]}]}'});
 const sourceOf=key=>key.split(':unreadable:')[0];
 const archives=(data,source)=>Object.entries(data).filter(([k])=>k.includes(':unreadable:')&&(!source||sourceOf(k)===source));
@@ -129,12 +131,12 @@ test('partial archive compensation and pending promotion preserve the original r
 });
 test('actual #66 round-trip is verified and cannot silently apply a new lossless format2 file',()=>{
   const bad=broken();delete bad[ENGINE];
-  const original=run(storage({...good(),...bad}),legacy),oldFile=original.make();
+  const original=run(storage({...legacyGood(),...bad}),legacy),oldFile=original.make();
   const destination=storage(),modern=run(destination);modern.restore(modern.read(JSON.stringify(oldFile)).data);
   for(const [key,raw] of Object.entries(bad))assert.ok(rawAt(modern.make().data,key).includes(raw));
-  const legacyStore=storage(good()),older=run(legacyStore,legacy),newFile=modern.make(),before=legacyStore.dump();
+  const legacyStore=storage(legacyGood()),older=run(legacyStore,legacy),newFile=modern.make(),before=legacyStore.dump();
   assert.equal(newFile.format,2);assert.throws(()=>older.read(JSON.stringify(newFile)));assert.deepEqual(legacyStore.dump(),before);assert.equal(legacyStore.events.length,0);
-  const normalFile=run(storage(good()),legacy).make(),empty=storage(),oldEmpty=run(empty,legacy);
+  const normalFile=run(storage(legacyGood()),legacy).make(),empty=storage(),oldEmpty=run(empty,legacy);
   oldEmpty.restore(oldEmpty.read(JSON.stringify(normalFile)).data);assert.deepEqual(JSON.parse(JSON.stringify(oldEmpty.make().data)),JSON.parse(JSON.stringify(normalFile.data)));
   const damagedEngineOld=run(storage({[ENGINE]:broken()[ENGINE]}),legacy).make();
   const modernEmpty=run(storage());assert.doesNotThrow(()=>modernEmpty.read(JSON.stringify(damagedEngineOld)));

@@ -1,3 +1,5 @@
+import { validateProfile } from './domain/garment-profile.js';
+import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
 // 시안은 화면만 다르게 만들고, 판단 문장과 규칙은 모두 여기서 온다(현재 앱의 구매 비교 화면과 같은 순서).
@@ -21,7 +23,8 @@ import { purchasePlanContext } from './domain/purchase-plan-context.js';
 import { resolveSearchFollowUp } from './domain/search-follow-up.js';
 import { outfitCopy } from './domain/outfit-copy.js';
 
-export const MOCK_API_VERSION = 2;
+export const MOCK_API_VERSION = 3;
+export const LITE_SNAPSHOT_VERSION = 2;
 
 // 날씨 코디(R17)의 옷 종류별 따뜻함. 흔히 쓰는 "기온별 옷차림" 구간을 옷 종류로만 옮긴 것이다(소재·두께 정보는 없다).
 const OUTER_WARMTH = { cardigan: 1, vest: 1, jacket: 2, blazer: 2, coat: 3, down: 4 };
@@ -67,7 +70,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   const EDGE_EXAMPLES = ['반바지', '남자 원피스', '꾸안꾸 느낌으로', '더 싼 걸로'];
 
   const listeners = new Set();
-  const blank = () => ({ v: 1, gender: 'M', garments: [], journeys: [], trialIds: [], absences: {}, compare: [], recent: [], seq: 0 });
+  const blank = () => ({ v: LITE_SNAPSHOT_VERSION, gender: 'M', garments: [], journeys: [], trialIds: [], absences: {}, compare: [], recent: [], seq: 0 });
   let S = blank();
   let version = 0;
   let cache = { version: -1, state: null, judge: new Map() };
@@ -85,9 +88,18 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   const colorHex = (c) => COLORS[c]?.hex || null;
 
   function buildState(record) {
+    const references = new Set();
+    const projected = record.garments.map(g => {
+      if (g.profile !== undefined) {
+        validateProfile(g.profile, g);
+        if (g.profile.reference) { if (references.has(g.kind)) throw new Error('duplicate_reference'); references.add(g.kind); }
+      }
+      // The legacy kind/color engine does not own the profile storage schema.
+      const { profile, ...flat } = g; return flat;
+    });
     const base = {
       ...newWardrobeState(), demo: false, demoSelected: [], gender: record.gender,
-      garments: record.garments, journeys: record.journeys,
+      garments: projected, journeys: record.journeys,
     };
     return { ...wardrobeView(base), now: today() };
   }
@@ -95,12 +107,13 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   // (미래 형식·잘린 JSON·엔진 검증 실패·읽기 예외). 사용자가 원문을 따로 보관하고 새로 시작할 때만 풀린다.
   const UNREADABLE = '저장된 옷장 기록을 읽지 못했어요. 기록을 지우지 않도록 저장을 멈췄어요. 원문을 받아 두거나 따로 보관한 뒤 새로 시작할 수 있어요.';
   const UNAVAILABLE = '이 브라우저 저장소를 쓸 수 없어요. 지금 화면의 변경은 저장되지 않아요. 브라우저 설정·저장 공간을 확인해 주세요.';
+  let legacyPending = false; // Defer incidental search-history saves until an explicit v2 command.
   let storageIssue = null; // { code: 'storage_unreadable'|'storage_unavailable', message, raw }
   // 저장 원문 하나를 엔진 규칙으로 읽는다. 읽을 수 없으면 던진다. 불러오기와 백업 복원 전 검사가 같은 규칙을 쓴다.
   function readSaved(raw) {
     const v = JSON.parse(raw);
-    if (v?.v !== 1 || !Array.isArray(v.garments) || !Array.isArray(v.journeys)) throw new Error('unsupported');
-    const next = { ...blank(), ...v, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
+    if (![1, LITE_SNAPSHOT_VERSION].includes(v?.v) || !Array.isArray(v.garments) || !Array.isArray(v.journeys)) throw new Error('unsupported');
+    const next = { ...blank(), ...v, v: LITE_SNAPSHOT_VERSION, trialIds: Array.isArray(v.trialIds) ? v.trialIds : [], absences: v.absences && typeof v.absences === 'object' ? v.absences : {},
       compare: Array.isArray(v.compare) ? v.compare.filter((id) => PRODUCT_BY_ID[id]).slice(0, 4) : [], recent: Array.isArray(v.recent) ? v.recent.filter((x) => typeof x === 'string').slice(0, 5) : [] };
     next.gender = next.gender === 'F' ? 'F' : 'M';
     next.registrations = readRegistrations(v.registrations);
@@ -108,7 +121,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     return next;
   }
   function load() {
-    storageIssue = null;
+    storageIssue = null; legacyPending = false;
     if (!storage) {
       if (requireStorage) storageIssue = { code: 'storage_unavailable', message: UNAVAILABLE, raw: null };
       return blank();
@@ -120,7 +133,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     }
     if (raw === null || raw === undefined || raw === '') return blank();
     try {
-      return readSaved(raw);
+      const loaded = readSaved(raw); legacyPending = JSON.parse(raw).v === 1; return loaded;
     } catch {
       storageIssue = { code: 'storage_unreadable', message: UNREADABLE, raw: String(raw) };
       return blank();
@@ -152,6 +165,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       S = before;
       throw error;
     }
+    legacyPending = false;
     version++;
     notify();
   }
@@ -165,12 +179,15 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
 
   // ── 보이는 모양
   function garmentView(g) {
+    const raw = S.garments.find(x => x.id === g.id) || g;
     const slot = SLOT_BY_ID[g.slot];
     const bought = !!g.productId;
     return {
       id: g.id, kind: g.kind, kindName: garmentKindName(g.kind), slot: g.slot || null, slotName: slot?.name || null,
       label: g.label || garmentLabel(g), gender: g.gender, color: g.color, colorLabel: colorLabel(g.color), colorHex: colorHex(g.color),
       trial: isTrial(g.id), bought, productId: g.productId || null,
+      brand: raw.brand || PRODUCT_BY_ID[raw.productId]?.brand || null, addedAt: raw.createdAt || null, photoId: raw.photoId || null,
+      ...(raw.profile !== undefined ? { profile: structuredClone(raw.profile) } : {}),
       sourceLabel: isTrial(g.id) ? '체험용' : bought ? '기록에서 산 옷' : '내 옷',
       detailMissing: !g.slot ? '세부 종류 미확인' : !g.color ? '색 미확인' : null,
       photo: garmentPhoto(g),
@@ -316,6 +333,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   // ── API
   const api = {
     apiVersion: MOCK_API_VERSION,
+    readInputDraft: readLiteInputDraft,
+    canReadInputDraft(raw) { try { readLiteInputDraft(raw); return true; } catch { return false; } },
     note: NOTE,
     catalog: { store: CATALOG.store, checkedLabel: CATALOG.checkedLabel, count: CATALOG.count, rights: CATALOG.rights },
     returnReasons: JOURNEY_RETURN_REASONS.map((id) => ({ id, label: RETURN_LABEL[id] })),
@@ -395,6 +414,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         const slot = SLOTS.find((s) => s.shape === input.kind && s.g === S.gender)?.id || null;
         garment = makeGarment({ id: nextId('g'), slot, kind: input.kind, gender: S.gender, color: input.color,
           brand: input.brand, label: input.name, source: 'user', createdAt: iso() });
+        if (input.profile !== undefined) garment.profile = structuredClone(input.profile);
+        if (garment.profile?.reference) for (const other of S.garments) if (other.kind === garment.kind && other.profile?.reference) { other.profile = { ...other.profile }; delete other.profile.reference; }
         S.garments = [...S.garments, garment];
         registrations.receipts.push({ input, garmentId: garment.id, at: iso() });
         S.registrations = registrations;
@@ -413,6 +434,16 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
       return garmentView(garment);
+    },
+    updateGarmentProfile(id, value) {
+      const garment = S.garments.find(g => g.id === id);
+      if (!garment || isTrial(id)) throw new Error('실제 보유한 옷을 골라 주세요.');
+      const profile = validateProfile(value, garment);
+      commit(() => {
+        if (profile.reference) for (const other of S.garments) if (other.id !== id && other.kind === garment.kind && other.profile?.reference) { other.profile = { ...other.profile }; delete other.profile.reference; }
+        S.garments = S.garments.map(g => g.id === id ? { ...g, profile: structuredClone(profile) } : g);
+      });
+      return garmentView(S.garments.find(g => g.id === id));
     },
     updateGarment(id, { color, slot } = {}) {
       commit(() => {
@@ -515,7 +546,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       if (!drop.length && said !== S.recent[0]) {
         const before = S.recent;
         S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5);
-        try { save(); } catch { S.recent = before; } // 검색 결과는 반환하되 저장되지 않은 이력은 남기지 않는다.
+        if (!legacyPending) try { save(); } catch { S.recent = before; } // 검색 결과는 반환하되 저장되지 않은 이력은 남기지 않는다.
       }
       return result;
     },
