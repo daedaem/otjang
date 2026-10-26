@@ -1,0 +1,69 @@
+{
+  "base": "24ed71e5514f4b1659d02132cca5ffd24cfdfb5d",
+  "date": "2026-10-27",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "mockProvider": true,
+  "realProviderCalls": 0,
+  "captures": [
+    "before-mobile-looks.png",
+    "before-mobile-scene.png",
+    "after-mobile-entry.png",
+    "after-mobile-ai.png",
+    "after-mobile-feedback.png",
+    "after-mobile-weather.png",
+    "after-mobile-attribute.png",
+    "before-desktop-looks.png",
+    "before-desktop-scene.png",
+    "after-desktop-entry.png",
+    "after-desktop-ai.png",
+    "after-desktop-feedback.png",
+    "after-desktop-weather.png",
+    "after-desktop-attribute.png"
+  ],
+  "observations": [
+    {
+      "device": "mobile",
+      "coreUnchangedByAIAndReaction": true,
+      "reactionCount": 1,
+      "primaryFlowAiCalls": 1,
+      "orderStableAfterReaction": true,
+      "attributeExampleAiCalls": 1,
+      "totalMockAiCalls": 2
+    },
+    {
+      "device": "desktop",
+      "coreUnchangedByAIAndReaction": true,
+      "reactionCount": 1,
+      "primaryFlowAiCalls": 1,
+      "orderStableAfterReaction": true,
+      "attributeExampleAiCalls": 1,
+      "totalMockAiCalls": 2
+    }
+  ],
+  "sourceSha256": {
+    "src/outfits/AIInfo.tsx": "bbf98c66a213fffb6864c9e86f379f1098c3cd9efc2e4c66b2e796655c11f07d",
+    "src/outfits/AIResult.tsx": "ada4dbf9ad793590ee763089466f955b8ee0614ced84b1496492dd0d1b5e6e61",
+    "src/outfits/Controls.tsx": "41c29660dbcb33671f93f1444c410cd825aae6175aa9ed1bdde7dd31e42041a2",
+    "src/outfits/Intro.tsx": "a1c747dc26f5cb6ee6a6b55d5a694b4801317175400bd7cf24ae01dc66b07e7d",
+    "src/outfits/OutfitCard.tsx": "e2839cae4a47de79e14dd4c40c8b4560d6085a0882ae4d8c20eea6108e353a12",
+    "src/outfits/OutfitGrid.tsx": "31745e4bb948e12142d2f662c6e2b39c9b490a347999c9c47a54ef4eccd01bf9",
+    "src/outfits/SceneSuggestions.tsx": "5b03bb850e95c4e93520a61812f262a5530b9a5c0ccf63d4bbb3c9dcbd7d7e66",
+    "src/outfits/WeatherSlot.tsx": "c7680c1a164b55154d78d63f2fb9a069d2c49b2ce3a3fd1097483c5144894b8a",
+    "src/outfits/ai-session.d.ts": "b6304993f991f711d14b3346a5f16f3e481f001f33c03499deef3d2b8abe2651",
+    "src/outfits/ai-session.js": "5ca1644cbd2c93d406a4dfe04cdf0e1e5b95d62d1175a53244cd6ea36e13e9c1",
+    "src/outfits/identity.d.ts": "856f42598883c050f51d2a31715b70ceb00211a6a7273704b32862adbb7766d5",
+    "src/outfits/identity.js": "dce4a3279c22bd35586035e9766b7a97e3aa929ad6a2f9c1b460ed11c790b7fa",
+    "src/outfits/index.tsx": "8770ef40486b2c5392c447b0d83c9e23c14dd668b5668747111ca1cc155c9ecb",
+    "src/outfits/outfits.css": "4cdd52b0c8887dc8c77820107ef59ed4260ff80f822bbe4ba87a58f6e509783c",
+    "src/outfits/reaction-session.d.ts": "fa96100ff5254bbd56ed5a7f3cd443f235f86b4398aa205f58ff0ce7b0ff84ba",
+    "src/outfits/reaction-session.js": "95ea02ddf008a01f8840b1b4d47d03e97ec473873d1b5d994577d9601281457b",
+    "src/outfits/types.ts": "bf52deec2304c7b8ddb9214a8d862e6404609fc5fa18823b22ebc74e8800b21a",
+    "src/core.mjs": "37d2053cfc6acced238354d0e0124a4cd1abff5226ccf6b58c1b259edce3b348",
+    "src/domain/outfit-review.js": "941df6757936873965d52973f469f4b39a7d90860c457ee7d91aaaff48c97fde",
+    "src/domain/outfit-facts.js": "2094e7f71762bf1d238b4ae390d06b8ae600d542436384d2568492e03305c94b",
+    "src/screen.html": "cf44fa9305b71b2a69f265398e953f78704537fdca7477394ba0aeae8fdeaf1a",
+    "build.mjs": "417ce26b7e683518191a586bd3f533c9cbdf8227c2a7fbbc564fe13420c16a4a",
+    "tools/build-core.mjs": "871fd05d71e804b834cb464043eb4d755b9d4aecdd90588653cc07eb9b5e067c"
+  }
+}
