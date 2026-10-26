@@ -81,6 +81,8 @@ const photoEntry = Object.values(inputManifest).find((entry) => entry.isEntry &&
 const closetEntry = Object.values(inputManifest).find((entry) => entry.isEntry && entry.src === 'src/closet/index.tsx');
 const profileEntry = Object.values(inputManifest).find((entry) => entry.isEntry && entry.src === 'src/profile/index.tsx');
 if (!profileEntry) throw new Error('React profile entry missing');
+const measureEntry = Object.values(inputManifest).find(entry=>entry.isEntry && entry.src==='src/measure/index.tsx');
+if (!measureEntry) throw new Error('React measure entry missing');
 if (!closetEntry) throw new Error('React closet entry missing');
 if (!photoEntry) throw new Error('Photo backup entry missing');
 if (!inputEntry) throw new Error('React input entry missing');
@@ -102,6 +104,7 @@ const islandAssets = (name, entry) => {
 const photoAssets = islandAssets('EOUL_PHOTO_LOAD', photoEntry);
 const closetAssets = islandAssets('EOUL_CLOSET_LOAD', closetEntry);
 const profileAssets = islandAssets('EOUL_PROFILE_LOAD', profileEntry);
+const measureAssets = islandAssets('EOUL_MEASURE_LOAD', measureEntry);
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -113,6 +116,7 @@ ${inputAssets}
 ${photoAssets}
 ${closetAssets}
 ${profileAssets}
+${measureAssets}
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">

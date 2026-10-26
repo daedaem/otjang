@@ -2,6 +2,7 @@ import { assertPhotoIdle, withPhotoLock, PHOTO_PENDING_KEY, PHOTO_PENDING_MESSAG
 import { validateProfile, garmentCategory, measureFieldsFor, MEASURES, CHOICES, CHOICE_LABELS, PURPOSES, SOURCES, profileFacts, detailKey } from './domain/garment-profile.js';
 import { railLayout, SORTS } from './domain/rail-layout.js';
 import { PROFILE_DRAFT_KEY, profileEditDraft, profileFromEdit, readProfileDrafts } from './domain/profile-edit.js';
+import { MEASUREMENT_DRAFT_KEY, measurementDraft, readMeasurementDrafts, measurementResult } from './domain/measurement-draft.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -349,6 +350,22 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     railCategory: (garment) => garmentCategory(garment),
     railSortChoices: () => Object.entries(SORTS),
     profileEditDraft,
+    measurementDraft,
+    readMeasurementDrafts,
+    canReadMeasurementDrafts(raw) { try { readMeasurementDrafts(raw); return true; } catch { return false; } },
+    calculateMeasurements(draft) {
+      const product = api.product(draft.productId); if (!product) throw new Error('비교할 상품을 찾지 못했어요.');
+      const references = S.garments.filter(g => !isTrial(g.id) && g.kind === product.kind);
+      const reference = references.find(g => g.id === draft.referenceId) || (!draft.referenceId ? references.find(g => g.profile?.reference) : null) || null;
+      return measurementResult(draft, product, reference);
+    },
+    measurementInfo(productId, draft = null) {
+      const product = api.product(productId); if (!product) throw new Error('비교할 상품을 찾지 못했어요.');
+      const references = api.getState().closet.filter(g => !g.trial && g.kind === product.kind);
+      const current = draft || measurementDraft(product);
+      const reference = references.find(g => g.id === current.referenceId) || (!current.referenceId ? references.find(g => g.profile?.reference) : null) || null;
+      return { key: MEASUREMENT_DRAFT_KEY, product, fields: measureFieldsFor(product).map(id => ({id,label:MEASURES[id]})), references, reference, ...measurementResult(current, product, reference) };
+    },
     profileEditInfo(garment) {
       const facts = profileFacts(garment.profile, garment);
       return structuredClone({ key: PROFILE_DRAFT_KEY, measures: measureFieldsFor(garment).map(id => ({ id, label: MEASURES[id] })), attributes: ['fabric','silhouette','thickness','surface','pattern'].map(id => ({ id, label: CHOICE_LABELS[id], choices: CHOICES[id] || null })), purposes: PURPOSES, sources: SOURCES, facts: facts.facts.map(f => ({ ...f, confirmKey: f.key === 'details' ? `detail|${detailKey(f.text)}` : f.key })), unknown: facts.unknown });
@@ -460,13 +477,16 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       return garmentView(garment);
     },
 
-    addGarment({ kind, color = null, slot = null, gender = S.gender, label = '', trial = false } = {}) {
+    addGarment({ kind, color = null, slot = null, gender = S.gender, label = '', trial = false, profile: profileValue } = {}) {
       const g = gender === 'F' ? 'F' : 'M';
       if (!GARMENT_KINDS.some((k) => k.id === kind)) throw new Error('옷 종류를 골라 주세요.');
       const s = slot && SLOT_BY_ID[slot]?.shape === kind && SLOT_BY_ID[slot]?.g === g ? slot : null;
+      const profile = profileValue === undefined ? undefined : validateProfile(profileValue, {kind,slot:s,gender:g});
+      if (profile && trial) throw new Error('체험용 옷에는 실측 기준을 저장하지 않아요.');
       let garment;
       commit(() => {
         garment = makeGarment({ id: nextId('g'), slot: s, kind, gender: g, color: COLORS[color] ? color : null, label: String(label || ''), source: 'user', createdAt: iso() });
+        if (profile) { garment.profile = structuredClone(profile); if (profile.reference) for (const other of S.garments) if (other.kind === kind && other.profile?.reference) { other.profile = {...other.profile}; delete other.profile.reference; } }
         S.garments = [...S.garments, garment];
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
