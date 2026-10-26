@@ -1081,7 +1081,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
     if (reactMeasure) {
-      window.EOUL_MEASURE_LOAD().then(({mount}) => { if (epoch !== inputEpoch) return; measureUnmount = mount({element:$('#react-measure'),core:M,storage:localStorage,productId:params.id,back:()=>K.back(),editReference:garmentSheet,backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)}); }).catch(() => { if (epoch === inputEpoch) $('#react-measure').innerHTML = '<p role="alert">실측 비교 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>'; });
+      window.EOUL_MEASURE_LOAD().then(({mount}) => { if (epoch !== inputEpoch) return; measureUnmount = mount({element:$('#react-measure'),core:M,storage:localStorage,productId:params.id,back:()=>K.back({view:'detail',params:{id:params.id}}),editReference:garmentSheet,backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)}); }).catch(() => { if (epoch === inputEpoch) $('#react-measure').innerHTML = '<p role="alert">실측 비교 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>'; });
     } else if (reactCloset) {
       window.EOUL_CLOSET_LOAD().then(({ mount }) => {
         if (epoch !== inputEpoch) return;
@@ -1587,7 +1587,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   document.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-back],[data-measure],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
     if (!t) return;
-    if (t.hasAttribute('data-back')) K.back();
+    if (t.hasAttribute('data-back')) K.back(curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
     else if (t.hasAttribute('data-measure')) K.go('measure',{id:t.dataset.measure});
     else if (t.hasAttribute('data-rakuten-search')) searchRakuten(t);
     else if (t.hasAttribute('data-rakuten-plan')) planRakuten(t);

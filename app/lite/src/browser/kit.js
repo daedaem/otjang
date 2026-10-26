@@ -78,7 +78,10 @@
     });
   }
   function tab(view, params = {}) { authorizeNavigation(() => { stack.length = 0; stack.push({ view, params }); draw('tab'); }); }
-  function back() { if (stack.length > 1) { try { history.back(); } catch { authorizeNavigation(() => { stack.pop(); draw('back'); }); } } }
+  function back(fallback = null) {
+    if (stack.length > 1) { try { history.back(); } catch { authorizeNavigation(() => { stack.pop(); draw('back'); }); } }
+    else if (fallback) go(fallback.view, fallback.params || {}, { replace: true });
+  }
   const current = () => stack[stack.length - 1];
   function draw(dir) {
     const cur = current();
