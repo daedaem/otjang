@@ -258,7 +258,7 @@ export function buildOutfitRequest({
     );
   return value;
 }
-export function outfitReviewFacts(v) {
+export function outfitReviewFacts(v,{human=false}={}) {
   if (!validateOutfitRequest(v)) throw Error("invalid_outfit_request");
   const byId = new Map(v.garments.map((g) => [g.id, g]));
   return {
@@ -297,8 +297,27 @@ export function outfitReviewFacts(v) {
               }
             : {}),
         })),
-        facts: outfitFactLines(outfitFacts({ items, ...v.context }), taste),
+        facts: outfitFactLines(outfitFacts({ items, ...v.context }), taste,{human}),
       };
     }),
   };
+}
+
+// Browser boundary: accept a complete server response only for the exact
+// submitted ids. Missing provider telemetry never becomes guessed zero usage.
+export function readOutfitResponse(request,out){
+  const fail=()=>{throw Object.assign(Error('코디 AI 응답을 확인하지 못했어요. 후보는 순위 없이 그대로예요.'),{code:'parse'});};
+  if(!validateOutfitRequest(request)||!reviewKeys(out,['summary','ranking','attribute_check','ai'])||!reviewText(out.summary,120)||!Array.isArray(out.ranking)||out.ranking.length!==request.outfits.length)fail();
+  const ids=new Set(request.outfits.map(o=>o.id)),seen=new Set();
+  for(const row of out.ranking)if(!reviewKeys(row,['id','reason'])||Object.keys(row).length!==2||!ids.has(row.id)||seen.has(row.id)||!reviewText(row.reason,80,true))fail();else seen.add(row.id);
+  const check=out.attribute_check;
+  if(!reviewKeys(check,['lines','note'])||Object.keys(check).length!==2||!Array.isArray(check.lines)||check.lines.length>100||check.lines.some(line=>!reviewText(line,500,true))||!reviewText(check.note,400,true))fail();
+  const ai=out.ai,number=n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000;
+  let telemetry=null;
+  if(reviewObject(ai)&&ai.provider==='anthropic'&&typeof ai.model==='string'&&/^claude-[a-z0-9][a-z0-9.-]{0,119}$/.test(ai.model)&&typeof ai.requestId==='string'&&/^msg_[A-Za-z0-9_-]{1,124}$/.test(ai.requestId)&&number(ai.inputTokens)&&number(ai.outputTokens)){
+    telemetry={provider:'anthropic',model:ai.model,requestId:ai.requestId,inputTokens:ai.inputTokens,outputTokens:ai.outputTokens};
+    for(const key of ['cacheCreationInputTokens','cacheReadInputTokens'])if(number(ai[key]))telemetry[key]=ai[key];
+    if(typeof ai.providerRequestId==='string'&&/^req_[A-Za-z0-9_-]{1,124}$/.test(ai.providerRequestId))telemetry.providerRequestId=ai.providerRequestId;
+  }
+  return {summary:out.summary,ranking:out.ranking.map(({id,reason})=>({id,reason})),attribute_check:{lines:[...check.lines],note:check.note},...(telemetry?{ai:telemetry}:{})};
 }

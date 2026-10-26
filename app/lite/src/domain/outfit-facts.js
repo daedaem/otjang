@@ -143,8 +143,9 @@ export function tasteSummary(reactions, { garmentIds = null } = {}) {
 }
 
 // Lines for an AI request: facts with their basis, then the user's reactions.
-export function outfitFactLines(facts, taste = null) {
-  const lines = facts.map((f) => `${f.label}: ${f.verdict} — ${f.basis}${f.editorial ? ' (편집 규칙)' : ''}`);
+const OUTFIT_VERDICT_LABELS={color:{good:'규칙상 조화가 있는 편',weak:'색 조합 추가 확인',neutral:'뚜렷한 판단 없음',unknown:'정보 부족'},formality:{'too-casual':'기준보다 캐주얼한 편','too-formal':'기준보다 격식 있는 편',fits:'기준 범위',unknown:'정보 부족'},silhouette:{'volume-heavy':'상의·하의 모두 넉넉함','all-slim':'상의·하의 모두 슬림함',balanced:'기록된 실루엣 조합',unknown:'정보 부족'},season:{'off-season':'계절 추가 확인',fits:'분류상 해당 계절',unknown:'정보 부족'},style:{core:'스타일 특징이 가까움',fits:'스타일 분류가 겹침',far:'스타일 분류 차이 있음',unknown:'정보 부족'}};
+export function outfitFactLines(facts, taste = null, {human=false}={}) {
+  const lines = facts.map((f) => `${f.label}: ${human?(OUTFIT_VERDICT_LABELS[f.dim]?.[f.verdict]||'기록 확인 필요'):f.verdict} — ${f.basis}${f.editorial ? ' (편집 규칙)' : ''}`);
   if (taste && (taste.likes || taste.dislikes))
     lines.push(`${taste.scope==='overlap'?'겹치는 옷의 과거 조합 반응(이 후보만의 평가 수 아님)':'내 반응'}: 좋아요 ${taste.likes} · 별로 ${taste.dislikes}${taste.reasons.length ? ` · ${taste.reasons.slice(0, 3).map((r) => `${r.label} ${r.count}`).join(', ')}` : ''}`);
   return lines;

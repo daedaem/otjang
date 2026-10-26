@@ -5,7 +5,7 @@ import { PROFILE_DRAFT_KEY, profileEditDraft, profileFromEdit, readProfileDrafts
 import { MEASUREMENT_DRAFT_KEY, measurementDraft, readMeasurementDrafts, measurementResult } from './domain/measurement-draft.js';
 import { COLLECTION_KEY, collectionSeriesKey, readCollectionSettings } from './domain/collection-settings.js';
 import { valueAxes, seriesShelves, wearExpectation } from './domain/collection-value.js';
-import {OUTFIT_REACTIONS_KEY,REACTION_OVERLAP_NOTE,readOutfitReactions,buildOutfitRequest} from './domain/outfit-review.js';
+import {OUTFIT_REACTIONS_KEY,REACTION_OVERLAP_NOTE,readOutfitReactions,buildOutfitRequest,readOutfitResponse,outfitReviewFacts} from './domain/outfit-review.js';
 import {REACTION_REASONS} from './domain/outfit-facts.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
@@ -17,7 +17,7 @@ import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // 저장은 이 브라우저에만, 앱과 다른 키로 한다. 앱 저장소·서버는 건드리지 않는다.
 import { registrationInput, readRegistrations } from './domain/lite-registration.js';
 import { CATALOG, PRODUCTS } from './domain/data/products.js';
-import { SLOT_BY_ID, SLOTS, COLORS, STYLES } from './domain/data/slots.js';
+import { SLOT_BY_ID, SLOTS, COLORS, STYLES, OCCASIONS } from './domain/data/slots.js';
 import { ROLE_LABEL, ROLE_ORDER } from './domain/data/looks.js';
 import {
   search, recommendLooks, recommendItems, formatPrice, josa, PRODUCT_BY_ID, productsFor, meetsCriteria,
@@ -357,6 +357,9 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     collectionKey: COLLECTION_KEY,
     outfitReactionsKey:OUTFIT_REACTIONS_KEY,
     readOutfitReactions,
+    readOutfitResponse,
+    outfitEvidence:request=>outfitReviewFacts(request,{human:true}),
+    outfitChoices:()=>({occasions:Object.entries(OCCASIONS),seasons:Object.entries(SEASON_LABEL),styles:Object.entries(STYLES).map(([id,s])=>[id,s.short||s.label])}),
     canReadOutfitReactions(raw){try{readOutfitReactions(raw);return true;}catch{return false;}},
     reactionReasons:()=>({...REACTION_REASONS}),
     outfitReview(context={},bag={v:1,reactions:[]}){
@@ -598,7 +601,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     },
 
     // 한 줄 요청 → 실제 상품과 조건·안내. 조건을 몰래 넓히지 않는다(검색 엔진 규칙 그대로).
-    ask(text, { drop = [], previous = null } = {}) {
+    readSearch(text, options={}) {return api.ask(text,{...options,remember:false});},
+    ask(text, { drop = [], previous = null, remember = true } = {}) {
       const said = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
       const base = { said, text: said, understood: false, title: '', conditions: [], dropped: [], notices: [], products: [], offOccasion: [], total: 0, outfit: null, outfitNote: null, listNote: '', criteria: null, gender: S.gender, season: null, seasonLabel: '', examples: api.examples() };
       if (!said) return { ...base, title: '찾고 싶은 옷을 적어 주세요', notices: [{ kind: 'empty-input', text: '예: 출근용 셔츠 10만원 이하' }] };
@@ -620,7 +624,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       else if (/^\s*(?:좀\s*)?더\s*(싼|저렴한|비싼|좋은|나은|괜찮은)/.test(said) && !prev)
         notices.push({ kind: 'follow-missing', text: '이어서 물을 이전 요청이 없어요. 찾을 옷 종류부터 적어 주세요.' });
       if (!r.understood) {
-        lastAsk = null;
+        if(remember)lastAsk = null;
         return { ...base, text: query, title: `‘${said}’는 아직 찾을 수 없어요`, notices: [...notices, { kind: 'not-understood', text: '이 말에 맞는 조건을 찾지 못해서 상품을 고르지 않았어요. 옷 종류·상황·예산으로 다시 적어 주세요.' }], examples: api.examples(r.gender) };
       }
       const kindLabel = r.conds.find((x) => x.key === 'kind')?.label || '이 종류';
@@ -656,8 +660,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         criteria: r.criteria, gender: r.gender, season: r.season, seasonLabel: SEASON_LABEL[r.season],
         examples: api.examples(r.gender),
       };
-      lastAsk = { ids: new Set(r.items.map((x) => x.product.id)), criteria: r.criteria };
-      if (!drop.length && said !== S.recent[0]) {
+      if(remember)lastAsk = { ids: new Set(r.items.map((x) => x.product.id)), criteria: r.criteria };
+      if (remember && !drop.length && said !== S.recent[0]) {
         const before = S.recent;
         S.recent = [said, ...S.recent.filter((x) => x !== said)].slice(0, 5);
         if (!legacyPending) try { save(); } catch { S.recent = before; } // 검색 결과는 반환하되 저장되지 않은 이력은 남기지 않는다.

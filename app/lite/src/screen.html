@@ -1058,9 +1058,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let closetUnmount = null;
   let measureUnmount = null;
   let collectionUnmount = null;
+  let outfitsUnmount = null;
+  const outfitSession={query:'내 옷으로 코디',context:{query:'내 옷으로 코디',occasion:null,season:null,styles:[]}};
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
   function render(view, params, dir) {
+    if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){const node=$('[data-outfit-weather]');if(node&&node.closest('details')?.open){node.innerHTML=weatherHtml({where:'looks'});wireWeather();}renderStrip();return;}
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
     if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
     if (dir !== 'none') profileClose?.(false);
@@ -1068,6 +1071,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     closetUnmount?.(); closetUnmount = null;
     measureUnmount?.(); measureUnmount = null;
     collectionUnmount?.(); collectionUnmount = null;
+    outfitsUnmount?.(); outfitsUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
@@ -1076,7 +1080,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactCloset = view === 'closet' && window.EOUL_CLOSET_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla';
     const reactMeasure = view === 'measure' && window.EOUL_MEASURE_LOAD;
     const reactCollection = view === 'collection' && window.EOUL_COLLECTION_LOAD;
-    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const reactOutfits=view==='looks'&&window.EOUL_OUTFITS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
+    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1084,7 +1089,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if (reactCollection) {
+    if(reactOutfits){
+      window.EOUL_OUTFITS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;outfitsUnmount=mount({element:$('#react-outfits'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,session:outfitSession,mood:params.mood,menu,info:disclose,find:()=>K.tab('home'),add:()=>K.go('add',{}),trial:()=>M.loadTrialCloset(),owned:id=>garmentSheet(id,{focusReturn:document.activeElement}),backup:()=>backupSheet(),product:id=>K.go('detail',{id}),compared:(id,added)=>{if(added&&needAsk(id))S.asking=id;else if(!added&&S.asking===id)S.asking=null;renderStrip({pop:added&&hung().length===1});},query:q=>K.go('results',{q}),scene:moodAsk,weather:node=>{node.innerHTML=weatherHtml({where:'looks'});wireWeather();},request:body=>typeof window.EOUL_SERVER_AI==='function'?window.EOUL_SERVER_AI(body):Promise.reject(Object.assign(Error('AI unavailable'),{code:'not_configured'})),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-outfits').innerHTML='<p role="status">새 코디 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.looks(params);A.looks(params);});
+    } else if (reactCollection) {
       window.EOUL_COLLECTION_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;collectionUnmount=mount({element:$('#react-collection'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,productId:params.id,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),owned:garmentSheet,backup:()=>backupSheet(),shelves:()=>K.go('collection',{}),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-collection').innerHTML='<p role="alert">진열장을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if (reactMeasure) {
       window.EOUL_MEASURE_LOAD().then(({mount}) => { if (epoch !== inputEpoch) return; measureUnmount = mount({element:$('#react-measure'),core:M,storage:localStorage,productId:params.id,back:()=>K.back({view:'detail',params:{id:params.id}}),editReference:garmentSheet,backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)}); }).catch(() => { if (epoch === inputEpoch) $('#react-measure').innerHTML = '<p role="alert">실측 비교 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>'; });
@@ -1203,7 +1210,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     let miss = '';
     if (r.missing) {
       let ps = [];
-      try { const q = M.ask(r.missing.query); ps = q.understood ? q.products.slice(0, 3) : []; } catch {}
+      try { const q = M.readSearch(r.missing.query); ps = q.understood ? q.products.slice(0, 3) : []; } catch {}
       miss = `<div class="wx-miss"><h3 class="h3">${day === 'today' ? '오늘' : '내일'} 같은 날엔 ${esc(r.missing.label)}${josa(r.missing.label, '이', '가')} 있으면 좋아요</h3>
         ${ps.length ? `<div class="wx-mg">${ps.map((p) => cardHtml(p, null)).join('')}</div><button class="quiet" data-q="${esc(r.missing.query)}" style="margin-top:2px">${esc(r.missing.query)} 더 보기<i class="ph ph-caret-right"></i></button>` : `<p class="t6" style="margin:4px 0 0">맞는 ${esc(r.missing.label)} 상품을 찾지 못했어요.</p>`}</div>`;
     }
@@ -1218,7 +1225,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
   const keepY = () => { const y = scrollY; K.refresh(); requestAnimationFrame(() => scrollTo(0, y)); };
   const MOODS = [['work', '출근'], ['date', '데이트'], ['weekend', '주말·여행'], ['formal', '격식·하객']];
-  const moodAsk = (label) => { try { const r = M.ask(`${label} 코디`); return r.understood && (r.conditions || []).some((c) => c.key === 'occasion') ? r : null; } catch { return null; } };
+  const moodAsk = (label) => { try { const r = M.readSearch(`${label} 코디`); return r.understood && (r.conditions || []).some((c) => c.key === 'occasion') ? r : null; } catch { return null; } };
   // ‘한 벌만 더’ 상품 줄: 사진·브랜드·품명·이유·수집가 + 걸기 토글.
   const sgRow = (p, why = '') => `<div class="sg" data-card="${p.id}"><span class="pic">${productPic(p.id)}${hangToggle(p.id)}</span><button class="grow" data-pid="${p.id}"><span class="b">${esc(p.brand)}</span><span class="n">${esc(p.name)}</span><span class="why">${esc(why || p.why || p.reason || '')}</span><span class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></span></button></div>`;
 
@@ -1762,7 +1769,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }; });
     }; });
   }
-  function garmentSheet(id, { vanilla = false } = {}) {
+  function garmentSheet(id, { vanilla = false, focusReturn = null } = {}) {
     const g = M.getState().closet.find((x) => x.id === id);
     if (!g) return;
     if (!vanilla && !g.trial && window.EOUL_PROFILE_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla') {
@@ -1771,7 +1778,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       element.innerHTML = '<div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"><p role="status">옷 정보를 여는 중이에요…</p><button class="btn line" data-profile-cancel>닫기</button></div>';
       document.body.append(element);
       let unmount = null;
-      const close = (refresh = true) => { profileEpoch++; profileClose = null; const dispose = unmount; unmount = null; dispose?.(); element.remove(); if (refresh) { if (!((curView === 'closet' && closetUnmount) || (curView === 'measure' && measureUnmount) || (curView === 'collection' && collectionUnmount))) K.refresh(); else try { history.replaceState(history.state, '', curView === 'collection' ? M.route.href('/collection',curParams.id?{id:curParams.id}:{}) : curView === 'measure' ? M.route.href('/measure',{id:curParams.id}) : '#/closet'); } catch {} requestAnimationFrame(() => { const target = (curView === 'collection' ? $(`[data-collection-g="${id}"]`) : curView === 'measure' ? $('[data-reference-edit]') : $(`[data-g="${id}"]`)) || $('#app h1'); if (target) { if (!target.matches('button')) target.tabIndex = -1; target.focus({preventScroll:true}); } }); } };
+      const close = (refresh = true) => { profileEpoch++; profileClose = null; const dispose = unmount; unmount = null; dispose?.(); element.remove(); if (refresh) { if (!((curView === 'closet' && closetUnmount) || (curView === 'measure' && measureUnmount) || (curView === 'collection' && collectionUnmount) || (curView === 'looks' && outfitsUnmount))) K.refresh(); else try { history.replaceState(history.state, '', curView === 'looks' ? '#/looks' : curView === 'collection' ? M.route.href('/collection',curParams.id?{id:curParams.id}:{}) : curView === 'measure' ? M.route.href('/measure',{id:curParams.id}) : '#/closet'); } catch {} requestAnimationFrame(() => { const target = (focusReturn?.isConnected ? focusReturn : curView === 'collection' ? $(`[data-collection-g="${id}"]`) : curView === 'measure' ? $('[data-reference-edit]') : $(`[data-g="${id}"]`)) || $('#app h1'); if (target) { if (!target.matches('button')) target.tabIndex = -1; target.focus({preventScroll:true}); } }); } };
       profileClose = close;
       $('[data-profile-cancel]', element).onclick = () => close(false);
       window.EOUL_PROFILE_LOAD().then(({ mount }) => {
@@ -2448,7 +2455,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
+  K.start(render, { view: !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   const storageNotice = () => {
     document.getElementById('eo-storage-issue')?.remove();
