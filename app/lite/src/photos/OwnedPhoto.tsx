@@ -86,7 +86,12 @@ export function OwnedPhoto({ g, host }: { g: Garment; host: PhotoHost }) {
       aria-label={`${g.label} · ${missing ? "사진 연결 없음" : "사진 없음"}`}
     >
       <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d={shape} fill={g.colorHex || "#bfc3ca"} />
+        <path
+          d={shape}
+          fill={g.colorHex || "#bfc3ca"}
+          stroke="var(--line)"
+          strokeWidth="1"
+        />
       </svg>
       <span>
         {missing

@@ -92,9 +92,12 @@ const runtimeAssets = (entry) => {
   const visit = (part) => { if (seen.has(part.file)) return; seen.add(part.file); files.add('/react/' + part.file); for (const file of part.css || []) { css.add('/react/' + file); files.add('/react/' + file); } for (const dependency of part.imports || []) visit(inputManifest[dependency]); };
   visit(entry); return { files: [...files], css: [...css] };
 };
+// All islands share a Promise per stylesheet href. A slow shared CSS response
+// must resolve every waiter instead of one island overwriting another onload.
+const runtimeStyleBootstrap = `<script>window.EOUL_RUNTIME_STYLES=(()=>{const pending=new Map();return href=>{if(pending.has(href))return pending.get(href);const existing=[...document.querySelectorAll('link[data-runtime-style]')].find(link=>new URL(link.href).pathname===href);if(existing?.dataset.ready==='1')return Promise.resolve();const link=existing||Object.assign(document.createElement('link'),{rel:'stylesheet',href});link.dataset.runtimeStyle='1';const task=new Promise((resolve,reject)=>{link.addEventListener('load',()=>{link.dataset.ready='1';resolve()},{once:true});link.addEventListener('error',()=>{link.remove();pending.delete(href);reject(new Error('screen style unavailable'))},{once:true});});pending.set(href,task);if(!existing)document.head.append(link);return task;}})();</script>`;
 const islandAssets = (name, entry) => {
   const assets = runtimeAssets(entry);
-  return `<script>window[${JSON.stringify(name)}]=(()=>{let loading;return ()=>loading||=Promise.all(${JSON.stringify(assets.css)}.map(href=>new Promise((resolve,reject)=>{const loaded=[...document.querySelectorAll('link[data-runtime-style]')].find(link=>new URL(link.href).pathname===href);if(loaded&&loaded.dataset.ready==='1')return resolve();const link=loaded||Object.assign(document.createElement('link'),{rel:'stylesheet',href});link.dataset.runtimeStyle='1';link.onload=()=>{link.dataset.ready='1';resolve()};link.onerror=()=>{link.remove();reject(new Error('screen style unavailable'))};if(!loaded)document.head.append(link)}))).then(()=>import('/react/${entry.file}')).then(mod=>{const worker=navigator.serviceWorker;const warm=()=>{Promise.all(${JSON.stringify(assets.files)}.map(url=>fetch(url))).catch(()=>{})};if(worker?.controller)warm();else worker?.addEventListener('controllerchange',warm,{once:true});return mod}).catch(error=>{loading=null;throw error})})();</script>`;
+  return `<script>window[${JSON.stringify(name)}]=(()=>{let loading;return ()=>loading||=Promise.all(${JSON.stringify(assets.css)}.map(href=>window.EOUL_RUNTIME_STYLES(href))).then(()=>import('/react/${entry.file}')).then(mod=>{const worker=navigator.serviceWorker;const warm=()=>{Promise.all(${JSON.stringify(assets.files)}.map(url=>fetch(url))).catch(()=>{})};if(worker?.controller)warm();else worker?.addEventListener('controllerchange',warm,{once:true});return mod}).catch(error=>{loading=null;throw error})})();</script>`;
 };
 const photoAssets = islandAssets('EOUL_PHOTO_LOAD', photoEntry);
 const closetAssets = islandAssets('EOUL_CLOSET_LOAD', closetEntry);
@@ -105,6 +108,7 @@ const html = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${APP_NAME}</title>
+${runtimeStyleBootstrap}
 ${inputAssets}
 ${photoAssets}
 ${closetAssets}

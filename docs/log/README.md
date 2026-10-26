@@ -103,3 +103,5 @@
 - [2026-10-27 첫 후속 React 화면 이후 범위/분할 재검토](2026-10/r22-first-react-reestimate-20261027.md)
 
 - [2026-10-27 R22 B3a 편집 초안·출처·저장 기반](2026-10/r22-b3a-profile-contract-20261027.md)
+
+- [2026-10-27 R22 B3b 보유 옷 React 편집·초안 재개](2026-10/r22-b3b-profile-editor-20261027.md)

@@ -67,6 +67,7 @@ export interface ProfileCore {
   getState(): Omit<ClosetState, "closet"> & { closet: ProfileGarment[] };
   boot?: { photos?: boolean; preview?: boolean };
   railCategory(g: Garment): string | null;
+  photo(target: { id: string }): { src: string; alt: string } | null;
   assertPhotoReady(): void;
   withStorageLock<T>(run: () => T | Promise<T>): Promise<T>;
   readProfileDrafts(raw: string | null): {
@@ -96,9 +97,7 @@ export type ProfileHost = {
   storage: Storage;
   namespace: string;
   garmentId: string;
-  metadata(
-    id: string,
-  ): {
+  metadata(id: string): {
     brand?: string;
     url?: string;
     source?: { provider: string; code: string };
@@ -107,6 +106,7 @@ export type ProfileHost = {
   close(refresh?: boolean): void;
   backup(): void;
   looks(): void;
+  navigationGuard(check: () => boolean | Promise<boolean>): () => void;
 };
 export type ProfileSessionState = {
   draft: ProfileDraft;

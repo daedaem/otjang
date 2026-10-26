@@ -6,9 +6,11 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { OwnedPhoto } from "../photos/OwnedPhoto";
+import { ProfileFields } from "./Fields";
+import { GarmentSummary } from "./Summary";
+import { OwnedOutfits } from "./Outfits";
 import { createProfileSession } from "./draft-session.js";
-import type { AttributeKey, ProfileHost, ProfileForm } from "./types";
+import type { ProfileHost, ProfileForm } from "./types";
 import "./profile.css";
 const message = (e: unknown) =>
   e instanceof Error
@@ -28,12 +30,14 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
     host.core.version,
     host.core.version,
   );
-  const initial = useRef(
-    host.core.getState().closet.find((g) => g.id === host.garmentId)!,
+  const closetState = useMemo(
+    () => host.core.getState(),
+    [host.core, coreVersion],
   );
-  const current = host.core
-      .getState()
-      .closet.find((g) => g.id === host.garmentId),
+  const initial = useRef(
+    closetState.closet.find((g) => g.id === host.garmentId)!,
+  );
+  const current = closetState.closet.find((g) => g.id === host.garmentId),
     g = current || initial.current;
   const initialInfo = host.core.profileEditInfo(g);
   const session = useMemo(
@@ -60,19 +64,25 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
   const dialog = useRef<HTMLDialogElement>(null),
     heading = useRef<HTMLHeadingElement>(null),
     alive = useRef(true),
-    closing = useRef(false);
+    closing = useRef(false),
+    resolveNavigation = useRef<null | ((allow: boolean) => void)>(null),
+    lastField = useRef<HTMLElement | null>(null),
+    continueButton = useRef<HTMLButtonElement>(null),
+    feedback = useRef<HTMLElement | null>(null);
   const [tab, setTab] = useState(info.measures.length ? "measure" : "detail"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [discard, setDiscard] = useState<
-      null | "close" | "backup" | "looks" | "restart"
+      null | "close" | "backup" | "looks" | "restart" | "navigation"
     >(null),
     [remove, setRemove] = useState(false);
   const issue = host.core.storageIssue();
   const locked =
     busy || state.committing || issue?.code === "photo_recovery_pending";
-  const metadata = host.metadata(g.id),
-    brand = g.brand || metadata?.brand,
+  const metadata = useMemo(
+      () => host.metadata(g.id),
+      [host, coreVersion, g.id],
+    ),
     link = http(metadata?.community?.url || metadata?.url);
   const requestClose = async (
     target: "close" | "backup" | "looks" = "close",
@@ -92,6 +102,30 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
     else if (target === "looks") host.looks();
     else host.close();
   };
+  useEffect(() => {
+    const unregister = host.navigationGuard(() => {
+      const latest = session.getSnapshot();
+      if (latest.committing) return false;
+      if (!latest.dirty || latest.persisted) return true;
+      return session.flush().then(() => {
+        const ready = session.getSnapshot();
+        if (!ready.dirty || ready.persisted) return true;
+        return new Promise<boolean>((resolve) => {
+          resolveNavigation.current = resolve;
+          setDiscard("navigation");
+        });
+      });
+    });
+    return () => {
+      unregister();
+      const resolve = resolveNavigation.current;
+      resolveNavigation.current = null;
+      resolve?.(false);
+    };
+  }, [host, session]);
+  useEffect(() => {
+    if (discard || remove) continueButton.current?.focus();
+  }, [discard, remove]);
   useEffect(() => {
     alive.current = true;
     const el = dialog.current!,
@@ -127,6 +161,13 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
       await session.save();
     } catch (e) {
       if (alive.current) setError(message(e));
+    } finally {
+      if (alive.current)
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            feedback.current?.scrollIntoView({ block: "center" }),
+          ),
+        );
     }
   };
   const restart = async () => {
@@ -146,6 +187,11 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
       await session.flush();
       await host.core.withStorageLock(() => {
         host.core.assertPhotoReady();
+        host.core.reloadSaved();
+        if (!host.core.getState().closet.some((item) => item.id === g.id))
+          throw new Error(
+            "현재 옷장에 없는 옷이에요. 편집 초안은 그대로 보관했어요.",
+          );
         host.core.updateGarment(g.id, { color: value || null });
       });
       setTab(info.measures.length ? "measure" : "detail");
@@ -162,6 +208,7 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
       await session.flush();
       await host.core.withStorageLock(() => {
         host.core.assertPhotoReady();
+        host.core.reloadSaved();
         host.core.removeGarment(g.id);
       });
       host.close();
@@ -178,17 +225,12 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
         ? [...f.confirmed.filter((k) => k !== id), id]
         : f.confirmed.filter((k) => k !== id);
     });
-  const source = (key: AttributeKey) => {
-    const base = state.draft.baseProfile?.[key];
-    if (form.attributes[key] !== base?.value && form.attributes[key])
-      return "직접 입력 · 저장 대기";
-    if (form.confirmed.includes(key)) return "확인함 · 저장 대기";
-    return base ? info.sources[base.source] : "모름";
-  };
+
   return (
     <dialog
       ref={dialog}
       className="sheet rp"
+      aria-labelledby="rp-profile-title"
       data-profile-editor
       data-draft-saved={state.persisted ? "true" : "false"}
       onCancel={(e) => {
@@ -218,74 +260,15 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
           <i className="ph ph-x" aria-hidden="true" />
         </button>
       </header>
-      <div className="rp-head">
-        <div className="rp-photo">
-          <OwnedPhoto g={g} host={host} />
-        </div>
-        <div>
-          <p className="rp-brand">{brand || "브랜드 미입력"}</p>
-          <h2 ref={heading} tabIndex={-1}>
-            {g.label}
-          </h2>
-          <p>
-            {g.kindName} · {g.colorLabel || "색 미확인"}
-          </p>
-          <button
-            className="quiet"
-            type="button"
-            disabled={locked || !!state.blocked || !!state.pending}
-            onClick={() => setTab("colour")}
-          >
-            색 바꾸기
-          </button>
-        </div>
-      </div>
-      {metadata?.source?.provider === "opf" &&
-        /^\d{6,24}$/.test(metadata.source.code) && (
-          <p className="rp-note">
-            Open Products Facts에서 가져온 정보예요.{" "}
-            <a
-              href={`https://world.openproductsfacts.org/product/${metadata.source.code}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              원본
-            </a>{" "}
-            ·{" "}
-            <a
-              href="https://opendatacommons.org/licenses/odbl/1-0/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              ODbL
-            </a>
-          </p>
-        )}
-      {metadata?.community && (
-        <p className="rp-note">
-          {metadata.community.label}
-          {link && (
-            <>
-              {" "}
-              ·{" "}
-              <a href={link} target="_blank" rel="noopener noreferrer">
-                등록한 링크
-              </a>
-            </>
-          )}
-        </p>
-      )}
-      {!metadata?.community && link && (
-        <a
-          className="rp-link"
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          상품 원문 링크{" "}
-          <i className="ph ph-arrow-up-right" aria-hidden="true" />
-        </a>
-      )}
+      <GarmentSummary
+        heading={heading}
+        g={g}
+        host={host}
+        metadata={metadata}
+        link={link}
+        disabled={locked || !!state.blocked || !!state.pending}
+        onColour={() => setTab("colour")}
+      />
       {!current ? (
         <div className="rp-message">
           <p role="alert">
@@ -362,236 +345,21 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
               void save();
             }}
           >
-            <fieldset disabled={locked} className="rp-fields">
-              {tab === "measure" && (
-                <section>
-                  <h3>잘 맞는 옷 한 벌만 재도 돼요</h3>
-                  <p className="rp-note">
-                    몸 치수가 아닌, 옷을 평평하게 놓고 잰 cm예요. 비워 둔 값은
-                    모름으로 남겨요.
-                  </p>
-                  <label className="rp-reference">
-                    <input
-                      type="checkbox"
-                      checked={form.reference}
-                      aria-label="이 종류의 비교 기준 옷"
-                      onChange={(e) =>
-                        change((f) => {
-                          f.reference = e.target.checked;
-                        })
-                      }
-                    />
-                    <span>
-                      이 종류의 비교 기준 옷
-                      <small>
-                        저장하면 같은 종류의 기존 기준 옷을 대신해요.
-                      </small>
-                    </span>
-                  </label>
-                  {info.measures.map((field) => (
-                    <div className="rp-measure" key={field.id}>
-                      <label htmlFor={`rp-${field.id}`}>
-                        {field.label} (cm)
-                      </label>
-                      <input
-                        id={`rp-${field.id}`}
-                        inputMode="decimal"
-                        autoComplete="off"
-                        maxLength={20}
-                        value={form.measures[field.id]}
-                        placeholder="모름"
-                        onChange={(e) =>
-                          change((f) => {
-                            f.measures[field.id] = e.target.value;
-                          })
-                        }
-                      />
-                      <select
-                        aria-label={`${field.label} 출처`}
-                        value={form.measureSources[field.id]}
-                        onChange={(e) =>
-                          change((f) => {
-                            f.measureSources[field.id] = e.target.value as
-                              | "measured"
-                              | "seller";
-                          })
-                        }
-                      >
-                        <option value="measured">직접 잼</option>
-                        <option value="seller">판매처 표기</option>
-                      </select>
-                    </div>
-                  ))}
-                </section>
-              )}
-              {tab === "detail" && (
-                <section>
-                  <h3>아는 정보만 적어 주세요</h3>
-                  <p className="rp-note">
-                    모르는 속성은 채우지 않아요. AI 추정은 확인하기 전까지
-                    추정으로 남겨요.
-                  </p>
-                  {info.attributes.map((attr) => (
-                    <div className="rp-attribute" key={attr.id}>
-                      <label htmlFor={`rp-${attr.id}`}>
-                        {attr.label}
-                        <small>{source(attr.id)}</small>
-                      </label>
-                      {attr.choices ? (
-                        <select
-                          id={`rp-${attr.id}`}
-                          value={form.attributes[attr.id]}
-                          onChange={(e) =>
-                            change((f) => {
-                              f.attributes[attr.id] = e.target.value;
-                            })
-                          }
-                        >
-                          <option value="">모름</option>
-                          {Object.entries(attr.choices).map(([id, label]) => (
-                            <option key={id} value={id}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          id={`rp-${attr.id}`}
-                          value={form.attributes[attr.id]}
-                          maxLength={40}
-                          placeholder="모름"
-                          onChange={(e) =>
-                            change((f) => {
-                              f.attributes[attr.id] = e.target.value;
-                            })
-                          }
-                        />
-                      )}{" "}
-                      {state.draft.baseProfile?.[attr.id]?.source === "ai" &&
-                        form.attributes[attr.id] ===
-                          state.draft.baseProfile[attr.id]?.value && (
-                          <label className="rp-confirm">
-                            <input
-                              type="checkbox"
-                              aria-label={`${attr.label} 추정을 확인했어요`}
-                              checked={form.confirmed.includes(attr.id)}
-                              onChange={(e) =>
-                                confirm(attr.id, e.target.checked)
-                              }
-                            />
-                            이 추정이 맞아요
-                          </label>
-                        )}
-                    </div>
-                  ))}
-                  {form.attributes.pattern && (
-                    <label className="rp-line">
-                      무늬 설명 (선택)
-                      <input
-                        value={form.patternNote}
-                        maxLength={40}
-                        onChange={(e) =>
-                          change((f) => {
-                            f.patternNote = e.target.value;
-                          })
-                        }
-                      />
-                    </label>
-                  )}
-                  <label className="rp-line">
-                    디테일 (한 줄에 하나)
-                    <textarea
-                      value={form.details}
-                      maxLength={1000}
-                      rows={3}
-                      placeholder="아는 디테일만 적어요"
-                      onChange={(e) =>
-                        change((f) => {
-                          f.details = e.target.value;
-                        })
-                      }
-                    />
-                  </label>
-                  {info.facts
-                    .filter((f) => f.key === "details" && f.source === "ai")
-                    .map((f) => (
-                      <label className="rp-confirm" key={f.confirmKey}>
-                        <input
-                          type="checkbox"
-                          checked={form.confirmed.includes(f.confirmKey)}
-                          onChange={(e) =>
-                            confirm(f.confirmKey, e.target.checked)
-                          }
-                        />
-                        {f.text} · AI 추정이 맞아요
-                      </label>
-                    ))}
-                </section>
-              )}
-              {tab === "collection" && (
-                <section>
-                  <h3>입기 위해서, 모으는 즐거움으로</h3>
-                  <p className="rp-note">
-                    소장용 옷은 자주 입지 않아도 실패한 구매로 세지 않아요.
-                  </p>
-                  <label className="rp-line">
-                    이 옷의 목적
-                    <select
-                      value={form.purpose}
-                      onChange={(e) =>
-                        change((f) => {
-                          f.purpose = e.target.value as ProfileForm["purpose"];
-                        })
-                      }
-                    >
-                      <option value="">아직 정하지 않음</option>
-                      {Object.entries(info.purposes).map(([id, label]) => (
-                        <option key={id} value={id}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="rp-line">
-                    컬렉션 이름 (선택)
-                    <input
-                      maxLength={40}
-                      value={form.series}
-                      placeholder="예: 내가 모으는 옥스퍼드"
-                      onChange={(e) =>
-                        change((f) => {
-                          f.series = e.target.value;
-                        })
-                      }
-                    />
-                  </label>
-                </section>
-              )}
-              {tab === "colour" && (
-                <section>
-                  <h3>무슨 색인가요?</h3>
-                  <p className="rp-note">
-                    색을 누르면 바로 저장돼요. 실측 편집 초안은 그대로 남겨요.
-                  </p>
-                  <div className="rp-colours">
-                    {host.core.colorChoices().map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        aria-pressed={g.color === c.id}
-                        onClick={() => void colour(c.id)}
-                      >
-                        <span style={{ background: c.hex }} />
-                        {c.label}
-                      </button>
-                    ))}
-                    <button type="button" onClick={() => void colour("")}>
-                      색 모름
-                    </button>
-                  </div>
-                </section>
-              )}
-            </fieldset>
+            <ProfileFields
+              tab={tab}
+              form={form}
+              info={info}
+              base={state.draft.baseProfile}
+              g={g}
+              core={host.core}
+              locked={locked}
+              change={change}
+              confirm={confirm}
+              colour={colour}
+              onFocus={(target) => {
+                lastField.current = target;
+              }}
+            />
             {issue?.code === "photo_recovery_pending" && (
               <div className="rp-message">
                 <p role="alert">{issue.message}</p>
@@ -605,12 +373,30 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
               </div>
             )}
             {error && (
-              <p className="rp-error" role="alert">
-                {error}
-              </p>
+              <div
+                className="rp-error"
+                ref={(node) => {
+                  feedback.current = node;
+                }}
+              >
+                <p role="alert">{error}</p>
+                <button
+                  className="quiet"
+                  type="button"
+                  onClick={() => setDiscard("restart")}
+                >
+                  최신 값으로 새로 수정
+                </button>
+              </div>
             )}
             {state.notice && !error && (
-              <p className="rp-status" role="status">
+              <p
+                className="rp-status"
+                role="status"
+                ref={(node) => {
+                  feedback.current = node;
+                }}
+              >
                 {state.notice}
               </p>
             )}
@@ -635,6 +421,12 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
               </footer>
             )}
           </form>
+          <OwnedOutfits
+            g={g}
+            closet={closetState.closet}
+            host={host}
+            version={coreVersion}
+          />
           <section className="rp-actions">
             <button
               className="btn line"
@@ -683,7 +475,12 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
                 else if (discard === "restart") void restart();
                 else if (discard === "backup") host.backup();
                 else if (discard === "looks") host.looks();
-                else host.close();
+                else if (discard === "navigation") {
+                  const resolve = resolveNavigation.current;
+                  resolveNavigation.current = null;
+                  setDiscard(null);
+                  resolve?.(true);
+                } else host.close();
               }}
             >
               {remove
@@ -695,9 +492,17 @@ function ProfileEditor({ host }: { host: ProfileHost }) {
             <button
               className="btn line"
               type="button"
+              ref={continueButton}
               onClick={() => {
+                const resolve = resolveNavigation.current;
+                resolveNavigation.current = null;
+                resolve?.(false);
                 setDiscard(null);
                 setRemove(false);
+                requestAnimationFrame(() => {
+                  if (lastField.current?.isConnected) lastField.current.focus();
+                  else heading.current?.focus();
+                });
               }}
             >
               계속 수정

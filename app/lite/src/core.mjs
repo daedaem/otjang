@@ -351,7 +351,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     profileEditDraft,
     profileEditInfo(garment) {
       const facts = profileFacts(garment.profile, garment);
-      return structuredClone({ key: PROFILE_DRAFT_KEY, measures: measureFieldsFor(garment).map(id => ({ id, label: MEASURES[id] })), attributes: Object.entries(CHOICE_LABELS).map(([id, label]) => ({ id, label, choices: CHOICES[id] || null })), purposes: PURPOSES, sources: SOURCES, facts: facts.facts.map(f => ({ ...f, confirmKey: f.key === 'details' ? `detail|${detailKey(f.text)}` : f.key })), unknown: facts.unknown });
+      return structuredClone({ key: PROFILE_DRAFT_KEY, measures: measureFieldsFor(garment).map(id => ({ id, label: MEASURES[id] })), attributes: ['fabric','silhouette','thickness','surface','pattern'].map(id => ({ id, label: CHOICE_LABELS[id], choices: CHOICES[id] || null })), purposes: PURPOSES, sources: SOURCES, facts: facts.facts.map(f => ({ ...f, confirmKey: f.key === 'details' ? `detail|${detailKey(f.text)}` : f.key })), unknown: facts.unknown });
     },
     profileFromEdit,
     readProfileDrafts,

@@ -353,3 +353,70 @@
     grid-template-columns: 1fr 1fr 1fr;
   }
 }
+.rp-seller-photo {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.rp-seller-photo img {
+  width: 100%;
+  height: calc(100% - 20px);
+  object-fit: contain;
+}
+.rp-seller-photo span {
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--ink2);
+}
+.rp-looks {
+  margin: 20px 0;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.rp-looks summary {
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+}
+.rp-look-grid {
+  display: grid;
+  gap: 12px;
+}
+.rp-look-grid article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  min-width: 0;
+}
+.rp-look-grid h3 {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.rp-look-pieces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 8px;
+}
+.rp-look-photo {
+  height: 86px;
+  display: grid;
+  place-items: center;
+}
+.rp-look-pieces p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 4px 0;
+  color: var(--ink2);
+  overflow-wrap: anywhere;
+}
+.rp-error p {
+  margin: 0;
+}
+.rp-error .quiet {
+  font-size: 12px;
+}
