@@ -831,3 +831,12 @@ test("selecting an invalid replacement file revokes the previous restore confirm
     ),
   ).toBe(before);
 });
+
+test('memory preview stays interactive without reading or writing private state while real recovery is pending',async({page})=>{
+ await seed(page);await page.evaluate(()=>{localStorage.setItem('eoul-backup:photos-pending','{"v":1,"id":"private-preview-held"}');localStorage.setItem('eoul-d12-hang:consult','{"threads":[{"id":"private-thread","turns":[{"role":"user","text":"PRIVATE-FIXTURE-NOT-PREVIEW"}]}],"cur":"private-thread"}');});
+ const before=await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
+ await page.addInitScript(()=>{const get=Storage.prototype.getItem;(window as any).__realReads=[];(window as any).__realGet=get;Storage.prototype.getItem=function(key){(window as any).__realReads.push(key);return get.call(this,key);};const open=indexedDB.open.bind(indexedDB);(window as any).__idbOpens=0;indexedDB.open=function(...args:any[]){(window as any).__idbOpens++;return(open as any)(...args);};});
+ await page.goto('/?photos=0&preview=1#/closet');await page.waitForFunction(()=>!!(window as any).K?.M);expect(await page.locator('#app').evaluate((e:any)=>e.inert)).toBe(false);await expect(page.getByText('PRIVATE-FIXTURE-NOT-PREVIEW',{exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).K.M.addGarment({kind:'pants'}));expect(await page.evaluate(()=>(window as any).K.M.getState().closetCount)).toBe(1);
+ expect(await page.evaluate(()=>(window as any).__realReads)).toEqual([]);expect(await page.evaluate(()=>(window as any).__idbOpens)).toBe(0);expect(await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())))).toBe(before);
+});
