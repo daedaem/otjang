@@ -55,7 +55,15 @@ const bootPreview = bootParams.get('preview') === '1';
 const bootKey = typeof window !== 'undefined' && typeof window.EOUL_MOCK_KEY === 'string' && window.EOUL_MOCK_KEY ? window.EOUL_MOCK_KEY : undefined;
 const mock = createMock({ storage: bootPreview ? null : bootStorage, requireStorage: !bootPreview, key: bootKey, photos: bootPhotos });
 let bootStorageError = null;
-const bootChange = (fn) => { try { fn(); } catch (error) { if (!['storage_write_failed', 'storage_unreadable'].includes(error.code)) throw error; bootStorageError = error.message; } };
+const bootChange = (fn) => { try { fn(); } catch (error) {
+  if (!['storage_write_failed', 'storage_unreadable', 'photo_recovery_pending'].includes(error.code)) throw error;
+  bootStorageError = error.message;
+  if (error.code === 'photo_recovery_pending') {
+    // A blocked reset/demo request must not replay after recovery reloads the URL.
+    for (const name of ['g', 'reset', 'closet']) bootParams.delete(name);
+    try { if (typeof location !== 'undefined' && typeof history !== 'undefined') { const url = new URL(location.href); for (const name of ['g', 'reset', 'closet']) url.searchParams.delete(name); history.replaceState(history.state, '', url.pathname + url.search + url.hash); } } catch {}
+  }
+} };
 if (bootParams.get('reset') === '1' || bootPreview) bootChange(() => mock.reset());
 // 검색 엔진에 실리지 않게 한다(접근 통제는 아니다. 링크를 아는 사람은 열 수 있다).
 if (typeof document !== 'undefined' && document.head && !document.querySelector('meta[name="robots"]')) {

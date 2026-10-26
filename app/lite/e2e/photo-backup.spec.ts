@@ -196,7 +196,8 @@ test("promotion interruption survives real IDB restart and recovers the prior wa
       localStorage.getItem("eoul-backup:photos-pending"),
     ),
   ).not.toBeNull();
-  await page.reload();
+  await page.goto("/?photos=0&g=F&reset=1&closet=trial#/closet");
+  await expect(page).not.toHaveURL(/reset=|closet=|[?&]g=/);
   await expect(page.locator("#eo-storage-issue")).toContainText("사진");
   expect(await page.locator("#app").evaluate((e: any) => e.inert)).toBe(true);
   await open(page, true);

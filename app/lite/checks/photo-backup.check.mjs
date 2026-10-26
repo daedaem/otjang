@@ -445,12 +445,54 @@ test("photo metadata cannot be altered after verification and old journal cleanu
   assert.equal((await f.repository.pending()).id, "new-owner");
 });
 
-for(const query of ['?g=F','?reset=1','?closet=trial','?g=F&reset=1&closet=trial']){
- test(`pending photo recovery still initializes generated core at ${query}`,()=>{
-  const f=fixture();f.m.addGarment({kind:'shirt',color:'white'});f.storage.setItem(MARKER,'{"v":1,"id":"bootstrap-held"}');const raw=f.map.get(KEY),events=f.events.length;
-  const window={localStorage:f.storage,EOUL_MOCK_KEY:KEY,location:{search:query},addEventListener(){}};
-  const context={window,location:window.location,URLSearchParams,structuredClone,TextEncoder,console};
-  const source=fs.readFileSync(new URL('../.generated/core-bundle.js',import.meta.url),'utf8');assert.doesNotThrow(()=>vm.runInNewContext(source,context));
-  assert.equal(window.EoulMock.storageIssue().code,'photo_recovery_pending');assert.equal(window.EoulMock.getState().closetCount,1);assert.match(window.EoulMock.boot.storageError,/사진/);assert.equal(f.map.get(KEY),raw);assert.equal(f.events.length,events);
- });
+for (const query of [
+  "?g=F",
+  "?reset=1",
+  "?closet=trial",
+  "?g=F&reset=1&closet=trial",
+]) {
+  test(`pending photo recovery still initializes generated core at ${query}`, () => {
+    const f = fixture();
+    f.m.addGarment({ kind: "shirt", color: "white" });
+    f.storage.setItem(MARKER, '{"v":1,"id":"bootstrap-held"}');
+    const raw = f.map.get(KEY),
+      events = f.events.length;
+    const window = {
+      localStorage: f.storage,
+      EOUL_MOCK_KEY: KEY,
+      location: {
+        search: query,
+        href: "http://localhost/" + query + "#/closet",
+      },
+      addEventListener() {},
+    };
+    const context = {
+      window,
+      location: window.location,
+      URL,
+      URLSearchParams,
+      structuredClone,
+      TextEncoder,
+      console,
+      history: {
+        state: null,
+        replaceState(_s, _t, url) {
+          window.recoveryUrl = url;
+        },
+      },
+    };
+    const source = fs.readFileSync(
+      new URL("../.generated/core-bundle.js", import.meta.url),
+      "utf8",
+    );
+    assert.doesNotThrow(() => vm.runInNewContext(source, context));
+    assert.equal(window.EoulMock.storageIssue().code, "photo_recovery_pending");
+    assert.equal(window.EoulMock.getState().closetCount, 1);
+    assert.match(window.EoulMock.boot.storageError, /사진/);
+    assert.equal(f.map.get(KEY), raw);
+    assert.equal(f.events.length, events);
+    assert.equal(window.EoulMock.boot.reset, false);
+    assert.equal(window.EoulMock.boot.closet, "");
+    assert.doesNotMatch(window.recoveryUrl, /reset=|closet=|g=/);
+  });
 }
