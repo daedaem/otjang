@@ -24,8 +24,8 @@ export function outfitFacts({ items, occasion = null, season = null, styles = []
   const colorScore = harmony(entries.map((e) => ({ color: e.item.color, cat: e.slot.cat })));
   facts.push({
     dim: 'color', label: '색 조화', editorial: true,
-    verdict: colorScore > 0 ? 'good' : colorScore < 0 ? 'weak' : 'neutral',
-    basis: entries.some((e) => !e.item.color) ? '색을 모르는 옷이 있어 일부만 봤어요' : `조화 점수 ${colorScore}(포인트 색은 하나까지, 상·하의 밝기 차이)`,
+    verdict: entries.length!==items.length||!entries.length||entries.some(e=>!e.item.color) ? 'unknown' : colorScore > 0 ? 'good' : colorScore < 0 ? 'weak' : 'neutral',
+    basis: entries.length!==items.length||!entries.length ? '세부 종류를 모르는 옷이 있어 색 조화를 확정하지 않았어요' : entries.some((e) => !e.item.color) ? '색을 모르는 옷이 있어 일부만 봤어요' : `조화 점수 ${colorScore}(포인트 색은 하나까지, 상·하의 밝기 차이)`,
   });
 
   if (occasion && OCCASION_FORMALITY[occasion]) {
@@ -35,10 +35,10 @@ export function outfitFacts({ items, occasion = null, season = null, styles = []
       const avg = Math.round((known.reduce((s, e) => s + e.slot.formal, 0) / known.length) * 10) / 10;
       facts.push({
         dim: 'formality', label: '격식', editorial: true,
-        verdict: avg < lo ? 'too-casual' : avg > hi ? 'too-formal' : 'fits',
-        basis: `격식 평균 ${avg} · ${OCCASIONS[occasion]} 기준 ${lo}~${hi}`,
+        verdict: known.length!==items.length ? 'unknown' : avg < lo ? 'too-casual' : avg > hi ? 'too-formal' : 'fits',
+        basis: known.length!==items.length ? `세부 종류를 확인한 ${known.length}벌의 격식 평균 ${avg} · 전체 조합 판단은 보류했어요` : `격식 평균 ${avg} · ${OCCASIONS[occasion]} 기준 ${lo}~${hi}`,
       });
-    }
+    } else facts.push({dim:'formality',label:'격식',editorial:true,verdict:'unknown',basis:'세부 종류의 격식 정보가 없어 판단을 보류했어요'});
   }
 
   const top = entries.find((e) => ['top', 'outer', 'dress'].includes(e.slot.cat) && e.item.profile?.silhouette);
@@ -62,8 +62,8 @@ export function outfitFacts({ items, occasion = null, season = null, styles = []
     const off = entries.filter((e) => Array.isArray(e.slot.seasons) && !e.slot.seasons.includes(season));
     facts.push({
       dim: 'season', label: '계절', editorial: true,
-      verdict: off.length ? 'off-season' : 'fits',
-      basis: off.length ? `${SEASON_LABEL[season]}에 덜 맞는 옷: ${off.map((e) => e.slot.name).join(', ')}` : `${SEASON_LABEL[season]}에 맞는 옷이에요`,
+      verdict: off.length ? 'off-season' : entries.length!==items.length||!entries.length ? 'unknown' : 'fits',
+      basis: off.length ? `${SEASON_LABEL[season]}에 덜 맞는 옷: ${off.map((e) => e.slot.name).join(', ')}` : entries.length!==items.length||!entries.length ? '세부 종류가 없어 계절 적합성을 확인하지 않았어요' : `${SEASON_LABEL[season]}에 맞는 옷이에요`,
     });
   }
 
@@ -71,8 +71,8 @@ export function outfitFacts({ items, occasion = null, season = null, styles = []
     const avg = entries.length ? entries.reduce((s, e) => s + styleScore(e.slot, styles), 0) / entries.length : 0;
     facts.push({
       dim: 'style', label: '스타일', editorial: true,
-      verdict: avg >= 2 ? 'core' : avg >= 1 ? 'fits' : 'far',
-      basis: `고른 스타일과의 점수 평균 ${Math.round(avg * 10) / 10}(0~3)`,
+      verdict: entries.length!==items.length||!entries.length ? 'unknown' : avg >= 2 ? 'core' : avg >= 1 ? 'fits' : 'far',
+      basis: entries.length!==items.length||!entries.length ? '세부 종류가 없어 스타일 적합성을 확인하지 않았어요' : `고른 스타일과의 점수 평균 ${Math.round(avg * 10) / 10}(0~3)`,
     });
   }
   return facts;
@@ -146,7 +146,7 @@ export function tasteSummary(reactions, { garmentIds = null } = {}) {
 export function outfitFactLines(facts, taste = null) {
   const lines = facts.map((f) => `${f.label}: ${f.verdict} — ${f.basis}${f.editorial ? ' (편집 규칙)' : ''}`);
   if (taste && (taste.likes || taste.dislikes))
-    lines.push(`내 반응: 좋아요 ${taste.likes} · 별로 ${taste.dislikes}${taste.reasons.length ? ` · ${taste.reasons.slice(0, 3).map((r) => `${r.label} ${r.count}`).join(', ')}` : ''}`);
+    lines.push(`${taste.scope==='overlap'?'겹치는 옷의 과거 조합 반응(이 후보만의 평가 수 아님)':'내 반응'}: 좋아요 ${taste.likes} · 별로 ${taste.dislikes}${taste.reasons.length ? ` · ${taste.reasons.slice(0, 3).map((r) => `${r.label} ${r.count}`).join(', ')}` : ''}`);
   return lines;
 }
 
@@ -170,7 +170,7 @@ const CLAIM_WORDS = [
 const NOT_A_PATTERN = /^(?:해|하|를|리스트|아웃)/; // "체크해 보세요"
 const ATTACHED = /^(?:핏|소재|원단|무늬|패턴|이에요|예요|이라|라서|라|이고|고|하고|한|해요|이며|며|입니다|이다|으로|로|이|가|은|는|에|[.,!?)]|$)/;
 const SPACED = /^\s+(?:핏|소재|원단|무늬|패턴|느낌|스타일|계열)/;
-const NEGATION = /아니|않|없|말고/;
+const ATTRIBUTE_NEGATION = /아니|않|없|말고/;
 const BREAK = /지만|는데|[,;]|그리고|반면/;
 const WINDOW = 24;
 const NEAR = 16;
@@ -197,7 +197,7 @@ function predicateClaim(window) {
   if (!found || found.index > NEAR) return null;
   const suffix = found.after.match(ATTACHED) || found.after.match(SPACED);
   if (!suffix) return null;
-  return { claim: found.claim, negated: NEGATION.test(found.after.slice(suffix[0].length, suffix[0].length + 10)) };
+  return { claim: found.claim, negated: ATTRIBUTE_NEGATION.test(found.after.slice(suffix[0].length, suffix[0].length + 10)) };
 }
 function claimsAbout(sentence, name, otherNames) {
   const claims = [];
@@ -235,7 +235,8 @@ function recorded(claim, profile) {
 export function attributeClaimCheck(answer, candidates) {
   if (typeof answer !== 'string' || !answer) return [];
   const sentences = answer.split(/(?<=[.!?。])\s+|\n+/);
-  const named = (candidates || []).filter((c) => c?.name);
+  const available = (candidates || []).filter((c) => typeof c?.name==='string'&&c.name);
+  const named = available.filter(c=>!available.some(o=>o!==c&&(o.name.includes(c.name)||c.name.includes(o.name))));
   const lines = [];
   for (const c of named) {
     const others = named.filter((o) => o !== c && !c.name.includes(o.name)).map((o) => o.name);

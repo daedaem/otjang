@@ -47,3 +47,5 @@ BK는 새 키의 사전 검증·출처 이름·조건부 메모/목표 건수만
 재현: 저장소 루트에서 `npm --prefix app/lite test`, `npm --prefix app/lite run build`, `npm --prefix app/lite run test:e2e`. 합성 옷/목적/목표만 사용하고 외부 API·개인 사진 업로드는 하지 않는다.
 
 전후 캡처 재현은 기준1a401f1의 빌드 경로를 `B4_BASE_DIST`로 주고 `node app/lite/tools/compare-collection.mjs`를 실행한다. 이후는 작업 브랜치의 현재 빌드를 읽는다.
+
+최종 병합 확인: head43348b1의 Node316개·로컬174개(6.2분), CI11개와 push/PR 브라우저 각174개(7.5분/6.6분), 미해결 검토0을 확인해 master615ff24에 병합했다. 활성 배포·실제 휴대폰 확인은 별개다.

@@ -2276,6 +2276,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       if (measureDrafts !== undefined && (typeof M === 'undefined' || !M.canReadMeasurementDrafts?.(data['eoul-d12-hang:measure-drafts:v1']))) reject('실측 비교 초안');
       const collection = parse('eoul-d12-hang:collection:v1', '소장 목적·진열장');
       if (collection !== undefined && (typeof M === 'undefined' || !M.canReadCollectionSettings?.(data['eoul-d12-hang:collection:v1']))) reject('소장 목적·진열장');
+      const outfitReactions=parse('eoul-d12-hang:outfit-reactions:v1','코디 반응');
+      if(outfitReactions!==undefined&&(typeof M==='undefined'||!M.canReadOutfitReactions?.(data['eoul-d12-hang:outfit-reactions:v1'])))reject('코디 반응');
       if (engine !== undefined) {
         let ok;
         if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
@@ -2305,10 +2307,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       if (data['eoul-d12-hang:profile-drafts:v1'] !== undefined) { try { n.profileDrafts = Object.keys(M.readProfileDrafts(data['eoul-d12-hang:profile-drafts:v1']).edits).length; } catch { n.profileDrafts = 0; } }
       if (data['eoul-d12-hang:measure-drafts:v1'] !== undefined) { try { n.measureDrafts = Object.keys(M.readMeasurementDrafts(data['eoul-d12-hang:measure-drafts:v1']).entries).length; } catch { n.measureDrafts = 0; } }
       if (data['eoul-d12-hang:collection:v1'] !== undefined) { try { const c=M.readCollectionSettings(data['eoul-d12-hang:collection:v1']); n.collectionIntents=Object.keys(c.candidates).length;n.collectionGoals=c.goals.length; } catch { n.collectionIntents=0;n.collectionGoals=0; } }
+      if(data['eoul-d12-hang:outfit-reactions:v1']!==undefined){try{n.outfitReactions=M.readOutfitReactions(data['eoul-d12-hang:outfit-reactions:v1']).reactions.length;}catch{n.outfitReactions=0;}}
       return n;
     },
-    sourceLabel: (key) => key === window.EOUL_MOCK_KEY ? '옷장·구매 기록' : ({ 'eoul-d12-hang:reg': '브랜드·링크', 'eoul-d12-hang:consult': '상담 기록', 'eoul-d12-hang:input-draft:v1': '입력 초안', 'eoul-d12-hang:profile-drafts:v1': '옷 정보 편집 초안', 'eoul-d12-hang:measure-drafts:v1':'실측 비교 초안', 'eoul-d12-hang:collection:v1':'소장 목적·진열장', 'eoul-d12-hang:ui': '화면 설정', 'eoul-weather:place': '날씨 지역', 'eoul-crowd:device': '기기 식별 정보' }[key] || '기타 보관 자료'),
-    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)${n.profileDrafts !== undefined ? ` · 옷 정보 초안 ${n.profileDrafts}개` : ''}${n.measureDrafts !== undefined ? ` · 실측 비교 초안 ${n.measureDrafts}개` : ''}${n.collectionIntents !== undefined ? ` · 후보 목적 ${n.collectionIntents}개 · 진열 목표 ${n.collectionGoals}개` : ''}`,
+    sourceLabel: (key) => key === window.EOUL_MOCK_KEY ? '옷장·구매 기록' : ({ 'eoul-d12-hang:reg': '브랜드·링크', 'eoul-d12-hang:consult': '상담 기록', 'eoul-d12-hang:input-draft:v1': '입력 초안', 'eoul-d12-hang:profile-drafts:v1': '옷 정보 편집 초안', 'eoul-d12-hang:measure-drafts:v1':'실측 비교 초안', 'eoul-d12-hang:collection:v1':'소장 목적·진열장', 'eoul-d12-hang:outfit-reactions:v1':'코디 반응', 'eoul-d12-hang:ui': '화면 설정', 'eoul-weather:place': '날씨 지역', 'eoul-crowd:device': '기기 식별 정보' }[key] || '기타 보관 자료'),
+    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)${n.profileDrafts !== undefined ? ` · 옷 정보 초안 ${n.profileDrafts}개` : ''}${n.measureDrafts !== undefined ? ` · 실측 비교 초안 ${n.measureDrafts}개` : ''}${n.collectionIntents !== undefined ? ` · 후보 목적 ${n.collectionIntents}개 · 진열 목표 ${n.collectionGoals}개` : ''}${n.outfitReactions !== undefined ? ` · 코디 반응 ${n.outfitReactions}개` : ''}`,
     // 복원·되돌리기가 지울 수 있는 키: 이 화면이 쓰는 키와 날씨 지역뿐. 읽지 못한 원문 보관(':unreadable:')·모르는 키는 지우지 않는다.
     removable: (k) => (k.startsWith('eoul-d12-hang:') && !k.includes(':unreadable:')) || k === 'eoul-weather:place',
     // 목표 상태(target)로 바꾼다. 백업에 없는 '지울 수 있는 키'는 지우고, 쓴 뒤 다시 읽어 확인한다.
