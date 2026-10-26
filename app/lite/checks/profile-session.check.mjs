@@ -155,6 +155,27 @@ test("restarting an edit whose garment was removed keeps the existing draft orig
   assert.equal(f.map.get(DRAFT), raw);
 });
 
-test('a later successful queued draft save clears the earlier temporary failure notice',async()=>{
- const f=fixture(),s=session(f);let first=true;f.fault((op,k)=>{if(first&&op==='set'&&k===DRAFT){first=false;return true;}return false;});const a=s.change(form=>{form.measures.length='71';}),b=s.change(form=>{form.measures.length='72';});await Promise.all([a,b]);await s.flush();assert.equal(s.getSnapshot().draft.form.measures.length,'72');assert.equal(s.getSnapshot().persisted,true);assert.equal(s.getSnapshot().saving,false);assert.equal(s.getSnapshot().notice,'');
+test("a later successful queued draft save clears the earlier temporary failure notice", async () => {
+  const f = fixture(),
+    s = session(f);
+  let first = true;
+  f.fault((op, k) => {
+    if (first && op === "set" && k === DRAFT) {
+      first = false;
+      return true;
+    }
+    return false;
+  });
+  const a = s.change((form) => {
+      form.measures.length = "71";
+    }),
+    b = s.change((form) => {
+      form.measures.length = "72";
+    });
+  await Promise.all([a, b]);
+  await s.flush();
+  assert.equal(s.getSnapshot().draft.form.measures.length, "72");
+  assert.equal(s.getSnapshot().persisted, true);
+  assert.equal(s.getSnapshot().saving, false);
+  assert.equal(s.getSnapshot().notice, "");
 });

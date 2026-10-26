@@ -172,7 +172,7 @@ export function createProfileSession({
             write({ ...bag, edits: { ...bag.edits, [garmentId]: draft } });
             observed = structuredClone(draft);
             lastError = null;
-            publish({ persisted: equal(state.draft, observed) });
+            publish({ persisted: equal(state.draft, observed), notice: "" });
           }),
         )
         .catch((error) => {
@@ -190,21 +190,28 @@ export function createProfileSession({
       return session.change(() => {});
     },
     async restart() {
-      await queue;
-      if (state.blocked) throw lastError;
-      await lock(() => {
-        const next = core.profileEditDraft(find(), clock());
-        remove();
-        lastError = null;
-        publish({
-          draft: next,
-          pending: null,
-          notice: "",
-          persisted: true,
-          dirty: false,
-          needsCleanup: false,
+      if (state.committing)
+        throw problem("profile_saving", "옷 정보를 처리하는 중이에요.");
+      publish({ committing: true });
+      try {
+        await queue;
+        if (state.blocked) throw lastError;
+        await lock(() => {
+          const next = core.profileEditDraft(find(), clock());
+          remove();
+          lastError = null;
+          publish({
+            draft: next,
+            pending: null,
+            notice: "",
+            persisted: true,
+            dirty: false,
+            needsCleanup: false,
+          });
         });
-      });
+      } finally {
+        publish({ committing: false });
+      }
     },
     async save() {
       if (state.committing)
