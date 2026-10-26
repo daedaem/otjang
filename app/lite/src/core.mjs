@@ -1,6 +1,7 @@
 import { assertPhotoIdle, withPhotoLock, PHOTO_PENDING_KEY, PHOTO_PENDING_MESSAGE } from './domain/photo-pending.js';
 import { validateProfile, garmentCategory } from './domain/garment-profile.js';
 import { railLayout, SORTS } from './domain/rail-layout.js';
+import { profileEditDraft, profileFromEdit, readProfileDrafts } from './domain/profile-edit.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -347,6 +348,27 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     railLayout: (garments, options) => railLayout(garments, options),
     railCategory: (garment) => garmentCategory(garment),
     railSortChoices: () => Object.entries(SORTS),
+    profileEditDraft,
+    profileFromEdit,
+    readProfileDrafts,
+    canReadProfileDrafts(raw) { try { readProfileDrafts(raw); return true; } catch { return false; } },
+    applyProfileEdit(draft) {
+      // Read without replacing in-memory state: reject an older view rather than
+      // let this command replace another tab's newer wardrobe or purchase data.
+      if (storage) {
+        const ordered = value => Array.isArray(value) ? value.map(ordered) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k => [k, ordered(value[k])])) : value;
+        let same = false;
+        try { same = JSON.stringify(ordered(readSaved(storage.getItem(key)))) === JSON.stringify(ordered(readSaved(JSON.stringify(S)))); } catch {}
+        if (!same) throw Object.assign(new Error('다른 화면에서 옷장 기록이 바뀌어 덮어쓰지 않았어요. 초안을 보존하고 최신 기록을 다시 읽어 주세요.'), { code: 'storage_changed' });
+      }
+      const profile = profileFromEdit(draft), garment = S.garments.find(g => g.id === draft.garmentId);
+      if (!garment || isTrial(garment.id)) throw new Error('실제 보유한 옷을 골라 주세요.');
+      if (garment.kind !== draft.kind) throw Object.assign(new Error('옷 종류가 바뀌어 덮어쓰지 않았어요. 최신 정보를 확인해 주세요.'), { code: 'profile_changed' });
+      assertPhotoIdle(storage);
+      if (JSON.stringify(garment.profile || null) === JSON.stringify(profile)) return garmentView(garment);
+      if (JSON.stringify(garment.profile || null) !== JSON.stringify(draft.baseProfile)) throw Object.assign(new Error('다른 화면에서 옷 정보가 바뀌어 덮어쓰지 않았어요. 초안은 그대로 두었어요.'), { code: 'profile_changed' });
+      return api.updateGarmentProfile(garment.id, profile);
+    },
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     storageIssue: () => { if (storageIssue?.code === 'storage_unreadable') return { code: storageIssue.code, message: storageIssue.message }; try { assertPhotoIdle(storage); } catch (error) { return { code: error.code || 'storage_unavailable', message: error.code ? error.message : UNAVAILABLE }; } return storageIssue ? { code: storageIssue.code, message: storageIssue.message } : null; },
     unreadableRaw: () => (storageIssue?.code === 'storage_unreadable' ? storageIssue.raw : null),

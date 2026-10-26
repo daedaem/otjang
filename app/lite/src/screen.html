@@ -2076,7 +2076,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     };
   }
   // ── 백업·복원(개발 계획 2번): 이 기기 저장소의 개인 자료(옷장·기록·상담·직접 등록·날씨 지역·기기 ID)를 글자 파일 하나로 내보내고 되돌린다.
-  // 사진은 저장하지 않으므로 글자 자료만 있다. 값은 저장된 원문 그대로 담아 다시 해석하며 잃는 것이 없게 한다.
+  // 이 BK는 글자 원문을 다룬다. 사진 원문은 B2a 묶음 controller가 함께 보관한다. 글자는 원문 그대로 분류한다.
   // 복원은 키 단위로 바꾸기 전에 현재 값을 '복원 전 보관'에 남겨 한 번 되돌릴 수 있다. 모양이 다른 파일은 아무것도 바꾸지 않고 거절한다.
   const BK = {
     APP: 'eoul-lite', FORMAT: 2, STASH: 'eoul-backup:stash', NEXT: 'eoul-backup:stash-next', MAX_BYTES: 5 * 1024 * 1024,
@@ -2230,6 +2230,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         }
       }
       const engine = data[window.EOUL_MOCK_KEY];
+      const profileDrafts = parse('eoul-d12-hang:profile-drafts:v1', '옷 정보 편집 초안');
+      if (profileDrafts !== undefined && (typeof M === 'undefined' || !M.canReadProfileDrafts?.(data['eoul-d12-hang:profile-drafts:v1']))) reject('옷 정보 편집 초안');
       if (engine !== undefined) {
         let ok;
         if (typeof M !== 'undefined' && typeof M.canReadSaved === 'function') ok = M.canReadSaved(engine);
@@ -2256,10 +2258,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       try { n.threads = (JSON.parse(data[CHAT_KEY] || '{}').threads || []).length; } catch {}
       try { for (const key of Object.keys(JSON.parse(data[REG_KEY] || '{}').items || {})) registered.add(key); } catch {}
       n.reg = registered.size;
+      if (data['eoul-d12-hang:profile-drafts:v1'] !== undefined) { try { n.profileDrafts = Object.keys(M.readProfileDrafts(data['eoul-d12-hang:profile-drafts:v1']).edits).length; } catch { n.profileDrafts = 0; } }
       return n;
     },
-    sourceLabel: (key) => key === window.EOUL_MOCK_KEY ? '옷장·구매 기록' : ({ 'eoul-d12-hang:reg': '브랜드·링크', 'eoul-d12-hang:consult': '상담 기록', 'eoul-d12-hang:input-draft:v1': '입력 초안', 'eoul-d12-hang:ui': '화면 설정', 'eoul-weather:place': '날씨 지역', 'eoul-crowd:device': '기기 식별 정보' }[key] || '기타 보관 자료'),
-    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)`,
+    sourceLabel: (key) => key === window.EOUL_MOCK_KEY ? '옷장·구매 기록' : ({ 'eoul-d12-hang:reg': '브랜드·링크', 'eoul-d12-hang:consult': '상담 기록', 'eoul-d12-hang:input-draft:v1': '입력 초안', 'eoul-d12-hang:profile-drafts:v1': '옷 정보 편집 초안', 'eoul-d12-hang:ui': '화면 설정', 'eoul-weather:place': '날씨 지역', 'eoul-crowd:device': '기기 식별 정보' }[key] || '기타 보관 자료'),
+    countText: (n) => `내 옷 ${n.garments}벌 · 기록 ${n.journeys}건 · 상담 ${n.threads}개 · 등록 이력 ${n.reg}건(삭제한 옷 포함)${n.profileDrafts !== undefined ? ` · 옷 정보 초안 ${n.profileDrafts}개` : ''}`,
     // 복원·되돌리기가 지울 수 있는 키: 이 화면이 쓰는 키와 날씨 지역뿐. 읽지 못한 원문 보관(':unreadable:')·모르는 키는 지우지 않는다.
     removable: (k) => (k.startsWith('eoul-d12-hang:') && !k.includes(':unreadable:')) || k === 'eoul-weather:place',
     // 목표 상태(target)로 바꾼다. 백업에 없는 '지울 수 있는 키'는 지우고, 쓴 뒤 다시 읽어 확인한다.
@@ -2337,7 +2340,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const stash = BK.stash();
     const reportText = (report) => `<div class="t6" data-bk-report>정상 자료 ${report.active.length}개 항목 · 원문 보관 ${report.archives.length}개(활성화 안 됨)${report.preserved.length ? ` · 기존 활성 자료 유지 ${report.preserved.length}개` : ''}${report.archivedCurrent.length ? ` · 기존 원문 ${report.archivedCurrent.length}개는 보관 후 활성에서 교체/제거` : ''}</div>${report.archives.length || report.archivedCurrent.length ? `<ul class="t6">${[...report.archives, ...report.archivedCurrent].map(a => `<li>${esc(BK.sourceLabel(a.source))}: ${esc(a.reason)}${a.action ? ` · 보관 후 ${esc(a.action)}` : ''}<details><summary>복구 진단</summary><code>${esc(a.source)}</code></details></li>`).join('')}</ul>` : ''}`;
     let photoBusy = false;
-    const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요. 읽을 수 없는 원문은 따로 보관하며 옷·상담으로 활성화하지 않아요. 새 백업은 최신 앱에서 복원해 주세요.</p>${reportText(current.report)}
+    const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기의 자료를 글자 파일 하나로 내보내요(사진 없음).<br>${esc(BK.countText(n))}.<br> 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요. 읽을 수 없는 원문은 따로 보관하며 옷·상담으로 활성화하지 않아요. 새 백업은 최신 앱에서 복원해 주세요.</p>${reportText(current.report)}
       <div class="decs"><button class="btn go" data-bk-save><i class="ph ph-download-simple"></i>파일로 내보내기</button><button class="btn line" data-bk-copy><i class="ph ph-copy"></i>글자로 복사</button><label class="btn line" for="bkfile"><i class="ph ph-upload-simple"></i>파일로 복원<input id="bkfile" type="file" accept=".json,.otjang,application/octet-stream,application/json,text/plain" hidden></label><button class="btn line" data-bk-paste><i class="ph ph-clipboard-text"></i>붙여넣어 복원</button>${stash ? `<button class="btn line" data-bk-undo><i class="ph ph-arrow-counter-clockwise"></i>복원 전(${esc(whenText(stash.at))})으로 되돌리기</button>` : ''}</div>
       <textarea class="bk-ta" hidden aria-label="백업 글자" spellcheck="false" autocapitalize="off"></textarea>
       <div class="bk-preview" hidden></div>
