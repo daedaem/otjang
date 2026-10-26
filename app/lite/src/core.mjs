@@ -5,6 +5,8 @@ import { PROFILE_DRAFT_KEY, profileEditDraft, profileFromEdit, readProfileDrafts
 import { MEASUREMENT_DRAFT_KEY, measurementDraft, readMeasurementDrafts, measurementResult } from './domain/measurement-draft.js';
 import { COLLECTION_KEY, collectionSeriesKey, readCollectionSettings } from './domain/collection-settings.js';
 import { valueAxes, seriesShelves, wearExpectation } from './domain/collection-value.js';
+import {OUTFIT_REACTIONS_KEY,REACTION_OVERLAP_NOTE,readOutfitReactions,buildOutfitRequest} from './domain/outfit-review.js';
+import {REACTION_REASONS} from './domain/outfit-facts.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -353,6 +355,19 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     railSortChoices: () => Object.entries(SORTS),
     profileEditDraft,
     collectionKey: COLLECTION_KEY,
+    outfitReactionsKey:OUTFIT_REACTIONS_KEY,
+    readOutfitReactions,
+    canReadOutfitReactions(raw){try{readOutfitReactions(raw);return true;}catch{return false;}},
+    reactionReasons:()=>({...REACTION_REASONS}),
+    outfitReview(context={},bag={v:1,reactions:[]}){
+      const reactions=readOutfitReactions(JSON.stringify(bag)).reactions;
+      const garments=api.getState().closet.filter(g=>!g.trial),ids=new Set(garments.map(g=>g.id));
+      const rows=api.closetOutfits({detail:true,limit:120,ownedOnly:true}).list||[],seen=new Set();
+      const candidates=rows.filter(o=>{const keys=o.pieces.map(p=>p.garmentId);return keys.length>=2&&keys.every(id=>ids.has(id))&&!seen.has(o.key)&&!!seen.add(o.key);});
+      if(!candidates.length)return {request:null,candidates:[],total:0,note:'실제 내 옷으로 만든 조합이 아직 없어요. 체험용은 AI 요청에 넣지 않아요.'};
+      const request=buildOutfitRequest({context,garments,outfits:candidates.map((o,i)=>({id:`o_${i+1}`,garmentIds:o.pieces.map(p=>p.garmentId)})),reactions});
+      return {request,candidates:candidates.slice(0,request.outfits.length).map((o,i)=>({...o,id:request.outfits[i].id})),total:candidates.length,reactionBasis:REACTION_OVERLAP_NOTE,note:`현재 만든 후보 ${candidates.length}개 중 ${request.outfits.length}개를 비교해요. 편집 규칙은 입력 사실이며 최종 순위·이유는 AI가 정해요.`};
+    },
     collectionSeriesKey,
     readCollectionSettings,
     canReadCollectionSettings(raw) {try {readCollectionSettings(raw);return true;}catch{return false;}},
@@ -887,8 +902,9 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     // 구매 추천이 아니다. 체험용 옷도 포함하므로 화면에서 '체험용 포함'을 밝힌다.
     // detail: true면 조합 목록(list)도 준다. key는 조합에 든 옷 id를 이은 값, baseKey는 겉옷을 뺀 값이다.
     // 기본 조합은 겉옷만 다른 조합을 하나로 묶으므로 '새로 생긴 조합'은 baseKey로 가린다.
-    closetOutfits({ limit = 60, detail = false } = {}) {
-      const st = engineState();
+    closetOutfits({ limit = 60, detail = false, ownedOnly = false } = {}) {
+      const original = engineState();
+      const st = ownedOnly ? {...original,garments:S.garments.filter(g=>!isTrial(g.id)),closet:original.closet.filter(g=>!isTrial(g.id))} : original;
       const ready = closetLooks(st, { limit }).ready;
       const basics = basicOutfits(st, { limit });
       const out = { formulas: ready.length, basic: basics.length, total: ready.length + basics.length, note: '가진 옷으로 입을 수 있는 조합 수예요(종류·색 기준, 핏·소재는 따지지 않았어요).' };
