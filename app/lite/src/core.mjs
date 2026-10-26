@@ -3,6 +3,8 @@ import { validateProfile, garmentCategory, measureFieldsFor, MEASURES, CHOICES, 
 import { railLayout, SORTS } from './domain/rail-layout.js';
 import { PROFILE_DRAFT_KEY, profileEditDraft, profileFromEdit, readProfileDrafts } from './domain/profile-edit.js';
 import { MEASUREMENT_DRAFT_KEY, measurementDraft, readMeasurementDrafts, measurementResult } from './domain/measurement-draft.js';
+import { COLLECTION_KEY, collectionSeriesKey, readCollectionSettings } from './domain/collection-settings.js';
+import { valueAxes, seriesShelves, wearExpectation } from './domain/collection-value.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -350,6 +352,40 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     railCategory: (garment) => garmentCategory(garment),
     railSortChoices: () => Object.entries(SORTS),
     profileEditDraft,
+    collectionKey: COLLECTION_KEY,
+    collectionSeriesKey,
+    readCollectionSettings,
+    canReadCollectionSettings(raw) {try {readCollectionSettings(raw);return true;}catch{return false;}},
+    collectionInfo(productId, settings) {
+      const bag=readCollectionSettings(JSON.stringify(settings));
+      const owned=api.getState().closet.filter(g=>!g.trial);
+      const product=productId?api.product(productId):null;
+      if(productId&&!product)throw Error('비교할 상품을 찾지 못했어요.');
+      let axes=null;
+      if(product){
+        const preference=bag.candidates[productId]||{purpose:null,series:''};
+        let newOutfits=null;
+        if(owned.length&&!product.colorFromPhoto){
+          const st=engineState(),actual=S.garments.filter(g=>!isTrial(g.id));
+          const compared=compareCandidate({...st,garments:actual,closet:st.closet.filter(g=>!isTrial(g.id))},candidateFromProduct(PRODUCT_BY_ID[productId]),{absence:S.absences[productId]||'unknown'});
+          newOutfits=compared.newFormulaCount;
+        }
+        axes=valueAxes({candidate:{...product,color:product.colorFromPhoto?null:product.color,profile:{v:1,...(preference.series.trim()?{series:preference.series.trim()}:{})}},owned,purpose:preference.purpose,newOutfits});
+      }
+      return {key:COLLECTION_KEY,product,purposes:PURPOSES,ownedCount:owned.length,axes,shelves:seriesShelves(owned,bag.goals)};
+    },
+    collectionWear(garmentId) {
+      const g=S.garments.find(g=>g.id===garmentId);
+      if(!g||isTrial(g.id))throw Error('실제 보유한 옷을 골라 주세요.');
+      const j=g.productId?journeyFor(g.productId):null,purpose=g.profile?.purpose||null,count=j?.wearCount||0;
+      return {purpose,expectation:wearExpectation(purpose),count,line:`${purpose?PURPOSES[purpose]+' 목적 · ':''}기록한 착용 ${count}회`,note:purpose==='collect'?'소장 목적이면 착용 기록이 적어도 감점하지 않아요.':'기록이 없다는 것이 실제로 안 입었다는 뜻은 아니에요.'};
+    },
+    collectionRecord(productId, settings=null) {
+      const j=journeyFor(productId),g=j?.garmentId?S.garments.find(g=>g.id===j.garmentId):null;
+      const preference=settings?readCollectionSettings(JSON.stringify(settings)).candidates[productId]:null;
+      const purpose=g?.profile?.purpose||preference?.purpose||null;
+      return {purpose,expectation:wearExpectation(purpose),source:g?.profile?.purpose?'옷 정보':'후보 메모',line:purpose?`${g?.profile?.purpose?'옷 정보':'후보 메모'} · ${PURPOSES[purpose]} 목적${j?.stage==='kept'?` · 기록한 착용 ${j.wearCount}회`:''}`:'',note:purpose==='collect'?'소장 목적이면 착용 기록이 적어도 감점하지 않아요.':''};
+    },
     measurementDraft,
     readMeasurementDrafts,
     canReadMeasurementDrafts(raw) { try { readMeasurementDrafts(raw); return true; } catch { return false; } },

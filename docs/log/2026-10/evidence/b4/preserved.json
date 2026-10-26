@@ -1,0 +1,65 @@
+{
+  "base": "1a401f1bcc936505085bb031044a10cccd3dc313",
+  "checks": [
+    {
+      "name": "BK.apply",
+      "file": "app/lite/src/screen.html",
+      "equal": true,
+      "sha256": "c2a30adb786c8965bb0b0438179b841b7238e00dcb7674326aab2caa635da182"
+    },
+    {
+      "name": "BK.restore",
+      "file": "app/lite/src/screen.html",
+      "equal": true,
+      "sha256": "712fe227544db1135db8e9f4e5246ee44d812a424411ee4d7197e2b9332b75b1"
+    },
+    {
+      "name": "BK.undo",
+      "file": "app/lite/src/screen.html",
+      "equal": true,
+      "sha256": "031a0f243ce10d46ded829934e635549ddebcb5f6c0bfd3065ffe30b7fbfe19b"
+    },
+    {
+      "name": "core.decide",
+      "file": "app/lite/src/core.mjs",
+      "equal": true,
+      "sha256": "841746a64b012b0ebf05279c8d5069081f7c8c57bb816cfd033aec6eb164f0cf"
+    },
+    {
+      "name": "core.advance",
+      "file": "app/lite/src/core.mjs",
+      "equal": true,
+      "sha256": "9f773166e63fc9978ef1023eab955e8e1cea59f4a9b78753ae71a6ec9d31b633"
+    },
+    {
+      "name": "rank",
+      "file": "app/lite/functions/api/rank.js",
+      "equal": true,
+      "sha256": "461335521203b2d213ca13bddf4193dc88449c268a44966da9cf53b3847987dd"
+    },
+    {
+      "name": "budget query",
+      "file": "app/lite/src/domain/query.js",
+      "equal": true,
+      "sha256": "8d678a70616fd0955aa22244bde715f88728d1fae8ca1998f62b03da86728079"
+    },
+    {
+      "name": "registration",
+      "file": "app/lite/src/domain/lite-registration.js",
+      "equal": true,
+      "sha256": "505c84b0014c0cd181b5e2f43523aa1cb9e315f42bf8f9ee78e606b7cfca944b"
+    },
+    {
+      "name": "input draft",
+      "file": "app/lite/src/domain/lite-input-draft.js",
+      "equal": true,
+      "sha256": "b4f9eb04b9d4a2cc0d00a1cc275452547b7eca0cd371a58b00b8585bf6e8a0b7"
+    },
+    {
+      "name": "photo backup",
+      "file": "app/lite/src/photos/index.js",
+      "equal": true,
+      "sha256": "7751b4b1982e223d6416516f06feb0afb403d56662f27316c11dc80a3043b60d"
+    }
+  ]
+}

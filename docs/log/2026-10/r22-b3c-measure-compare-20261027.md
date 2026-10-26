@@ -51,3 +51,5 @@ BK 검사/출처 이름/조건부 건수를 새 코덱에 연결했다. 미래/�
 | 선택한 도식/가정 | [이후](evidence/b3c/after-mobile-diagram.png) | [이후](evidence/b3c/after-desktop-diagram.png) |
 
 재현은 저장소 루트의 `npm --prefix app/lite test`, `npm --prefix app/lite run build`, `npm --prefix app/lite run test:e2e`다. 별도 기준7493826 빌드 경로를 `B3C_BASE_DIST`로 주고 `node app/lite/tools/compare-measure.mjs`를 실행하면 캡처를 만든다. 새 공개 배포·유료 API·개인 사진 외부 전송·운영 API 검증은 하지 않았다. 다음은 B4 수집 축/진열장이다.
+
+최종 병합 확인: head8fded37의 Node306개·로컬 전체150개(5.5분), CI11개와 push/PR 브라우저 각150개(5.4분/5.9분) 및 미해결 검토0을 확인해 master1a401f1에 병합했다. 활성 배포·실제 휴대폰 확인은 별개다.

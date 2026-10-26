@@ -7,6 +7,7 @@ type Props = {
   metadata: ReturnType<ProfileHost["metadata"]>;
   link: string | null;
   disabled: boolean;
+  exists: boolean;
   onColour(): void;
   heading: RefObject<HTMLHeadingElement | null>;
 };
@@ -16,10 +17,12 @@ export function GarmentSummary({
   metadata,
   link,
   disabled,
+  exists,
   onColour,
   heading,
 }: Props) {
   const brand = g.brand || metadata?.brand;
+  const wear = exists ? host.core.collectionWear?.(g.id) : null;
   const sellerPhoto =
     !g.photoId && g.productId ? host.core.photo({ id: g.productId }) : null;
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -60,6 +63,13 @@ export function GarmentSummary({
           </button>
         </div>
       </div>
+      {wear && (
+        <p className="rp-note" data-owned-wear>
+          {wear.line}
+          <br />
+          {wear.note}
+        </p>
+      )}
       {metadata?.source?.provider === "opf" &&
         /^\d{6,24}$/.test(metadata.source.code) && (
           <p className="rp-note">

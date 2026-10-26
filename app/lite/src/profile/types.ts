@@ -62,6 +62,7 @@ export type ProfileInfo = {
   unknown: string[];
 };
 export interface ProfileCore {
+  collectionWear?(id:string):{line:string;note:string};
   version(): number;
   subscribe(listener: () => void): () => void;
   getState(): Omit<ClosetState, "closet"> & { closet: ProfileGarment[] };
