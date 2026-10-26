@@ -444,3 +444,13 @@ test("photo metadata cannot be altered after verification and old journal cleanu
   await f.repository.clearJournal("old-owner");
   assert.equal((await f.repository.pending()).id, "new-owner");
 });
+
+for(const query of ['?g=F','?reset=1','?closet=trial','?g=F&reset=1&closet=trial']){
+ test(`pending photo recovery still initializes generated core at ${query}`,()=>{
+  const f=fixture();f.m.addGarment({kind:'shirt',color:'white'});f.storage.setItem(MARKER,'{"v":1,"id":"bootstrap-held"}');const raw=f.map.get(KEY),events=f.events.length;
+  const window={localStorage:f.storage,EOUL_MOCK_KEY:KEY,location:{search:query},addEventListener(){}};
+  const context={window,location:window.location,URLSearchParams,structuredClone,TextEncoder,console};
+  const source=fs.readFileSync(new URL('../.generated/core-bundle.js',import.meta.url),'utf8');assert.doesNotThrow(()=>vm.runInNewContext(source,context));
+  assert.equal(window.EoulMock.storageIssue().code,'photo_recovery_pending');assert.equal(window.EoulMock.getState().closetCount,1);assert.match(window.EoulMock.boot.storageError,/사진/);assert.equal(f.map.get(KEY),raw);assert.equal(f.events.length,events);
+ });
+}
