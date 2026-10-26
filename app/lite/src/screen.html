@@ -568,11 +568,11 @@ a { color: inherit; text-decoration: none; }
 <div id="bar"></div>
 <button class="strip" id="strip" hidden data-tabgo="closet" aria-label="옷걸이 열기"></button>
 <nav class="tabs" id="tabs" aria-label="메뉴"><div class="in">
-  <button data-tab="home"><i class="ph ph-magnifying-glass"></i>찾기</button>
-  <button data-tab="looks"><i class="ph ph-t-shirt"></i>코디</button>
-  <button data-tab="closet"><i class="ph ph-coat-hanger"></i>옷장</button>
-  <button data-tab="consult"><i class="ph ph-chats-circle"></i>상담</button>
-  <button data-tab="records"><i class="ph ph-notebook"></i>기록</button>
+  <button data-tab="home"><i class="ph ph-magnifying-glass" aria-hidden="true"></i>찾기</button>
+  <button data-tab="looks"><i class="ph ph-t-shirt" aria-hidden="true"></i>코디</button>
+  <button data-tab="closet"><i class="ph ph-coat-hanger" aria-hidden="true"></i>옷장</button>
+  <button data-tab="consult"><i class="ph ph-chats-circle" aria-hidden="true"></i>상담</button>
+  <button data-tab="records"><i class="ph ph-notebook" aria-hidden="true"></i>기록</button>
 </div></nav>
 
 <script>
@@ -719,8 +719,8 @@ a { color: inherit; text-decoration: none; }
     try { base = M.disclosure(); } catch {}
     const extra = [
       { h: '오늘 날씨 코디', lines: ['기온과 옷 종류로만 골랐어요. 소재·두께는 몰라요.', '설치 앱에서는 실제 날씨(오늘·내일)를 쓰고, 이 링크 페이지에서는 ‘예시 날씨’를 골라 볼 수 있어요. 예시 날씨는 실제 날씨가 아니에요.', '맞는 겉옷이 없을 때 보여 주는 상품은 조건에 맞는 실제 상품이에요. 사라고 권하는 게 아니라 종류만 보여 드려요.'] },
-      { h: 'AI 순위와 상담', lines: ['검색 후보는 조건에 맞는 상품을 규칙으로 고르고, 순서와 이유는 AI(Claude)가 상품 정보·평점·후기·내 옷장만 보고 정해요. claude.ai에서 열었을 때만 켜져요.', '코디 상담은 옷·코디 이야기만 답하고, 답은 틀릴 수 있어요. 상담 내용은 이 브라우저에만 남아요.'] },
-      { h: '직접 등록한 옷', lines: [`목록에 없는 옷은 브랜드·상품명·종류·색만 적어요. 사진은 받지 않아요.`, `같은 옷을 ${NEED}명이 등록하면 모두가 검색할 수 있어요. 서버 연결 전에는 이 기기에만 남아요.`, '사진은 같은 종류·색의 비슷한 상품 사진이에요.'] },
+      { h: 'AI 순위와 상담', lines: ['검색 후보는 조건에 맞는 상품을 규칙으로 고르고, 순서와 이유는 연결된 AI가 상품 정보·평점·후기·내 옷장 정보를 보고 정해요. 서버 AI가 연결된 환경에서만 동작하며 연결 실패는 화면에 알려요.', '코디 상담은 옷·코디 이야기만 답하고, 답은 틀릴 수 있어요. 상담 내용은 이 브라우저에만 남아요.'] },
+      { h: '직접 등록한 옷', lines: [`목록에 없는 옷은 브랜드·상품명·종류·색으로 등록할 수 있어요. 새 옷장 레일에서는 내가 찍은 옷 사진을 나중에 연결할 수 있고, 사진으로 브랜드나 상품을 자동 식별하지 않아요.`, `같은 옷을 ${NEED}명이 등록하면 모두가 검색할 수 있어요. 서버 연결 전에는 이 기기에만 남아요.`, '내 사진은 이 기기에 보관하고 서버·AI·공유 목록에 보내지 않아요. 새 레일에서 사진이 없으면 도형으로, 기존 일부 화면에서는 비슷한 상품 사진으로 표시해요. 비슷한 사진은 가진 옷 원본이 아니에요.'] },
     ];
     // 이 페이지는 사진을 함께 올린 사본(p/)에서 읽으므로 코어의 '이미지 서버에서 불러온다' 문장은 바꿔 적는다.
     const fixLine = (l) => (window.EOUL_PHOTO_BASE && /이미지 서버의 주소를 그대로/.test(l) ? '상품 사진은 확인용으로 이 페이지에 함께 올린 사본이에요. 사용 권리는 확인하지 않았어요. 링크를 외부에 공유하지 말아 주세요.' : l);
@@ -745,6 +745,7 @@ a { color: inherit; text-decoration: none; }
     return `<span class="ph-box"><img class="${flat ? 'flat' : 'cover'}" src="${esc(ph.src)}" alt="${esc(ph.alt)}" decoding="async">${t}${extra}</span>`;
   }
   function garmentPic(g) {
+    if (g.photoId) return `<span class="ph-box" role="img" aria-label="${esc(g.label || '내 옷')} · 내 사진 연결됨"><span class="swatch"><i style="background:${esc(g.colorHex || '#ccc')}"></i></span><span class="tag">내 사진 연결됨</span></span>`;
     if (g.productId && M.photo({ id: g.productId })) return productPic(g.productId);
     const id = K.CUT[`${g.gender || M.getState().gender || 'M'}|${g.kind}|${g.color}`]?.[0];
     if (id) { const ph = M.photo({ id }); if (ph) return `<span class="ph-box"><img class="flat" src="${esc(ph.src)}" alt="${esc(`${g.colorLabel || ''} ${g.kindName || ''}`.trim())}" decoding="async"></span>`; }
@@ -1054,14 +1055,18 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // ── 화면
   let curView = 'home', curParams = {};
   let inputUnmount = null, inputEpoch = 0;
+  let closetUnmount = null;
+  const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
   function render(view, params, dir) {
     inputUnmount?.(); inputUnmount = null;
+    closetUnmount?.(); closetUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
     $('#bar').innerHTML = '';
     const reactInput = view === 'reg' && window.EOUL_INPUT_LOAD && new URLSearchParams(location.search).get('input') !== 'vanilla';
-    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const reactCloset = view === 'closet' && window.EOUL_CLOSET_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla';
+    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1069,7 +1074,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if (reactInput) {
+    if (reactCloset) {
+      window.EOUL_CLOSET_LOAD().then(({ mount }) => {
+        if (epoch !== inputEpoch) return;
+        closetUnmount = mount({ element: $('#react-closet'), core: M, namespace: window.EOUL_MOCK_KEY, session: closetSession,
+          menu, info: disclose, add: () => K.go('add', {}), quickAdd: addFlow,
+          detail: garmentSheet, looks: () => K.tab('looks'), registration: regOf,
+        });
+      }).catch(() => { if (epoch !== inputEpoch) return; $('#react-closet').innerHTML = '<p role="status">새 화면을 불러오지 못해 기존 옷장으로 열었어요. 연결되면 다시 열어 주세요.</p>' + V.closet(params); A.closet(params); });
+    } else if (reactInput) {
       window.EOUL_INPUT_LOAD().then(({ mount }) => {
         if (epoch !== inputEpoch) return;
         inputUnmount = mount({ element: $('#react-input'), core: M, input: Input, step: Number(params.step || 0),
@@ -1736,7 +1749,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const with_ = M.closetOutfits({ detail: true }).list.filter((o) => o.pieces.some((x) => x.garmentId === id));
     const seen = new Set(); const sets = with_.filter((o) => !seen.has(o.key) && seen.add(o.key)).slice(0, 2);
     const cat = reg ? registrationCatalog()[reg.key] : null;
-    const sh = sheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span style="width:84px;display:block;flex:none">${garmentPic(g)}</span><div style="min-width:0"><h2 class="h2" style="margin:0">${esc(g.label)}</h2><div class="t6">${esc([brand, g.color ? g.colorLabel : null, g.kindName, g.trial ? '체험용' : g.productId ? '판매처 사진' : reg ? '직접 등록 · 비슷한 상품 사진' : '비슷한 상품 사진'].filter(Boolean).join(' · '))}</div></div></div>
+    const sh = sheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span style="width:84px;display:block;flex:none">${garmentPic(g)}</span><div style="min-width:0"><h2 class="h2" style="margin:0">${esc(g.label)}</h2><div class="t6">${esc([brand, g.color ? g.colorLabel : null, g.kindName, g.trial ? '체험용' : g.photoId ? '내 사진 · 이 기기에 보관' : g.productId ? '판매처 사진' : reg ? '직접 등록 · 비슷한 상품 사진' : '비슷한 상품 사진'].filter(Boolean).join(' · '))}</div></div></div>
       ${reg?.source ? opfNotice(reg.source) : cat ? `<div class="crowd" style="margin:0 0 14px"><i class="ph ph-users-three"></i><span>${crowdLine(cat)}${cat.url ? ` · <a href="${esc(cat.url)}" target="_blank" rel="noopener" style="text-decoration:underline">판매처 링크</a>` : ''}</span></div>` : ''}
       ${g.detailMissing === '색 미확인' ? `<div class="notice" style="margin:0 0 12px"><span class="grow">색을 알려 주시면 코디에 셀 수 있어요</span><button data-gcolor>색 고르기</button></div>` : ''}
       <h3 class="h3" style="margin-bottom:4px">이 옷으로 입을 수 있는 코디 <span class="num acc">${with_.length}</span>가지</h3>
@@ -2381,7 +2394,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
 
   const r0 = M.route.current();
-  K.start(render, { view: 'home', params: {} });
+  // Direct closet entry must not render the home example first: its M.ask
+  // would otherwise persist an example query as a new personal recent search.
+  K.start(render, { view: r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: {} });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   const storageNotice = () => {
     document.getElementById('eo-storage-issue')?.remove();
@@ -2426,7 +2441,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   if (M.boot?.q) K.go('results', { q: M.boot.q });
   else if (/^\/p\/.+/.test(r0.path)) K.go('detail', { id: r0.path.slice(3) });
   else if (r0.path === '/search' && r0.params.q) K.go('results', { q: r0.params.q });
-  else if (['/closet', '/records', '/consult', '/looks'].includes(r0.path)) K.tab(r0.path.slice(1));
+  else if (['/records', '/consult', '/looks'].includes(r0.path)) K.tab(r0.path.slice(1));
   else if (r0.path === '/add') K.go('add', {});
   else if (r0.path === '/reg') K.go('reg', {});
   else if (r0.path === '/compare') K.go('compare', {});

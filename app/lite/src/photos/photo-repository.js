@@ -142,6 +142,33 @@ export async function openPhotoRepository(
     async get(id) {
       return get("photos", id);
     },
+    async thumbnail(id) {
+      const row = await get("meta", "thumb:" + id);
+      if (
+        !row ||
+        row.v !== 1 ||
+        !["image/png", "image/webp"].includes(row.mime) ||
+        !(row.bytes instanceof ArrayBuffer) ||
+        row.bytes.byteLength > 512 * 1024
+      )
+        return null;
+      return new Blob([row.bytes], { type: row.mime });
+    },
+    async cacheThumbnail(id, blob) {
+      if (
+        !/^p_[a-f0-9]{64}$/.test(id) ||
+        !["image/png", "image/webp"].includes(blob.type) ||
+        blob.size > 512 * 1024
+      )
+        throw Error("썸네일 형식을 확인해 주세요.");
+      const bytes = await blob.arrayBuffer();
+      return transaction(["meta"], "readwrite", (tx) => {
+        tx.objectStore("meta").put(
+          { v: 1, mime: blob.type, bytes },
+          "thumb:" + id,
+        );
+      });
+    },
     async put(record) {
       const verified = await photoRecord(record.blob, record);
       if (record.id !== verified.id || record.digest !== verified.digest)

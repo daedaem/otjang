@@ -1,5 +1,6 @@
 import { assertPhotoIdle, withPhotoLock, PHOTO_PENDING_KEY, PHOTO_PENDING_MESSAGE } from './domain/photo-pending.js';
-import { validateProfile } from './domain/garment-profile.js';
+import { validateProfile, garmentCategory } from './domain/garment-profile.js';
+import { railLayout, SORTS } from './domain/rail-layout.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -343,6 +344,9 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     catalog: { store: CATALOG.store, checkedLabel: CATALOG.checkedLabel, count: CATALOG.count, rights: CATALOG.rights },
     returnReasons: JOURNEY_RETURN_REASONS.map((id) => ({ id, label: RETURN_LABEL[id] })),
     version: () => version,
+    railLayout: (garments, options) => railLayout(garments, options),
+    railCategory: (garment) => garmentCategory(garment),
+    railSortChoices: () => Object.entries(SORTS),
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     storageIssue: () => { if (storageIssue?.code === 'storage_unreadable') return { code: storageIssue.code, message: storageIssue.message }; try { assertPhotoIdle(storage); } catch (error) { return { code: error.code || 'storage_unavailable', message: error.code ? error.message : UNAVAILABLE }; } return storageIssue ? { code: storageIssue.code, message: storageIssue.message } : null; },
     unreadableRaw: () => (storageIssue?.code === 'storage_unreadable' ? storageIssue.raw : null),
