@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createMock} from '../src/core.mjs';
+const api=await import('../src/domain/collection-settings.js').catch(()=>({}));
+const client=await import('../src/collection/session.js').catch(()=>({}));
+const KEY='eoul-d12-hang:collection:v1';
+const empty=()=>({v:1,candidates:{},goals:[]});
+const pref=(purpose='collect')=>({purpose,series:'LVC 501',updatedAt:'2026-10-27T00:00:00.000Z'});
+const memory=()=>{const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)};};
+test('collection settings preserve chosen intent without turning candidates or targets into owned clothes',()=>{
+  assert.equal(typeof api.readCollectionSettings,'function');
+  const bag=empty();bag.candidates['ms-728000']=pref();bag.goals=[{series:'LVC 501',target:5}];
+  const raw=' '+JSON.stringify(bag)+'\n';
+  assert.deepEqual(api.readCollectionSettings(raw),bag);
+  assert.deepEqual(api.readCollectionSettings(null),empty());
+  const m=createMock();assert.equal(typeof m.collectionInfo,'function');
+  const info=m.collectionInfo('ms-728000',bag);
+  assert.equal(info.axes.duplicateWarning,false);
+  assert.equal(m.getState().closetCount,0);
+  assert.equal(info.shelves[0].count,0);assert.equal(info.shelves[0].empty,5);
+});
+test('future settings, duplicate names and invalid goals are rejected rather than normalized',()=>{
+  assert.equal(typeof api.readCollectionSettings,'function');
+  for(const raw of ['broken','{"v":99,"candidates":{},"goals":[]}','{"v":99,"v":1,"candidates":{},"goals":[]}',JSON.stringify({...empty(),future:true}),JSON.stringify({...empty(),goals:[{series:'LVC 501',target:2},{series:'lvc501',target:3}]}),JSON.stringify({...empty(),goals:[{series:'LVC',target:101}]}),JSON.stringify({...empty(),candidates:{'ms-728000':pref('resell')}})])assert.throws(()=>api.readCollectionSettings(raw));
+});
+test('candidate writes merge unrelated entries and refuse to overwrite a newer same-candidate intent',async()=>{
+  assert.equal(typeof client.createCollectionSession,'function');
+  const storage=memory(),core={collectionKey:KEY,readCollectionSettings:api.readCollectionSettings,assertPhotoReady(){},withStorageLock:run=>run()};
+  const a=client.createCollectionSession({core,storage}),b=client.createCollectionSession({core,storage});
+  await a.saveCandidate('ms-728000',pref());
+  await b.saveCandidate('ms-728001',pref('wear'));
+  assert.equal(api.readCollectionSettings(storage.getItem(KEY)).candidates['ms-728000'].purpose,'collect');
+  const old=client.createCollectionSession({core,storage});
+  await a.saveCandidate('ms-728000',pref('both'));
+  const newer=storage.getItem(KEY);
+  await old.saveCandidate('ms-728000',pref('wear'));
+  assert.equal(storage.getItem(KEY),newer);
+  assert.equal(old.getSnapshot().persisted,false);
+  assert.match(old.getSnapshot().notice,/다른/);
+});
+test('failed collection writes retain visible input and a later successful retry clears the error',async()=>{
+  assert.equal(typeof client.createCollectionSession,'function');
+  const storage=memory(),set=storage.setItem;let fail=true;
+  storage.setItem=(k,v)=>{if(fail)throw Error('quota');return set(k,v);};
+  const core={collectionKey:KEY,readCollectionSettings:api.readCollectionSettings,assertPhotoReady(){},withStorageLock:run=>run()};
+  const session=client.createCollectionSession({core,storage});
+  await session.saveCandidate('ms-728000',pref());
+  assert.equal(session.getSnapshot().bag.candidates['ms-728000'].purpose,'collect');
+  assert.equal(session.getSnapshot().persisted,false);assert.equal(storage.getItem(KEY),null);
+  fail=false;await session.retry();
+  assert.equal(session.getSnapshot().persisted,true);assert.equal(session.getSnapshot().notice,'');
+});
+test('shelves count real owned series only, and an owned collection intent does not equate zero wear to failure',()=>{
+  const m=createMock();assert.equal(typeof m.collectionInfo,'function');
+  m.loadTrialCloset();
+  const own=m.addGarment({kind:'shirt',color:'white',profile:{v:1,purpose:'collect',series:'My Archive'}});
+  const info=m.collectionInfo(null,empty());
+  assert.deepEqual(info.shelves.map(s=>[s.name,s.count,s.empty]),[['My Archive',1,0]]);
+  assert.equal(info.ownedCount,1);
+  assert.equal(m.collectionWear(own.id).expectation,'not-expected');
+  assert.match(m.collectionWear(own.id).line,/기록한 착용 0회/);
+  assert.doesNotMatch(m.collectionWear(own.id).line,/실패|후회/);
+});
