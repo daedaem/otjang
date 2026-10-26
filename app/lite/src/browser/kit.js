@@ -32,6 +32,7 @@
   }
   // 종류·색만 아는 옷(내 옷장)의 '비슷한 상품 사진'. 흰 배경 사진을 먼저 쓰고, 없으면 코어의 비슷한 사진, 그것도 없으면 색 카드.
   function garmentImg(g, { cls = 'k-img' } = {}) {
+    if (g.photoId) return `<span class="k-miss" role="img" aria-label="${esc(g.label || '내 옷')} · 내 사진 연결됨">내 사진 연결됨</span>`;
     const id = CUT[`${g.gender || M.getState().gender}|${g.kind}|${g.color}`]?.[0];
     if (id) return productImg(id, { cls });
     const ph = M.photo(g);

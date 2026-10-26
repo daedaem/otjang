@@ -78,10 +78,16 @@ await buildInput({ configFile: path.join(HERE, 'vite.config.mjs') });
 const inputManifest = JSON.parse(read(path.join(OUT, 'react/.vite/manifest.json')));
 const inputEntry = Object.values(inputManifest).find((entry) => entry.isEntry && entry.src === 'src/input/index.tsx');
 const photoEntry = Object.values(inputManifest).find((entry) => entry.isEntry && entry.src === 'src/photos/index.js');
+const closetEntry = Object.values(inputManifest).find((entry) => entry.isEntry && entry.src === 'src/closet/index.tsx');
+if (!closetEntry) throw new Error('React closet entry missing');
 if (!photoEntry) throw new Error('Photo backup entry missing');
 if (!inputEntry) throw new Error('React input entry missing');
 const inputAssets = `<script>window.EOUL_INPUT_LOAD=(()=>{let loading;return ()=>loading||=Promise.all(${JSON.stringify(inputEntry.css || [])}.map(file=>new Promise((resolve,reject)=>{const href='/react/'+file;const loaded=[...document.querySelectorAll('link[data-input-style]')].find(link=>new URL(link.href).pathname===href);if(loaded&&loaded.dataset.ready==='1')return resolve();const link=loaded||Object.assign(document.createElement('link'),{rel:'stylesheet',href});link.dataset.inputStyle='1';link.onload=()=>{link.dataset.ready='1';resolve()};link.onerror=()=>{link.remove();reject(new Error('input style unavailable'))};if(!loaded)document.head.append(link)}))).then(()=>import('/react/${inputEntry.file}')).catch(error=>{loading=null;throw error})})();</script>`;
 const photoAssets = `<script>window.EOUL_PHOTO_LOAD=(()=>{let loading;return ()=>loading||=import('/react/${photoEntry.file}').catch(error=>{loading=null;throw error})})();</script>`;
+const closetFiles = new Set();
+const collectClosetFiles = (entry) => { closetFiles.add('/react/' + entry.file); for (const css of entry.css || []) closetFiles.add('/react/' + css); for (const dependency of entry.imports || []) collectClosetFiles(inputManifest[dependency]); };
+collectClosetFiles(closetEntry);
+const closetAssets = `<script>window.EOUL_CLOSET_LOAD=(()=>{let loading;return ()=>loading||=Promise.all(${JSON.stringify(closetEntry.css || [])}.map(file=>new Promise((resolve,reject)=>{const href='/react/'+file;const loaded=[...document.querySelectorAll('link[data-closet-style]')].find(link=>new URL(link.href).pathname===href);if(loaded&&loaded.dataset.ready==='1')return resolve();const link=loaded||Object.assign(document.createElement('link'),{rel:'stylesheet',href});link.dataset.closetStyle='1';link.onload=()=>{link.dataset.ready='1';resolve()};link.onerror=()=>{link.remove();reject(new Error('closet style unavailable'))};if(!loaded)document.head.append(link)}))).then(()=>import('/react/${closetEntry.file}')).then(mod=>{const worker=navigator.serviceWorker;const warm=()=>{Promise.all(${JSON.stringify([...closetFiles])}.map(url=>fetch(url))).catch(()=>{})};if(worker?.controller)warm();else worker?.addEventListener('controllerchange',warm,{once:true});return mod}).catch(error=>{loading=null;throw error})})();</script>`;
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -90,6 +96,7 @@ const html = `<!doctype html>
 <title>${APP_NAME}</title>
 ${inputAssets}
 ${photoAssets}
+${closetAssets}
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">

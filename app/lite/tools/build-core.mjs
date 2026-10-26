@@ -18,7 +18,7 @@ const ORDER = [
   'src/domain/legacy-purchase-v4.js', 'src/domain/purchase-journey.js', 'src/domain/wear-log.js', 'src/domain/wardrobe.js', 'src/domain/outfit-copy.js',
   'src/domain/search-follow-up.js', 'src/domain/query.js', 'src/domain/engine.js', 'src/domain/purchase-candidate.js',
   'src/domain/related-returns.js', 'src/domain/wardrobe-plan.js', 'src/domain/purchase-plan-context.js', 'src/domain/offers.js', 'src/domain/offer-store.js',
- 'src/domain/photo-pending.js', 'src/domain/garment-profile.js', 'src/domain/lite-input-draft.js', 'src/domain/lite-registration.js',
+ 'src/domain/photo-pending.js', 'src/domain/garment-profile.js', 'src/domain/rail-layout.js', 'src/domain/lite-input-draft.js', 'src/domain/lite-registration.js',
 ];
 const importsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^import[\s\S]*?from\s+['"]([^'"]+)['"];?\s*$/gm)].map((m) => path.resolve(path.dirname(file), m[1]));
 const need = new Set();

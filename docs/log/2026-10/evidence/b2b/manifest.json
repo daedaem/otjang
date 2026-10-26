@@ -1,0 +1,29 @@
+{
+  "base": "0a9b35ea72ea7bba464ce64ab500674ba1484f81",
+  "date": "2026-10-27",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "captures": [
+    "before-mobile-empty.png",
+    "before-mobile-owned.png",
+    "after-mobile-empty.png",
+    "after-mobile-owned.png",
+    "after-mobile-assembly.png",
+    "before-desktop-empty.png",
+    "before-desktop-owned.png",
+    "after-desktop-empty.png",
+    "after-desktop-owned.png",
+    "after-desktop-assembly.png"
+  ],
+  "sourceSha256": {
+    "src/closet/index.tsx": "32173322f38b520e4fa14170b0c2f7131671319c1a9326989e6ef88de0874079",
+    "src/closet/closet.css": "544fece6b22aa9a705b159e167700bf6bee2f82a7230d772718c54ed25579a60",
+    "src/closet/types.ts": "5a904f8a8ce080c86796f1963a7101e9bc2e76f3bc16e8f17cba3d76e60b4e8e",
+    "src/photos/index.js": "7751b4b1982e223d6416516f06feb0afb403d56662f27316c11dc80a3043b60d",
+    "src/photos/photo-repository.js": "de192fac1e5e6e95ab84f9805c1592ad9f372b7a3f0c972bcafa646aea3a507d",
+    "src/screen.html": "8788fa40b93355a4bfcd006a969f8cae2ea8f637faeb4a401f479320d101232c",
+    "src/core.mjs": "5d21b524d7399506fdfe6a128a7eaf96beecb65c1287a924ba0ada50fcf80a30",
+    "tools/build-core.mjs": "093825723263ea6ba77243ab086ee035c7f825dd1962112602247ba1f4b39bb6",
+    "build.mjs": "0f2323595787eed73895bc076cdfccb28446328611769d7be63d950930937e39"
+  }
+}

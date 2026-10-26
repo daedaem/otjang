@@ -21,6 +21,102 @@ export function photoLibrary(namespace = "eoul-d12-hang:v1") {
 export function currentPhotoClient(namespace = "eoul-d12-hang:v1") {
   return clients.get(namespace) || null;
 }
+// Decode only a user's local photo. No remote URLs, retailer cutouts or network
+// are accepted here. Immutable originals and derived thumbnail bytes are separate.
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file),
+      img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(
+        Error("사진을 읽지 못했어요. PNG·JPEG·WebP 파일을 확인해 주세요."),
+      );
+    };
+    img.src = url;
+  });
+}
+export async function imageDimensions(file) {
+  if (
+    !(file instanceof Blob) ||
+    !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+    !file.size ||
+    file.size > 8 * 1024 * 1024
+  )
+    throw Error("내가 찍은 PNG·JPEG·WebP, 8MB 이하의 사진을 골라 주세요.");
+  const img = await loadImage(file);
+  if (
+    !img.naturalWidth ||
+    !img.naturalHeight ||
+    img.naturalWidth * img.naturalHeight > 12_000_000
+  )
+    throw Error(
+      "이 화면에서는 1,200만 화소 이하 사진을 넣을 수 있어요. 더 작은 사본을 골라 주세요.",
+    );
+  return { width: img.naturalWidth, height: img.naturalHeight };
+}
+const thumbnails = new Map();
+let activeDecodes = 0;
+const decodeWaiters = [];
+async function withDecodeSlot(work) {
+  if (activeDecodes < 2) activeDecodes++;
+  else await new Promise((resolve) => decodeWaiters.push(resolve));
+  try {
+    return await work();
+  } finally {
+    const next = decodeWaiters.shift();
+    if (next) next();
+    else activeDecodes--;
+  }
+}
+export async function garmentThumbnail(namespace, id) {
+  const key = namespace + ":" + id;
+  if (thumbnails.has(key)) return thumbnails.get(key);
+  const task = (async () => {
+    const repository = await photoLibrary(namespace),
+      cached = await repository.thumbnail(id);
+    if (cached) return cached;
+    return withDecodeSlot(async () => {
+      const original = await repository.get(id);
+      if (!original) return null;
+      const img = await loadImage(original.blob);
+      if (img.naturalWidth * img.naturalHeight > 12_000_000)
+        throw Error(
+          "이 사진은 원본 보관함에 있어요. 미리보기는 1,200만 화소 이하에서 만들 수 있어요.",
+        );
+      const scale = Math.min(
+        1,
+        320 / Math.max(img.naturalWidth, img.naturalHeight),
+      );
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/webp", 0.82),
+      );
+      img.src = "";
+      if (!blob)
+        throw Error("사진 미리보기를 만들지 못했어요. 원본은 그대로예요.");
+      try {
+        await repository.cacheThumbnail(id, blob);
+      } catch {
+        /* Derived cache failure never deletes originals or blocks a saved photo. */
+      }
+      return blob;
+    });
+  })();
+  thumbnails.set(key, task);
+  try {
+    return await task;
+  } finally {
+    thumbnails.delete(key);
+  }
+}
 // B2b will call this only for the user's own local clothing file. The original
 // photo remains immutable even if the later reference write fails.
 export async function saveGarmentPhoto({
@@ -31,7 +127,8 @@ export async function saveGarmentPhoto({
   width = null,
   height = null,
 }) {
-  if (core.boot?.preview) throw new Error('미리보기에서는 개인 사진을 저장하지 않아요.');
+  if (core.boot?.preview)
+    throw new Error("미리보기에서는 개인 사진을 저장하지 않아요.");
   core.assertPhotoReady();
   const record = await photoRecord(file, { role: "garment", width, height });
   const repository = await photoLibrary(namespace);
