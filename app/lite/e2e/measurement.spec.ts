@@ -380,10 +380,12 @@ test("future comparison import preserves the current active note and undo restor
 });
 
 test("direct comparison entry and reload return to the product without discarding unsaved input", async ({ page }) => {
-  await page.goto("/?photos=0#/measure?id=ms-728000");
+  await page.goto("/?photos=0&entry=direct#/measure?id=ms-728000");
   await expect(page.locator("[data-measure-screen]")).toBeVisible();
   await page.getByRole("button", { name: "뒤로", exact: true }).click();
   await expect(page.locator(".pdp h1")).toBeVisible();
+  await page.getByRole("button", { name: "뒤로", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).K.current().view)).toBe("home");
   await open(page);
   await page.getByLabel("후보 총장 (cm)", { exact: true }).fill("72");
   await expect(page.locator("[data-measure-screen]")).toHaveAttribute("data-measure-saved", "true");
