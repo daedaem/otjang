@@ -1,6 +1,12 @@
 // 설치형 앱 연결부: 후보 id·옷장 비교만 서버에 보내고, 상품 사실·AI 지시는 서버가 채운다.
 // 링크 페이지의 Claude sample 기능은 덮어쓰지 않는다. 서비스 워커도 여기서 등록한다.
 (() => {
+  const localStorage = window.EOUL_UI_STORAGE || {
+    getItem: (key) => window.localStorage.getItem(key),
+    setItem: (key, value) => window.localStorage.setItem(key, value),
+    removeItem: (key) => window.localStorage.removeItem(key),
+  };
+  const preview = () => !!window.EoulMock?.boot?.preview;
   const ERR = { 400: 'bad_request', 401: 'unauthorized', 403: 'unauthorized', 413: 'bad_request', 429: 'rate_limited', 503: 'not_configured' };
   const resumeLogin = (res, body) => {
     if (res.status === 401 && body?.login === '/_private/login' && typeof window.location?.replace === 'function') {
@@ -8,6 +14,7 @@
     }
   };
   window.EOUL_SERVER_AI = async (request) => {
+    if (preview()) throw Object.assign(new Error('미리보기에서는 실제 AI 상담을 요청하지 않아요.'), { code: 'preview' });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
@@ -62,11 +69,12 @@
   const deviceId = () => {
     try {
       let id = localStorage.getItem('eoul-crowd:device');
-      if (!id) { id = crypto.randomUUID().replace(/-/g, ''); localStorage.setItem('eoul-crowd:device', id); }
+      if (!id) { window.EoulMock?.assertPhotoReady?.(); id = crypto.randomUUID().replace(/-/g, ''); localStorage.setItem('eoul-crowd:device', id); }
       return id;
     } catch { return null; }
   };
   const api = async (path, body) => {
+    if (body && preview()) return { code: 'preview', message: '미리보기에서는 공유 등록을 보내지 않아요.' };
     let res;
     try {
       res = await fetch(`/api/catalog/${path}`, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -109,13 +117,14 @@
     // place: {mode:'here'} 또는 {mode:'fixed', name, lat, lon}
     set(place) {
       const p = place?.mode === 'fixed' ? { mode: 'fixed', name: String(place.name || '내 지역').slice(0, 20), lat: round(+place.lat), lon: round(+place.lon) } : { mode: 'here' };
-      try { localStorage.setItem(PLACE_KEY, JSON.stringify(p)); localStorage.removeItem(CACHE_KEY); } catch {}
+      try { window.EoulMock?.assertPhotoReady?.(); localStorage.setItem(PLACE_KEY, JSON.stringify(p)); localStorage.removeItem(CACHE_KEY); } catch {}
       return p;
     },
     // 지금 있는 곳(0.1°)을 돌려준다. 위치를 거절하면 null.
     here: where,
   };
   window.EOUL_WEATHER = async () => {
+    if (preview()) return null;
     const place = readPlace();
     const sig = place.mode === 'fixed' ? `${place.lat},${place.lon}` : 'here';
     try {
@@ -132,7 +141,7 @@
     if (!body?.today) return null;
     const label = place.mode === 'fixed' ? place.name : here ? '현재 위치' : '서울(위치 허용 전)';
     const value = { place: label, placeMode: place.mode, source: body.source, today: body.today, tomorrow: body.tomorrow };
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), sig, value })); } catch {}
+    try { window.EoulMock?.assertPhotoReady?.(); localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), sig, value })); } catch {}
     return value;
   };
 

@@ -31,7 +31,7 @@
     let state = { values: fresh({}), step: 0, pending: null, notice: '' };
     const listeners = new Set();
     const publish = () => { state = { ...state }; for (const fn of listeners) fn(); };
-    const assertWritable = () => { if (storage.getItem('eoul-backup:stash-next') !== null) throw Object.assign(new Error('복원 복구를 먼저 진행해 주세요.'), { code: 'storage_recovery_pending' }); };
+    const assertWritable = () => { if (storage.getItem('eoul-backup:photos-pending') != null) throw Object.assign(new Error('사진 백업 복구를 먼저 마쳐 주세요.'), { code: 'photo_recovery_pending' }); if (storage.getItem('eoul-backup:stash-next') !== null) throw Object.assign(new Error('복원 복구를 먼저 진행해 주세요.'), { code: 'storage_recovery_pending' }); };
     const persist = () => {
       if (state.pending) return;
       // Search/OPF seeds and programmatic updates can bypass HTML maxlength.

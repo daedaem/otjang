@@ -1,3 +1,4 @@
+import { assertPhotoIdle, withPhotoLock, PHOTO_PENDING_KEY, PHOTO_PENDING_MESSAGE } from './domain/photo-pending.js';
 import { validateProfile } from './domain/garment-profile.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
@@ -126,14 +127,14 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       if (requireStorage) storageIssue = { code: 'storage_unavailable', message: UNAVAILABLE, raw: null };
       return blank();
     }
-    let raw;
-    try { raw = storage.getItem(key); } catch {
+    let raw, photoPending;
+    try { photoPending = storage.getItem(PHOTO_PENDING_KEY) != null; raw = storage.getItem(key); } catch {
       storageIssue = { code: 'storage_unavailable', message: UNAVAILABLE, raw: null }; // 무엇이 저장돼 있는지 모르면 쓰지 않는다.
       return blank();
     }
-    if (raw === null || raw === undefined || raw === '') return blank();
+    if (raw === null || raw === undefined || raw === '') { if (photoPending) storageIssue = { code: 'photo_recovery_pending', message: PHOTO_PENDING_MESSAGE }; return blank(); }
     try {
-      const loaded = readSaved(raw); legacyPending = JSON.parse(raw).v === 1; return loaded;
+      const loaded = readSaved(raw); legacyPending = JSON.parse(raw).v === 1; if (photoPending) storageIssue = { code: 'photo_recovery_pending', message: PHOTO_PENDING_MESSAGE }; return loaded;
     } catch {
       storageIssue = { code: 'storage_unreadable', message: UNREADABLE, raw: String(raw) };
       return blank();
@@ -141,7 +142,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   }
   function save() {
     if (storageIssue?.code === 'storage_unreadable') throw Object.assign(new Error(UNREADABLE), { code: 'storage_unreadable' });
-    if (storageIssue) throw Object.assign(new Error(UNAVAILABLE), { code: 'storage_write_failed' });
+    assertPhotoIdle(storage);
+    if (storageIssue) throw Object.assign(new Error(storageIssue.message || UNAVAILABLE), { code: 'storage_write_failed' });
     if (!storage && !requireStorage) return; // 명시적인 메모리 전용 시안/검사.
     try {
       if (!storage) throw new Error('unavailable');
@@ -333,6 +335,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   // ── API
   const api = {
     apiVersion: MOCK_API_VERSION,
+    assertPhotoReady() { assertPhotoIdle(storage); },
+    async withStorageLock(run) { if (globalThis.navigator?.locks?.request) return withPhotoLock(key, run); assertPhotoIdle(storage); return run(); },
     readInputDraft: readLiteInputDraft,
     canReadInputDraft(raw) { try { readLiteInputDraft(raw); return true; } catch { return false; } },
     note: NOTE,
@@ -340,7 +344,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     returnReasons: JOURNEY_RETURN_REASONS.map((id) => ({ id, label: RETURN_LABEL[id] })),
     version: () => version,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-    storageIssue: () => (storageIssue ? { code: storageIssue.code, message: storageIssue.message } : null),
+    storageIssue: () => { if (storageIssue?.code === 'storage_unreadable') return { code: storageIssue.code, message: storageIssue.message }; try { assertPhotoIdle(storage); } catch (error) { return { code: error.code || 'storage_unavailable', message: error.code ? error.message : UNAVAILABLE }; } return storageIssue ? { code: storageIssue.code, message: storageIssue.message } : null; },
     unreadableRaw: () => (storageIssue?.code === 'storage_unreadable' ? storageIssue.raw : null),
     // 백업 복원 전 검사: 이 원문을 지금 엔진이 그대로 읽을 수 있는지(저장소는 건드리지 않는다).
     canReadSaved(raw) {
@@ -349,6 +353,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     },
     // 읽지 못한 원문을 같은 기기의 별도 키에 그대로 보관한 것을 확인한 뒤에만 빈 기록으로 새로 시작한다.
     startFresh() {
+      assertPhotoIdle(storage);
       const issue = storageIssue;
       if (issue?.code !== 'storage_unreadable') throw new Error('새로 시작할 필요가 없어요.');
       const keep = Object.assign(new Error('원문을 따로 보관하지 못해 새로 시작하지 않았어요. 기존 기록은 그대로예요. 원문 파일을 먼저 받아 주세요.'), { code: 'storage_write_failed' });
@@ -381,6 +386,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         records: S.journeys.map(recordView).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))),
       };
     },
+    reloadSaved() { S = load(); version++; lastAsk = null; notify(); },
     setGender(g) { commit(() => { S.gender = g === 'F' ? 'F' : 'M'; }); },
     reset() { commit(() => { S = blank(); }); lastAsk = null; },
     examples: (gender = S.gender) => [...EXAMPLES[gender === 'F' ? 'F' : 'M']],
@@ -398,6 +404,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         key: `${input.brand} ${input.name}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' '), at: receipt.at };
     },
     registerGarment(value) {
+      assertPhotoIdle(storage);
       const input = registrationInput(value);
       if (!GARMENT_KINDS.some((k) => k.id === input.kind) || !COLORS[input.color]) throw new Error('종류·색을 다시 골라 주세요.');
       const registrations = readRegistrations(S.registrations);
@@ -434,6 +441,12 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         if (trial) S.trialIds = [...S.trialIds, garment.id];
       });
       return garmentView(garment);
+    },
+    updateGarmentPhoto(id, photoId) {
+      if (photoId !== null && (typeof photoId !== 'string' || !/^p_[a-f0-9]{64}$/.test(photoId))) throw new Error('사진 연결을 확인해 주세요.');
+      if (!S.garments.some(g => g.id === id) || isTrial(id)) throw new Error('실제 보유한 옷을 골라 주세요.');
+      commit(() => { S.garments = S.garments.map(g => g.id === id ? { ...g, photoId, photoMissing: false } : g); });
+      return garmentView(S.garments.find(g => g.id === id));
     },
     updateGarmentProfile(id, value) {
       const garment = S.garments.find(g => g.id === id);
@@ -1079,7 +1092,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   if (reset) { S = blank(); save(); } else S = load();
   if (typeof window !== 'undefined' && window.addEventListener)
     window.addEventListener('storage', (event) => {
-      if (event.key !== key) return;
+      if (event.key !== key && event.key !== PHOTO_PENDING_KEY) return;
       S = load();
       version++;
       lastAsk = null;

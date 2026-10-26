@@ -18,7 +18,7 @@ const ORDER = [
   'src/domain/legacy-purchase-v4.js', 'src/domain/purchase-journey.js', 'src/domain/wear-log.js', 'src/domain/wardrobe.js', 'src/domain/outfit-copy.js',
   'src/domain/search-follow-up.js', 'src/domain/query.js', 'src/domain/engine.js', 'src/domain/purchase-candidate.js',
   'src/domain/related-returns.js', 'src/domain/wardrobe-plan.js', 'src/domain/purchase-plan-context.js', 'src/domain/offers.js', 'src/domain/offer-store.js',
- 'src/domain/garment-profile.js', 'src/domain/lite-input-draft.js', 'src/domain/lite-registration.js',
+ 'src/domain/photo-pending.js', 'src/domain/garment-profile.js', 'src/domain/lite-input-draft.js', 'src/domain/lite-registration.js',
 ];
 const importsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^import[\s\S]*?from\s+['"]([^'"]+)['"];?\s*$/gm)].map((m) => path.resolve(path.dirname(file), m[1]));
 const need = new Set();
@@ -46,16 +46,39 @@ ${body}
 // ── lite/src/core.mjs
 ${core}
 const bootParams = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+// Preview is isolated before even probing the private browser storage.
+const bootPreview = bootParams.get('preview') === '1';
 let bootStorage = null;
-try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; }
+if (!bootPreview) { try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; } }
 const bootPhotos = bootParams.get('photos') !== '0';
 // ?preview=1: 갤러리 미리보기. 저장하지 않고 메모리에서만 동작해 다른 창의 기록과 섞이지 않는다.
-const bootPreview = bootParams.get('preview') === '1';
+const previewValues = new Map();
+window.EOUL_UI_STORAGE = bootPreview ? {
+  get length() { return previewValues.size; },
+  key: (index) => [...previewValues.keys()][index] ?? null,
+  getItem: (key) => previewValues.get(String(key)) ?? null,
+  setItem: (key, value) => { previewValues.set(String(key), String(value)); },
+  removeItem: (key) => { previewValues.delete(String(key)); },
+} : {
+  get length() { return window.localStorage.length; },
+  key: (index) => window.localStorage.key(index),
+  getItem: (key) => window.localStorage.getItem(key),
+  setItem: (key, value) => window.localStorage.setItem(key, value),
+  removeItem: (key) => window.localStorage.removeItem(key),
+};
 // 한 주소에서 여러 시안을 열 때 기록이 섞이지 않게, 페이지가 코어보다 먼저 window.EOUL_MOCK_KEY를 적으면 그 이름으로 저장한다.
 const bootKey = typeof window !== 'undefined' && typeof window.EOUL_MOCK_KEY === 'string' && window.EOUL_MOCK_KEY ? window.EOUL_MOCK_KEY : undefined;
 const mock = createMock({ storage: bootPreview ? null : bootStorage, requireStorage: !bootPreview, key: bootKey, photos: bootPhotos });
 let bootStorageError = null;
-const bootChange = (fn) => { try { fn(); } catch (error) { if (!['storage_write_failed', 'storage_unreadable'].includes(error.code)) throw error; bootStorageError = error.message; } };
+const bootChange = (fn) => { try { fn(); } catch (error) {
+  if (!['storage_write_failed', 'storage_unreadable', 'photo_recovery_pending'].includes(error.code)) throw error;
+  bootStorageError = error.message;
+  if (error.code === 'photo_recovery_pending') {
+    // A blocked reset/demo request must not replay after recovery reloads the URL.
+    for (const name of ['g', 'reset', 'closet']) bootParams.delete(name);
+    try { if (typeof location !== 'undefined' && typeof history !== 'undefined') { const url = new URL(location.href); for (const name of ['g', 'reset', 'closet']) url.searchParams.delete(name); history.replaceState(history.state, '', url.pathname + url.search + url.hash); } } catch {}
+  }
+} };
 if (bootParams.get('reset') === '1' || bootPreview) bootChange(() => mock.reset());
 // 검색 엔진에 실리지 않게 한다(접근 통제는 아니다. 링크를 아는 사람은 열 수 있다).
 if (typeof document !== 'undefined' && document.head && !document.querySelector('meta[name="robots"]')) {
