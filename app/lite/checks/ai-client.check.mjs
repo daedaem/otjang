@@ -7,7 +7,8 @@ import vm from 'node:vm';
 const lite = fs.readFileSync(new URL('../src/lite.js', import.meta.url), 'utf8');
 const rank = fs.readFileSync(new URL('../src/browser/ai-rank.js', import.meta.url), 'utf8');
 const page = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
-const consult = page.slice(page.indexOf('  const REFUSE ='), page.indexOf('  const recCard ='));
+const recoveryGuard = page.slice(page.indexOf('  const ensurePhotoIdle ='),page.indexOf('  const DESIGN ='));
+const consult = recoveryGuard + page.slice(page.indexOf('  const REFUSE ='), page.indexOf('  const recCard ='));
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const storage = () => {
   const data = new Map();

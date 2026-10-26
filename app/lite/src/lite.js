@@ -62,7 +62,7 @@
   const deviceId = () => {
     try {
       let id = localStorage.getItem('eoul-crowd:device');
-      if (!id) { id = crypto.randomUUID().replace(/-/g, ''); localStorage.setItem('eoul-crowd:device', id); }
+      if (!id) { window.EoulMock?.assertPhotoReady?.(); id = crypto.randomUUID().replace(/-/g, ''); localStorage.setItem('eoul-crowd:device', id); }
       return id;
     } catch { return null; }
   };
@@ -109,7 +109,7 @@
     // place: {mode:'here'} 또는 {mode:'fixed', name, lat, lon}
     set(place) {
       const p = place?.mode === 'fixed' ? { mode: 'fixed', name: String(place.name || '내 지역').slice(0, 20), lat: round(+place.lat), lon: round(+place.lon) } : { mode: 'here' };
-      try { localStorage.setItem(PLACE_KEY, JSON.stringify(p)); localStorage.removeItem(CACHE_KEY); } catch {}
+      try { window.EoulMock?.assertPhotoReady?.(); localStorage.setItem(PLACE_KEY, JSON.stringify(p)); localStorage.removeItem(CACHE_KEY); } catch {}
       return p;
     },
     // 지금 있는 곳(0.1°)을 돌려준다. 위치를 거절하면 null.
@@ -132,7 +132,7 @@
     if (!body?.today) return null;
     const label = place.mode === 'fixed' ? place.name : here ? '현재 위치' : '서울(위치 허용 전)';
     const value = { place: label, placeMode: place.mode, source: body.source, today: body.today, tomorrow: body.tomorrow };
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), sig, value })); } catch {}
+    try { window.EoulMock?.assertPhotoReady?.(); localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), sig, value })); } catch {}
     return value;
   };
 

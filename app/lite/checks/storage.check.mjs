@@ -89,7 +89,7 @@ test('generated browser core retains saved state when boot reset cannot be persi
 
 test('registration metadata throws on failure, restores memory, and retries without erasing prior metadata', () => {
   const html = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
-  const source = html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
+  const source = html.slice(html.indexOf('  const ensurePhotoIdle ='),html.indexOf('  const DESIGN =')) + html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
   const f = fixture();
   f.storage.setItem('eoul-d12-hang:reg', JSON.stringify({ items: { old: { brand: 'existing' } }, catalog: {} }));
   const ctx = vm.createContext({ localStorage: f.storage, structuredClone });
@@ -223,7 +223,7 @@ test('generated core boots with an unreadable record, reports it, and survives ?
 
 const regContext = (s) => {
   const html = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
-  const source = html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
+  const source = html.slice(html.indexOf('  const ensurePhotoIdle ='),html.indexOf('  const DESIGN =')) + html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
   const ctx = vm.createContext({ localStorage: s.storage, structuredClone });
   vm.runInContext(source + '\nglobalThis.reg = REG; globalThis.save = saveReg; globalThis.fresh = startFreshReg; globalThis.raw = () => regRaw;', ctx);
   return ctx;

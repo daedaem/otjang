@@ -434,6 +434,9 @@ a { color: inherit; text-decoration: none; }
 .menu .row { min-height: 52px; }
 /* 백업·복원 */
 .bk .decs .btn { justify-content: flex-start; }
+.bk-photo { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
+.bk-photo h3 { font-size: 18px; margin-bottom: 10px; }
+.bk-photo .decs { margin-top: 12px; }
 .bk-ta { width: 100%; min-height: 120px; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--well); color: var(--ink); font: inherit; font-size: 12px; line-height: 18px; resize: vertical; }
 .bk-preview:not([hidden]) { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--well); display: grid; gap: 10px; }
 .bk-msg { margin-top: 10px; min-height: 18px; }
@@ -577,11 +580,12 @@ a { color: inherit; text-decoration: none; }
   const { M, esc, $, $$ } = K;
   // 기존 동기/비동기 이벤트 중 개별 catch가 없는 곳도 저장 실패를 사용자에게 알린다.
   const reportStorageError = (event, error) => {
-    if (!['storage_write_failed', 'storage_unreadable', 'registration_write_failed'].includes(error?.code)) return;
+    if (!['storage_write_failed', 'storage_unreadable', 'registration_write_failed', 'photo_recovery_pending'].includes(error?.code)) return;
     event.preventDefault(); K.toast(error.message, { bottom: 128 });
   };
   window.addEventListener('error', (event) => reportStorageError(event, event.error));
   window.addEventListener('unhandledrejection', (event) => reportStorageError(event, event.reason));
+  const ensurePhotoIdle = () => { if (localStorage.getItem('eoul-backup:photos-pending') != null) throw Object.assign(new Error('사진 백업 복구를 먼저 마쳐 주세요.'), { code: 'photo_recovery_pending' }); };
   const DESIGN = '걸어 보고 사기';
   const UI_KEY = 'eoul-d12-hang:ui';
   // Access storage inside the controller's guarded operations, including browsers
@@ -593,7 +597,7 @@ a { color: inherit; text-decoration: none; }
   }, { readRecord: typeof M !== 'undefined' ? M.readInputDraft : undefined });
   const S = { ai: {}, aiOrder: {}, result: null, snackT: 0, asking: null, pending: null, ui: { absent: {} } };
   try { S.ui = { absent: {}, ...JSON.parse(localStorage.getItem(UI_KEY) || '{}') }; } catch {}
-  const saveUi = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(S.ui)); } catch {} };
+  const saveUi = () => { try { ensurePhotoIdle(); localStorage.setItem(UI_KEY, JSON.stringify(S.ui)); } catch {} };
 
   // ── 직접 등록한 옷(목록에 없는 옷, R15): 브랜드·상품명·종류·색·링크만, 사진 없음. 이 기기에 저장(eoul-d12-hang:reg).
   // 설치 앱이 window.EOUL_CROWD를 주면 공용 목록에도 보낸다(같은 옷 3명 → 모두 검색). 없으면 '이 기기에만 1/3'로 정직하게 센다.
@@ -617,6 +621,7 @@ a { color: inherit; text-decoration: none; }
   let savedReg = structuredClone(REG);
   const regFailed = (message) => Object.assign(new Error(message), { code: 'registration_write_failed' });
   const startFreshReg = () => {
+    ensurePhotoIdle();
     if (regRaw === null) return null;
     const keep = regFailed('브랜드·링크 원문을 따로 보관하지 못해 새로 시작하지 않았어요. 원문 파일을 먼저 받아 주세요.');
     let current; try { current = localStorage.getItem(REG_KEY); } catch { throw keep; }
@@ -633,11 +638,13 @@ a { color: inherit; text-decoration: none; }
   const saveReg = () => {
     if (regRaw !== null) { Object.assign(REG, structuredClone(savedReg)); throw regFailed(REG_UNREADABLE); }
     try {
+      ensurePhotoIdle();
       const next = structuredClone(REG);
       localStorage.setItem(REG_KEY, JSON.stringify(next));
       savedReg = next;
-    } catch {
+    } catch (error) {
       Object.assign(REG, structuredClone(savedReg));
+      if (error?.code === 'photo_recovery_pending') throw error;
       throw Object.assign(new Error('추가 정보를 저장하지 못했어요. 옷장 변경은 이미 저장됐을 수 있어요.'), { code: 'registration_write_failed' });
     }
   };
@@ -872,9 +879,9 @@ a { color: inherit; text-decoration: none; }
   }
   const C = { threads: [], cur: null, busy: false, get turns() { return this.thread()?.turns || []; }, thread() { return this.threads.find((t) => t.id === this.cur) || null; } };
   try { const v = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}'); C.threads = Array.isArray(v.threads) ? v.threads : []; C.cur = C.threads.some((t) => t.id === v.cur) ? v.cur : null; } catch { C.threads = []; C.cur = null; }
-  const saveChat = () => { try { C.threads.forEach((t) => { t.turns = t.turns.slice(-40); }); C.threads = C.threads.slice(-30); localStorage.setItem(CHAT_KEY, JSON.stringify({ threads: C.threads, cur: C.cur })); } catch {} };
-  const pushTurn = (turn) => { let t = C.thread(); if (!t) { t = { id: `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: String(turn.text || '').slice(0, 60), at: new Date().toISOString(), turns: [] }; C.threads.push(t); C.cur = t.id; } t.turns.push(turn); t.at = new Date().toISOString(); saveChat(); };
-  const delThread = (id) => { C.threads = C.threads.filter((t) => t.id !== id); if (C.cur === id) C.cur = null; saveChat(); };
+  const saveChat = () => { try { ensurePhotoIdle(); C.threads.forEach((t) => { t.turns = t.turns.slice(-40); }); C.threads = C.threads.slice(-30); localStorage.setItem(CHAT_KEY, JSON.stringify({ threads: C.threads, cur: C.cur })); } catch {} };
+  const pushTurn = (turn) => { ensurePhotoIdle(); let t = C.thread(); if (!t) { t = { id: `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: String(turn.text || '').slice(0, 60), at: new Date().toISOString(), turns: [] }; C.threads.push(t); C.cur = t.id; } t.turns.push(turn); t.at = new Date().toISOString(); saveChat(); };
+  const delThread = (id) => { ensurePhotoIdle(); C.threads = C.threads.filter((t) => t.id !== id); if (C.cur === id) C.cur = null; saveChat(); };
   const whenText = (iso) => { const d = new Date(iso); const now = new Date(); return d.toDateString() === now.toDateString() ? `오늘 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : `${d.getMonth() + 1}월 ${d.getDate()}일`; };
   let chatSampler = null;
   const getSampler = () => (chatSampler ||= (window.claude?.use ? window.claude.use('sample').catch(() => null) : Promise.resolve(null)));
@@ -1666,13 +1673,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
 
   // ── 시트
-  function sheet(html) {
+  function sheet(html, { canClose = () => true } = {}) {
     const w = document.createElement('div');
     w.innerHTML = `<div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
     document.body.appendChild(w);
     const s = $('.sheet', w);
     if (!K.reduce) { s.animate([{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: K.SPRING.ms, easing: K.SPRING.css }); }
     const close = async () => {
+      if (!canClose()) return;
       removeEventListener('keydown', key);
       if (!K.reduce) await s.animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 200, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }).finished;
       w.remove();
@@ -2293,20 +2301,30 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       try { localStorage.removeItem(st.key); } catch {}
     },
   };
+  // Keep the proven text transaction bodies intact. Only this synchronous
+  // capability lets the local photo coordinator reuse them while its marker is set.
+  let photoTransactionDepth = 0;
+  const photoTextGuard = () => { if (!photoTransactionDepth && localStorage.getItem('eoul-backup:photos-pending') != null) throw Object.assign(new Error('사진 백업 복구를 먼저 마쳐 주세요.'), { code: 'photo_recovery_pending' }); };
+  const plainTextRestore = BK.restore, plainTextUndo = BK.undo;
+  BK.restore = (data) => { photoTextGuard(); return plainTextRestore(data); };
+  BK.undo = () => { photoTextGuard(); return plainTextUndo(); };
+  BK.withPhotoTransaction = (fn) => { photoTransactionDepth++; try { const result = fn(); if (result && typeof result.then === 'function') throw new Error('글자 적용 콜백은 동기 작업이어야 해요.'); return result; } finally { photoTransactionDepth--; } };
   function backupSheet(note = '') {
     if (document.querySelector('.bk')) return;
     let current; try { current = BK.classify(BK.snapshot()); } catch (e) { K.toast(`백업 자료를 읽지 못했어요. ${e.message}`, { bottom: 128 }); return; }
     const n = BK.count(current.data);
     const stash = BK.stash();
     const reportText = (report) => `<div class="t6" data-bk-report>정상 자료 ${report.active.length}개 항목 · 원문 보관 ${report.archives.length}개(활성화 안 됨)${report.preserved.length ? ` · 기존 활성 자료 유지 ${report.preserved.length}개` : ''}${report.archivedCurrent.length ? ` · 기존 원문 ${report.archivedCurrent.length}개는 보관 후 활성에서 교체/제거` : ''}</div>${report.archives.length || report.archivedCurrent.length ? `<ul class="t6">${[...report.archives, ...report.archivedCurrent].map(a => `<li>${esc(a.source)}: ${esc(a.reason)}${a.action ? ` · 보관 후 ${esc(a.action)}` : ''}</li>`).join('')}</ul>` : ''}`;
+    let photoBusy = false;
     const sh = sheet(`<div class="bk"><h2 class="h2">백업 · 복원</h2><p class="sub t6">이 기기에 저장된 ${esc(BK.countText(n))}을 글자 파일 하나로 내보내요(사진 없음). 새 기기나 다시 설치한 앱에서 그 파일로 복원하면 내보낸 시점으로 돌아가요. 읽을 수 없는 원문은 따로 보관하며 옷·상담으로 활성화하지 않아요. 새 백업은 최신 앱에서 복원해 주세요.</p>${reportText(current.report)}
-      <div class="decs"><button class="btn go" data-bk-save><i class="ph ph-download-simple"></i>파일로 내보내기</button><button class="btn line" data-bk-copy><i class="ph ph-copy"></i>글자로 복사</button><label class="btn line" for="bkfile"><i class="ph ph-upload-simple"></i>파일로 복원<input id="bkfile" type="file" accept=".json,application/json,text/plain" hidden></label><button class="btn line" data-bk-paste><i class="ph ph-clipboard-text"></i>붙여넣어 복원</button>${stash ? `<button class="btn line" data-bk-undo><i class="ph ph-arrow-counter-clockwise"></i>복원 전(${esc(whenText(stash.at))})으로 되돌리기</button>` : ''}</div>
+      <div class="decs"><button class="btn go" data-bk-save><i class="ph ph-download-simple"></i>파일로 내보내기</button><button class="btn line" data-bk-copy><i class="ph ph-copy"></i>글자로 복사</button><label class="btn line" for="bkfile"><i class="ph ph-upload-simple"></i>파일로 복원<input id="bkfile" type="file" accept=".json,.otjang,application/octet-stream,application/json,text/plain" hidden></label><button class="btn line" data-bk-paste><i class="ph ph-clipboard-text"></i>붙여넣어 복원</button>${stash ? `<button class="btn line" data-bk-undo><i class="ph ph-arrow-counter-clockwise"></i>복원 전(${esc(whenText(stash.at))})으로 되돌리기</button>` : ''}</div>
       <textarea class="bk-ta" hidden aria-label="백업 글자" spellcheck="false" autocapitalize="off"></textarea>
       <div class="bk-preview" hidden></div>
-      <p class="bk-msg t6" role="status" aria-live="polite"></p></div>`);
+      <p class="bk-msg t6" role="status" aria-live="polite"></p></div>`, { canClose: () => !photoBusy });
     // Recovery notice remains underneath; never dismiss it or reset raw storage to export.
     $('.scrim', sh.w).style.zIndex = '96'; sh.s.style.zIndex = '97';
     $('[data-bk-save]', sh.s).focus();
+    let photoPanelReady = null, photoPanel = null, textSelection = 0;
     const ta = $('.bk-ta', sh.s), pv = $('.bk-preview', sh.s), msg = (t) => { $('.bk-msg', sh.s).textContent = t; };
     const showText = (text) => { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); };
     const makeText = () => { try { return JSON.stringify(BK.make()); } catch (e) { msg(e.message); return null; } };
@@ -2323,13 +2341,15 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     };
     $('[data-bk-copy]', sh.s).onclick = async () => { const text = makeText(); if (text === null) return; try { await navigator.clipboard.writeText(text); msg('백업 글자를 복사했어요. 메모 앱 등에 붙여 두세요.'); } catch { showText(text); msg('복사가 막혀 글자로 보여 드려요. 전체 선택해 복사해 두세요.'); } };
     const preview = (text) => {
+      const token = textSelection;
       let b, plan, cur;
       try { b = BK.read(text); const snapshot = BK.snapshot(); plan = BK.prepareRestore(b.data, snapshot); cur = BK.count(BK.classify(snapshot).data); }
       catch (e) { pv.hidden = true; msg(e.message); return; }
       const nb = BK.count(b.data);
       pv.hidden = false; pv.innerHTML = `<div class="t5">복원할 백업${b.at ? ` · ${esc(whenText(b.at))}` : ''}</div><div class="t6">${esc(BK.countText(nb))}</div>${reportText(plan.report)}<div class="t6">지금 이 기기: ${esc(BK.countText(cur))}</div><button class="btn go wide" data-bk-go>지금 자료를 바꾸고 복원</button><p class="t6">원문 보관만 있는 항목은 이 기기의 기존 활성 자료를 유지해요. 그 밖의 활성 자료는 파일 기준으로 바뀌며 '복원 전으로 되돌리기'로 한 번 되돌릴 수 있어요.</p>`;
       $('[data-bk-go]', pv).onclick = async () => {
-        try { BK.restore(b.data); }
+        if (token !== textSelection) { msg('새로 고른 파일을 다시 확인해 주세요.'); return; }
+        try { await M.withStorageLock(() => BK.restore(b.data)); }
         catch (e) { if (e.code === 'partial' || e.code === 'pending') { await sh.close(); backupSheet(e.message); } else msg(e.message); return; }
         if (localStorage.getItem(BK.NEXT) !== null) { await sh.close(); backupSheet("자료는 적용했지만 복구 지점 정리가 끝나지 않았어요. '복원 전으로 되돌리기'가 가능하며 새 복원은 잠시 막았어요."); return; }
         msg(`복원했어요. 원문 ${new Set([...BK.lastReport.archives, ...BK.lastReport.archivedCurrent].map(a => a.key)).size}개 보관 · 기존 활성 자료 ${BK.lastReport.preserved.length}개 유지. 다시 불러와요.`);
@@ -2337,10 +2357,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       };
       msg('');
     };
-    $('#bkfile', sh.s).onchange = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > BK.MAX_BYTES) { msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => preview(String(r.result || '')); r.onerror = () => msg('파일을 읽지 못했어요.'); r.readAsText(f); };
-    $('[data-bk-paste]', sh.s).onclick = () => { ta.hidden = false; ta.value = ''; ta.placeholder = '백업 글자를 붙여 넣으세요'; ta.focus(); pv.hidden = false; pv.innerHTML = '<button class="btn line wide" data-bk-read>붙여 넣은 글자 확인</button>'; $('[data-bk-read]', pv).onclick = () => preview(ta.value); };
+    $('#bkfile', sh.s).onchange = async (e) => { const f = e.target.files?.[0]; const token = ++textSelection; msg(''); pv.hidden = true; pv.replaceChildren(); photoPanel?.invalidatePreview(); if (!f) return; if (new TextDecoder().decode(await f.slice(0,8).arrayBuffer()) === 'EOULPH01') { const panel = await photoPanelReady; if (token !== textSelection) return; if (panel?.previewFile) await panel.previewFile(f); else msg('사진 백업 화면을 열지 못했어요. 앱을 갱신한 뒤 다시 열어 주세요.'); return; } if (f.size > BK.MAX_BYTES) { if (token === textSelection) msg('파일이 너무 커요(5MB 초과).'); return; } const r = new FileReader(); r.onload = () => { if (token === textSelection) preview(String(r.result || '')); }; r.onerror = () => { if (token === textSelection) msg('파일을 읽지 못했어요.'); }; r.readAsText(f); };
+    $('[data-bk-paste]', sh.s).onclick = () => { textSelection++; photoPanel?.invalidatePreview(); pv.replaceChildren(); ta.hidden = false; ta.value = ''; ta.placeholder = '백업 글자를 붙여 넣으세요'; ta.focus(); pv.hidden = false; pv.innerHTML = '<button class="btn line wide" data-bk-read>붙여 넣은 글자 확인</button>'; $('[data-bk-read]', pv).onclick = () => preview(ta.value); };
+    if (window.EOUL_PHOTO_LOAD && !M.boot?.preview) photoPanelReady = window.EOUL_PHOTO_LOAD().then(({ mountPhotoBackup }) => { if (!sh.s.isConnected) return; return mountPhotoBackup({ element: $('.bk', sh.s), namespace: window.EOUL_MOCK_KEY, core: M, storage: localStorage, textBackup: BK, undoButton: $('[data-bk-undo]', sh.s), isBusy: () => C.busy || !!S.asking, setBusy: value => { photoBusy = value; }, onSelect: () => { textSelection++; msg(''); pv.hidden = true; pv.replaceChildren(); }, onState: () => storageNotice(), reload: () => { Input.reset(); M.reloadSaved(); K.refresh(); storageNotice(); location.reload(); } }); }).then(panel => { photoPanel = panel; return panel; }).catch(error => msg(`사진 보관함을 열지 못했어요. ${error.message}`));
     if (note) msg(note);
-    const un = $('[data-bk-undo]', sh.s); if (un) un.onclick = () => { try { BK.undo(); } catch (e) { msg(e.message); return; } msg('복원 전으로 되돌렸어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
+    const un = $('[data-bk-undo]', sh.s); if (un) un.onclick = async () => { try { await M.withStorageLock(() => BK.undo()); } catch (e) { msg(e.message); return; } msg('복원 전으로 되돌렸어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
   }
   function menu() {
     const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
@@ -2356,6 +2377,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   const storageNotice = () => {
     document.getElementById('eo-storage-issue')?.remove();
+    let photoPending = false; try { photoPending = localStorage.getItem('eoul-backup:photos-pending') != null; } catch {}
+    for (const id of ['app', 'tabs', 'bar']) { const root = document.getElementById(id); if (root) root.inert = photoPending; }
     const core = M.storageIssue?.() || null;
     const raws = [];
     if (core?.code === 'storage_unreadable') raws.push({ name: 'closet', text: M.unreadableRaw() });
@@ -2364,7 +2387,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const el = document.createElement('div');
     el.id = 'eo-storage-issue'; el.setAttribute('role', 'alert');
     el.style.cssText = 'position:fixed;z-index:95;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));padding:14px 16px;border-radius:14px;background:#fff4e5;color:#3d2600;box-shadow:0 8px 24px rgba(0,0,0,.18);font:14px/1.5 system-ui,-apple-system,sans-serif';
-    const lines = [core?.message, regRaw !== null ? REG_UNREADABLE : ''].filter(Boolean);
+    const lines = [photoPending ? '사진 백업 복구가 남아 있어 저장을 멈췄어요. 전체 백업 화면에서 복구해 주세요.' : '', core?.message, regRaw !== null ? REG_UNREADABLE : ''].filter(Boolean);
     el.innerHTML = lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('');
     const bar = document.createElement('div'); bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
     const button = (text, onclick) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.style.cssText = 'min-height:40px;padding:0 12px;border:0;border-radius:10px;background:#3d2600;color:#fff;font:600 13px system-ui,sans-serif'; b.onclick = onclick; bar.append(b); return b; };
@@ -2375,7 +2398,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       a.download = `eoul-${r.name}-unreadable-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
-    if (raws.length) {
+    if (raws.length && !photoPending) {
       const fresh = button('원문을 이 기기에 따로 보관하고 새로 시작', () => {
         if (!fresh.dataset.arm) { fresh.dataset.arm = '1'; fresh.textContent = '한 번 더 누르면 새로 시작해요'; return; }
         try {
