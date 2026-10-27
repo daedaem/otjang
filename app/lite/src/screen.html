@@ -10,10 +10,11 @@
 <script src="shared/kit.js"></script>
 <script src="shared/ai-rank.js"></script>
 <script>
-/* WO-11 새 디자인 미리 보기: ?look=v2로 켜고 ?look=v1로 끈다. 메뉴의 '새 디자인으로 보기'도 같은 값을 바꾼다.
-   화면 설정이라 'eoul-' 접두사를 쓰지 않는다(백업 대상 아님). */
-// 미리보기(?preview=1)는 이 기기 저장소를 읽거나 쓰지 않는다: ?look=v2는 그 페이지에만 적용한다.
-try { var sp = new URLSearchParams(location.search), lq = sp.get('look'); if (sp.get('preview') === '1') { if (lq === 'v2') document.documentElement.dataset.look = 'v2'; } else { if (lq === 'v2') localStorage.setItem('hangit:look', 'v2'); else if (lq === 'v1') localStorage.removeItem('hangit:look'); if (localStorage.getItem('hangit:look') === 'v2') document.documentElement.dataset.look = 'v2'; } } catch (e) {}
+/* 디자인 설정(hangit:look)은 화면 설정이라 'eoul-' 접두사를 쓰지 않는다(백업 대상 아님). */
+// WO-11: 새 디자인(v2)이 기본이다(10-27 21:55 대표 결정). ?look=v1이나 메뉴 '이전 디자인으로 보기'는
+// 이 기기에서 이전 디자인으로 되돌리고(hangit:look = v1), ?look=v2나 '새 디자인으로 보기'는 다시 기본으로.
+// 미리보기(?preview=1)는 이 기기 저장소를 읽거나 쓰지 않는다: ?look=v1은 그 페이지에만 적용한다.
+(function () { var v1 = false; try { var sp = new URLSearchParams(location.search), lq = sp.get('look'); if (sp.get('preview') === '1') v1 = lq === 'v1'; else { if (lq === 'v1') localStorage.setItem('hangit:look', 'v1'); else if (lq === 'v2') localStorage.removeItem('hangit:look'); v1 = localStorage.getItem('hangit:look') === 'v1'; } } catch (e) {} if (!v1) document.documentElement.dataset.look = 'v2'; })();
 </script>
 <style>
 /* 걸어 보고 사기(d12): 장바구니 대신 '걸어 보기'. 레일은 옷걸이 탭에만 있고, 다른 화면에는 걸린 옷이 있을 때만 한 줄 띠가 보인다.
@@ -575,7 +576,7 @@ a { color: inherit; text-decoration: none; }
 }
 @media (prefers-reduced-motion: reduce) { .view, .hg.swing, .strip.pop, .hangt.pop span, .shelfbar.pop .ths .ph-box:last-child { animation: none !important; } .btn, .top, .hangt span { transition: none; } }
 
-/* ── WO-11 새 디자인(v2) · 미리 보기: :root[data-look="v2"]에만 적용. 기본 화면은 그대로다.
+/* ── WO-11 새 디자인(v2, 기본): :root[data-look="v2"]에 적용. 위의 기본 규칙은 '이전 디자인'(?look=v1)이다.
    방향: 고급 패션 매장처럼 조용하게, 옷 사진이 먼저. Daedaem 1.1.1 색(흰 바탕·잉크·중립 회색·딥 네이비),
    상자와 알약 줄이기(얇은 선과 여백으로 구분), 굵기 낮추기(800 → 600~700), 사진 칸 각진 모서리(2px)·크게. */
 :root[data-look="v2"] {
@@ -3130,11 +3131,11 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
   function menu() {
     const theme = () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; };
     const reset = () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; };
-    // WO-11 design preview: the new look (v2) stays opt-in until it is finished.
+    // WO-11: the new look (v2) is the default; this row brings back the previous one.
     const lookOn = () => document.documentElement.dataset.look === 'v2';
-    const look = () => { const r = document.documentElement; const on = !lookOn(); if (!M.boot?.preview) try { if (on) localStorage.setItem('hangit:look', 'v2'); else localStorage.removeItem('hangit:look'); } catch (e) {} if (on) r.dataset.look = 'v2'; else delete r.dataset.look; };
+    const look = () => { const r = document.documentElement; const on = !lookOn(); if (!M.boot?.preview) try { if (on) localStorage.removeItem('hangit:look'); else localStorage.setItem('hangit:look', 'v1'); } catch (e) {} if (on) r.dataset.look = 'v2'; else delete r.dataset.look; };
     chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, look: lookOn(), onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onLook: () => { look(); return () => K.refresh(); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
-    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '지금 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
+    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '이전 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
     $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
     const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
