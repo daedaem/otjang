@@ -36,7 +36,7 @@ for (const ui of ["", "&ui=vanilla"]) {
     for (const tab of ["home", "looks", "closet", "consult", "records"]) {
       await page.evaluate((t) => (window as any).K.tab(t), tab);
       if (ui || tab !== "looks") {
-        const mark = page.locator("#app .top .mark").first();
+        const mark = page.locator("#app :is(.top, .wr-top) .mark").first();
         await expect(mark.getByRole("img", { name: "행잇" })).toBeVisible();
       }
       await expect(page.locator("#app")).not.toContainText("이름 미정");

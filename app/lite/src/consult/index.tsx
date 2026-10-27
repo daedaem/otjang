@@ -12,6 +12,7 @@ import { ProductPic } from "../detail/parts";
 import type { Pic } from "../detail/types";
 import { DomesticButtonPanel } from "../retail/DomesticPanel";
 import type { RetailHost } from "../retail/types";
+import { Wordmark } from "../brand/Wordmark";
 // Consult (WO-06): same markup as the vanilla V.consult/chatTurnHtml, rendered
 // from consultModel. Asking goes through the existing askConsult (grounding,
 // server request, on-topic check, candidate-only ids, price-check lines and
@@ -66,9 +67,8 @@ function Top({ host, children }: { host: Host; children?: ReactNode }) {
   return (
     <div className="top" id="top">
       <span className="mark">
-        <i className="ph-fill ph-coat-hanger" aria-hidden="true" />
-        이름 미정
-      </span>
+          <Wordmark />
+        </span>
       <button
         type="button"
         className="icon quiet-i"

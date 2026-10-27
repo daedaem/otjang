@@ -10,6 +10,7 @@ import { ProductPhoto } from "../photos/ProductPhoto";
 import { WeatherCard } from "../weather/WeatherCard";
 import type { HomeHost, Proof, ProofProduct } from "./types";
 import "./home.css";
+import { Wordmark } from "../brand/Wordmark";
 function ProofRow({ host, p }: { host: HomeHost; p: ProofProduct }) {
   return (
     <button
@@ -150,8 +151,7 @@ function Home({ host }: { host: HomeHost }) {
     <section className="hm" data-react-home aria-label="옷 찾기 홈">
       <header className="top">
         <span className="mark">
-          <i className="ph-fill ph-coat-hanger" aria-hidden="true" />
-          이름 미정
+          <Wordmark />
         </span>
         <button
           className="icon quiet-i"

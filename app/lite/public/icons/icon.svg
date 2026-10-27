@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>어울</title>
-  <rect width="512" height="512" rx="112" fill="#15191E"/>
-  <g fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M222 176a34 34 0 1 1 46 32l-12 10"/>
-    <path d="M256 218L106 330q-14 12 6 16h288q20-4 6-16z"/>
-  </g>
-  <circle cx="256" cy="398" r="14" fill="#7FC4A4"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="행잇 Hangit"><title>행잇 Hangit</title><rect width="512" height="512" rx="112" fill="#1f3f80"/><g fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"><path d="M214.2 189.2 C214.2 132.0 297.8 132.0 297.8 184.8 C297.8 217.8 256.0 220.0 256.0 250.8"/><path d="M256 250.8 C296 280.8 406 342.8 422 360.8 Q438 378.8 406 378.8 H106 Q74 378.8 90 360.8 C106 342.8 216 280.8 256 250.8"/></g></svg>

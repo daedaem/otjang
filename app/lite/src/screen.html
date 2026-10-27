@@ -15,6 +15,7 @@
 :root {
   --bg: #fbfbfa; --surface: #ffffff; --well: #f0f0ed; --tile: #ededea; --ptile: #efefec;
   --ink: #1b1b19; --ink2: #55554f; --ink3: #7c7c75; --line: #e2e2de;
+  --brand: #1f3f80;
   --acc: #e4571e; --acc-text: #b23c0b; --acc-soft: #fdebe2; --btn-bg: #c94612; --btn-fg: #ffffff;
   --dim: rgba(0, 0, 0, .45); --shadow: 0 10px 28px rgba(40, 30, 20, .12);
   --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
@@ -25,11 +26,13 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #141412; --surface: #1c1c19; --well: #252521; --tile: #2b2b27; --ptile: #e6e6e2;
   --ink: #f3f3ef; --ink2: #c8c8c0; --ink3: #9a9a92; --line: #31312c;
+  --brand: #86a3d6;
   --acc: #ff6b2c; --acc-text: #ff9a6b; --acc-soft: #3a2116; --btn-bg: #ff7a3d; --btn-fg: #1b0c05;
   --dim: rgba(0, 0, 0, .62); --shadow: 0 10px 28px rgba(0, 0, 0, .5); --tile-on-well: #e6e6e2; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #141412; --surface: #1c1c19; --well: #252521; --tile: #2b2b27; --ptile: #e6e6e2;
   --ink: #f3f3ef; --ink2: #c8c8c0; --ink3: #9a9a92; --line: #31312c;
+  --brand: #86a3d6;
   --acc: #ff6b2c; --acc-text: #ff9a6b; --acc-soft: #3a2116; --btn-bg: #ff7a3d; --btn-fg: #1b0c05;
   --dim: rgba(0, 0, 0, .62); --shadow: 0 10px 28px rgba(0, 0, 0, .5); --tile-on-well: #e6e6e2; color-scheme: dark; }
 * { box-sizing: border-box; }
@@ -73,6 +76,9 @@ a { color: inherit; text-decoration: none; }
 .icon:active { background: var(--well); }
 .mark { display: inline-flex; align-items: center; gap: 6px; padding-left: 6px; font-weight: 800; font-size: 17px; letter-spacing: -.02em; white-space: nowrap; }
 .mark i { color: var(--acc); font-size: 22px; }
+.mark .wm { display: block; height: 26px; width: auto; }
+.wm .wm-h { stroke: currentColor; }
+.wm .wm-i { stroke: var(--brand); }
 .qbox { flex: 1; min-width: 0; height: 36px; margin: 0 6px 0 2px; border-radius: 10px; background: var(--well); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 15px; font-weight: 600; text-align: left; }
 .qbox i { font-size: 18px; color: var(--ink3); flex: none; }
 .qbox span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1522,7 +1528,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
   // 위 막대. 설명문은 화면에 늘어놓지 않고 ⓘ 하나로 모은다(탭 첫 화면은 이름 옆, 쌓인 화면은 오른쪽 끝).
   const INFO_BTN = '<button class="icon quiet-i" data-disclose aria-label="가격·사진·판단 기준 보기"><i class="ph ph-info"></i></button>';
-  const top = ({ back = true, mid = '', right = '', info = back } = {}) => `<div class="top" id="top">${back ? '<button class="icon" data-back aria-label="뒤로"><i class="ph ph-caret-left"></i></button>' : `<span class="mark"><i class="ph-fill ph-coat-hanger" aria-hidden="true"></i>이름 미정</span>${INFO_BTN}`}${mid || '<span class="sp"></span>'}${right}${back && info ? INFO_BTN.replace('quiet-i', 'quiet-i end') : ''}</div>`;
+  // 이름과 워드마크(WO-11): 행잇(Hangit). src/brand/Wordmark.tsx와 같은 SVG.
+  const BRAND_WORDMARK = '<svg class="wm" viewBox="0 0 262 104" role="img" aria-label="행잇"><g transform="translate(8 14)" fill="none" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path class="wm-h" d="M0 0 V60 M0 38 C0 25 7 20 15 20 C23 20 30 25 30 38 V60"/><path class="wm-h" d="M84 20 V60 M84 40 C84 29 76 20 65 20 C54 20 46 29 46 40 C46 51 54 60 65 60 C76 60 84 51 84 40"/><path class="wm-h" d="M100 20 V60 M100 38 C100 25 107 20 115 20 C123 20 130 25 130 38 V60"/><path class="wm-h" d="M184 40 C184 29 176 20 165 20 C154 20 146 29 146 40 C146 51 154 60 165 60 C176 60 184 51 184 40 M184 20 V64 C184 76 176 82 165 82 C158 82 152 79 149 74"/><path class="wm-i" d="M201.0 7.0 C201.0 -5.4 219.0 -5.4 219.0 6.0 C219.0 13.1 210.0 13.6 210.0 20.3 V60"/><path class="wm-i" d="M232 4 V50 C232 57 237 60 244 60 M224 22 H244"/></g></svg>';
+  const top = ({ back = true, mid = '', right = '', info = back } = {}) => `<div class="top" id="top">${back ? '<button class="icon" data-back aria-label="뒤로"><i class="ph ph-caret-left"></i></button>' : `<span class="mark">${BRAND_WORDMARK}</span>${INFO_BTN}`}${mid || '<span class="sp"></span>'}${right}${back && info ? INFO_BTN.replace('quiet-i', 'quiet-i end') : ''}</div>`;
 
   // 홈의 증거 칸: 걸어 본 옷이 있으면 그 결과, 옷장이 있으면 예시 상품의 판정, 둘 다 없으면 체험용 옷장으로 한 번에 보여 준다.
   function homeProofModel(){

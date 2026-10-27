@@ -7,6 +7,7 @@ import {
 import { createRoot } from "react-dom/client";
 import { ProductPic } from "../detail/parts";
 import type { Pic } from "../detail/types";
+import { Wordmark } from "../brand/Wordmark";
 // Purchase records (WO-05): same markup as the vanilla V.records, rendered
 // from recordsModel. Steps and returns call the existing core command and
 // return sheet; these are the person's own notes, not confirmed orders.
@@ -77,8 +78,7 @@ function Records({ host }: { host: Host }) {
     <section data-react-records>
       <div className="top" id="top">
         <span className="mark">
-          <i className="ph-fill ph-coat-hanger" aria-hidden="true" />
-          이름 미정
+          <Wordmark />
         </span>
         <button
           type="button"
