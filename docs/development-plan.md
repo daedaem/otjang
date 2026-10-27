@@ -1,4 +1,4 @@
-진행 중: WO-02 날씨·지역 공유 React(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-02-weather-20261027`). WO-01 홈은 #89로 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
+진행 중: WO-03 검색 결과·공급처 공유 패널(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-03-results-20261027`). WO-01 홈 #89·WO-02 날씨/지역 #90 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
 
 # 현재 개발 계획과 완료 기준
 
@@ -147,7 +147,7 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 코디/AI 본문 | master #84 React 반응·AI 순위/일부 속성 대조 | WeatherSlot/공유 패널과 실제 모델·블라인드20은 별도 |
 | 거울 L0 | master #85~#86 React 로컬 배치/보관·복구 | 실물/효용. C4 전 L1을 시작하지 않음 |
 | 홈 | master #89 React 질문/예시/보유·후보 preview | 실기기·바닐라 제거는 WO-09. 날씨 카드는 아래 행 |
-| 날씨/지역 | WO-02 브랜치: home·looks 공유 React 날씨 카드와 React 지역 대화상자(`weatherModel`/`weatherCtl` 한 곳), 바닐라는 `?ui=vanilla` fallback | PR CI·병합 대기. 옷 조각 타일(`piecePic`)·부족 아이템 상품 카드(`cardHtml`)는 공용 템플릿 HTML로 남아 WO-03/WO-08에서 이전. 실기기 위치 권한은 WO-09 |
+| 날씨/지역 | master #90: home·looks 공유 React 날씨 카드와 React 지역 대화상자(`weatherModel`/`weatherCtl` 한 곳), 바닐라는 `?ui=vanilla` fallback | 코드 완료. 옷 조각 타일(`piecePic`)·부족 아이템 상품 카드(`cardHtml`)는 공용 템플릿 HTML로 남아 WO-03/WO-08에서 이전. 실기기 위치 권한은 WO-09 |
 | 검색 결과 | 바닐라. 입력 조건/0건·AI/공급처 처리 존재 | 동일 요청·ID·응답/조건 대조·출처/가격 시각을 유지해 이전 |
 | 상품 상세/구매 판단/비교 | 바닐라, 실측/수집/거울 진입만 React 경계 | 링크·새 상품/중고 이동·판단/decision·return sheet·원자 명령 유지 |
 | 구매/수령/보유/착용/반품 | 기록 목록과 action sheet 바닐라 | 같은 ID/단계/사유·실패/새로고침/복원 확인 후 이전 |
