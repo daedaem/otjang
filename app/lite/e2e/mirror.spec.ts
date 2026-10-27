@@ -546,3 +546,19 @@ test("two real windows keep a failed older height in RAM without overwriting the
   expect((await read(other)).heightRaw).toBe("188");
   await other.close();
 });
+
+test('a measured length changed in another window updates both the label and the actual placed size', async ({page,context}) => {
+ const ids=await own(page);await open(page);await upload(page,await png(page));await calibrate(page);
+ await page.locator(`[data-mirror-pick="${ids.outer}"]`).click();await saved(page);
+ const layer=page.locator(`[data-mirror-layer="${ids.outer}"]`);await expect(layer).toHaveAttribute('data-assumed','true');
+ const before=await layer.evaluate(el=>el.getBoundingClientRect().height),raw=await page.evaluate(k=>localStorage.getItem(k),KEY);
+ const other=await context.newPage();await local(other);await other.goto('/?photos=1&window=length-edit#/closet');await expect(other.locator('[data-react-closet]')).toBeVisible();
+ await other.evaluate(id=>(window as any).K.M.updateGarmentProfile(id,{v:1,measures:{length:{cm:100,source:'measured'}}}),ids.outer);
+ await expect(page.locator(`[data-mirror-pick="${ids.outer}"]`)).toContainText('총장 100cm');
+ await expect(layer).toHaveAttribute('data-assumed','false');
+ const first=await layer.evaluate(el=>el.getBoundingClientRect().height);expect(first).toBeGreaterThan(before);
+ await other.evaluate(id=>(window as any).K.M.updateGarmentProfile(id,{v:1,measures:{length:{cm:60,source:'measured'}}}),ids.outer);
+ await expect(page.locator(`[data-mirror-pick="${ids.outer}"]`)).toContainText('총장 60cm');
+ await expect.poll(async()=>(await layer.evaluate(el=>el.getBoundingClientRect().height))/first).toBeCloseTo(.6,1);
+ expect(await page.evaluate(k=>localStorage.getItem(k),KEY)).toBe(raw);await other.close();
+});
