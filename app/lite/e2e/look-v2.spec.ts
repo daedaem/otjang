@@ -37,8 +37,9 @@ test("?look=v2 turns the new look on, keeps it after a reload and ?look=v1 turns
   expect(await bg(page)).toBe("rgb(201, 70, 18)");
 });
 
-test("the menu switches between the looks without reloading", async ({ page }) => {
-  await open(page);
+for (const [label, ui] of [["", ""], [" (vanilla)", "&ui=vanilla"]] as const)
+test(`the menu switches between the looks without reloading${label}`, async ({ page }) => {
+  await open(page, ui);
   await page.getByRole("button", { name: "더보기" }).first().click();
   await page.getByRole("dialog").getByRole("button", { name: "새 디자인으로 보기" }).click();
   await expect(page.locator(".sheet")).toHaveCount(0);

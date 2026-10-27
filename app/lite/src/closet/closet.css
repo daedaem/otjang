@@ -489,3 +489,60 @@
     display: none;
   }
 }
+
+/* WO-11 새 디자인(v2) 미리 보기. :root[data-look="v2"]에만 적용한다.
+   옷이 먼저 보이게 칸과 사진을 키우고, 레일은 진한 한 줄(옷걸이 봉)로 둔다. */
+:root[data-look="v2"] .wr.shelf {
+  --wr-cell: 150px;
+}
+:root[data-look="v2"] .wr h1 {
+  font-size: 26px;
+  line-height: 34px;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+:root[data-look="v2"] .wr-title {
+  margin: 16px 0 20px;
+}
+:root[data-look="v2"] .wr h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+:root[data-look="v2"] .wr-controls select {
+  border-radius: 8px;
+}
+:root[data-look="v2"] .wr-rail-scroll {
+  border-top: 2px solid var(--ink);
+}
+:root[data-look="v2"] .wr-hanger path {
+  stroke: var(--ink2);
+  stroke-width: 1.6;
+}
+:root[data-look="v2"] .wr-picture {
+  border-radius: 2px;
+  max-height: 216px;
+}
+:root[data-look="v2"] .wr-card-name {
+  font-size: 13px;
+  color: var(--ink);
+}
+:root[data-look="v2"] .wr-assembly {
+  border-radius: 8px;
+}
+:root[data-look="v2"] .wr-stage {
+  border-radius: 2px;
+}
+:root[data-look="v2"] .wr-chosen button,
+:root[data-look="v2"] .wr-feedback,
+:root[data-look="v2"] .wr-error {
+  border-radius: 6px;
+}
+:root[data-look="v2"] .wr-mobile-assembly {
+  border-radius: 8px;
+  font-weight: 600;
+}
+@media (min-width: 760px) {
+  :root[data-look="v2"] .wr.shelf {
+    --wr-cell: 168px;
+  }
+}

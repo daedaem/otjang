@@ -55,19 +55,24 @@ export function Disclose({
 export function Menu({
   close,
   place,
+  look = false,
   onInfo,
   onBackup,
   onPlace,
   onTheme,
+  onLook,
   onReset,
 }: {
   close: Close;
   place: boolean;
+  // WO-11 design preview: whether the new look (v2) is on.
+  look?: boolean;
   // Each returns what to run after the sheet closes (see finish()).
   onInfo(): After;
   onBackup(): After;
   onPlace(): After;
   onTheme(): After;
+  onLook?(): After;
   onReset(): After;
 }) {
   const row = (attr: string, label: string, icon: string, run: () => After) => (
@@ -88,6 +93,9 @@ export function Menu({
       {row("data-backup", "백업 · 복원", "ph-floppy-disk", onBackup)}
       {place ? row("data-place", "날씨 지역", "ph-map-pin", onPlace) : null}
       {row("data-theme", "밝게 · 어둡게", "ph-moon", onTheme)}
+      {onLook
+        ? row("data-look", look ? "지금 디자인으로 보기" : "새 디자인으로 보기", "ph-sparkle", onLook)
+        : null}
       {row("data-reset", "처음부터 다시", "ph-arrow-counter-clockwise", onReset)}
     </div>
   );
