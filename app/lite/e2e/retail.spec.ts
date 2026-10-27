@@ -67,6 +67,12 @@ test("the add screen renders the shared React supplier panels and a retry calls 
   await expect(panel.getByRole("link")).toHaveCount(1);
   await expect(panel.getByRole("link")).toContainText("<b>합성</b> 상품");
   await expect(panel.locator("b")).toHaveCount(0);
+  // Offer rows look like the results screen rows: the add screen's inline-link
+  // underline must not reach the shared supplier panels.
+  await expect(panel.getByRole("link")).toHaveCSS("text-decoration-line", "none");
+  await expect(
+    dom.locator("[data-rakuten-panel]").getByRole("link", { name: /라쿠텐 사이트에서 직접 검색/ }),
+  ).toHaveCSS("text-decoration-line", "none");
   expect(await page.evaluate(() => (window as any).domestic)).toEqual(["합성 셔츠", "합성 셔츠"]);
 });
 
