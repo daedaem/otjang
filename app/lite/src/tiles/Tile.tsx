@@ -10,6 +10,8 @@ export type CorePhoto = {
     src: string;
     alt: string;
     similar: boolean;
+    // Bundled example photo of a trial garment (public/examples).
+    example?: boolean;
     fit: "cover" | "contain";
     eager: boolean;
     caption: string;
@@ -54,7 +56,7 @@ export function CorePhotoView({ p }: { p: CorePhoto }) {
   return (
     <span
       className="eo-ph"
-      data-photo={ph.similar ? "similar" : "product"}
+      data-photo={ph.example ? "example" : ph.similar ? "similar" : "product"}
       style={{
         position: "relative",
         display: "block",
