@@ -1,0 +1,42 @@
+[
+  {
+    "file": "before-empty-mobile.png",
+    "query": "",
+    "mainUnchanged": true
+  },
+  {
+    "file": "before-empty-desktop.png",
+    "query": "",
+    "mainUnchanged": true
+  },
+  {
+    "file": "before-owned-mobile.png",
+    "query": "",
+    "mainUnchanged": false
+  },
+  {
+    "file": "before-owned-desktop.png",
+    "query": "",
+    "mainUnchanged": false
+  },
+  {
+    "file": "after-empty-mobile.png",
+    "query": "아직 입력 중인 셔츠 질문",
+    "mainUnchanged": true
+  },
+  {
+    "file": "after-empty-desktop.png",
+    "query": "아직 입력 중인 셔츠 질문",
+    "mainUnchanged": true
+  },
+  {
+    "file": "after-owned-mobile.png",
+    "query": "아직 입력 중인 셔츠 질문",
+    "mainUnchanged": true
+  },
+  {
+    "file": "after-owned-desktop.png",
+    "query": "아직 입력 중인 셔츠 질문",
+    "mainUnchanged": true
+  }
+]

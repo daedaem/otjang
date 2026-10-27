@@ -1,24 +1,6 @@
-import { useState } from "react";
+import { ProductPhoto } from "../photos/ProductPhoto";
+export { ProductPhoto } from "../photos/ProductPhoto";
 import type { AddHost, Product, FactData, CrowdRow } from "./types";
-export function ProductPhoto({ host, p }: { host: AddHost; p: Product }) {
-  const ph = host.core.photo({ id: p.id }),
-    [failed, setFailed] = useState(false);
-  return (
-    <span className="ph-box">
-      {ph && !failed ? (
-        <img
-          src={ph.src}
-          alt={ph.alt || p.name}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span className="as-placeholder">사진 없음</span>
-      )}
-    </span>
-  );
-}
 export function CatalogRows({
   host,
   items,
