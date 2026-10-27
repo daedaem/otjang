@@ -1,3 +1,4 @@
+import type { CorePhoto } from "../tiles/Tile";
 import type { RetailHost } from "../retail/types";
 // Search results screen (WO-03b). The vanilla screen computes the same models
 // (resultsModel / gridModel / cardModel in screen.html); React only renders
@@ -45,7 +46,7 @@ export type CardModel = {
   tag: string;
   tagCls: string;
   photo: { src: string; alt: string; flat: boolean } | null;
-  tile: string | null;
+  core: CorePhoto | null;
 };
 export type GridEntry =
   | { type: "card"; id: string; card: CardModel }

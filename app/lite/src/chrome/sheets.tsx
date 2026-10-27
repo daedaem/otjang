@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { Tile, type TileModel } from "../tiles/Tile";
 import type { Close } from "./sheet";
 // Shared sheet contents (WO-08a): same markup and wording as the vanilla
 // disclose(), menu(), confirmSheet(), colour sheets, addFlow(), returnSheet()
@@ -192,8 +193,7 @@ export function AddByKind({
   onPick,
 }: {
   close: Close;
-  // The kind picture stays the shared garment tile template (WO-08c).
-  kinds: { id: string; name: string; html: string }[];
+  kinds: { id: string; name: string; tile: TileModel }[];
   colors: Color[];
   onPick(kind: string, color: string): After;
 }) {
@@ -218,8 +218,10 @@ export function AddByKind({
             type="button"
             data-k={k.id}
             onClick={() => setKind({ id: k.id, name: k.name })}
-            dangerouslySetInnerHTML={{ __html: k.html }}
-          />
+          >
+            <Tile m={k.tile} />
+            {k.name}
+          </button>
         ))}
       </div>
     </>
@@ -301,6 +303,171 @@ export function Decision({
           onClick={() => pick("")}
         >
           {has ? "그대로 둘게요" : "아직 보는 중이에요"}
+        </button>
+      </div>
+    </>
+  );
+}
+// Outfit card (vanilla lookHtml): title, a short tail and up to four tiles.
+export type Look = {
+  title: string;
+  tail: string;
+  pieces: { cand: boolean; tile: TileModel; capCls: string; cap: string }[];
+};
+export function LookCard({ l }: { l: Look }) {
+  return (
+    <div className="lk">
+      <div className="head">
+        <b>{l.title}</b>
+        <span className="t6">{l.tail}</span>
+      </div>
+      <div className="ps">
+        {l.pieces.map((x, i) => (
+          <div key={i} className={`p1${x.cand ? " cand" : ""}`}>
+            <Tile m={x.tile} />
+            <div className={x.capCls}>{x.cap}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+export type Crowd = { n: number; min: number; searchable: boolean; server: boolean; url: string };
+// Registration status line (vanilla crowdLine) with the seller link.
+function CrowdNotice({ c }: { c: Crowd }) {
+  const meter = (
+    <span className="meter" aria-hidden="true">
+      {Array.from({ length: c.min }, (_, i) => (
+        <i key={i} className={i < c.n ? "on" : ""} />
+      ))}
+    </span>
+  );
+  return (
+    <div className="crowd" style={{ margin: "0 0 14px" }}>
+      <i className="ph ph-users-three" />
+      <span>
+        {c.searchable ? (
+          <>
+            {`같은 옷을 ${c.min}명이 등록해서 이제 모두가 검색할 수 있어요`}
+            {meter}
+          </>
+        ) : (
+          <>
+            {`같은 옷을 ${c.min}명이 등록하면 모두가 검색할 수 있어요 · 지금 ${c.n}/${c.min}`}
+            {meter}
+            {c.server ? "" : " · 서버 연결 전에는 이 기기에만"}
+          </>
+        )}
+        {c.url ? (
+          <>
+            {" · "}
+            <a href={c.url} target="_blank" rel="noopener" style={{ textDecoration: "underline" }}>
+              판매처 링크
+            </a>
+          </>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+// Open Products Facts source line (vanilla opfNotice).
+function OpfNotice({ code }: { code: string }) {
+  const link = { target: "_blank", rel: "noopener noreferrer", style: { textDecoration: "underline" } } as const;
+  return (
+    <p className="t6" style={{ margin: "10px 0" }}>
+      Open Products Facts에서 가져온 정보 ·{" "}
+      <a href={`https://world.openproductsfacts.org/product/${code}`} {...link}>
+        원본 확인
+      </a>{" "}
+      ·{" "}
+      <a href="https://opendatacommons.org/licenses/odbl/1-0/" {...link}>
+        ODbL
+      </a>
+      <br />
+      종류·색과 실제로 가진 상품인지 확인해 주세요. 상품 사진·가격은 제공하지 않아요.
+    </p>
+  );
+}
+// The garment info sheet (vanilla garmentSheet without the profile editor):
+// trial garments and the fallback when the editor cannot open.
+export function GarmentInfo({
+  close,
+  tile,
+  title,
+  sub,
+  opf,
+  crowd,
+  askColor,
+  canColor,
+  count,
+  looks,
+  empty,
+  onColor,
+  onRemove,
+}: {
+  close: Close;
+  tile: TileModel;
+  title: string;
+  sub: string;
+  opf: { code: string } | null;
+  crowd: Crowd | null;
+  askColor: boolean;
+  canColor: boolean;
+  count: number;
+  looks: Look[];
+  empty: string;
+  onColor(): After;
+  onRemove(): After;
+}) {
+  const color = () => void finish(close, onColor());
+  return (
+    <>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
+        <span style={{ width: 84, display: "block", flex: "none" }}>
+          <Tile m={tile} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <h2 className="h2" style={{ margin: 0 }}>
+            {title}
+          </h2>
+          <div className="t6">{sub}</div>
+        </div>
+      </div>
+      {opf ? <OpfNotice code={opf.code} /> : crowd ? <CrowdNotice c={crowd} /> : null}
+      {askColor ? (
+        <div className="notice" style={{ margin: "0 0 12px" }}>
+          <span className="grow">색을 알려 주시면 코디에 셀 수 있어요</span>
+          <button type="button" data-gcolor="" onClick={color}>
+            색 고르기
+          </button>
+        </div>
+      ) : null}
+      <h3 className="h3" style={{ marginBottom: 4 }}>
+        이 옷으로 입을 수 있는 코디 <span className="num acc">{count}</span>가지
+      </h3>
+      {looks.length ? (
+        <div className="lks" style={{ marginTop: 8 }}>
+          {looks.map((l, i) => (
+            <LookCard key={i} l={l} />
+          ))}
+        </div>
+      ) : (
+        <p className="t6">{empty}</p>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        {canColor ? (
+          <button type="button" className="btn line sm" data-gcolor="" style={{ flex: 1 }} onClick={color}>
+            색 바꾸기
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn soft sm"
+          data-rm=""
+          style={{ flex: 1 }}
+          onClick={() => void finish(close, onRemove())}
+        >
+          옷장에서 빼기
         </button>
       </div>
     </>

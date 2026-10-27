@@ -8,6 +8,7 @@ import {
   Confirm,
   Decision,
   Disclose,
+  GarmentInfo,
   Menu,
   ReturnReasons,
 } from "./sheets";
@@ -31,6 +32,8 @@ export function open(name: string, props: Props, host: SheetHost) {
       return openSheet(host, (close) => <ReturnReasons {...(p as object as Parameters<typeof ReturnReasons>[0])} close={close} />);
     case "decision":
       return openSheet(host, (close) => <Decision {...(p as object as Parameters<typeof Decision>[0])} close={close} />);
+    case "garment":
+      return openSheet(host, (close) => <GarmentInfo {...(p as object as Parameters<typeof GarmentInfo>[0])} close={close} />);
     case "place": {
       // The weather place dialog from WO-02, opened from the menu.
       const wrap = document.createElement("div");

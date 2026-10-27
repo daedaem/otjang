@@ -1,0 +1,176 @@
+{
+  "work": "WO-08c shared tiles, weather product cards and the trial garment info sheet (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic or trial closet, synthetic weather; network outside the local test server blocked; no personal data",
+  "browser": "Playwright 1.57 Chromium headless shell, reducedMotion reduce, service workers blocked, CSS animations disabled",
+  "vanillaHtml": "Vanilla (?ui=vanilla) HTML of 10 states (trial closet, blazer detail, plain detail, results, compare, trial looks, home weather, garment sheet, add-by-kind sheet, records) is identical before (WO-08b build 203973f) and after the template refactor, with generated garment ids and asset hashes normalised.",
+  "states": {
+    "detail-blazer": "체험용 옷장 + 블레이저 상세(같은 옷 칸, 코디 칸) — 페이지 전체",
+    "detail-plain": "빈 옷장 + 셔츠 상세 — 페이지 전체",
+    "results": "'셔츠' 검색 결과 — 페이지 전체",
+    "compare": "걸어 본 2벌 나란히 비교 — 페이지 전체",
+    "records": "살게요 1·보류 1 기록 — 페이지 전체",
+    "weather": "체험용 옷장 + 합성 날씨, 홈 날씨 카드(옷 칸 4개) — 카드 요소",
+    "weather-missing": "기본 5벌 + 합성 날씨, 날씨 카드의 부족 아이템 상품 카드 — 카드 요소",
+    "add-kind": "종류·색으로 넣기 1단계 — 시트 요소",
+    "garment": "체험용 '흰 스니커즈' 옷 정보 시트 — 시트 요소"
+  },
+  "variants": {
+    "ti": {
+      "variant": "mobile Pixel 7, ?photos=0 (core colour tiles)",
+      "pairs": {
+        "detail-blazer": {
+          "vanilla_sha256": "cab253e3e42cb1be33e4c499bf6c6f402b004a8645feb222a5a69b5ae8ad1ce5",
+          "react_sha256": "cab253e3e42cb1be33e4c499bf6c6f402b004a8645feb222a5a69b5ae8ad1ce5",
+          "same": true
+        },
+        "detail-plain": {
+          "vanilla_sha256": "39ca147c32ecf3ef0e7cebf6750d6353dead90180e6ff3cb59ef8b3f18e46d64",
+          "react_sha256": "39ca147c32ecf3ef0e7cebf6750d6353dead90180e6ff3cb59ef8b3f18e46d64",
+          "same": true
+        },
+        "results": {
+          "vanilla_sha256": "bc35695f4bf7a8ba6e029a0e95f9f2b1c8d68da43ca3fb1337565d654ccc4d1b",
+          "react_sha256": "bc35695f4bf7a8ba6e029a0e95f9f2b1c8d68da43ca3fb1337565d654ccc4d1b",
+          "same": true
+        },
+        "compare": {
+          "vanilla_sha256": "7a5ec9b3966671b9f96a632ab511587c0e9e150892fefa74a37f5ad4bbeacca4",
+          "react_sha256": "7a5ec9b3966671b9f96a632ab511587c0e9e150892fefa74a37f5ad4bbeacca4",
+          "same": true
+        },
+        "records": {
+          "vanilla_sha256": "649071c75a221bc833871b8c8dc3198ce654e24b8daa0a29d503bab16ad72092",
+          "react_sha256": "649071c75a221bc833871b8c8dc3198ce654e24b8daa0a29d503bab16ad72092",
+          "same": true
+        },
+        "weather": {
+          "vanilla_sha256": "d19c8dba7f28c4985f7fe77e78634c4540419812703ad9ca96a205bc32c4ca29",
+          "react_sha256": "3e2bd807d59638c91d8ca463dbbea95f99105ceec94af199b50ae000b129234c",
+          "same": false
+        },
+        "weather-missing": {
+          "vanilla_sha256": "e5674f599be5f735178558c3d22df4ffd4a7799b84e144321afeb1294af25063",
+          "react_sha256": "84dc4998f88fd077c08c2dfe5b60a1ffe80d55dd7a0d87b56ba4e41da94b8df6",
+          "same": false
+        },
+        "add-kind": {
+          "vanilla_sha256": "df8d95f1f71a546eab086bd06d58c562b0b0d229b52686136b50ab33d8f9f647",
+          "react_sha256": "df8d95f1f71a546eab086bd06d58c562b0b0d229b52686136b50ab33d8f9f647",
+          "same": true
+        },
+        "garment": {
+          "vanilla_sha256": "eca2249c717179c5e4edac91efb800a62f1cc0e87cdf659e916e9e0601f10e15",
+          "react_sha256": "eca2249c717179c5e4edac91efb800a62f1cc0e87cdf659e916e9e0601f10e15",
+          "same": true
+        }
+      }
+    },
+    "tiph": {
+      "variant": "mobile Pixel 7, photos on",
+      "pairs": {
+        "detail-blazer": {
+          "vanilla_sha256": "d8c52f8d1cc6c8e38942421098673398058ba21dffb6b85e6d2fa3137b61f908",
+          "react_sha256": "d8c52f8d1cc6c8e38942421098673398058ba21dffb6b85e6d2fa3137b61f908",
+          "same": true
+        },
+        "detail-plain": {
+          "vanilla_sha256": "58a588d0527bf06f25b269e411826538374dff3ddaf83165c013a21bc22b576d",
+          "react_sha256": "58a588d0527bf06f25b269e411826538374dff3ddaf83165c013a21bc22b576d",
+          "same": true
+        },
+        "results": {
+          "vanilla_sha256": "c37f3f29ee7ccdadeb59e31f61d0a43356bc9fe0e674079f2ba73612552aaa23",
+          "react_sha256": "c37f3f29ee7ccdadeb59e31f61d0a43356bc9fe0e674079f2ba73612552aaa23",
+          "same": true
+        },
+        "compare": {
+          "vanilla_sha256": "89b03af59af41c11ec1ed4148bc2fbe7064871cd400c13c970460728e4273311",
+          "react_sha256": "89b03af59af41c11ec1ed4148bc2fbe7064871cd400c13c970460728e4273311",
+          "same": true
+        },
+        "records": {
+          "vanilla_sha256": "d31810a2a05e11801c4ec4bb7e0e3b447e76e01640ad669b62c53c0a9ad97792",
+          "react_sha256": "d31810a2a05e11801c4ec4bb7e0e3b447e76e01640ad669b62c53c0a9ad97792",
+          "same": true
+        },
+        "weather": {
+          "vanilla_sha256": "10ea7938c2a1f82899affcdb4974387327a66b31abe051cf9f24233acd43b289",
+          "react_sha256": "82a03eb3248f9a5465f6cc8b36dbe2477200c5c86162a498550d5f9eb5a35d94",
+          "same": false
+        },
+        "weather-missing": {
+          "vanilla_sha256": "fe3586dd169accfebe85eefece6175a9af981f6308dac5aff9338172471a5968",
+          "react_sha256": "8a0b1cd1356c4c69982ee7021b2c9b547a7e06709ae6198fead6245cd5a8c7fb",
+          "same": false
+        },
+        "add-kind": {
+          "vanilla_sha256": "cdf355d545ca5d9652bbbe7242f961b847f5cab121a56a4ca845b717bc743c6c",
+          "react_sha256": "cdf355d545ca5d9652bbbe7242f961b847f5cab121a56a4ca845b717bc743c6c",
+          "same": true
+        },
+        "garment": {
+          "vanilla_sha256": "b75a223cd9e656f7cb5827c7d6dc40ac88396968f1e3247f4b35362b3b9ed73a",
+          "react_sha256": "b75a223cd9e656f7cb5827c7d6dc40ac88396968f1e3247f4b35362b3b9ed73a",
+          "same": true
+        }
+      }
+    },
+    "tidesk": {
+      "variant": "desktop 1280x900, ?photos=0",
+      "pairs": {
+        "detail-blazer": {
+          "vanilla_sha256": "8fe4eed50c8b2b221bd0d2b7d5467578ec39d3ff9d378c5f82ab358562e42c54",
+          "react_sha256": "8fe4eed50c8b2b221bd0d2b7d5467578ec39d3ff9d378c5f82ab358562e42c54",
+          "same": true
+        },
+        "detail-plain": {
+          "vanilla_sha256": "412132ca539150e3758db14da8096517b977557845f77345e8a1c572069a1d6d",
+          "react_sha256": "412132ca539150e3758db14da8096517b977557845f77345e8a1c572069a1d6d",
+          "same": true
+        },
+        "results": {
+          "vanilla_sha256": "1370a4ddbbcde328d3832b59d9e7f0c1408411a746ce34f86d9a7e1ac5261646",
+          "react_sha256": "1370a4ddbbcde328d3832b59d9e7f0c1408411a746ce34f86d9a7e1ac5261646",
+          "same": true
+        },
+        "compare": {
+          "vanilla_sha256": "405a21a9f3a05b3759835f135d95ed9b2c728d9f7d1555ecec3357c184f67c88",
+          "react_sha256": "405a21a9f3a05b3759835f135d95ed9b2c728d9f7d1555ecec3357c184f67c88",
+          "same": true
+        },
+        "records": {
+          "vanilla_sha256": "f3464c4ce4431286b470b81cb0819eed9a218101f9ef86eefe9b3e77615b7585",
+          "react_sha256": "f3464c4ce4431286b470b81cb0819eed9a218101f9ef86eefe9b3e77615b7585",
+          "same": true
+        },
+        "weather": {
+          "vanilla_sha256": "9ca8e2bc1382417c14f91e499da905ffa23996aa7d931ef3fcc11bbcbf6daebf",
+          "react_sha256": "e5803de5c924cbff893825d5346ae5e6fc2ba6872fcee2a9566feeb788ef56d8",
+          "same": false
+        },
+        "weather-missing": {
+          "vanilla_sha256": "419ee3b3f30260e2c76c0d056a5f0b816d324d5872b461e23c1d3fec26309a57",
+          "react_sha256": "419ee3b3f30260e2c76c0d056a5f0b816d324d5872b461e23c1d3fec26309a57",
+          "same": true
+        },
+        "add-kind": {
+          "vanilla_sha256": "6c8f955d9301383bd734d24aac940982565f1ef64a14b51a7c09f5f19d4954eb",
+          "react_sha256": "6c8f955d9301383bd734d24aac940982565f1ef64a14b51a7c09f5f19d4954eb",
+          "same": true
+        },
+        "garment": {
+          "vanilla_sha256": "7a5738121f9bedd53bd740284ef810ea8268b7c2bca074d0d8dbd18859a29b07",
+          "react_sha256": "7a5738121f9bedd53bd740284ef810ea8268b7c2bca074d0d8dbd18859a29b07",
+          "same": true
+        }
+      }
+    }
+  },
+  "knownDiffs": "weather and weather-missing (mobile, both photo modes): 124 and 91 pixels of glyph antialiasing in the '다른 조합 1/n' line and two captions. The same pairs captured from the WO-08b build differ by the same pixels, and the React captures are byte-identical between the WO-08b and WO-08c builds, so this predates WO-08c (not caused by the tile move). Cause not identified. Desktop weather: 86 pixels of glyph antialiasing in the '다른 조합 1/n' number. On the WO-08b build the React desktop weather card was 1px taller than vanilla (888x526 vs 888x525); with React tiles it is the same size as vanilla.",
+  "kept": [
+    "claude-tiles-detail-blazer-mobile.png",
+    "claude-tiles-weather-missing-mobile.png",
+    "claude-tiles-garment-mobile.png"
+  ]
+}
