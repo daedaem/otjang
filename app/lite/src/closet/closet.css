@@ -511,12 +511,15 @@
 :root[data-look="v2"] .wr-controls select {
   border-radius: 8px;
 }
+:root[data-look="v2"] .wr-rail-title {
+  margin-bottom: 14px;
+}
 :root[data-look="v2"] .wr-rail-scroll {
-  border-top: 2px solid var(--ink);
+  border-top: 4px solid var(--wood-line);
 }
 :root[data-look="v2"] .wr-hanger path {
-  stroke: var(--ink2);
-  stroke-width: 1.6;
+  stroke: var(--wood-line);
+  stroke-width: 1.8;
 }
 :root[data-look="v2"] .wr-picture {
   border-radius: 2px;

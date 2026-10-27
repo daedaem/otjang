@@ -254,7 +254,7 @@ export function WeatherCard({
           ))}
         </div>
       )}
-      <p className="wx-why">
+      <p className={m.good ? "wx-why good" : "wx-why"}>
         <i className="ph-fill ph-check-circle" aria-hidden="true" />
         <span>
           {m.why}

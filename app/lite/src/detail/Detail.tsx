@@ -21,7 +21,7 @@ function HeadText({ m }: { m: DetailModel }) {
     return (
       <>
         {`겹치는 ${h.kindName}${h.josa} `}
-        <b>없어요</b>
+        <b className="good">없어요</b>
       </>
     );
   if (h.kind === "same")
@@ -35,7 +35,7 @@ function HeadText({ m }: { m: DetailModel }) {
   return (
     <>
       {"걸면 새 코디가 "}
-      <b>{`${h.n}개`}</b>
+      <b className="good">{`${h.n}개`}</b>
       {" 생겨요"}
     </>
   );
