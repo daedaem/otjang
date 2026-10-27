@@ -185,8 +185,13 @@ function OutfitScreen({ host }: { host: OutfitHost }) {
   useLayoutEffect(() => {
     ai.setSource(comparedReview.request);
   }, [ai, sourceKey]);
+  useLayoutEffect(() => {
+    // A lazy screen must not take focus back after the user chose a tab.
+    const active = document.activeElement;
+    if (!active || active === document.body || host.element.contains(active))
+      heading.current?.focus({ preventScroll: true });
+  }, []);
   useEffect(() => {
-    heading.current?.focus({ preventScroll: true });
     const listener = (event: StorageEvent) => {
       if (event.key === host.core.outfitReactionsKey || event.key === null)
         session.sync();

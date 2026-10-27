@@ -74,10 +74,16 @@ async function firstLike(page: Page) {
     .first()
     .getByRole("button", { name: "좋아요", exact: true });
 }
-test("delayed outfits mount preserves focus that the user moved to navigation", async ({ page }) => {
+test("delayed outfits mount preserves focus that the user moved to navigation", async ({
+  page,
+}) => {
   let release!: () => void, requested!: () => void;
-  const held = new Promise<void>((r) => { release = r; });
-  const seen = new Promise<void>((r) => { requested = r; });
+  const held = new Promise<void>((r) => {
+    release = r;
+  });
+  const seen = new Promise<void>((r) => {
+    requested = r;
+  });
   await page.route("**/react/outfits-*.js", async (route) => {
     requested();
     await held;
@@ -90,7 +96,12 @@ test("delayed outfits mount preserves focus that the user moved to navigation", 
   await expect(tab).toBeFocused();
   release();
   await expect(page.locator("[data-react-outfits]")).toBeVisible();
-  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  await page.evaluate(
+    () =>
+      new Promise<void>((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => r())),
+      ),
+  );
   await expect(tab).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("[data-react-closet]")).toBeVisible();
