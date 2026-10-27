@@ -244,3 +244,19 @@ test("the previous look keeps the closet as it was", async ({ page }) => {
   await expect(card.locator(".wr-meta")).toBeVisible();
   await expect(card.locator(".wr-trial-chip")).toBeHidden();
 });
+test.describe("dark closet", () => {
+  test.use({ colorScheme: "dark" });
+  // Photo tiles stay light in dark mode, so what sits on the photo stays dark ink.
+  test("the closet photo chip and buttons stay readable in dark mode", async ({ page }) => {
+    await closet(page);
+    const card = page.locator(".wr-card").first();
+    expect(await css(card.locator(".wr-trial-chip"), "color")).toBe("rgb(85, 85, 96)");
+    expect(await css(card.getByRole("button", { name: /옷 정보$/ }), "color")).toBe("rgb(32, 32, 37)");
+  });
+});
+test("the closet rail leaves no tall gap under the clothes", async ({ page }) => {
+  await closet(page);
+  const name = await page.locator(".wr-card-name").first().boundingBox();
+  const track = await page.locator(".wr-track").first().boundingBox();
+  expect(track!.y + track!.height - (name!.y + name!.height)).toBeLessThanOrEqual(40);
+});
