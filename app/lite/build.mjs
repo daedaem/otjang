@@ -99,6 +99,8 @@ const consultEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry
 if(!consultEntry)throw new Error('React consult entry missing');
 const backupEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/backup/index.tsx');
 if(!backupEntry)throw new Error('React backup entry missing');
+const chromeEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/chrome/index.tsx');
+if(!chromeEntry)throw new Error('React chrome entry missing');
 const addSearchEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/add-search/index.tsx');
 if(!addSearchEntry)throw new Error('React add-search entry missing');
 const mirrorEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/mirror/index.tsx');
@@ -135,6 +137,7 @@ const detailAssets = islandAssets('EOUL_DETAIL_LOAD', detailEntry);
 const recordsAssets = islandAssets('EOUL_RECORDS_LOAD', recordsEntry);
 const consultAssets = islandAssets('EOUL_CONSULT_LOAD', consultEntry);
 const backupAssets = islandAssets('EOUL_BACKUP_LOAD', backupEntry);
+const chromeAssets = islandAssets('EOUL_CHROME_LOAD', chromeEntry);
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -157,6 +160,7 @@ ${detailAssets}
 ${recordsAssets}
 ${consultAssets}
 ${backupAssets}
+${chromeAssets}
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
