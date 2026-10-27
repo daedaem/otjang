@@ -31,6 +31,8 @@
 
 ## 근거와 과거 기록
 
+- [상품 상세·구매 판단·비교 React 이전 (WO-04)](log/2026-10/react-detail-20261027.md)
+
 - [검색 결과·공급처 공유 React 이전 (WO-03)](log/2026-10/react-results-20261027.md)
 
 - [날씨 카드·지역 선택 공유 React 이전 (WO-02)](log/2026-10/react-weather-20261027.md)

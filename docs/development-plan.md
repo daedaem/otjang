@@ -149,7 +149,7 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 홈 | master #89 React 질문/예시/보유·후보 preview | 실기기·바닐라 제거는 WO-09. 날씨 카드는 아래 행 |
 | 날씨/지역 | master #90: home·looks 공유 React 날씨 카드와 React 지역 대화상자(`weatherModel`/`weatherCtl` 한 곳), 바닐라는 `?ui=vanilla` fallback | 코드 완료. 옷 조각 타일(`piecePic`)·부족 아이템 상품 카드(`cardHtml`)는 공용 템플릿 HTML로 남아 WO-03/WO-08에서 이전. 실기기 위치 권한은 WO-09 |
 | 검색 결과 | WO-03b 브랜치: React 결과 화면(`src/results`)이 `resultsModel`/`gridModel`/`cardModel`과 공유 공급처 패널을 그림. AI 순위는 기존 `S` 상태에 저장. 바닐라는 `?ui=vanilla`·섬 로딩 실패 fallback. 기준선 11개 | PR CI·병합 대기. 색 고르기 시트(WO-08), 날씨 카드의 부족 아이템 카드(WO-08), 상담 추천 카드(WO-06) |
-| 상품 상세/구매 판단/비교 | 바닐라, 실측/수집/거울 진입만 React 경계 | 링크·새 상품/중고 이동·판단/decision·return sheet·원자 명령 유지 |
+| 상품 상세/구매 판단/비교 | WO-04 브랜치: React 상세(`src/detail`)·`#bar` 구매 판단 바·비교가 `detailModel`/`decisionModel`/`compareModel`을 그림. 기존 decision/return/색 시트·원자 명령 재사용. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 6개 | PR CI·병합 대기. 가진 옷·코디 조각 타일과 시트(WO-08), 실제 판매처 왕복·실기기(WO-09) |
 | 구매/수령/보유/착용/반품 | 기록 목록과 action sheet 바닐라 | 같은 ID/단계/사유·실패/새로고침/복원 확인 후 이전 |
 | 상담 | 바닐라, #66 예산 대조/답변·이력 존재 | 답/대조 줄·실패/재시도·이력/백업과 로그인 만료 이동 보존 |
 | 공통 호스트 | renderStrip 후보 띠·bar/tabs·disclose/고지·pickColor/confirm/place·토스트·저장소 복구 안내/원문 받기 바닐라 | 실제 React 이전 확인. 공급처/OPF 출처와 광고 고지도 공유 이전에서 유지 |

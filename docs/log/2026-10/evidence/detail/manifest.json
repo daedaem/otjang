@@ -1,0 +1,258 @@
+{
+  "work": "WO-04 product detail, decision bar and compare (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic closet/decisions/records and injected AI rank; no personal data, no live supplier or AI call",
+  "browser": "Playwright 1.57 Chromium, reducedMotion reduce, service workers blocked, full-page capture with CSS animations disabled (the fixed decision bar appears at the viewport bottom position in full-page captures, identically in both)",
+  "states": {
+    "empty": "옷장 비어 있음 → 바로 묻기",
+    "answered-no": "없어요 답 → 겹치는 셔츠 없음",
+    "closet-same": "흰 셔츠·바지·운동화 → 가진 옷 타일과 코디",
+    "closet-other": "남색 셔츠 → 색 다름",
+    "trial": "체험용 옷장",
+    "ai": "결과에서 AI 순위 받은 상품",
+    "hold": "보류로 남김",
+    "kept": "계속 입는 옷 → 반품·기록 버튼",
+    "returned": "반품 기록",
+    "addlike": "바지·운동화만 → 가진 셔츠 걸기",
+    "compare1": "한 벌만 걸림",
+    "compare3": "세 벌 비교",
+    "compare3-open": "같은 항목 펼침",
+    "missing": "없는 상품"
+  },
+  "finding": "The first desktop comparison found the measure/collection/mirror inline buttons touching in React (the vanilla template has whitespace between them). Fixed before commit; all 42 pairs below are byte-identical.",
+  "kept": [
+    "claude-detail-ai-mobile.png",
+    "claude-detail-closet-same-mobile.png",
+    "claude-detail-compare3-open-mobile.png",
+    "claude-detail-empty-mobile.png",
+    "claude-detail-kept-mobile.png"
+  ],
+  "variants": {
+    "det": {
+      "variant": "mobile Pixel 7, ?photos=0",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "39ca147c32ecf3ef0e7cebf6750d6353dead90180e6ff3cb59ef8b3f18e46d64",
+          "react_sha256": "39ca147c32ecf3ef0e7cebf6750d6353dead90180e6ff3cb59ef8b3f18e46d64",
+          "same": true
+        },
+        "answered-no": {
+          "vanilla_sha256": "79be953cc5d9be52a3840779cc6e1d4d4120cede2261a3b04d57dcb55339ad92",
+          "react_sha256": "79be953cc5d9be52a3840779cc6e1d4d4120cede2261a3b04d57dcb55339ad92",
+          "same": true
+        },
+        "closet-same": {
+          "vanilla_sha256": "55411bc6335188065cd7ce22b9ea510aadaedcf5395c46c2f9a7c8c3f2a61594",
+          "react_sha256": "55411bc6335188065cd7ce22b9ea510aadaedcf5395c46c2f9a7c8c3f2a61594",
+          "same": true
+        },
+        "closet-other": {
+          "vanilla_sha256": "e57122084d6f7dc972713a221c24e18baee066019e229bce655f943cde610328",
+          "react_sha256": "e57122084d6f7dc972713a221c24e18baee066019e229bce655f943cde610328",
+          "same": true
+        },
+        "trial": {
+          "vanilla_sha256": "fb0d1f776ab1eefa2f49cfedc9317aafb976d4089a07c08a808968b1f57dcc02",
+          "react_sha256": "fb0d1f776ab1eefa2f49cfedc9317aafb976d4089a07c08a808968b1f57dcc02",
+          "same": true
+        },
+        "ai": {
+          "vanilla_sha256": "11ae308537957533d0078cce5394d41fcdfdf725c409a094977e714f43c4a7bf",
+          "react_sha256": "11ae308537957533d0078cce5394d41fcdfdf725c409a094977e714f43c4a7bf",
+          "same": true
+        },
+        "hold": {
+          "vanilla_sha256": "06f57556a05e2b18989b9de35a0970582b6763ee66efae7625e0466dcf87d9f4",
+          "react_sha256": "06f57556a05e2b18989b9de35a0970582b6763ee66efae7625e0466dcf87d9f4",
+          "same": true
+        },
+        "kept": {
+          "vanilla_sha256": "b7cfd9419be35897d4b9efda328154c3935653af166570d0157d3d7f9fa221c7",
+          "react_sha256": "b7cfd9419be35897d4b9efda328154c3935653af166570d0157d3d7f9fa221c7",
+          "same": true
+        },
+        "returned": {
+          "vanilla_sha256": "718b4b530791c2db2eaff4328e88ff4b767a14408a143a0709735223a2b047c3",
+          "react_sha256": "718b4b530791c2db2eaff4328e88ff4b767a14408a143a0709735223a2b047c3",
+          "same": true
+        },
+        "addlike": {
+          "vanilla_sha256": "9bee479a38fa255cb76ccfab86b8fc96341d85bb5d49441d5fc16ced633c7ddd",
+          "react_sha256": "9bee479a38fa255cb76ccfab86b8fc96341d85bb5d49441d5fc16ced633c7ddd",
+          "same": true
+        },
+        "compare1": {
+          "vanilla_sha256": "3d5054c5e5702c2a16299887d71be89fc79e703ff04fdc62091d5599aa2d87da",
+          "react_sha256": "3d5054c5e5702c2a16299887d71be89fc79e703ff04fdc62091d5599aa2d87da",
+          "same": true
+        },
+        "compare3": {
+          "vanilla_sha256": "22b41c7c7b037dc86efd0fbb7c26c1d29704ca2c07476df00bd6f00dab3c88bd",
+          "react_sha256": "22b41c7c7b037dc86efd0fbb7c26c1d29704ca2c07476df00bd6f00dab3c88bd",
+          "same": true
+        },
+        "compare3-open": {
+          "vanilla_sha256": "48754c3c5adc7adc8af0c254d6119f36cf25a98e2e21ed59ceb3baba5da9d650",
+          "react_sha256": "48754c3c5adc7adc8af0c254d6119f36cf25a98e2e21ed59ceb3baba5da9d650",
+          "same": true
+        },
+        "missing": {
+          "vanilla_sha256": "e644534a357f99dcf7599179d2eefc873dec51bd7af5a9e4131be586959a283c",
+          "react_sha256": "e644534a357f99dcf7599179d2eefc873dec51bd7af5a9e4131be586959a283c",
+          "same": true
+        }
+      }
+    },
+    "detph": {
+      "variant": "mobile Pixel 7, photos enabled (external photo requests blocked → alt text)",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "58a588d0527bf06f25b269e411826538374dff3ddaf83165c013a21bc22b576d",
+          "react_sha256": "58a588d0527bf06f25b269e411826538374dff3ddaf83165c013a21bc22b576d",
+          "same": true
+        },
+        "answered-no": {
+          "vanilla_sha256": "376bd29595ae0158d77b8ad8d4d3ae4678d1efe5c6d5d20f12ea76f8284f473b",
+          "react_sha256": "376bd29595ae0158d77b8ad8d4d3ae4678d1efe5c6d5d20f12ea76f8284f473b",
+          "same": true
+        },
+        "closet-same": {
+          "vanilla_sha256": "ec60eb9a5c3c336fd77d1f22bfaa1cb3f469552e450688e3ad24f1dd7a2077b8",
+          "react_sha256": "ec60eb9a5c3c336fd77d1f22bfaa1cb3f469552e450688e3ad24f1dd7a2077b8",
+          "same": true
+        },
+        "closet-other": {
+          "vanilla_sha256": "39d2180a44146d52a20836ab2a7b53c25b899b171b65ce7df7f3f79f4ccf2172",
+          "react_sha256": "39d2180a44146d52a20836ab2a7b53c25b899b171b65ce7df7f3f79f4ccf2172",
+          "same": true
+        },
+        "trial": {
+          "vanilla_sha256": "7830775941a4cbe8e40adc6ffa1bce7fa62ebba06c2287e004b377e9897801d8",
+          "react_sha256": "7830775941a4cbe8e40adc6ffa1bce7fa62ebba06c2287e004b377e9897801d8",
+          "same": true
+        },
+        "ai": {
+          "vanilla_sha256": "caaa92c3c6d19f87232d11f39b95aaa871a567473fe3d6480f24d0e73a8953ce",
+          "react_sha256": "caaa92c3c6d19f87232d11f39b95aaa871a567473fe3d6480f24d0e73a8953ce",
+          "same": true
+        },
+        "hold": {
+          "vanilla_sha256": "754061617f05acf01fe5333aaa370b575105e52beb91dfb62048c6289dc62c53",
+          "react_sha256": "754061617f05acf01fe5333aaa370b575105e52beb91dfb62048c6289dc62c53",
+          "same": true
+        },
+        "kept": {
+          "vanilla_sha256": "e6d99ec3f6bed5bb432a963428c351f357277d1d8684fb99a81363e02592972a",
+          "react_sha256": "e6d99ec3f6bed5bb432a963428c351f357277d1d8684fb99a81363e02592972a",
+          "same": true
+        },
+        "returned": {
+          "vanilla_sha256": "997ceef633facc46e7d7034c7f3a6c7e8edfa66f1cea4bdabca4752ea0cea9f8",
+          "react_sha256": "997ceef633facc46e7d7034c7f3a6c7e8edfa66f1cea4bdabca4752ea0cea9f8",
+          "same": true
+        },
+        "addlike": {
+          "vanilla_sha256": "b8f82c4cbce066e31ca2fc325d0bb1290d0520bb57fec3d10d3fb5a6536f8bed",
+          "react_sha256": "b8f82c4cbce066e31ca2fc325d0bb1290d0520bb57fec3d10d3fb5a6536f8bed",
+          "same": true
+        },
+        "compare1": {
+          "vanilla_sha256": "3d5054c5e5702c2a16299887d71be89fc79e703ff04fdc62091d5599aa2d87da",
+          "react_sha256": "3d5054c5e5702c2a16299887d71be89fc79e703ff04fdc62091d5599aa2d87da",
+          "same": true
+        },
+        "compare3": {
+          "vanilla_sha256": "18d611827fb26bf37ef3d13b12f9d6c51525af8a49943219333369f33fe43277",
+          "react_sha256": "18d611827fb26bf37ef3d13b12f9d6c51525af8a49943219333369f33fe43277",
+          "same": true
+        },
+        "compare3-open": {
+          "vanilla_sha256": "edba66232061552f96106b22523ad35fde71a577506c00fef248f370ecd06280",
+          "react_sha256": "edba66232061552f96106b22523ad35fde71a577506c00fef248f370ecd06280",
+          "same": true
+        },
+        "missing": {
+          "vanilla_sha256": "e644534a357f99dcf7599179d2eefc873dec51bd7af5a9e4131be586959a283c",
+          "react_sha256": "e644534a357f99dcf7599179d2eefc873dec51bd7af5a9e4131be586959a283c",
+          "same": true
+        }
+      }
+    },
+    "detdesk": {
+      "variant": "desktop 1280x900, ?photos=0",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "412132ca539150e3758db14da8096517b977557845f77345e8a1c572069a1d6d",
+          "react_sha256": "412132ca539150e3758db14da8096517b977557845f77345e8a1c572069a1d6d",
+          "same": true
+        },
+        "answered-no": {
+          "vanilla_sha256": "e67d5456c3d3179addb6b16f8e65e067ad57719ae6b58b7d7f6f6db3efeabe99",
+          "react_sha256": "e67d5456c3d3179addb6b16f8e65e067ad57719ae6b58b7d7f6f6db3efeabe99",
+          "same": true
+        },
+        "closet-same": {
+          "vanilla_sha256": "6bac76b09b320852cd0ba4606f3351e5161414bcf10ccab4c2bac6afb3cc515b",
+          "react_sha256": "6bac76b09b320852cd0ba4606f3351e5161414bcf10ccab4c2bac6afb3cc515b",
+          "same": true
+        },
+        "closet-other": {
+          "vanilla_sha256": "968204b5a93ec1cbbaa2a31d479836b8f217c12a4a0d3612b7541388e51fb4a2",
+          "react_sha256": "968204b5a93ec1cbbaa2a31d479836b8f217c12a4a0d3612b7541388e51fb4a2",
+          "same": true
+        },
+        "trial": {
+          "vanilla_sha256": "27d5b8b8066c8def2e4328f4ba3d03193a3376fbab1b66fc427cde19d3c58a38",
+          "react_sha256": "27d5b8b8066c8def2e4328f4ba3d03193a3376fbab1b66fc427cde19d3c58a38",
+          "same": true
+        },
+        "ai": {
+          "vanilla_sha256": "bf442672d46c8850d929905d52faee1e524049b6d269cf37dccb62995d3d24f3",
+          "react_sha256": "bf442672d46c8850d929905d52faee1e524049b6d269cf37dccb62995d3d24f3",
+          "same": true
+        },
+        "hold": {
+          "vanilla_sha256": "c5c4aabc65aeee4150f1e7ff0ae340474c94caa04273bd07de1cebec70052b5a",
+          "react_sha256": "c5c4aabc65aeee4150f1e7ff0ae340474c94caa04273bd07de1cebec70052b5a",
+          "same": true
+        },
+        "kept": {
+          "vanilla_sha256": "a6530df3213ef9c0422b5e0319d551871b0a3f57f257a0bb9647b60988bbeb4b",
+          "react_sha256": "a6530df3213ef9c0422b5e0319d551871b0a3f57f257a0bb9647b60988bbeb4b",
+          "same": true
+        },
+        "returned": {
+          "vanilla_sha256": "1902ec4149719e8a4a4ab208fc98843544e55fec493233f8dd53c3ee3493594e",
+          "react_sha256": "1902ec4149719e8a4a4ab208fc98843544e55fec493233f8dd53c3ee3493594e",
+          "same": true
+        },
+        "addlike": {
+          "vanilla_sha256": "8975f6468c11e7e86a6e702c697323a5d1355381f8137dc7a126a53ba4ebf53c",
+          "react_sha256": "8975f6468c11e7e86a6e702c697323a5d1355381f8137dc7a126a53ba4ebf53c",
+          "same": true
+        },
+        "compare1": {
+          "vanilla_sha256": "529b8130caa7acfaea5a1ecd9d000a78854f9344767282ad7e9131b03b802eeb",
+          "react_sha256": "529b8130caa7acfaea5a1ecd9d000a78854f9344767282ad7e9131b03b802eeb",
+          "same": true
+        },
+        "compare3": {
+          "vanilla_sha256": "8f26a4caf4e4d3a0716040b1caec3c61cb72a5327fabc09959f92f35325e48e4",
+          "react_sha256": "8f26a4caf4e4d3a0716040b1caec3c61cb72a5327fabc09959f92f35325e48e4",
+          "same": true
+        },
+        "compare3-open": {
+          "vanilla_sha256": "d12b183eeef0733156ae24b49b9f812378a70154a866c50bc9e9edc2e28a1ccb",
+          "react_sha256": "d12b183eeef0733156ae24b49b9f812378a70154a866c50bc9e9edc2e28a1ccb",
+          "same": true
+        },
+        "missing": {
+          "vanilla_sha256": "2f8da527cb14bba0980a507c9e48b25d4d34df80503ce1adbe44bd0f05379c8f",
+          "react_sha256": "2f8da527cb14bba0980a507c9e48b25d4d34df80503ce1adbe44bd0f05379c8f",
+          "same": true
+        }
+      }
+    }
+  },
+  "notMeasured": "WebKit (CI only), real devices, real seller pages, the zoom overlay with a real photo"
+}
