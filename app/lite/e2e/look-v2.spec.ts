@@ -289,7 +289,10 @@ test(`the new look shows outfits on a product page as big swipe cards${label}`, 
   await expect(pieces).toBeVisible();
   const me = cards.first().locator(".p1.me").first();
   await expect(me).toBeVisible();
-  expect(await css(me.locator(".ph-box, [data-tile]").first(), "box-shadow")).toContain("rgb(91, 58, 36)");
+  // An outline, not an inset shadow: the photo inside would cover a shadow.
+  const meBox = me.locator(".ph-box").first();
+  expect(await css(meBox, "outline-color")).toBe("rgb(91, 58, 36)");
+  expect(await css(meBox, "outline-width")).toBe("2px");
 });
 test("the previous look keeps the product page outfits as four small pieces", async ({ page }) => {
   await looksOnDetail(page, "&look=v1");
