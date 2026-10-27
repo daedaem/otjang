@@ -74,8 +74,9 @@ test("a hung product keeps its filled hanger in the new look", async ({ page }) 
   const hang = page.locator(".grid .card .hangt").first();
   await hang.click();
   await expect(hang).toHaveAttribute("aria-pressed", "true");
-  expect(await hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(31, 63, 128)");
-  expect(await hang.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
+  // The hanger animates its colour; wait for where it settles.
+  await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(31, 63, 128)");
+  await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
 });
 
 // Flow: on a product page the verdict (내 옷에 걸어 보면) comes right after the

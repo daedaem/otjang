@@ -147,6 +147,10 @@ function Home({ host }: { host: HomeHost }) {
     // examples() follows the core's current gender (e.g. a trial closet), so
     // recompute with the subscribed version like the vanilla redraw did.
     examples = useMemo(() => host.core.examples().slice(0, 4), [host, version]);
+  // WO-11 새 디자인(v2): 찾기 칸을 맨 위에, 날씨 코디는 그 아래에 둔다. 메뉴로
+  // 바꾸면 K.refresh()가 이 화면을 다시 그린다.
+  const v2 = document.documentElement.dataset.look === "v2",
+    weather = <WeatherCard host={host.weather} core={host.core} where="home" />;
   return (
     <section className="hm" data-react-home aria-label="옷 찾기 홈">
       <header className="top">
@@ -173,8 +177,8 @@ function Home({ host }: { host: HomeHost }) {
           <i className="ph ph-dots-three" aria-hidden="true" />
         </button>
       </header>
-      <WeatherCard host={host.weather} core={host.core} where="home" />
-      <h1 className="h1 hero after-wx">
+      {v2 ? null : weather}
+      <h1 className={v2 ? "h1 hero" : "h1 hero after-wx"}>
         뭐 사려고요?
         <br />
         <span className="acc">걸어 보고</span> 사요.
@@ -220,6 +224,7 @@ function Home({ host }: { host: HomeHost }) {
           </button>
         ))}
       </div>
+      {v2 ? weather : null}
       <ProofCard host={host} model={proof} />
     </section>
   );
