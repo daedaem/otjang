@@ -31,6 +31,8 @@
 
 ## 근거와 과거 기록
 
+- [공통 아래 시트 React 이전 (WO-08a)](log/2026-10/react-sheets-20261027.md)
+
 - [백업·복원 시트 React 이전 (WO-07)](log/2026-10/react-backup-20261027.md)
 
 - [상담 화면 React 이전 (WO-06)](log/2026-10/react-consult-20261027.md)
