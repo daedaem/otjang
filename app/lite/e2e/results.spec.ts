@@ -98,6 +98,21 @@ test("a home question opens ranked results: AI waits, reorders with reasons and 
   await expect(page.getByLabel("찾는 옷", { exact: true })).toHaveValue("셔츠");
 });
 
+test("coming back from a product restores the results scroll position", async ({ page }) => {
+  await noSuppliers(page);
+  await ai(page);
+  await results(page, "셔츠");
+  await cards(page).nth(9).scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => scrollY);
+  expect(y).toBeGreaterThan(300);
+  await cards(page).nth(9).getByRole("button").first().click();
+  await expect(page).toHaveURL(/#\/p\//);
+  await page.evaluate(() => (window as any).K.back());
+  await expect(page.getByRole("button", { name: "다시 찾기: 셔츠", exact: true })).toBeAttached();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(y);
+  await expect(cards(page).nth(9)).toBeInViewport();
+});
+
 test("an AI failure keeps the engine order and says why", async ({ page }) => {
   await noSuppliers(page);
   await ai(page);
