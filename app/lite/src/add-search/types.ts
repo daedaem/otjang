@@ -1,4 +1,5 @@
 import type { Garment, ClosetCore, ClosetState } from "../closet/types";
+import type { RetailHost } from "../retail/types";
 export type Product = {
   id: string;
   brand: string;
@@ -64,6 +65,6 @@ export type AddHost = {
   ownCrowd(row: CrowdRow): Garment;
   pending: Map<string, CrowdRow>;
   finishCrowd(g: Garment): void;
-  providers(node: HTMLElement, q: string, submitted: boolean): void;
+  retail: RetailHost;
   navigationGuard(check: () => boolean | Promise<boolean>): () => void;
 };
