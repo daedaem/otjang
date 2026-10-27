@@ -7,6 +7,8 @@ import { COLLECTION_KEY, collectionSeriesKey, readCollectionSettings } from './d
 import { valueAxes, seriesShelves, wearExpectation } from './domain/collection-value.js';
 import {OUTFIT_REACTIONS_KEY,REACTION_OVERLAP_NOTE,readOutfitReactions,buildOutfitRequest,readOutfitResponse,outfitReviewFacts} from './domain/outfit-review.js';
 import {REACTION_REASONS} from './domain/outfit-facts.js';
+import {MIRROR_DRAFT_KEY,MIRROR_NOTE,newMirrorDraft,readMirrorDraft,mirrorHeight} from './domain/mirror-draft.js';
+import {bodyScale,placeGarment} from './domain/collage.js';
 import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // UX 시안 10개 2판(실제 웹앱 형태)이 함께 쓰는 목업 코어. 1판(app/mockups/ux10/src/core.mjs)을 바탕으로 했다.
 // 실제 앱의 엔진(검색·비교·코디·구매 기록)을 화면과 무관한 API로 감싼다.
@@ -356,6 +358,26 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     profileEditDraft,
     collectionKey: COLLECTION_KEY,
     outfitReactionsKey:OUTFIT_REACTIONS_KEY,
+    mirrorDraftKey:MIRROR_DRAFT_KEY,
+    newMirrorDraft,
+    readMirrorDraft,
+    canReadMirrorDraft(raw){try{readMirrorDraft(raw);return true;}catch{return false;}},
+    mirrorCalibration(value){
+      const d=readMirrorDraft(JSON.stringify(value)),height=mirrorHeight(d.heightRaw);
+      if(!d.body)return {ok:false,reason:'내 전신 사진을 먼저 골라 주세요.',note:MIRROR_NOTE};
+      if(height===null)return {ok:false,reason:'키를 100~230cm 범위로 확인해 주세요.',note:MIRROR_NOTE};
+      if(!d.head||!d.feet)return {ok:false,reason:'사진에서 머리 끝과 발끝을 차례로 눌러 주세요.',note:MIRROR_NOTE};
+      return {ok:true,scale:bodyScale({heightCm:height,headTopY:d.head.y,feetY:d.feet.y}),centerX:(d.head.x+d.feet.x)/2,note:MIRROR_NOTE};
+    },
+    mirrorPlacement(garmentId,value,image){
+      const d=readMirrorDraft(JSON.stringify(value)),g=api.getState().closet.find(g=>g.id===garmentId),layer=d.layers.find(l=>l.garmentId===garmentId);
+      if(!g||g.trial||!g.photoId)throw Error('실제 내 옷에 연결한 기기 사진만 놓을 수 있어요. 판매처 사진은 옆에서만 봐요.');
+      if(!image||image.photoId!==g.photoId||![image.width,image.height].every(n=>Number.isInteger(n)&&n>0&&n<=30000)||image.width*image.height>12000000)throw Error('내 옷 사진의 연결과 크기를 확인해 주세요.');
+      if(!layer)return null;
+      const c=api.mirrorCalibration(d);if(!c.ok)throw Error(c.reason);
+      const placed=placeGarment({item:g,lengthCm:g.profile?.measures?.length?.cm??null,image,scale:c.scale,centerX:c.centerX});
+      return placed?{...placed,x:placed.x+layer.dx,y:placed.y+layer.dy,note:MIRROR_NOTE}:null;
+    },
     readOutfitReactions,
     readOutfitResponse,
     outfitEvidence:request=>outfitReviewFacts(request,{human:true}),

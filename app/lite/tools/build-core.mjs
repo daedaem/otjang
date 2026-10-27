@@ -18,7 +18,7 @@ const ORDER = [
   'src/domain/legacy-purchase-v4.js', 'src/domain/purchase-journey.js', 'src/domain/wear-log.js', 'src/domain/wardrobe.js', 'src/domain/outfit-copy.js',
   'src/domain/search-follow-up.js', 'src/domain/query.js', 'src/domain/engine.js', 'src/domain/purchase-candidate.js',
   'src/domain/related-returns.js', 'src/domain/wardrobe-plan.js', 'src/domain/purchase-plan-context.js', 'src/domain/offers.js', 'src/domain/offer-store.js',
- 'src/domain/photo-pending.js', 'src/domain/garment-profile.js', 'src/domain/rail-layout.js', 'src/domain/json-members.js', 'src/domain/profile-edit.js', 'src/domain/measure-compare.js', 'src/domain/size-chart.js', 'src/domain/measurement-draft.js', 'src/domain/collection-settings.js', 'src/domain/collection-value.js', 'src/domain/outfit-facts.js', 'src/domain/outfit-review.js', 'src/domain/lite-input-draft.js', 'src/domain/lite-registration.js',
+ 'src/domain/photo-pending.js', 'src/domain/garment-profile.js', 'src/domain/rail-layout.js', 'src/domain/json-members.js', 'src/domain/profile-edit.js', 'src/domain/measure-compare.js', 'src/domain/size-chart.js', 'src/domain/measurement-draft.js', 'src/domain/collection-settings.js', 'src/domain/collection-value.js', 'src/domain/outfit-facts.js', 'src/domain/outfit-review.js', 'src/domain/mirror-draft.js', 'src/domain/collage.js', 'src/domain/lite-input-draft.js', 'src/domain/lite-registration.js',
 ];
 const importsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^import[\s\S]*?from\s+['"]([^'"]+)['"];?\s*$/gm)].map((m) => path.resolve(path.dirname(file), m[1]));
 const need = new Set();
