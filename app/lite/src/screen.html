@@ -582,8 +582,8 @@ a { color: inherit; text-decoration: none; }
    상자와 알약 줄이기(얇은 선과 여백으로 구분), 굵기 낮추기(800 → 600~700), 사진 칸 각진 모서리(2px)·크게. */
 :root[data-look="v2"] {
   --bg: #ffffff; --surface: #ffffff; --well: #f7f7f8; --tile: #f4f4f5; --ptile: #f4f4f5; --tile-on-well: #ffffff;
-  --ink: #202025; --ink2: #555560; --ink3: #7a7a85; --line: #e6e6ea;
-  --brand: #5b3a24;
+  --ink: #202025; --ink2: #555560; --ink3: #6a6a74; --line: #e6e6ea;
+  --brand: #5b3a24; --wood: #5b3a24; --wood-line: #5b3a24; --leaf: #4d6b4f;
   --acc: #202025; --acc-text: #202025; --acc-soft: #f1f1f3; --btn-bg: #202025; --btn-fg: #ffffff;
   --dim: rgba(13, 16, 15, .48); --shadow: 0 12px 32px rgba(13, 16, 15, .14), 0 2px 8px rgba(13, 16, 15, .08);
   --r: 8px;
@@ -591,13 +591,13 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-color-scheme: dark) { :root[data-look="v2"]:not([data-theme="light"]) {
   --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
   --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
-  --brand: #c4996b;
+  --brand: #c4996b; --wood: #5b3a24; --wood-line: #c4996b; --leaf: #8fb592;
   --acc: #f7f7f8; --acc-text: #f7f7f8; --acc-soft: #2a2a30; --btn-bg: #f7f7f8; --btn-fg: #151519;
   --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); } }
 :root[data-look="v2"][data-theme="dark"] {
   --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
   --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
-  --brand: #c4996b;
+  --brand: #c4996b; --wood: #5b3a24; --wood-line: #c4996b; --leaf: #8fb592;
   --acc: #f7f7f8; --acc-text: #f7f7f8; --acc-soft: #2a2a30; --btn-bg: #f7f7f8; --btn-fg: #151519;
   --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); }
 /* 글자: 굵기를 낮추고 단계를 줄인다(제목 26 · 20 · 16, 본문 15, 작은 글자 12). */
@@ -617,15 +617,18 @@ a { color: inherit; text-decoration: none; }
 :root[data-look="v2"] .quiet { font-weight: 500; text-decoration-color: var(--ink3); }
 /* 탭·띠 */
 :root[data-look="v2"] .tabs button { font-size: 11px; font-weight: 500; gap: 2px; }
-:root[data-look="v2"] .tabs button[aria-current="page"] { font-weight: 650; }
+:root[data-look="v2"] .tabs button[aria-current="page"] { font-weight: 700; }
 :root[data-look="v2"] .tabs button i { font-size: 23px; }
 :root[data-look="v2"] .strip .in { font-weight: 600; }
-:root[data-look="v2"] .strip .in i { color: #c4c4cb; }
+:root[data-look="v2"] .strip { background: var(--wood); color: #ffffff; }
+:root[data-look="v2"] .strip .in i { color: #ffffff; }
 /* 사진 칸: 각진 모서리, 회색 하나, 걸기 토글은 작게. */
 :root[data-look="v2"] .ph-box { border-radius: 2px; }
 :root[data-look="v2"] .hangt span { width: 30px; height: 30px; font-size: 17px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
 :root[data-look="v2"] .hangt.big span { width: 42px; height: 42px; font-size: 22px; }
-:root[data-look="v2"] .hangt[aria-pressed="true"] span { background: var(--btn-bg); color: var(--btn-fg); }
+:root[data-look="v2"] .hangt span { width: 32px; height: 32px; }
+:root[data-look="v2"] .hangt[aria-pressed="true"] span { background: var(--wood); color: #ffffff; box-shadow: 0 0 0 2px #ffffff, 0 1px 3px rgba(0, 0, 0, .18); }
+:root[data-look="v2"] .hangt:not(.big)[aria-pressed="true"] span::after { content: "✓"; position: absolute; transform: translate(10px, 9px); width: 14px; height: 14px; border-radius: 50%; background: #ffffff; color: var(--wood); font: 700 10px/14px system-ui, sans-serif; text-align: center; }
 :root[data-look="v2"] .pdp-photo .hangt.big { width: auto; height: 48px; right: 8px; top: 8px; }
 :root[data-look="v2"] .pdp-photo .hangt.big span { width: auto; height: 40px; padding: 0 14px 0 12px; gap: 6px; display: inline-flex; align-items: center; border-radius: 8px; font-size: 20px; }
 :root[data-look="v2"] .pdp-photo .hangt.big span::after { content: "걸어 보기"; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
@@ -644,7 +647,9 @@ a { color: inherit; text-decoration: none; }
 :root[data-look="v2"] .wx .wx-ps { gap: 4px; }
 :root[data-look="v2"] .wx .wx-ps .ph-box, :root[data-look="v2"] .wx .wx-miss .wx-mg .ph-box { background: var(--ptile); border-radius: 2px; }
 :root[data-look="v2"] .wx .wx-why { font-weight: 500; color: var(--ink); }
-:root[data-look="v2"] .wx .wx-why i { color: var(--acc); }
+:root[data-look="v2"] .wx .wx-why i { color: var(--ink3); }
+:root[data-look="v2"] .wx .wx-why.good i { color: var(--leaf); }
+:root[data-look="v2"] #hangbox .h2 b.good { color: var(--leaf); }
 :root[data-look="v2"] .wx .wx-ex .chips .chip { background: transparent; }
 :root[data-look="v2"] .proof { padding: 16px 0; border-radius: 0; background: transparent; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 :root[data-look="v2"] .prow .ph-box { border-radius: 2px; }
@@ -1762,6 +1767,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       band: { label: r.band.label, advice: r.band.advice }, notes: r.notes.join(' '),
       outfit: !!o, pieces: pieces.map((x) => ({ label: x.label, trial: !!x.trial, html: piecePic(x), tile: tileData(pieceTile(x)) })),
       why: o ? (r.short ? '딱 맞는 조합이 없어서 가진 옷 중 가장 가까운 거예요' : (o.reasons[0] || `${r.band.label}에 맞는 조합이에요`)) : '상의·하의·신발이 한 벌씩 있어야 조합이 생겨요',
+      good: !!o && !r.short,
       whyMore: o && !r.short && o.reasons.length > 1 ? ` · ${o.reasons.slice(1).join(' · ')}` : '',
       count: n, index: i, missing,
     };
@@ -1789,7 +1795,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const ac = `<div class="wx-ac">${m.count > 1 ? `<button class="quiet" data-wxnext><i class="ph ph-arrows-clockwise"></i>다른 조합 <span class="num">${m.index + 1}/${m.count}</span></button>` : ''}${m.where === 'home' ? '<button class="quiet" data-tabgo="looks">코디 더 보기<i class="ph ph-caret-right"></i></button>' : ''}</div>`;
     const miss = m.missing ? `<div class="wx-miss"><h3 class="h3">${esc(m.missing.heading)}</h3>
         ${m.missing.products.length ? `<div class="wx-mg">${m.missing.products.map((p) => p.html).join('')}</div><button class="quiet" data-q="${esc(m.missing.query)}" style="margin-top:2px">${esc(m.missing.query)} 더 보기<i class="ph ph-caret-right"></i></button>` : `<p class="t6" style="margin:4px 0 0">맞는 ${esc(m.missing.label)} 상품을 찾지 못했어요.</p>`}</div>` : '';
-    return `<section class="wx" aria-label="오늘 날씨 코디">${head}${band}${photos}<p class="wx-why"><i class="ph-fill ph-check-circle"></i><span>${esc(m.why)}${esc(m.whyMore)}</span></p>${ac}${miss}${exRow}</section>`;
+    return `<section class="wx" aria-label="오늘 날씨 코디">${head}${band}${photos}<p class="wx-why${m.good ? ' good' : ''}"><i class="ph-fill ph-check-circle"></i><span>${esc(m.why)}${esc(m.whyMore)}</span></p>${ac}${miss}${exRow}</section>`;
   }
   // 날씨 상태를 바꾸는 동작은 모두 여기로 모은다. React 카드는 subscribe로 다시 그리고,
   // React 카드가 없는 바닐라 화면만 예전처럼 화면을 다시 그린다(keepY).
@@ -1907,7 +1913,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const m = detailModel(id);
       if (!m) return `${top()}<p class="t5">상품을 찾지 못했어요.</p>`;
       const ai = m.ai, v = m.v, same = m.same, looks = m.looks, nvu = m.nvu, ask = m.ask;
-      const head = m.head.kind === 'ask' ? esc(m.head.text) : m.head.kind === 'none' ? `겹치는 ${esc(m.head.kindName)}${m.head.josa} <b>없어요</b>` : m.head.kind === 'same' ? `비슷한 옷이 <b>${m.head.n}벌</b> 걸려 있어요` : m.head.kind === 'new' ? `걸면 새 코디가 <b>${m.head.n}개</b> 생겨요` : esc(m.head.text);
+      const head = m.head.kind === 'ask' ? esc(m.head.text) : m.head.kind === 'none' ? `겹치는 ${esc(m.head.kindName)}${m.head.josa} <b class="good">없어요</b>` : m.head.kind === 'same' ? `비슷한 옷이 <b>${m.head.n}벌</b> 걸려 있어요` : m.head.kind === 'new' ? `걸면 새 코디가 <b class="good">${m.head.n}개</b> 생겨요` : esc(m.head.text);
       const sub = m.sub;
       // WO-11 새 디자인(v2): 판단(내 옷에 걸어 보면)을 가격 바로 아래에, 실측·가치·거울은 그 뒤에 둔다.
       const v2 = document.documentElement.dataset.look === 'v2';

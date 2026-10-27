@@ -25,6 +25,8 @@ export type WeatherModel =
       // grid card), WO-08c.
       pieces?: { label: string; trial: boolean; tile: TileModel }[];
       why?: string;
+      // A real good fit (not the nearest fallback): leaf green in the new look.
+      good?: boolean;
       whyMore?: string;
       count?: number;
       index?: number;

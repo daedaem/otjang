@@ -80,7 +80,7 @@ test("a hung product keeps its filled hanger in the new look", async ({ page }) 
   await hang.click();
   await expect(hang).toHaveAttribute("aria-pressed", "true");
   // The hanger animates its colour; wait for where it settles.
-  await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(32, 32, 37)");
+  await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(91, 58, 36)");
   await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
 });
 
@@ -155,4 +155,58 @@ test.describe("dark", () => {
     expect(await bg(page)).toBe("rgb(247, 247, 248)");
     expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(196, 153, 107)");
   });
+});
+
+// Owner 10-28 08:00 (panel "D+"): walnut means hung / wardrobe, leaf green only
+// good news, buttons stay ink.
+const WALNUT = "rgb(91, 58, 36)", LEAF = "rgb(77, 107, 79)";
+const css = (l: ReturnType<Page["locator"]>, prop: string) => l.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop);
+
+test("walnut marks what is hung: the hung hanger and the 걸어 봄 strip", async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window as any).K.go("results", { q: "출근용 셔츠 10만원 이하" }));
+  const hang = page.locator(".grid .card .hangt").first();
+  await hang.click();
+  await expect.poll(() => css(hang.locator("span"), "background-color")).toBe(WALNUT);
+  expect(await css(hang.locator("span"), "box-shadow")).toContain("rgb(255, 255, 255)");
+  await expect(page.locator(".strip").first()).toBeVisible();
+  await expect.poll(() => css(page.locator(".strip").first(), "background-color")).toBe(WALNUT);
+  expect(await bg(page).catch(() => "")).not.toBe(WALNUT);
+});
+
+test("the closet rod is a 4px walnut line with walnut hangers", async ({ page }) => {
+  await page.goto("/?photos=0#/closet");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.refresh(); });
+  const rod = page.locator(".wr-rail-scroll").first();
+  await expect(rod).toBeVisible();
+  expect(await css(rod, "border-top-width")).toBe("4px");
+  expect(await css(rod, "border-top-color")).toBe(WALNUT);
+  expect(await css(page.locator(".wr-hanger path").first(), "stroke")).toBe(WALNUT);
+});
+
+test("leaf green marks only good news", async ({ page }) => {
+  await page.goto("/?photos=0#/closet");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await page.evaluate(() => {
+    const K = (window as any).K;
+    (window as any).EOUL_WEATHER = async () => ({ place: "서울", today: { min: 9, max: 18, rain: false, date: "2026-10-28" }, tomorrow: { min: 8, max: 16, rain: true, date: "2026-10-29" } });
+    K.M.loadTrialCloset("M"); K.refresh(); K.tab("home");
+  });
+  const good = page.locator(".wx-why.good i").first();
+  await expect(good).toBeVisible();
+  expect(await css(good, "color")).toBe(LEAF);
+  // A good verdict (no overlap → new outfits) is green; an overlap is not.
+  await page.evaluate(() => { const K = (window as any).K; K.go("detail", { id: K.M.readSearch("코트").products[0].id }); });
+  await page.locator("#hangbox").getByRole("button", { name: "없어요", exact: true }).click();
+  await expect(page.locator("#hangbox .h2 b.good")).toBeVisible();
+  expect(await css(page.locator("#hangbox .h2 b").first(), "color")).toBe(LEAF);
+  await page.evaluate(() => { const K = (window as any).K; K.go("detail", { id: K.M.readSearch("블레이저").products[0].id }); });
+  await expect(page.locator("#hangbox .h2")).toContainText("비슷한 옷이");
+  expect(await css(page.locator("#hangbox .h2 b").first(), "color")).not.toBe(LEAF);
+});
+
+test("small grey text meets 4.5:1 in the new look", async ({ page }) => {
+  await open(page);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink3").trim())).toBe("#6a6a74");
 });
