@@ -13,28 +13,29 @@
 /* 걸어 보고 사기(d12): 장바구니 대신 '걸어 보기'. 레일은 옷걸이 탭에만 있고, 다른 화면에는 걸린 옷이 있을 때만 한 줄 띠가 보인다.
    강조색은 가격표(택)의 주황 하나. 글자 단계 30 · 22 · 17 · 15 · 13. 고정 영역: 위 44 + 띠 34 + 탭 48 = 126px(844px의 14.9%). */
 :root {
-  --bg: #fbfbfa; --surface: #ffffff; --well: #f0f0ed; --tile: #ededea; --ptile: #efefec;
-  --ink: #1b1b19; --ink2: #55554f; --ink3: #7c7c75; --line: #e2e2de;
+  /* WO-11: Daedaem 1.1.1 tokens (white, ink, neutral greys, deep navy). Photo cells stay neutral grey. */
+  --bg: #ffffff; --surface: #ffffff; --well: #f7f7f8; --tile: #f5f5f5; --ptile: #f5f5f5;
+  --ink: #202025; --ink2: #555560; --ink3: #686873; --line: #dddde1;
   --brand: #1f3f80;
-  --acc: #e4571e; --acc-text: #b23c0b; --acc-soft: #fdebe2; --btn-bg: #c94612; --btn-fg: #ffffff;
-  --dim: rgba(0, 0, 0, .45); --shadow: 0 10px 28px rgba(40, 30, 20, .12);
+  --acc: #1f3f80; --acc-text: #183166; --acc-soft: #eef3fb; --btn-bg: #1f3f80; --btn-fg: #ffffff;
+  --dim: rgba(13, 16, 15, .48); --shadow: 0 12px 32px rgba(13, 16, 15, .14), 0 2px 8px rgba(13, 16, 15, .08);
   --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
   --tile-on-well: #ffffff;
   --r: 14px; --gutL: max(16px, env(safe-area-inset-left, 0px)); --gutR: max(16px, env(safe-area-inset-right, 0px));
   --top: 44px; --tabs: 48px; --strip: 34px; --sab: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #141412; --surface: #1c1c19; --well: #252521; --tile: #2b2b27; --ptile: #e6e6e2;
-  --ink: #f3f3ef; --ink2: #c8c8c0; --ink3: #9a9a92; --line: #31312c;
+  --bg: #151519; --surface: #202025; --well: #292930; --tile: #232323; --ptile: #e6e6e2;
+  --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #41414b;
   --brand: #86a3d6;
-  --acc: #ff6b2c; --acc-text: #ff9a6b; --acc-soft: #3a2116; --btn-bg: #ff7a3d; --btn-fg: #1b0c05;
-  --dim: rgba(0, 0, 0, .62); --shadow: 0 10px 28px rgba(0, 0, 0, .5); --tile-on-well: #e6e6e2; color-scheme: dark; } }
+  --acc: #86a3d6; --acc-text: #b3c6e8; --acc-soft: #0c1a36; --btn-bg: #86a3d6; --btn-fg: #151519;
+  --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56), 0 2px 8px rgba(0, 0, 0, .36); --tile-on-well: #e6e6e2; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #141412; --surface: #1c1c19; --well: #252521; --tile: #2b2b27; --ptile: #e6e6e2;
-  --ink: #f3f3ef; --ink2: #c8c8c0; --ink3: #9a9a92; --line: #31312c;
+  --bg: #151519; --surface: #202025; --well: #292930; --tile: #232323; --ptile: #e6e6e2;
+  --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #41414b;
   --brand: #86a3d6;
-  --acc: #ff6b2c; --acc-text: #ff9a6b; --acc-soft: #3a2116; --btn-bg: #ff7a3d; --btn-fg: #1b0c05;
-  --dim: rgba(0, 0, 0, .62); --shadow: 0 10px 28px rgba(0, 0, 0, .5); --tile-on-well: #e6e6e2; color-scheme: dark; }
+  --acc: #86a3d6; --acc-text: #b3c6e8; --acc-soft: #0c1a36; --btn-bg: #86a3d6; --btn-fg: #151519;
+  --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56), 0 2px 8px rgba(0, 0, 0, .36); --tile-on-well: #e6e6e2; color-scheme: dark; }
 * { box-sizing: border-box; }
 html, body { background: var(--bg); }
 body { color: var(--ink); font: 400 16px/1.55 var(--font); letter-spacing: -.01em; word-break: keep-all; overflow-wrap: anywhere; -webkit-font-smoothing: antialiased; --k-font: var(--font); --k-toast-bg: var(--ink); --k-toast-fg: var(--bg); --k-info-bg: var(--surface); --k-info-fg: var(--ink); }
