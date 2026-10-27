@@ -146,8 +146,8 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 보유 옷/실측/수집 | master #80 보유 편집·#81 실측·#82 수집/진열장 React | 상품 상세/판단·비교 본문은 바닐라로 별도 이전 |
 | 코디/AI 본문 | master #84 React 반응·AI 순위/일부 속성 대조 | WeatherSlot/공유 패널과 실제 모델·블라인드20은 별도 |
 | 거울 L0 | master #85~#86 React 로컬 배치/보관·복구 | 실물/효용. C4 전 L1을 시작하지 않음 |
-| 홈 | 현재 브랜치 React 질문/예시/보유·후보 preview 후보 | 마지막 검사/PR/병합 전. 날씨는 WeatherBridge로 아직 바닐라 |
-| 날씨/지역 | home WeatherBridge·looks WeatherSlot·지역 sheet 모두 기존 controller/HTML | 날씨 본문과 현재 위치/고정 지역을 공유 React로 실제 이전 |
+| 홈 | master #89 React 질문/예시/보유·후보 preview | 실기기·바닐라 제거는 WO-09. 날씨 카드는 아래 행 |
+| 날씨/지역 | WO-02 브랜치: home·looks 공유 React 날씨 카드와 React 지역 대화상자(`weatherModel`/`weatherCtl` 한 곳), 바닐라는 `?ui=vanilla` fallback | PR CI·병합 대기. 옷 조각 타일(`piecePic`)·부족 아이템 상품 카드(`cardHtml`)는 공용 템플릿 HTML로 남아 WO-03/WO-08에서 이전. 실기기 위치 권한은 WO-09 |
 | 검색 결과 | 바닐라. 입력 조건/0건·AI/공급처 처리 존재 | 동일 요청·ID·응답/조건 대조·출처/가격 시각을 유지해 이전 |
 | 상품 상세/구매 판단/비교 | 바닐라, 실측/수집/거울 진입만 React 경계 | 링크·새 상품/중고 이동·판단/decision·return sheet·원자 명령 유지 |
 | 구매/수령/보유/착용/반품 | 기록 목록과 action sheet 바닐라 | 같은 ID/단계/사유·실패/새로고침/복원 확인 후 이전 |

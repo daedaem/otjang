@@ -1,0 +1,21 @@
+{
+  "work": "WO-02 shared weather card and place sheet (React) vs ?ui=vanilla",
+  "base": "bb3f5dd (master after #89) + branch claude/wo-02-weather-20261027",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic closet (shirt/pants/sneaker) and injected weather; no personal data, no live weather/location/API",
+  "browser": "Playwright 1.57 mobile Chromium (Pixel 7 profile), reducedMotion reduce, service workers blocked",
+  "states": {
+    "real": "weather received for '합성 지역' (today 14°/24° rain, tomorrow 9°/17°)",
+    "example": "weather lookup throws -> example weather chips",
+    "invite": "empty closet -> invite with add search / trial closet",
+    "place": "place sheet open (presets 서울, 수원)"
+  },
+  "comparison": "The same build was captured twice per state: ?ui=vanilla (vanilla card/sheet) and default (React card/sheet). All four pairs are byte-identical, so only the React captures are kept. The sha256 below is the same for both versions.",
+  "images": [
+    { "file": "claude-weather-real-mobile.png", "sha256": "06b61692fc74fe14e7d953f80034b9e5726a09d8e07c91fd2424e517afda3827" },
+    { "file": "claude-weather-example-mobile.png", "sha256": "79595d547be5e822b88e9ac0648ecc2c1442ad4b1f81d223b410506a0b188037" },
+    { "file": "claude-weather-invite-mobile.png", "sha256": "4447bbfadd97717cafa4d90ef7aa3902baded16b8c3c30ae4771386c3719959e" },
+    { "file": "claude-weather-place-mobile.png", "sha256": "a28bd159fc3a6ab0e5508c85c7a46ffd4b718ac067af506ce45c917b5cc19c62" }
+  ],
+  "notMeasured": "WebKit (CI only), real devices, installed PWA, real geolocation permission prompts"
+}

@@ -2,7 +2,7 @@
 
 갱신: 2026-10-27. 확인한 master는 #74→#75→R22 B1~B6b #76~#86을 순차 병합한 `bc921ef`이다. [거울 최종 검사 원장](log/2026-10/evidence/b6b/final-validation.json)의 Node350개·CI11개·실제244개 두 실행·미해결 검토0을 확인했다. 옷장/사진·실측/수집·코디 반응/AI 본문·L0 기기 내 사진 배치의 코드 연결과 실제 기기/AI 품질·전체 React·공개 출시는 구분한다.
 
-현재 담당은 Claude 패션(Opus 5.5)이다(2026-10-27 인계). Codex는 새 구현·병합을 멈췄다. 남은 일은 [WO-01~WO-10](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 기준으로 번호 순서대로 진행하며, 지금은 WO-01 [홈 질문/예시 React](log/2026-10/react-home-screen-20261027.md)(PR #89)을 마무리 중이다. 날씨/공급처 등 공유 bridge는 WO-02 이후에 남아 있다. 진행 중 표시와 최신 검증 범위는 [개발 계획](development-plan.md)을 따른다.
+현재 담당은 Claude 패션(Opus 5.5)이다(2026-10-27 인계). Codex는 새 구현·병합을 멈췄다. 남은 일은 [WO-01~WO-10](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 기준으로 번호 순서대로 진행하며, WO-01 [홈 질문/예시 React](log/2026-10/react-home-screen-20261027.md)는 #89로 병합했고, 지금은 WO-02 [날씨·지역 공유 React](log/2026-10/react-weather-20261027.md)를 마무리 중이다. 공급처·결과 등 남은 공유 UI는 WO-03 이후다. 진행 중 표시와 최신 검증 범위는 [개발 계획](development-plan.md)을 따른다.
 
 ## 읽는 순서
 
@@ -30,6 +30,8 @@
 - #48은 CLOSED이며 d16은 [디자인 참고](design/README.md)다. 설치 앱은 d12이며 d16 채택·배포나 세계적 디자이너 참여를 주장하지 않는다.
 
 ## 근거와 과거 기록
+
+- [날씨 카드·지역 선택 공유 React 이전 (WO-02)](log/2026-10/react-weather-20261027.md)
 
 - [홈 질문·예시 React 후보와 날씨 중 입력/기록 보존](log/2026-10/react-home-screen-20261027.md)
 
