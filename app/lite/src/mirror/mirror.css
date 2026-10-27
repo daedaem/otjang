@@ -326,3 +326,8 @@
 .mr button.quiet {
   min-height: 44px;
 }
+
+/* WO-11 새 디자인(v2) 미리 보기: 알약 → 6px, 상자 → 8px, 옷 사진 → 2px(screen.html v2 규칙과 같음). */
+:root[data-look="v2"] .mr-empty, :root[data-look="v2"] .mr-choice, :root[data-look="v2"] .mr-save-warning { border-radius: 8px; }
+:root[data-look="v2"] .mr-stage { border-radius: 2px; }
+:root[data-look="v2"] .mr dialog { border-radius: 12px; }

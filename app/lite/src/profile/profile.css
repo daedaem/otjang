@@ -420,3 +420,11 @@
 .rp-error .quiet {
   font-size: 12px;
 }
+
+/* WO-11 새 디자인(v2) 미리 보기: 알약 → 6px, 상자 → 8px, 옷 사진 → 2px(screen.html v2 규칙과 같음). */
+:root[data-look="v2"] .rp.sheet { border-radius: 14px 14px 0 0; }
+:root[data-look="v2"] .rp-photo, :root[data-look="v2"] .rp-look-grid article { border-radius: 2px; }
+:root[data-look="v2"] .rp-reference, :root[data-look="v2"] .rp textarea, :root[data-look="v2"] .rp-colours button, :root[data-look="v2"] .rp-status, :root[data-look="v2"] .rp-message, :root[data-look="v2"] .rp-confirmation { border-radius: 8px; }
+@media (min-width: 700px) {
+  :root[data-look="v2"] .rp.sheet { border-radius: 14px; }
+}

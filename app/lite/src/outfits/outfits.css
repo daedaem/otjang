@@ -513,3 +513,11 @@
     grid-template-columns: 75px minmax(0, 1fr);
   }
 }
+
+/* WO-11 새 디자인(v2) 미리 보기: 알약 → 6px, 상자 → 8px, 옷 사진 → 2px(screen.html v2 규칙과 같음). */
+:root[data-look="v2"] .of-context button, :root[data-look="v2"] .of-styles button, :root[data-look="v2"] .of-reason-choices button { border-radius: 6px; }
+:root[data-look="v2"] .of-ask, :root[data-look="v2"] .of-card, :root[data-look="v2"] .of-leave { border-radius: 8px; }
+:root[data-look="v2"] .of-pieces { gap: 4px; }
+:root[data-look="v2"] .of-photo { border-radius: 2px; background: var(--ptile); }
+:root[data-look="v2"] .of-ai-summary { border-radius: 0; background: transparent; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px 0; }
+:root[data-look="v2"] .of-notice, :root[data-look="v2"] .of-hang { border-radius: 6px; }
