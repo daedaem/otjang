@@ -1,0 +1,105 @@
+{
+  "work": "WO-07 backup sheet with photo section (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic closet, synthetic backup files and a synthetic 2x2 stored photo; no personal data; nothing leaves the device",
+  "browser": "Playwright 1.57 Chromium, reducedMotion reduce, service workers blocked, element capture of .sheet with CSS animations disabled",
+  "capture": "Before capture the page behind the sheet is hidden and the scrim made opaque grey (the area behind the rounded corners otherwise shows whatever page part is underneath), the focused textarea is blurred, and overlay scrollbars are hidden. A first comparison without this showed only those backdrop/scrollbar pixels; the HTML diff showed only data-* values \"true\" vs \"\" (fixed) and button type attributes.",
+  "states": {
+    "initial": "옷 2벌, 사진 0장, 되돌리기 없음",
+    "paste": "붙여넣기 대기",
+    "plan": "글자 파일 미리보기(손상 원문 1개 격리 목록)",
+    "error": "5MB 초과 파일 거절",
+    "stash": "복원 후 다시 열기 → 되돌리기 버튼(고정 시각)",
+    "photos": "저장 사진 1장 → 요약 교체, 복사·붙여넣기를 추가 옵션으로 이동",
+    "photo-plan": "사진 묶음 미리보기와 복원 확인 버튼"
+  },
+  "kept": [
+    "claude-backup-initial-mobile.png",
+    "claude-backup-photo-plan-mobile.png",
+    "claude-backup-photos-mobile.png",
+    "claude-backup-plan-mobile.png"
+  ],
+  "variants": {
+    "bk": {
+      "variant": "mobile Pixel 7, ?photos=0 (stored personal photo is a synthetic 2x2 canvas)",
+      "pairs": {
+        "initial": {
+          "vanilla_sha256": "a7a089d4bd091cc9dc1b13a4eb33c1dcae39ca5e8d89dd97dd5d570b69e77da8",
+          "react_sha256": "a7a089d4bd091cc9dc1b13a4eb33c1dcae39ca5e8d89dd97dd5d570b69e77da8",
+          "same": true
+        },
+        "paste": {
+          "vanilla_sha256": "970b4f68c0623b423da30758354496db9cdca162ec9f06f700acf5001f8f3157",
+          "react_sha256": "970b4f68c0623b423da30758354496db9cdca162ec9f06f700acf5001f8f3157",
+          "same": true
+        },
+        "plan": {
+          "vanilla_sha256": "1fc5f19c627887e1c48b8e7758a7decd9a79d8c47bdfac54b5bddd37f8981430",
+          "react_sha256": "1fc5f19c627887e1c48b8e7758a7decd9a79d8c47bdfac54b5bddd37f8981430",
+          "same": true
+        },
+        "error": {
+          "vanilla_sha256": "b6613ccb5a03eec13b7cd77923ec5ef33899211a51db5d4b02c57620501e3dad",
+          "react_sha256": "b6613ccb5a03eec13b7cd77923ec5ef33899211a51db5d4b02c57620501e3dad",
+          "same": true
+        },
+        "stash": {
+          "vanilla_sha256": "192902d6b5a186c19dbae38e991bba3653abbdb37345c891e9b0d14ca7ed210f",
+          "react_sha256": "192902d6b5a186c19dbae38e991bba3653abbdb37345c891e9b0d14ca7ed210f",
+          "same": true
+        },
+        "photos": {
+          "vanilla_sha256": "33755f6aec0fd69c68ce6dff08286f0b216bb7ade7561de53587a2746d3b9e7d",
+          "react_sha256": "33755f6aec0fd69c68ce6dff08286f0b216bb7ade7561de53587a2746d3b9e7d",
+          "same": true
+        },
+        "photo-plan": {
+          "vanilla_sha256": "33755f6aec0fd69c68ce6dff08286f0b216bb7ade7561de53587a2746d3b9e7d",
+          "react_sha256": "33755f6aec0fd69c68ce6dff08286f0b216bb7ade7561de53587a2746d3b9e7d",
+          "same": true
+        }
+      }
+    },
+    "bkdesk": {
+      "variant": "desktop 1280x900",
+      "pairs": {
+        "initial": {
+          "vanilla_sha256": "a65cc515e83f879507f2d2029b1b7d87e3a705400890d8847ff8291ac1b16c7c",
+          "react_sha256": "a65cc515e83f879507f2d2029b1b7d87e3a705400890d8847ff8291ac1b16c7c",
+          "same": true
+        },
+        "paste": {
+          "vanilla_sha256": "c9cb5bf2a8cace235c5ffd64b9cc8726370c65db52f31daec23f5846aaaf87d4",
+          "react_sha256": "c9cb5bf2a8cace235c5ffd64b9cc8726370c65db52f31daec23f5846aaaf87d4",
+          "same": true
+        },
+        "plan": {
+          "vanilla_sha256": "ef03fce3dd6fca02f678b27f3da01c5c31a48e81b9116d8c7635a1cf04d22fca",
+          "react_sha256": "ef03fce3dd6fca02f678b27f3da01c5c31a48e81b9116d8c7635a1cf04d22fca",
+          "same": true
+        },
+        "error": {
+          "vanilla_sha256": "471ac2db27618f218318862a1d1adca060210a996dddb3b99cb6dfac03f9dd5f",
+          "react_sha256": "471ac2db27618f218318862a1d1adca060210a996dddb3b99cb6dfac03f9dd5f",
+          "same": true
+        },
+        "stash": {
+          "vanilla_sha256": "f219e84f2529ef9ab8d9d0a11045845939e1b5828594ce1492366a68ad8394a0",
+          "react_sha256": "f219e84f2529ef9ab8d9d0a11045845939e1b5828594ce1492366a68ad8394a0",
+          "same": true
+        },
+        "photos": {
+          "vanilla_sha256": "1eebad976bfe1b65da2f522f85e2a1f4d48a1495d0934b7d2be17c5559146a6d",
+          "react_sha256": "1eebad976bfe1b65da2f522f85e2a1f4d48a1495d0934b7d2be17c5559146a6d",
+          "same": true
+        },
+        "photo-plan": {
+          "vanilla_sha256": "1eebad976bfe1b65da2f522f85e2a1f4d48a1495d0934b7d2be17c5559146a6d",
+          "react_sha256": "1eebad976bfe1b65da2f522f85e2a1f4d48a1495d0934b7d2be17c5559146a6d",
+          "same": true
+        }
+      }
+    }
+  },
+  "notMeasured": "WebKit (CI only), real devices, Files/share sheet, real photo libraries, old format1 files from real devices, cross-device restore (WO-09)"
+}

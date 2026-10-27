@@ -31,6 +31,8 @@
 
 ## 근거와 과거 기록
 
+- [백업·복원 시트 React 이전 (WO-07)](log/2026-10/react-backup-20261027.md)
+
 - [상담 화면 React 이전 (WO-06)](log/2026-10/react-consult-20261027.md)
 
 - [구매 기록 React 이전 (WO-05)](log/2026-10/react-records-20261027.md)
