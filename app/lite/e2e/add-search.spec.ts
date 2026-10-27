@@ -193,9 +193,26 @@ test("failed catalog ownership save preserves the query and retries the same pro
     .toBe(1);
 });
 
-test('direct add entry and reload preserve existing raw records and Back has a closet fallback',async({page})=>{
- await page.evaluate(()=>{const m=(window as any).K.M;m.addGarment({kind:'pants',color:'black'});m.decide('ms-728000','hold')});
- const before=await page.evaluate(k=>localStorage.getItem(k),KEY);await page.goto('/?photos=0&entry=direct-add#/add');await expect(page.getByLabel('브랜드나 상품명',{exact:true})).toBeVisible();expect(await page.evaluate(k=>localStorage.getItem(k),KEY)).toBe(before);
- await page.reload();await expect(page.getByLabel('브랜드나 상품명',{exact:true})).toBeVisible();expect(await page.evaluate(k=>localStorage.getItem(k),KEY)).toBe(before);
- await page.getByRole('button',{name:'뒤로',exact:true}).click();await expect(page.locator('[data-react-closet]')).toBeVisible();expect(await page.evaluate(k=>localStorage.getItem(k),KEY)).toBe(before);
+test("direct add entry and reload preserve existing raw records and Back has a closet fallback", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const m = (window as any).K.M;
+    m.addGarment({ kind: "pants", color: "black" });
+    m.decide("ms-728000", "hold");
+  });
+  const before = await page.evaluate((k) => localStorage.getItem(k), KEY);
+  await page.goto("/?photos=0&entry=direct-add#/add");
+  await expect(
+    page.getByLabel("브랜드나 상품명", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(before);
+  await page.reload();
+  await expect(
+    page.getByLabel("브랜드나 상품명", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(before);
+  await page.getByRole("button", { name: "뒤로", exact: true }).click();
+  await expect(page.locator("[data-react-closet]")).toBeVisible();
+  expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(before);
 });
