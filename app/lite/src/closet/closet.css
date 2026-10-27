@@ -549,3 +549,86 @@
     --wr-cell: 168px;
   }
 }
+
+/* Panel D+ step 2 (10-28): clothes first. Bigger photos (see tallestFor in
+   index.tsx), one-line name, 체험용 on the photo, icon buttons on the photo. */
+.wr-trial-chip,
+.wr-act-icon {
+  display: none;
+}
+:root[data-look="v2"] .wr.shelf {
+  --wr-cell: 164px;
+}
+:root[data-look="v2"] .wr-card {
+  position: relative;
+}
+:root[data-look="v2"] .wr-picture {
+  position: relative;
+  max-height: none;
+  margin-bottom: 8px;
+}
+:root[data-look="v2"] .wr-trial-chip {
+  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%); /* the picture box is wider than the photo */
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #555560; /* photo tiles stay light in dark mode */
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+}
+:root[data-look="v2"] .wr-card-name {
+  -webkit-line-clamp: 1;
+  min-height: 0;
+  font-weight: 500;
+}
+:root[data-look="v2"] .wr-meta {
+  display: none;
+}
+:root[data-look="v2"] .wr-card-actions {
+  position: absolute;
+  top: 34px;
+  right: 12px;
+  margin: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+:root[data-look="v2"] .wr-card-actions > button,
+:root[data-look="v2"] .wr-card-actions .wr-upload {
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #202025; /* photo tiles stay light in dark mode */
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+:root[data-look="v2"] .wr-act-icon {
+  display: block;
+  font-size: 17px;
+}
+:root[data-look="v2"] .wr-act-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (min-width: 760px) {
+  :root[data-look="v2"] .wr.shelf {
+    --wr-cell: 196px;
+  }
+}
+@media (max-width: 759px) {
+  :root[data-look="v2"] .wr-track {
+    min-height: 0;
+  }
+}

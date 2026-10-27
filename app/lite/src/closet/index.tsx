@@ -61,6 +61,7 @@ function GarmentCard({
           data-garment-height={item.heightPx ?? 110}
         >
           <Picture g={g} host={host} />
+          {g.trial ? <span className="wr-trial-chip">체험용</span> : null}
         </span>
         <span className="wr-card-name">{g.label}</span>
         {g.brand && <span className="wr-card-brand">{g.brand}</span>}
@@ -78,11 +79,13 @@ function GarmentCard({
           onClick={() => host.detail(g.id)}
           aria-label={`${g.label} 옷 정보`}
         >
-          옷 정보
+          <i className="ph ph-info wr-act-icon" aria-hidden="true" />
+          <span className="wr-act-text">옷 정보</span>
         </button>
         {!g.trial && !host.core.boot?.preview && (
           <label className={`wr-upload ${busy ? "wr-disabled" : ""}`}>
-            {g.photoId ? "사진 바꾸기" : "내 사진"}
+            <i className="ph ph-camera wr-act-icon" aria-hidden="true" />
+            <span className="wr-act-text">{g.photoId ? "사진 바꾸기" : "내 사진"}</span>
             <input
               data-photo-input
               aria-label={`${g.label} 내 사진`}
@@ -233,12 +236,18 @@ function Closet({ host }: { host: ClosetHost }) {
     if (assembly.current) observer.observe(assembly.current);
     return () => observer.disconnect();
   }, []);
+  // WO-11 new look (panel D+ step 2): the clothes are about 1.5x taller;
+  // lengths keep their ratio because only the tallest size changes.
+  const tallestFor = (wide: boolean) =>
+    document.documentElement.dataset.look === "v2"
+      ? wide ? 280 : 220
+      : wide ? 196 : 144;
   const [tallestPx, setTallestPx] = useState(() =>
-    matchMedia("(min-width:760px)").matches ? 196 : 144,
+    tallestFor(matchMedia("(min-width:760px)").matches),
   );
   useEffect(() => {
     const query = matchMedia("(min-width:760px)");
-    const update = () => setTallestPx(query.matches ? 196 : 144);
+    const update = () => setTallestPx(tallestFor(query.matches));
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
