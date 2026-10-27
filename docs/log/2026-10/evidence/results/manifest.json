@@ -86,5 +86,5 @@
     }
   },
   "notMeasured": "WebKit (CI only), real devices, real AI/supplier responses",
-  "desktop": "Also compared at 1280x900 (4-column grid, where ask/note rows are inserted after each row of four): ask, note and answered states byte-identical."
+  "desktop": "Also compared at 1280x900 (4-column grid, where ask/note rows are inserted after each row of four): all 12 states byte-identical."
 }
