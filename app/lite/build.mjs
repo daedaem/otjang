@@ -16,8 +16,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = path.join(HERE, 'src');
 const OUT = path.join(HERE, 'dist');
 const NM = path.join(HERE, 'node_modules');
-export const APP_NAME = '옷 고르기';
-export const APP_FULL_NAME = '옷 고르기 (이름 미정 · 시험판)';
+export const APP_NAME = '행잇';
+export const APP_FULL_NAME = '행잇 Hangit (시험판)';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const put = (rel, data) => {

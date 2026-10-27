@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { OwnedPhoto } from "../photos/OwnedPhoto";
 import type { ClosetHost, Garment, LayoutItem } from "./types";
 import "./closet.css";
+import { Wordmark } from "../brand/Wordmark";
 const roleOf = (g: Garment, host: ClosetHost) => {
   const role = host.core.railCategory(g);
   return role === "dress" ? "top" : role || "accessory";
@@ -324,8 +325,7 @@ function Closet({ host }: { host: ClosetHost }) {
     <section className="wr shelf" data-react-closet aria-label="내 옷장">
       <header className="wr-top">
         <span className="mark">
-          <i className="ph-fill ph-coat-hanger" aria-hidden="true" />
-          이름 미정
+          <Wordmark />
         </span>
         <span className="sp" />
         <button
