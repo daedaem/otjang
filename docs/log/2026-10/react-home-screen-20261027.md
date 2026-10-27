@@ -32,3 +32,9 @@
 ## 구현 담당 이전 시점
 
 대표의 최신 요청으로 새 구현/병합은 중단하고 [Claude 패션 인계](claude-implementation-handoff-20261027.md)·[WO-01~WO-10](claude-work-orders-20261027.md)으로 넘긴다. 마지막 전체290개는289통과/1실패(10.7분)다. 실패는 WebKit 코디의 마지막 기능 assert 이후 context 종료30초 초과였고, trace의 기능 오류는 없었다. 같은 코드/설정의 해당 흐름은1개 통과·정상 종료(3.2초)로 재확인했다. 전체290개 성공으로 바꿔 쓰지 않으며 최종 같은 head CI/리뷰/병합은 Claude가 마무리한다. 애니메이션 조건을 맞춰 캡처8장을 실제 다시 생성했다.
+
+## Claude 인수 후 검증 (2026-10-27, WO-01)
+
+- 접수 head `4b2eb9f`의 GitHub CI는 PR 실행(40448449453)과 push 실행(40448266854) 모두 11개 성공이며 `Lite input Chromium and WebKit`도 성공했다. Codex 로컬의 WebKit context 종료 1실패는 이 CI에서 재현되지 않았지만, 로컬 전체 290개 성공으로 바꿔 쓰지 않는다.
+- Claude 클라우드 환경(Node 22.22, Playwright 1.57, 모바일 Chromium만 설치·WebKit 설치 불가)에서 같은 head를 다시 실행했다: Node 356 통과/0 실패/0 건너뜀, 빌드 통과, 모바일 Chromium 전체 145개 통과(6.3분).
+- 코드 검토 중 회귀 1건: React 홈의 예시 칩이 `useMemo(..., [host])`로 고정돼 `M.examples()`가 따르는 코어 성별(예: `loadTrialCloset`) 변경을 반영하지 않았다. 바닐라는 다시 그려 반영했다. 실패 테스트 `ff25a50`(칩 3개가 이전 값)을 먼저 커밋하고 `b7636c9`에서 구독 version을 의존성에 넣어 고쳤다. 수정 뒤 home-weather 9개·Node 356개·타입 검사/빌드 통과. 새 head의 CI 결과는 PR에 따로 남긴다.

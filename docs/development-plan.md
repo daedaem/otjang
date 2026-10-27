@@ -1,4 +1,4 @@
-인계 중: 홈 checkpoint 보존(어울 개발 Codex) → Claude 패션 Opus5.5 수락/실행 환경 확인 대기. Codex 새 구현·병합 중단.
+진행 중: WO-01 홈 React 마무리(담당 Claude 패션 Opus 5.5, PR #89). 2026-10-27 접수·쓰기 권한 연결 완료. Codex 새 구현·병합 중단 유지. WO별 완료/남음/막힘은 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
 
 # 현재 개발 계획과 완료 기준
 
