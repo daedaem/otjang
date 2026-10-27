@@ -636,3 +636,13 @@ test.describe("React add offline", () => {
     }
   });
 });
+
+test('successful crowd markers follow actual garment deletion and allow explicit same-query registration again',async({page,context})=>{
+ await page.evaluate(()=>{(window as any).EOUL_CROWD={submit:async()=>({}),search:async()=>({items:[{brand:'합성 등록 브랜드',name:'합성 등록 셔츠',kind:'shirt',color:'blue',count:3}]})}});
+ await open(page);const input=page.getByLabel('브랜드나 상품명',{exact:true});await input.fill('합성 등록');await page.locator('#acrowd [data-crowd-add]').click();await expect(page.locator('#acrowd .ok')).toHaveCount(1);const first=await page.evaluate(()=>(window as any).K.M.getState().closet[0].id);
+ const other=await context.newPage();await other.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:8792'?r.continue():r.abort());await other.goto('/?photos=0&window=success-delete#/closet');await expect(other.locator('[data-react-closet]')).toBeVisible();
+ await other.evaluate(id=>(window as any).K.M.removeGarment(id),first);await expect.poll(()=>page.evaluate(()=>(window as any).K.M.getState().mineCount)).toBe(0);await expect(page.locator('#acrowd .ok')).toHaveCount(0);await expect(page.locator('#acrowd [data-crowd-add]')).toBeVisible();
+ await page.locator('#acrowd [data-crowd-add]').click();await expect.poll(()=>page.evaluate(()=>(window as any).K.M.getState().mineCount)).toBe(1);const second=await page.evaluate(()=>(window as any).K.M.getState().closet[0].id);expect(second).not.toBe(first);
+ await other.waitForFunction(id=>(window as any).K.M.getState().closet.some((g:any)=>g.id===id),second);await other.evaluate(id=>(window as any).K.M.removeGarment(id),second);await expect.poll(()=>page.evaluate(()=>(window as any).K.M.getState().mineCount)).toBe(0);
+ const raw=await page.evaluate(k=>localStorage.getItem(k),KEY);await input.fill('');await input.fill('합성 등록');await expect(page.locator('#acrowd [data-crowd-add]')).toBeVisible();await expect(page.locator('#acrowd .ok')).toHaveCount(0);expect(await page.evaluate(k=>localStorage.getItem(k),KEY)).toBe(raw);await page.locator('#acrowd [data-crowd-add]').click();await expect.poll(()=>page.evaluate(()=>(window as any).K.M.getState().mineCount)).toBe(1);await other.close();
+});
