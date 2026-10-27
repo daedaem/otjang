@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { createMock } from '../src/core.mjs';
+import {readLegacyRegistrations} from '../src/domain/legacy-registration.js';
 import { PRODUCTS } from '../src/domain/data/products.js';
 
 function fixture() {
@@ -92,7 +93,7 @@ test('registration metadata throws on failure, restores memory, and retries with
   const source = html.slice(html.indexOf('  const ensurePhotoIdle ='),html.indexOf('  const DESIGN =')) + html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
   const f = fixture();
   f.storage.setItem('eoul-d12-hang:reg', JSON.stringify({ items: { old: { brand: 'existing' } }, catalog: {} }));
-  const ctx = vm.createContext({ localStorage: f.storage, structuredClone });
+  const ctx = vm.createContext({ localStorage: f.storage, structuredClone, M:{readLegacyRegistrations} });
   vm.runInContext(source + '\nglobalThis.reg = REG; globalThis.save = saveReg;', ctx);
   const before = JSON.stringify(ctx.reg);
   ctx.reg.items.new = { brand: 'new' };
@@ -224,7 +225,7 @@ test('generated core boots with an unreadable record, reports it, and survives ?
 const regContext = (s) => {
   const html = fs.readFileSync(new URL('../src/screen.html', import.meta.url), 'utf8');
   const source = html.slice(html.indexOf('  const ensurePhotoIdle ='),html.indexOf('  const DESIGN =')) + html.slice(html.indexOf('  const REG_KEY ='), html.indexOf('  const normKey ='));
-  const ctx = vm.createContext({ localStorage: s.storage, structuredClone });
+  const ctx = vm.createContext({ localStorage: s.storage, structuredClone, M:{readLegacyRegistrations} });
   vm.runInContext(source + '\nglobalThis.reg = REG; globalThis.save = saveReg; globalThis.fresh = startFreshReg; globalThis.raw = () => regRaw;', ctx);
   return ctx;
 };

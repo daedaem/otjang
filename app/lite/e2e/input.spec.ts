@@ -287,10 +287,12 @@ for (const [from,to] of [['vanilla','react'],['react','vanilla']]) {
   });
 }
 test('input assets load only on entering the React input screen',async({page})=>{
-  const assets:string[]=[]; page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/react/'))assets.push(r.url());});
+  const assets:string[]=[]; page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/react/input-'))assets.push(r.url());});
   await page.goto('/?photos=0'); await page.waitForFunction(()=>!!window.K?.M);
   expect(assets).toEqual([]);
   await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
+  await expect(page.locator('[data-react-add-search]')).toBeVisible();
+  expect(assets).toEqual([]);
   await page.locator('[data-reg-open]').click();
   await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
   expect(assets.some(url=>url.endsWith('.js'))).toBe(true);
@@ -302,7 +304,7 @@ test.describe('input runtime caching',()=>{
   test('worker downloads React assets on first visit and keeps visited input available offline',async({page,request})=>{
     await page.goto('/?photos=0');
     await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready; if(!navigator.serviceWorker.controller)await new Promise<void>(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true}));});
-    const cachedInput=()=>page.evaluate(async()=>{const paths=[];for(const key of await caches.keys()){if(!key.startsWith('lite-'))continue;const c=await caches.open(key);for(const r of await c.keys())if(new URL(r.url).pathname.startsWith('/react/'))paths.push(new URL(r.url).pathname);}return paths;});
+    const cachedInput=()=>page.evaluate(async()=>{const paths=[];for(const key of await caches.keys()){if(!key.startsWith('lite-'))continue;const c=await caches.open(key);for(const r of await c.keys())if(new URL(r.url).pathname.startsWith('/react/input-'))paths.push(new URL(r.url).pathname);}return paths;});
     expect(await cachedInput()).toEqual([]);
     await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
   await page.locator('[data-reg-open]').click();
