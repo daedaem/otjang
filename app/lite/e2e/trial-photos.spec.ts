@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 // 체험용 옷은 그림 대신 함께 묶은 예시 사진으로 보인다(2026-10-27 대표 요청).
 // 상품 사진을 끈 ?photos=0에서도 보인다: 앱 안의 파일이라 외부 요청이 없다.
@@ -36,3 +37,21 @@ for (const [label, ui] of [["", ""], [" (vanilla)", "&ui=vanilla"]] as const)
     await expect(blazer.first()).toBeVisible();
     await expect.poll(() => loaded(blazer.first())).toBe(true);
   });
+
+// Until the owner makes the remaining example photos (10-27: "나중에… 잊지 말고"),
+// trial clothes without one borrow the core's similar store photo, labelled, but
+// only while store photos are on (the private app; ?photos=0 keeps the drawing).
+test("trial clothes without an example photo borrow a labelled similar store photo", async ({ page }) => {
+  const body = readFileSync(new URL("../public/examples/m-tee.webp", import.meta.url));
+  await page.route("https://image.msscdn.net/**", (r) => r.fulfill({ status: 200, contentType: "image/webp", body }));
+  await page.goto("/#/closet");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.refresh(); });
+  const denim = page.locator(".wr-card", { hasText: "인디고 워시드 데님" });
+  const img = denim.locator('img[src^="https://image.msscdn.net/"]');
+  await expect(img).toHaveCount(1);
+  await expect.poll(() => loaded(img)).toBe(true);
+  await expect(denim).toContainText("비슷한 상품 사진");
+  // The bundled example still wins over the store photo.
+  await expect(page.locator(".wr-card", { hasText: "흰 옥스퍼드 셔츠" }).locator('img[src$="examples/m-oxford.webp"]')).toHaveCount(1);
+});
