@@ -16,17 +16,16 @@ import type { Chip, GridEntry, ResultsHost, ResultsModel } from "./types";
 // rendered from the shared resultsModel/gridModel. AI ranking results are
 // stored in the shared screen state so the detail screen and a return visit
 // reuse them exactly as before.
+// Same breakpoint as the vanilla cols(): 4 columns from 900px, else 2.
 const WIDE = "(min-width: 900px)";
+const subscribeWide = (fn: () => void) => {
+  const mq = matchMedia(WIDE);
+  mq.addEventListener("change", fn);
+  return () => mq.removeEventListener("change", fn);
+};
+const isWide = () => matchMedia(WIDE).matches;
 function useWide() {
-  return useSyncExternalStore(
-    (fn) => {
-      const mq = matchMedia(WIDE);
-      mq.addEventListener("change", fn);
-      return () => mq.removeEventListener("change", fn);
-    },
-    () => matchMedia(WIDE).matches,
-    () => false,
-  );
+  return useSyncExternalStore(subscribeWide, isWide, () => false);
 }
 function ScrollChips({
   label,
