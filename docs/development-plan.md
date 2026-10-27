@@ -1,4 +1,4 @@
-진행 중: WO-03 검색 결과·공급처 공유 패널(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-03-results-20261027`). WO-01 홈 #89·WO-02 날씨/지역 #90 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
+진행 중: WO-03 검색 결과·공급처 공유 패널(담당 Claude 패션 Opus 5.5). WO-03a #91 병합, WO-03b 브랜치 `claude/wo-03b-results-20261027`. WO-01 홈 #89·WO-02 날씨/지역 #90 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
 
 # 현재 개발 계획과 완료 기준
 
@@ -140,7 +140,7 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 화면/공유 UI | 실제 구현 상태 | 이어갈 범위 |
 |---|---|---|
 | 직접 등록/초안 | React, B1 #76·기존 Input/영수증 계약 | 유지·회귀 검사 |
-| 상품 검색 등록 본문 | master #88 React 카탈로그/공동등록/OPF·구형 metadata 보호. WO-03a: 공급처 패널은 공유 React `src/retail`(RetailBridge innerHTML 대체) | crowdSearch HTML은 fallback 정리 때 제거할 대상으로 새 전환을 중복하지 않음 |
+| 상품 검색 등록 본문 | master #88 React 카탈로그/공동등록/OPF·구형 metadata 보호. master #91: 공급처 패널은 공유 React `src/retail`(RetailBridge innerHTML 대체) | crowdSearch HTML은 fallback 정리 때 제거할 대상으로 새 전환을 중복하지 않음 |
 | 백업/복원 | 바닐라 sheet + #74 무손실 BK/#77 사진 controller | 같은 BK/사진 controller로 React UI 이전. 원문 격리·미리보기·보상·undo 유지 |
 | 옷장/조합대 | master #78 React 레일·기기 사진·조합대 | 실물/대량 사진·기존 원본/복구 확인 |
 | 보유 옷/실측/수집 | master #80 보유 편집·#81 실측·#82 수집/진열장 React | 상품 상세/판단·비교 본문은 바닐라로 별도 이전 |
