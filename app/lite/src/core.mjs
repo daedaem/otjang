@@ -233,19 +233,31 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   }
   const escAttr = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // 사진이 없거나 못 불러올 때 보이는 색 카드(그림 아님): 색 바탕 + 종류 이름.
-  function tileHtml(target) {
+  // The same picture as data (WO-08c): React screens draw it with src/tiles,
+  // the vanilla screens with the HTML below, so both keep one rule.
+  function tileInfo(target) {
     const slot = SLOT_BY_ID[target?.slot];
     const hex = target?.colorHex || colorHex(target?.color) || '#e9e9e9';
     const light = COLORS[target?.color]?.light ?? 80;
     const name = target?.kindName || slot?.name || garmentKindName(target?.kind) || '옷';
-    return `<span class="eo-tile" data-photo="none" style="display:flex;align-items:flex-end;justify-content:flex-start;width:100%;height:100%;aspect-ratio:var(--eo-ratio,4/5);background:${hex};color:${light < 55 ? '#fff' : '#222'};font:600 12px/1.3 system-ui,sans-serif;padding:8px;box-sizing:border-box;border-radius:inherit">${escAttr(name)}</span>`;
+    return { hex, ink: light < 55 ? '#fff' : '#222', name };
   }
-  function photoHtml(target, { fit = 'cover', caption = true, alt = null, eager = false } = {}) {
+  function photoInfo(target, { fit = 'cover', caption = true, alt = null, eager = false } = {}) {
     const ph = photoOf(target);
+    const tile = tileInfo(target);
+    if (!ph) return { tile, photo: null };
+    return { tile, photo: { src: ph.src, alt: alt ?? ph.alt, similar: !!ph.similar, fit: fit === 'contain' ? 'contain' : 'cover', eager: !!eager, caption: ph.similar && caption ? NOTE.short.similar : '' } };
+  }
+  function tileHtml(target) {
+    const t = tileInfo(target);
+    return `<span class="eo-tile" data-photo="none" style="display:flex;align-items:flex-end;justify-content:flex-start;width:100%;height:100%;aspect-ratio:var(--eo-ratio,4/5);background:${t.hex};color:${t.ink};font:600 12px/1.3 system-ui,sans-serif;padding:8px;box-sizing:border-box;border-radius:inherit">${escAttr(t.name)}</span>`;
+  }
+  function photoHtml(target, opts = {}) {
+    const { photo: ph } = photoInfo(target, opts);
     if (!ph) return tileHtml(target);
     const fallback = tileHtml(target).replace(/"/g, '&quot;');
-    const cap = ph.similar && caption ? `<span class="eo-cap" style="position:absolute;left:6px;bottom:6px;max-width:calc(100% - 12px);padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.92);color:#333;font:600 11px/1.4 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${NOTE.short.similar}</span>` : '';
-    return `<span class="eo-ph" data-photo="${ph.similar ? 'similar' : 'product'}" style="position:relative;display:block;width:100%;height:100%;aspect-ratio:var(--eo-ratio,4/5);background:#f3f3f1;border-radius:inherit;overflow:hidden"><img src="${escAttr(ph.src)}" alt="${escAttr(alt ?? ph.alt)}" referrerpolicy="no-referrer"${eager ? '' : ' loading="lazy"'} decoding="async" onerror="this.parentNode.outerHTML='${fallback.replace(/'/g, '&#39;')}'" style="display:block;width:100%;height:100%;object-fit:${fit === 'contain' ? 'contain' : 'cover'};border-radius:inherit">${cap}</span>`;
+    const cap = ph.caption ? `<span class="eo-cap" style="position:absolute;left:6px;bottom:6px;max-width:calc(100% - 12px);padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.92);color:#333;font:600 11px/1.4 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ph.caption}</span>` : '';
+    return `<span class="eo-ph" data-photo="${ph.similar ? 'similar' : 'product'}" style="position:relative;display:block;width:100%;height:100%;aspect-ratio:var(--eo-ratio,4/5);background:#f3f3f1;border-radius:inherit;overflow:hidden"><img src="${escAttr(ph.src)}" alt="${escAttr(ph.alt)}" referrerpolicy="no-referrer"${ph.eager ? '' : ' loading="lazy"'} decoding="async" onerror="this.parentNode.outerHTML='${fallback.replace(/'/g, '&#39;')}'" style="display:block;width:100%;height:100%;object-fit:${ph.fit};border-radius:inherit">${cap}</span>`;
   }
 
   function card(product, { slot = SLOT_BY_ID[product.slot], reasons = null, offOccasion = false } = {}) {
@@ -1137,6 +1149,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     // 사진을 못 불러오면 색 카드로 바뀐다. 크기는 감싸는 칸이 정한다(칸 높이가 없으면 4:5, CSS 변수 --eo-ratio로 바꿈).
     photo: (target) => photoOf(target),
     photoHtml: (target, opts) => photoHtml(target, opts),
+    photoInfo: (target, opts) => photoInfo(target, opts),
     // 1판 호환: art()도 이제 사진을 돌려준다. size를 주면 그 크기의 칸으로 감싼다.
     art(target, { size = '100%', fit = 'cover', caption = true } = {}) {
       const html = photoHtml(target, { fit, caption });

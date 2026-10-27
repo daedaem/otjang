@@ -1,31 +1,17 @@
+import { CorePhotoView } from "../tiles/Tile";
 import type { CardModel, GridEntry, ResultsHost } from "./types";
 // Result cards and the rows placed under a card's grid row (a one-time
 // "do you own one?" question or a short note). Same classes and wording as
 // the vanilla cardHtml/gridHtml; buttons call the host instead of using the
 // data-* attributes the vanilla global click handler listens for.
-const escape = (s: string) =>
-  s.replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ] as string,
-  );
 function CardPhoto({ c }: { c: CardModel }) {
   if (!c.photo)
-    // Trusted core tile template (same markup as the vanilla productPic);
-    // the tag text is escaped here.
+    // The core colour tile (vanilla productPic without a photo).
     return (
-      <span
-        className="ph-box"
-        dangerouslySetInnerHTML={{
-          __html:
-            (c.tile || "") +
-            (c.tag
-              ? `<span class="tag ${escape(c.tagCls)}">${escape(c.tag)}</span>`
-              : ""),
-        }}
-      />
+      <span className="ph-box">
+        {c.core ? <CorePhotoView p={c.core} /> : null}
+        {c.tag ? <span className={`tag ${c.tagCls}`}>{c.tag}</span> : null}
+      </span>
     );
   return (
     <span className="ph-box">
@@ -39,16 +25,20 @@ function CardPhoto({ c }: { c: CardModel }) {
     </span>
   );
 }
-function Card({
+// Also the weather card's missing-item products (WO-08c), with an optional
+// short note under the hanger button like the vanilla showCardNote().
+export function Card({
   host,
   c,
   pop,
   onHang,
+  note,
 }: {
-  host: ResultsHost;
+  host: Pick<ResultsHost, "product">;
   c: CardModel;
   pop: boolean;
   onHang(id: string): void;
+  note?: string;
 }) {
   const open = () => host.product(c.id);
   return (
@@ -79,6 +69,15 @@ function Card({
             <i className={`${c.hung ? "ph-fill" : "ph"} ph-coat-hanger`} />
           </span>
         </button>
+        {note ? (
+          <div
+            className="card-note t6"
+            role="alert"
+            style={{ marginTop: 6, color: "var(--acc-text)", fontWeight: 700 }}
+          >
+            {note}
+          </div>
+        ) : null}
       </span>
       <button type="button" className="open-p" onClick={open}>
         <div className="b">{c.brand}</div>

@@ -6,19 +6,40 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { Card } from "../results/Grid";
+import type { CardModel } from "../results/types";
+import { Tile } from "../tiles/Tile";
 import { PlaceSheet } from "./PlaceSheet";
 import type { CoreSubscription, WeatherHost } from "./types";
 // Shared React weather card for the home and outfits screens (WO-02). It keeps
 // the vanilla card's classes and wording; state changes go through host.ctl so
 // both screens and the vanilla fallback share one weather state.
-function Html({ html }: { html: string }) {
-  // Shared screen templates (garment tile / product card). display:contents
-  // keeps the vanilla grid and descendant selectors unchanged.
+// The missing-item product cards: the results grid card with the vanilla
+// showCardNote() note for 3.2 s when a product cannot be hung.
+function MissingCards({ host, products }: { host: WeatherHost; products: { id: string; card: CardModel }[] }) {
+  const [note, setNote] = useState<{ id: string; text: string } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const hang = (id: string) => {
+    const text = host.hang(id);
+    if (!text) return;
+    clearTimeout(timer.current);
+    setNote({ id, text });
+    timer.current = setTimeout(() => setNote(null), 3200);
+  };
   return (
-    <span
-      style={{ display: "contents" }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      {products.map((p) => (
+        <Card
+          key={p.id}
+          host={host}
+          c={p.card}
+          pop={false}
+          onHang={hang}
+          note={note?.id === p.id ? note.text : undefined}
+        />
+      ))}
+    </>
   );
 }
 function ExampleChips({
@@ -224,7 +245,7 @@ export function WeatherCard({
         <div className="wx-ps">
           {(m.pieces || []).map((x, i) => (
             <div className="p1" key={`${i}:${x.label}`}>
-              <Html html={x.html} />
+              <Tile m={x.tile} />
               <div className="t6">
                 {x.label}
                 {x.trial ? " · 체험용" : ""}
@@ -260,9 +281,7 @@ export function WeatherCard({
           {missing.products.length ? (
             <>
               <div className="wx-mg">
-                {missing.products.map((p) => (
-                  <Html key={p.id} html={p.html} />
-                ))}
+                <MissingCards host={host} products={missing.products} />
               </div>
               <button
                 type="button"

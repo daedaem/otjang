@@ -8,7 +8,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { Html, Top } from "./parts";
+import { CorePhotoView, Tile } from "../tiles/Tile";
+import { Top } from "./parts";
 import type { DecisionModel, DetailHost, DetailModel } from "./types";
 // Product detail (WO-04): same markup as the vanilla V.detail, rendered from
 // detailModel. Buttons call the host, never the data-* attributes of the
@@ -91,8 +92,9 @@ function Photo({
             className="zoomb"
             aria-label="사진 크게 보기"
             onClick={host.zoom}
-            dangerouslySetInnerHTML={{ __html: m.tile || "" }}
-          />
+          >
+            {m.core ? <CorePhotoView p={m.core} /> : null}
+          </button>
         )}
         <button
           type="button"
@@ -149,7 +151,7 @@ function HangBox({ host, m }: { host: DetailHost; m: DetailModel }) {
         <div className="owned">
           {m.owned.map((o, i) => (
             <div key={i} className="o">
-              <Html html={o.html} />
+              <Tile m={o.tile} />
               <div className="t6">{o.label}</div>
             </div>
           ))}
@@ -170,7 +172,7 @@ function HangBox({ host, m }: { host: DetailHost; m: DetailModel }) {
               <div className="ps">
                 {l.pieces.map((x, j) => (
                   <div key={j} className={`p1${x.me ? " me" : ""}`}>
-                    <Html html={x.html} />
+                    <Tile m={x.tile} />
                     <div className="t6">{x.label}</div>
                   </div>
                 ))}

@@ -92,15 +92,23 @@ test("photo-less home rows keep the vanilla core tile instead of a new placehold
   await home(page);
   const reactBox = page.locator("[data-react-home] .proof .prow .ph-box").first();
   await expect(reactBox.locator('[data-photo="none"]')).toBeVisible();
-  const reactTile = await reactBox.innerHTML();
+  // WO-08c draws the core tile as React (src/tiles) instead of injecting
+  // photoHtml(), so the inline style is serialised differently. Compare what
+  // is rendered: the same core tile element, text and computed styles.
+  const tile = (box: typeof reactBox) =>
+    box.evaluate((el) => {
+      const t = el.firstElementChild as HTMLElement;
+      const cs = getComputedStyle(t);
+      // Width/height follow the row's box, which the home screen sizes itself.
+      const props = ["display", "align-items", "justify-content", "aspect-ratio", "background-color", "color", "font", "padding", "box-sizing", "border-radius"];
+      return { children: el.children.length, tag: t.tagName, cls: t.className, photo: t.dataset.photo, text: t.textContent, style: props.map((p) => `${p}:${cs.getPropertyValue(p)}`) };
+    });
+  const reactTile = await tile(reactBox);
   await page.goto("/?photos=0&ui=vanilla#/");
   await page.waitForFunction(() => !!(window as any).K?.M);
   await home(page);
-  const vanillaTile = await page
-    .locator(".proof .prow .ph-box")
-    .first()
-    .innerHTML();
-  expect(reactTile).toBe(vanillaTile);
+  const vanillaTile = await tile(page.locator(".proof .prow .ph-box").first());
+  expect(reactTile).toEqual(vanillaTile);
 });
 test("late weather resolution and a day change retain the unsubmitted home question", async ({
   page,
