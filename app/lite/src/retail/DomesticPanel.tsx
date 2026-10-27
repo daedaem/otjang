@@ -152,3 +152,86 @@ function Offers({ data }: { data: DomesticData }) {
     </>
   );
 }
+// The consult screen's variant: nothing is searched until the person presses
+// the button (vanilla data-adpick-search panel without a heading).
+export function DomesticButtonPanel({
+  host,
+  query,
+}: {
+  host: RetailHost;
+  query: string;
+}) {
+  const text = query.trim();
+  const [state, setState] = useState<State | null>(null);
+  const seq = useRef(0);
+  useEffect(
+    () => () => {
+      seq.current++;
+    },
+    [],
+  );
+  if (!host.adpick || !text) return null;
+  const run = () => {
+    const adpick = host.adpick;
+    if (!adpick || state?.status === "loading") return;
+    const id = ++seq.current;
+    if (text.length < 2) {
+      setState({ status: "short" });
+      return;
+    }
+    setState({ status: "loading" });
+    adpick(text).then(
+      (data) => {
+        if (id === seq.current) setState({ status: "done", data });
+      },
+      (error: unknown) => {
+        if (id === seq.current)
+          setState({
+            status: "error",
+            message: (error as Error)?.message || "국내 상품을 찾지 못했어요.",
+          });
+      },
+    );
+  };
+  return (
+    <section
+      className="section"
+      data-adpick-panel
+      data-started="1"
+      data-adpick-q={text}
+    >
+      <button
+        type="button"
+        className="btn line sm"
+        disabled={state?.status === "loading"}
+        onClick={run}
+      >
+        <i className="ph ph-magnifying-glass" />
+        {`국내 쇼핑몰에서 '${text}' 찾기`}
+      </button>
+      <div data-adpick-results aria-live="polite">
+        {state?.status === "loading" && (
+          <p className="t6" role="status">
+            국내 상품을 찾고 있어요…
+          </p>
+        )}
+        {state?.status === "short" && (
+          <p className="t6" role="status">
+            브랜드나 상품명을 2자 이상 입력해 주세요.
+          </p>
+        )}
+        {state?.status === "error" && (
+          <>
+            <p className="t6" role="status">
+              {state.message}
+            </p>
+            <button type="button" className="btn line sm" onClick={run}>
+              다시 시도
+            </button>
+          </>
+        )}
+        {state?.status === "done" && <Offers data={state.data} />}
+      </div>
+    </section>
+  );
+}
