@@ -1,0 +1,234 @@
+{
+  "work": "WO-08a shared bottom sheets (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic closet/records/consult thread; network outside the local test server blocked; /api answers 503; no personal data",
+  "browser": "Playwright 1.57 Chromium headless shell, reducedMotion reduce, service workers blocked, element capture of .sheet with CSS animations disabled",
+  "capture": "Before capture the page behind the sheet is removed from layout (#app,#tabs,#bar,#strip display:none), the scrim made opaque grey and overlay scrollbars hidden, as in WO-07. The sheet outerHTML of both modes is also saved and compared after normalising React serialisation (type=button, data-react-sheet, colour as rgb(), 0 vs 0px, PlaceSheet id/aria-labelledby): all 11 states are equal.",
+  "states": {
+    "menu": "더보기 메뉴(날씨 지역 없음)",
+    "menu-place": "더보기 메뉴(설치 앱 날씨 지역 행 포함, 지역 기능은 합성 대체)",
+    "place": "메뉴 → 날씨 지역(WO-02 React 대화상자 재사용)",
+    "disclose": "메뉴 → 이 시안에 대해",
+    "add-kind": "종류·색으로 넣기 1단계(종류)",
+    "add-color": "종류·색으로 넣기 2단계(셔츠 색)",
+    "color-same": "상세 '있어요' → 가진 셔츠 색(같은 색 맨 앞)",
+    "decision-change": "보류한 상품 → 바꾸기",
+    "decision-back": "판매처에서 돌아왔을 때 구매 판단",
+    "return": "계속 입는 옷 → 반품 사유",
+    "confirm": "상담 지우기 확인"
+  },
+  "variants": {
+    "sh": {
+      "variant": "mobile Pixel 7, ?photos=0",
+      "pairs": {
+        "menu": {
+          "vanilla_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "react_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "same": true
+        },
+        "menu-place": {
+          "vanilla_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "react_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "same": true
+        },
+        "place": {
+          "vanilla_sha256": "bb8bc86b2f01a6d8acf671fc5663239468afd9b574fb0c0742414f6ab00f245a",
+          "react_sha256": "bb8bc86b2f01a6d8acf671fc5663239468afd9b574fb0c0742414f6ab00f245a",
+          "same": true
+        },
+        "disclose": {
+          "vanilla_sha256": "62d5cea088a85ca654d05cb8195deab1d5aca31b4dbe83ae52ac25a667f9ed72",
+          "react_sha256": "62d5cea088a85ca654d05cb8195deab1d5aca31b4dbe83ae52ac25a667f9ed72",
+          "same": true
+        },
+        "add-kind": {
+          "vanilla_sha256": "df8d95f1f71a546eab086bd06d58c562b0b0d229b52686136b50ab33d8f9f647",
+          "react_sha256": "df8d95f1f71a546eab086bd06d58c562b0b0d229b52686136b50ab33d8f9f647",
+          "same": true
+        },
+        "add-color": {
+          "vanilla_sha256": "87876ff0d1b332d579a9c10ebe54086c8b8ca17f1e168edbd213b810929b36e1",
+          "react_sha256": "87876ff0d1b332d579a9c10ebe54086c8b8ca17f1e168edbd213b810929b36e1",
+          "same": true
+        },
+        "color-same": {
+          "vanilla_sha256": "f8448807269ed51d3fc676ce217f5e9819df1a8b4f9ec3794336b80b6257aebd",
+          "react_sha256": "02d110c470b04f688f36c24fde305cc2f4c8344590f97defc188793e824a2c1a",
+          "same": false,
+          "diff": {
+            "size_equal": true,
+            "changed_pixels": 1168,
+            "max_channel_delta": 65,
+            "bbox": [
+              172,
+              416,
+              959,
+              1126
+            ],
+            "note": "glyph antialiasing only in some colour labels; HTML and sheet rect equal; both captures stable across repeated runs; cause not identified"
+          }
+        },
+        "decision-change": {
+          "vanilla_sha256": "625df9ced6ab63ded0d55e0725e07ab12831d991b6197a00e822659f16c39566",
+          "react_sha256": "625df9ced6ab63ded0d55e0725e07ab12831d991b6197a00e822659f16c39566",
+          "same": true
+        },
+        "decision-back": {
+          "vanilla_sha256": "e41cab107a513428e428c7eaac41ec245d77b0b8566eeb3fb1dcaa5efda92524",
+          "react_sha256": "e41cab107a513428e428c7eaac41ec245d77b0b8566eeb3fb1dcaa5efda92524",
+          "same": true
+        },
+        "return": {
+          "vanilla_sha256": "44b4479c518a11cb50f282c1449798795271d759e9ae1edb5d1d4c76e17000aa",
+          "react_sha256": "44b4479c518a11cb50f282c1449798795271d759e9ae1edb5d1d4c76e17000aa",
+          "same": true
+        },
+        "confirm": {
+          "vanilla_sha256": "31b19d54efd66eda335685c7839d648c722723a78661cbe847651a8e5f1cd3a6",
+          "react_sha256": "31b19d54efd66eda335685c7839d648c722723a78661cbe847651a8e5f1cd3a6",
+          "same": true
+        }
+      }
+    },
+    "shph": {
+      "variant": "mobile Pixel 7, photos on (product photos load from the test server's built data)",
+      "pairs": {
+        "menu": {
+          "vanilla_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "react_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "same": true
+        },
+        "menu-place": {
+          "vanilla_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "react_sha256": "1316bbcd3c4e29ef37c4f8888575d14021615ffea0ed3a8fea29077b50b57616",
+          "same": true
+        },
+        "place": {
+          "vanilla_sha256": "bb8bc86b2f01a6d8acf671fc5663239468afd9b574fb0c0742414f6ab00f245a",
+          "react_sha256": "bb8bc86b2f01a6d8acf671fc5663239468afd9b574fb0c0742414f6ab00f245a",
+          "same": true
+        },
+        "disclose": {
+          "vanilla_sha256": "62d5cea088a85ca654d05cb8195deab1d5aca31b4dbe83ae52ac25a667f9ed72",
+          "react_sha256": "62d5cea088a85ca654d05cb8195deab1d5aca31b4dbe83ae52ac25a667f9ed72",
+          "same": true
+        },
+        "add-kind": {
+          "vanilla_sha256": "cdf355d545ca5d9652bbbe7242f961b847f5cab121a56a4ca845b717bc743c6c",
+          "react_sha256": "cdf355d545ca5d9652bbbe7242f961b847f5cab121a56a4ca845b717bc743c6c",
+          "same": true
+        },
+        "add-color": {
+          "vanilla_sha256": "87876ff0d1b332d579a9c10ebe54086c8b8ca17f1e168edbd213b810929b36e1",
+          "react_sha256": "87876ff0d1b332d579a9c10ebe54086c8b8ca17f1e168edbd213b810929b36e1",
+          "same": true
+        },
+        "color-same": {
+          "vanilla_sha256": "f8448807269ed51d3fc676ce217f5e9819df1a8b4f9ec3794336b80b6257aebd",
+          "react_sha256": "02d110c470b04f688f36c24fde305cc2f4c8344590f97defc188793e824a2c1a",
+          "same": false,
+          "diff": {
+            "size_equal": true,
+            "changed_pixels": 1168,
+            "max_channel_delta": 65,
+            "bbox": [
+              172,
+              416,
+              959,
+              1126
+            ],
+            "note": "glyph antialiasing only in some colour labels; HTML and sheet rect equal; both captures stable across repeated runs; cause not identified; this pair is byte-identical to the mobile ?photos=0 pair, so only the mobile files are kept"
+          }
+        },
+        "decision-change": {
+          "vanilla_sha256": "625df9ced6ab63ded0d55e0725e07ab12831d991b6197a00e822659f16c39566",
+          "react_sha256": "625df9ced6ab63ded0d55e0725e07ab12831d991b6197a00e822659f16c39566",
+          "same": true
+        },
+        "decision-back": {
+          "vanilla_sha256": "e41cab107a513428e428c7eaac41ec245d77b0b8566eeb3fb1dcaa5efda92524",
+          "react_sha256": "e41cab107a513428e428c7eaac41ec245d77b0b8566eeb3fb1dcaa5efda92524",
+          "same": true
+        },
+        "return": {
+          "vanilla_sha256": "44b4479c518a11cb50f282c1449798795271d759e9ae1edb5d1d4c76e17000aa",
+          "react_sha256": "44b4479c518a11cb50f282c1449798795271d759e9ae1edb5d1d4c76e17000aa",
+          "same": true
+        },
+        "confirm": {
+          "vanilla_sha256": "31b19d54efd66eda335685c7839d648c722723a78661cbe847651a8e5f1cd3a6",
+          "react_sha256": "31b19d54efd66eda335685c7839d648c722723a78661cbe847651a8e5f1cd3a6",
+          "same": true
+        }
+      }
+    },
+    "shdesk": {
+      "variant": "desktop 1280x900, ?photos=0",
+      "pairs": {
+        "menu": {
+          "vanilla_sha256": "a2c2dbfc89cbee06796b3ec663e6977581b42e063051bb211675a9e95fb1202b",
+          "react_sha256": "a2c2dbfc89cbee06796b3ec663e6977581b42e063051bb211675a9e95fb1202b",
+          "same": true
+        },
+        "menu-place": {
+          "vanilla_sha256": "a2c2dbfc89cbee06796b3ec663e6977581b42e063051bb211675a9e95fb1202b",
+          "react_sha256": "a2c2dbfc89cbee06796b3ec663e6977581b42e063051bb211675a9e95fb1202b",
+          "same": true
+        },
+        "place": {
+          "vanilla_sha256": "f71a8ad3c266db35bf3f722bdb05d05047a52cbc7350da462d0bd26636cbc4df",
+          "react_sha256": "f71a8ad3c266db35bf3f722bdb05d05047a52cbc7350da462d0bd26636cbc4df",
+          "same": true
+        },
+        "disclose": {
+          "vanilla_sha256": "a6d40cccf85c591560279ddbf9586e2b20473e5106ff2859f1a48c8aeb3765e0",
+          "react_sha256": "a6d40cccf85c591560279ddbf9586e2b20473e5106ff2859f1a48c8aeb3765e0",
+          "same": true
+        },
+        "add-kind": {
+          "vanilla_sha256": "6c8f955d9301383bd734d24aac940982565f1ef64a14b51a7c09f5f19d4954eb",
+          "react_sha256": "6c8f955d9301383bd734d24aac940982565f1ef64a14b51a7c09f5f19d4954eb",
+          "same": true
+        },
+        "add-color": {
+          "vanilla_sha256": "abcf3ce8f9cf3d3c3fa04091e667a05813af8a4cfe2e28f41cf2071c4876c62d",
+          "react_sha256": "abcf3ce8f9cf3d3c3fa04091e667a05813af8a4cfe2e28f41cf2071c4876c62d",
+          "same": true
+        },
+        "color-same": {
+          "vanilla_sha256": "0703f5128323b5859a340bd0a17d28df1b46a9e7c6360ae6f154c7feaf473701",
+          "react_sha256": "0703f5128323b5859a340bd0a17d28df1b46a9e7c6360ae6f154c7feaf473701",
+          "same": true
+        },
+        "decision-change": {
+          "vanilla_sha256": "749d19a5ffae6d5c9ff1e9a397b58825a9cce1120085455c05baa7f811762c6b",
+          "react_sha256": "749d19a5ffae6d5c9ff1e9a397b58825a9cce1120085455c05baa7f811762c6b",
+          "same": true
+        },
+        "decision-back": {
+          "vanilla_sha256": "9cd9b31e4fffe94a1df8b2ba9c7faadfb44c3fc567f355a7b7559a0cbd1b5a91",
+          "react_sha256": "9cd9b31e4fffe94a1df8b2ba9c7faadfb44c3fc567f355a7b7559a0cbd1b5a91",
+          "same": true
+        },
+        "return": {
+          "vanilla_sha256": "5c9e54ea6fda61564d38235ae98c4ffefc2fdc8bc4a24b17e36ed574cc91dc9e",
+          "react_sha256": "5c9e54ea6fda61564d38235ae98c4ffefc2fdc8bc4a24b17e36ed574cc91dc9e",
+          "same": true
+        },
+        "confirm": {
+          "vanilla_sha256": "6d6432a9514d62bdf80bd8d09065935588c53734c9c13635f240812f2de216ed",
+          "react_sha256": "6d6432a9514d62bdf80bd8d09065935588c53734c9c13635f240812f2de216ed",
+          "same": true
+        }
+      }
+    }
+  },
+  "kept": [
+    "claude-sheets-add-kind-mobile.png",
+    "claude-sheets-color-same-react-sh.png",
+    "claude-sheets-color-same-vanilla-sh.png",
+    "claude-sheets-decision-change-mobile.png",
+    "claude-sheets-menu-mobile.png",
+    "claude-sheets-return-mobile.png"
+  ]
+}
