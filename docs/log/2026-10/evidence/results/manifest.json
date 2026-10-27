@@ -1,0 +1,90 @@
+{
+  "work": "WO-03b search results screen (React) vs ?ui=vanilla results screen",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic closet actions and injected Adpick/AI answers; no personal data, no live supplier or AI call",
+  "browser": "Playwright 1.57 mobile Chromium (Pixel 7 profile), reducedMotion reduce, service workers blocked, full-page capture with CSS animations disabled (the AI spinner otherwise differs only by rotation phase)",
+  "photos": "?photos=0 (core colour tiles). One extra pair with product photos enabled (ask state) was also byte-identical; external photo requests are blocked in the test, so images show their alt text.",
+  "kept": [
+    "claude-results-ranked-mobile.png",
+    "claude-results-ask-mobile.png",
+    "claude-results-empty-mobile.png",
+    "claude-results-partial-mobile.png",
+    "claude-results-off-mobile.png"
+  ],
+  "pairs": {
+    "ranked": {
+      "state": "셔츠, AI 순위 받음(합성 순서 뒤집기)",
+      "vanilla_sha256": "61c8aa49511ac71a9150bbe8f1808177d64fcc711663ba58b744b1f91fa8e83a",
+      "react_sha256": "61c8aa49511ac71a9150bbe8f1808177d64fcc711663ba58b744b1f91fa8e83a",
+      "same": true
+    },
+    "wait": {
+      "state": "셔츠, AI 응답 대기",
+      "vanilla_sha256": "065977c4962622afdfe6048aa6806b42957f538d99d28a3f9c21a8cc2156034a",
+      "react_sha256": "065977c4962622afdfe6048aa6806b42957f538d99d28a3f9c21a8cc2156034a",
+      "same": true
+    },
+    "off": {
+      "state": "셔츠, AI 실패(daily_limit) → 엔진 순서와 이유",
+      "vanilla_sha256": "2a983b880f30b13cd22fde67033983bbb46b8f543af29a3127d74fd3b7c3f8fc",
+      "react_sha256": "2a983b880f30b13cd22fde67033983bbb46b8f543af29a3127d74fd3b7c3f8fc",
+      "same": true
+    },
+    "ask": {
+      "state": "셔츠, 두 벌 걸기 → 묻기 줄 2개와 아래 띠",
+      "vanilla_sha256": "22daf3146622e8201d21a4cafb57248558ccf7a642dbe6d02eeb6ba2e90fa9d5",
+      "react_sha256": "22daf3146622e8201d21a4cafb57248558ccf7a642dbe6d02eeb6ba2e90fa9d5",
+      "same": true
+    },
+    "note": {
+      "state": "셔츠, 다섯 벌째 걸기 → 4벌 한도 안내 줄",
+      "vanilla_sha256": "7d75a17a7a98dab8ef30a0e9b069b116b568e7cf70035fa08f2e1a62491a29ce",
+      "react_sha256": "7d75a17a7a98dab8ef30a0e9b069b116b568e7cf70035fa08f2e1a62491a29ce",
+      "same": true
+    },
+    "answered": {
+      "state": "셔츠, 두 벌 걸고 첫 묻기에 없어요",
+      "vanilla_sha256": "ee95dbde7d4e401a88b292ea98a3d7c10dadf20ba679cb35f23cc580c3577610",
+      "react_sha256": "ee95dbde7d4e401a88b292ea98a3d7c10dadf20ba679cb35f23cc580c3577610",
+      "same": true
+    },
+    "occasion": {
+      "state": "결혼식 하객 셔츠, 상황과 덜 맞는 옷 격자",
+      "vanilla_sha256": "5dd0fb363f6ad3a92601f567929981bbb98357314ea84ac8d3c5b6434fa185d2",
+      "react_sha256": "5dd0fb363f6ad3a92601f567929981bbb98357314ea84ac8d3c5b6434fa185d2",
+      "same": true
+    },
+    "drop": {
+      "state": "흰 셔츠 5만원 이하, 조건 칩",
+      "vanilla_sha256": "b0c838779df124e5c380004d6738624f4aad67fd3045b458f7dfb98843b0f2eb",
+      "react_sha256": "b0c838779df124e5c380004d6738624f4aad67fd3045b458f7dfb98843b0f2eb",
+      "same": true
+    },
+    "empty": {
+      "state": "검정 코트 3만원 이하, 0건과 넓히기",
+      "vanilla_sha256": "8fd9dd3c7fa890f3ba378e41ce7de61921024df82449746f1bccec4ab4c6dfc0",
+      "react_sha256": "8fd9dd3c7fa890f3ba378e41ce7de61921024df82449746f1bccec4ab4c6dfc0",
+      "same": true
+    },
+    "unread": {
+      "state": "asdf, 못 알아들음과 예시",
+      "vanilla_sha256": "96efb17607f3ffa51d04d7b5acf54b81d0b10652691e5a45c0ed6950e8dcaf70",
+      "react_sha256": "96efb17607f3ffa51d04d7b5acf54b81d0b10652691e5a45c0ed6950e8dcaf70",
+      "same": true
+    },
+    "gender": {
+      "state": "치마, 여성 상품 안내",
+      "vanilla_sha256": "3fbe5ad00d1bebf94f1b74e9eb9dc8407e69a151a0c184d81a933b8b8c6b598f",
+      "react_sha256": "3fbe5ad00d1bebf94f1b74e9eb9dc8407e69a151a0c184d81a933b8b8c6b598f",
+      "same": true
+    },
+    "partial": {
+      "state": "구찌 셔츠, 일부만 이해 → 상품 없이 공급처",
+      "vanilla_sha256": "77c51b98cc20a363d3756e882f712565696fd4851cf45acf4ca0f4bffd3e282e",
+      "react_sha256": "77c51b98cc20a363d3756e882f712565696fd4851cf45acf4ca0f4bffd3e282e",
+      "same": true
+    }
+  },
+  "notMeasured": "WebKit (CI only), real devices, real AI/supplier responses",
+  "desktop": "Also compared at 1280x900 (4-column grid, where ask/note rows are inserted after each row of four): all 12 states byte-identical."
+}
