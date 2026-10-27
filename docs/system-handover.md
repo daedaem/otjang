@@ -124,6 +124,7 @@ PR #47 때 프리뷰 **기본값**을 고친 뒤에도 이미 생성된 브랜�
 - 예전 이름 `Lite input Chromium and WebKit`은 두 작업이 모두 성공해야 성공하는 확인 작업으로 남긴다.
 - 제한 시간과 검사 수는 바꾸지 않았다.
 - 한 head의 체크는 PR 7 + push 7 + Workers Builds 1 = 15개다(이전 11개). 병합 조건은 그대로 '같은 head의 체크 전부 성공'이다.
+- 같은 날 #100에서 Chromium 작업의 `playwright install` 단계가 세 번 연달아 10분씩 걸렸다(평소 1분, 같은 시각 WebKit은 1분). 15분 안에 검사를 마치지 못해 취소됐다. 그래서 내려받은 브라우저를 Playwright 버전(`package-lock.json`)별로 `actions/cache`(v4.2.4, SHA 고정)에 보관한다. 시스템 패키지(`--with-deps`)는 매번 설치한다. 공개 저장소의 Actions 캐시라 추가 비용은 없다.
 
 수동 배포가 필요한 경우 검증한 master·기존 본인용 Worker만 대상으로 한다. 새 공개 미리보기·Access 해제·계정/유료 플랜 추가는 포함되지 않는다. 기존 Git 자동 빌드 지연은 이후 성공 기록과 구분하며 항상 고장 났다고 가정하지 않는다. 공식 Wrangler의 기존 승인 범위는 `account:read user:read workers_scripts:write`이며 `workers:write`는 이번에 잘못 선택했던 값이다. 새 범위 승인이나 비밀값 입력은 소유자가 수행한다. 필요한 작업과 확인을 마치면 `wrangler logout`하고 로컬 배포 인증과 앱 로그인·서버 Secret이 별개임을 기록한다. 최종 403 배포 뒤 같은 10-22 작업 대화의 후속 도구 실행에서 `Successfully logged out`을 확인했다. 이 실행은 PR 완료 댓글 이후이며 이번 문서 정리에서 CLI 상태를 다시 조회한 것은 아니다.
 
