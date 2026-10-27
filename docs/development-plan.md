@@ -1,4 +1,4 @@
-진행 중: WO-05 구매 기록(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-05-records-20261027`). WO-01 #89·WO-02 #90·WO-03 #91/#92·WO-04 #93 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
+진행 중: WO-06 상담 화면(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-06-consult-20261027`). WO-01 #89·WO-02 #90·WO-03 #91/#92·WO-04 #93·WO-05 #94 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
 
 # 현재 개발 계획과 완료 기준
 
@@ -150,8 +150,8 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 날씨/지역 | master #90: home·looks 공유 React 날씨 카드와 React 지역 대화상자(`weatherModel`/`weatherCtl` 한 곳), 바닐라는 `?ui=vanilla` fallback | 코드 완료. 옷 조각 타일(`piecePic`)·부족 아이템 상품 카드(`cardHtml`)는 공용 템플릿 HTML로 남아 WO-03/WO-08에서 이전. 실기기 위치 권한은 WO-09 |
 | 검색 결과 | master #92: React 결과 화면(`src/results`)이 `resultsModel`/`gridModel`/`cardModel`과 공유 공급처 패널을 그림. AI 순위는 기존 `S` 상태에 저장. 바닐라는 `?ui=vanilla`·섬 로딩 실패 fallback. 기준선 11개 | 코드 완료. 색 고르기 시트(WO-08), 날씨 카드의 부족 아이템 카드(WO-08), 상담 추천 카드(WO-06), 실기기(WO-09) |
 | 상품 상세/구매 판단/비교 | master #93: React 상세(`src/detail`)·`#bar` 구매 판단 바·비교가 `detailModel`/`decisionModel`/`compareModel`을 그림. 기존 decision/return/색 시트·원자 명령 재사용. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 6개 | 코드 완료. 가진 옷·코디 조각 타일과 시트(WO-08), 실제 판매처 왕복·실기기(WO-09) |
-| 구매/수령/보유/착용/반품 | WO-05 브랜치: React 기록 화면(`src/records`)이 `recordsModel`을 그림. 단계는 `M.advance`, 반품은 기존 시트. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 7개. 상세의 판단 바는 #93 | PR CI·병합 대기. 반품 사유 시트(WO-08), 착용 기록 입구(현재 없음, 범위 밖), 실제 백업 복원·실기기(WO-07/09) |
-| 상담 | 바닐라, #66 예산 대조/답변·이력 존재 | 답/대조 줄·실패/재시도·이력/백업과 로그인 만료 이동 보존 |
+| 구매/수령/보유/착용/반품 | master #94: React 기록 화면(`src/records`)이 `recordsModel`을 그림. 단계는 `M.advance`, 반품은 기존 시트. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 7개. 상세의 판단 바는 #93 | 코드 완료. 반품 사유 시트(WO-08), 착용 기록 입구(현재 없음, 범위 밖), 실제 백업 복원·실기기(WO-07/09) |
+| 상담 | WO-06 브랜치: React 상담(`src/consult`)·`#bar` 입력 바가 `consultModel`을 그림. 질문은 기존 `askConsult`(근거 상품·서버 요청·주제 판단·예산 대조 줄·AI 응답 정보), 상담 저장·확인 시트 재사용. 앱에 없는 브랜드의 국내 쇼핑몰은 누를 때만 검색. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 4개 | PR CI·병합 대기. 지우기 확인 시트(WO-08), 실제 AI 답·비용·실기기 키보드(WO-09) |
 | 공통 호스트 | renderStrip 후보 띠·bar/tabs·disclose/고지·pickColor/confirm/place·토스트·저장소 복구 안내/원문 받기 바닐라 | 실제 React 이전 확인. 공급처/OPF 출처와 광고 고지도 공유 이전에서 유지 |
 
 코드 CI만으로 진행 표시를 해제하거나 바닐라를 제거하지 않는다. 코드 완료·실기기/복구·제거 대기를 나눠 표시한다. 실제 iPhone/Galaxy에서 설치 PWA 여부와 persistence 결과, 옛 화면을 연 채 업데이트 뒤 지연 모듈 진입, 실제 Files/공유·사진 백업·옛 format1→새 앱·교차 기기 복원을 각각 기록한다. 로그인 만료 이동은 기존 접근 제어 보존 범위이며 인증을 재구현하지 않는다. Safari 저장소 삭제 기간은 공식 근거 미확인이라 사실로 단정하지 않는다. C1/C2·블라인드20·C4를 자동 검사/AI 역할 평가로 대신하지 않는다.

@@ -971,6 +971,59 @@ a { color: inherit; text-decoration: none; }
       }) })),
     };
   }
+  // 상담 화면 내용(WO-06): React 상담이 그린다. 바닐라 V.consult·chatTurnHtml과 같은 정렬·개수·AI 응답 정보 규칙을 쓴다.
+  function consultModel() {
+    const th = C.thread();
+    if (!th) {
+      const list = [...C.threads].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+      return { kind: 'list', examples: CHAT_EX, threads: list.map((t) => ({ id: t.id, title: t.title, when: whenText(t.at), count: t.turns.filter((x) => x.role !== 'note').length })) };
+    }
+    const turns = th.turns.map((x) => {
+      if (x.role === 'user') return { kind: 'me', text: x.text };
+      if (x.role === 'note') return { kind: 'err', text: x.text };
+      if (x.refused) return { kind: 'refuse', text: x.text };
+      const info = x.role === 'assistant' ? aiResponseInfo(x.ai) : null;
+      const rows = info ? [['모델', info.model], ['입력 토큰', info.inputTokens], ['출력 토큰', info.outputTokens]] : [];
+      if (info?.cacheCreationInputTokens !== undefined) rows.push(['캐시 생성 입력 토큰', info.cacheCreationInputTokens]);
+      if (info?.cacheReadInputTokens !== undefined) rows.push(['캐시 읽기 입력 토큰', info.cacheReadInputTokens]);
+      if (info) rows.push(['응답 ID', info.requestId]);
+      if (info?.providerRequestId) rows.push(['요청 ID', info.providerRequestId]);
+      return {
+        kind: 'bot', text: x.text, check: Array.isArray(x.check) ? x.check : [], ai: rows.map(([k, v]) => [k, String(v)]),
+        cards: (x.ids || []).map((id) => M.product(id)).filter(Boolean).map((p) => ({ id: p.id, brand: p.brand, name: p.name, priceText: p.priceText, priceShort: p.priceShort, hung: M.compareHas(p.id), ...picModel(p.id) })),
+        shop: x.shop && window.EOUL_ADPICK ? x.shop : '',
+      };
+    });
+    return { kind: 'thread', title: th.title, when: whenText(th.at), busy: C.busy, turns };
+  }
+  function consultHost(element) {
+    return {
+      element, bar: $('#bar'), core: M, ctl: detailCtl,
+      model: () => consultModel(),
+      ask: (text) => askConsult(text),
+      busy: () => C.busy,
+      newChat() { C.cur = null; C.busy = false; saveChat(); K.refresh(); },
+      list() { C.cur = null; saveChat(); K.refresh(); },
+      open(id) { C.cur = id; saveChat(); K.refresh(); },
+      remove(id) { const th = C.threads.find((x) => x.id === id); confirmSheet(`‘${th?.title || ''}’ 상담을 지울까요?`, '지우면 되돌릴 수 없어요.', '지우기', () => { delThread(id); K.refresh(); }); },
+      removeAll() { confirmSheet(`상담 ${C.threads.length}개를 모두 지울까요?`, '지우면 되돌릴 수 없어요.', '모두 지우기', () => { C.threads = []; C.cur = null; saveChat(); K.refresh(); }); },
+      // toggleHang without the vanilla button swap; the React card shows the note itself.
+      hang(id) {
+        const was = M.compareHas(id);
+        if (was) { M.compareRemove(id); if (S.asking === id) S.asking = null; }
+        else {
+          try { M.compareAdd(id); } catch (err) { return { added: false, note: /비교함|4개/.test(err.message) ? '옷걸이에는 4벌까지 걸 수 있어요. 하나를 내리고 다시 걸어 주세요.' : err.message }; }
+          if (needAsk(id)) S.asking = id;
+        }
+        renderStrip({ pop: !was && hung().length === 1 });
+        return { added: !was, note: '' };
+      },
+      product: (id) => K.go('detail', { id }),
+      info: () => disclose(),
+      reduce: () => !!K.reduce,
+      retail: retailHost(),
+    };
+  }
   // React 기록 화면(WO-05)의 연결: 단계·반품은 기존 원자 명령(M.advance)과 반품 시트를 그대로 쓴다.
   const picModel = (id) => { const ph = M.photo({ id }); return ph ? { photo: { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) }, tile: null } : { photo: null, tile: M.photoHtml({ id }, { caption: false }) }; };
   function recordsHost(element, restoreY) {
@@ -1331,7 +1384,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let outfitsUnmount = null;
   let mirrorUnmount = null;
   let resultsUnmount = null;
-  let detailUnmount = null, compareUnmount = null, recordsUnmount = null;
+  let detailUnmount = null, compareUnmount = null, recordsUnmount = null, consultUnmount = null;
   const outfitSession={query:'내 옷으로 코디',context:{query:'내 옷으로 코디',occasion:null,season:null,styles:[]}};
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
@@ -1344,6 +1397,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(view==='detail'&&curView==='detail'&&detailUnmount&&dir==='none'&&params?.id===curParams.id){detailCtl.changed();return;}
     if(view==='compare'&&curView==='compare'&&compareUnmount&&dir==='none'){detailCtl.changed();return;}
     if(view==='records'&&curView==='records'&&recordsUnmount&&dir==='none'){detailCtl.changed();renderStrip();return;}
+    if(view==='consult'&&curView==='consult'&&consultUnmount&&dir==='none'){detailCtl.changed();renderStrip();return;}
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
     if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
     const keepHomeFocus=view==='home'&&curView==='home'&&dir==='none'&&$('#q')===document.activeElement?{start:$('#q').selectionStart,end:$('#q').selectionEnd}:null;
@@ -1360,6 +1414,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     detailUnmount?.(); detailUnmount = null;
     compareUnmount?.(); compareUnmount = null;
     recordsUnmount?.(); recordsUnmount = null;
+    consultUnmount?.(); consultUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
@@ -1376,7 +1431,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactDetail=view==='detail'&&window.EOUL_DETAIL_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactCompare=view==='compare'&&window.EOUL_DETAIL_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactRecords=view==='records'&&window.EOUL_RECORDS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
-    const html = reactRecords ? '<div id="react-records"><p role="status">기록을 여는 중이에요…</p></div>' : reactDetail ? '<div id="react-detail"><p role="status">상품을 여는 중이에요…</p></div>' : reactCompare ? '<div id="react-compare"><p role="status">비교를 여는 중이에요…</p></div>' : reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const reactConsult=view==='consult'&&window.EOUL_CONSULT_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
+    const html = reactConsult ? '<div id="react-consult"><p role="status">상담을 여는 중이에요…</p></div>' : reactRecords ? '<div id="react-records"><p role="status">기록을 여는 중이에요…</p></div>' : reactDetail ? '<div id="react-detail"><p role="status">상품을 여는 중이에요…</p></div>' : reactCompare ? '<div id="react-compare"><p role="status">비교를 여는 중이에요…</p></div>' : reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1384,7 +1440,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if(reactRecords){
+    if(reactConsult){
+      window.EOUL_CONSULT_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;consultUnmount=mount(consultHost($('#react-consult')));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-consult').innerHTML='<p role="status">새 상담 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.consult(params);A.consult(params);});
+    } else if(reactRecords){
       const restoreY=dir==='back'?(K.current()?.scroll||0):null;
       window.EOUL_RECORDS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;recordsUnmount=mount(recordsHost($('#react-records'),restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-records').innerHTML='<p role="status">새 기록 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.records(params);A.records(params);});
     } else if(reactDetail||reactCompare){

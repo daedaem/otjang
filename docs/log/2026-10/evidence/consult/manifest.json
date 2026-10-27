@@ -1,0 +1,127 @@
+{
+  "work": "WO-06 consult screen and chat bar (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "seeded synthetic thread store with fixed dates and synthetic AI facts; no personal data, no live AI or supplier call",
+  "browser": "Playwright 1.57 Chromium, reducedMotion reduce, service workers blocked, full-page capture with CSS animations disabled (fixed chat bar and tabs appear at the viewport bottom position in full-page captures, identically in both)",
+  "states": {
+    "empty": "상담 없음 → 예시",
+    "list": "이전 상담 2개(고정 날짜)",
+    "thread": "답·대조 줄 2개·AI 정보·후보 카드 2(없는 ID 제외)·국내 버튼·범위 밖·오류",
+    "ai-open": "AI 응답 정보 펼침",
+    "shop": "국내 쇼핑몰 버튼 누른 뒤 결과",
+    "hung": "추천 카드 걸기"
+  },
+  "kept": [
+    "claude-consult-list-mobile.png",
+    "claude-consult-shop-mobile.png",
+    "claude-consult-thread-mobile.png"
+  ],
+  "variants": {
+    "con": {
+      "variant": "mobile Pixel 7, ?photos=0",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "b85f4f103454a22e72bad81f880269e7013fbaff2da923f1aac45067dc25b221",
+          "react_sha256": "b85f4f103454a22e72bad81f880269e7013fbaff2da923f1aac45067dc25b221",
+          "same": true
+        },
+        "list": {
+          "vanilla_sha256": "70ae7bd7499d656d642c6c2d0a21501511225b10f3ed3f140c5138e4bc10d428",
+          "react_sha256": "70ae7bd7499d656d642c6c2d0a21501511225b10f3ed3f140c5138e4bc10d428",
+          "same": true
+        },
+        "thread": {
+          "vanilla_sha256": "29cfb5a48377eb29deef45b73efccb88b13d43c22995ce1964ef00f0fbafafcb",
+          "react_sha256": "29cfb5a48377eb29deef45b73efccb88b13d43c22995ce1964ef00f0fbafafcb",
+          "same": true
+        },
+        "ai-open": {
+          "vanilla_sha256": "bda205cc756a09f9cd32dbfcd33cfc759616476d1410d9c787de972de31ce74e",
+          "react_sha256": "bda205cc756a09f9cd32dbfcd33cfc759616476d1410d9c787de972de31ce74e",
+          "same": true
+        },
+        "shop": {
+          "vanilla_sha256": "3ee09ab4185a597708597a5a8e95674b4bd33564670f0da78539be13bbe5d0e8",
+          "react_sha256": "3ee09ab4185a597708597a5a8e95674b4bd33564670f0da78539be13bbe5d0e8",
+          "same": true
+        },
+        "hung": {
+          "vanilla_sha256": "5b3542a675de78618e9b2f585ce8eb23e85d4e0b1a278b0bfab7308c93ae4272",
+          "react_sha256": "5b3542a675de78618e9b2f585ce8eb23e85d4e0b1a278b0bfab7308c93ae4272",
+          "same": true
+        }
+      }
+    },
+    "conph": {
+      "variant": "mobile Pixel 7, photos enabled (external photo requests blocked → alt text)",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "b85f4f103454a22e72bad81f880269e7013fbaff2da923f1aac45067dc25b221",
+          "react_sha256": "b85f4f103454a22e72bad81f880269e7013fbaff2da923f1aac45067dc25b221",
+          "same": true
+        },
+        "list": {
+          "vanilla_sha256": "70ae7bd7499d656d642c6c2d0a21501511225b10f3ed3f140c5138e4bc10d428",
+          "react_sha256": "70ae7bd7499d656d642c6c2d0a21501511225b10f3ed3f140c5138e4bc10d428",
+          "same": true
+        },
+        "thread": {
+          "vanilla_sha256": "52202d0c83d74f7d4ae07ba826fdac5f8def2164a28213afa2220f8ca5ba3853",
+          "react_sha256": "52202d0c83d74f7d4ae07ba826fdac5f8def2164a28213afa2220f8ca5ba3853",
+          "same": true
+        },
+        "ai-open": {
+          "vanilla_sha256": "cb3fed4baa2ababa0bbb2d89f0920fb28b1c0dbbc02dbb2156eba094fe7c0333",
+          "react_sha256": "cb3fed4baa2ababa0bbb2d89f0920fb28b1c0dbbc02dbb2156eba094fe7c0333",
+          "same": true
+        },
+        "shop": {
+          "vanilla_sha256": "e8a2c662166fdc87daaf10da830695bdacb7884f849202e480bfbac1699e38b5",
+          "react_sha256": "e8a2c662166fdc87daaf10da830695bdacb7884f849202e480bfbac1699e38b5",
+          "same": true
+        },
+        "hung": {
+          "vanilla_sha256": "1ab22bc181273ef30e50e90efcdca328c57e8904cc7beccca955352f63d588c9",
+          "react_sha256": "1ab22bc181273ef30e50e90efcdca328c57e8904cc7beccca955352f63d588c9",
+          "same": true
+        }
+      }
+    },
+    "condesk": {
+      "variant": "desktop 1280x900, ?photos=0",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "7b04aaf0a01dfb26726318d9391fac5e514877ed3c97e4f7ddae7bf87718a99d",
+          "react_sha256": "7b04aaf0a01dfb26726318d9391fac5e514877ed3c97e4f7ddae7bf87718a99d",
+          "same": true
+        },
+        "list": {
+          "vanilla_sha256": "f3a917ec86c8b4e140acfcdad97015760777d2c8a977357ea3d71237a7595f25",
+          "react_sha256": "f3a917ec86c8b4e140acfcdad97015760777d2c8a977357ea3d71237a7595f25",
+          "same": true
+        },
+        "thread": {
+          "vanilla_sha256": "0177981e318b24e5d2ffaeb3157df5400fae59497f284a310d48998902a950cd",
+          "react_sha256": "0177981e318b24e5d2ffaeb3157df5400fae59497f284a310d48998902a950cd",
+          "same": true
+        },
+        "ai-open": {
+          "vanilla_sha256": "0f47a78eabb042341f9f8b12b5f04aa80d97a8a7f43ecc80a205bc6b32342f48",
+          "react_sha256": "0f47a78eabb042341f9f8b12b5f04aa80d97a8a7f43ecc80a205bc6b32342f48",
+          "same": true
+        },
+        "shop": {
+          "vanilla_sha256": "bc433b7bf636a4b49b5554b12831402e4abcdf169e87614725866f48ff5646f6",
+          "react_sha256": "bc433b7bf636a4b49b5554b12831402e4abcdf169e87614725866f48ff5646f6",
+          "same": true
+        },
+        "hung": {
+          "vanilla_sha256": "ebf8b261e63949840278eb3b98b28d40cfac6b7dc812e0200d08310fbb60eef2",
+          "react_sha256": "ebf8b261e63949840278eb3b98b28d40cfac6b7dc812e0200d08310fbb60eef2",
+          "same": true
+        }
+      }
+    }
+  },
+  "notMeasured": "WebKit (CI only), real AI answers and their cost/tokens, real devices and on-screen keyboards"
+}
