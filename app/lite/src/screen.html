@@ -901,7 +901,108 @@ a { color: inherit; text-decoration: none; }
       ranked: !!order, summary: order ? S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요' : '', listNote: r.listNote || '평점과 후기 수 순',
       main: sorted, off: S.shown.off, offTitle: r.offOccasion?.length ? r.offOccasionTitle || '상황과 덜 맞는 옷' : '',
     };
-  }  // React 결과 화면(WO-03b)의 연결: 계산은 resultsModel/gridModel, 상태 변경은 기존 코어·화면 상태(S)와 함수를 그대로 쓴다.
+  }  // 상품 상세 내용(WO-04): 바닐라 상세와 React 상세가 같은 값을 그린다.
+  function detailModel(id) {
+    const p = M.product(id); if (!p) return null;
+    const ai = S.ai[id];
+    const v = p.verdict;
+    const same = sameOwned(v);
+    const looks = (v.looks || []).slice(0, 2);
+    const nvu = M.newVsUsed(id);
+    const ask = needAsk(id);
+    const d = delta(id);
+    let head, sub = v.lines?.[0] || '';
+    if (ask) { head = { kind: 'ask', text: askText(p) }; sub = ''; }
+    else if (v.basis === 'none' && d) { head = { kind: 'none', kindName: p.kindName, josa: josa(p.kindName, '이', '가') }; sub = `가진 ${p.kindName}${josa(p.kindName, '이', '가')} 없다고 답했어요.`; }
+    else if (same.length) head = { kind: 'same', n: same.length };
+    else if (v.newLookCount) head = { kind: 'new', n: v.newLookCount };
+    else head = { kind: 'title', text: v.title };
+    const ph = M.photo({ id });
+    return {
+      id, p, v, ai: ai || null, same, looks, nvu, ask, head, sub,
+      brand: p.brand, name: p.name, priceText: p.priceText, priceNote: p.priceNote, url: p.url,
+      facts: `${p.colorLabel} · ${p.slotName}${p.rating ? ` · 평점 ${p.rating} · 후기 ${Number(p.reviews || 0).toLocaleString('ko-KR')}개` : ''}`,
+      photo: ph ? { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) } : null,
+      tile: ph ? null : M.photoHtml({ id }, { caption: false }),
+      hung: M.compareHas(id), basisLabel: v.basisLabel,
+      cautions: (Array.isArray(v.cautions) ? v.cautions : []).slice(0, 3),
+      addLike: !ask && v.addSuggestion && !(v.owned || []).length && !(v.basis === 'none' && d) ? { kindName: v.addSuggestion.kindName } : null,
+      usedCount: nvu.used.groups.reduce((a, g) => a + g.links.length, 0),
+    };
+  }
+  // 나란히 비교 내용(WO-04): 같은 항목은 아래로 모으고 접어 둔다.
+  function compareModel() {
+    const ids = hung();
+    if (ids.length < 2) return { few: true, count: ids.length };
+    const c = M.compareRows(ids);
+    const pic = (id) => { const ph = M.photo({ id }); return ph ? { photo: { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) }, tile: null } : { photo: null, tile: M.photoHtml({ id }, { caption: false }) }; };
+    return {
+      few: false, count: ids.length, note: c.note,
+      items: c.items.map((it) => ({ id: it.id, brand: it.brand, name: it.name, ...pic(it.id) })),
+      rows: [...c.rows.filter((r) => !r.same), ...c.rows.filter((r) => r.same)].map((r) => ({ label: r.label, same: !!r.same, values: r.values })),
+      nSame: c.rows.filter((r) => r.same).length,
+    };
+  }
+  // React 상세·비교(WO-04)의 연결: 계산은 detailModel/decisionModel/compareModel, 상태 변경은 기존 코어 명령과 시트를 그대로 쓴다.
+  const detailCtl = {
+    version: 0, subs: new Set(),
+    subscribe(fn) { detailCtl.subs.add(fn); return () => detailCtl.subs.delete(fn); },
+    getVersion: () => detailCtl.version,
+    changed() { detailCtl.version++; detailCtl.subs.forEach((fn) => fn()); },
+  };
+  function detailHost(element, params, restoreY) {
+    const id = params.id;
+    return {
+      element, bar: $('#bar'), core: M, ctl: detailCtl, id, restoreY,
+      model() {
+        const m = detailModel(id); if (!m) return null;
+        return {
+          id, brand: m.brand, name: m.name, priceText: m.priceText, priceNote: m.priceNote, facts: m.facts,
+          photo: m.photo, tile: m.tile, hung: m.hung, ai: m.ai ? { rank: m.ai.rank, fit: m.ai.fit || '', reason: m.ai.reason || '' } : null,
+          basisLabel: m.basisLabel, head: m.head, sub: m.sub, cautions: m.cautions, ask: m.ask,
+          owned: m.same.map((o) => ({ html: garmentPic(o), label: `${o.colorLabel} ${o.kindName}${o.trial ? ' · 체험용' : ''}` })),
+          looks: m.looks.map((l) => ({ title: l.title || '', isNew: !!l.new, pieces: l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4).map((x) => ({ me: !!x.candidate, html: piecePic(x), label: x.candidate ? '이 옷' : `${x.colorLabel} ${x.kindName}${x.trial ? ' · 체험용' : ''}` })) })),
+          addLike: m.addLike, usedCount: m.usedCount,
+          used: m.nvu.used.groups.map((g) => ({ region: g.region, links: g.links.map((l) => ({ url: l.url, label: l.label, note: l.note || '' })) })),
+        };
+      },
+      decision: () => decisionModel(id),
+      // toggleHang without the vanilla DOM swap: React redraws the button and shows the note itself.
+      hang() {
+        const was = M.compareHas(id);
+        if (was) { M.compareRemove(id); if (S.asking === id) S.asking = null; detailCtl.changed(); return { added: false, asked: false, note: '' }; }
+        try { M.compareAdd(id); } catch (err) { return { added: false, asked: false, note: /비교함|4개/.test(err.message) ? '옷걸이에는 4벌까지 걸 수 있어요. 하나를 내리고 다시 걸어 주세요.' : err.message }; }
+        const asked = needAsk(id); if (asked) S.asking = id;
+        detailCtl.changed();
+        return { added: true, asked, note: '' };
+      },
+      own: (yes) => answerOwn(id, yes),
+      addLike: () => addLike(id),
+      zoom: () => zoom(id),
+      measure: () => K.go('measure', { id }),
+      collection: () => K.go('collection', { id }),
+      mirror: () => K.go('mirror', { id }),
+      decide: (dec) => decide(id, dec),
+      change: () => decisionSheet(id, { title: '어떻게 할까요?' }),
+      returned: () => returnSheet(id),
+      records: () => K.tab('records'),
+      seller: () => { S.pending = { id, t: Date.now() }; },
+      back: () => K.back({ view: 'home', params: {} }),
+      info: () => disclose(),
+      reduce: () => !!K.reduce,
+    };
+  }
+  function compareHost(element, restoreY) {
+    return {
+      element, core: M, ctl: detailCtl, restoreY,
+      model: () => compareModel(),
+      product: (id) => K.go('detail', { id }),
+      unhang: (id) => { M.compareRemove(id); K.refresh(); },
+      back: () => K.back(null),
+      info: () => disclose(),
+    };
+  }
+  // React 결과 화면(WO-03b)의 연결: 계산은 resultsModel/gridModel, 상태 변경은 기존 코어·화면 상태(S)와 함수를 그대로 쓴다.
   const resultsCtl = {
     version: 0, subs: new Set(),
     subscribe(fn) { resultsCtl.subs.add(fn); return () => resultsCtl.subs.delete(fn); },
@@ -1185,6 +1286,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let outfitsUnmount = null;
   let mirrorUnmount = null;
   let resultsUnmount = null;
+  let detailUnmount = null, compareUnmount = null;
   const outfitSession={query:'내 옷으로 코디',context:{query:'내 옷으로 코디',occasion:null,season:null,styles:[]}};
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
@@ -1194,6 +1296,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(view==='mirror'&&curView==='mirror'&&mirrorUnmount&&dir==='none'){renderStrip();return;}
     if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){renderStrip();return;}
     if(view==='results'&&curView==='results'&&resultsUnmount&&dir==='none'){resultsCtl.changed();renderStrip();return;}
+    if(view==='detail'&&curView==='detail'&&detailUnmount&&dir==='none'&&params?.id===curParams.id){detailCtl.changed();return;}
+    if(view==='compare'&&curView==='compare'&&compareUnmount&&dir==='none'){detailCtl.changed();return;}
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
     if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
     const keepHomeFocus=view==='home'&&curView==='home'&&dir==='none'&&$('#q')===document.activeElement?{start:$('#q').selectionStart,end:$('#q').selectionEnd}:null;
@@ -1207,6 +1311,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     outfitsUnmount?.(); outfitsUnmount = null;
     mirrorUnmount?.(); mirrorUnmount = null;
     resultsUnmount?.(); resultsUnmount = null;
+    detailUnmount?.(); detailUnmount = null;
+    compareUnmount?.(); compareUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
@@ -1220,7 +1326,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactMirror=view==='mirror'&&window.EOUL_MIRROR_LOAD;
     const reactOutfits=view==='looks'&&window.EOUL_OUTFITS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactResults=view==='results'&&window.EOUL_RESULTS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
-    const html = reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const reactDetail=view==='detail'&&window.EOUL_DETAIL_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
+    const reactCompare=view==='compare'&&window.EOUL_DETAIL_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
+    const html = reactDetail ? '<div id="react-detail"><p role="status">상품을 여는 중이에요…</p></div>' : reactCompare ? '<div id="react-compare"><p role="status">비교를 여는 중이에요…</p></div>' : reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1228,7 +1336,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if(reactResults){
+    if(reactDetail||reactCompare){
+      const restoreY=dir==='back'?(K.current()?.scroll||0):null, el=$(reactDetail?'#react-detail':'#react-compare');
+      window.EOUL_DETAIL_LOAD().then(({mount,mountCompare})=>{if(epoch!==inputEpoch)return;if(reactDetail)detailUnmount=mount(detailHost(el,params,restoreY));else compareUnmount=mountCompare(compareHost(el,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;if(reactDetail){el.innerHTML='<p role="status">새 상품 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.detail(params);A.detail(params);}else{el.innerHTML='<p role="status">새 비교 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.compare(params);A.compare(params);}});
+    } else if(reactResults){
       const restoreY=dir==='back'?(K.current()?.scroll||0):null;
       window.EOUL_RESULTS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;resultsUnmount=mount(resultsHost($('#react-results'),params,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-results').innerHTML='<p role="status">새 결과 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.results(params);A.results(params);});
     } else if(reactHome){
@@ -1491,28 +1602,17 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
 
     detail({ id }) {
-      const p = M.product(id);
-      if (!p) return `${top()}<p class="t5">상품을 찾지 못했어요.</p>`;
-      const ai = S.ai[id];
-      const v = p.verdict;
-      const same = sameOwned(v);
-      const looks = (v.looks || []).slice(0, 2);
-      const isHung = M.compareHas(id);
-      const nvu = M.newVsUsed(id);
-      const ask = needAsk(id);
-      const d = delta(id);
-      let head, sub = v.lines?.[0] || '';
-      if (ask) { head = esc(askText(p)); sub = ''; }
-      else if (v.basis === 'none' && d) { head = `겹치는 ${esc(p.kindName)}${josa(p.kindName, '이', '가')} <b>없어요</b>`; sub = `가진 ${p.kindName}${josa(p.kindName, '이', '가')} 없다고 답했어요.`; }
-      else if (same.length) head = `비슷한 옷이 <b>${same.length}벌</b> 걸려 있어요`;
-      else if (v.newLookCount) head = `걸면 새 코디가 <b>${v.newLookCount}개</b> 생겨요`;
-      else head = esc(v.title);
+      const m = detailModel(id);
+      if (!m) return `${top()}<p class="t5">상품을 찾지 못했어요.</p>`;
+      const ai = m.ai, v = m.v, same = m.same, looks = m.looks, nvu = m.nvu, ask = m.ask;
+      const head = m.head.kind === 'ask' ? esc(m.head.text) : m.head.kind === 'none' ? `겹치는 ${esc(m.head.kindName)}${m.head.josa} <b>없어요</b>` : m.head.kind === 'same' ? `비슷한 옷이 <b>${m.head.n}벌</b> 걸려 있어요` : m.head.kind === 'new' ? `걸면 새 코디가 <b>${m.head.n}개</b> 생겨요` : esc(m.head.text);
+      const sub = m.sub;
       return `${top()}
         <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}</span></div>
         <div>
-        <div class="pdp-head"><div class="b">${esc(p.brand)}</div><h1 class="h2" style="margin-top:2px">${esc(p.name)}</h1>
-          <div class="pricetag num"><b>${esc(p.priceText)}</b><small>${esc(p.priceNote)}</small></div>
-          <p class="t6" style="margin-top:6px">${esc(p.colorLabel)} · ${esc(p.slotName)}${p.rating ? ` · 평점 ${esc(p.rating)} · 후기 ${Number(p.reviews || 0).toLocaleString('ko-KR')}개` : ''}</p></div>
+        <div class="pdp-head"><div class="b">${esc(m.brand)}</div><h1 class="h2" style="margin-top:2px">${esc(m.name)}</h1>
+          <div class="pricetag num"><b>${esc(m.priceText)}</b><small>${esc(m.priceNote)}</small></div>
+          <p class="t6" style="margin-top:6px">${esc(m.facts)}</p></div>
         <button class="btn line wide" data-measure="${id}" style="margin:14px 0"><i class="ph ph-ruler" aria-hidden="true"></i>내 기준 옷과 실측 비교</button>
         <button class="quiet" data-collection="${id}" style="margin-bottom:14px">활용·소장 가치 비교 →</button>
         <button class="quiet" data-mirror="${id}" style="margin-bottom:14px">내 사진 거울 옆에 놓고 보기 →</button>
@@ -1520,30 +1620,27 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
           <h2 class="h2">${head}</h2>
           ${sub ? `<p class="t5 sub">${esc(sub)}</p>` : ''}
-          ${(Array.isArray(v.cautions) ? v.cautions : []).slice(0, 3).map((c) => `<p class="t6 warn"><i class="ph ph-warning-circle" aria-hidden="true"></i>${esc(c)}</p>`).join('')}
+          ${m.cautions.map((c) => `<p class="t6 warn"><i class="ph ph-warning-circle" aria-hidden="true"></i>${esc(c)}</p>`).join('')}
           ${ask ? `<div class="ownq"><button data-own="yes" data-for="${id}">있어요</button><button class="no" data-own="no" data-for="${id}">없어요</button></div>` : ''}
           ${same.length ? `<div class="owned">${same.map((o) => `<div class="o">${garmentPic(o)}<div class="t6">${esc(o.colorLabel)} ${esc(o.kindName)}${o.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : ''}
           ${looks.length ? `<div class="looks2">${looks.map((l) => { const ps = l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4); return `<div class="lk"><div class="head"><b>${esc(l.title || '')}</b>${l.new ? '<span class="t6 acc" style="font-weight:700">새 코디</span>' : ''}</div><div class="ps">${ps.map((x) => `<div class="p1${x.candidate ? ' me' : ''}">${piecePic(x)}<div class="t6">${x.candidate ? '이 옷' : `${esc(x.colorLabel)} ${esc(x.kindName)}${x.trial ? ' · 체험용' : ''}`}</div></div>`).join('')}</div></div>`; }).join('')}</div>` : ''}
-          ${!ask && v.addSuggestion && !(v.owned || []).length && !(v.basis === 'none' && d) ? `<div style="margin-top:10px"><button class="quiet" data-addlike="${id}"><i class="ph ph-plus"></i>가진 ${esc(v.addSuggestion.kindName)} 걸기</button></div>` : ''}
+          ${m.addLike ? `<div style="margin-top:10px"><button class="quiet" data-addlike="${id}"><i class="ph ph-plus"></i>가진 ${esc(m.addLike.kindName)} 걸기</button></div>` : ''}
         </section>
-        <details class="used"><summary><span>중고로 찾기</span><span class="pill">외부 검색 · ${nvu.used.groups.reduce((a, g) => a + g.links.length, 0)}곳</span><span class="sp"></span><i class="ph ph-caret-right"></i></summary>
+        <details class="used"><summary><span>중고로 찾기</span><span class="pill">외부 검색 · ${m.usedCount}곳</span><span class="sp"></span><i class="ph ph-caret-right"></i></summary>
           ${nvu.used.groups.map((g) => `<p class="t6 ug">${esc(g.region)}</p><div class="links">${g.links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener"><span>${esc(l.label)}${l.note ? `<span class="t6 un"> · ${esc(l.note)}</span>` : ''}</span><i class="ph ph-arrow-up-right"></i></a>`).join('')}</div>`).join('')}</details>
         </div></div>`;
     },
 
     compare() {
-      const ids = hung();
-      if (ids.length < 2) {
-        return `${top()}<h1 class="h2" style="margin-top:8px">두 벌 이상 걸면 나란히 봐요</h1><p class="t5 sub" style="margin-top:6px">결과 사진 모서리의 옷걸이를 눌러 후보를 걸어 주세요. 지금 ${ids.length}벌 걸려 있어요.</p>`;
+      const m = compareModel();
+      if (m.few) {
+        return `${top()}<h1 class="h2" style="margin-top:8px">두 벌 이상 걸면 나란히 봐요</h1><p class="t5 sub" style="margin-top:6px">결과 사진 모서리의 옷걸이를 눌러 후보를 걸어 주세요. 지금 ${m.count}벌 걸려 있어요.</p>`;
       }
-      const c = M.compareRows(ids);
-      const head = c.items.map((it) => `<th scope="col"><button data-pid="${it.id}" style="display:block;width:100%;text-align:left">${productPic(it.id)}<div class="n">${esc(it.brand)} ${esc(it.name)}</div></button><button class="rm" data-unhang="${it.id}">내리기</button></th>`).join('');
+      const head = m.items.map((it) => `<th scope="col"><button data-pid="${it.id}" style="display:block;width:100%;text-align:left">${productPic(it.id)}<div class="n">${esc(it.brand)} ${esc(it.name)}</div></button><button class="rm" data-unhang="${it.id}">내리기</button></th>`).join('');
       const rows = (list) => list.map((r) => `<tr class="${r.same ? 'same' : ''}"><th scope="row">${esc(r.label)}</th>${r.values.map((v) => `<td class="num">${esc(v)}</td>`).join('')}</tr>`).join('');
-      const nSame = c.rows.filter((r) => r.same).length;
-      const ordered = [...c.rows.filter((r) => !r.same), ...c.rows.filter((r) => r.same)];
-      return `${top()}<h1 class="h2" style="margin-top:8px">걸어 본 ${ids.length}벌</h1><p class="t6" style="margin-top:4px">${esc(c.note)}</p>
-        <div class="cmp" id="cmp"><table><colgroup><col style="width:68px">${c.items.map(() => '<col>').join('')}</colgroup><thead><tr><th scope="col"><span class="t6">항목</span></th>${head}</tr></thead><tbody>${rows(ordered)}</tbody></table></div>
-        ${nSame ? `<button class="quiet sametog" data-sametog aria-expanded="false"><i class="ph ph-caret-down"></i>같은 항목 ${nSame}개 보기</button>` : ''}`;
+      return `${top()}<h1 class="h2" style="margin-top:8px">걸어 본 ${m.count}벌</h1><p class="t6" style="margin-top:4px">${esc(m.note)}</p>
+        <div class="cmp" id="cmp"><table><colgroup><col style="width:68px">${m.items.map(() => '<col>').join('')}</colgroup><thead><tr><th scope="col"><span class="t6">항목</span></th>${head}</tr></thead><tbody>${rows(m.rows)}</tbody></table></div>
+        ${m.nSame ? `<button class="quiet sametog" data-sametog aria-expanded="false"><i class="ph ph-caret-down"></i>같은 항목 ${m.nSame}개 보기</button>` : ''}`;
     },
 
     closet() {
@@ -1750,14 +1847,25 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
   // ── 상세의 결정: 주 행동은 '판매처에서 사기' 하나. 돌아오면 묻고, 아직이면 조용한 글자 버튼으로 남긴다.
   // 아래 바 한 줄: 결정 전에는 가격·수집가와 조용한 '보류 · 안 살래요', 결정 뒤에는 상태 한 줄과 '바꾸기'. 말풍선은 띄우지 않는다.
-  function drawDecision(id) {
-    const p = M.product(id); if (!p) return;
+  // 상세 아래 바의 내용(WO-04): 바닐라 바와 React 바가 같은 값을 그린다.
+  function decisionModel(id) {
+    const p = M.product(id); if (!p) return null;
     const rec = p.verdict.record;
-    const nvu = M.newVsUsed(id);
-    const dec = rec?.decision;
-    const meta = dec
-      ? `<span class="fb" role="status"><i class="ph-fill ph-check-circle"></i><span class="nt" style="color:inherit">${esc(DEC[dec])}로 남겼어요${rec.stage !== 'candidate' ? ` · ${esc(rec.stageLabel)}` : dec === 'buy' ? ' · 주문·도착은 기록에서' : ''}</span></span><span class="qs">${rec.stage === 'candidate' ? '<button class="quiet" data-redecide>바꾸기</button>' : `${rec.stage === 'kept' && (rec.next || []).some((n) => n.step === 'returned') ? `<button class="quiet" data-ret="${esc(id)}">반품했어요</button>` : ''}<button class="quiet" data-tabgo="records">기록</button>`}</span>`
-      : `<span class="pr"><b class="num">${esc(p.priceText)}</b><span class="nt">${esc(p.priceShort)} · ${esc(nvu.fresh.store)}</span></span><span class="qs"><button class="quiet" data-dec="hold">보류</button><button class="quiet" data-dec="skip">안 살래요</button></span>`;
+    const dec = rec?.decision || null;
+    return {
+      id, url: p.url, decided: !!dec, priceText: p.priceText, priceShort: p.priceShort, store: M.newVsUsed(id).fresh.store,
+      status: dec ? `${DEC[dec]}로 남겼어요${rec.stage !== 'candidate' ? ` · ${rec.stageLabel}` : dec === 'buy' ? ' · 주문·도착은 기록에서' : ''}` : '',
+      canChange: !!dec && rec.stage === 'candidate',
+      canReturn: !!dec && rec.stage === 'kept' && (rec.next || []).some((n) => n.step === 'returned'),
+    };
+  }
+  function drawDecision(id) {
+    if (detailUnmount) { detailCtl.changed(); return; }
+    const p = M.product(id); if (!p) return;
+    const m = decisionModel(id);
+    const meta = m.decided
+      ? `<span class="fb" role="status"><i class="ph-fill ph-check-circle"></i><span class="nt" style="color:inherit">${esc(m.status)}</span></span><span class="qs">${m.canChange ? '<button class="quiet" data-redecide>바꾸기</button>' : `${m.canReturn ? `<button class="quiet" data-ret="${esc(id)}">반품했어요</button>` : ''}<button class="quiet" data-tabgo="records">기록</button>`}</span>`
+      : `<span class="pr"><b class="num">${esc(m.priceText)}</b><span class="nt">${esc(m.priceShort)} · ${esc(m.store)}</span></span><span class="qs"><button class="quiet" data-dec="hold">보류</button><button class="quiet" data-dec="skip">안 살래요</button></span>`;
     $('#bar').innerHTML = `<div class="buybar"><div class="in"><div class="meta">${meta}</div>
       <a class="btn go wide" href="${esc(p.url)}" target="_blank" rel="noopener" data-seller="${id}">판매처에서 사기<i class="ph ph-arrow-up-right"></i></a></div></div>`;
     $$('[data-dec]').forEach((b) => { b.onclick = () => decide(id, b.dataset.dec); });
