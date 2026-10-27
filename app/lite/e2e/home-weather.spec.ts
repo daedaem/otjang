@@ -79,6 +79,29 @@ test("passive owned home and resolved weather leave the wardrobe purchase and re
   ).toContainText("합성 지역");
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(raw);
 });
+test("photo-less home rows keep the vanilla core tile instead of a new placeholder", async ({
+  page,
+}) => {
+  await wx(page);
+  await page.evaluate(() => {
+    const m = (window as any).K.M;
+    m.addGarment({ kind: "shirt", color: "white" });
+    m.addGarment({ kind: "pants", color: "black" });
+    m.addGarment({ kind: "sneaker", color: "white" });
+  });
+  await home(page);
+  const reactBox = page.locator("[data-react-home] .proof .prow .ph-box").first();
+  await expect(reactBox.locator('[data-photo="none"]')).toBeVisible();
+  const reactTile = await reactBox.innerHTML();
+  await page.goto("/?photos=0&ui=vanilla#/");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await home(page);
+  const vanillaTile = await page
+    .locator(".proof .prow .ph-box")
+    .first()
+    .innerHTML();
+  expect(reactTile).toBe(vanillaTile);
+});
 test("late weather resolution and a day change retain the unsubmitted home question", async ({
   page,
 }) => {
