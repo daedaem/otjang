@@ -67,6 +67,7 @@ export type ClosetHost = {
   detail(id: string): void;
   looks(): void;
   collection(): void;
+  mirror(): void;
   registration(id: string): { brand?: string } | null;
 };
 export type LayoutItem = { id: string; measured?: boolean; heightPx?: number };

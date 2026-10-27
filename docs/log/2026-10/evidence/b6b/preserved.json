@@ -1,0 +1,72 @@
+{
+  "base": "990cbbe733eab585d784e149e55d603e51e06c94",
+  "checks": [
+    {
+      "file": "app/lite/src/core.mjs",
+      "equal": true,
+      "sha256": "0cad3005af244684148e697f33d031a02b56d381e907b2b6bc5585955086d8b0"
+    },
+    {
+      "file": "app/lite/src/domain/mirror-draft.js",
+      "equal": true,
+      "sha256": "6625f8c864232b31c197d0ed0f5b5bec7bd97a5895b6ddd31614830bd7cd5d48"
+    },
+    {
+      "file": "app/lite/src/domain/lite-registration.js",
+      "equal": true,
+      "sha256": "505c84b0014c0cd181b5e2f43523aa1cb9e315f42bf8f9ee78e606b7cfca944b"
+    },
+    {
+      "file": "app/lite/src/input-session.js",
+      "equal": true,
+      "sha256": "b181f1fa4dec317dde8b32b64b58cf030405d61cc815c7531fdf13fd01b13825"
+    },
+    {
+      "file": "app/lite/src/photos/photo-backup.js",
+      "equal": true,
+      "sha256": "cd0b5f982880f57019d42474a2ed9926b321248d07a45fd0ddc45992dad3d7b9"
+    },
+    {
+      "file": "app/lite/src/photos/photo-repository.js",
+      "equal": true,
+      "sha256": "de192fac1e5e6e95ab84f9805c1592ad9f372b7a3f0c972bcafa646aea3a507d"
+    },
+    {
+      "file": "app/lite/functions/lib/rank-budget.js",
+      "equal": true,
+      "sha256": "44ae1bcdc6b1b66babadc2b21ef77ab8a64c7f5e9489c35e8123e4feada27675"
+    },
+    {
+      "file": "app/lite/functions/lib/private-access.js",
+      "equal": true,
+      "sha256": "dfaef882400b971dfee8afcd1746ba8acd5574b174546dbf5870d044534614af"
+    },
+    {
+      "file": "app/lite/functions/lib/outfit-rank.js",
+      "equal": true,
+      "sha256": "fe0456522266bafa70e666faee5b265488ea5ffd35e80423fbe43666e87bdb35"
+    },
+    {
+      "file": "app/lite/src/outfits/index.tsx",
+      "equal": true,
+      "sha256": "307429715e70b32bea41bdea973ab01117b53f4c99d2daed3d8f77b7205d0d17"
+    },
+    {
+      "file": "app/lite/src/screen.html",
+      "region": "BK all helpers/format/limits/classify/restore/undo",
+      "equal": true,
+      "sha256": "0495b99b5a9dac91079b1d540c7a505e2deb6a5bb7377e53e3db7f22becd160f"
+    },
+    {
+      "file": "app/lite/functions/api/rank.js",
+      "equal": true,
+      "sha256": "d09c68f2f977d4397edd28cef42507cb7fe670694e7d6d174b5669b9cad71a56"
+    },
+    {
+      "file": "app/lite/src/photos/index.js",
+      "region": "entire existing photo module excluding new pure prepareBodyPhoto export",
+      "equal": true,
+      "sha256": "7751b4b1982e223d6416516f06feb0afb403d56662f27316c11dc80a3043b60d"
+    }
+  ]
+}

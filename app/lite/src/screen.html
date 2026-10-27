@@ -1059,10 +1059,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let measureUnmount = null;
   let collectionUnmount = null;
   let outfitsUnmount = null;
+  let mirrorUnmount = null;
   const outfitSession={query:'내 옷으로 코디',context:{query:'내 옷으로 코디',occasion:null,season:null,styles:[]}};
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
   function render(view, params, dir) {
+    if(view==='mirror'&&curView==='mirror'&&mirrorUnmount&&dir==='none'){renderStrip();return;}
     if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){const node=$('[data-outfit-weather]');if(node&&node.closest('details')?.open){node.innerHTML=weatherHtml({where:'looks'});wireWeather();}renderStrip();return;}
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
     if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
@@ -1072,6 +1074,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     measureUnmount?.(); measureUnmount = null;
     collectionUnmount?.(); collectionUnmount = null;
     outfitsUnmount?.(); outfitsUnmount = null;
+    mirrorUnmount?.(); mirrorUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
@@ -1080,8 +1083,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactCloset = view === 'closet' && window.EOUL_CLOSET_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla';
     const reactMeasure = view === 'measure' && window.EOUL_MEASURE_LOAD;
     const reactCollection = view === 'collection' && window.EOUL_COLLECTION_LOAD;
+    const reactMirror=view==='mirror'&&window.EOUL_MIRROR_LOAD;
     const reactOutfits=view==='looks'&&window.EOUL_OUTFITS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
-    const html = reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const html = reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1089,7 +1093,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if(reactOutfits){
+    if(reactMirror){
+      window.EOUL_MIRROR_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;const p=params.id?M.product(params.id):null;mirrorUnmount=mount({element:$('#react-mirror'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,candidate:p?{id:p.id,brand:p.brand,name:p.name,image:M.photo({id:p.id})}:null,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),closet:()=>K.tab('closet'),backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-mirror').innerHTML='<p role="alert">거울을 열지 못했어요. 저장된 자료는 그대로예요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
+    } else if(reactOutfits){
       window.EOUL_OUTFITS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;outfitsUnmount=mount({element:$('#react-outfits'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,session:outfitSession,mood:params.mood,menu,info:disclose,find:()=>K.tab('home'),add:()=>K.go('add',{}),trial:()=>M.loadTrialCloset(),owned:id=>garmentSheet(id,{focusReturn:document.activeElement}),backup:()=>backupSheet(),product:id=>K.go('detail',{id}),compared:(id,added)=>{if(added&&needAsk(id))S.asking=id;else if(!added&&S.asking===id)S.asking=null;renderStrip({pop:added&&hung().length===1});},query:q=>K.go('results',{q}),scene:moodAsk,weather:node=>{node.innerHTML=weatherHtml({where:'looks'});wireWeather();},request:body=>typeof window.EOUL_SERVER_AI==='function'?window.EOUL_SERVER_AI(body):Promise.reject(Object.assign(Error('AI unavailable'),{code:'not_configured'})),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-outfits').innerHTML='<p role="status">새 코디 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.looks(params);A.looks(params);});
     } else if (reactCollection) {
       window.EOUL_COLLECTION_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;collectionUnmount=mount({element:$('#react-collection'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,productId:params.id,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),owned:garmentSheet,backup:()=>backupSheet(),shelves:()=>K.go('collection',{}),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-collection').innerHTML='<p role="alert">진열장을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
@@ -1101,7 +1107,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         closetUnmount = mount({ element: $('#react-closet'), core: M, namespace: window.EOUL_MOCK_KEY, session: closetSession,
           menu, info: disclose, add: () => K.go('add', {}), quickAdd: addFlow,
           detail: garmentSheet, looks: () => K.tab('looks'), registration: regOf,
-          collection:()=>K.go('collection',{}),
+          collection:()=>K.go('collection',{}), mirror:()=>K.go('mirror',{}),
         });
       }).catch(() => { if (epoch !== inputEpoch) return; $('#react-closet').innerHTML = '<p role="status">새 화면을 불러오지 못해 기존 옷장으로 열었어요. 연결되면 다시 열어 주세요.</p>' + V.closet(params); A.closet(params); });
     } else if (reactInput) {
@@ -1120,7 +1126,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }).catch(() => { if (epoch === inputEpoch) $('#react-input').innerHTML = '<p role="alert">입력 화면을 불러오지 못했어요. 연결을 확인한 뒤 다시 열어 주세요.</p><button class="btn" data-back>돌아가기</button>'; });
     } else (A[view] || (() => {}))(params);
     // 주소는 보기용으로만 따라간다(#/p/<id> 등). 이동 자체는 K 라우터의 쌓기식 기록이 맡는다.
-    const hash = view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
+    const hash = view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'mirror' ? M.route.href('/mirror',params.id?{id:params.id}:{}) : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
     try { if (location.hash !== hash) history.replaceState(history.state, '', hash); } catch {}
   }
   // 위 막대. 설명문은 화면에 늘어놓지 않고 ⓘ 하나로 모은다(탭 첫 화면은 이름 옆, 쌓인 화면은 오른쪽 끝).
@@ -1324,6 +1330,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           <p class="t6" style="margin-top:6px">${esc(p.colorLabel)} · ${esc(p.slotName)}${p.rating ? ` · 평점 ${esc(p.rating)} · 후기 ${Number(p.reviews || 0).toLocaleString('ko-KR')}개` : ''}</p></div>
         <button class="btn line wide" data-measure="${id}" style="margin:14px 0"><i class="ph ph-ruler" aria-hidden="true"></i>내 기준 옷과 실측 비교</button>
         <button class="quiet" data-collection="${id}" style="margin-bottom:14px">활용·소장 가치 비교 →</button>
+        <button class="quiet" data-mirror="${id}" style="margin-bottom:14px">내 사진 거울 옆에 놓고 보기 →</button>
         ${ai?.reason ? `<section class="box ai-why" aria-label="AI 이유"><div class="label"><i class="ph-fill ph-sparkle"></i>AI 순위 ${ai.rank}위${ai.fit ? ` · ${esc(ai.fit)}` : ''}</div><p class="h3">${esc(ai.reason)}</p></section>` : ''}
         <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
           <h2 class="h2">${head}</h2>
@@ -1602,9 +1609,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
+    const t = e.target.closest('[data-back],[data-mirror],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
     if (!t) return;
-    if (t.hasAttribute('data-back')) K.back(curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    if (t.hasAttribute('data-back')) K.back(curView==='mirror'?(curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}):curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    else if(t.hasAttribute('data-mirror')) K.go('mirror',t.dataset.mirror?{id:t.dataset.mirror}:{});
     else if (t.hasAttribute('data-collection')) K.go('collection',t.dataset.collection?{id:t.dataset.collection}:{});
     else if (t.hasAttribute('data-measure')) K.go('measure',{id:t.dataset.measure});
     else if (t.hasAttribute('data-rakuten-search')) searchRakuten(t);
@@ -2458,7 +2466,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
+  K.start(render, { view: !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   const storageNotice = () => {
     document.getElementById('eo-storage-issue')?.remove();

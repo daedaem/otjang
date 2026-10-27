@@ -545,6 +545,9 @@ function Closet({ host }: { host: ClosetHost }) {
           <button type="button" className="btn line wide" onClick={host.looks}>
             내 옷 코디 보기
           </button>
+          <button type="button" className="quiet" onClick={host.mirror}>
+            내 사진 거울 보기
+          </button>
         </aside>
       </div>
       {!!chosen.length &&

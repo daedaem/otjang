@@ -59,6 +59,10 @@ export async function imageDimensions(file) {
     );
   return { width: img.naturalWidth, height: img.naturalHeight };
 }
+export async function prepareBodyPhoto(file) {
+  const size = await imageDimensions(file);
+  return photoRecord(file, { role: "body", ...size });
+}
 const thumbnails = new Map();
 let activeDecodes = 0;
 const decodeWaiters = [];
