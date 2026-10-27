@@ -1,0 +1,192 @@
+{
+  "work": "WO-05 purchase records (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic decisions/records/collection note; no personal data; records are the person’s own notes, not confirmed transactions",
+  "browser": "Playwright 1.57 Chromium, reducedMotion reduce, service workers blocked, full-page capture with CSS animations disabled",
+  "states": {
+    "empty": "정한 옷 없음",
+    "hold": "보류 1벌만",
+    "mixed": "살게요 2·보류 1·안 살래요 1, 걸어 본 옷 1(아래 띠)",
+    "ordered": "주문함",
+    "received": "받음 → 계속 입을게요·반품",
+    "kept": "계속 입는 옷",
+    "returned": "반품(색)",
+    "collect": "소장 목적 메모 + 받음 → 계속 소장할게요",
+    "collect-kept": "소장 목적 + 계속 소장하는 내 옷",
+    "worn": "오늘 입었어요 기록 + 안 살래요 1"
+  },
+  "kept": [
+    "claude-records-collect-mobile.png",
+    "claude-records-mixed-mobile.png",
+    "claude-records-received-mobile.png",
+    "claude-records-returned-mobile.png"
+  ],
+  "variants": {
+    "rec": {
+      "variant": "mobile Pixel 7, ?photos=0",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "f7b11142157be674a606fc2be3e550012dcd88e0d4e1a886c576c747cf5bc9b4",
+          "react_sha256": "f7b11142157be674a606fc2be3e550012dcd88e0d4e1a886c576c747cf5bc9b4",
+          "same": true
+        },
+        "hold": {
+          "vanilla_sha256": "d78eb05d4612f6c0b345d654a98e8967f3d1162b2fc81c46af12264bb0855b36",
+          "react_sha256": "d78eb05d4612f6c0b345d654a98e8967f3d1162b2fc81c46af12264bb0855b36",
+          "same": true
+        },
+        "mixed": {
+          "vanilla_sha256": "53ee9d882cfef320836491fbc0eb9c63467161572c2ee9668ab4d6b1a0415f1a",
+          "react_sha256": "53ee9d882cfef320836491fbc0eb9c63467161572c2ee9668ab4d6b1a0415f1a",
+          "same": true
+        },
+        "ordered": {
+          "vanilla_sha256": "2787e79d73848738de7cda2d842f563eabdd1c2a165b0e09b93efb5d0f76169d",
+          "react_sha256": "2787e79d73848738de7cda2d842f563eabdd1c2a165b0e09b93efb5d0f76169d",
+          "same": true
+        },
+        "received": {
+          "vanilla_sha256": "5c2aaf604db4de8779ca1cd4dd967af1860fe16d8bd644981c41d884c82c1d5b",
+          "react_sha256": "5c2aaf604db4de8779ca1cd4dd967af1860fe16d8bd644981c41d884c82c1d5b",
+          "same": true
+        },
+        "kept": {
+          "vanilla_sha256": "90e5f62b8254a7f872d07bfaa5184ae8560a54c2bc9d594f67ada84db95d72e4",
+          "react_sha256": "90e5f62b8254a7f872d07bfaa5184ae8560a54c2bc9d594f67ada84db95d72e4",
+          "same": true
+        },
+        "returned": {
+          "vanilla_sha256": "3d7c181d49e0b5c66075003177f2a779fd5dd58abd6c540eb73e3b98c5823b34",
+          "react_sha256": "3d7c181d49e0b5c66075003177f2a779fd5dd58abd6c540eb73e3b98c5823b34",
+          "same": true
+        },
+        "collect": {
+          "vanilla_sha256": "79cde21b5ef6a842120e9f82868ebb3304f10ff3125d315c8953aa46261eb229",
+          "react_sha256": "79cde21b5ef6a842120e9f82868ebb3304f10ff3125d315c8953aa46261eb229",
+          "same": true
+        },
+        "collect-kept": {
+          "vanilla_sha256": "9fbb54b78f7d08d2efc6e1db3ff85bdfbcfe46a8d2a0ea49e5f57f03d89135c3",
+          "react_sha256": "9fbb54b78f7d08d2efc6e1db3ff85bdfbcfe46a8d2a0ea49e5f57f03d89135c3",
+          "same": true
+        },
+        "worn": {
+          "vanilla_sha256": "4713acdd0d1a733016dbb524030636feac111243881de47dff70033ae7180c24",
+          "react_sha256": "4713acdd0d1a733016dbb524030636feac111243881de47dff70033ae7180c24",
+          "same": true
+        }
+      }
+    },
+    "recph": {
+      "variant": "mobile Pixel 7, photos enabled (external photo requests blocked → alt text)",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "f7b11142157be674a606fc2be3e550012dcd88e0d4e1a886c576c747cf5bc9b4",
+          "react_sha256": "f7b11142157be674a606fc2be3e550012dcd88e0d4e1a886c576c747cf5bc9b4",
+          "same": true
+        },
+        "hold": {
+          "vanilla_sha256": "998abce74b8ff21573b901e272342ce09e45bb4d2b398fcd8aaaf21b74efa55b",
+          "react_sha256": "998abce74b8ff21573b901e272342ce09e45bb4d2b398fcd8aaaf21b74efa55b",
+          "same": true
+        },
+        "mixed": {
+          "vanilla_sha256": "7dbbd461eb0db81b9f1e13dc337ebe8eefac3032c7088f4afc73349bf8553d5a",
+          "react_sha256": "7dbbd461eb0db81b9f1e13dc337ebe8eefac3032c7088f4afc73349bf8553d5a",
+          "same": true
+        },
+        "ordered": {
+          "vanilla_sha256": "14af4168c0c65352d0cd8994d0cca0bb28e33714e80d9d36b15cd77b2b8a5351",
+          "react_sha256": "14af4168c0c65352d0cd8994d0cca0bb28e33714e80d9d36b15cd77b2b8a5351",
+          "same": true
+        },
+        "received": {
+          "vanilla_sha256": "b38c48249dcad75229c98f9b42fadde414552c82fddfbd9032b2f5f25959b852",
+          "react_sha256": "b38c48249dcad75229c98f9b42fadde414552c82fddfbd9032b2f5f25959b852",
+          "same": true
+        },
+        "kept": {
+          "vanilla_sha256": "72992247c4859820054261643fb1479d1a5bf50e74140007f7e5ba6e8eb01ae7",
+          "react_sha256": "72992247c4859820054261643fb1479d1a5bf50e74140007f7e5ba6e8eb01ae7",
+          "same": true
+        },
+        "returned": {
+          "vanilla_sha256": "cfc4820f631da123fdb1813c0b2c101b621f4d989385c9708d169c3f5d67c248",
+          "react_sha256": "cfc4820f631da123fdb1813c0b2c101b621f4d989385c9708d169c3f5d67c248",
+          "same": true
+        },
+        "collect": {
+          "vanilla_sha256": "f30b4c5a65d9042224a1696fcf1a5008e67d8a654dfd11fa6c2a085e578b2719",
+          "react_sha256": "f30b4c5a65d9042224a1696fcf1a5008e67d8a654dfd11fa6c2a085e578b2719",
+          "same": true
+        },
+        "collect-kept": {
+          "vanilla_sha256": "5c8354ecf30638d23a06f4ed693eeaba9448f95ccd3db467025701dccd1c8c20",
+          "react_sha256": "5c8354ecf30638d23a06f4ed693eeaba9448f95ccd3db467025701dccd1c8c20",
+          "same": true
+        },
+        "worn": {
+          "vanilla_sha256": "1f7668fc1993c8905f299a35f966eb1b61f5a114a71e265f0888e103bbe97eb7",
+          "react_sha256": "1f7668fc1993c8905f299a35f966eb1b61f5a114a71e265f0888e103bbe97eb7",
+          "same": true
+        }
+      }
+    },
+    "recdesk": {
+      "variant": "desktop 1280x900, ?photos=0",
+      "pairs": {
+        "empty": {
+          "vanilla_sha256": "d8a857cf11bf1614639763524930383fe6adbc60f0729b751531239f40d2bee4",
+          "react_sha256": "d8a857cf11bf1614639763524930383fe6adbc60f0729b751531239f40d2bee4",
+          "same": true
+        },
+        "hold": {
+          "vanilla_sha256": "80dc29ad0b7105f884867b4a11a00c90a23886b18fddf7120d91f6869dbefb61",
+          "react_sha256": "80dc29ad0b7105f884867b4a11a00c90a23886b18fddf7120d91f6869dbefb61",
+          "same": true
+        },
+        "mixed": {
+          "vanilla_sha256": "0ac92063d229fab985d3a0429720860f9705aacbd1999509cb84ca14f3741f5f",
+          "react_sha256": "0ac92063d229fab985d3a0429720860f9705aacbd1999509cb84ca14f3741f5f",
+          "same": true
+        },
+        "ordered": {
+          "vanilla_sha256": "60e80e161177795d3e117ae575398913f9f6a94fc5af1eb4d721afdd2f3c3ae0",
+          "react_sha256": "60e80e161177795d3e117ae575398913f9f6a94fc5af1eb4d721afdd2f3c3ae0",
+          "same": true
+        },
+        "received": {
+          "vanilla_sha256": "687ee9bc59b4cde0398cb48ec5e3006541cb4a0bf418dbe9430c30e3a43a82d1",
+          "react_sha256": "687ee9bc59b4cde0398cb48ec5e3006541cb4a0bf418dbe9430c30e3a43a82d1",
+          "same": true
+        },
+        "kept": {
+          "vanilla_sha256": "79d4e413be338768114bb514728d9b5cdd72c57842ad47685ee6aafa627e92dc",
+          "react_sha256": "79d4e413be338768114bb514728d9b5cdd72c57842ad47685ee6aafa627e92dc",
+          "same": true
+        },
+        "returned": {
+          "vanilla_sha256": "3bb4c4b18accfb73ad52febfca7822abd8b44ebe84c2148ee44b63f28f559fe5",
+          "react_sha256": "3bb4c4b18accfb73ad52febfca7822abd8b44ebe84c2148ee44b63f28f559fe5",
+          "same": true
+        },
+        "collect": {
+          "vanilla_sha256": "3fd48d9be8296e8a04c60b4b33b3fa12b93788eba533faf65e951c4a898bc157",
+          "react_sha256": "3fd48d9be8296e8a04c60b4b33b3fa12b93788eba533faf65e951c4a898bc157",
+          "same": true
+        },
+        "collect-kept": {
+          "vanilla_sha256": "694eeadfde5e70b2da6cf578d3b21a0cdae3bba3ef916fa448469241d577b73d",
+          "react_sha256": "694eeadfde5e70b2da6cf578d3b21a0cdae3bba3ef916fa448469241d577b73d",
+          "same": true
+        },
+        "worn": {
+          "vanilla_sha256": "8a69e31526b95718fc9cb01c7dfd7bce82bd779f119e84d4c5bb71d637f42492",
+          "react_sha256": "8a69e31526b95718fc9cb01c7dfd7bce82bd779f119e84d4c5bb71d637f42492",
+          "same": true
+        }
+      }
+    }
+  },
+  "notMeasured": "WebKit (CI only), real devices, records restored from a real backup"
+}
