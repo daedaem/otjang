@@ -1611,7 +1611,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   document.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-back],[data-mirror],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
     if (!t) return;
-    if (t.hasAttribute('data-back')) K.back(curView==='mirror'?(curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}):curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    if (t.hasAttribute('data-back')) K.back(curView==='add'?{view:'closet',params:{}}:curView==='mirror'?(curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}):curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
     else if(t.hasAttribute('data-mirror')) K.go('mirror',t.dataset.mirror?{id:t.dataset.mirror}:{});
     else if (t.hasAttribute('data-collection')) K.go('collection',t.dataset.collection?{id:t.dataset.collection}:{});
     else if (t.hasAttribute('data-measure')) K.go('measure',{id:t.dataset.measure});
@@ -2466,7 +2466,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
+  K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   const storageNotice = () => {
     document.getElementById('eo-storage-issue')?.remove();
@@ -2512,7 +2512,6 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   else if (/^\/p\/.+/.test(r0.path)) K.go('detail', { id: r0.path.slice(3) });
   else if (r0.path === '/search' && r0.params.q) K.go('results', { q: r0.params.q });
   else if (['/records', '/consult', '/looks'].includes(r0.path)) K.tab(r0.path.slice(1));
-  else if (r0.path === '/add') K.go('add', {});
   else if (r0.path === '/reg') K.go('reg', {});
   else if (r0.path === '/compare') K.go('compare', {});
 })();
