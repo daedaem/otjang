@@ -1,0 +1,134 @@
+{
+  "work": "WO-08b tabs, hanger strip, toast and storage notice (React) vs ?ui=vanilla",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic closet; storage made unreadable with a synthetic '{broken' value; network outside the local test server blocked; no personal data",
+  "browser": "Playwright 1.57 Chromium headless shell, reducedMotion reduce, service workers blocked, CSS animations disabled",
+  "capture": "Element captures of #tabs, #strip, .k-toast and #eo-storage-issue with #app and #bar removed from layout and a grey page background. Full-page captures are not comparable here because ?ui=vanilla also switches the screens behind the chrome (for example the closet island).",
+  "states": {
+    "tabs-closet": "옷장 탭(현재 탭 옷장)",
+    "tabs-records": "기록 탭",
+    "strip": "찾기 탭 + 걸어 본 옷 2벌 → 옷걸이 띠",
+    "detail": "상품 상세(탭 숨김 — 두 방식 모두 탭·띠가 보이지 않아 캡처 없음)",
+    "toast": "옷장에서 알림(bottom 128)",
+    "notice": "읽을 수 없는 옷장 → 저장소 안내",
+    "notice-photo": "읽을 수 없는 옷장 + 사진 백업 복구 대기 → 안내(새로 시작 버튼 없음)"
+  },
+  "variants": {
+    "ch": {
+      "variant": "mobile Pixel 7, ?photos=0",
+      "pairs": {
+        "notice-photo~notice": {
+          "vanilla_sha256": "e98ebf2d5e542e54541283f61c5118259664878afe62b263fbfe5ade12ee0b3c",
+          "react_sha256": "e98ebf2d5e542e54541283f61c5118259664878afe62b263fbfe5ade12ee0b3c",
+          "same": true
+        },
+        "notice-photo~tabs": {
+          "vanilla_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "react_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "same": true
+        },
+        "notice~notice": {
+          "vanilla_sha256": "9cf7c9ec5b74703b749b1a51dc72422472675183962a00635efacf4c5cca02c6",
+          "react_sha256": "9cf7c9ec5b74703b749b1a51dc72422472675183962a00635efacf4c5cca02c6",
+          "same": true
+        },
+        "notice~tabs": {
+          "vanilla_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "react_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "same": true
+        },
+        "strip~strip": {
+          "vanilla_sha256": "e50d875eeb5dcbe4e96ab262aa5af30f4fa9904258583078919d02948ca5038b",
+          "react_sha256": "e50d875eeb5dcbe4e96ab262aa5af30f4fa9904258583078919d02948ca5038b",
+          "same": true
+        },
+        "strip~tabs": {
+          "vanilla_sha256": "a2e3e4a75affc93392ff188fca475dbc6935c83fe317cacd52a9056cd9fe3a34",
+          "react_sha256": "a2e3e4a75affc93392ff188fca475dbc6935c83fe317cacd52a9056cd9fe3a34",
+          "same": true
+        },
+        "tabs-closet~tabs": {
+          "vanilla_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "react_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "same": true
+        },
+        "tabs-records~tabs": {
+          "vanilla_sha256": "02a9b4c34e625a59712acbc681fc33e9a88ef15ad005b60256e44200d91c051e",
+          "react_sha256": "02a9b4c34e625a59712acbc681fc33e9a88ef15ad005b60256e44200d91c051e",
+          "same": true
+        },
+        "toast~tabs": {
+          "vanilla_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "react_sha256": "88f95da034fd3a6a51dd6b63554a3106da3347d6b44793ff3987737d3efd246b",
+          "same": true
+        },
+        "toast~toast": {
+          "vanilla_sha256": "2a653de629e98d10a9aa290ee1cd766b7d44f893c0d4a71edb8607b5a6228ab0",
+          "react_sha256": "2a653de629e98d10a9aa290ee1cd766b7d44f893c0d4a71edb8607b5a6228ab0",
+          "same": true
+        }
+      }
+    },
+    "chdesk": {
+      "variant": "desktop 1280x900, ?photos=0",
+      "pairs": {
+        "notice-photo~notice": {
+          "vanilla_sha256": "b66a3b5fe363cf4e727054f0acb6d695908f7cac910182a0e21083d7cfafbe0f",
+          "react_sha256": "b66a3b5fe363cf4e727054f0acb6d695908f7cac910182a0e21083d7cfafbe0f",
+          "same": true
+        },
+        "notice-photo~tabs": {
+          "vanilla_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "react_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "same": true
+        },
+        "notice~notice": {
+          "vanilla_sha256": "825398fab1358f70579775ed283d123a72aeb61bfa2415b9e3f745bc953a6dfd",
+          "react_sha256": "825398fab1358f70579775ed283d123a72aeb61bfa2415b9e3f745bc953a6dfd",
+          "same": true
+        },
+        "notice~tabs": {
+          "vanilla_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "react_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "same": true
+        },
+        "strip~strip": {
+          "vanilla_sha256": "57617d97605ad2ae9bc2f3f4c9c98dd00561f03d34b7edd9b533b54de09b8475",
+          "react_sha256": "57617d97605ad2ae9bc2f3f4c9c98dd00561f03d34b7edd9b533b54de09b8475",
+          "same": true
+        },
+        "strip~tabs": {
+          "vanilla_sha256": "c75b11ab34bf004ae383625e3217a699545a85aedd0e749118dbf9ea94a444b1",
+          "react_sha256": "c75b11ab34bf004ae383625e3217a699545a85aedd0e749118dbf9ea94a444b1",
+          "same": true
+        },
+        "tabs-closet~tabs": {
+          "vanilla_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "react_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "same": true
+        },
+        "tabs-records~tabs": {
+          "vanilla_sha256": "1ba39c15135f19caf93eb076a43f96a6320b6481838c39a497b33bb1010d2b92",
+          "react_sha256": "1ba39c15135f19caf93eb076a43f96a6320b6481838c39a497b33bb1010d2b92",
+          "same": true
+        },
+        "toast~tabs": {
+          "vanilla_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "react_sha256": "d14560cbd18e5885158157d7e899cee46b2be5713bf0173d7efd26fb2d751c82",
+          "same": true
+        },
+        "toast~toast": {
+          "vanilla_sha256": "e4294d1577a79ba39de661aef7df032440d8b873990e0ffc7e3054e9d7de74c3",
+          "react_sha256": "e4294d1577a79ba39de661aef7df032440d8b873990e0ffc7e3054e9d7de74c3",
+          "same": true
+        }
+      }
+    }
+  },
+  "kept": [
+    "claude-chrome-strip-strip-mobile.png",
+    "claude-chrome-notice-notice-mobile.png",
+    "claude-chrome-toast-toast-mobile.png",
+    "claude-chrome-tabs-closet-tabs-mobile.png"
+  ]
+}
