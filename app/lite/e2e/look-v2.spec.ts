@@ -210,3 +210,37 @@ test("small grey text meets 4.5:1 in the new look", async ({ page }) => {
   await open(page);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink3").trim())).toBe("#6a6a74");
 });
+
+// Panel D+ step 2: the closet shows the clothes, not text. In the new look the
+// photos are about 1.5x taller (lengths keep their ratio), the name is one line,
+// 체험용 sits on the photo, and info / my photo are small icon buttons.
+async function closet(page: Page, search = "") {
+  await page.goto(`/?photos=0${search}#/closet`);
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.refresh(); });
+  await expect(page.locator(".wr-card").first()).toBeVisible();
+}
+test("the new look's closet shows bigger clothes with less text", async ({ page }) => {
+  await closet(page);
+  const card = page.locator(".wr-card").first();
+  const pic = await card.locator("[data-garment-height]").boundingBox();
+  expect(pic!.height).toBeGreaterThanOrEqual(150);
+  await expect(card.locator(".wr-trial-chip")).toBeVisible();
+  await expect(card.locator(".wr-trial-chip")).toHaveText("체험용");
+  await expect(card.locator(".wr-meta")).toBeHidden();
+  const info = card.getByRole("button", { name: /옷 정보$/ });
+  await expect(info).toBeVisible();
+  const box = await info.boundingBox();
+  expect(box!.width).toBeLessThanOrEqual(48);
+  // The name stays on one line.
+  const name = await card.locator(".wr-card-name").boundingBox();
+  expect(name!.height).toBeLessThanOrEqual(22);
+});
+test("the previous look keeps the closet as it was", async ({ page }) => {
+  await closet(page, "&look=v1");
+  const card = page.locator(".wr-card").first();
+  const pic = await card.locator("[data-garment-height]").boundingBox();
+  expect(pic!.height).toBeLessThan(120);
+  await expect(card.locator(".wr-meta")).toBeVisible();
+  await expect(card.locator(".wr-trial-chip")).toBeHidden();
+});
