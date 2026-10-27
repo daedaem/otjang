@@ -1,4 +1,4 @@
-진행 중: WO-01 홈 React 마무리(담당 Claude 패션 Opus 5.5, PR #89). 2026-10-27 접수·쓰기 권한 연결 완료. Codex 새 구현·병합 중단 유지. WO별 완료/남음/막힘은 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
+진행 중: WO-02 날씨·지역 공유 React(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-02-weather-20261027`). WO-01 홈은 #89로 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
 
 # 현재 개발 계획과 완료 기준
 
