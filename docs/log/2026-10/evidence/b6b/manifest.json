@@ -1,0 +1,65 @@
+{
+  "base": "990cbbe733eab585d784e149e55d603e51e06c94",
+  "mode": "local synthetic PNG and UI capture; no personal photo or live AI",
+  "actualDevices": false,
+  "images": [
+    {
+      "file": "mirror-calibrated-mobile-chromium.png",
+      "sha256": "b0abd16fd69cd6eda9e788877bf73aac15465fbb6eeeb4dc31351367d7e8b847",
+      "state": "calibrated local canvas PNG / own synthetic garment PNG; normal text"
+    },
+    {
+      "file": "mirror-calibrated-mobile-webkit.png",
+      "sha256": "85760ebbc578d184e2d28cf601c1924d95e51ef26f28616c563c1c6d5b1c315f",
+      "state": "calibrated local canvas PNG / own synthetic garment PNG; normal text"
+    },
+    {
+      "file": "mirror-desktop-mobile-chromium.png",
+      "sha256": "1e1aaba0420b4a36133897c9415f15cc1157869996e62d01258874c14fc0a8b5",
+      "state": "calibrated local canvas PNG / own synthetic garment PNG; normal text"
+    },
+    {
+      "file": "mirror-desktop-mobile-webkit.png",
+      "sha256": "e00b20da6e79eb05e6c80ac75bd8d861995339ba1d17b964ae5d498a77ce2399",
+      "state": "calibrated local canvas PNG / own synthetic garment PNG; normal text"
+    }
+  ],
+  "sources": [
+    {
+      "file": "app/lite/src/mirror/index.tsx",
+      "sha256": "0be2177f3957804ab750b012da12751aa2d02849491463fdcb56793ca74d6a41"
+    },
+    {
+      "file": "app/lite/src/mirror/Stage.tsx",
+      "sha256": "36acb406ba2e260d2e3fa9d2b0b437696e23f42788d637d48d64e4992631defc"
+    },
+    {
+      "file": "app/lite/src/mirror/local-photo.ts",
+      "sha256": "0b6bd6898e433beaa5043c95bb4d627138eb08e8d7c5f2b2f7e180d845770f42"
+    },
+    {
+      "file": "app/lite/src/mirror/mirror.css",
+      "sha256": "a1cf1ced745793bca52ce772b129f37c2ef36e9eb1bf69e81d37e6db5d46a5d7"
+    },
+    {
+      "file": "app/lite/src/mirror/session.js",
+      "sha256": "ebc08eabefee9d69800e58605a36444947800239f693e088346589d657356eed"
+    },
+    {
+      "file": "app/lite/src/screen.html",
+      "sha256": "add9d836328332498bc5f2ab97e64a51b1a8fa2e12e041f52f8c2f48c6959c34"
+    },
+    {
+      "file": "app/lite/src/photos/index.js",
+      "sha256": "78ff358e1a69d75be062a972b0ab998e1d1deaef49d407a3d55b636e771b77a1"
+    },
+    {
+      "file": "app/lite/build.mjs",
+      "sha256": "3edbc025092798026bb1ce4a9cf73968996aa5b0f7ac4b8c13a0b25c64ee9017"
+    },
+    {
+      "file": "app/lite/e2e/mirror.spec.ts",
+      "sha256": "1af93facf31f4fa25a1f0c3495f4b004ba227373776cd7cd072cd516887a0a6c"
+    }
+  ]
+}
