@@ -22,7 +22,7 @@
 :root {
   --bg: #fbfbfa; --surface: #ffffff; --well: #f0f0ed; --tile: #ededea; --ptile: #efefec;
   --ink: #1b1b19; --ink2: #55554f; --ink3: #7c7c75; --line: #e2e2de;
-  --brand: #1f3f80;
+  --brand: #5b3a24;
   --acc: #e4571e; --acc-text: #b23c0b; --acc-soft: #fdebe2; --btn-bg: #c94612; --btn-fg: #ffffff;
   --dim: rgba(0, 0, 0, .45); --shadow: 0 10px 28px rgba(40, 30, 20, .12);
   --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
@@ -33,13 +33,13 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #141412; --surface: #1c1c19; --well: #252521; --tile: #2b2b27; --ptile: #e6e6e2;
   --ink: #f3f3ef; --ink2: #c8c8c0; --ink3: #9a9a92; --line: #31312c;
-  --brand: #86a3d6;
+  --brand: #c4996b;
   --acc: #ff6b2c; --acc-text: #ff9a6b; --acc-soft: #3a2116; --btn-bg: #ff7a3d; --btn-fg: #1b0c05;
   --dim: rgba(0, 0, 0, .62); --shadow: 0 10px 28px rgba(0, 0, 0, .5); --tile-on-well: #e6e6e2; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #141412; --surface: #1c1c19; --well: #252521; --tile: #2b2b27; --ptile: #e6e6e2;
   --ink: #f3f3ef; --ink2: #c8c8c0; --ink3: #9a9a92; --line: #31312c;
-  --brand: #86a3d6;
+  --brand: #c4996b;
   --acc: #ff6b2c; --acc-text: #ff9a6b; --acc-soft: #3a2116; --btn-bg: #ff7a3d; --btn-fg: #1b0c05;
   --dim: rgba(0, 0, 0, .62); --shadow: 0 10px 28px rgba(0, 0, 0, .5); --tile-on-well: #e6e6e2; color-scheme: dark; }
 * { box-sizing: border-box; }
@@ -578,12 +578,12 @@ a { color: inherit; text-decoration: none; }
 
 /* ── WO-11 새 디자인(v2, 기본): :root[data-look="v2"]에 적용. 위의 기본 규칙은 '이전 디자인'(?look=v1)이다.
    방향: 고급 패션 매장처럼 조용하게, 옷 사진이 먼저. 화면은 무채색(흰 바탕·잉크·중립 회색)이고 색은 옷이 가진다
-   (10-28 00:04 대표). Daedaem 딥 네이비(--brand)는 로고 'it'과 앱 아이콘에만 쓴다.
+   (10-28 00:04 대표). 브랜드색(--brand)은 나무 옷걸이 같은 월넛(10-28 00:07 대표)이고 로고 'it'과 앱 아이콘에만 쓴다.
    상자와 알약 줄이기(얇은 선과 여백으로 구분), 굵기 낮추기(800 → 600~700), 사진 칸 각진 모서리(2px)·크게. */
 :root[data-look="v2"] {
   --bg: #ffffff; --surface: #ffffff; --well: #f7f7f8; --tile: #f4f4f5; --ptile: #f4f4f5; --tile-on-well: #ffffff;
   --ink: #202025; --ink2: #555560; --ink3: #7a7a85; --line: #e6e6ea;
-  --brand: #1f3f80;
+  --brand: #5b3a24;
   --acc: #202025; --acc-text: #202025; --acc-soft: #f1f1f3; --btn-bg: #202025; --btn-fg: #ffffff;
   --dim: rgba(13, 16, 15, .48); --shadow: 0 12px 32px rgba(13, 16, 15, .14), 0 2px 8px rgba(13, 16, 15, .08);
   --r: 8px;
@@ -591,13 +591,13 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-color-scheme: dark) { :root[data-look="v2"]:not([data-theme="light"]) {
   --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
   --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
-  --brand: #86a3d6;
+  --brand: #c4996b;
   --acc: #f7f7f8; --acc-text: #f7f7f8; --acc-soft: #2a2a30; --btn-bg: #f7f7f8; --btn-fg: #151519;
   --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); } }
 :root[data-look="v2"][data-theme="dark"] {
   --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
   --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
-  --brand: #86a3d6;
+  --brand: #c4996b;
   --acc: #f7f7f8; --acc-text: #f7f7f8; --acc-soft: #2a2a30; --btn-bg: #f7f7f8; --btn-fg: #151519;
   --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); }
 /* 글자: 굵기를 낮추고 단계를 줄인다(제목 26 · 20 · 16, 본문 15, 작은 글자 12). */
