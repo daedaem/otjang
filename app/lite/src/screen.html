@@ -577,13 +577,14 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) { .view, .hg.swing, .strip.pop, .hangt.pop span, .shelfbar.pop .ths .ph-box:last-child { animation: none !important; } .btn, .top, .hangt span { transition: none; } }
 
 /* ── WO-11 새 디자인(v2, 기본): :root[data-look="v2"]에 적용. 위의 기본 규칙은 '이전 디자인'(?look=v1)이다.
-   방향: 고급 패션 매장처럼 조용하게, 옷 사진이 먼저. Daedaem 1.1.1 색(흰 바탕·잉크·중립 회색·딥 네이비),
+   방향: 고급 패션 매장처럼 조용하게, 옷 사진이 먼저. 화면은 무채색(흰 바탕·잉크·중립 회색)이고 색은 옷이 가진다
+   (10-28 00:04 대표). Daedaem 딥 네이비(--brand)는 로고 'it'과 앱 아이콘에만 쓴다.
    상자와 알약 줄이기(얇은 선과 여백으로 구분), 굵기 낮추기(800 → 600~700), 사진 칸 각진 모서리(2px)·크게. */
 :root[data-look="v2"] {
   --bg: #ffffff; --surface: #ffffff; --well: #f7f7f8; --tile: #f4f4f5; --ptile: #f4f4f5; --tile-on-well: #ffffff;
   --ink: #202025; --ink2: #555560; --ink3: #7a7a85; --line: #e6e6ea;
   --brand: #1f3f80;
-  --acc: #1f3f80; --acc-text: #1f3f80; --acc-soft: #eef3fb; --btn-bg: #1f3f80; --btn-fg: #ffffff;
+  --acc: #202025; --acc-text: #202025; --acc-soft: #f1f1f3; --btn-bg: #202025; --btn-fg: #ffffff;
   --dim: rgba(13, 16, 15, .48); --shadow: 0 12px 32px rgba(13, 16, 15, .14), 0 2px 8px rgba(13, 16, 15, .08);
   --r: 8px;
 }
@@ -591,13 +592,13 @@ a { color: inherit; text-decoration: none; }
   --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
   --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
   --brand: #86a3d6;
-  --acc: #86a3d6; --acc-text: #b3c6e8; --acc-soft: #12254d; --btn-bg: #86a3d6; --btn-fg: #151519;
+  --acc: #f7f7f8; --acc-text: #f7f7f8; --acc-soft: #2a2a30; --btn-bg: #f7f7f8; --btn-fg: #151519;
   --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); } }
 :root[data-look="v2"][data-theme="dark"] {
   --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
   --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
   --brand: #86a3d6;
-  --acc: #86a3d6; --acc-text: #b3c6e8; --acc-soft: #12254d; --btn-bg: #86a3d6; --btn-fg: #151519;
+  --acc: #f7f7f8; --acc-text: #f7f7f8; --acc-soft: #2a2a30; --btn-bg: #f7f7f8; --btn-fg: #151519;
   --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); }
 /* 글자: 굵기를 낮추고 단계를 줄인다(제목 26 · 20 · 16, 본문 15, 작은 글자 12). */
 :root[data-look="v2"] body { font-size: 15px; letter-spacing: -.008em; }
@@ -619,7 +620,7 @@ a { color: inherit; text-decoration: none; }
 :root[data-look="v2"] .tabs button[aria-current="page"] { font-weight: 650; }
 :root[data-look="v2"] .tabs button i { font-size: 23px; }
 :root[data-look="v2"] .strip .in { font-weight: 600; }
-:root[data-look="v2"] .strip .in i { color: #b3c6e8; }
+:root[data-look="v2"] .strip .in i { color: #c4c4cb; }
 /* 사진 칸: 각진 모서리, 회색 하나, 걸기 토글은 작게. */
 :root[data-look="v2"] .ph-box { border-radius: 2px; }
 :root[data-look="v2"] .hangt span { width: 30px; height: 30px; font-size: 17px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
@@ -631,7 +632,7 @@ a { color: inherit; text-decoration: none; }
 :root[data-look="v2"] .pdp-photo .hangt.big[aria-pressed="true"] span::after { content: "걸어 보는 중"; }
 :root[data-look="v2"] .ph-box .tag { border-radius: 2px; font-weight: 600; background: rgba(32, 32, 37, .86); }
 :root[data-look="v2"] .hslot .rank { border-radius: 2px; font-weight: 650; background: rgba(32, 32, 37, .86); }
-:root[data-look="v2"] .hslot .rank i { color: #b3c6e8; }
+:root[data-look="v2"] .hslot .rank i { color: #c4c4cb; }
 /* 홈: 검색창은 얇은 선, 날씨·보기 상자는 상자 대신 선으로 나눈 구역. */
 :root[data-look="v2"] .ask input { height: 52px; border: 1px solid var(--ink); border-radius: 8px; font-size: 16px; }
 :root[data-look="v2"] .ask button { width: 52px; height: 52px; border-radius: 8px; font-size: 22px; }
