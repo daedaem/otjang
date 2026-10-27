@@ -32,8 +32,13 @@ const wardrobe = (page: Page) =>
 
 test("detail owned and outfit tiles are React tiles", async ({ page }) => {
   await open(page);
-  await wardrobe(page);
-  await page.evaluate(() => (window as any).K.go("detail", { id: "ms-728000" }));
+  // The trial closet has detailed garments, so a blazer shows both an owned
+  // match and a look.
+  await page.evaluate(() => {
+    const m = (window as any).K.M;
+    m.loadTrialCloset();
+    (window as any).K.go("detail", { id: m.readSearch("블레이저").products[0].id });
+  });
   const owned = page.locator(".owned .o .ph-box").first();
   await expect(owned).toBeVisible();
   expect(await fromReact(owned)).toBe(true);
