@@ -8,24 +8,10 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 import { OwnedPhoto } from "../photos/OwnedPhoto";
+import { RetailPanels } from "../retail/RetailPanels";
 import { CatalogRows, CrowdRows, PublicFacts } from "./Rows";
 import type { AddHost, CrowdRow, FactData } from "./types";
 import "./add-search.css";
-function RetailBridge({
-  host,
-  q,
-  submitted,
-}: {
-  host: AddHost;
-  q: string;
-  submitted: boolean;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (ref.current) host.providers(ref.current, q, submitted);
-  }, [host, q, submitted]);
-  return <div id="adom" ref={ref} aria-live="polite" />;
-}
 function AddSearch({ host }: { host: AddHost }) {
   const [legacyIssue, setLegacyIssue] = useState(host.legacyIssue());
   useEffect(() => {
@@ -400,11 +386,11 @@ function AddSearch({ host }: { host: AddHost }) {
           </>
         )}
       </div>
-      <RetailBridge
-        host={host}
-        q={text}
-        submitted={!!text && submitted === text}
-      />
+      <div id="adom" aria-live="polite">
+        {!!text && submitted === text && (
+          <RetailPanels host={host.retail} query={text} />
+        )}
+      </div>
       <div id="aopen" aria-live="polite">
         <PublicFacts
           host={host}

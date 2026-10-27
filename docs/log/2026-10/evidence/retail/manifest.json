@@ -1,0 +1,19 @@
+{
+  "work": "WO-03a shared supplier panels (React) on the add screen vs ?ui=vanilla add screen",
+  "capturedAt": "2026-10-27",
+  "mode": "synthetic Adpick/Rakuten/AI answers injected in the page; no personal data, no live supplier or AI call",
+  "browser": "Playwright 1.57 mobile Chromium (Pixel 7 profile), reducedMotion reduce, service workers blocked",
+  "capture": "element capture of #adom after submitting '합성 셔츠'; sticky/fixed screen bars outside #adom hidden because the two screens' headers differ and overlap element captures",
+  "states": {
+    "offers": "two domestic offers, Rakuten panel idle",
+    "error": "domestic lookup failed -> message and retry",
+    "rakuten": "AI keyword proposed, then searched (one JPY offer, attribution)"
+  },
+  "comparison": "The first comparison found the add screen's `.as a` underline on the supplier rows (present since the React add screen, #88). After scoping it away from the shared panels, all three vanilla/React pairs are byte-identical; only the React captures are kept.",
+  "images": [
+    { "file": "claude-retail-add-offers-mobile.png", "sha256": "954cf0f05f113765dd1f710880fbd5acbb30404d7b2a9bc9453d2bd4eff98da3" },
+    { "file": "claude-retail-add-error-mobile.png", "sha256": "a1b1ff52314ef53f4a058668e2caa45e22b3ad52588e8cf0f862b476cfc8f4c7" },
+    { "file": "claude-retail-add-rakuten-mobile.png", "sha256": "3d7a4efa53449dba71129c24dc81f652ddf4eee70065bbc9257440b0d54805a1" }
+  ],
+  "notMeasured": "WebKit (CI only), real devices, real Adpick/Rakuten/AI responses"
+}

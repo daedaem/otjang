@@ -42,6 +42,10 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+/* The shared supplier panels keep the plain rows of the results screen. */
+.as [data-react-retail] a {
+  text-decoration: none;
+}
 .as-owned {
   width: 64px;
   height: 84px;
