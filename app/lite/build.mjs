@@ -59,6 +59,8 @@ for (const [dir, name, css] of [['regular', 'Phosphor', 'regular.css'], ['fill',
 // 3) 아이콘(기존 앱과 같은 옷걸이 그림)
 const ICONS = ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'maskable-512.png', 'icon.svg'];
 for (const f of ICONS) copy(path.join(HERE, 'public/icons', f), `icons/${f}`);
+// 체험용 옷 예시 사진(public/examples/README.md)
+for (const f of fs.readdirSync(path.join(HERE, 'public/examples')).filter((f) => f.endsWith('.webp'))) copy(path.join(HERE, 'public/examples', f), `examples/${f}`);
 
 // 4) 화면: 시안 본문 조각을 완전한 문서로 감싼다. 링크 페이지 전용 줄(사진 폴더, claude 메타, 제목)은 뺀다.
 //    저장 키(EOUL_MOCK_KEY)는 남겨서 링크 시안과 같은 이름으로 이 기기에 저장한다.

@@ -73,6 +73,10 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     F: [['f-tee', 'white', '흰 티셔츠'], ['f-knit', 'beige', '베이지 니트'], ['f-trench', 'beige', '베이지 트렌치 코트'], ['f-slacks', 'black', '블랙 슬랙스'],
       ['f-denim', 'blue', '라이트 블루 데님'], ['f-loafer', 'black', '블랙 로퍼'], ['f-sneaker', 'white', '흰 스니커즈']],
   };
+  // 체험용 옷 예시 사진(2026-10-27 대표가 ChatGPT로 만듦, public/examples/README.md). 앱과 함께 묶은
+  // 파일이라 외부 요청이 없어 상품 사진을 꺼도 보인다. 세부 종류|색이 맞을 때만 쓴다.
+  const EXAMPLE_BASE = 'examples/';
+  const TRIAL_PHOTOS = { 'm-oxford|white': 'm-oxford.webp', 'm-tee|white': 'm-tee.webp', 'm-knit|navy': 'm-knit.webp', 'm-blazer|navy': 'm-blazer.webp', 'm-chino|beige': 'm-chino.webp' };
   const EXAMPLES = {
     M: ['출근용 셔츠 10만원 이하', '겨울 데이트 코트', '검정 말고 주말에 입을 편한 바지', '흰 스니커즈 10만원 이하', '하객룩 셔츠', '아메카지 재킷'],
     F: ['출근용 셔츠 10만원 이하', '원피스 10만원 이하', '겨울 코트 20만원 이하', '데이트 스커트', '가성비 니트', '흰 스니커즈'],
@@ -213,6 +217,8 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   const photoSrc = (p) => (typeof window !== 'undefined' && window.EOUL_PHOTO_BASE ? `${window.EOUL_PHOTO_BASE}${p.id}.jpg` : p.img);
   const productPhoto = (p) => (photos && p?.img && PHOTO_HOST.test(p.img) ? { src: photoSrc(p), similar: false, alt: `${p.brand} ${p.name}`, caption: '' } : null);
   function garmentPhoto(g) {
+    const file = g.id && isTrial(g.id) ? TRIAL_PHOTOS[`${g.slot}|${g.color}`] : null;
+    if (file) return { src: EXAMPLE_BASE + file, similar: false, example: true, alt: `예시 사진 · ${g.label || `${colorLabel(g.color)} ${SLOT_BY_ID[g.slot]?.name || ''}`.trim()}`, caption: '' };
     if (!photos) return null;
     if (g.productId && PRODUCT_BY_ID[g.productId]) return productPhoto(PRODUCT_BY_ID[g.productId]);
     if (!g.slot || !g.color) return null;
@@ -246,7 +252,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     const ph = photoOf(target);
     const tile = tileInfo(target);
     if (!ph) return { tile, photo: null };
-    return { tile, photo: { src: ph.src, alt: alt ?? ph.alt, similar: !!ph.similar, fit: fit === 'contain' ? 'contain' : 'cover', eager: !!eager, caption: ph.similar && caption ? NOTE.short.similar : '' } };
+    return { tile, photo: { src: ph.src, alt: alt ?? ph.alt, similar: !!ph.similar, ...(ph.example ? { example: true } : {}), fit: fit === 'contain' ? 'contain' : 'cover', eager: !!eager, caption: ph.similar && caption ? NOTE.short.similar : '' } };
   }
   function tileHtml(target) {
     const t = tileInfo(target);
@@ -257,7 +263,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     if (!ph) return tileHtml(target);
     const fallback = tileHtml(target).replace(/"/g, '&quot;');
     const cap = ph.caption ? `<span class="eo-cap" style="position:absolute;left:6px;bottom:6px;max-width:calc(100% - 12px);padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.92);color:#333;font:600 11px/1.4 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ph.caption}</span>` : '';
-    return `<span class="eo-ph" data-photo="${ph.similar ? 'similar' : 'product'}" style="position:relative;display:block;width:100%;height:100%;aspect-ratio:var(--eo-ratio,4/5);background:#f3f3f1;border-radius:inherit;overflow:hidden"><img src="${escAttr(ph.src)}" alt="${escAttr(ph.alt)}" referrerpolicy="no-referrer"${ph.eager ? '' : ' loading="lazy"'} decoding="async" onerror="this.parentNode.outerHTML='${fallback.replace(/'/g, '&#39;')}'" style="display:block;width:100%;height:100%;object-fit:${ph.fit};border-radius:inherit">${cap}</span>`;
+    return `<span class="eo-ph" data-photo="${ph.example ? 'example' : ph.similar ? 'similar' : 'product'}" style="position:relative;display:block;width:100%;height:100%;aspect-ratio:var(--eo-ratio,4/5);background:#f3f3f1;border-radius:inherit;overflow:hidden"><img src="${escAttr(ph.src)}" alt="${escAttr(ph.alt)}" referrerpolicy="no-referrer"${ph.eager ? '' : ' loading="lazy"'} decoding="async" onerror="this.parentNode.outerHTML='${fallback.replace(/'/g, '&#39;')}'" style="display:block;width:100%;height:100%;object-fit:${ph.fit};border-radius:inherit">${cap}</span>`;
   }
 
   function card(product, { slot = SLOT_BY_ID[product.slot], reasons = null, offOccasion = false } = {}) {
