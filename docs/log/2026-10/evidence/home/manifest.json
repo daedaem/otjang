@@ -1,0 +1,90 @@
+{
+  "base": "bc921ef7ea11687dcf4b49ddcc81b6f5d87261ad",
+  "generatedAt": "2026-10-27T04:10:19.447469+00:00",
+  "mode": "synthetic owned fixtures and weather; no personal data/live API",
+  "captureOnlyAnimations": "reduced motion reduce and animation/transition disabled equally in both versions",
+  "viewports": {
+    "mobile": [
+      390,
+      844
+    ],
+    "desktop": [
+      1440,
+      1000
+    ]
+  },
+  "actions": "actions.json",
+  "images": [
+    {
+      "file": "after-empty-desktop.png",
+      "sha256": "c0e88cc9c5d78f60a901198e75c10adb1878c780dee34192025f7ed41a3184d9"
+    },
+    {
+      "file": "after-empty-mobile.png",
+      "sha256": "6c1fd4444227f00ea135100522ae7c0b969feb092ef8d0921a9e8cf2aa58820e"
+    },
+    {
+      "file": "after-owned-desktop.png",
+      "sha256": "df055e21dc83afbd0f10a40067b67fa6f1063175a0a54af0c0725be24765d1da"
+    },
+    {
+      "file": "after-owned-mobile.png",
+      "sha256": "143b8083e3ae0eac1ac0ab0f88376726b41e9b8b976934a738c7e383c0f5449b"
+    },
+    {
+      "file": "before-empty-desktop.png",
+      "sha256": "720d159a71a53e0fd49b71eb2691fd163fa229893c1ef776ce69b0e2ab1086d0"
+    },
+    {
+      "file": "before-empty-mobile.png",
+      "sha256": "e134c48259b41314b62bcddf85efcb3ae769849dd65f7b58ef9641659af57a33"
+    },
+    {
+      "file": "before-owned-desktop.png",
+      "sha256": "43198465e2df0fa34a189c4b36279b3be7a4debff4b2d33c96cd1c09d8635bc4"
+    },
+    {
+      "file": "before-owned-mobile.png",
+      "sha256": "a60315dce718ea1a2c528a15bc374ee3befbc2bbf4a90d0a06380f62619c0169"
+    }
+  ],
+  "afterSources": [
+    {
+      "file": "app/lite/src/home/index.tsx",
+      "sha256": "82ee2c8cba1f1172584efbea53036f4b8f4819a8c142d40dd3ba8af7e67202b0"
+    },
+    {
+      "file": "app/lite/src/home/types.ts",
+      "sha256": "d232d4d1317c9acbe7c840a9bb4b540a2675cf1b04b25c4ac8d4cd5df56a5461"
+    },
+    {
+      "file": "app/lite/src/home/home.css",
+      "sha256": "e68e905428f96f7a7c02c0dcad9e88b605b4adc7384cf6bd3aac0ad406eaa52a"
+    },
+    {
+      "file": "app/lite/src/photos/ProductPhoto.tsx",
+      "sha256": "98696b1f061142099e62f75f2dc12f802bb1d97715b5c1403dedc2fdb1514fed"
+    },
+    {
+      "file": "app/lite/src/photos/product-photo.css",
+      "sha256": "27c833fe6c99d4991eed579d8511601fd8fd695db3d3f18ef9d553b04efde3be"
+    },
+    {
+      "file": "app/lite/src/add-search/Rows.tsx",
+      "sha256": "65330580e2bfa5a9fefdfc72d8bac741ba7937545f40e2198ebd94f4164f1318"
+    },
+    {
+      "file": "app/lite/src/screen.html",
+      "sha256": "c165278054d52df7e706bcc8ffd891d8b86e6e2705cd43521c25f044c4fc1460"
+    },
+    {
+      "file": "app/lite/build.mjs",
+      "sha256": "a3d7f88bdaf8577e075b3e13e5ba1eec9aa6002238b10d8f92a3e348a74d8179"
+    },
+    {
+      "file": "app/lite/tools/capture-home.mjs",
+      "sha256": "f0477a862470e22d3f3786f836bcce2aab1d02d1785f3c18a9cd0c23dc02971e"
+    }
+  ],
+  "actualDevices": false
+}

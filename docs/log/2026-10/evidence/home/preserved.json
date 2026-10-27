@@ -1,0 +1,77 @@
+{
+  "base": "bc921ef7ea11687dcf4b49ddcc81b6f5d87261ad",
+  "checks": [
+    {
+      "file": "app/lite/src/core.mjs",
+      "equal": true,
+      "sha256": "e9c6bd1b8e8dfd5a24bef122de424353c95778c6120cd9010f70509879fea5dc"
+    },
+    {
+      "file": "app/lite/src/domain/legacy-registration.js",
+      "equal": true,
+      "sha256": "534c123a730ff5a20d9d129d9c75ced7e51d7636a6ded79a0c05ee90f4494dce"
+    },
+    {
+      "file": "app/lite/src/input-session.js",
+      "equal": true,
+      "sha256": "b181f1fa4dec317dde8b32b64b58cf030405d61cc815c7531fdf13fd01b13825"
+    },
+    {
+      "file": "app/lite/src/domain/lite-registration.js",
+      "equal": true,
+      "sha256": "505c84b0014c0cd181b5e2f43523aa1cb9e315f42bf8f9ee78e606b7cfca944b"
+    },
+    {
+      "file": "app/lite/src/photos/photo-backup.js",
+      "equal": true,
+      "sha256": "cd0b5f982880f57019d42474a2ed9926b321248d07a45fd0ddc45992dad3d7b9"
+    },
+    {
+      "file": "app/lite/src/photos/photo-repository.js",
+      "equal": true,
+      "sha256": "de192fac1e5e6e95ab84f9805c1592ad9f372b7a3f0c972bcafa646aea3a507d"
+    },
+    {
+      "file": "app/lite/src/photos/index.js",
+      "equal": true,
+      "sha256": "78ff358e1a69d75be062a972b0ab998e1d1deaef49d407a3d55b636e771b77a1"
+    },
+    {
+      "file": "app/lite/functions/api/rank.js",
+      "equal": true,
+      "sha256": "d09c68f2f977d4397edd28cef42507cb7fe670694e7d6d174b5669b9cad71a56"
+    },
+    {
+      "file": "app/lite/functions/lib/rank-budget.js",
+      "equal": true,
+      "sha256": "44ae1bcdc6b1b66babadc2b21ef77ab8a64c7f5e9489c35e8123e4feada27675"
+    },
+    {
+      "file": "app/lite/functions/lib/private-access.js",
+      "equal": true,
+      "sha256": "dfaef882400b971dfee8afcd1746ba8acd5574b174546dbf5870d044534614af"
+    },
+    {
+      "file": "app/lite/functions/lib/outfit-rank.js",
+      "equal": true,
+      "sha256": "fe0456522266bafa70e666faee5b265488ea5ffd35e80423fbe43666e87bdb35"
+    },
+    {
+      "file": "app/lite/src/browser/kit.js",
+      "equal": true,
+      "sha256": "986dd29c74343c3be1f3d854b96c774c909a4b6e616f826f4610764845a6cd23"
+    },
+    {
+      "file": "app/lite/src/screen.html",
+      "region": "BK",
+      "equal": true,
+      "sha256": "0495b99b5a9dac91079b1d540c7a505e2deb6a5bb7377e53e3db7f22becd160f"
+    },
+    {
+      "file": "app/lite/src/screen.html",
+      "region": "legacy metadata runtime",
+      "equal": true,
+      "sha256": "9675efca974f48c448725fe5c842ad636e03b68794b024674ff7c9b7909b7683"
+    }
+  ]
+}

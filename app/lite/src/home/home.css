@@ -1,0 +1,33 @@
+.hm .prow .ph-box {
+  width: 52px;
+  flex: none;
+}
+.hm .prow .grow {
+  min-width: 0;
+}
+.hm-looks {
+  border-bottom: 0;
+  padding: 6px 0;
+}
+.hm-looks .t6 {
+  display: block;
+}
+.hm-example {
+  margin: 8px 0 2px;
+}
+.hm-proof-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.hm button:focus-visible,
+.hm input:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.hm .quiet,
+.hm .chip {
+  min-height: 44px;
+}
+.hm .chips .chip {max-width:100%;white-space:normal;text-align:left}
