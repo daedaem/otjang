@@ -815,37 +815,143 @@ a { color: inherit; text-decoration: none; }
     return parts.join(' · ');
   }
 
-  function cardHtml(p, ai) {
+  // 상품 카드 내용(WO-03): 바닐라 카드와 React 결과 카드가 같은 값을 그린다.
+  function cardModel(p, ai) {
     const isHung = M.compareHas(p.id);
     const d = isHung ? delta(p.id) : null;
-    const extra = `${ai ? `<span class="rank num" aria-label="AI 순위 ${ai.rank}위"><i class="ph-fill ph-sparkle"></i>${ai.rank}</span>` : ''}${hangToggle(p.id)}`;
-    const dl = d ? `걸어 봄 · ${d.text}` : isHung ? '걸어 봄' : '';
-    const body = `<button class="open-p" data-pid="${p.id}"><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div>${dl ? `<div class="d ${d?.tone === 'stop' ? 'stop' : ''}">${esc(dl)}</div>` : ''}<div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>`;
-    return `<div class="card${dl ? ' has-d' : ''}" data-card="${p.id}"><button class="open-p" data-pid="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)}">${productPic(p.id, { tag: d ? esc(d.short) : '', tagCls: d?.cls || '' })}</button><span class="hslot">${extra}</span>${body}</div>`;
+    const ph = M.photo({ id: p.id });
+    return {
+      id: p.id, brand: p.brand, name: p.name, priceText: p.priceText, priceShort: p.priceShort, hung: isHung,
+      rank: ai ? ai.rank : null, dl: d ? `걸어 봄 · ${d.text}` : isHung ? '걸어 봄' : '', stop: d?.tone === 'stop',
+      tag: d ? d.short : '', tagCls: d?.cls || '',
+      photo: ph ? { src: ph.src, alt: ph.alt, flat: FLAT.has(p.id) || K.WHITE.has(p.id) } : null,
+      tile: ph ? null : M.photoHtml({ id: p.id }, { caption: false }),
+    };
+  }
+  function cardHtml(p, ai) {
+    const c = cardModel(p, ai);
+    const extra = `${c.rank ? `<span class="rank num" aria-label="AI 순위 ${c.rank}위"><i class="ph-fill ph-sparkle"></i>${c.rank}</span>` : ''}${hangToggle(p.id)}`;
+    const body = `<button class="open-p" data-pid="${p.id}"><div class="b">${esc(p.brand)}</div><div class="n">${esc(p.name)}</div>${c.dl ? `<div class="d ${c.stop ? 'stop' : ''}">${esc(c.dl)}</div>` : ''}<div class="p num">${esc(p.priceText)}<small>${esc(p.priceShort)}</small></div></button>`;
+    return `<div class="card${c.dl ? ' has-d' : ''}" data-card="${p.id}"><button class="open-p" data-pid="${p.id}" aria-label="${esc(p.brand)} ${esc(p.name)}">${productPic(p.id, { tag: c.tag ? esc(c.tag) : '', tagCls: c.tagCls })}</button><span class="hslot">${extra}</span>${body}</div>`;
   }
   // 결과 격자: 걸린 카드에 한 번 묻기나 안내가 필요하면 그 카드가 든 줄 바로 아래에 두 칸짜리 줄을 끼운다.
   const cols = () => (matchMedia('(min-width: 900px)').matches ? 4 : 2);
-  function gridHtml(list) {
-    const n = cols(); let out = ''; const askedKeys = new Set();
+  // 격자 항목(WO-03): 카드, 그 줄 아래의 안내 줄(note)·한 번 묻기 줄(ask). 바닐라와 React가 같은 순서를 쓴다.
+  function gridModel(list) {
+    const n = cols(); const out = []; const askedKeys = new Set();
     const aiOn = !!(S.curQ && S.aiOrder[S.curQ]);
     list.forEach((p, i) => {
-      out += cardHtml(p, aiOn ? S.ai[p.id] : null);
+      const ai = aiOn ? S.ai[p.id] : null;
+      out.push({ type: 'card', id: p.id, p, ai, card: cardModel(p, ai) });
       if (i % n === n - 1 || i === list.length - 1) {
         const row = list.slice(i - (i % n), i + 1);
         row.forEach((q) => {
-          if (S.note?.id === q.id) out += `<div class="qrow note" role="alert" data-for="${q.id}"><i class="ph ph-info"></i><span class="qq" style="font-weight:600">${esc(S.note.text)}</span></div>`;
+          if (S.note?.id === q.id) out.push({ type: 'note', id: q.id, text: S.note.text });
           else if (M.compareHas(q.id) && needAsk(q.id) && !askedKeys.has(ownKey(q))) {
             askedKeys.add(ownKey(q));
             const twins = hung().filter((id) => id !== q.id && needAsk(id) && ownKey(M.product(id)) === ownKey(q)).length;
-            out += `<div class="qrow" role="group" aria-label="${esc(askText(q))}" data-for="${q.id}"><span class="qq">${esc(askText(q))}<small>${twins ? `걸어 본 ${twins + 1}벌에 같이 적용돼요` : `${esc(q.brand)} ${esc(q.name)}`}</small></span><button data-own="yes" data-for="${q.id}">있어요</button><button class="no" data-own="no" data-for="${q.id}">없어요</button></div>`;
+            out.push({ type: 'ask', id: q.id, p: q, text: askText(q), twins, sub: twins ? `걸어 본 ${twins + 1}벌에 같이 적용돼요` : `${q.brand} ${q.name}` });
           }
         });
       }
     });
     return out;
   }
+  function gridHtml(list) {
+    return gridModel(list).map((e) => e.type === 'card' ? cardHtml(e.p, e.ai)
+      : e.type === 'note' ? `<div class="qrow note" role="alert" data-for="${e.id}"><i class="ph ph-info"></i><span class="qq" style="font-weight:600">${esc(e.text)}</span></div>`
+      : `<div class="qrow" role="group" aria-label="${esc(e.text)}" data-for="${e.id}"><span class="qq">${esc(e.text)}<small>${e.twins ? esc(e.sub) : `${esc(e.p.brand)} ${esc(e.p.name)}`}</small></span><button data-own="yes" data-for="${e.id}">있어요</button><button class="no" data-own="no" data-for="${e.id}">없어요</button></div>`).join('');
+  }
+  // 검색 결과 내용(WO-03): 바닐라 화면과 React 결과 화면이 같은 값을 그린다. S.result·S.shown·S.curQ는 예전처럼 여기서 정한다.
+  function resultsModel({ q, drop = [] }) {
+    const parsed = M.ask(q, { drop });
+    // Do not present a broad local match as the requested brand/condition.
+    // Provider search still receives the full request independently below.
+    const partial = (parsed.notices || []).filter((n) => ['unknown', 'unsupported'].includes(n.kind));
+    const r = partial.length ? { ...parsed, understood: false, products: [], notices: [{ text: '기존 상품 목록에서 요청의 일부를 확인하지 못해 다른 상품으로 채우지 않았어요. 브랜드·상품명으로 다시 검색하거나 아래 국내 상품 결과를 확인해 주세요.' }] } : parsed;
+    const chips = (r.conditions || []).map((c) => ({ key: c.key, label: c.label, removable: !!c.removable }));
+    S.result = null;
+    if (partial.length && (window.EOUL_ADPICK || window.EOUL_OPEN_PRODUCT_SEARCH)) return { kind: 'partial', q, drop, chips, notice: r.notices[0].text };
+    if (!r.understood || !r.products.length) {
+      const rel = r.understood ? M.relax(r) : [];
+      const note = (r.notices || []).find((n) => n.text)?.text;
+      const kindLabel = (r.conditions || []).find((c) => c.key === 'kind')?.label || '';
+      const alts = [];
+      if (r.understood && kindLabel) {
+        const genderNotice = /남성 상품에는/.test(note || '') ? 'F' : /여성 상품에는/.test(note || '') ? 'M' : null;
+        if (genderNotice) alts.push({ label: `${genderNotice === 'F' ? '여성' : '남성'} ${kindLabel}로 보기`, q: `${genderNotice === 'F' ? '여성' : '남성'} ${kindLabel}` });
+        M.kindChoices().filter((k) => k.name !== kindLabel).slice(0, 5).forEach((k) => alts.push({ label: `${k.name}${josa(k.name, '으로', '로')} 보기`, q: q.includes(kindLabel) ? q.replace(kindLabel, k.name) : k.name }));
+      }
+      return {
+        kind: 'empty', q, drop, chips,
+        title: partial.length ? '기존 목록에서 일부 조건을 확인하지 못했어요' : r.understood ? '조건에 맞는 옷이 없어요' : '무슨 옷인지 못 알아들었어요',
+        sub: note || (r.understood ? '다른 옷으로 바꿔 채우지 않았어요.' : '종류를 넣어 다시 말해 주세요. 예: 셔츠, 코트, 운동화'),
+        relax: rel.map((x) => ({ title: x.title, drop: x.drop })), alts,
+        examples: !rel.length && !alts.length ? M.examples().slice(0, 3) : null,
+      };
+    }
+    S.result = r;
+    const basis = M.judge(r.products[0].id)?.basisLabel || '';
+    const list = r.products.slice(0, 12);
+    const order = S.aiOrder[q];
+    const sorted = order ? [...list].sort((a, b) => (order[a.id] ?? 99) - (order[b.id] ?? 99)) : list;
+    S.shown = { main: sorted, off: (r.offOccasion || []).slice(0, 6) }; S.curQ = q;
+    return {
+      kind: 'list', q, drop, chips, count: r.products.length, basis: basis.replace(' 판단했어요', ''),
+      ranked: !!order, summary: order ? S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요' : '', listNote: r.listNote || '평점과 후기 수 순',
+      main: sorted, off: S.shown.off, offTitle: r.offOccasion?.length ? r.offOccasionTitle || '상황과 덜 맞는 옷' : '',
+    };
+  }  // React 결과 화면(WO-03b)의 연결: 계산은 resultsModel/gridModel, 상태 변경은 기존 코어·화면 상태(S)와 함수를 그대로 쓴다.
+  const resultsCtl = {
+    version: 0, subs: new Set(),
+    subscribe(fn) { resultsCtl.subs.add(fn); return () => resultsCtl.subs.delete(fn); },
+    getVersion: () => resultsCtl.version,
+    changed() { resultsCtl.version++; resultsCtl.subs.forEach((fn) => fn()); },
+  };
+  function resultsHost(element, params, restoreY) {
+    const q = params.q, drop = params.drop || [];
+    return {
+      element, core: M, ctl: resultsCtl, q, drop, restoreY,
+      model: () => resultsModel({ q, drop }),
+      grid: (list) => gridModel(list).map((e) => e.type === 'card' ? { type: 'card', id: e.id, card: e.card } : e.type === 'note' ? { type: 'note', id: e.id, text: e.text } : { type: 'ask', id: e.id, text: e.text, sub: e.sub }),
+      // Ranks the result the model just computed (S.result), like A.results.
+      rank: () => AIRank.rank(q, S.result, { limit: 12 }),
+      applyRank(res) {
+        if (!res.ok) return;
+        res.order.forEach((o) => { S.ai[o.id] = o; });
+        S.aiOrder[q] = Object.fromEntries(res.order.map((o) => [o.id, o.rank]));
+        (S.aiSummary ||= {})[q] = res.summary || '';
+        resultsCtl.changed();
+      },
+      whyText: (code) => AIRank.whyText(code),
+      // toggleHang without the vanilla DOM redraw: the React screen re-renders and animates itself.
+      hang(id) {
+        const was = M.compareHas(id);
+        if (was) { M.compareRemove(id); if (S.asking === id) S.asking = null; }
+        else {
+          try { M.compareAdd(id); } catch (err) { showCardNote(id, null, /비교함|4개/.test(err.message) ? '옷걸이에는 4벌까지 걸 수 있어요. 하나를 내리고 다시 걸어 주세요.' : err.message); return { added: false }; }
+          if (needAsk(id)) S.asking = id;
+        }
+        renderStrip({ pop: !was && hung().length === 1 });
+        resultsCtl.changed();
+        return { added: !was };
+      },
+      own: (id, yes) => answerOwn(id, yes),
+      product: (id) => K.go('detail', { id }),
+      back: () => K.back(null),
+      edit: (text) => K.tab('home', { q: text }),
+      info: () => disclose(),
+      removeCondition: (key) => K.go('results', { q, drop: [...drop, key] }, { replace: true }),
+      relax: (next) => K.go('results', { q, drop: next }, { replace: true }),
+      query: (text) => K.go('results', { q: text }),
+      reduce: () => !!K.reduce, spring: K.SPRING.css,
+      retail: retailHost(),
+    };
+  }
+
   function redrawGrids() {
     if (curView !== 'results' || !S.shown) return;
+    if (resultsUnmount) { resultsCtl.changed(); renderStrip(); return; }
     const g = $('#grid'); if (g) g.innerHTML = gridHtml(S.shown.main);
     const o = $('#offgrid'); if (o) o.innerHTML = gridHtml(S.shown.off);
     renderStrip();
@@ -1078,6 +1184,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let collectionUnmount = null;
   let outfitsUnmount = null;
   let mirrorUnmount = null;
+  let resultsUnmount = null;
   const outfitSession={query:'내 옷으로 코디',context:{query:'내 옷으로 코디',occasion:null,season:null,styles:[]}};
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
@@ -1086,6 +1193,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(view==='add'&&curView==='add'&&addUnmount&&dir==='none'){drawShelf();renderStrip();return;}
     if(view==='mirror'&&curView==='mirror'&&mirrorUnmount&&dir==='none'){renderStrip();return;}
     if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){renderStrip();return;}
+    if(view==='results'&&curView==='results'&&resultsUnmount&&dir==='none'){resultsCtl.changed();renderStrip();return;}
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
     if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
     const keepHomeFocus=view==='home'&&curView==='home'&&dir==='none'&&$('#q')===document.activeElement?{start:$('#q').selectionStart,end:$('#q').selectionEnd}:null;
@@ -1098,6 +1206,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     collectionUnmount?.(); collectionUnmount = null;
     outfitsUnmount?.(); outfitsUnmount = null;
     mirrorUnmount?.(); mirrorUnmount = null;
+    resultsUnmount?.(); resultsUnmount = null;
     const epoch = ++inputEpoch;
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
@@ -1110,7 +1219,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactCollection = view === 'collection' && window.EOUL_COLLECTION_LOAD;
     const reactMirror=view==='mirror'&&window.EOUL_MIRROR_LOAD;
     const reactOutfits=view==='looks'&&window.EOUL_OUTFITS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
-    const html = reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const reactResults=view==='results'&&window.EOUL_RESULTS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
+    const html = reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
@@ -1118,7 +1228,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
-    if(reactHome){
+    if(reactResults){
+      const restoreY=dir==='back'?(K.current()?.scroll||0):null;
+      window.EOUL_RESULTS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;resultsUnmount=mount(resultsHost($('#react-results'),params,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-results').innerHTML='<p role="status">새 결과 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.results(params);A.results(params);});
+    } else if(reactHome){
       window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
     } else if(reactAdd){
       window.EOUL_ADD_SEARCH_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;addUnmount=mount({element:$('#react-add-search'),core:M,namespace:window.EOUL_MOCK_KEY,query:params.q,info:disclose,requiredCount:NEED,legacyIssue:()=>regWriteIssue||(regRaw!==null?REG_UNREADABLE:null),back:()=>K.back({view:'closet',params:{}}),manual:q=>{try{Input.reset();K.go('reg',{q})}catch(error){K.toast(error.message,{bottom:110})}},examples:addExamples,shelf:()=>drawShelf(),toast:text=>K.toast(text,{bottom:110}),own:id=>reactOwnAdd(id),facts:(q,submitted)=>window.EOUL_OPEN_PRODUCTS?window.EOUL_OPEN_PRODUCTS.search(q,{server:submitted}):Promise.reject(Error('not ready')),fact:row=>{try{const draft=window.EOUL_OPEN_PRODUCTS?.draft(row);if(!draft)return;Input.reset();Input.enter(draft);K.go('reg',{})}catch(error){K.toast(error.message,{bottom:110})}},crowd:readCrowdCandidates,crowdKey:row=>normKey(row.brand,row.name),ownCrowd:commitCrowdEntry,pending:addPending,finishCrowd:reactCrowdFinished,retail:retailHost(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-add-search').innerHTML='<p role="status">새 검색 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.add(params);A.add(params);});
@@ -1339,45 +1452,25 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     },
 
     results({ q, drop = [] }) {
-      const parsed = M.ask(q, { drop });
-      // Do not present a broad local match as the requested brand/condition.
-      // Provider search still receives the full request independently below.
-      const partial = (parsed.notices || []).filter((n) => ['unknown', 'unsupported'].includes(n.kind));
-      const r = partial.length ? { ...parsed, understood: false, products: [], notices: [{ text: '기존 상품 목록에서 요청의 일부를 확인하지 못해 다른 상품으로 채우지 않았어요. 브랜드·상품명으로 다시 검색하거나 아래 국내 상품 결과를 확인해 주세요.' }] } : parsed;
-      const chips = (r.conditions || []).map((c) => c.removable ? `<button class="chip" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="chip on">${esc(c.label)}</span>`).join('');
+      const m = resultsModel({ q, drop });
+      const chips = m.chips.map((c) => c.removable ? `<button class="chip" data-drop="${esc(c.key)}" aria-label="${esc(c.label)} 조건 빼기">${esc(c.label)}<i class="ph ph-x"></i></button>` : `<span class="chip on">${esc(c.label)}</span>`).join('');
       const head = top({ mid: `<button class="qbox" data-edit="${esc(q)}" aria-label="다시 찾기: ${esc(q)}"><i class="ph ph-magnifying-glass"></i><span>${esc(q)}</span></button>` });
-      S.result = null;
-      if (partial.length && (window.EOUL_ADPICK || window.EOUL_OPEN_PRODUCT_SEARCH)) {
-        return `${head}${searchSources(q)}<details class="ai-info"><summary>기존 상품 목록에서 찾지 못한 이유</summary><p class="t6">${esc(r.notices[0].text)}</p></details>`;
+      if (m.kind === 'partial') {
+        return `${head}${searchSources(q)}<details class="ai-info"><summary>기존 상품 목록에서 찾지 못한 이유</summary><p class="t6">${esc(m.notice)}</p></details>`;
       }
-      if (!r.understood || !r.products.length) {
-        const rel = r.understood ? M.relax(r) : [];
-        const note = (r.notices || []).find((n) => n.text)?.text;
-        const kindLabel = (r.conditions || []).find((c) => c.key === 'kind')?.label || '';
-        const alts = [];
-        if (r.understood && kindLabel) {
-          const genderNotice = /남성 상품에는/.test(note || '') ? 'F' : /여성 상품에는/.test(note || '') ? 'M' : null;
-          if (genderNotice) alts.push({ label: `${genderNotice === 'F' ? '여성' : '남성'} ${kindLabel}로 보기`, q: `${genderNotice === 'F' ? '여성' : '남성'} ${kindLabel}` });
-          M.kindChoices().filter((k) => k.name !== kindLabel).slice(0, 5).forEach((k) => alts.push({ label: `${k.name}${josa(k.name, '으로', '로')} 보기`, q: q.includes(kindLabel) ? q.replace(kindLabel, k.name) : k.name }));
-        }
+      if (m.kind === 'empty') {
         return `${head}${chips ? `<div class="chips scroll">${chips}</div>` : ''}
-          <div class="empty"><h2 class="h2">${partial.length ? '기존 목록에서 일부 조건을 확인하지 못했어요' : r.understood ? '조건에 맞는 옷이 없어요' : '무슨 옷인지 못 알아들었어요'}</h2>
-          <p class="sub t5" style="margin-top:6px">${esc(note || (r.understood ? '다른 옷으로 바꿔 채우지 않았어요.' : '종류를 넣어 다시 말해 주세요. 예: 셔츠, 코트, 운동화'))}</p>
-          ${rel.length ? `<div style="margin-top:12px">${rel.map((x) => `<button class="row" data-relax='${esc(JSON.stringify(x.drop))}'><span class="grow t5">${esc(x.title)}</span><i class="ph ph-caret-right arr"></i></button>`).join('')}</div>` : ''}
-          ${alts.length ? `<p class="t6" style="margin-top:20px">대신 이렇게 볼 수도 있어요</p><div class="chips">${alts.map((a) => `<button class="chip ex" data-q="${esc(a.q)}">${esc(a.label)}</button>`).join('')}</div>` : ''}
-          ${!rel.length && !alts.length ? `<div class="chips" style="margin-top:18px">${M.examples().slice(0, 3).map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${searchSources(q)}`;
+          <div class="empty"><h2 class="h2">${m.title}</h2>
+          <p class="sub t5" style="margin-top:6px">${esc(m.sub)}</p>
+          ${m.relax.length ? `<div style="margin-top:12px">${m.relax.map((x) => `<button class="row" data-relax='${esc(JSON.stringify(x.drop))}'><span class="grow t5">${esc(x.title)}</span><i class="ph ph-caret-right arr"></i></button>`).join('')}</div>` : ''}
+          ${m.alts.length ? `<p class="t6" style="margin-top:20px">대신 이렇게 볼 수도 있어요</p><div class="chips">${m.alts.map((a) => `<button class="chip ex" data-q="${esc(a.q)}">${esc(a.label)}</button>`).join('')}</div>` : ''}
+          ${m.examples ? `<div class="chips" style="margin-top:18px">${m.examples.map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>${searchSources(q)}`;
       }
-      S.result = r;
-      const basis = M.judge(r.products[0].id)?.basisLabel || '';
-      const list = r.products.slice(0, 12);
-      const order = S.aiOrder[q];
-      const sorted = order ? [...list].sort((a, b) => (order[a.id] ?? 99) - (order[b.id] ?? 99)) : list;
-      S.shown = { main: sorted, off: (r.offOccasion || []).slice(0, 6) }; S.curQ = q;
       return `${head}
-        <div class="chips scroll" aria-label="조건"><span class="cnt num">${r.products.length}개 · ${esc(basis.replace(' 판단했어요', ''))}</span>${chips}</div>
-        <div class="ai ${order ? '' : 'wait'}" id="ai" role="status">${order ? `<i class="ph-fill ph-sparkle"></i><span>${esc(S.aiSummary?.[q] || 'AI가 후보 순서를 정했어요')}</span>` : '<i class="ph ph-circle-notch"></i><span>AI가 후보 순서를 정하는 중이에요</span>'}</div>
-        <div class="grid" id="grid">${gridHtml(sorted)}</div>
-        ${r.offOccasion?.length ? `<section class="offh"><h2 class="h3">${esc(r.offOccasionTitle || '상황과 덜 맞는 옷')}</h2><div class="grid" id="offgrid">${gridHtml(S.shown.off)}</div></section>` : ''}${searchSources(q)}`;
+        <div class="chips scroll" aria-label="조건"><span class="cnt num">${m.count}개 · ${esc(m.basis)}</span>${chips}</div>
+        <div class="ai ${m.ranked ? '' : 'wait'}" id="ai" role="status">${m.ranked ? `<i class="ph-fill ph-sparkle"></i><span>${esc(m.summary)}</span>` : '<i class="ph ph-circle-notch"></i><span>AI가 후보 순서를 정하는 중이에요</span>'}</div>
+        <div class="grid" id="grid">${gridHtml(m.main)}</div>
+        ${m.offTitle ? `<section class="offh"><h2 class="h3">${esc(m.offTitle)}</h2><div class="grid" id="offgrid">${gridHtml(m.off)}</div></section>` : ''}${searchSources(q)}`;
     },
 
     consult() {
