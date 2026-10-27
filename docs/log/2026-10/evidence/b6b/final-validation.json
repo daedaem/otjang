@@ -1,0 +1,38 @@
+{
+  "pr": 86,
+  "head": "015219d643fc3d1f3251f4a7c8629b1cfc2012c7",
+  "mergedMaster": "fb949c61fdf8a0b47d5c63049a9152c1c624f255",
+  "date": "2026-10-27",
+  "checksPassed": 11,
+  "unresolvedReviews": 0,
+  "node": {
+    "passed": 350,
+    "failed": 0,
+    "skipped": 0
+  },
+  "local": {
+    "fullEarlierHead": "993191df569e18be67bac2deb0dee6dd933bb42a",
+    "passed": 242,
+    "minutes": 8.4,
+    "finalScopedMirror": 20,
+    "seconds": 32.9
+  },
+  "ciBrowser": [
+    {
+      "run": 40428410927,
+      "job": 121939848893,
+      "passed": 244,
+      "minutes": 9.6
+    },
+    {
+      "run": 40428415381,
+      "job": 121940160158,
+      "passed": 244,
+      "minutes": 9.8
+    }
+  ],
+  "actualPhones": false,
+  "liveProviderCall": false,
+  "personalPhotosUsed": false,
+  "manualDeployment": false
+}
