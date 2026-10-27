@@ -33,6 +33,8 @@
 
 ## 근거와 과거 기록
 
+- [옷 타일·날씨 상품 카드·체험용 옷 정보 시트 React 이전 (WO-08c)](log/2026-10/react-tiles-20261027.md)
+
 - [탭·옷걸이 띠·알림·저장소 안내 React 이전 (WO-08b)](log/2026-10/react-chrome-20261027.md)
 
 - [공통 아래 시트 React 이전 (WO-08a)](log/2026-10/react-sheets-20261027.md)

@@ -1,3 +1,5 @@
+import type { CardModel } from "../results/types";
+import type { TileModel } from "../tiles/Tile";
 // Data the screen's weatherModel() returns. The vanilla card and the React card
 // draw the same model, so both screens keep the same weather rules.
 export type WeatherExample = { id: string; label: string; on: boolean };
@@ -19,9 +21,9 @@ export type WeatherModel =
       band?: { label: string; advice: string };
       notes?: string;
       outfit?: boolean;
-      // Garment tiles and missing-item product cards are the shared screen
-      // templates (piecePic/cardHtml) also used by the results grid.
-      pieces?: { label: string; trial: boolean; html: string }[];
+      // Garment tiles (src/tiles) and missing-item product cards (the results
+      // grid card), WO-08c.
+      pieces?: { label: string; trial: boolean; tile: TileModel }[];
       why?: string;
       whyMore?: string;
       count?: number;
@@ -30,7 +32,7 @@ export type WeatherModel =
         label: string;
         query: string;
         heading: string;
-        products: { id: string; html: string }[];
+        products: { id: string; card: CardModel }[];
       } | null;
     };
 export type Place =
@@ -60,6 +62,10 @@ export type WeatherHost = {
   looks(): void;
   search(q: string): void;
   reduce(): boolean;
+  // Missing-item product cards (WO-08c): open the product, hang it. hang()
+  // returns a short note when it could not be hung (e.g. four already hung).
+  product(id: string): void;
+  hang(id: string): string | null;
 };
 export type CoreSubscription = {
   subscribe(listener: () => void): () => void;

@@ -1,9 +1,10 @@
 // Product detail, decision bar and compare (WO-04). The vanilla screens
 // compute the same models (detailModel / decisionModel / compareModel in
 // screen.html); React renders them and calls back for every change.
+import type { CorePhoto, TileModel } from "../tiles/Tile";
 export type Pic = {
   photo: { src: string; alt: string; flat: boolean } | null;
-  tile: string | null;
+  core: CorePhoto | null;
 };
 export type Head =
   | { kind: "ask"; text: string }
@@ -25,12 +26,12 @@ export type DetailModel = Pic & {
   sub: string;
   cautions: string[];
   ask: boolean;
-  // Garment and outfit-piece tiles stay shared vanilla templates (WO-08).
-  owned: { html: string; label: string }[];
+  // Garment and outfit-piece tiles (WO-08c: src/tiles).
+  owned: { tile: TileModel; label: string }[];
   looks: {
     title: string;
     isNew: boolean;
-    pieces: { me: boolean; html: string; label: string }[];
+    pieces: { me: boolean; tile: TileModel; label: string }[];
   }[];
   addLike: { kindName: string } | null;
   usedCount: number;
