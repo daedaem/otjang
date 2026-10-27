@@ -1,4 +1,4 @@
-진행 중: WO-03 검색 결과·공급처 공유 패널(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-03-results-20261027`). WO-01 홈 #89·WO-02 날씨/지역 #90 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
+진행 중: WO-05 구매 기록(담당 Claude 패션 Opus 5.5, 브랜치 `claude/wo-05-records-20261027`). WO-01 #89·WO-02 #90·WO-03 #91/#92·WO-04 #93 병합. Codex 새 구현·병합 중단 유지. WO별 상태는 [작업 요청 목록](log/2026-10/claude-work-orders-20261027.md)의 현재 상태 표를 따른다.
 
 # 현재 개발 계획과 완료 기준
 
@@ -140,7 +140,7 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 화면/공유 UI | 실제 구현 상태 | 이어갈 범위 |
 |---|---|---|
 | 직접 등록/초안 | React, B1 #76·기존 Input/영수증 계약 | 유지·회귀 검사 |
-| 상품 검색 등록 본문 | master #88 React 카탈로그/공동등록/OPF·구형 metadata 보호. WO-03a: 공급처 패널은 공유 React `src/retail`(RetailBridge innerHTML 대체) | crowdSearch HTML은 fallback 정리 때 제거할 대상으로 새 전환을 중복하지 않음 |
+| 상품 검색 등록 본문 | master #88 React 카탈로그/공동등록/OPF·구형 metadata 보호. master #91: 공급처 패널은 공유 React `src/retail`(RetailBridge innerHTML 대체) | crowdSearch HTML은 fallback 정리 때 제거할 대상으로 새 전환을 중복하지 않음 |
 | 백업/복원 | 바닐라 sheet + #74 무손실 BK/#77 사진 controller | 같은 BK/사진 controller로 React UI 이전. 원문 격리·미리보기·보상·undo 유지 |
 | 옷장/조합대 | master #78 React 레일·기기 사진·조합대 | 실물/대량 사진·기존 원본/복구 확인 |
 | 보유 옷/실측/수집 | master #80 보유 편집·#81 실측·#82 수집/진열장 React | 상품 상세/판단·비교 본문은 바닐라로 별도 이전 |
@@ -148,9 +148,9 @@ R22 기능 단계와 전체 React/실기기 완료는 다르다. 아래는 실�
 | 거울 L0 | master #85~#86 React 로컬 배치/보관·복구 | 실물/효용. C4 전 L1을 시작하지 않음 |
 | 홈 | master #89 React 질문/예시/보유·후보 preview | 실기기·바닐라 제거는 WO-09. 날씨 카드는 아래 행 |
 | 날씨/지역 | master #90: home·looks 공유 React 날씨 카드와 React 지역 대화상자(`weatherModel`/`weatherCtl` 한 곳), 바닐라는 `?ui=vanilla` fallback | 코드 완료. 옷 조각 타일(`piecePic`)·부족 아이템 상품 카드(`cardHtml`)는 공용 템플릿 HTML로 남아 WO-03/WO-08에서 이전. 실기기 위치 권한은 WO-09 |
-| 검색 결과 | WO-03b 브랜치: React 결과 화면(`src/results`)이 `resultsModel`/`gridModel`/`cardModel`과 공유 공급처 패널을 그림. AI 순위는 기존 `S` 상태에 저장. 바닐라는 `?ui=vanilla`·섬 로딩 실패 fallback. 기준선 11개 | PR CI·병합 대기. 색 고르기 시트(WO-08), 날씨 카드의 부족 아이템 카드(WO-08), 상담 추천 카드(WO-06) |
-| 상품 상세/구매 판단/비교 | WO-04 브랜치: React 상세(`src/detail`)·`#bar` 구매 판단 바·비교가 `detailModel`/`decisionModel`/`compareModel`을 그림. 기존 decision/return/색 시트·원자 명령 재사용. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 6개 | PR CI·병합 대기. 가진 옷·코디 조각 타일과 시트(WO-08), 실제 판매처 왕복·실기기(WO-09) |
-| 구매/수령/보유/착용/반품 | 기록 목록과 action sheet 바닐라 | 같은 ID/단계/사유·실패/새로고침/복원 확인 후 이전 |
+| 검색 결과 | master #92: React 결과 화면(`src/results`)이 `resultsModel`/`gridModel`/`cardModel`과 공유 공급처 패널을 그림. AI 순위는 기존 `S` 상태에 저장. 바닐라는 `?ui=vanilla`·섬 로딩 실패 fallback. 기준선 11개 | 코드 완료. 색 고르기 시트(WO-08), 날씨 카드의 부족 아이템 카드(WO-08), 상담 추천 카드(WO-06), 실기기(WO-09) |
+| 상품 상세/구매 판단/비교 | master #93: React 상세(`src/detail`)·`#bar` 구매 판단 바·비교가 `detailModel`/`decisionModel`/`compareModel`을 그림. 기존 decision/return/색 시트·원자 명령 재사용. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 6개 | 코드 완료. 가진 옷·코디 조각 타일과 시트(WO-08), 실제 판매처 왕복·실기기(WO-09) |
+| 구매/수령/보유/착용/반품 | WO-05 브랜치: React 기록 화면(`src/records`)이 `recordsModel`을 그림. 단계는 `M.advance`, 반품은 기존 시트. 바닐라는 `?ui=vanilla`·섬 실패 fallback. 기준선 7개. 상세의 판단 바는 #93 | PR CI·병합 대기. 반품 사유 시트(WO-08), 착용 기록 입구(현재 없음, 범위 밖), 실제 백업 복원·실기기(WO-07/09) |
 | 상담 | 바닐라, #66 예산 대조/답변·이력 존재 | 답/대조 줄·실패/재시도·이력/백업과 로그인 만료 이동 보존 |
 | 공통 호스트 | renderStrip 후보 띠·bar/tabs·disclose/고지·pickColor/confirm/place·토스트·저장소 복구 안내/원문 받기 바닐라 | 실제 React 이전 확인. 공급처/OPF 출처와 광고 고지도 공유 이전에서 유지 |
 
