@@ -779,6 +779,7 @@ a { color: inherit; text-decoration: none; }
   }
   function garmentTile(g) {
     if (g.photoId) return { t: 'mine', label: `${g.label || '내 옷'} · 내 사진 연결됨`, hex: g.colorHex || '#ccc' };
+    if (g.photo?.example) return { t: 'img', cls: 'cover', src: g.photo.src, alt: g.photo.alt };
     if (g.productId && M.photo({ id: g.productId })) return productTile(g.productId);
     const id = K.CUT[`${g.gender || M.getState().gender || 'M'}|${g.kind}|${g.color}`]?.[0];
     if (id) { const ph = M.photo({ id }); if (ph) return { t: 'img', cls: 'flat', src: ph.src, alt: `${g.colorLabel || ''} ${g.kindName || ''}`.trim() }; }

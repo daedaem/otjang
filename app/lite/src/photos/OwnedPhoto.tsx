@@ -17,6 +17,11 @@ export function OwnedPhoto({ g, host }: { g: Garment; host: PhotoHost }) {
   const [visible, setVisible] = useState(false);
   const [src, setSrc] = useState("");
   const [missing, setMissing] = useState(false);
+  // Trial garments have no photo of mine: show the core's picture instead of a
+  // drawing (the owner's bundled example photo, or a labelled similar store
+  // photo until the example exists). Falls back to the drawing if it fails.
+  const lent = g.trial && !g.photoId && g.photo?.src ? g.photo : null;
+  const [lentFailed, setLentFailed] = useState(false);
   const enabled =
     host.core.boot?.photos !== false && !host.core.boot?.preview && !g.trial;
   const allowed = visible && enabled;
@@ -67,6 +72,26 @@ export function OwnedPhoto({ g, host }: { g: Garment; host: PhotoHost }) {
           decoding="async"
           draggable={false}
         />
+      </span>
+    );
+  if (lent && !lentFailed)
+    return (
+      <span
+        ref={node}
+        className="wr-photo-live"
+        data-photo={lent.example ? "example" : "similar"}
+      >
+        <img
+          src={lent.src}
+          alt={lent.alt}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          onError={() => setLentFailed(true)}
+        />
+        {lent.similar ? (
+          <span className="wr-photo-cap">비슷한 상품 사진</span>
+        ) : null}
       </span>
     );
   const role = roleOf(g, host);
