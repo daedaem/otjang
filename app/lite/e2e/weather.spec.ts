@@ -165,7 +165,7 @@ test("the outfits weather slot renders the same React card and still honours the
   await expect(page.locator("[data-outfit-weather] [data-react-weather]")).toHaveCount(1);
   await expect(page.locator("[data-outfit-weather]")).toContainText("합성 지역");
   await expect(page.locator("[data-outfit-weather]")).not.toContainText("코디 더 보기");
-  await page.goto("/?photos=0&ui=vanilla#/");
+  await page.goto("/?photos=0&ui=vanilla#/closet");
   await page.waitForFunction(() => !!(window as any).K?.M);
   await realWeather(page);
   await home(page);

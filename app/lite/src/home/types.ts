@@ -1,3 +1,4 @@
+import type { WeatherHost } from "../weather/types";
 import type { ClosetCore } from "../closet/types";
 export type ProofProduct = {
   id: string;
@@ -33,5 +34,5 @@ export type HomeHost = {
   clearTrial(): void;
   menu(): void;
   info(): void;
-  weather(node: HTMLElement): void;
+  weather: WeatherHost;
 };

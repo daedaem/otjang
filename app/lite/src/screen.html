@@ -716,7 +716,7 @@ a { color: inherit; text-decoration: none; }
     try { const w = await window.EOUL_WEATHER(); const t = wxNum(w?.today); WX.real = t ? { place: w.place || '', today: t, tomorrow: wxNum(w.tomorrow) } : null; WX.failed = !t; }
     catch { WX.real = null; WX.failed = true; }
     WX.loading = false;
-    if (['home', 'looks'].includes(curView)) { const y = scrollY; K.refresh(); requestAnimationFrame(() => scrollTo(0, y)); }
+    weatherCtl.changed();
   }
 
   // ── 설명은 한 곳에(ⓘ): 코어의 고지 + 이 시안이 더한 것(날씨 규칙, AI 순위·상담, 직접 등록). 화면마다 같은 말을 반복하지 않는다.
@@ -1077,7 +1077,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(view==='home'&&curView==='home'&&homeUnmount&&dir==='none'){$('#react-home')?.dispatchEvent(new Event('eoul-home-refresh'));renderStrip();return;}
     if(view==='add'&&curView==='add'&&addUnmount&&dir==='none'){drawShelf();renderStrip();return;}
     if(view==='mirror'&&curView==='mirror'&&mirrorUnmount&&dir==='none'){renderStrip();return;}
-    if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){const node=$('[data-outfit-weather]');if(node&&node.closest('details')?.open){node.innerHTML=weatherHtml({where:'looks'});wireWeather();}renderStrip();return;}
+    if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){renderStrip();return;}
     if (view === 'measure' && curView === 'measure' && measureUnmount && dir === 'none') { renderStrip(); return; }
     if (view === 'collection' && curView === 'collection' && collectionUnmount && dir === 'none') { renderStrip(); return; }
     const keepHomeFocus=view==='home'&&curView==='home'&&dir==='none'&&$('#q')===document.activeElement?{start:$('#q').selectionStart,end:$('#q').selectionEnd}:null;
@@ -1111,13 +1111,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     renderStrip();
     $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
     if(reactHome){
-      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:node=>{node.innerHTML=weatherHtml({where:'home'});wireWeather()}});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
+      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
     } else if(reactAdd){
       window.EOUL_ADD_SEARCH_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;addUnmount=mount({element:$('#react-add-search'),core:M,namespace:window.EOUL_MOCK_KEY,query:params.q,info:disclose,requiredCount:NEED,legacyIssue:()=>regWriteIssue||(regRaw!==null?REG_UNREADABLE:null),back:()=>K.back({view:'closet',params:{}}),manual:q=>{try{Input.reset();K.go('reg',{q})}catch(error){K.toast(error.message,{bottom:110})}},examples:addExamples,shelf:()=>drawShelf(),toast:text=>K.toast(text,{bottom:110}),own:id=>reactOwnAdd(id),facts:(q,submitted)=>window.EOUL_OPEN_PRODUCTS?window.EOUL_OPEN_PRODUCTS.search(q,{server:submitted}):Promise.reject(Error('not ready')),fact:row=>{try{const draft=window.EOUL_OPEN_PRODUCTS?.draft(row);if(!draft)return;Input.reset();Input.enter(draft);K.go('reg',{})}catch(error){K.toast(error.message,{bottom:110})}},crowd:readCrowdCandidates,crowdKey:row=>normKey(row.brand,row.name),ownCrowd:commitCrowdEntry,pending:addPending,finishCrowd:reactCrowdFinished,providers:(node,q,submitted)=>{node.innerHTML=submitted?shoppingLinks(q):'';if(submitted)autoDomesticSearch(node)},navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-add-search').innerHTML='<p role="status">새 검색 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.add(params);A.add(params);});
     } else if(reactMirror){
       window.EOUL_MIRROR_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;const p=params.id?M.product(params.id):null;mirrorUnmount=mount({element:$('#react-mirror'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,candidate:p?{id:p.id,brand:p.brand,name:p.name,image:M.photo({id:p.id})}:null,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),closet:()=>K.tab('closet'),backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-mirror').innerHTML='<p role="alert">거울을 열지 못했어요. 저장된 자료는 그대로예요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if(reactOutfits){
-      window.EOUL_OUTFITS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;outfitsUnmount=mount({element:$('#react-outfits'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,session:outfitSession,mood:params.mood,menu,info:disclose,find:()=>K.tab('home'),add:()=>K.go('add',{}),trial:()=>M.loadTrialCloset(),owned:id=>garmentSheet(id,{focusReturn:document.activeElement}),backup:()=>backupSheet(),product:id=>K.go('detail',{id}),compared:(id,added)=>{if(added&&needAsk(id))S.asking=id;else if(!added&&S.asking===id)S.asking=null;renderStrip({pop:added&&hung().length===1});},query:q=>K.go('results',{q}),scene:moodAsk,weather:node=>{node.innerHTML=weatherHtml({where:'looks'});wireWeather();},request:body=>typeof window.EOUL_SERVER_AI==='function'?window.EOUL_SERVER_AI(body):Promise.reject(Object.assign(Error('AI unavailable'),{code:'not_configured'})),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-outfits').innerHTML='<p role="status">새 코디 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.looks(params);A.looks(params);});
+      window.EOUL_OUTFITS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;outfitsUnmount=mount({element:$('#react-outfits'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,session:outfitSession,mood:params.mood,menu,info:disclose,find:()=>K.tab('home'),add:()=>K.go('add',{}),trial:()=>M.loadTrialCloset(),owned:id=>garmentSheet(id,{focusReturn:document.activeElement}),backup:()=>backupSheet(),product:id=>K.go('detail',{id}),compared:(id,added)=>{if(added&&needAsk(id))S.asking=id;else if(!added&&S.asking===id)S.asking=null;renderStrip({pop:added&&hung().length===1});},query:q=>K.go('results',{q}),scene:moodAsk,weather:weatherHost,request:body=>typeof window.EOUL_SERVER_AI==='function'?window.EOUL_SERVER_AI(body):Promise.reject(Object.assign(Error('AI unavailable'),{code:'not_configured'})),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-outfits').innerHTML='<p role="status">새 코디 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.looks(params);A.looks(params);});
     } else if (reactCollection) {
       window.EOUL_COLLECTION_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;collectionUnmount=mount({element:$('#react-collection'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,productId:params.id,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),owned:garmentSheet,backup:()=>backupSheet(),shelves:()=>K.go('collection',{}),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-collection').innerHTML='<p role="alert">진열장을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if (reactMeasure) {
@@ -1205,49 +1205,107 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
 
   // ── 오늘 날씨 코디 카드: 기온 한 줄 → 사진 네 장 → 이유 한 줄. 홈 맨 위와 코디 탭 맨 위에서 같은 카드를 쓴다.
-  function weatherHtml({ where = 'home' } = {}) {
+  // 날씨 카드의 내용은 한 곳(weatherModel)에서 계산한다. 바닐라 카드(weatherHtml)와 React 카드(src/weather)가
+  // 같은 모델을 그린다. 옷 타일(piecePic)과 부족 아이템 상품 카드(cardHtml)는 결과 화면과 같은 공용 템플릿이라 html로 넘긴다.
+  function weatherModel({ where = 'home' } = {}) {
     const st = M.getState();
-    if (WX.loading || (WX.real === undefined && typeof window.EOUL_WEATHER === 'function')) {
-      return `<section class="wx" aria-label="오늘 날씨 코디"><div class="wx-wait" role="status"><i class="ph ph-circle-notch"></i>오늘 날씨를 불러오는 중이에요</div></section>`;
-    }
+    if (WX.loading || (WX.real === undefined && typeof window.EOUL_WEATHER === 'function')) return { status: 'loading', where };
     const src = wxSource();
     const day = WX.day === 'tomorrow' && src.tomorrow ? 'tomorrow' : 'today';
     const w = src[day];
-    const canPlace = !!window.EOUL_WEATHER_PLACE;
-    const srcTag = src.kind === 'real'
-      ? (canPlace ? `<button class="wx-place" data-wxplace aria-label="날씨 지역 바꾸기: ${esc(src.place || '현재 위치')}">${esc(src.place || '현재 위치')}<i class="ph ph-caret-down"></i></button>` : esc(src.place || '현재 위치'))
-      : '예시 날씨';
-    const temp = `<span class="wx-t num">${day === 'today' ? '오늘' : '내일'} · 아침 ${w.min}° → 낮 ${w.max}°${w.rain ? ' · 비' : ''}</span>`;
-    const days = src.tomorrow ? `<span class="wx-days" role="group" aria-label="날짜"><button class="wx-day" data-wxday="today" aria-pressed="${day === 'today'}">오늘</button><button class="wx-day" data-wxday="tomorrow" aria-pressed="${day === 'tomorrow'}">내일</button></span>` : '';
-    const head = `<div class="label"><i class="ph-fill ph-sun-horizon"></i>날씨 코디 · ${srcTag}<span class="sp"></span>${days}</div><div class="wx-h">${temp}</div>`;
-    const exRow = src.kind === 'example' ? `<div class="wx-ex"><span class="t6 nw">${WX.failed ? '날씨를 못 받아 예시로' : '예시 날씨 · 설치 앱에서는 실제 날씨'}</span><div class="chips scroll" aria-label="예시 날씨 고르기">${WX_EX.map((e) => `<button class="chip ${e.id === src.ex.id ? 'on' : 'ex'}" data-wxex="${e.id}" aria-pressed="${e.id === src.ex.id}">${esc(e.label)}</button>`).join('')}</div></div>` : '';
-    if (!st.closetCount) {
-      return `<section class="wx" aria-label="오늘 날씨 코디">${head}
-        <div class="wx-invite"><h2 class="h3">옷장을 채우면 날씨에 맞춰 골라 드려요</h2>
-        <div class="btns"><button class="btn go" data-add-open><i class="ph ph-magnifying-glass"></i>브랜드로 찾아 넣기</button><button class="btn soft" data-trial>체험용 옷장</button></div></div>${exRow}</section>`;
-    }
+    const base = {
+      status: 'ready', where, kind: src.kind, place: src.kind === 'real' ? (src.place || '현재 위치') : '',
+      canPlace: src.kind === 'real' && !!window.EOUL_WEATHER_PLACE, day, hasTomorrow: !!src.tomorrow,
+      temp: { min: w.min, max: w.max, rain: !!w.rain }, failed: !!WX.failed,
+      examples: src.kind === 'example' ? WX_EX.map((e) => ({ id: e.id, label: e.label, on: e.id === src.ex.id })) : null,
+    };
+    if (!st.closetCount) return { ...base, mode: 'invite' };
     let r;
     try { r = M.weatherOutfits(w, { limit: 3 }); } catch (e) { r = { ok: false, message: e.message }; }
-    if (!r.ok) return `<section class="wx" aria-label="오늘 날씨 코디">${head}<p class="t5 sub" style="margin:8px 0 0">${esc(r.message || '날씨 정보가 없어요.')}</p>${exRow}</section>`;
+    if (!r.ok) return { ...base, mode: 'message', message: r.message || '날씨 정보가 없어요.' };
     const key = `${day}|${w.min}|${w.max}|${w.rain ? 1 : 0}`;
     const n = r.outfits.length;
     const i = n ? (WX.idx[key] || 0) % n : 0;
     const o = n ? r.outfits[i] : null;
-    const band = `<div class="wx-band"><b>${esc(r.band.label)}</b> · ${esc(r.band.advice)}</div>${r.notes.length ? `<p class="wx-note"><i class="ph ${w.rain ? 'ph-umbrella' : 'ph-thermometer'}"></i><span>${esc(r.notes.join(' '))}</span></p>` : ''}`;
     const pieces = o ? o.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4) : [];
-    const photos = o ? `<div class="wx-ps">${pieces.map((x) => `<div class="p1">${piecePic(x)}<div class="t6">${esc(x.label)}${x.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : '';
-    const why = o ? (r.short ? '딱 맞는 조합이 없어서 가진 옷 중 가장 가까운 거예요' : (o.reasons[0] || `${esc(r.band.label)}에 맞는 조합이에요`)) : '상의·하의·신발이 한 벌씩 있어야 조합이 생겨요';
-    const whyMore = o && !r.short && o.reasons.length > 1 ? ` · ${o.reasons.slice(1).join(' · ')}` : '';
-    const ac = `<div class="wx-ac">${n > 1 ? `<button class="quiet" data-wxnext><i class="ph ph-arrows-clockwise"></i>다른 조합 <span class="num">${i + 1}/${n}</span></button>` : ''}${where === 'home' ? '<button class="quiet" data-tabgo="looks">코디 더 보기<i class="ph ph-caret-right"></i></button>' : ''}</div>`;
-    let miss = '';
+    let missing = null;
     if (r.missing) {
       let ps = [];
       try { const q = M.readSearch(r.missing.query); ps = q.understood ? q.products.slice(0, 3) : []; } catch {}
-      miss = `<div class="wx-miss"><h3 class="h3">${day === 'today' ? '오늘' : '내일'} 같은 날엔 ${esc(r.missing.label)}${josa(r.missing.label, '이', '가')} 있으면 좋아요</h3>
-        ${ps.length ? `<div class="wx-mg">${ps.map((p) => cardHtml(p, null)).join('')}</div><button class="quiet" data-q="${esc(r.missing.query)}" style="margin-top:2px">${esc(r.missing.query)} 더 보기<i class="ph ph-caret-right"></i></button>` : `<p class="t6" style="margin:4px 0 0">맞는 ${esc(r.missing.label)} 상품을 찾지 못했어요.</p>`}</div>`;
+      missing = {
+        label: r.missing.label, query: r.missing.query,
+        heading: `${day === 'today' ? '오늘' : '내일'} 같은 날엔 ${r.missing.label}${josa(r.missing.label, '이', '가')} 있으면 좋아요`,
+        products: ps.map((p) => ({ id: p.id, html: cardHtml(p, null) })),
+      };
     }
-    return `<section class="wx" aria-label="오늘 날씨 코디">${head}${band}${photos}<p class="wx-why"><i class="ph-fill ph-check-circle"></i><span>${esc(why)}${esc(whyMore)}</span></p>${ac}${miss}${exRow}</section>`;
+    return {
+      ...base, mode: 'outfit',
+      band: { label: r.band.label, advice: r.band.advice }, notes: r.notes.join(' '),
+      outfit: !!o, pieces: pieces.map((x) => ({ label: x.label, trial: !!x.trial, html: piecePic(x) })),
+      why: o ? (r.short ? '딱 맞는 조합이 없어서 가진 옷 중 가장 가까운 거예요' : (o.reasons[0] || `${r.band.label}에 맞는 조합이에요`)) : '상의·하의·신발이 한 벌씩 있어야 조합이 생겨요',
+      whyMore: o && !r.short && o.reasons.length > 1 ? ` · ${o.reasons.slice(1).join(' · ')}` : '',
+      count: n, index: i, missing,
+    };
   }
+  function weatherHtml({ where = 'home' } = {}) {
+    const m = weatherModel({ where });
+    if (m.status === 'loading') {
+      return `<section class="wx" aria-label="오늘 날씨 코디"><div class="wx-wait" role="status"><i class="ph ph-circle-notch"></i>오늘 날씨를 불러오는 중이에요</div></section>`;
+    }
+    const srcTag = m.kind === 'real'
+      ? (m.canPlace ? `<button class="wx-place" data-wxplace aria-label="날씨 지역 바꾸기: ${esc(m.place)}">${esc(m.place)}<i class="ph ph-caret-down"></i></button>` : esc(m.place))
+      : '예시 날씨';
+    const temp = `<span class="wx-t num">${m.day === 'today' ? '오늘' : '내일'} · 아침 ${m.temp.min}° → 낮 ${m.temp.max}°${m.temp.rain ? ' · 비' : ''}</span>`;
+    const days = m.hasTomorrow ? `<span class="wx-days" role="group" aria-label="날짜"><button class="wx-day" data-wxday="today" aria-pressed="${m.day === 'today'}">오늘</button><button class="wx-day" data-wxday="tomorrow" aria-pressed="${m.day === 'tomorrow'}">내일</button></span>` : '';
+    const head = `<div class="label"><i class="ph-fill ph-sun-horizon"></i>날씨 코디 · ${srcTag}<span class="sp"></span>${days}</div><div class="wx-h">${temp}</div>`;
+    const exRow = m.examples ? `<div class="wx-ex"><span class="t6 nw">${m.failed ? '날씨를 못 받아 예시로' : '예시 날씨 · 설치 앱에서는 실제 날씨'}</span><div class="chips scroll" aria-label="예시 날씨 고르기">${m.examples.map((e) => `<button class="chip ${e.on ? 'on' : 'ex'}" data-wxex="${e.id}" aria-pressed="${e.on}">${esc(e.label)}</button>`).join('')}</div></div>` : '';
+    if (m.mode === 'invite') {
+      return `<section class="wx" aria-label="오늘 날씨 코디">${head}
+        <div class="wx-invite"><h2 class="h3">옷장을 채우면 날씨에 맞춰 골라 드려요</h2>
+        <div class="btns"><button class="btn go" data-add-open><i class="ph ph-magnifying-glass"></i>브랜드로 찾아 넣기</button><button class="btn soft" data-trial>체험용 옷장</button></div></div>${exRow}</section>`;
+    }
+    if (m.mode === 'message') return `<section class="wx" aria-label="오늘 날씨 코디">${head}<p class="t5 sub" style="margin:8px 0 0">${esc(m.message)}</p>${exRow}</section>`;
+    const band = `<div class="wx-band"><b>${esc(m.band.label)}</b> · ${esc(m.band.advice)}</div>${m.notes ? `<p class="wx-note"><i class="ph ${m.temp.rain ? 'ph-umbrella' : 'ph-thermometer'}"></i><span>${esc(m.notes)}</span></p>` : ''}`;
+    const photos = m.outfit ? `<div class="wx-ps">${m.pieces.map((x) => `<div class="p1">${x.html}<div class="t6">${esc(x.label)}${x.trial ? ' · 체험용' : ''}</div></div>`).join('')}</div>` : '';
+    const ac = `<div class="wx-ac">${m.count > 1 ? `<button class="quiet" data-wxnext><i class="ph ph-arrows-clockwise"></i>다른 조합 <span class="num">${m.index + 1}/${m.count}</span></button>` : ''}${m.where === 'home' ? '<button class="quiet" data-tabgo="looks">코디 더 보기<i class="ph ph-caret-right"></i></button>' : ''}</div>`;
+    const miss = m.missing ? `<div class="wx-miss"><h3 class="h3">${esc(m.missing.heading)}</h3>
+        ${m.missing.products.length ? `<div class="wx-mg">${m.missing.products.map((p) => p.html).join('')}</div><button class="quiet" data-q="${esc(m.missing.query)}" style="margin-top:2px">${esc(m.missing.query)} 더 보기<i class="ph ph-caret-right"></i></button>` : `<p class="t6" style="margin:4px 0 0">맞는 ${esc(m.missing.label)} 상품을 찾지 못했어요.</p>`}</div>` : '';
+    return `<section class="wx" aria-label="오늘 날씨 코디">${head}${band}${photos}<p class="wx-why"><i class="ph-fill ph-check-circle"></i><span>${esc(m.why)}${esc(m.whyMore)}</span></p>${ac}${miss}${exRow}</section>`;
+  }
+  // 날씨 상태를 바꾸는 동작은 모두 여기로 모은다. React 카드는 subscribe로 다시 그리고,
+  // React 카드가 없는 바닐라 화면만 예전처럼 화면을 다시 그린다(keepY).
+  const weatherCtl = {
+    version: 0, subs: new Set(),
+    subscribe(fn) { weatherCtl.subs.add(fn); return () => weatherCtl.subs.delete(fn); },
+    getVersion: () => weatherCtl.version,
+    changed() { weatherCtl.version++; weatherCtl.subs.forEach((fn) => fn()); if (!weatherCtl.subs.size && ['home', 'looks'].includes(curView)) keepY(); },
+    model: (where) => weatherModel({ where }),
+    load: () => loadWeather(),
+    setDay(day) { WX.day = day === 'tomorrow' ? 'tomorrow' : 'today'; weatherCtl.changed(); },
+    setExample(id) { if (!WX_EX.some((e) => e.id === id)) return; S.ui.wxEx = id; saveUi(); weatherCtl.changed(); },
+    next() {
+      const src = wxSource(); const day = WX.day === 'tomorrow' && src.tomorrow ? 'tomorrow' : 'today'; const w = src[day];
+      const key = `${day}|${w.min}|${w.max}|${w.rain ? 1 : 0}`; WX.idx[key] = (WX.idx[key] || 0) + 1; weatherCtl.changed();
+    },
+    // 날씨 지역(설치 앱에서만). 위치는 사용자가 이 시트에서 고를 때만 묻는다.
+    places: () => {
+      const P = window.EOUL_WEATHER_PLACE;
+      return P ? { current: P.get(), presets: P.presets, here: () => P.here() } : null;
+    },
+    applyPlace(place) {
+      const P = window.EOUL_WEATHER_PLACE; if (!P) return;
+      P.set(place); WX.real = undefined; WX.failed = false; weatherCtl.changed(); loadWeather();
+    },
+  };
+  // React 날씨 카드가 쓰는 이동. 바닐라의 data-add-open/data-trial/data-tabgo/data-q와 같은 동작이다.
+  const weatherHost = {
+    ctl: weatherCtl,
+    add: () => K.go('add', {}),
+    trial: () => { M.loadTrialCloset(); K.refresh(); },
+    looks: () => K.tab('looks'),
+    search: (q) => K.go('results', { q }),
+    reduce: () => !!K.reduce,
+  };
   function wireWeather() {
     $$('[data-wxex]').forEach((b) => { b.onclick = () => { S.ui.wxEx = b.dataset.wxex; saveUi(); keepY(); }; });
     $$('[data-wxday]').forEach((b) => { b.onclick = () => { WX.day = b.dataset.wxday; keepY(); }; });
