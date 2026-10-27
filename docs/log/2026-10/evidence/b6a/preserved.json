@@ -1,0 +1,89 @@
+{
+  "base": "aaca4e8904231aa55a7b20b58c34a4b1d10df2b2",
+  "checks": [
+    {
+      "name": "BK.apply",
+      "file": "app/lite/src/screen.html",
+      "equal": true,
+      "sha256": "c2a30adb786c8965bb0b0438179b841b7238e00dcb7674326aab2caa635da182"
+    },
+    {
+      "name": "BK.restore",
+      "file": "app/lite/src/screen.html",
+      "equal": true,
+      "sha256": "712fe227544db1135db8e9f4e5246ee44d812a424411ee4d7197e2b9332b75b1"
+    },
+    {
+      "name": "BK.undo",
+      "file": "app/lite/src/screen.html",
+      "equal": true,
+      "sha256": "031a0f243ce10d46ded829934e635549ddebcb5f6c0bfd3065ffe30b7fbfe19b"
+    },
+    {
+      "name": "core.decide",
+      "file": "app/lite/src/core.mjs",
+      "equal": true,
+      "sha256": "841746a64b012b0ebf05279c8d5069081f7c8c57bb816cfd033aec6eb164f0cf"
+    },
+    {
+      "name": "core.advance",
+      "file": "app/lite/src/core.mjs",
+      "equal": true,
+      "sha256": "9f773166e63fc9978ef1023eab955e8e1cea59f4a9b78753ae71a6ec9d31b633"
+    },
+    {
+      "name": "photoRecord",
+      "file": "app/lite/src/photos/photo-backup.js",
+      "equal": true,
+      "sha256": "03dc118ef79fc721f986ef940c8aa247420425182fcc3bdba0d24e72fd666b21"
+    },
+    {
+      "name": "photo restore",
+      "file": "app/lite/src/photos/photo-backup.js",
+      "equal": true,
+      "sha256": "091d395560302765af6cb5347b00b7a351fd03246a41819ec579fd78e2f8a60a"
+    },
+    {
+      "name": "photo recover",
+      "file": "app/lite/src/photos/photo-backup.js",
+      "equal": true,
+      "sha256": "3a25d95222c19c000fddb2432f4a32300551fedebcff614068d2884606ecedce"
+    },
+    {
+      "name": "photo undo",
+      "file": "app/lite/src/photos/photo-backup.js",
+      "equal": true,
+      "sha256": "6c69f4405e0d6f55c40affea03fdf616af5d666478bb091f9a19897439330c5d"
+    },
+    {
+      "name": "photo repository",
+      "file": "app/lite/src/photos/photo-repository.js",
+      "equal": true,
+      "sha256": "de192fac1e5e6e95ab84f9805c1592ad9f372b7a3f0c972bcafa646aea3a507d"
+    },
+    {
+      "name": "photo UI controller",
+      "file": "app/lite/src/photos/index.js",
+      "equal": true,
+      "sha256": "7751b4b1982e223d6416516f06feb0afb403d56662f27316c11dc80a3043b60d"
+    },
+    {
+      "name": "rank gateway",
+      "file": "app/lite/functions/api/rank.js",
+      "equal": true,
+      "sha256": "d09c68f2f977d4397edd28cef42507cb7fe670694e7d6d174b5669b9cad71a56"
+    },
+    {
+      "name": "rank budget",
+      "file": "app/lite/functions/lib/rank-budget.js",
+      "equal": true,
+      "sha256": "44ae1bcdc6b1b66babadc2b21ef77ab8a64c7f5e9489c35e8123e4feada27675"
+    },
+    {
+      "name": "input registration",
+      "file": "app/lite/src/domain/lite-registration.js",
+      "equal": true,
+      "sha256": "505c84b0014c0cd181b5e2f43523aa1cb9e315f42bf8f9ee78e606b7cfca944b"
+    }
+  ]
+}

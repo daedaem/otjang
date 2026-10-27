@@ -69,3 +69,5 @@ Back/이동은 미보관 반응을 확인한다. 기준 옷 편집창이 위에 
 재현: 저장소 루트의 `npm --prefix app/lite test`, `npm --prefix app/lite run build`, `npm --prefix app/lite run test:e2e`. 기준24ed71e 빌드 경로를 `B5B_BASE_DIST`로 주고 `node app/lite/tools/compare-outfits.mjs`를 실행하면14장과 주요 흐름의 단일 모의 요청/옷장 원문 불변/반응1개/순서 유지 관찰을 만든다. 속성 오류 예시에 모의 요청1회를 추가하며 실제 제공자 호출은0이다.
 
 다음은 B6 L0 거울이다. 그 뒤에도 등록 검색·홈/결과·상품 상세/비교·구매 기록·상담·백업·날씨/공통 동작의 남은 전체 React 이전을 계속한다. 실물 검증 전 바닐라 복귀를 지우지 않는다.
+
+최종 병합 확인: head59361e30의 Node336개/fail0/skip0·최종 CI11개/실제 push·PR 각220개(8.7분/8.9분)·미해결 검토0을 확인해 masteraaca4e8에 병합했다. 실제 제공자 호출·활성 배포·실물·블라인드20은 새로 확인하지 않았다.

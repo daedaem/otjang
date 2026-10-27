@@ -1,5 +1,6 @@
 // Photo bytes never enter a network/provider request. This module only accepts
 // local Blobs and a local repository. Text remains the #74/#76 backup contract.
+import {MIRROR_DRAFT_KEY,readMirrorDraft} from '../domain/mirror-draft.js';
 export const PHOTO_PENDING_KEY = "eoul-backup:photos-pending";
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024,
   MAX_BUNDLE_BYTES = 64 * 1024 * 1024,
@@ -424,6 +425,7 @@ export function createPhotoBackup({
       );
       for (const g of state?.garments || []) if (g.photoId) refs.add(g.photoId);
     } catch {}
+    try{const mirror=readMirrorDraft(data[MIRROR_DRAFT_KEY]);if(mirror.body)refs.add(mirror.body.photoId);}catch{}
     return refs;
   }
   async function preview(value) {
