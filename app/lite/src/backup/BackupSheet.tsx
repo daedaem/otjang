@@ -81,7 +81,7 @@ function ReportView({ host, report }: { host: BackupHost; report: Report }) {
   const rows = [...report.archives, ...report.archivedCurrent];
   return (
     <>
-      <div className="t6" data-bk-report>
+      <div className="t6" data-bk-report="">
         {`정상 자료 ${report.active.length}개 항목 · 원문 보관 ${report.archives.length}개(활성화 안 됨)${report.preserved.length ? ` · 기존 활성 자료 유지 ${report.preserved.length}개` : ""}${report.archivedCurrent.length ? ` · 기존 원문 ${report.archivedCurrent.length}개는 보관 후 활성에서 교체/제거` : ""}`}
       </div>
       {rows.length ? (
@@ -477,7 +477,7 @@ export function BackupSheet({
       key="copy"
       type="button"
       className="btn line"
-      data-bk-copy
+      data-bk-copy=""
       disabled={busy}
       onClick={copyText}
     >
@@ -489,7 +489,7 @@ export function BackupSheet({
       key="paste"
       type="button"
       className="btn line"
-      data-bk-paste
+      data-bk-paste=""
       disabled={busy}
       onClick={startPaste}
     >
@@ -498,7 +498,7 @@ export function BackupSheet({
     </button>
   );
   return (
-    <div className="bk" data-react-backup>
+    <div className="bk" data-react-backup="">
       <h2 className="h2">백업 · 복원</h2>
       <p className="sub t6">
         {rows ? (
@@ -519,7 +519,7 @@ export function BackupSheet({
           ref={save}
           type="button"
           className="btn go"
-          data-bk-save
+          data-bk-save=""
           disabled={busy}
           onClick={rows ? exportPhotos : exportText}
         >
@@ -550,7 +550,7 @@ export function BackupSheet({
           <button
             type="button"
             className="btn line"
-            data-bk-undo
+            data-bk-undo=""
             {...(photo.phase === "ready" && photo.undo ? { "data-photo-undo": "" } : {})}
             disabled={busy}
             onClick={photo.phase === "ready" && photo.undo ? undoPhotos : undoText}
@@ -576,7 +576,7 @@ export function BackupSheet({
           <button
             type="button"
             className="btn line wide"
-            data-bk-read
+            data-bk-read=""
             disabled={busy}
             onClick={() => readText(text.value)}
           >
@@ -591,7 +591,7 @@ export function BackupSheet({
             <button
               type="button"
               className="btn go wide"
-              data-bk-go
+              data-bk-go=""
               disabled={busy}
               onClick={() => void restoreText(preview)}
             >
@@ -676,7 +676,7 @@ function PhotoSection({
             <button
               type="button"
               className="btn line"
-              data-photo-recover
+              data-photo-recover=""
               hidden={!ready.pending}
               disabled={busy}
               onClick={onRecover}
@@ -684,13 +684,13 @@ function PhotoSection({
               사진 백업 복구 마치기
             </button>
           </div>
-          <details data-photo-options>
+          <details data-photo-options="">
             <summary>추가 백업 옵션</summary>
             <div className="decs">
               <button
                 type="button"
                 className="btn line"
-                data-photo-persist
+                data-photo-persist=""
                 disabled={busy}
                 onClick={onPersist}
               >
@@ -699,7 +699,7 @@ function PhotoSection({
               <button
                 type="button"
                 className="btn line"
-                data-photo-export
+                data-photo-export=""
                 disabled={busy}
                 onClick={onExport}
               >
@@ -711,7 +711,7 @@ function PhotoSection({
                   type="file"
                   accept=".otjang,.json,application/octet-stream,application/json"
                   hidden
-                  data-photo-file
+                  data-photo-file=""
                   disabled={busy}
                   onChange={(e) => onFile(e.target.files?.[0])}
                 />
