@@ -47,3 +47,5 @@ export function open(name: string, props: Props, host: SheetHost) {
       throw Error(`unknown sheet ${name}`);
   }
 }
+
+export { mountChrome } from "./AppChrome";
