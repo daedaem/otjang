@@ -171,6 +171,23 @@ test("home candidate preview follows the actual selected ids and opens their com
     ids,
   );
 });
+test("home example chips follow a gender change from the core while the question stays", async ({
+  page,
+}) => {
+  await wx(page);
+  await page.evaluate(() => (window as any).K.M.setGender("M"));
+  await home(page);
+  const chips = page.locator("[data-react-home] .chips .chip");
+  const expected = (g: string) =>
+    page.evaluate((g) => (window as any).K.M.examples(g).slice(0, 4), g);
+  await expect(chips).toHaveText(await expected("M"));
+  await page.getByLabel("찾는 옷", { exact: true }).fill("아직 안 보낸 질문");
+  await page.evaluate(() => (window as any).K.M.setGender("F"));
+  await expect(chips).toHaveText(await expected("F"));
+  await expect(page.getByLabel("찾는 옷", { exact: true })).toHaveValue(
+    "아직 안 보낸 질문",
+  );
+});
 test("home native text doubles without page overflow and search remains keyboard accessible", async ({
   page,
 }) => {
