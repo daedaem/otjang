@@ -24,7 +24,7 @@ const top = (page: Page, sel: string) => page.locator(sel).first().evaluate((el)
 test("the new look is the default", async ({ page }) => {
   await open(page);
   expect(await look(page)).toBe("v2");
-  expect(await bg(page)).toBe("rgb(31, 63, 128)");
+  expect(await bg(page)).toBe("rgb(32, 32, 37)");
   expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBeNull();
 });
 
@@ -37,7 +37,7 @@ test("?look=v1 brings back the previous look, keeps it after a reload and ?look=
   expect(await look(page)).toBe("");
   await open(page, "&look=v2");
   expect(await look(page)).toBe("v2");
-  expect(await bg(page)).toBe("rgb(31, 63, 128)");
+  expect(await bg(page)).toBe("rgb(32, 32, 37)");
   expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBeNull();
 });
 
@@ -80,7 +80,7 @@ test("a hung product keeps its filled hanger in the new look", async ({ page }) 
   await hang.click();
   await expect(hang).toHaveAttribute("aria-pressed", "true");
   // The hanger animates its colour; wait for where it settles.
-  await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(31, 63, 128)");
+  await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(32, 32, 37)");
   await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
 });
 
@@ -136,4 +136,23 @@ test("the new look labels the product page hanger", async ({ page }) => {
   await hang.click();
   await expect(page.locator(".pdp-photo .hangt").first()).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => page.locator(".pdp-photo .hangt span").first().evaluate((el) => getComputedStyle(el, "::after").content)).toBe('"걸어 보는 중"');
+});
+
+// Owner 10-28 00:04: the screen stays achromatic so the clothes carry the
+// colour. 00:07: the brand colour is wood (walnut, like a wooden hanger) and
+// stays only in the logo and the app icon.
+test("the new look is achromatic and keeps the walnut brand colour only in the logo", async ({ page }) => {
+  await open(page);
+  expect(await bg(page)).toBe("rgb(32, 32, 37)");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--acc").trim())).toBe("#202025");
+  expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(91, 58, 36)");
+});
+
+test.describe("dark", () => {
+  test.use({ colorScheme: "dark" });
+  test("the new look's buttons are light on dark, still without a hue", async ({ page }) => {
+    await open(page);
+    expect(await bg(page)).toBe("rgb(247, 247, 248)");
+    expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(196, 153, 107)");
+  });
 });
