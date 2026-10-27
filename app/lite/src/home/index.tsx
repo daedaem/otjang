@@ -156,7 +156,9 @@ function Home({ host }: { host: HomeHost }) {
     return () => host.element.removeEventListener("eoul-home-refresh", update);
   }, [host]);
   const proof = useMemo(() => host.proof(), [host, version, refresh]),
-    examples = useMemo(() => host.core.examples().slice(0, 4), [host]);
+    // examples() follows the core's current gender (e.g. a trial closet), so
+    // recompute with the subscribed version like the vanilla redraw did.
+    examples = useMemo(() => host.core.examples().slice(0, 4), [host, version]);
   return (
     <section className="hm" data-react-home aria-label="옷 찾기 홈">
       <header className="top">
