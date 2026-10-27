@@ -1,15 +1,7 @@
+import { CorePhotoView } from "../tiles/Tile";
 import type { Pic } from "./types";
 // Shared bits of the WO-04 screens: the top bar of a pushed screen and the
 // product picture, both matching the vanilla templates (top(), productPic()).
-export function Html({ html }: { html: string }) {
-  // Trusted shared screen templates (garment / outfit-piece tiles).
-  return (
-    <span
-      style={{ display: "contents" }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
 export function Top({ back, info }: { back(): void; info(): void }) {
   return (
     <div className="top" id="top">
@@ -29,7 +21,7 @@ export function Top({ back, info }: { back(): void; info(): void }) {
   );
 }
 // The inside of productPic(): an <img> for a product photo, otherwise the
-// core colour tile template.
+// core colour tile.
 export function PicInner({ pic }: { pic: Pic }) {
   if (pic.photo)
     return (
@@ -40,7 +32,7 @@ export function PicInner({ pic }: { pic: Pic }) {
         decoding="async"
       />
     );
-  return <Html html={pic.tile || ""} />;
+  return pic.core ? <CorePhotoView p={pic.core} /> : null;
 }
 export function ProductPic({ pic }: { pic: Pic }) {
   if (pic.photo)
@@ -50,9 +42,8 @@ export function ProductPic({ pic }: { pic: Pic }) {
       </span>
     );
   return (
-    <span
-      className="ph-box"
-      dangerouslySetInnerHTML={{ __html: pic.tile || "" }}
-    />
+    <span className="ph-box">
+      {pic.core ? <CorePhotoView p={pic.core} /> : null}
+    </span>
   );
 }

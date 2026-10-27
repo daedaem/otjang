@@ -696,11 +696,12 @@ a { color: inherit; text-decoration: none; }
   });
   const crowd = () => (window.EOUL_CROWD && typeof window.EOUL_CROWD.submit === 'function' ? window.EOUL_CROWD : null);
   // 등록 상태 한 줄: 서버가 답하면 그 숫자, 아니면 이 기기 숫자.
+  const crowdModel = (c) => ({ n: Math.min(NEED, c.serverCount || c.count || 1), min: c.serverMin || NEED, searchable: !!c.searchable, server: !!c.server });
   const crowdLine = (c) => {
-    const n = Math.min(NEED, c.serverCount || c.count || 1), min = c.serverMin || NEED;
+    const { n, min, searchable, server } = crowdModel(c);
     const meter = `<span class="meter" aria-hidden="true">${Array.from({ length: min }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
-    if (c.searchable) return `같은 옷을 ${min}명이 등록해서 이제 모두가 검색할 수 있어요${meter}`;
-    return `같은 옷을 ${min}명이 등록하면 모두가 검색할 수 있어요 · 지금 ${n}/${min}${meter}${c.server ? '' : ' · 서버 연결 전에는 이 기기에만'}`;
+    if (searchable) return `같은 옷을 ${min}명이 등록해서 이제 모두가 검색할 수 있어요${meter}`;
+    return `같은 옷을 ${min}명이 등록하면 모두가 검색할 수 있어요 · 지금 ${n}/${min}${meter}${server ? '' : ' · 서버 연결 전에는 이 기기에만'}`;
   };
 
   // ── 오늘 날씨 코디(R17). 날씨는 설치 앱이 window.EOUL_WEATHER로 준다. 없으면(이 링크 페이지) '예시 날씨'를 분명히 표시하고 골라 보게 한다.
@@ -764,26 +765,38 @@ a { color: inherit; text-decoration: none; }
   const GROUPS = [['상의', ['tee', 'longtee', 'shirt', 'polo', 'knit', 'sweat']], ['하의', ['pants', 'jeans', 'skirt']], ['아우터', ['jacket', 'blazer', 'cardigan', 'coat', 'down', 'vest']], ['신발', ['sneaker', 'loafer', 'boot']]];
 
   // ── 사진: 흰 배경 단독 사진은 칸에 띄우고(배경을 칸 색에 녹임), 나머지는 칸을 채운다. 내 옷은 같은 종류·색의 흰 배경 사진, 없으면 색 동그라미.
-  function productPic(id, { tag = '', tagCls = '', extra = '' } = {}) {
+  // 칸 모델(WO-08c): 무엇을 보일지는 여기서 정하고, 바닐라는 아래 HTML로, React는 src/tiles의 Tile로 그린다.
+  function productTile(id) {
     const ph = M.photo({ id });
-    const t = tag ? `<span class="tag ${tagCls}">${tag}</span>` : '';
-    if (!ph) return `<span class="ph-box">${M.photoHtml({ id }, { caption: false })}${t}${extra}</span>`;
-    const flat = FLAT.has(id) || K.WHITE.has(id);
-    return `<span class="ph-box"><img class="${flat ? 'flat' : 'cover'}" src="${esc(ph.src)}" alt="${esc(ph.alt)}" decoding="async">${t}${extra}</span>`;
+    if (!ph) return { t: 'core', core: M.photoInfo({ id }, { caption: false }), html: M.photoHtml({ id }, { caption: false }) };
+    return { t: 'img', cls: FLAT.has(id) || K.WHITE.has(id) ? 'flat' : 'cover', src: ph.src, alt: ph.alt };
   }
-  function garmentPic(g) {
-    if (g.photoId) return `<span class="ph-box" role="img" aria-label="${esc(g.label || '내 옷')} · 내 사진 연결됨"><span class="swatch"><i style="background:${esc(g.colorHex || '#ccc')}"></i></span><span class="tag">내 사진 연결됨</span></span>`;
-    if (g.productId && M.photo({ id: g.productId })) return productPic(g.productId);
+  function garmentTile(g) {
+    if (g.photoId) return { t: 'mine', label: `${g.label || '내 옷'} · 내 사진 연결됨`, hex: g.colorHex || '#ccc' };
+    if (g.productId && M.photo({ id: g.productId })) return productTile(g.productId);
     const id = K.CUT[`${g.gender || M.getState().gender || 'M'}|${g.kind}|${g.color}`]?.[0];
-    if (id) { const ph = M.photo({ id }); if (ph) return `<span class="ph-box"><img class="flat" src="${esc(ph.src)}" alt="${esc(`${g.colorLabel || ''} ${g.kindName || ''}`.trim())}" decoding="async"></span>`; }
-    return `<span class="ph-box" role="img" aria-label="${esc(`${g.colorLabel || ''} ${g.kindName || ''}`.trim())}"><span class="swatch"><i style="background:${esc(g.colorHex || '#ccc')}"></i></span></span>`;
+    if (id) { const ph = M.photo({ id }); if (ph) return { t: 'img', cls: 'flat', src: ph.src, alt: `${g.colorLabel || ''} ${g.kindName || ''}`.trim() }; }
+    return { t: 'swatch', label: `${g.colorLabel || ''} ${g.kindName || ''}`.trim(), hex: g.colorHex || '#ccc' };
   }
-  const piecePic = (p) => {
+  const pieceTile = (p) => {
     const g = p.garmentId && M.getState().closet.find((x) => x.id === p.garmentId);
-    if (g) return garmentPic(g);
-    if (p.product) return productPic(p.product.id);
-    return garmentPic({ kind: p.kind, kindName: p.kindName, color: p.color, colorHex: p.colorHex, colorLabel: p.colorLabel });
+    if (g) return garmentTile(g);
+    if (p.product) return productTile(p.product.id);
+    return garmentTile({ kind: p.kind, kindName: p.kindName, color: p.color, colorHex: p.colorHex, colorLabel: p.colorLabel });
   };
+  // React에 넘길 때는 바닐라 전용 html을 뺀다.
+  const tileData = (m) => { if (m.t !== 'core') return m; const { html, ...rest } = m; return rest; };
+  function tileHtml(m, tail = '') {
+    if (m.t === 'mine') return `<span class="ph-box" role="img" aria-label="${esc(m.label)}"><span class="swatch"><i style="background:${esc(m.hex)}"></i></span><span class="tag">내 사진 연결됨</span>${tail}</span>`;
+    if (m.t === 'swatch') return `<span class="ph-box" role="img" aria-label="${esc(m.label)}"><span class="swatch"><i style="background:${esc(m.hex)}"></i></span>${tail}</span>`;
+    if (m.t === 'core') return `<span class="ph-box">${m.html}${tail}</span>`;
+    return `<span class="ph-box"><img class="${m.cls}" src="${esc(m.src)}" alt="${esc(m.alt)}" decoding="async">${tail}</span>`;
+  }
+  function productPic(id, { tag = '', tagCls = '', extra = '' } = {}) {
+    return tileHtml(productTile(id), `${tag ? `<span class="tag ${tagCls}">${tag}</span>` : ''}${extra}`);
+  }
+  const garmentPic = (g) => tileHtml(garmentTile(g));
+  const piecePic = (p) => tileHtml(pieceTile(p));
   const hangToggle = (id, cls = '') => { const on = M.compareHas(id); return `<button class="hangt ${cls}" data-hang="${id}" aria-pressed="${on}" aria-label="${on ? '걸어 보는 중 · 내리기' : '걸어 보기'}"><span><i class="${on ? 'ph-fill' : 'ph'} ph-coat-hanger"></i></span></button>`; };
 
   // ── 걸어 본 후보 = 비교함(최대 4개, 이 브라우저에 저장). 걸면 내 옷 기준 판정이 바로 따라온다.
@@ -838,6 +851,7 @@ a { color: inherit; text-decoration: none; }
       tag: d ? d.short : '', tagCls: d?.cls || '',
       photo: ph ? { src: ph.src, alt: ph.alt, flat: FLAT.has(p.id) || K.WHITE.has(p.id) } : null,
       tile: ph ? null : M.photoHtml({ id: p.id }, { caption: false }),
+      core: ph ? null : M.photoInfo({ id: p.id }, { caption: false }),
     };
   }
   function cardHtml(p, ai) {
@@ -936,6 +950,7 @@ a { color: inherit; text-decoration: none; }
       facts: `${p.colorLabel} · ${p.slotName}${p.rating ? ` · 평점 ${p.rating} · 후기 ${Number(p.reviews || 0).toLocaleString('ko-KR')}개` : ''}`,
       photo: ph ? { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) } : null,
       tile: ph ? null : M.photoHtml({ id }, { caption: false }),
+      core: ph ? null : M.photoInfo({ id }, { caption: false }),
       hung: M.compareHas(id), basisLabel: v.basisLabel,
       cautions: (Array.isArray(v.cautions) ? v.cautions : []).slice(0, 3),
       addLike: !ask && v.addSuggestion && !(v.owned || []).length && !(v.basis === 'none' && d) ? { kindName: v.addSuggestion.kindName } : null,
@@ -947,7 +962,7 @@ a { color: inherit; text-decoration: none; }
     const ids = hung();
     if (ids.length < 2) return { few: true, count: ids.length };
     const c = M.compareRows(ids);
-    const pic = (id) => { const ph = M.photo({ id }); return ph ? { photo: { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) }, tile: null } : { photo: null, tile: M.photoHtml({ id }, { caption: false }) }; };
+    const pic = (id) => picModel(id);
     return {
       few: false, count: ids.length, note: c.note,
       items: c.items.map((it) => ({ id: it.id, brand: it.brand, name: it.name, ...pic(it.id) })),
@@ -1037,7 +1052,7 @@ a { color: inherit; text-decoration: none; }
     };
   }
   // React 기록 화면(WO-05)의 연결: 단계·반품은 기존 원자 명령(M.advance)과 반품 시트를 그대로 쓴다.
-  const picModel = (id) => { const ph = M.photo({ id }); return ph ? { photo: { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) }, tile: null } : { photo: null, tile: M.photoHtml({ id }, { caption: false }) }; };
+  function picModel(id) { const ph = M.photo({ id }); return ph ? { photo: { src: ph.src, alt: ph.alt, flat: FLAT.has(id) || K.WHITE.has(id) }, tile: null, core: null } : { photo: null, tile: M.photoHtml({ id }, { caption: false }), core: M.photoInfo({ id }, { caption: false }) }; }
   function recordsHost(element, restoreY) {
     return {
       element, core: M, ctl: detailCtl, restoreY,
@@ -1068,10 +1083,10 @@ a { color: inherit; text-decoration: none; }
         const m = detailModel(id); if (!m) return null;
         return {
           id, brand: m.brand, name: m.name, priceText: m.priceText, priceNote: m.priceNote, facts: m.facts,
-          photo: m.photo, tile: m.tile, hung: m.hung, ai: m.ai ? { rank: m.ai.rank, fit: m.ai.fit || '', reason: m.ai.reason || '' } : null,
+          photo: m.photo, core: m.core, hung: m.hung, ai: m.ai ? { rank: m.ai.rank, fit: m.ai.fit || '', reason: m.ai.reason || '' } : null,
           basisLabel: m.basisLabel, head: m.head, sub: m.sub, cautions: m.cautions, ask: m.ask,
-          owned: m.same.map((o) => ({ html: garmentPic(o), label: `${o.colorLabel} ${o.kindName}${o.trial ? ' · 체험용' : ''}` })),
-          looks: m.looks.map((l) => ({ title: l.title || '', isNew: !!l.new, pieces: l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4).map((x) => ({ me: !!x.candidate, html: piecePic(x), label: x.candidate ? '이 옷' : `${x.colorLabel} ${x.kindName}${x.trial ? ' · 체험용' : ''}` })) })),
+          owned: m.same.map((o) => ({ tile: tileData(garmentTile(o)), label: `${o.colorLabel} ${o.kindName}${o.trial ? ' · 체험용' : ''}` })),
+          looks: m.looks.map((l) => ({ title: l.title || '', isNew: !!l.new, pieces: l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4).map((x) => ({ me: !!x.candidate, tile: tileData(pieceTile(x)), label: x.candidate ? '이 옷' : `${x.colorLabel} ${x.kindName}${x.trial ? ' · 체험용' : ''}` })) })),
           addLike: m.addLike, usedCount: m.usedCount,
           used: m.nvu.used.groups.map((g) => ({ region: g.region, links: g.links.map((l) => ({ url: l.url, label: l.label, note: l.note || '' })) })),
         };
@@ -1564,13 +1579,20 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap"><button class="quiet" data-trial>체험용 옷장으로 먼저 보기</button><button class="quiet" data-reg-open>직접 등록</button><button class="quiet" data-addkind>종류·색만</button></div></section>`;
   }
   // 코디 한 벌: 내 옷은 판매처 사진이나 비슷한 상품 사진, 후보는 주황 테두리. '규칙으로 조합한 예시' 같은 설명은 ⓘ에만.
-  function lookHtml(o, { title = '', sub = '', owned = true } = {}) {
+  // 코디 카드 모델(WO-08c). sub는 그대로 넣는다(바닐라 호출 한 곳은 미리 esc한 글자를 넘긴다).
+  function lookModel(o, { title = '', sub = '', owned = true } = {}) {
     const ps = o.pieces.filter((x) => ['outer', 'top', 'inner', 'bottom', 'shoes', 'dress'].includes(x.role));
     const main = ps.filter((x) => x.role !== 'inner').slice(0, 4);
-    const cap = (x) => x.owned ? `${esc(x.label)}${x.trial ? ' · 체험용' : ''}` : x.product ? `후보 · ${esc(x.product.priceText)}` : esc(x.label);
-    const tail = owned ? sub : `${sub ? `${sub} · ` : ''}내 옷 ${o.ownedCount}벌 + 후보 ${o.buyCount}벌`;
-    return `<div class="lk"><div class="head"><b>${esc(title || (o.formula && o.formula !== o.title ? o.formula : o.title))}</b><span class="t6">${tail}</span></div>
-      <div class="ps">${main.map((x) => `<div class="p1${x.owned ? '' : ' cand'}">${x.owned ? piecePic(x) : x.product ? productPic(x.product.id) : piecePic(x)}<div class="${x.owned ? 't6' : 'pr'}">${cap(x)}</div></div>`).join('')}</div></div>`;
+    return {
+      title: title || (o.formula && o.formula !== o.title ? o.formula : o.title),
+      tail: owned ? sub : `${sub ? `${sub} · ` : ''}내 옷 ${o.ownedCount}벌 + 후보 ${o.buyCount}벌`,
+      pieces: main.map((x) => ({ cand: !x.owned, tile: x.owned ? pieceTile(x) : x.product ? productTile(x.product.id) : pieceTile(x), capCls: x.owned ? 't6' : 'pr', cap: x.owned ? `${x.label}${x.trial ? ' · 체험용' : ''}` : x.product ? `후보 · ${x.product.priceText}` : x.label })),
+    };
+  }
+  function lookHtml(o, opts = {}) {
+    const m = lookModel(o, opts);
+    return `<div class="lk"><div class="head"><b>${esc(m.title)}</b><span class="t6">${m.tail}</span></div>
+      <div class="ps">${m.pieces.map((x) => `<div class="p1${x.cand ? ' cand' : ''}">${tileHtml(x.tile)}<div class="${x.capCls}">${esc(x.cap)}</div></div>`).join('')}</div></div>`;
   }
 
   // ── 오늘 날씨 코디 카드: 기온 한 줄 → 사진 네 장 → 이유 한 줄. 홈 맨 위와 코디 탭 맨 위에서 같은 카드를 쓴다.
@@ -1604,13 +1626,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       missing = {
         label: r.missing.label, query: r.missing.query,
         heading: `${day === 'today' ? '오늘' : '내일'} 같은 날엔 ${r.missing.label}${josa(r.missing.label, '이', '가')} 있으면 좋아요`,
-        products: ps.map((p) => ({ id: p.id, html: cardHtml(p, null) })),
+        products: ps.map((p) => ({ id: p.id, html: cardHtml(p, null), card: cardModel(p, null) })),
       };
     }
     return {
       ...base, mode: 'outfit',
       band: { label: r.band.label, advice: r.band.advice }, notes: r.notes.join(' '),
-      outfit: !!o, pieces: pieces.map((x) => ({ label: x.label, trial: !!x.trial, html: piecePic(x) })),
+      outfit: !!o, pieces: pieces.map((x) => ({ label: x.label, trial: !!x.trial, html: piecePic(x), tile: tileData(pieceTile(x)) })),
       why: o ? (r.short ? '딱 맞는 조합이 없어서 가진 옷 중 가장 가까운 거예요' : (o.reasons[0] || `${r.band.label}에 맞는 조합이에요`)) : '상의·하의·신발이 한 벌씩 있어야 조합이 생겨요',
       whyMore: o && !r.short && o.reasons.length > 1 ? ` · ${o.reasons.slice(1).join(' · ')}` : '',
       count: n, index: i, missing,
@@ -1674,6 +1696,18 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     looks: () => K.tab('looks'),
     search: (q) => K.go('results', { q }),
     reduce: () => !!K.reduce,
+    // 부족 아이템 상품 카드(WO-08c): 바닐라 data-pid·data-hang(toggleHang)과 같은 동작. 못 걸면 안내 문구를 돌려준다.
+    product: (id) => K.go('detail', { id }),
+    hang(id) {
+      const was = M.compareHas(id);
+      if (was) { M.compareRemove(id); if (S.asking === id) S.asking = null; }
+      else {
+        try { M.compareAdd(id); } catch (err) { return /비교함|4개/.test(err.message) ? '옷걸이에는 4벌까지 걸 수 있어요. 하나를 내리고 다시 걸어 주세요.' : err.message; }
+        if (needAsk(id)) S.asking = id;
+      }
+      afterHang(id, null, !was);
+      return null;
+    },
   };
   function wireWeather() {
     $$('[data-wxex]').forEach((b) => { b.onclick = () => { S.ui.wxEx = b.dataset.wxex; saveUi(); keepY(); }; });
@@ -2202,7 +2236,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const kinds = M.kindChoices().filter((k) => PIC.includes(k.id)).sort((a, b) => PIC.indexOf(a.id) - PIC.indexOf(b.id));
     const g0 = M.getState().gender || 'M';
     const thumbColor = (kid) => ['white', 'black', 'navy', 'grey', 'indigo', 'blue', 'beige'].find((c) => K.CUT[`${g0}|${kid}|${c}`]) || 'black';
-    chromeSheet('add-kind', { kinds: kinds.map((k) => ({ id: k.id, name: k.name, html: `${garmentPic({ kind: k.id, kindName: k.name, color: thumbColor(k.id), gender: g0 })}${esc(k.name)}` })), colors: colorList(), onPick: (kind, color) => {
+    chromeSheet('add-kind', { kinds: kinds.map((k) => ({ id: k.id, name: k.name, tile: tileData(garmentTile({ kind: k.id, kindName: k.name, color: thumbColor(k.id), gender: g0 })) })), colors: colorList(), onPick: (kind, color) => {
       const before = M.getState().closetCount ? M.closetOutfits().total : 0;
       M.addGarment({ kind, color, slot: M.slotChoices(kind)[0]?.id || null });
       return () => {
@@ -2255,6 +2289,18 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const with_ = M.closetOutfits({ detail: true }).list.filter((o) => o.pieces.some((x) => x.garmentId === id));
     const seen = new Set(); const sets = with_.filter((o) => !seen.has(o.key) && seen.add(o.key)).slice(0, 2);
     const cat = reg ? registrationCatalog()[reg.key] : null;
+    const sub = [brand, g.color ? g.colorLabel : null, g.kindName, g.trial ? '체험용' : g.photoId ? '내 사진 · 이 기기에 보관' : g.productId ? '판매처 사진' : reg ? '직접 등록 · 비슷한 상품 사진' : '비슷한 상품 사진'].filter(Boolean).join(' · ');
+    // 옷 정보 시트(WO-08c): 체험용 옷과 편집 화면을 못 열었을 때. React 시트, ?ui=vanilla·섬 실패면 바닐라.
+    chromeSheet('garment', {
+      tile: tileData(garmentTile(g)), title: g.label, sub,
+      opf: reg?.source ? (opfNotice(reg.source) ? { code: reg.source.code } : null) : null,
+      crowd: !reg?.source && cat ? { ...crowdModel(cat), url: cat.url || '' } : null,
+      askColor: g.detailMissing === '색 미확인', canColor: g.detailMissing !== '색 미확인', count: with_.length,
+      looks: sets.map((o) => { const m = lookModel(o, { sub: o.formulaLook ? '코디 공식' : '기본 조합' }); return { ...m, pieces: m.pieces.map((x) => ({ ...x, tile: tileData(x.tile) })) }; }),
+      empty: g.detailMissing ? '색을 채우면 조합을 셀 수 있어요.' : '상의·하의·신발이 한 벌씩 있으면 조합이 생겨요.',
+      onColor: () => () => pickColor(id, g.kindName, g.color),
+      onRemove: () => { try { M.removeGarment(id); delete REG.items[id]; saveReg(); } catch (err) { K.toast(err.message, { bottom: 128 }); return false; } return () => K.refresh(); },
+    }, () => {
     const sh = sheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span style="width:84px;display:block;flex:none">${garmentPic(g)}</span><div style="min-width:0"><h2 class="h2" style="margin:0">${esc(g.label)}</h2><div class="t6">${esc([brand, g.color ? g.colorLabel : null, g.kindName, g.trial ? '체험용' : g.photoId ? '내 사진 · 이 기기에 보관' : g.productId ? '판매처 사진' : reg ? '직접 등록 · 비슷한 상품 사진' : '비슷한 상품 사진'].filter(Boolean).join(' · '))}</div></div></div>
       ${reg?.source ? opfNotice(reg.source) : cat ? `<div class="crowd" style="margin:0 0 14px"><i class="ph ph-users-three"></i><span>${crowdLine(cat)}${cat.url ? ` · <a href="${esc(cat.url)}" target="_blank" rel="noopener" style="text-decoration:underline">판매처 링크</a>` : ''}</span></div>` : ''}
       ${g.detailMissing === '색 미확인' ? `<div class="notice" style="margin:0 0 12px"><span class="grow">색을 알려 주시면 코디에 셀 수 있어요</span><button data-gcolor>색 고르기</button></div>` : ''}
@@ -2263,6 +2309,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       <div style="display:flex;gap:8px;margin-top:16px">${g.detailMissing !== '색 미확인' ? '<button class="btn line sm" data-gcolor style="flex:1">색 바꾸기</button>' : ''}<button class="btn soft sm" data-rm style="flex:1">옷장에서 빼기</button></div>`);
     $$('[data-gcolor]', sh.s).forEach((b) => { b.onclick = async () => { await sh.close(); pickColor(id, g.kindName, g.color); }; });
     $('[data-rm]', sh.s).onclick = async () => { try { M.removeGarment(id); delete REG.items[id]; saveReg(); await sh.close(); K.refresh(); } catch (err) { K.toast(err.message, { bottom: 128 }); } };
+    });
   }
   // 색만 묻는 시트(옷장의 옷 색 채우기·바꾸기).
   function pickColor(gid, kindName, current = null, done = null) {
