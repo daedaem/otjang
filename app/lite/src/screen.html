@@ -9,6 +9,13 @@
 <script src="shared/photo-kinds.js"></script>
 <script src="shared/kit.js"></script>
 <script src="shared/ai-rank.js"></script>
+<script>
+/* 디자인 설정(hangit:look)은 화면 설정이라 'eoul-' 접두사를 쓰지 않는다(백업 대상 아님). */
+// WO-11: 새 디자인(v2)이 기본이다(10-27 21:55 대표 결정). ?look=v1이나 메뉴 '이전 디자인으로 보기'는
+// 이 기기에서 이전 디자인으로 되돌리고(hangit:look = v1), ?look=v2나 '새 디자인으로 보기'는 다시 기본으로.
+// 미리보기(?preview=1)는 이 기기 저장소를 읽거나 쓰지 않는다: ?look=v1은 그 페이지에만 적용한다.
+(function () { var v1 = false; try { var sp = new URLSearchParams(location.search), lq = sp.get('look'); if (sp.get('preview') === '1') v1 = lq === 'v1'; else { if (lq === 'v1') localStorage.setItem('hangit:look', 'v1'); else if (lq === 'v2') localStorage.removeItem('hangit:look'); v1 = localStorage.getItem('hangit:look') === 'v1'; } } catch (e) {} if (!v1) document.documentElement.dataset.look = 'v2'; })();
+</script>
 <style>
 /* 걸어 보고 사기(d12): 장바구니 대신 '걸어 보기'. 레일은 옷걸이 탭에만 있고, 다른 화면에는 걸린 옷이 있을 때만 한 줄 띠가 보인다.
    강조색은 가격표(택)의 주황 하나. 글자 단계 30 · 22 · 17 · 15 · 13. 고정 영역: 위 44 + 띠 34 + 탭 48 = 126px(844px의 14.9%). */
@@ -568,6 +575,117 @@ a { color: inherit; text-decoration: none; }
   .lks { grid-template-columns: 1fr 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .view, .hg.swing, .strip.pop, .hangt.pop span, .shelfbar.pop .ths .ph-box:last-child { animation: none !important; } .btn, .top, .hangt span { transition: none; } }
+
+/* ── WO-11 새 디자인(v2, 기본): :root[data-look="v2"]에 적용. 위의 기본 규칙은 '이전 디자인'(?look=v1)이다.
+   방향: 고급 패션 매장처럼 조용하게, 옷 사진이 먼저. Daedaem 1.1.1 색(흰 바탕·잉크·중립 회색·딥 네이비),
+   상자와 알약 줄이기(얇은 선과 여백으로 구분), 굵기 낮추기(800 → 600~700), 사진 칸 각진 모서리(2px)·크게. */
+:root[data-look="v2"] {
+  --bg: #ffffff; --surface: #ffffff; --well: #f7f7f8; --tile: #f4f4f5; --ptile: #f4f4f5; --tile-on-well: #ffffff;
+  --ink: #202025; --ink2: #555560; --ink3: #7a7a85; --line: #e6e6ea;
+  --brand: #1f3f80;
+  --acc: #1f3f80; --acc-text: #1f3f80; --acc-soft: #eef3fb; --btn-bg: #1f3f80; --btn-fg: #ffffff;
+  --dim: rgba(13, 16, 15, .48); --shadow: 0 12px 32px rgba(13, 16, 15, .14), 0 2px 8px rgba(13, 16, 15, .08);
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root[data-look="v2"]:not([data-theme="light"]) {
+  --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
+  --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
+  --brand: #86a3d6;
+  --acc: #86a3d6; --acc-text: #b3c6e8; --acc-soft: #12254d; --btn-bg: #86a3d6; --btn-fg: #151519;
+  --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); } }
+:root[data-look="v2"][data-theme="dark"] {
+  --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec; --tile-on-well: #e9e9ec;
+  --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
+  --brand: #86a3d6;
+  --acc: #86a3d6; --acc-text: #b3c6e8; --acc-soft: #12254d; --btn-bg: #86a3d6; --btn-fg: #151519;
+  --dim: rgba(0, 0, 0, .64); --shadow: 0 12px 32px rgba(0, 0, 0, .56); }
+/* 글자: 굵기를 낮추고 단계를 줄인다(제목 26 · 20 · 16, 본문 15, 작은 글자 12). */
+:root[data-look="v2"] body { font-size: 15px; letter-spacing: -.008em; }
+:root[data-look="v2"] .h1 { font-size: 26px; line-height: 34px; font-weight: 700; letter-spacing: -.03em; }
+:root[data-look="v2"] .h2 { font-size: 20px; line-height: 28px; font-weight: 650; letter-spacing: -.02em; }
+:root[data-look="v2"] .h3 { font-size: 16px; line-height: 24px; font-weight: 650; }
+:root[data-look="v2"] .t6 { font-size: 12px; line-height: 18px; }
+/* 버튼·칩: 알약 대신 6~8px 모서리, 칩은 선만. */
+:root[data-look="v2"] .btn { min-height: 50px; border-radius: 8px; font-size: 15px; font-weight: 600; }
+:root[data-look="v2"] .btn.sm { border-radius: 8px; }
+:root[data-look="v2"] .btn.soft { background: var(--well); }
+:root[data-look="v2"] .chip { min-height: 34px; padding: 0 12px; border-radius: 6px; background: transparent; border: 1px solid var(--line); color: var(--ink); font-size: 13px; }
+:root[data-look="v2"] .chip.ex { border-color: var(--line); }
+:root[data-look="v2"] .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+:root[data-look="v2"] .chips.scroll .chip { min-height: 34px; }
+:root[data-look="v2"] .quiet { font-weight: 500; text-decoration-color: var(--ink3); }
+/* 탭·띠 */
+:root[data-look="v2"] .tabs button { font-size: 11px; font-weight: 500; gap: 2px; }
+:root[data-look="v2"] .tabs button[aria-current="page"] { font-weight: 650; }
+:root[data-look="v2"] .tabs button i { font-size: 23px; }
+:root[data-look="v2"] .strip .in { font-weight: 600; }
+:root[data-look="v2"] .strip .in i { color: #b3c6e8; }
+/* 사진 칸: 각진 모서리, 회색 하나, 걸기 토글은 작게. */
+:root[data-look="v2"] .ph-box { border-radius: 2px; }
+:root[data-look="v2"] .hangt span { width: 30px; height: 30px; font-size: 17px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+:root[data-look="v2"] .hangt.big span { width: 42px; height: 42px; font-size: 22px; }
+:root[data-look="v2"] .hangt[aria-pressed="true"] span { background: var(--btn-bg); color: var(--btn-fg); }
+:root[data-look="v2"] .pdp-photo .hangt.big { width: auto; height: 48px; right: 8px; top: 8px; }
+:root[data-look="v2"] .pdp-photo .hangt.big span { width: auto; height: 40px; padding: 0 14px 0 12px; gap: 6px; display: inline-flex; align-items: center; border-radius: 8px; font-size: 20px; }
+:root[data-look="v2"] .pdp-photo .hangt.big span::after { content: "걸어 보기"; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+:root[data-look="v2"] .pdp-photo .hangt.big[aria-pressed="true"] span::after { content: "걸어 보는 중"; }
+:root[data-look="v2"] .ph-box .tag { border-radius: 2px; font-weight: 600; background: rgba(32, 32, 37, .86); }
+:root[data-look="v2"] .hslot .rank { border-radius: 2px; font-weight: 650; background: rgba(32, 32, 37, .86); }
+:root[data-look="v2"] .hslot .rank i { color: #b3c6e8; }
+/* 홈: 검색창은 얇은 선, 날씨·보기 상자는 상자 대신 선으로 나눈 구역. */
+:root[data-look="v2"] .ask input { height: 52px; border: 1px solid var(--ink); border-radius: 8px; font-size: 16px; }
+:root[data-look="v2"] .ask button { width: 52px; height: 52px; border-radius: 8px; font-size: 22px; }
+:root[data-look="v2"] .wx { margin-top: 8px; padding: 14px 0 16px; border-radius: 0; background: transparent; border-bottom: 1px solid var(--line); }
+:root[data-look="v2"] .chips + .wx { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 16px; }
+:root[data-look="v2"] .wx .wx-t { font-size: 20px; line-height: 28px; font-weight: 650; }
+:root[data-look="v2"] .wx .wx-days { background: var(--well); margin: 0; }
+:root[data-look="v2"] .wx .wx-day { min-height: 36px; border-radius: 6px; font-weight: 600; }
+:root[data-look="v2"] .wx .wx-ps { gap: 4px; }
+:root[data-look="v2"] .wx .wx-ps .ph-box, :root[data-look="v2"] .wx .wx-miss .wx-mg .ph-box { background: var(--ptile); border-radius: 2px; }
+:root[data-look="v2"] .wx .wx-why { font-weight: 500; color: var(--ink); }
+:root[data-look="v2"] .wx .wx-why i { color: var(--acc); }
+:root[data-look="v2"] .wx .wx-ex .chips .chip { background: transparent; }
+:root[data-look="v2"] .proof { padding: 16px 0; border-radius: 0; background: transparent; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+:root[data-look="v2"] .prow .ph-box { border-radius: 2px; }
+:root[data-look="v2"] .section { margin-top: 32px; }
+/* 결과: 사진을 화면 끝까지 2열로 크게, 글은 사진 아래 조용히. */
+:root[data-look="v2"] .ai, :root[data-look="v2"] .ai.wait, :root[data-look="v2"] .ai.off { min-height: 28px; margin-top: 4px; padding: 4px 0; border-radius: 0; background: transparent; color: var(--ink2); font-size: 12px; line-height: 17px; }
+:root[data-look="v2"] .ai i { font-size: 15px; }
+:root[data-look="v2"] .grid { gap: 28px 2px; margin: 12px calc(-1 * var(--gutR)) 0 calc(-1 * var(--gutL)); }
+:root[data-look="v2"] .grid .card > .open-p:last-child { padding: 0 12px; }
+:root[data-look="v2"] .grid .qrow { margin: -12px 12px 0; border-radius: 6px; }
+:root[data-look="v2"] .card .b { margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--ink); }
+:root[data-look="v2"] .card .n { margin-top: 2px; font-size: 13px; line-height: 18px; color: var(--ink2); }
+:root[data-look="v2"] .card .p { margin-top: 6px; font-size: 14px; font-weight: 650; }
+:root[data-look="v2"] .card .p small { font-weight: 400; }
+:root[data-look="v2"] .card .d { font-weight: 600; }
+:root[data-look="v2"] .qrow { border-radius: 6px; }
+:root[data-look="v2"] .qrow button { border-radius: 6px; font-weight: 600; }
+/* 상세: 사진 다음에 이름·가격만 크게. 가격표 모양은 걷어 낸다. */
+:root[data-look="v2"] .pdp-photo, :root[data-look="v2"] .pdp-photo .ph-box { aspect-ratio: 3 / 4; }
+:root[data-look="v2"] .pdp-photo img.flat { width: 78%; height: 78%; }
+:root[data-look="v2"] .pdp-head { margin-top: 20px; }
+:root[data-look="v2"] .pdp-head .b { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: .01em; }
+:root[data-look="v2"] .pdp-head .h2 { margin-top: 2px; font-size: 19px; line-height: 27px; font-weight: 500; }
+:root[data-look="v2"] .pricetag { height: auto; margin-top: 12px; padding: 0; border: 0; border-radius: 0; background: none; clip-path: none; gap: 8px; }
+:root[data-look="v2"] .pricetag::before { display: none; }
+:root[data-look="v2"] .pricetag b { font-size: 22px; font-weight: 650; }
+:root[data-look="v2"] .box { margin-top: 20px; padding: 16px; border-radius: 8px; }
+:root[data-look="v2"] .box .h2 b { color: var(--acc); }
+:root[data-look="v2"] .ownq button { border-radius: 8px; font-weight: 600; }
+:root[data-look="v2"] .pdp-head + #hangbox { margin-top: 16px; }
+:root[data-look="v2"] .pdp-more { margin-top: 20px; border-top: 1px solid var(--line); }
+:root[data-look="v2"] .pdp-more .quiet { display: flex; align-items: center; min-height: 44px; }
+:root[data-look="v2"] .lk .ps { gap: 4px; }
+:root[data-look="v2"] .lk .ps .ph-box, :root[data-look="v2"] .owned .o .ph-box { border-radius: 2px; }
+:root[data-look="v2"] .lk .ps .p1.me .ph-box { box-shadow: inset 0 0 0 2px var(--ink); }
+:root[data-look="v2"] .buybar .btn { border-radius: 8px; }
+/* 옷장·기록 */
+:root[data-look="v2"] .hg .tile, :root[data-look="v2"] .cgrid .g .ph-box, :root[data-look="v2"] .rec .ph-box, :root[data-look="v2"] .wait-row .ph-box { border-radius: 2px; }
+:root[data-look="v2"] .sum .c { border-radius: 6px; }
+:root[data-look="v2"] .sum .c .v { font-weight: 650; }
+:root[data-look="v2"] .notice { border-radius: 8px; }
+:root[data-look="v2"] .sheet { border-radius: 14px 14px 0 0; }
 </style>
 
 <main class="app" id="app"></main>
@@ -1734,11 +1852,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const V = {
     home({ q = '' } = {}) {
       const ex = M.examples().slice(0, 4);
+      // WO-11 새 디자인(v2): 찾기 칸을 맨 위에, 날씨 코디는 그 아래에 둔다.
+      const v2 = document.documentElement.dataset.look === 'v2';
+      const wx = weatherHtml({ where: 'home' });
       return `${top({ back: false, right: '<button class="icon" data-menu aria-label="더보기"><i class="ph ph-dots-three"></i></button>' })}
-        ${weatherHtml({ where: 'home' })}
-        <h1 class="h1 hero after-wx">뭐 사려고요?<br><span class="acc">걸어 보고</span> 사요.</h1>
+        ${v2 ? '' : wx}
+        <h1 class="h1 hero${v2 ? '' : ' after-wx'}">뭐 사려고요?<br><span class="acc">걸어 보고</span> 사요.</h1>
         <form class="ask" id="sf" role="search"><input id="q" name="q" enterkeyhint="search" autocomplete="off" placeholder="대충 말해도 돼요" aria-label="찾는 옷" value="${esc(q)}"><button aria-label="찾기"><i class="ph ph-arrow-right"></i></button></form>
-        <div class="chips">${ex.map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <div class="chips">${ex.map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>${v2 ? `\n        ${wx}` : ''}
         ${proofHtml()}`;
     },
 
@@ -1787,17 +1908,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const ai = m.ai, v = m.v, same = m.same, looks = m.looks, nvu = m.nvu, ask = m.ask;
       const head = m.head.kind === 'ask' ? esc(m.head.text) : m.head.kind === 'none' ? `겹치는 ${esc(m.head.kindName)}${m.head.josa} <b>없어요</b>` : m.head.kind === 'same' ? `비슷한 옷이 <b>${m.head.n}벌</b> 걸려 있어요` : m.head.kind === 'new' ? `걸면 새 코디가 <b>${m.head.n}개</b> 생겨요` : esc(m.head.text);
       const sub = m.sub;
-      return `${top()}
-        <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}</span></div>
-        <div>
-        <div class="pdp-head"><div class="b">${esc(m.brand)}</div><h1 class="h2" style="margin-top:2px">${esc(m.name)}</h1>
-          <div class="pricetag num"><b>${esc(m.priceText)}</b><small>${esc(m.priceNote)}</small></div>
-          <p class="t6" style="margin-top:6px">${esc(m.facts)}</p></div>
-        <button class="btn line wide" data-measure="${id}" style="margin:14px 0"><i class="ph ph-ruler" aria-hidden="true"></i>내 기준 옷과 실측 비교</button>
+      // WO-11 새 디자인(v2): 판단(내 옷에 걸어 보면)을 가격 바로 아래에, 실측·가치·거울은 그 뒤에 둔다.
+      const v2 = document.documentElement.dataset.look === 'v2';
+      const tools = `        <button class="btn line wide" data-measure="${id}" style="margin:14px 0"><i class="ph ph-ruler" aria-hidden="true"></i>내 기준 옷과 실측 비교</button>
         <button class="quiet" data-collection="${id}" style="margin-bottom:14px">활용·소장 가치 비교 →</button>
         <button class="quiet" data-mirror="${id}" style="margin-bottom:14px">내 사진 거울 옆에 놓고 보기 →</button>
         ${ai?.reason ? `<section class="box ai-why" aria-label="AI 이유"><div class="label"><i class="ph-fill ph-sparkle"></i>AI 순위 ${ai.rank}위${ai.fit ? ` · ${esc(ai.fit)}` : ''}</div><p class="h3">${esc(ai.reason)}</p></section>` : ''}
-        <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
+`;
+      const hang = `        <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
           <h2 class="h2">${head}</h2>
           ${sub ? `<p class="t5 sub">${esc(sub)}</p>` : ''}
           ${m.cautions.map((c) => `<p class="t6 warn"><i class="ph ph-warning-circle" aria-hidden="true"></i>${esc(c)}</p>`).join('')}
@@ -1806,7 +1924,14 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
           ${looks.length ? `<div class="looks2">${looks.map((l) => { const ps = l.pieces.filter((x) => ['outer', 'top', 'bottom', 'shoes', 'dress'].includes(x.role)).slice(0, 4); return `<div class="lk"><div class="head"><b>${esc(l.title || '')}</b>${l.new ? '<span class="t6 acc" style="font-weight:700">새 코디</span>' : ''}</div><div class="ps">${ps.map((x) => `<div class="p1${x.candidate ? ' me' : ''}">${piecePic(x)}<div class="t6">${x.candidate ? '이 옷' : `${esc(x.colorLabel)} ${esc(x.kindName)}${x.trial ? ' · 체험용' : ''}`}</div></div>`).join('')}</div></div>`; }).join('')}</div>` : ''}
           ${m.addLike ? `<div style="margin-top:10px"><button class="quiet" data-addlike="${id}"><i class="ph ph-plus"></i>가진 ${esc(m.addLike.kindName)} 걸기</button></div>` : ''}
         </section>
-        <details class="used"><summary><span>중고로 찾기</span><span class="pill">외부 검색 · ${m.usedCount}곳</span><span class="sp"></span><i class="ph ph-caret-right"></i></summary>
+`;
+      return `${top()}
+        <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}</span></div>
+        <div>
+        <div class="pdp-head"><div class="b">${esc(m.brand)}</div><h1 class="h2" style="margin-top:2px">${esc(m.name)}</h1>
+          <div class="pricetag num"><b>${esc(m.priceText)}</b><small>${esc(m.priceNote)}</small></div>
+          <p class="t6" style="margin-top:6px">${esc(m.facts)}</p></div>
+${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools + hang}        <details class="used"><summary><span>중고로 찾기</span><span class="pill">외부 검색 · ${m.usedCount}곳</span><span class="sp"></span><i class="ph ph-caret-right"></i></summary>
           ${nvu.used.groups.map((g) => `<p class="t6 ug">${esc(g.region)}</p><div class="links">${g.links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener"><span>${esc(l.label)}${l.note ? `<span class="t6 un"> · ${esc(l.note)}</span>` : ''}</span><i class="ph ph-arrow-up-right"></i></a>`).join('')}</div>`).join('')}</details>
         </div></div>`;
     },
@@ -3007,12 +3132,16 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   function menu() {
     const theme = () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; };
     const reset = () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; };
-    chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
-    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
+    // WO-11: the new look (v2) is the default; this row brings back the previous one.
+    const lookOn = () => document.documentElement.dataset.look === 'v2';
+    const look = () => { const r = document.documentElement; const on = !lookOn(); if (!M.boot?.preview) try { if (on) localStorage.removeItem('hangit:look'); else localStorage.setItem('hangit:look', 'v1'); } catch (e) {} if (on) r.dataset.look = 'v2'; else delete r.dataset.look; };
+    chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, look: lookOn(), onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onLook: () => { look(); return () => K.refresh(); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
+    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '이전 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
     $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
     const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
     $('[data-theme]', sh.s).onclick = async () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; await sh.close(); };
+    $('[data-look]', sh.s).onclick = async () => { look(); await sh.close(); K.refresh(); };
     $('[data-reset]', sh.s).onclick = async () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; await sh.close(); K.tab('home'); };
     });
   }

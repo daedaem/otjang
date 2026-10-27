@@ -211,3 +211,6 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* WO-11 새 디자인(v2) 미리 보기: 알약 → 6px, 상자 → 8px, 옷 사진 → 2px(screen.html v2 규칙과 같음). */
+:root[data-look="v2"] .mc-note, :root[data-look="v2"] .mc textarea, :root[data-look="v2"] .mc-tabs button, :root[data-look="v2"] .mc-message, :root[data-look="v2"] .mc-sketch, :root[data-look="v2"] .mc-leave { border-radius: 8px; }

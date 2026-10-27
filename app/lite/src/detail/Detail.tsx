@@ -336,6 +336,48 @@ export function Detail({ host }: { host: DetailHost }) {
         <p className="t5">상품을 찾지 못했어요.</p>
       </section>
     );
+  // WO-11 새 디자인(v2): 판단(내 옷에 걸어 보면)을 가격 바로 아래에, 실측·가치·거울은
+  // 그 뒤에 둔다. 메뉴로 바꾸면 K.refresh()가 이 화면을 다시 그린다.
+  const v2 = document.documentElement.dataset.look === "v2";
+  const tools = (
+    <>
+      <button
+        type="button"
+        className="btn line wide"
+        style={{ margin: "14px 0" }}
+        onClick={host.measure}
+      >
+        <i className="ph ph-ruler" aria-hidden="true" />
+        내 기준 옷과 실측 비교
+      </button>{" "}
+      {/* The vanilla template has whitespace between these inline buttons. */}
+      <button
+        type="button"
+        className="quiet"
+        style={{ marginBottom: 14 }}
+        onClick={host.collection}
+      >
+        활용·소장 가치 비교 →
+      </button>{" "}
+      <button
+        type="button"
+        className="quiet"
+        style={{ marginBottom: 14 }}
+        onClick={host.mirror}
+      >
+        내 사진 거울 옆에 놓고 보기 →
+      </button>
+      {m.ai?.reason ? (
+        <section className="box ai-why" aria-label="AI 이유">
+          <div className="label">
+            <i className="ph-fill ph-sparkle" />
+            {`AI 순위 ${m.ai.rank}위${m.ai.fit ? ` · ${m.ai.fit}` : ""}`}
+          </div>
+          <p className="h3">{m.ai.reason}</p>
+        </section>
+      ) : null}
+    </>
+  );
   return (
     <section data-react-detail>
       <Top back={host.back} info={host.info} />
@@ -355,42 +397,17 @@ export function Detail({ host }: { host: DetailHost }) {
               {m.facts}
             </p>
           </div>
-          <button
-            type="button"
-            className="btn line wide"
-            style={{ margin: "14px 0" }}
-            onClick={host.measure}
-          >
-            <i className="ph ph-ruler" aria-hidden="true" />
-            내 기준 옷과 실측 비교
-          </button>{" "}
-          {/* The vanilla template has whitespace between these inline buttons. */}
-          <button
-            type="button"
-            className="quiet"
-            style={{ marginBottom: 14 }}
-            onClick={host.collection}
-          >
-            활용·소장 가치 비교 →
-          </button>{" "}
-          <button
-            type="button"
-            className="quiet"
-            style={{ marginBottom: 14 }}
-            onClick={host.mirror}
-          >
-            내 사진 거울 옆에 놓고 보기 →
-          </button>
-          {m.ai?.reason ? (
-            <section className="box ai-why" aria-label="AI 이유">
-              <div className="label">
-                <i className="ph-fill ph-sparkle" />
-                {`AI 순위 ${m.ai.rank}위${m.ai.fit ? ` · ${m.ai.fit}` : ""}`}
-              </div>
-              <p className="h3">{m.ai.reason}</p>
-            </section>
-          ) : null}
-          <HangBox host={host} m={m} />
+          {v2 ? (
+            <>
+              <HangBox host={host} m={m} />
+              <div className="pdp-more">{tools}</div>
+            </>
+          ) : (
+            <>
+              {tools}
+              <HangBox host={host} m={m} />
+            </>
+          )}
           <Used m={m} />
         </div>
       </div>
