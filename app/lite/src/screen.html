@@ -1173,9 +1173,25 @@ a { color: inherit; text-decoration: none; }
   }
 
   // ── 띠(걸린 옷이 있을 때만)
+  // 공통 틀(WO-08b): 섬이 붙으면 탭·띠·알림·저장소 안내를 React가 그리고, 여기서는 상태만 바꾼다.
+  let chromeMounted = false;
+  const chromeState = { tabbed: false, current: null, strip: null, notice: null };
+  let noticeGen = 0, noticeRaw = {};
+  const chromeCtl = {
+    version: 0, subs: new Set(),
+    subscribe(fn) { chromeCtl.subs.add(fn); return () => chromeCtl.subs.delete(fn); },
+    changed() { chromeCtl.version++; chromeCtl.subs.forEach((fn) => fn()); },
+  };
+  const tabFor = (view) => (view === 'results' ? 'home' : view);
   function renderStrip({ pop = false } = {}) {
-    const el = $('#strip');
     const on = ['home', 'results', 'records', 'looks'].includes(curView) && hung().length > 0;
+    if (chromeMounted) {
+      $('#app').classList.toggle('strip-on', on);
+      chromeState.strip = on ? { text: stripText(), pop: pop && !K.reduce } : null;
+      chromeCtl.changed();
+      return;
+    }
+    const el = $('#strip');
     el.hidden = !on;
     $('#app').classList.toggle('strip-on', on);
     if (!on) return;
@@ -1448,10 +1464,10 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results'].includes(view);
-    $('#tabs').hidden = !tabbed;
+    if (chromeMounted) { chromeState.tabbed = tabbed; chromeState.current = tabFor(view); } else $('#tabs').hidden = !tabbed;
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
-    $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
+    if (!chromeMounted) $$('#tabs [data-tab]').forEach((b) => { const on = b.dataset.tab === view || (view === 'results' && b.dataset.tab === 'home'); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); const i = b.querySelector('i'); i.className = `${on ? 'ph-fill' : 'ph'} ${i.className.split(' ').pop()}`; });
     if(reactConsult){
       window.EOUL_CONSULT_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;consultUnmount=mount(consultHost($('#react-consult')));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-consult').innerHTML='<p role="status">새 상담 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.consult(params);A.consult(params);});
     } else if(reactRecords){
@@ -2950,38 +2966,55 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // would otherwise persist an example query as a new personal recent search.
   K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
+  // 안내 내용은 부를 때의 상태로 고정한다(원문도 그때 값). 바닐라와 React가 같은 모델을 쓴다.
+  function storageModel() {
+    let photoPending = false; try { photoPending = localStorage.getItem('eoul-backup:photos-pending') != null; } catch {}
+    const core = M.storageIssue?.() || null;
+    if (!core && regRaw === null) return null;
+    const raws = [];
+    noticeRaw = {};
+    if (core?.code === 'storage_unreadable') { raws.push({ name: 'closet', label: '옷장' }); noticeRaw.closet = M.unreadableRaw(); }
+    if (regRaw) { raws.push({ name: 'brand-link', label: '브랜드·링크' }); noticeRaw['brand-link'] = regRaw; }
+    const lines = [photoPending ? '사진 백업 복구가 남아 있어 저장을 멈췄어요. 전체 백업 화면에서 복구해 주세요.' : '', core?.code === 'photo_recovery_pending' ? '' : core?.message, regRaw !== null ? REG_UNREADABLE : ''].filter(Boolean);
+    return { lines, raws, fresh: raws.length > 0 && !photoPending };
+  }
+  const noticeHost = {
+    backup: () => backupSheet(),
+    download(name) {
+      const text = noticeRaw[name];
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      a.download = `eoul-${name}-unreadable-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    },
+    fresh() {
+      try {
+        if (M.storageIssue?.()?.code === 'storage_unreadable') M.startFresh();
+        if (regRaw !== null) startFreshReg();
+        K.toast('원문은 이 기기에 따로 보관했어요. 새로 시작합니다.', { bottom: 128 });
+      } catch (error) { K.toast(error.message, { bottom: 128 }); }
+      K.refresh(); storageNotice();
+    },
+  };
   const storageNotice = () => {
-    document.getElementById('eo-storage-issue')?.remove();
+    if (!chromeMounted) document.getElementById('eo-storage-issue')?.remove();
     let photoPending = false; try { photoPending = localStorage.getItem('eoul-backup:photos-pending') != null; } catch {}
     for (const id of ['app', 'tabs', 'bar']) { const root = document.getElementById(id); if (root) root.inert = photoPending; }
-    const core = M.storageIssue?.() || null;
-    const raws = [];
-    if (core?.code === 'storage_unreadable') raws.push({ name: 'closet', text: M.unreadableRaw() });
-    if (regRaw) raws.push({ name: 'brand-link', text: regRaw });
-    if (!core && regRaw === null) return false;
+    const model = storageModel();
+    if (chromeMounted) { chromeState.notice = model && { gen: ++noticeGen, ...model }; chromeCtl.changed(); return !!model; }
+    if (!model) return false;
     const el = document.createElement('div');
     el.id = 'eo-storage-issue'; el.setAttribute('role', 'alert');
     el.style.cssText = 'position:fixed;z-index:95;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));padding:14px 16px;border-radius:14px;background:#fff4e5;color:#3d2600;box-shadow:0 8px 24px rgba(0,0,0,.18);font:14px/1.5 system-ui,-apple-system,sans-serif';
-    const lines = [photoPending ? '사진 백업 복구가 남아 있어 저장을 멈췄어요. 전체 백업 화면에서 복구해 주세요.' : '', core?.code === 'photo_recovery_pending' ? '' : core?.message, regRaw !== null ? REG_UNREADABLE : ''].filter(Boolean);
-    el.innerHTML = lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('');
+    el.innerHTML = model.lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('');
     const bar = document.createElement('div'); bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
     const button = (text, onclick) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.style.cssText = 'min-height:40px;padding:0 12px;border:0;border-radius:10px;background:#3d2600;color:#fff;font:600 13px system-ui,sans-serif'; b.onclick = onclick; bar.append(b); return b; };
-    button('전체 백업 열기', () => backupSheet());
-    for (const r of raws) button(`원문 받기(${r.name === 'closet' ? '옷장' : '브랜드·링크'})`, () => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([r.text], { type: 'application/json' }));
-      a.download = `eoul-${r.name}-unreadable-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    });
-    if (raws.length && !photoPending) {
+    button('전체 백업 열기', noticeHost.backup);
+    for (const r of model.raws) button(`원문 받기(${r.label})`, () => noticeHost.download(r.name));
+    if (model.fresh) {
       const fresh = button('원문을 이 기기에 따로 보관하고 새로 시작', () => {
         if (!fresh.dataset.arm) { fresh.dataset.arm = '1'; fresh.textContent = '한 번 더 누르면 새로 시작해요'; return; }
-        try {
-          if (M.storageIssue?.()?.code === 'storage_unreadable') M.startFresh();
-          if (regRaw !== null) startFreshReg();
-          K.toast('원문은 이 기기에 따로 보관했어요. 새로 시작합니다.', { bottom: 128 });
-        } catch (error) { K.toast(error.message, { bottom: 128 }); }
-        K.refresh(); storageNotice();
+        noticeHost.fresh();
       });
     }
     if (bar.children.length) el.append(bar);
@@ -2991,6 +3024,25 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   window.addEventListener('eoul-registration-status',storageNotice);
   M.subscribe(() => { if (document.getElementById('eo-storage-issue') || M.storageIssue?.()) storageNotice(); });
   if (!storageNotice() && M.boot?.storageError) K.toast(M.boot.storageError, { bottom: 128 });
+  // 공통 틀 섬(WO-08b). ?ui=vanilla이거나 불러오지 못하면 위의 바닐라 탭·띠·알림·안내를 그대로 쓴다.
+  if (window.EOUL_CHROME_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla') {
+    window.EOUL_CHROME_LOAD().then((mod) => {
+      if (chromeMounted || typeof mod.mountChrome !== 'function') return;
+      chromeState.tabbed = !$('#tabs').hidden;
+      chromeState.current = tabFor(curView);
+      chromeState.strip = $('#strip').hidden ? null : { text: stripText(), pop: false };
+      document.getElementById('eo-storage-issue')?.remove();
+      chromeMounted = true;
+      const chrome = mod.mountChrome({
+        ctl: chromeCtl, model: () => chromeState,
+        tab: (id) => K.tab(id), closet: () => K.tab('closet'),
+        backup: noticeHost.backup, download: noticeHost.download, fresh: noticeHost.fresh,
+        reduce: () => !!K.reduce, spring: { css: K.SPRING.css, ms: K.SPRING.ms },
+      });
+      K.toast = chrome.toast;
+      storageNotice();
+    }).catch(() => {});
+  }
   if (M.boot?.q) K.go('results', { q: M.boot.q });
   else if (/^\/p\/.+/.test(r0.path)) K.go('detail', { id: r0.path.slice(3) });
   else if (r0.path === '/search' && r0.params.q) K.go('results', { q: r0.params.q });
