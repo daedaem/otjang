@@ -139,12 +139,13 @@ test("the new look labels the product page hanger", async ({ page }) => {
 });
 
 // Owner 10-28 00:04: the screen stays achromatic so the clothes carry the
-// colour; navy stays only in the logo (and the app icon).
-test("the new look is achromatic and keeps navy only in the logo", async ({ page }) => {
+// colour. 00:07: the brand colour is wood (walnut, like a wooden hanger) and
+// stays only in the logo and the app icon.
+test("the new look is achromatic and keeps the walnut brand colour only in the logo", async ({ page }) => {
   await open(page);
   expect(await bg(page)).toBe("rgb(32, 32, 37)");
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--acc").trim())).toBe("#202025");
-  expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(31, 63, 128)");
+  expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(91, 58, 36)");
 });
 
 test.describe("dark", () => {
@@ -152,6 +153,6 @@ test.describe("dark", () => {
   test("the new look's buttons are light on dark, still without a hue", async ({ page }) => {
     await open(page);
     expect(await bg(page)).toBe("rgb(247, 247, 248)");
-    expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(134, 163, 214)");
+    expect(await page.locator(".mark .wm-i").first().evaluate((el) => getComputedStyle(el).stroke)).toBe("rgb(196, 153, 107)");
   });
 });
