@@ -1,0 +1,68 @@
+{
+  "base": "f0645ca6933f117ea595a215a9c04fb89d631a3b",
+  "mode": "same catalog query and synthetic community row; photos disabled; no live provider/personal data",
+  "viewports": {
+    "mobile": [
+      390,
+      844
+    ],
+    "desktop": [
+      1440,
+      1000
+    ]
+  },
+  "images": [
+    {
+      "file": "after-desktop.png",
+      "sha256": "2157477a459e495a8500db887ecc234f19fe038be36452cdd854699992783369"
+    },
+    {
+      "file": "after-mobile.png",
+      "sha256": "91a81c47b50e18dd6db914163cf09edeb1270c6c9dff6a0bc0e56087a865e8c2"
+    },
+    {
+      "file": "before-desktop.png",
+      "sha256": "2faff2f10a1867867c50a304d295ddf29f7959161a3b94aed6d2690f9db52fe4"
+    },
+    {
+      "file": "before-mobile.png",
+      "sha256": "87389ff38fbb5e26a5374a4ba14892ea7d15fbfa82b7c4773a564cdb2fe5f5af"
+    }
+  ],
+  "afterSources": [
+    {
+      "file": "app/lite/src/add-search/index.tsx",
+      "sha256": "455293c949f39a1f29c86b27580391279a674554b2b2bbe3a4a554b24330e7a1"
+    },
+    {
+      "file": "app/lite/src/add-search/Rows.tsx",
+      "sha256": "603453169ce390ba4ce9cd3e2767bcf18322eef04e0a6a2e51257d1ca1d88773"
+    },
+    {
+      "file": "app/lite/src/add-search/types.ts",
+      "sha256": "fcc2c9d3090e892ea631c7fe2bcdba0eed7ada8751346dd7c904d17dd5308585"
+    },
+    {
+      "file": "app/lite/src/add-search/add-search.css",
+      "sha256": "c6f23d9601500e6871b737ac68abfacc1023572a51688cd67430f25e75c2d649"
+    },
+    {
+      "file": "app/lite/src/core.mjs",
+      "sha256": "e9c6bd1b8e8dfd5a24bef122de424353c95778c6120cd9010f70509879fea5dc"
+    },
+    {
+      "file": "app/lite/src/domain/legacy-registration.js",
+      "sha256": "534c123a730ff5a20d9d129d9c75ced7e51d7636a6ded79a0c05ee90f4494dce"
+    },
+    {
+      "file": "app/lite/src/screen.html",
+      "sha256": "9b5f42f09d1d2e8582c596a7ecf3829ea375035300eac0a6e755d722985a8ac4"
+    },
+    {
+      "file": "app/lite/build.mjs",
+      "sha256": "7260e94ec083e701dc11dbee7a9b0a7942adfcf34d4ec26868fe1c7703036f24"
+    }
+  ],
+  "reproduction": "app/lite/tools/capture-add-search.mjs",
+  "reproductionSha256": "92a5b4bbd3c7eb05524806d4a82faff19df4201ee1fd67e7f7e82a58ad322032"
+}

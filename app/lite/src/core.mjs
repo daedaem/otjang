@@ -17,6 +17,7 @@ import { readLiteInputDraft } from './domain/lite-input-draft.js';
 // 종류·색만 아는 옷은 '비슷한 상품 사진'), 안내문은 짧게 줄이고 자세한 고지는 한 곳(disclosure)에 모은다,
 // 주소(#/...)로 화면을 옮겨 브라우저 뒤로가기가 동작하게 하는 route를 둔다.
 // 저장은 이 브라우저에만, 앱과 다른 키로 한다. 앱 저장소·서버는 건드리지 않는다.
+import {readLegacyRegistrations} from './domain/legacy-registration.js';
 import { registrationInput, readRegistrations } from './domain/lite-registration.js';
 import { CATALOG, PRODUCTS } from './domain/data/products.js';
 import { SLOT_BY_ID, SLOTS, COLORS, STYLES, OCCASIONS } from './domain/data/slots.js';
@@ -347,6 +348,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     assertPhotoReady() { assertPhotoIdle(storage); },
     async withStorageLock(run) { if (globalThis.navigator?.locks?.request) return withPhotoLock(key, run); assertPhotoIdle(storage); return run(); },
     readInputDraft: readLiteInputDraft,
+    readLegacyRegistrations,
     canReadInputDraft(raw) { try { readLiteInputDraft(raw); return true; } catch { return false; } },
     note: NOTE,
     catalog: { store: CATALOG.store, checkedLabel: CATALOG.checkedLabel, count: CATALOG.count, rights: CATALOG.rights },

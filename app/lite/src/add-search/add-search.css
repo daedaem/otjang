@@ -1,0 +1,126 @@
+.as {
+  padding-bottom: 16px;
+}
+.as-top {
+  gap: 8px;
+}
+.as-top .qform {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.as-top .qform input {
+  flex: 1;
+  min-width: 0;
+}
+.as .srow .ph-box {
+  width: 64px;
+  flex: none;
+}
+.as .ph-box img {
+  max-width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.as-placeholder {
+  font-size: 10px;
+  color: var(--ink3);
+}
+.as .srow > .ph-tag {
+  font-size: 28px;
+  flex: none;
+}
+.as .srow .btn {
+  flex: none;
+}
+.as .grow {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.as a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.as-owned {
+  width: 64px;
+  height: 84px;
+  position: relative;
+  display: block;
+  flex: none;
+}
+.as .as-owned img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.as .as-owned .wr-placeholder {
+  font-size: 9px;
+}
+.as-manual {
+  margin-top: 8px;
+  width: 100%;
+  text-align: left;
+}
+.as-manual .t6 {
+  display: block;
+}
+.as-pending {
+  border: 1px solid var(--acc);
+  padding: 16px;
+  margin-top: 16px;
+  border-radius: 12px;
+}
+.as-pending > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.as dialog {
+  width: calc(100% - 40px);
+  max-width: 420px;
+  border: 0;
+  border-radius: 16px;
+  padding: 24px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.as dialog::backdrop {
+  background: var(--dim);
+}
+.as dialog button {
+  margin: 8px 8px 0 0;
+}
+.as button:focus-visible,
+.as input:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.as .chip {
+  min-height: 44px;
+}
+.as .wr-placeholder svg {
+  width: 100%;
+  height: 100%;
+  max-height: 64px;
+}
+.as .wr-placeholder > span {
+  font-size: 9px;
+}
+.as .srow .btn {
+  max-width: 45%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.as-pending-notice {
+  display: block;
+  max-width: 100%;
+  font-size: 12px;
+  color: var(--ink2);
+  margin-top: 6px;
+}
+.as .quiet {
+  min-height: 44px;
+}
