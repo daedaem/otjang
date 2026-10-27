@@ -115,3 +115,16 @@ test("preview mode switches the look without touching storage", async ({ page })
   expect(await look(page)).toBe("");
   expect(await page.evaluate(() => (window as any).__looks)).toEqual([]);
 });
+
+// The app's core action is labelled on the product page in the new look: the
+// hanger on the photo reads 걸어 보기, then 걸어 보는 중 once hung.
+test("the new look labels the product page hanger", async ({ page }) => {
+  await open(page, "&look=v2");
+  await page.evaluate(() => { const K = (window as any).K; K.go("detail", { id: K.M.readSearch("블레이저").products[0].id }); });
+  const hang = page.locator(".pdp-photo .hangt").first();
+  const label = () => hang.locator("span").evaluate((el) => getComputedStyle(el, "::after").content);
+  await expect.poll(label).toBe('"걸어 보기"');
+  await hang.click();
+  await expect(page.locator(".pdp-photo .hangt").first()).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => page.locator(".pdp-photo .hangt span").first().evaluate((el) => getComputedStyle(el, "::after").content)).toBe('"걸어 보는 중"');
+});
