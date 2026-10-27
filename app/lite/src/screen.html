@@ -728,6 +728,16 @@ a { color: inherit; text-decoration: none; }
   }
 
   // ── 설명은 한 곳에(ⓘ): 코어의 고지 + 이 시안이 더한 것(날씨 규칙, AI 순위·상담, 직접 등록). 화면마다 같은 말을 반복하지 않는다.
+  // 공통 시트(WO-08a): React 시트를 쓰고, ?ui=vanilla이거나 섬을 불러오지 못하면 기존 시트. 상태 변경은 여기서 넘기는 함수가 그대로 맡는다.
+  let chromeOpening = false;
+  function chromeSheet(name, props, vanilla) {
+    if (!window.EOUL_CHROME_LOAD || new URLSearchParams(location.search).get('ui') === 'vanilla') return vanilla();
+    if (chromeOpening || document.querySelector('.sheet')) return;
+    chromeOpening = true;
+    window.EOUL_CHROME_LOAD().then((mod) => { chromeOpening = false; if (document.querySelector('.sheet')) return; mod.open(name, props, { reduce: () => !!K.reduce, spring: { css: K.SPRING.css, ms: K.SPRING.ms } }); })
+      .catch(() => { chromeOpening = false; vanilla(); });
+  }
+  function colorList(first = null) { const cs = M.colorChoices(); const sorted = first ? [...cs.filter((c) => c.id === first), ...cs.filter((c) => c.id !== first)] : cs; return sorted.map((c) => ({ id: c.id, label: c.label, hex: c.hex, same: c.id === first })); }
   function disclose() {
     if ($('.sheet')) return;
     let base = { title: '이 시안에 대해', sections: [] };
@@ -740,8 +750,10 @@ a { color: inherit; text-decoration: none; }
     // 이 페이지는 사진을 함께 올린 사본(p/)에서 읽으므로 코어의 '이미지 서버에서 불러온다' 문장은 바꿔 적는다.
     const fixLine = (l) => (window.EOUL_PHOTO_BASE && /이미지 서버의 주소를 그대로/.test(l) ? '상품 사진은 확인용으로 이 페이지에 함께 올린 사본이에요. 사용 권리는 확인하지 않았어요. 링크를 외부에 공유하지 말아 주세요.' : l);
     const secs = [...base.sections.map((x) => ({ ...x, lines: x.lines.map(fixLine) })), ...extra];
+    chromeSheet('disclose', { title: base.title, sections: secs }, () => {
     const sh = sheet(`<h2 class="h2">${esc(base.title)}</h2>${secs.map((x) => `<h3 class="t6" style="margin:16px 0 4px;font-weight:700">${esc(x.h)}</h3>${x.lines.map((l) => `<p class="t5" style="margin:0 0 6px;color:var(--ink2)">${esc(l)}</p>`).join('')}`).join('')}<button class="btn soft wide" data-close style="margin-top:18px">닫기</button>`);
     $('[data-close]', sh.s).onclick = () => sh.close();
+    });
   }
   const FLAT = window.PHOTO_FLAT || new Set();
   const PIC = ['tee', 'shirt', 'knit', 'sweat', 'pants', 'jeans', 'jacket', 'coat', 'sneaker', 'loafer', 'cardigan', 'blazer'];
@@ -1941,8 +1953,13 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const RETURN_REASONS = [['size', '사이즈가 안 맞아요'], ['color', '색이 달라요'], ['quality', '품질이 아쉬워요'], ['change-of-mind', '마음이 바뀌었어요'], ['other', '그 밖의 이유']];
   function returnSheet(id) {
     const p = M.product(id); if (!p || $('.sheet')) return;
+    chromeSheet('return', { name: p.name, reasons: RETURN_REASONS, onPick: (reason) => {
+      try { M.advance(id, 'returned', { reason }); } catch (e) { K.toast(e.message, { bottom: 48 + 12 }); return false; }
+      return () => { K.refresh(); K.toast('반품으로 기록했어요 · 옷장에서 내렸어요', { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); };
+    } }, () => {
     const sh = sheet(`<h2 class="h2">${esc(p.name)} · 왜 반품했어요?</h2><p class="sub t6">기록하면 옷장에서 내려가고, 같은 상품을 다시 볼 때 알려 드려요. 확인된 거래가 아니라 직접 남기는 기록이에요.</p><div class="decs">${RETURN_REASONS.map(([k, l]) => `<button class="btn soft" data-reason="${k}">${l}</button>`).join('')}</div>`);
     $$('[data-reason]', sh.s).forEach((b) => { b.onclick = async () => { try { M.advance(id, 'returned', { reason: b.dataset.reason }); } catch (e) { K.toast(e.message, { bottom: 48 + 12 }); return; } await sh.close(); K.refresh(); K.toast('반품으로 기록했어요 · 옷장에서 내렸어요', { bottom: 48 + ($('#strip').hidden ? 0 : 34) + 12 }); }; });
+    });
   }
   // ── 상세의 결정: 주 행동은 '판매처에서 사기' 하나. 돌아오면 묻고, 아직이면 조용한 글자 버튼으로 남긴다.
   // 아래 바 한 줄: 결정 전에는 가격·수집가와 조용한 '보류 · 안 살래요', 결정 뒤에는 상태 한 줄과 '바꾸기'. 말풍선은 띄우지 않는다.
@@ -1982,9 +1999,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const p = M.product(id); if (!p) return;
     if ($('.sheet')) return;
     const has = !!p.verdict.record?.decision;
+    chromeSheet('decision', { title, sub: `${p.brand} ${p.name} · ${p.priceText}`, has, onPick: (d) => () => { if (d) decide(id, d); } }, () => {
     const sh = sheet(`<h2 class="h2">${esc(title)}</h2><p class="t6 sub">${esc(p.brand)} ${esc(p.name)} · ${esc(p.priceText)}</p>
       <div class="decs"><button class="btn go" data-d="buy"><i class="ph ph-check"></i>샀어요</button><button class="btn soft" data-d="hold">보류</button><button class="btn soft" data-d="skip">안 살래요</button>${has ? '<button class="btn line" data-d="clear">기록 지우기</button>' : ''}<button class="quiet" data-d="" style="justify-content:center;width:100%">${has ? '그대로 둘게요' : '아직 보는 중이에요'}</button></div>`);
     $$('[data-d]', sh.s).forEach((b) => { b.onclick = async () => { await sh.close(); if (b.dataset.d) decide(id, b.dataset.d); }; });
+    });
   }
   // 판매처에서 돌아왔을 때(탭이 다시 보이거나 창이 다시 초점을 받으면) 한 번 묻는다.
   const onReturn = () => {
@@ -2091,6 +2110,12 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       return;
     }
     const add = v.addSuggestion || { kind: p.kind, kindName: p.kindName, slot: p.slot, gender: p.gender, color: p.colorFromPhoto ? null : p.color };
+    chromeSheet('color', { title: `가진 ${add.kindName}${josa(add.kindName, '은', '는')} 무슨 색이에요?`, sub: '이 옷과 같은 색이면 맨 앞을 누르세요. 다른 색이어도 돼요.', colors: colorList(add.color), onPick: (color) => {
+      M.addGarment({ kind: add.kind, color, slot: add.slot, gender: add.gender });
+      [id, ...twins].forEach((x) => { try { M.setOwnership(x, 'present'); } catch {} });
+      S.asking = null;
+      return () => refreshAfterOwn(id);
+    } }, () => {
     const sh = sheet(`<h2 class="h2">가진 ${esc(add.kindName)}${josa(add.kindName, '은', '는')} 무슨 색이에요?</h2><p class="t6 sub">이 옷과 같은 색이면 맨 앞을 누르세요. 다른 색이어도 돼요.</p>${colorGrid(add.color)}`);
     $$('[data-c]', sh.s).forEach((b) => { b.onclick = async () => {
       M.addGarment({ kind: add.kind, color: b.dataset.c, slot: add.slot, gender: add.gender });
@@ -2099,6 +2124,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       await sh.close();
       refreshAfterOwn(id);
     }; });
+    });
   }
   function refreshAfterOwn(id) {
     if (curView === 'results') {
@@ -2143,18 +2169,33 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   // 상세에서 '가진 ○○ 걸기': 종류는 이 상품과 같게 미리 고르고 색만 묻는다. 걸고 나면 같은 상품 화면으로 돌아와 판정이 바뀐다.
   function addLike(id) {
     const add = M.judge(id)?.addSuggestion; if (!add) return;
+    chromeSheet('color', { title: `가진 ${add.kindName}${josa(add.kindName, '은', '는')} 무슨 색이에요?`, colors: colorList(add.color), onPick: (color) => {
+      M.addGarment({ kind: add.kind, color, slot: add.slot, gender: add.gender });
+      return () => { const y = scrollY; K.refresh(); requestAnimationFrame(() => scrollTo(0, y)); };
+    } }, () => {
     const sh = sheet(`<h2 class="h2">가진 ${esc(add.kindName)}${josa(add.kindName, '은', '는')} 무슨 색이에요?</h2>${colorGrid(add.color)}`);
     $$('[data-c]', sh.s).forEach((b) => { b.onclick = async () => {
       M.addGarment({ kind: add.kind, color: b.dataset.c, slot: add.slot, gender: add.gender });
       await sh.close();
       const y = scrollY; K.refresh(); requestAnimationFrame(() => scrollTo(0, y));
     }; });
+    });
   }
   // 옷걸이 탭의 '가진 옷 걸기': 종류 → 색, 한 번에 한 질문.
   function addFlow() {
     const kinds = M.kindChoices().filter((k) => PIC.includes(k.id)).sort((a, b) => PIC.indexOf(a.id) - PIC.indexOf(b.id));
     const g0 = M.getState().gender || 'M';
     const thumbColor = (kid) => ['white', 'black', 'navy', 'grey', 'indigo', 'blue', 'beige'].find((c) => K.CUT[`${g0}|${kid}|${c}`]) || 'black';
+    chromeSheet('add-kind', { kinds: kinds.map((k) => ({ id: k.id, name: k.name, html: `${garmentPic({ kind: k.id, kindName: k.name, color: thumbColor(k.id), gender: g0 })}${esc(k.name)}` })), colors: colorList(), onPick: (kind, color) => {
+      const before = M.getState().closetCount ? M.closetOutfits().total : 0;
+      M.addGarment({ kind, color, slot: M.slotChoices(kind)[0]?.id || null });
+      return () => {
+        K.refresh();
+        const gain = M.closetOutfits().total - before;
+        if (curView === 'add') drawShelf({ pop: true });
+        K.toast(gain > 0 ? `옷장에 넣었어요 · 입을 수 있는 조합 +${gain}` : '옷장에 넣었어요', { bottom: curView === 'add' ? 100 : 128 });
+      };
+    } }, () => {
     const sh = sheet(`<h2 class="h2">어떤 옷을 걸까요?</h2><div class="kinds">${kinds.map((k) => `<button data-k="${k.id}">${garmentPic({ kind: k.id, kindName: k.name, color: thumbColor(k.id), gender: g0 })}${esc(k.name)}</button>`).join('')}</div>`);
     $$('[data-k]', sh.s).forEach((b) => { b.onclick = () => {
       const kind = b.dataset.k, kname = kinds.find((k) => k.id === kind).name;
@@ -2169,6 +2210,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         K.toast(gain > 0 ? `옷장에 넣었어요 · 입을 수 있는 조합 +${gain}` : '옷장에 넣었어요', { bottom: curView === 'add' ? 100 : 128 });
       }; });
     }; });
+    });
   }
   function garmentSheet(id, { vanilla = false, focusReturn = null } = {}) {
     const g = M.getState().closet.find((x) => x.id === id);
@@ -2208,15 +2250,19 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   }
   // 색만 묻는 시트(옷장의 옷 색 채우기·바꾸기).
   function pickColor(gid, kindName, current = null, done = null) {
+    return chromeSheet('color', { title: `${kindName}${josa(kindName, '은', '는')} 무슨 색이에요?`, colors: colorList(current), onPick: (color) => { M.updateGarment(gid, { color }); return () => { if (done) done(); else K.refresh(); }; } }, () => {
     const sh = sheet(`<h2 class="h2">${esc(kindName)}${josa(kindName, '은', '는')} 무슨 색이에요?</h2>${colorGrid(current)}`);
     $$('[data-c]', sh.s).forEach((b) => { b.onclick = async () => { M.updateGarment(gid, { color: b.dataset.c }); await sh.close(); if (done) done(); else K.refresh(); }; });
     return sh;
+    });
   }
   // 한 번 확인하는 시트(지우기 같은 되돌릴 수 없는 일).
   function confirmSheet(title, sub, okLabel, onOk) {
+    chromeSheet('confirm', { title, sub, okLabel, onOk }, () => {
     const sh = sheet(`<h2 class="h2">${esc(title)}</h2><p class="t6 sub">${esc(sub)}</p><div class="decs"><button class="btn go" data-ok>${esc(okLabel)}</button><button class="btn soft" data-no>그대로 둘게요</button></div>`);
     $('[data-ok]', sh.s).onclick = async () => { await sh.close(); onOk(); };
     $('[data-no]', sh.s).onclick = () => sh.close();
+    });
   }
   // ── 옷장 넣기(브랜드·품명 검색)
   let lastAddSubmission = '';
@@ -2523,6 +2569,9 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   function placeSheet() {
     const P = window.EOUL_WEATHER_PLACE;
     if (!P || $('.sheet')) return;
+    chromeSheet('place', { weather: weatherHost }, () => vanillaPlaceSheet(P));
+  }
+  function vanillaPlaceSheet(P) {
     const cur = P.get();
     const sh = sheet(`<h2 class="h2" style="margin:4px 0 4px">날씨 지역</h2>
       <p class="t6" style="margin:0 0 12px">이 기기에만 저장해요. 날씨를 물을 때는 약 10km 단위로 줄인 위치만 보내요.</p>
@@ -2884,12 +2933,16 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const un = $('[data-bk-undo]', sh.s); if (un) un.onclick = async () => { try { await M.withStorageLock(() => BK.undo()); } catch (e) { msg(e.message); return; } msg('복원 전으로 되돌렸어요. 다시 불러와요.'); setTimeout(() => location.reload(), 300); };
   }
   function menu() {
+    const theme = () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; };
+    const reset = () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; };
+    chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
     const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
     $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
     const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
     $('[data-theme]', sh.s).onclick = async () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; await sh.close(); };
     $('[data-reset]', sh.s).onclick = async () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; await sh.close(); K.tab('home'); };
+    });
   }
 
   const r0 = M.route.current();
