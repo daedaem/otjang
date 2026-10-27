@@ -265,3 +265,31 @@ test('generated preview never probes private storage and shares only an empty me
   assert.equal(window.EoulMock.getState().closetCount, 1);
   assert.equal(reads, 0);
 });
+
+test('legacy registration keeps supported versions and opaque extra fields on explicit updates', () => {
+  for (const version of [undefined, 1]) {
+    const data = { ...(version===undefined?{}:{v:version}), items:{g_old:{brand:'old',future:{keep:true}}},catalog:{},extra:{keep:'root'} };
+    const s=store({'eoul-d12-hang:reg':JSON.stringify(data)}),ctx=regContext(s);
+    ctx.reg.items.g_new={brand:'new'};ctx.save();
+    const saved=JSON.parse(s.values.get('eoul-d12-hang:reg'));
+    assert.deepEqual(saved.extra,data.extra);assert.deepEqual(saved.items.g_old,data.items.g_old);assert.equal(saved.v,version);
+  }
+});
+for(const when of ['before boot','before write'])test(`legacy registration future raw is preserved ${when}`,()=>{
+ const key='eoul-d12-hang:reg',raw=' {"v":99,"items":{},"catalog":{},"future":"keep"}\n',s=store(when==='before boot'?{[key]:raw}:{}),ctx=regContext(s);
+ if(when==='before write')s.values.set(key,raw);
+ ctx.reg.items.g_new={brand:'new'};assert.throws(()=>ctx.save(),e=>e.code==='registration_write_failed');assert.equal(s.values.get(key),raw);
+});
+test('legacy registration read failure immediately before write cannot clear the current value',()=>{
+ const key='eoul-d12-hang:reg',raw='{"items":{"g_old":{"brand":"old"}},"catalog":{}}',s=store({[key]:raw}),ctx=regContext(s);const get=s.storage.getItem;s.storage.getItem=k=>{if(k===key)throw Error('synthetic read failure');return get(k)};
+ ctx.reg.items.g_new={brand:'new'};assert.throws(()=>ctx.save(),e=>e.code==='registration_write_failed');assert.equal(s.values.get(key),raw);
+});
+test('legacy registration refuses to overwrite valid newer metadata from another window',()=>{
+ const key='eoul-d12-hang:reg',s=store({}),ctx=regContext(s),raw='{"v":1,"items":{"g_other":{"brand":"newer"}},"catalog":{}}';s.values.set(key,raw);
+ ctx.reg.items.g_new={brand:'new'};assert.throws(()=>ctx.save(),e=>e.code==='registration_write_failed');assert.equal(s.values.get(key),raw);
+});
+test('legacy runtime registration rejects duplicate version and malformed URL/record fields',()=>{
+ for(const raw of ['{"v":99,"v":1,"items":{},"catalog":{}}','{"items":{"g_old":{"brand":42}},"catalog":{}}','{"items":{"g_old":{"url":"javascript:bad"}},"catalog":{}}']){
+  const key='eoul-d12-hang:reg',s=store({[key]:raw}),ctx=regContext(s);ctx.reg.items.g_new={brand:'new'};assert.throws(()=>ctx.save(),e=>e.code==='registration_write_failed');assert.equal(s.values.get(key),raw);
+ }
+});
