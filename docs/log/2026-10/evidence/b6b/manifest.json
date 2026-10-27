@@ -31,7 +31,7 @@
     },
     {
       "file": "app/lite/src/mirror/Stage.tsx",
-      "sha256": "36acb406ba2e260d2e3fa9d2b0b437696e23f42788d637d48d64e4992631defc"
+      "sha256": "a9c4886ddb20e996818f8d6a5bf9b62f22f8c2ea8b93faec826a8f38565c9ad7"
     },
     {
       "file": "app/lite/src/mirror/local-photo.ts",
@@ -59,7 +59,7 @@
     },
     {
       "file": "app/lite/e2e/mirror.spec.ts",
-      "sha256": "1af93facf31f4fa25a1f0c3495f4b004ba227373776cd7cd072cd516887a0a6c"
+      "sha256": "2a0ddce21119b94c403e14bad044838eeef4e5d1a1d742ac1eb137c50f6071c3"
     }
   ]
 }

@@ -36,7 +36,7 @@ export function Layer({
     } catch {
       return null;
     }
-  }, [host, g.id, g.photoId, draft, asset]);
+  }, [host, g, draft, asset]);
   const finishRef = useRef<(commit: boolean) => void>(() => {});
   finishRef.current = (commit) => {
     const a = drag.current;
