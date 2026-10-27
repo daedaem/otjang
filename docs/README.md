@@ -31,6 +31,8 @@
 
 ## 근거와 과거 기록
 
+- [검색 결과·공급처 공유 React 이전 (WO-03)](log/2026-10/react-results-20261027.md)
+
 - [날씨 카드·지역 선택 공유 React 이전 (WO-02)](log/2026-10/react-weather-20261027.md)
 
 - [홈 질문·예시 React 후보와 날씨 중 입력/기록 보존](log/2026-10/react-home-screen-20261027.md)
