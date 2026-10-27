@@ -2811,7 +2811,24 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   BK.restore = (data) => { photoTextGuard(); return plainTextRestore(data); };
   BK.undo = () => { photoTextGuard(); return plainTextUndo(); };
   BK.withPhotoTransaction = (fn) => { photoTransactionDepth++; try { const result = fn(); if (result && typeof result.then === 'function') throw new Error('글자 적용 콜백은 동기 작업이어야 해요.'); return result; } finally { photoTransactionDepth--; } };
+  // 백업 시트(WO-07): React 시트가 BK·사진 백업 컨트롤러를 그대로 쓴다. ?ui=vanilla이거나 섬을 불러오지 못하면 기존 시트.
+  let backupLoading = false;
   function backupSheet(note = '') {
+    if (M.boot?.preview) { K.toast('미리보기에서는 개인 백업을 열지 않아요. 실제 앱에서 이용해 주세요.', { bottom: 128 }); return; }
+    if (document.querySelector('.bk') || backupLoading) return;
+    if (!window.EOUL_BACKUP_LOAD || new URLSearchParams(location.search).get('ui') === 'vanilla') return vanillaBackupSheet(note);
+    let current; try { current = BK.classify(BK.snapshot()); } catch (e) { K.toast(`백업 자료를 읽지 못했어요. ${e.message}`, { bottom: 128 }); return; }
+    backupLoading = true;
+    window.EOUL_BACKUP_LOAD().then(({ openBackup }) => {
+      backupLoading = false;
+      if (document.querySelector('.bk')) return;
+      openBackup({ bk: BK, core: M, namespace: window.EOUL_MOCK_KEY, storage: localStorage, note, current, photos: !!window.EOUL_PHOTO_LOAD && !M.boot?.preview,
+        whenText, isBusy: () => C.busy || !!S.asking, reopen: (text) => backupSheet(text), reload: () => location.reload(),
+        photoReload: () => { Input.reset(); M.reloadSaved(); K.refresh(); storageNotice(); location.reload(); }, onState: () => storageNotice(),
+        reduce: () => !!K.reduce, spring: { css: K.SPRING.css, ms: K.SPRING.ms } });
+    }).catch(() => { backupLoading = false; vanillaBackupSheet(note || '새 백업 화면을 열지 못해 기존 화면으로 열었어요.'); });
+  }
+  function vanillaBackupSheet(note = '') {
     if (M.boot?.preview) { K.toast('미리보기에서는 개인 백업을 열지 않아요. 실제 앱에서 이용해 주세요.', { bottom: 128 }); return; }
     if (document.querySelector('.bk')) return;
     let current; try { current = BK.classify(BK.snapshot()); } catch (e) { K.toast(`백업 자료를 읽지 못했어요. ${e.message}`, { bottom: 128 }); return; }

@@ -17,3 +17,10 @@ export function saveGarmentPhoto(input: {
 export function imageDimensions(
   file: Blob,
 ): Promise<{ width: number; height: number }>;
+export const PHOTO_PENDING_KEY: string;
+export const MAX_BINARY_BYTES: number;
+// WO-07: the same repository/controller pair mountPhotoBackup uses.
+export function photoBackupSession(
+  namespace: string,
+  input: { storage: Storage; textBackup: unknown },
+): Promise<{ repository: unknown; controller: unknown }>;

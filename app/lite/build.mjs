@@ -97,6 +97,8 @@ const recordsEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry
 if(!recordsEntry)throw new Error('React records entry missing');
 const consultEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/consult/index.tsx');
 if(!consultEntry)throw new Error('React consult entry missing');
+const backupEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/backup/index.tsx');
+if(!backupEntry)throw new Error('React backup entry missing');
 const addSearchEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/add-search/index.tsx');
 if(!addSearchEntry)throw new Error('React add-search entry missing');
 const mirrorEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/mirror/index.tsx');
@@ -132,6 +134,7 @@ const resultsAssets = islandAssets('EOUL_RESULTS_LOAD', resultsEntry);
 const detailAssets = islandAssets('EOUL_DETAIL_LOAD', detailEntry);
 const recordsAssets = islandAssets('EOUL_RECORDS_LOAD', recordsEntry);
 const consultAssets = islandAssets('EOUL_CONSULT_LOAD', consultEntry);
+const backupAssets = islandAssets('EOUL_BACKUP_LOAD', backupEntry);
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -153,6 +156,7 @@ ${resultsAssets}
 ${detailAssets}
 ${recordsAssets}
 ${consultAssets}
+${backupAssets}
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">

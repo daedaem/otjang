@@ -21,6 +21,15 @@ export function photoLibrary(namespace = "eoul-d12-hang:v1") {
 export function currentPhotoClient(namespace = "eoul-d12-hang:v1") {
   return clients.get(namespace) || null;
 }
+// WO-07: the React backup sheet uses the same repository and controller as
+// mountPhotoBackup (registered the same way); only the UI is different.
+export { PHOTO_PENDING_KEY, MAX_BINARY_BYTES };
+export async function photoBackupSession(namespace, { storage, textBackup }) {
+  const repository = await photoLibrary(namespace);
+  const controller = createPhotoBackup({ storage, repository, textBackup });
+  clients.set(namespace, { controller, repository });
+  return { repository, controller };
+}
 // Decode only a user's local photo. No remote URLs, retailer cutouts or network
 // are accepted here. Immutable originals and derived thumbnail bytes are separate.
 function loadImage(file) {
