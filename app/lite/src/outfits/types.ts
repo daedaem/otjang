@@ -1,3 +1,4 @@
+import type { WeatherHost } from "../weather/types";
 import type { ProfileCore, ProfileGarment } from "../profile/types";
 export type Reaction = {
   id: string;
@@ -139,7 +140,7 @@ export type OutfitHost = {
   compared(id: string, added: boolean): void;
   query(q: string): void;
   scene(label: string): Scene | null;
-  weather(element: HTMLElement): void;
+  weather: WeatherHost;
   request(value: OutfitRequest): Promise<unknown>;
   navigationGuard(check: () => boolean | Promise<boolean>): () => void;
 };

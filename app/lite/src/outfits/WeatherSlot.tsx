@@ -1,24 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { WeatherCard } from "../weather/WeatherCard";
 import type { OutfitHost } from "./types";
-// Preserve the existing weather controls inside a host node until its separate
-// React migration. Opening this optional panel starts the weather lookup.
-export function WeatherSlot({
-  host,
-  version,
-}: {
-  host: OutfitHost;
-  version: number;
-}) {
-  const node = useRef<HTMLDivElement>(null),
-    [open, setOpen] = useState(!!host.session.weatherOpen);
-  useEffect(() => {
-    if (open && node.current)
-      try {
-        host.weather(node.current);
-      } catch {
-        node.current.textContent = "날씨 카드를 불러오지 못했어요.";
-      }
-  }, [open, version]);
+// The optional weather panel of the outfits screen. It renders the shared React
+// weather card (WO-02) only while open; opening it starts the weather lookup.
+export function WeatherSlot({ host }: { host: OutfitHost; version?: number }) {
+  const [open, setOpen] = useState(!!host.session.weatherOpen);
   return (
     <details
       className="of-weather"
@@ -32,7 +18,9 @@ export function WeatherSlot({
       <summary>
         오늘·내일 날씨 코디 <small>열어서 보기</small>
       </summary>
-      <div ref={node} data-outfit-weather />
+      <div data-outfit-weather>
+        {open && <WeatherCard host={host.weather} core={host.core} where="looks" />}
+      </div>
     </details>
   );
 }

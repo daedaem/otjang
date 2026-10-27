@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -8,6 +7,7 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 import { ProductPhoto } from "../photos/ProductPhoto";
+import { WeatherCard } from "../weather/WeatherCard";
 import type { HomeHost, Proof, ProofProduct } from "./types";
 import "./home.css";
 function ProofRow({ host, p }: { host: HomeHost; p: ProofProduct }) {
@@ -128,19 +128,6 @@ function ProofCard({ host, model }: { host: HomeHost; model: Proof }) {
     </section>
   );
 }
-function WeatherBridge({
-  host,
-  version,
-}: {
-  host: HomeHost;
-  version: number | string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (ref.current) host.weather(ref.current);
-  }, [host, version]);
-  return <div data-home-weather ref={ref} />;
-}
 function Home({ host }: { host: HomeHost }) {
   const version = useSyncExternalStore(
       host.core.subscribe,
@@ -186,7 +173,7 @@ function Home({ host }: { host: HomeHost }) {
           <i className="ph ph-dots-three" aria-hidden="true" />
         </button>
       </header>
-      <WeatherBridge host={host} version={version + ":" + refresh} />
+      <WeatherCard host={host.weather} core={host.core} where="home" />
       <h1 className="h1 hero after-wx">
         뭐 사려고요?
         <br />
