@@ -125,10 +125,23 @@ jobs:
           The Cloudflare Tunnel connection and Litestream backup/restore are not exercised here; see `docs/deploy-kit-20261015.md` for the manual drill.
           SUMMARY
 
-  lite-input:
-    name: Lite input Chromium and WebKit
+  # One browser per job so each stays inside the 15-minute limit as the
+  # suite grows. Each job runs its own test server (the offline tests stop
+  # and restart it), so the browsers never share one origin.
+  lite-input-browser:
+    name: Lite input ${{ matrix.browser }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: Chromium
+            install: chromium
+            project: mobile-chromium
+          - browser: WebKit
+            install: webkit
+            project: mobile-webkit
     defaults:
       run:
         working-directory: app/lite
@@ -143,8 +156,23 @@ jobs:
           cache-dependency-path: app/lite/package-lock.json
       - run: npm ci
       - run: npm run build
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - run: npx playwright install --with-deps ${{ matrix.install }}
+      - run: npm run test:e2e -- --project=${{ matrix.project }}
+
+  # Keeps the previous check name: it passes only when both browser jobs pass.
+  lite-input:
+    name: Lite input Chromium and WebKit
+    needs: lite-input-browser
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require both browser jobs
+        env:
+          RESULT: ${{ needs.lite-input-browser.result }}
+        run: |
+          echo "browser jobs: $RESULT"
+          test "$RESULT" = success
 
   lite:
     name: Lite checks and build (Node 22)
