@@ -156,8 +156,8 @@ export function WeatherCard({
       </div>
       <div className="wx-h">
         <span className="wx-t num">
-          {m.day === "today" ? "오늘" : "내일"} · 아침 {m.temp.min}° → 낮{" "}
-          {m.temp.max}°{m.temp.rain ? " · 비" : ""}
+          {/* one text node, like the vanilla template (same glyph run) */}
+          {`${m.day === "today" ? "오늘" : "내일"} · 아침 ${m.temp.min}° → 낮 ${m.temp.max}°${m.temp.rain ? " · 비" : ""}`}
         </span>
       </div>
     </>
@@ -208,7 +208,8 @@ export function WeatherCard({
     <section className="wx" aria-label="오늘 날씨 코디" data-react-weather>
       {head}
       <div className="wx-band">
-        <b>{m.band?.label}</b> · {m.band?.advice}
+        <b>{m.band?.label}</b>
+        {` · ${m.band?.advice ?? ""}`}
       </div>
       {!!m.notes && (
         <p className="wx-note">
