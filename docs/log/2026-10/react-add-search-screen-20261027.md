@@ -42,3 +42,11 @@
 - [전후 캡처 원장](evidence/add-search/manifest.json)은 같은 viewport/검색·합성 공동 등록 정보, 사진 표시 끔으로 만든4장이다. 실제 API·개인 사진·키·새 배포는 사용하지 않았다. 사진 없는 행의 ‘사진 없음’/태그 표시는 전후 차이다. 실제 기기/사진 성능·C1/C2·AI 블라인드20·C4/L1·공개 출시/사업 효용은 미검증이다.
 
 재현: `npm --prefix app/lite test`, `npm --prefix app/lite run build`, `npm --prefix app/lite run test:e2e -- e2e/add-search.spec.ts e2e/input.spec.ts`. 전후 캡처는 기준 커밋의 `app/lite`를 별도 임시 폴더로 내보내 빌드한 뒤 `CHROMIUM_PATH=... node app/lite/tools/capture-add-search.mjs BEFORE_DIST`로 만든다. 포트8796/8797은 loopback 전용이다.
+
+## 검토 보완 — 성공 표식과 현재 보유
+
+PR #88의 P2에서 공동 등록 성공 뒤 다른 창에서 옷을 지워도 성공 Set이 남는 문제가 확인됐다. 실패 우선163d8e9의 두 브라우저2개가 성공 표식 잔류로 실패했다. 이제 key→garment ID를 기록하고 현재 실제 보유 ID와 대조해 표시한다. 성공/명시적 입력 내려두기 후에는 실패 재시도용 cached garment를 해제한다. 실패 중인 입력의 cached ID와 삭제 대상 보호는 유지한다.
+
+같은 검색을 그대로 둔 경우와 지웠다 다시 입력한 경우 모두 다른 창 삭제 후 표식0·추가 버튼1, 사용자 클릭 전0벌 유지, 클릭 후 다른 ID 한 벌을 확인했다. 마지막 빌드와 검색30개가1.1분에 통과했으며 전체 구성은274개다. 새 소스로 캡처4장과 source hash를 다시 갱신했다. 입력 자산4개와 앞선272개 결과는 이 최종274개 CI와 구분한다.
+
+이전41c3bb9의 push 작업40438901327은 브라우저 준비6분2초 뒤 검사를 시작했지만 전체15분 제한으로 취소됐다. 실제 assertion 실패로 단정하거나 전수 통과로 계산하지 않았다. 마지막 수정 head에서 동일 설정으로 전체 검사를 확인한다.

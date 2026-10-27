@@ -2020,7 +2020,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(x.savedGarment){
       current=M.getState().closet.find(g=>g.id===x.savedGarment.id);
       if(!current)throw Object.assign(Error('다른 화면에서 이 옷이 삭제됐어요. 입력은 남겨 두고 최신 옷장을 확인해 주세요. 옷을 다시 만들지 않았어요.'),{partial:true});
-      if(current.kind!==x.savedGarment.kind||current.label!==x.savedGarment.label||current.addedAt!==x.savedGarment.addedAt)throw Object.assign(Error('다른 화면에서 이 옷의 정보가 바뀌었어요. 추가 정보를 덮지 않고 입력을 남겨 두었어요.'),{partial:true});
+      if(current.trial!==x.savedGarment.trial||current.kind!==x.savedGarment.kind||current.label!==x.savedGarment.label||current.addedAt!==x.savedGarment.addedAt)throw Object.assign(Error('다른 화면에서 이 옷의 정보가 바뀌었어요. 추가 정보를 덮지 않고 입력을 남겨 두었어요.'),{partial:true});
     }
     const g=current||M.addGarment({kind,color:x.color||null,slot:M.slotChoices(kind)[0]?.id||null,label:String(x.name).slice(0,80)});
     x.savedGarment=g;

@@ -32,7 +32,7 @@
   "afterSources": [
     {
       "file": "app/lite/src/add-search/index.tsx",
-      "sha256": "74cbdd831176943a9c9ee3806cbd06c5675f87943752a11655a826c85bf5b330"
+      "sha256": "455293c949f39a1f29c86b27580391279a674554b2b2bbe3a4a554b24330e7a1"
     },
     {
       "file": "app/lite/src/add-search/Rows.tsx",
@@ -56,7 +56,7 @@
     },
     {
       "file": "app/lite/src/screen.html",
-      "sha256": "6dc17fad79e15fa5affe8aca95bd2f128e50a60871b5bf828e27f756ebdf1e52"
+      "sha256": "9b5f42f09d1d2e8582c596a7ecf3829ea375035300eac0a6e755d722985a8ac4"
     },
     {
       "file": "app/lite/build.mjs",

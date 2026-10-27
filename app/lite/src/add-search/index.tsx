@@ -55,7 +55,7 @@ function AddSearch({ host }: { host: AddHost }) {
     q: "",
     rows: [],
   });
-  const [added, setAdded] = useState(new Set<string>()),
+  const [addedIds, setAddedIds] = useState(new Map<string, string>()),
     [failed, setFailed] = useState(new Set(host.pending.keys())),
     [leave, setLeave] = useState(false),
     [discard, setDiscard] = useState<string | null>(null);
@@ -72,6 +72,14 @@ function AddSearch({ host }: { host: AddHost }) {
     }
   }, [host, text, version]);
   const closet = useMemo(() => host.core.getState(), [host, version]);
+  const added = useMemo(() => {
+    const owned = new Set(
+      closet.closet.filter((g) => !g.trial).map((g) => g.id),
+    );
+    return new Set(
+      [...addedIds].filter(([, id]) => owned.has(id)).map(([key]) => key),
+    );
+  }, [addedIds, closet]);
   useLayoutEffect(() => {
     const current = document.activeElement;
     if (!current || current === document.body || host.element.contains(current))
@@ -151,7 +159,9 @@ function AddSearch({ host }: { host: AddHost }) {
       const g = host.ownCrowd(target);
       host.pending.delete(key);
       setFailed(new Set(host.pending.keys()));
-      setAdded((x) => new Set(x).add(key));
+      delete target.savedGarment;
+      delete target.pendingNotice;
+      setAddedIds((x) => new Map(x).set(key, g.id));
       host.finishCrowd(g);
     } catch (e) {
       const err = e as Error & { partial?: boolean };
@@ -196,18 +206,21 @@ function AddSearch({ host }: { host: AddHost }) {
   function discardInput() {
     if (!discard) return;
     const row = host.pending.get(discard),
+      savedId = row?.savedGarment?.id,
       exists =
         row?.savedGarment &&
-        host.core.getState().closet.some((g) => g.id === row.savedGarment!.id);
+        host.core
+          .getState()
+          .closet.some((g) => !g.trial && g.id === row.savedGarment!.id);
     if (row) {
       delete row.pendingNotice;
-      if (!exists) delete row.savedGarment;
+      delete row.savedGarment;
     }
     host.pending.delete(discard);
     setFailed(new Set(host.pending.keys()));
-    setAdded((values) => {
-      const next = new Set(values);
-      if (exists) next.add(discard);
+    setAddedIds((values) => {
+      const next = new Map(values);
+      if (exists && savedId) next.set(discard, savedId);
       else next.delete(discard);
       return next;
     });
