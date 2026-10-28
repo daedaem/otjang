@@ -187,6 +187,30 @@ ${body}
 `;
 put('index.html', html);
 
+// 4b) /c 공개 코디 공유 화면(커뮤니티 C4·C5). Worker는 COMMUNITY_MODE=public이고 준비가 끝났을 때만 이 화면과
+// community-public.json에 적힌 파일을 로그인 없이 내준다. 앱 화면·상품 자료·코어는 이 목록에 넣지 않는다.
+const communityShellEntry = Object.values(inputManifest).find((entry) => entry.isEntry && entry.src === 'src/community/shell.tsx');
+if (!communityShellEntry) throw new Error('React community shell entry missing');
+const shellGraph = runtimeAssets(communityShellEntry);
+put('community-shell.html', `<!doctype html>
+<html lang="ko" data-look="v2">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="referrer" content="no-referrer">
+<title>코디 공유 · ${APP_NAME}</title>
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+${shellGraph.css.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
+<script type="module" src="/react/${communityShellEntry.file}"></script>
+</head>
+<body>
+<main id="community"></main>
+</body>
+</html>
+`);
+put('community-public.json', JSON.stringify({ files: [...shellGraph.files, '/icons/icon.svg'].sort() }, null, 2));
+
 // 5) 설치 정보, Pages 헤더
 put('manifest.webmanifest', JSON.stringify({
   id: '/',
@@ -229,7 +253,7 @@ const walk = (dir) => {
   }
 };
 walk(OUT);
-const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && !f.startsWith('react/') && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
+const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && f !== 'community-shell.html' && f !== 'community-public.json' && !f.startsWith('react/') && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
 const hash = crypto.createHash('sha256');
 for (const f of files.sort()) hash.update(f).update(fs.readFileSync(path.join(OUT, f)));
 const version = hash.digest('hex').slice(0, 12);

@@ -7,7 +7,8 @@ import { handleWeather } from './functions/api/weather.js';
 import { handleRakuten } from './functions/api/rakuten.js';
 import { handleAdpick } from './functions/api/adpick.js';
 import { handleOpenProducts } from './functions/api/open-products.js';
-import { handleCommunity } from './functions/api/community.js';
+import { handleCommunity, publicMissing } from './functions/api/community.js';
+import { handleMemberAuth, memberFromRequest } from './functions/lib/member-session.js';
 import { authorizePrivateRequest } from './functions/lib/private-access.js';
 import { handlePrivateSession } from './functions/lib/private-session.js';
 
@@ -37,6 +38,47 @@ function denied(access, request, env) {
   }, { status, headers: privateHeaders });
 }
 
+const SHELL_CSP = "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+async function publicFiles(env, url) {
+  try {
+    const res = await env.ASSETS.fetch(new Request(new URL('/community-public.json', url)));
+    const body = res.ok ? await res.json() : null;
+    return new Set(Array.isArray(body?.files) ? body.files : []);
+  } catch { return new Set(); }
+}
+async function publicCommunity(request, env, url, { authorize, community, member, memberAuth }) {
+  const path = url.pathname;
+  if (path.startsWith('/_member/')) return memberAuth(request, env);
+  if ((path === '/c' || path === '/c/') && request.method === 'GET') {
+    // 정적 파일의 HTML 주소 정리가 /community-shell.html을 다른 주소로 돌려 답할 수 있어 한 번 따라간다(보안 검토 10-28).
+    let asset = await env.ASSETS.fetch(new Request(new URL('/community-shell.html', url)));
+    const moved = asset.status >= 300 && asset.status < 400 && asset.headers.get('location');
+    if (moved) asset = await env.ASSETS.fetch(new Request(new URL(moved, url)));
+    if (!asset.ok) return null;
+    return new Response(asset.body, { status: 200, headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SHELL_CSP, 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
+  }
+  if (request.method === 'GET' && (await publicFiles(env, url)).has(path)) {
+    const asset = await env.ASSETS.fetch(request);
+    const response = new Response(asset.body, asset);
+    // 이름에 해시가 있는 /react/ 파일만 오래 묶어 둔다.
+    response.headers.set('Cache-Control', path.startsWith('/react/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    return response;
+  }
+  if (path.startsWith('/api/community/')) {
+    let access = null;
+    try { access = await authorize(request, env); } catch {}
+    if (access?.ok === true) return community(request, env, { member: 'owner', operator: true });
+    // 회원 쿠키는 SameSite=Lax지만, 쓰기 요청은 같은 출처에서 온 것만 받는다.
+    if (!['GET', 'HEAD'].includes(request.method) && request.headers.get('origin') !== url.origin) {
+      return Response.json({ code: 'invalid_origin' }, { status: 403, headers: privateHeaders });
+    }
+    const id = await member(request, env).catch(() => null);
+    return community(request, env, id ? { member: id, operator: false } : {});
+  }
+  return null;
+}
+
 // Dependencies can only be supplied by code/tests. HTTP input and environment variables
 // cannot replace or bypass authentication in the deployed default export.
 export function createWorker({
@@ -48,11 +90,20 @@ export function createWorker({
   adpick = handleAdpick,
   openProducts = handleOpenProducts,
   community = handleCommunity,
+  member = memberFromRequest,
+  memberAuth = handleMemberAuth,
   privateSession = handlePrivateSession,
 } = {}) {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
+      // 코디 공유 공개(대표 10-28 08:08·11:47). COMMUNITY_MODE=public이고 운영자 정보·연락처·회원 로그인 설정이
+      // 모두 있을 때만 /c 화면, 그 화면의 파일(빌드가 만든 허용 목록), 회원 로그인, 커뮤니티 API가 본인 로그인 없이 열린다.
+      // 나머지 앱(상품 자료·옷장 화면·AI)은 그대로 본인 전용이다.
+      if (env?.COMMUNITY_MODE === 'public' && publicMissing(env).length === 0) {
+        const open = await publicCommunity(request, env, url, { authorize, community, member, memberAuth });
+        if (open) return open;
+      }
       // Only these exact authentication endpoints may answer before the private gate.
       // Their handler owns method/origin/credential validation. Access/default and
       // unknown modes retain their existing gate even on the login paths.

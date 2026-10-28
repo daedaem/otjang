@@ -29,8 +29,8 @@ function fakeD1() {
   };
 }
 const PHOTO = fileURLToPath(new URL("../public/examples/m-blazer.webp", import.meta.url));
-async function serve(page: Page, mode: string | undefined) {
-  const env = { CROWD_DB: fakeD1(), COMMUNITY_MODE: mode, COMMUNITY_CONTACT: "운영자 연락처(예시)" };
+async function serve(page: Page, mode: string | undefined, extra: Record<string, string> = {}, who: any = { member: "owner", operator: true }) {
+  const env: any = { CROWD_DB: fakeD1(), COMMUNITY_DB: fakeD1(), COMMUNITY_MODE: mode, COMMUNITY_CONTACT: "contact@example.test", COMMUNITY_OPERATOR: "운영자(예시)", ...extra };
   const posted: any[] = [];
   await page.route("**/*", async (route) => {
     const req = route.request();
@@ -39,7 +39,7 @@ async function serve(page: Page, mode: string | undefined) {
     if (u.pathname.startsWith("/api/community/")) {
       const body = req.postDataBuffer();
       if (req.method() === "POST" && u.pathname.endsWith("/posts")) posted.push(JSON.parse(body!.toString()));
-      const res: Response = await handleCommunity(new Request(u.href, { method: req.method(), headers: { "content-type": "application/json" }, body: body && req.method() !== "GET" ? body : undefined }), env, { member: "owner", operator: true });
+      const res: Response = await handleCommunity(new Request(u.href, { method: req.method(), headers: { "content-type": "application/json" }, body: body && req.method() !== "GET" ? body : undefined }), env, who);
       return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
     }
     if (u.pathname.startsWith("/api/")) return route.fulfill({ status: 503, contentType: "application/json", body: '{"code":"not_configured"}' });
@@ -52,7 +52,7 @@ async function serve(page: Page, mode: string | undefined) {
 // 다른 회원(b)의 글을 서버에 직접 넣는다. 화면 쪽 사용자는 owner다.
 async function otherPost(env: any, text: string) {
   const call = (path: string, body: any) => handleCommunity(new Request(`https://x.test/api/community/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }), env, { member: "b", operator: false });
-  await call("join", { name: "비회원", rules: 1 });
+  await call("join", { name: "비회원", rules: 1, age14: true });
   await call("posts", { post: { text, pieces: [{ kind: "coat", color: "beige", label: "베이지 코트" }, { kind: "jeans", color: "indigo", label: "청바지" }], consent: false }, photos: [] });
 }
 const go = (page: Page) => page.evaluate(() => (window as any).K.go("community", {}));
@@ -61,6 +61,7 @@ async function joinAs(page: Page, name = "대담") {
   await expect(page.getByRole("heading", { name: "코디 공유" })).toBeVisible();
   await page.getByLabel("이름").fill(name);
   await page.getByRole("checkbox", { name: /규칙을 읽었고 따를게요/ }).check();
+  await page.getByRole("checkbox", { name: /만 14세 이상이에요/ }).check();
   await page.getByRole("button", { name: "가입하기" }).click();
   await expect(page.getByRole("button", { name: "코디 올리기" })).toBeVisible();
 }
@@ -84,7 +85,7 @@ test("while the switch is off the page says sharing is not open and sends nothin
 test("public mode stays closed until member login exists", async ({ page }) => {
   await serve(page, "public");
   await go(page);
-  await expect(page.getByText(/회원 로그인을 준비한 뒤에 열어요/)).toBeVisible();
+  await expect(page.getByText(/공개 준비가 끝나면 열어요/)).toBeVisible();
 });
 
 test("joining shows the rules first and needs a name and agreement", async ({ page }) => {
@@ -95,6 +96,8 @@ test("joining shows the rules first and needs a name and agreement", async ({ pa
   await page.getByLabel("이름").fill("대담");
   await expect(join).toBeDisabled();
   await page.getByRole("checkbox", { name: /규칙을 읽었고 따를게요/ }).check();
+  await expect(join).toBeDisabled();
+  await page.getByRole("checkbox", { name: /만 14세 이상이에요/ }).check();
   await expect(join).toBeEnabled();
   await join.click();
   await expect(page.getByText("아직 올라온 코디가 없어요")).toBeVisible();
@@ -189,4 +192,33 @@ test("the new look keeps the community page achromatic with walnut only on hung 
   await joinAs(page);
   const btn = page.getByRole("button", { name: "코디 올리기" });
   expect(await btn.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(32, 32, 37)");
+});
+
+test("the join screen shows the terms and privacy notice with the operator's name", async ({ page }) => {
+  await serve(page, "private");
+  await go(page);
+  await page.getByRole("button", { name: "이용약관·개인정보처리방침" }).click();
+  const terms = page.getByRole("dialog", { name: "이용약관·개인정보처리방침" });
+  await expect(terms).toContainText("운영자(예시)");
+  await expect(terms).toContainText("contact@example.test");
+  await expect(terms).toContainText("만 14세 미만은 가입할 수 없어요");
+  await expect(terms).toContainText("옷장 기록·메모·구매 링크");
+  await terms.getByRole("button", { name: "닫기" }).click();
+  await expect(terms).toBeHidden();
+});
+
+test("in public mode a visitor who is not signed in sees Kakao and Google sign-in", async ({ page }) => {
+  await serve(page, "public", { MEMBER_SESSION_SECRET: "s".repeat(40), KAKAO_REST_KEY: "k", GOOGLE_CLIENT_ID: "g", GOOGLE_CLIENT_SECRET: "gs" }, {});
+  await go(page);
+  await expect(page.getByRole("link", { name: "카카오로 시작하기" })).toHaveAttribute("href", "/_member/login/kakao");
+  await expect(page.getByRole("link", { name: "구글로 시작하기" })).toHaveAttribute("href", "/_member/login/google");
+  await expect(page.getByRole("button", { name: "가입하기" })).toHaveCount(0);
+});
+
+test("the public page /c is a standalone community shell without the app", async ({ page }) => {
+  await serve(page, "private");
+  await page.goto("/community-shell.html");
+  await expect(page.getByRole("heading", { name: "코디 공유" })).toBeVisible();
+  await expect(page.locator("#tabs")).toHaveCount(0);
+  expect(await page.evaluate(() => typeof (window as any).K)).toBe("undefined");
 });
