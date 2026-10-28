@@ -238,3 +238,43 @@ test('an edit transaction failure preserves the old title, text, revision and po
   assert.deepEqual((await f.call('a', 'GET', 'feed?board=free')).body.items[0], before);
   assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage WHERE member=?').get('a').n, 1);
 });
+
+function seedLegacy(f, n, journal = 0) {
+  const ids = [], at = Date.UTC(2026, 9, 29) - 1000;
+  for (let i = 0; i < n; i++) {
+    const id = crypto.randomUUID(); ids.push(id);
+    f.db.raw.prepare('INSERT INTO community_posts (id,member,text,pieces,photos,created_at) VALUES (?,?,?,?,?,?)')
+      .run(id, 'a', '기존 글' + i, JSON.stringify(outfit().pieces), 0, at);
+    if (i < journal) f.db.raw.prepare('INSERT INTO community_post_usage (id,member,created_at) VALUES (?,?,?)').run(crypto.randomUUID(), 'a', at);
+  }
+  return ids;
+}
+
+test('upgrade counts ten recent legacy posts even when the old posting journal is empty', async () => {
+  const f = fixture(); await f.join(); seedLegacy(f, 10);
+  assert.equal((await post(f, 'a', outfit())).status, 429);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts').get().n, 10);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage').get().n, 10);
+});
+
+test('upgrade does not count existing legacy journal entries a second time', async () => {
+  const f = fixture(); await f.join(); seedLegacy(f, 9, 9);
+  assert.equal((await post(f, 'a', sale())).status, 200);
+  assert.equal((await post(f, 'a', talk())).status, 429);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage').get().n, 10);
+});
+
+test('concurrent first writes share the missing legacy journal without duplicate reservations', async () => {
+  const f = fixture(); await f.join(); seedLegacy(f, 9, 4);
+  const results = await Promise.all([post(f, 'a', sale()), post(f, 'a', talk())]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 429]);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts').get().n, 10);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage').get().n, 10);
+});
+
+test('deleting a legacy post as the first upgrade action cannot erase its recent posting allowance', async () => {
+  const f = fixture(); await f.join(); const ids = seedLegacy(f, 10);
+  assert.equal((await f.call('a', 'DELETE', 'posts/' + ids[0])).status, 200);
+  assert.equal((await post(f, 'a', sale())).status, 429);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts').get().n, 9);
+});
