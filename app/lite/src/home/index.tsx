@@ -224,6 +224,11 @@ function Home({ host }: { host: HomeHost }) {
           </button>
         ))}
       </div>
+      {host.check ? (
+        <button className="quiet hm-check" type="button" tabIndex={0} onClick={host.check}>
+          <i className="ph ph-link" aria-hidden="true" /> 링크로 사도 될지 보기
+        </button>
+      ) : null}
       {v2 ? weather : null}
       <ProofCard host={host} model={proof} />
     </section>

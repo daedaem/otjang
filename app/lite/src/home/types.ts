@@ -30,6 +30,7 @@ export type HomeHost = {
   closet(): void;
   looks(): void;
   add(): void;
+  check?(): void;
   compare(): void;
   clearTrial(): void;
   menu(): void;
