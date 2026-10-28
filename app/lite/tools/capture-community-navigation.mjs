@@ -80,6 +80,7 @@ const manifest = {
     cwd: root,
     encoding: "utf8",
   }).trim(),
+  capturedAt: new Date().toISOString(),
   synthetic: true,
   externalRequests: "blocked",
   realPosts: 0,
@@ -117,9 +118,10 @@ try {
         section,
         body,
         who = { member: "owner", operator: true },
+        at = NOW,
       ) => {
         const r = await communityCall(env, section, body, who, {
-          now: () => NOW,
+          now: () => at,
         });
         if (!r.ok)
           throw Error(
@@ -129,7 +131,12 @@ try {
               (await r.text()),
           );
       };
-      await seed("join", { name: "합성회원", rules: 1, age14: true });
+      await seed(
+        "join",
+        { name: "합성회원", rules: 1, age14: true },
+        undefined,
+        NOW - 3000,
+      );
       await seed("posts", {
         post: {
           text: "출근할 때 입는 흰 셔츠와 베이지 바지예요. (합성 예시)",
@@ -142,7 +149,12 @@ try {
         photos: [],
       });
       const who = { member: "qa-other", operator: false };
-      await seed("join", { name: "코디예시", rules: 1, age14: true }, who);
+      await seed(
+        "join",
+        { name: "코디예시", rules: 1, age14: true },
+        who,
+        NOW - 2000,
+      );
       await seed(
         "posts",
         {
@@ -157,6 +169,7 @@ try {
           photos: [],
         },
         who,
+        NOW - 1000,
       );
       const shot = async (state) => {
         await page.evaluate(() => document.fonts.ready);
@@ -170,8 +183,22 @@ try {
           animations: "disabled",
         });
         const bytes = fs.readFileSync(path.join(output, file));
+        const postOrder = await page
+          .locator("[data-community-post] .cm-meta b")
+          .allTextContents();
+        if (version === "after") {
+          const before = manifest.captures.find(
+            (c) => c.file === "before-" + device.name + "-" + state + ".png",
+          );
+          if (
+            !before ||
+            JSON.stringify(before.postOrder) !== JSON.stringify(postOrder)
+          )
+            throw Error("Synthetic post order differs");
+        }
         manifest.captures.push({
           file,
+          postOrder,
           viewport: { width: device.width, height: device.height },
           colorScheme: device.colorScheme,
           state,
@@ -218,6 +245,7 @@ try {
         .click();
       await page.getByRole("dialog", { name: "코디 올리기" }).waitFor();
       await page.locator("[data-community-piece]").nth(2).waitFor();
+      await page.locator("[data-community-post]").nth(1).waitFor();
       await shot("share");
       if (posted.length) throw Error("Capture must not post from UI");
       await context.close();

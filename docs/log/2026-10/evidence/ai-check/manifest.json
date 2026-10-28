@@ -1,12 +1,15 @@
 {
   "sourceCommit": "fecbb6094533aeb0cf88376ff3cb06e6c1557d15",
-  "liveProviderSuccesses": 2,
+  "liveProviderSuccesses": 3,
   "privateWardrobeSent": false,
   "privateHistorySent": false,
   "fullProviderIdsStored": false,
   "photoAnalysis": {
-    "status": "separate_approval_pending",
-    "requestsSent": 0
+    "status": "success_after_explicit_approval",
+    "requestsSent": 1,
+    "kind": "shirt",
+    "color": "white",
+    "storedInWardrobe": false
   },
   "responses": [
     {
@@ -26,6 +29,17 @@
       "model": "claude-haiku-5-5",
       "inputTokens": 1656,
       "outputTokens": 240
+    },
+    {
+      "kind": "photo",
+      "file": "photo.json",
+      "sha256": "06e08deb3b8c276332ce9d9021f9914585e839942ade9cd083866c51a1fc59c9",
+      "recordedAt": "2026-10-28T15:34:29.783463+00:00",
+      "model": "claude-haiku-5-5",
+      "inputTokens": 950,
+      "outputTokens": 50
     }
-  ]
+  ],
+  "totalInputTokens": 3519,
+  "totalOutputTokens": 641
 }
