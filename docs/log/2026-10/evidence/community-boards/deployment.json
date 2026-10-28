@@ -1,0 +1,76 @@
+{
+  "checkedAt": "2026-10-28T21:09:04.146360+00:00",
+  "pr": 132,
+  "head": "87f437e751ffb4cf151d0aaa5c36fa09573b2fb1",
+  "master": "c02ebd48ad341344f6020f17e0a4026b07f9d53c",
+  "workerVersion": "36eb5c97",
+  "activePercent": 100,
+  "buildDuration": "1m23s",
+  "ci": {
+    "checks": 15,
+    "unresolvedThreads": 0,
+    "nodePassed": 518,
+    "nodeSkipped": 0,
+    "chromiumPassed": 318,
+    "webkitPassed": 318,
+    "run": 40766343464
+  },
+  "databases": {
+    "community": "otjang-community",
+    "budgetAndCatalog": "otjang-private",
+    "oldMemberCommunityRowsBeforeBinding": 0,
+    "oldCheckedTables": 12,
+    "copiedRows": 0,
+    "deletedRows": 0,
+    "select1": {
+      "budget": "ok",
+      "members": "ok",
+      "community": "ok"
+    }
+  },
+  "liveUI": {
+    "boards": [
+      "outfits",
+      "sale",
+      "free"
+    ],
+    "footerTabs": 6,
+    "currentFooter": "community",
+    "directFreeEntry": true,
+    "saleThenBackToFree": true,
+    "actualJoins": 0,
+    "actualPosts": 0,
+    "actualPhotoTransfers": 0,
+    "termsAccepted": false
+  },
+  "publicMode": false,
+  "inviteModePreserved": true,
+  "missingPublic": [
+    "operator",
+    "contact",
+    "login"
+  ],
+  "additionalPaidAICalls": 0,
+  "anonymousPython": {
+    "status": 403,
+    "edgeErrorCode": 1010,
+    "name": "browser_signature_banned",
+    "worker401Verified": false
+  },
+  "independentReadOnlyQa": {
+    "client": "curl",
+    "at": "2026-10-28T21:05:33Z",
+    "status": 401,
+    "code": "unauthorized",
+    "cache": "private,no-store",
+    "tlsVerification": true,
+    "posts": 0,
+    "paidCalls": 0
+  },
+  "screenshot": {
+    "file": "live-before-join.png",
+    "bytes": 43212,
+    "sha256": "90caa383e61be841112dcfd44d47e094d8a425636addbffba4ac7251e757f9e8",
+    "privateUserContent": false
+  }
+}
