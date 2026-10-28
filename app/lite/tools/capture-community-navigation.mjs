@@ -186,7 +186,15 @@ try {
       await page.locator("[data-react-closet]").waitFor();
       await page.locator("nav#tabs[data-react-chrome]").waitFor();
       await shot("closet");
-      await page.goto(server.url + "/?photos=0#/community");
+      // Use each version's real entry; the baseline has no independent tab.
+      const communityEntry = page.locator('#tabs [data-tab="community"]');
+      if (await communityEntry.count()) await communityEntry.click();
+      else {
+        await page.locator('#tabs [data-tab="looks"]').click();
+        await page
+          .getByRole("button", { name: "코디 공유", exact: true })
+          .click();
+      }
       await page
         .getByRole("button", { name: "코디 올리기", exact: true })
         .waitFor();

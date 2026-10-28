@@ -52,6 +52,7 @@
   let onRender = () => {};
   const navigationGuards = [];
   let checkingNavigation = false, lastHref = location.href;
+  let externalRoute = null, pendingExternalHref = null, communityForward = null;
   function setNavigationGuard(check) {
     navigationGuards.push(check);
     return () => { const index = navigationGuards.indexOf(check); if (index !== -1) navigationGuards.splice(index, 1); };
@@ -78,15 +79,55 @@
       Promise.resolve(allowed).then(ok => { if (ok) run(); else cancel(); }, cancel).finally(() => { checkingNavigation = false; });
     } else if (allowed) run(); else cancel();
   }
-  function start(render, first = { view: 'home', params: {} }) {
+  // The app opts explicit addresses in here. Existing stack-only screens keep
+  // their same-URL steps, guards and RAM parameters; no extra history is pushed.
+  function syncExternalRoute(state) {
+    let next;
+    try { next = externalRoute?.(); } catch { return false; }
+    if (!next || next.view === current()?.view) return false;
+    const targetHref = location.href, previousHref = lastHref;
+    if (pendingExternalHref === targetHref) return true; // popstate + hashchange
+    pendingExternalHref = targetHref;
+    authorizeNavigation(() => {
+      pendingExternalHref = null;
+      const index = Number.isSafeInteger(state?.k) ? state.k - 1 : -1;
+      const known = index >= 0 && index < stack.length - 1 && stack[index].view === next.view;
+      if (known) stack.splice(index + 1);
+      else {
+        stack[stack.length - 1] = { ...current(), scroll: scrollY };
+        const cached = !!communityForward && communityForward.key === state?.k && communityForward.href === targetHref;
+        stack.push(cached ? communityForward.entry : next);
+        try { history.replaceState({ k: stack.length }, ''); } catch {}
+      }
+      draw(known ? 'back' : 'forward');
+    }, () => {
+      pendingExternalHref = null;
+      try { history.pushState({ k: stack.length }, '', previousHref); } catch {}
+    });
+    return true;
+  }
+  function start(render, first = { view: 'home', params: {} }, options = {}) {
     onRender = render;
+    externalRoute = typeof options.externalRoute === 'function' ? options.externalRoute : null;
+    communityForward = null;
     stack.length = 0; stack.push(first);
     try { history.replaceState({ k: 1 }, ''); } catch {}
-    addEventListener('popstate', () => { authorizeNavigation(() => { if (stack.length > 1) { stack.pop(); draw('back'); } }, () => { try { history.pushState({ k: stack.length }, '', lastHref); } catch {} }); });
+    addEventListener('popstate', event => {
+      if (externalRoute && location.href === lastHref && history.state?.k === stack.length) return;
+      if (syncExternalRoute(event?.state)) return;
+      authorizeNavigation(() => {
+        if (stack.length > 1) {
+          if (current().view === 'community') communityForward = { key: stack.length, href: lastHref, entry: { ...current() } };
+          stack.pop(); draw('back');
+        }
+      }, () => { try { history.pushState({ k: stack.length }, '', lastHref); } catch {} });
+    });
+    addEventListener('hashchange', () => { syncExternalRoute(history.state); });
     draw('none');
   }
   function go(view, params = {}, { replace = false } = {}) {
     authorizeNavigation(() => {
+    communityForward = null;
     const memo = { ...current(), scroll: scrollY };
     stack[stack.length - 1] = memo;
     if (replace) stack[stack.length - 1] = { view, params };
@@ -94,7 +135,7 @@
     draw('forward');
     });
   }
-  function tab(view, params = {}) { authorizeNavigation(() => { stack.length = 0; stack.push({ view, params }); draw('tab'); }); }
+  function tab(view, params = {}) { authorizeNavigation(() => { communityForward = null; stack.length = 0; stack.push({ view, params }); draw('tab'); }); }
   function back(fallback = null) {
     if (stack.length > 1) { try { history.back(); } catch { authorizeNavigation(() => { stack.pop(); draw('back'); }); } }
     else if (fallback) go(fallback.view, fallback.params || {}, { replace: true });

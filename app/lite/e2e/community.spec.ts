@@ -396,4 +396,59 @@ test("outfit share keeps its pieces and browser Back restores the outfit tab wit
   expect(
     await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
   ).toBe(raw);
+  await page.goForward();
+  await expect(page.getByRole("dialog", { name: "코디 올리기" })).toBeVisible();
+  await expect(page.locator("[data-community-piece]")).toHaveCount(3);
+  expect(posted).toHaveLength(0);
 });
+
+for (const [name, start] of [
+  ["root", "/?photos=0#/closet"],
+  ["stacked detail", "/?photos=0#/closet"],
+] as const)
+  test(`same-document community address and Back/Forward stay aligned (${name})`, async ({
+    page,
+  }) => {
+    const { env, posted } = await serve(page, "private", {}, undefined, {
+      start,
+    });
+    await communityCall(env, "join", {
+      name: "주소시험",
+      rules: 1,
+      age14: true,
+    });
+    if (name === "stacked detail") {
+      await page.evaluate(() =>
+        (window as any).K.go("detail", { id: "ms-728000" }),
+      );
+      await expect(page.locator("#react-detail")).toBeVisible();
+    }
+    const previous = page.url(),
+      raw = await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1"));
+    await page.goto("http://127.0.0.1:8792/?photos=0#/community");
+    const nav = page.getByRole("navigation", { name: "메뉴" });
+    await expect(
+      page.getByRole("heading", { name: "코디 공유", exact: true }),
+    ).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
+    await page.goBack();
+    await expect(page).toHaveURL(previous);
+    if (name === "root")
+      await expect(nav.locator('[aria-current="page"]')).toHaveText("옷장");
+    else await expect(nav).toBeHidden();
+    if (name === "root")
+      await expect(
+        page.getByRole("heading", { name: "내 옷장", exact: true }),
+      ).toBeVisible();
+    else await expect(page.locator("#react-detail")).toBeVisible();
+    await page.goForward();
+    await expect(page).toHaveURL(/#\/community$/);
+    await expect(
+      page.getByRole("heading", { name: "코디 공유", exact: true }),
+    ).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
+    expect(posted).toHaveLength(0);
+    expect(
+      await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
+    ).toBe(raw);
+  });
