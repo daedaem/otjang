@@ -12,7 +12,11 @@
     "PRIVATE_AUTH_MODE": "session",
     "DAILY_LIMIT": "100",
     "MONTHLY_LIMIT": "300",
-    "MINUTE_LIMIT": "5"
+    "MINUTE_LIMIT": "5",
+    // 코디 공유: 대표 10-28 15:02 "커뮤니티는 계속 열어 줘요". 본인 전용(private)으로 켠다. 누구나 가입(public)은
+    // 키·전용 D1·운영자 정보를 넣은 뒤 대표가 정한다. 운영자 이름·연락처·키는 여기 넣지 않고 대시보드 변수·Secret에 둔다.
+    // keep_vars라도 이 파일의 값이 배포 때 대시보드 값을 덮는다. 끄려면 이 줄을 "off"로 바꾼다.
+    "COMMUNITY_MODE": "private"
   },
   "d1_databases": [
     { "binding": "RANK_DB", "database_name": "otjang-private", "database_id": "e3b0965b-a661-4ef0-b6a0-2ed1c12eed99" },
