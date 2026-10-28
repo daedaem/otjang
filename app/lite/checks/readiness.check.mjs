@@ -115,3 +115,12 @@ test("readiness is GET only and invalid build metadata cannot inject HTML", asyn
   assert.doesNotMatch(await r.text(), /<img src=x/);
   assert.deepEqual(statements, []);
 });
+
+test("invite readiness uses the same community database fallback as account handlers", async () => {
+  const { env } = fixture();
+  env.COMMUNITY_DB = env.CROWD_DB;
+  delete env.CROWD_DB;
+  const snapshot = await readinessSnapshot(new Request(url + "?probe=1"), env);
+  assert.equal(snapshot.invite.configured, true);
+  assert.equal(snapshot.databases.members.read, "ok");
+});

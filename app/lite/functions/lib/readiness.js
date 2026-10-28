@@ -85,7 +85,7 @@ export async function readinessSnapshot(request, env) {
     },
     invite: {
       enabled: env.MEMBER_APP_MODE === "invite",
-      configured: env.MEMBER_APP_MODE === "invite" && dbReady(env.CROWD_DB),
+      configured: env.MEMBER_APP_MODE === "invite" && dbReady(dbs.members),
       realSignup: "not_checked",
     },
     login: { ...login, provider: "not_checked" },
