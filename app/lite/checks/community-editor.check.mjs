@@ -19,6 +19,7 @@ test('outfit descriptors keep only public fields and an initial share is not a u
   assert.equal(communityDraftChanged(d, structuredClone(d)), false);
   assert.equal(communityDraftChanged(d, { ...d, text: '변경' }), true);
   assert.equal(communityDraftChanged(d, d, 1), true);
+  assert.deepEqual(Object.keys(communityPostInput(d)).sort(), ['consent', 'pieces', 'text']);
 });
 
 test('editing preserves both price and discount plus dates/source, without photo upload data', () => {

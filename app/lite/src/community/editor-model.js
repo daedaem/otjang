@@ -30,8 +30,8 @@ export function communityPostInput(draft, consent = false) {
   const board = communityBoard(draft.board);
   if (!board) throw Error('invalid community board');
   return {
-    board, text: string(draft.text), pieces: board === 'outfits' ? pieces(draft.pieces, false) : [], consent: consent === true,
-    ...(board === 'outfits' ? {} : { title: string(draft.title) }),
+    text: string(draft.text), pieces: board === 'outfits' ? pieces(draft.pieces, false) : [], consent: consent === true,
+    ...(board === 'outfits' ? {} : { board, title: string(draft.title) }),
     ...(board === 'sale' ? { sale: {
       merchant: string(draft.merchant), price: numericCommunityField(draft.price), discount: numericCommunityField(draft.discount, true),
       currency: 'KRW', endDate: string(draft.endDate), sourceUrl: string(draft.sourceUrl).trim(),

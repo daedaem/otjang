@@ -5,8 +5,7 @@ async function setup(page: Page, standalone = false) {
   const who = { member: "qa-board-a", operator: false };
   const f = await serveCommunity(page, standalone ? "public" : "private", standalone ? {
     MEMBER_SESSION_SECRET: "qa-only-".repeat(6), KAKAO_REST_KEY: "qa-not-a-live-key",
-  } : {}, who, { start: "/?photos=0#/community" });
-  if (standalone) await page.goto("/c#/community?board=free");
+  } : {}, who, { start: standalone ? "/c#/community?board=free" : "/?photos=0#/community", standalone });
   await expect(page.getByRole("heading", { name: standalone ? "자유게시판" : "코디 공유", exact: true })).toBeVisible();
   await page.getByLabel("이름").fill("합성작성자");
   await page.getByRole("checkbox", { name: /규칙을 읽었고 따를게요/ }).check();

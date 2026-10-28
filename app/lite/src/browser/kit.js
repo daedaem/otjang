@@ -52,7 +52,7 @@
   let onRender = () => {};
   const navigationGuards = [];
   let checkingNavigation = false, lastHref = location.href;
-  let externalRoute = null, pendingExternalHref = null, communityForward = null;
+  let externalRoute = null, sameExternalRoute = null, pendingExternalHref = null, communityForward = null;
   function setNavigationGuard(check) {
     navigationGuards.push(check);
     return () => { const index = navigationGuards.indexOf(check); if (index !== -1) navigationGuards.splice(index, 1); };
@@ -82,17 +82,24 @@
   // The app opts explicit addresses in here. Existing stack-only screens keep
   // their same-URL steps, guards and RAM parameters; no extra history is pushed.
   function syncExternalRoute(state) {
-    let next;
-    try { next = externalRoute?.(); } catch { return false; }
-    if (!next || next.view === current()?.view) return false;
+    let next, same;
+    try {
+      next = externalRoute?.();
+      same = next && (sameExternalRoute ? sameExternalRoute(current(), next) : next.view === current()?.view);
+    } catch { return false; }
+    if (!next || (same && (!sameExternalRoute || location.href === lastHref))) return false;
+    if (same) next = { ...current(), params: { ...current().params, ...next.params } };
     const targetHref = location.href, previousHref = lastHref;
     if (pendingExternalHref === targetHref) return true; // popstate + hashchange
     pendingExternalHref = targetHref;
     authorizeNavigation(() => {
       pendingExternalHref = null;
       const index = Number.isSafeInteger(state?.k) ? state.k - 1 : -1;
-      const known = index >= 0 && index < stack.length - 1 && stack[index].view === next.view;
-      if (known) stack.splice(index + 1);
+      const known = index >= 0 && index < stack.length - 1 && stack[index].view === next.view && (!sameExternalRoute || sameExternalRoute(stack[index], next));
+      if (known) {
+        if (current().view === 'community') communityForward = { key: stack.length, href: previousHref, entry: { ...current() } };
+        stack.splice(index + 1);
+      }
       else {
         stack[stack.length - 1] = { ...current(), scroll: scrollY };
         const cached = !!communityForward && communityForward.key === state?.k && communityForward.href === targetHref;
@@ -109,6 +116,7 @@
   function start(render, first = { view: 'home', params: {} }, options = {}) {
     onRender = render;
     externalRoute = typeof options.externalRoute === 'function' ? options.externalRoute : null;
+    sameExternalRoute = typeof options.sameExternalRoute === 'function' ? options.sameExternalRoute : null;
     communityForward = null;
     stack.length = 0; stack.push(first);
     try { history.replaceState({ k: 1 }, ''); } catch {}

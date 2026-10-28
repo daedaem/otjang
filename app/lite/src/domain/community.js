@@ -41,6 +41,7 @@ export const COMMUNITY_RULES = Object.freeze([
 
 const KIND_IDS = new Set(GARMENT_KINDS.map((k) => k.id));
 const tidy = (s) => (typeof s === 'string' ? s.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim() : '');
+const paragraphs = s => typeof s === 'string' ? s.normalize('NFKC').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim() : '';
 const LINK = /https?:|www\.|\.(?:com|kr|net|io|co|me|ly)\b/i;
 const exactKeys = (o, keys) => o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).every((k) => keys.includes(k));
 
@@ -93,7 +94,7 @@ export function validateCommunityPost(input, { photos = 0 } = {}) {
   if (board !== 'outfits' && !title) return no('제목을 적어 주세요.');
   if (board === 'outfits' && (title || input.sale != null)) return no('코디 공유에는 기존 한마디와 옷·사진을 써 주세요.');
   if (board === 'free' && input.sale != null) return no('가격·할인 정보는 세일 게시판에 적어 주세요.');
-  const text = tidy(input.text ?? '');
+  const text = board === 'outfits' ? tidy(input.text ?? '') : paragraphs(input.text ?? '');
   if (text.length > COMMUNITY_LIMITS.textMax) return no(`한마디는 ${COMMUNITY_LIMITS.textMax}자까지 쓸 수 있어요.`);
   if (LINK.test(text)) return no('한마디에는 주소를 넣지 말아 주세요.');
   const raw = input.pieces ?? [];

@@ -27,8 +27,9 @@ export function communityClient(): CommunityClient {
   return {
     status: () => call("status"),
     join: (name, rules, age14) => call("join", { method: "POST", body: { name, rules, age14 } }),
-    feed: ({ cursor, mine } = {}) => call(`feed?${new URLSearchParams({ ...(cursor ? { cursor } : {}), ...(mine ? { mine: "1" } : {}) })}`),
+    feed: ({ board, cursor, mine } = {}) => call(`feed?${new URLSearchParams({ ...(board ? { board } : {}), ...(cursor ? { cursor } : {}), ...(mine ? { mine: "1" } : {}) })}`),
     post: (body) => call("posts", { method: "POST", body }),
+    update: (id, post, revision) => call(`posts/${seg(id)}`, { method: "PATCH", body: { post, revision } }),
     remove: (id) => call(`posts/${seg(id)}`, { method: "DELETE" }),
     report: (post, reason) => call("reports", { method: "POST", body: { post, reason } }),
     block: (post) => call("blocks", { method: "POST", body: { post } }),

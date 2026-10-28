@@ -2,6 +2,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { handleCommunity } from "../functions/api/community.js";
 import { handleMemberAuth } from "../functions/lib/member-session.js";
+import { createWorker } from "../worker.js";
 export function fakeD1() {
   const db = new DatabaseSync(":memory:");
   return {
@@ -77,12 +78,36 @@ export async function serveCommunity(
     },
     posted = [],
     mails = [];
+  const standalone = options.standalone === true;
   await page.route("**/*", async (route) => {
     const req = route.request(),
       u = new URL(req.url());
     if (u.origin !== origin) return route.abort();
     if (options.blockChrome && /^\/react\/chrome-.*\.js$/.test(u.pathname))
       return route.abort();
+    if (standalone) {
+      if (req.method() === "POST" && u.pathname === "/api/community/posts") posted.push(JSON.parse(req.postDataBuffer().toString()));
+      const runtime = {
+        ...env,
+        ASSETS: { async fetch(request) {
+          const assetUrl = new URL(request.url);
+          const asset = await route.fetch({ url: origin + assetUrl.pathname + assetUrl.search, method: "GET" });
+          return new Response(await asset.body(), { status: asset.status(), headers: asset.headers() });
+        } },
+      };
+      const worker = createWorker({
+        authorize: async () => who.operator === true ? { ok: true } : { ok: false, status: 401 },
+        member: async () => who.member || null,
+        community: (request, runtime, identity) => handleCommunity(request, runtime, identity, options.now ? { now: options.now } : {}),
+        memberAuth: (request, runtime) => handleMemberAuth(request, runtime, { fetchImpl: async (_url, init) => { mails.push(JSON.parse(init.body)); return Response.json({ id: "qa-mail" }); } }),
+      });
+      const body = req.postDataBuffer();
+      const response = await worker.fetch(new Request(u.href, {
+        method: req.method(), headers: await req.allHeaders(),
+        body: body && req.method() !== "GET" && req.method() !== "HEAD" ? body : undefined,
+      }), runtime);
+      return route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer()) });
+    }
     if (u.pathname.startsWith("/_member/")) {
       const body = req.postDataBuffer();
       const res = await handleMemberAuth(
@@ -134,7 +159,8 @@ export async function serveCommunity(
     return route.continue();
   });
   await page.goto(origin + (options.start || "/?photos=0#/"));
-  await page.waitForFunction(() => !!window.K?.M);
+  if (standalone) await page.locator("[data-react-community]").waitFor({ state: "visible" });
+  else await page.waitForFunction(() => !!window.K?.M);
   return { posted, env, mails };
 }
 export async function otherPost(env, text) {

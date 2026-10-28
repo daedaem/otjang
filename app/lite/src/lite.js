@@ -168,8 +168,9 @@
   window.EOUL_COMMUNITY = {
     status: () => community('status'),
     join: (name, rules, age14) => community('join', { method: 'POST', body: { name, rules, age14: age14 === true } }),
-    feed: ({ cursor, mine } = {}) => community(`feed?${new URLSearchParams({ ...(cursor ? { cursor } : {}), ...(mine ? { mine: '1' } : {}) })}`),
+    feed: ({ board, cursor, mine } = {}) => community(`feed?${new URLSearchParams({ ...(board ? { board } : {}), ...(cursor ? { cursor } : {}), ...(mine ? { mine: '1' } : {}) })}`),
     post: (body) => community('posts', { method: 'POST', body }),
+    update: (id, post, revision) => community(`posts/${seg(id)}`, { method: 'PATCH', body: { post, revision } }),
     remove: (id) => community(`posts/${seg(id)}`, { method: 'DELETE' }),
     report: (post, reason) => community('reports', { method: 'POST', body: { post, reason } }),
     block: (post) => community('blocks', { method: 'POST', body: { post } }),
