@@ -13,6 +13,15 @@ export function communityClient(): CommunityClient {
     return res.ok && out ? out : { code: out?.code || "error", message: out?.message || "잠시 뒤에 다시 해 주세요." };
   };
   const seg = (s: string) => encodeURIComponent(s);
+  const member = async (path: string, body: unknown) => {
+    try {
+      const res = await fetch(`/_member/${path}`, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const out = await res.json().catch(() => null);
+      return res.ok && out ? out : { code: out?.code || "error", message: out?.message || "잠시 뒤에 다시 해 주세요." };
+    } catch {
+      return { code: "offline", message: "연결을 확인하고 다시 해 주세요." };
+    }
+  };
   return {
     status: () => call("status"),
     join: (name, rules, age14) => call("join", { method: "POST", body: { name, rules, age14 } }),
@@ -27,5 +36,7 @@ export function communityClient(): CommunityClient {
     review: () => call("review"),
     act: (id, action) => call(`review/${seg(id)}`, { method: "POST", body: { action } }),
     photoUrl: (id) => `/api/community/photos/${seg(id)}`,
+    emailStart: (email) => member("email/start", { email }),
+    emailVerify: (email, code) => member("email/verify", { email, code }),
   } as CommunityClient;
 }

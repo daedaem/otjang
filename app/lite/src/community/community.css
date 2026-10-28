@@ -81,3 +81,6 @@
    공급자 로고 표기 등 세부 디자인 가이드는 공개 전에 다시 확인한다. */
 .cm-login .cm-kakao { background: #fee500; color: rgba(0, 0, 0, .85); }
 .cm-login .cm-google { background: #ffffff; color: #1f1f1f; border: 1px solid #747775; }
+.cm-email { max-width: 360px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cm-email .btn { width: 100%; }
+.cm-email-actions { display: grid; gap: 4px; justify-items: start; }

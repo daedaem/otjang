@@ -179,6 +179,9 @@
     review: () => community('review'),
     act: (id, action) => community(`review/${seg(id)}`, { method: 'POST', body: { action } }),
     photoUrl: (id) => `/api/community/photos/${seg(id)}`,
+    // 이메일 인증 로그인(public 모드의 회원용). 앱 안에서는 본인 로그인이라 보통 쓰지 않는다.
+    emailStart: async (email) => { try { const r = await fetch('/_member/email/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) }); const o = await r.json().catch(() => null); return r.ok && o ? o : { code: o?.code || 'error', message: o?.message }; } catch { return { code: 'offline' }; } },
+    emailVerify: async (email, code) => { try { const r = await fetch('/_member/email/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, code }) }); const o = await r.json().catch(() => null); return r.ok && o ? o : { code: o?.code || 'error', message: o?.message }; } catch { return { code: 'offline' }; } },
   };
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

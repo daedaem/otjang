@@ -281,5 +281,6 @@ B5b #84는 head59361e30의 최종 CI11개·실제220개 두 작업/Node336개·�
 - 공개 전에 남은 것: 공급자 앱 등록·키 입력(대표), 약관·처리방침 법률 검토, 카카오·구글 로그인 버튼 디자인 가이드 확인, 사진 R2 이전 여부(회원이 늘 때).
 - 사진 저장을 R2로 옮기는 것(C3)은 R2 활성화(결제 수단 등록 가능성, 확인 필요)가 필요해 대표 승인 뒤에 한다.
 - 로그: 처리기는 오류에 글·이름·사진을 남기지 않는다. `community_log`에는 글 번호·처리·사유·신고 수·시각만 있다.
+- 이메일 인증 로그인(10-28 12:26): `POST /_member/email/start`(6자리 코드 메일), `POST /_member/email/verify`(세션). 설정 `EMAIL_FROM`(인증된 내 도메인 주소) + `RESEND_API_KEY` 또는 Cloudflare 바인딩 `EMAIL`(Email Sending). 이메일은 HMAC 값만, 코드는 해시만 저장(10분, 5번 틀리면 끝). 한 주소 한 시간 5통, 서버 하루 `EMAIL_DAILY_MAX`(기본 90). 이메일만 설정해도 public의 로그인 조건을 채운다.
 - `MEMBER_SESSION_SECRET`은 바꾸지 않는다(회원 id가 이 값에서 나온다). public 자동 숨김은 가입 3일 지난 회원의 신고만 센다(`COMMUNITY_REPORTER_MIN_DAYS`).
-- 검증: `checks/community.check.mjs`(13개), `checks/community-public.check.mjs`(12개, 공개 경로·준비 조건·출처 검사), `checks/member-session.check.mjs`(6개, 가짜 공급자), `e2e/community.spec.ts`(브라우저 11개). 실제 D1, 실제 카카오·구글, 실기기에서는 아직 켜 보지 않았다.
+- 검증: `checks/community.check.mjs`(13개), `checks/community-public.check.mjs`(12개, 이메일 준비 포함, 공개 경로·준비 조건·출처 검사), `checks/member-session.check.mjs`(10개, 가짜 공급자·가짜 메일), `e2e/community.spec.ts`(브라우저 12개). 실제 D1, 실제 카카오·구글, 실기기에서는 아직 켜 보지 않았다.
