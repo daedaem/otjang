@@ -37,6 +37,7 @@ const TABS: [string, string, string][] = [
   ["home", "ph-magnifying-glass", "찾기"],
   ["looks", "ph-t-shirt", "코디"],
   ["closet", "ph-coat-hanger", "옷장"],
+  ["community", "ph-users", "커뮤니티"],
   ["consult", "ph-chats-circle", "상담"],
   ["records", "ph-notebook", "기록"],
 ];

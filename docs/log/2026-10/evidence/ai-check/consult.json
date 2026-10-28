@@ -1,0 +1,39 @@
+{
+  "http": 200,
+  "on_topic": true,
+  "answer": "출근용으로는 '베이식 옥스포드 셔츠 [화이트]'를 추천해요. 화이트는 어떤 재킷이나 슬랙스와도 무난하게 어울려 직장 환경에서 실패가 적은 색이에요. 가격은 수집일 기준 33,890원으로 예산 안에 들어요. 구매 전에는 상품명에 '베이직', '옥스포드'라고 적힌 기준으로만 판단하시고, 실제 핏이나 소재, 현재 재고와 가격은 상세 페이지에서 한 번 더 확인해 주세요.",
+  "product_ids": [
+    "ms-728000"
+  ],
+  "price_check": {
+    "budget": {
+      "max": 100000
+    },
+    "items": [
+      {
+        "id": "ms-728000",
+        "price": 33890,
+        "fit": "예산 안"
+      },
+      {
+        "id": "ms-854339",
+        "price": 33890,
+        "fit": "예산 안"
+      },
+      {
+        "id": "ms-3879282",
+        "price": 50960,
+        "fit": "예산 안"
+      }
+    ]
+  },
+  "ai": {
+    "model": "claude-haiku-5-5",
+    "inputTokens": 1656,
+    "outputTokens": 240,
+    "cacheCreationInputTokens": 0,
+    "cacheReadInputTokens": 0,
+    "responseIdReturned": true,
+    "providerRequestIdReturned": true
+  }
+}

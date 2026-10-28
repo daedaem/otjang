@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "fecbb6094533aeb0cf88376ff3cb06e6c1557d15",
+  "liveProviderSuccesses": 2,
+  "privateWardrobeSent": false,
+  "privateHistorySent": false,
+  "fullProviderIdsStored": false,
+  "photoAnalysis": {
+    "status": "separate_approval_pending",
+    "requestsSent": 0
+  },
+  "responses": [
+    {
+      "kind": "rank",
+      "file": "rank.json",
+      "sha256": "247b9a47ae3ebe616a43709ecbeef9bf61790a50812614e88e741dad26e01bb9",
+      "recordedAt": "2026-10-28T14:14:21.152151+00:00",
+      "model": "claude-haiku-5-5",
+      "inputTokens": 913,
+      "outputTokens": 351
+    },
+    {
+      "kind": "consult",
+      "file": "consult.json",
+      "sha256": "4430d73dcf0a73baff773b5dc3e9b66d7520ce72ab9141046a3b08f4d3a12109",
+      "recordedAt": "2026-10-28T14:15:25.023839+00:00",
+      "model": "claude-haiku-5-5",
+      "inputTokens": 1656,
+      "outputTokens": 240
+    }
+  ]
+}

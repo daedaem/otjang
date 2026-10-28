@@ -104,7 +104,7 @@ a { color: inherit; text-decoration: none; }
 
 /* 아래 탭(48px) */
 .tabs { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; background: var(--bg); box-shadow: 0 -1px 0 var(--line); padding-bottom: var(--sab); }
-.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+.tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .tabs button { height: var(--tabs); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 12px; line-height: 14px; font-weight: 600; color: var(--ink3); white-space: nowrap; }
 .tabs button i { font-size: 22px; }
 .tabs button[aria-current="page"] { color: var(--ink); }
@@ -733,6 +733,7 @@ a { color: inherit; text-decoration: none; }
   <button data-tab="home"><i class="ph ph-magnifying-glass" aria-hidden="true"></i>찾기</button>
   <button data-tab="looks"><i class="ph ph-t-shirt" aria-hidden="true"></i>코디</button>
   <button data-tab="closet"><i class="ph ph-coat-hanger" aria-hidden="true"></i>옷장</button>
+  <button data-tab="community"><i class="ph ph-users" aria-hidden="true"></i>커뮤니티</button>
   <button data-tab="consult"><i class="ph ph-chats-circle" aria-hidden="true"></i>상담</button>
   <button data-tab="records"><i class="ph ph-notebook" aria-hidden="true"></i>기록</button>
 </div></nav>
@@ -1360,7 +1361,7 @@ a { color: inherit; text-decoration: none; }
     subscribe(fn) { chromeCtl.subs.add(fn); return () => chromeCtl.subs.delete(fn); },
     changed() { chromeCtl.version++; chromeCtl.subs.forEach((fn) => fn()); },
   };
-  const tabFor = (view) => (view === 'results' ? 'home' : view === 'community' ? 'looks' : view === 'photoadd' ? 'closet' : view === 'check' ? 'home' : view);
+  const tabFor = (view) => (view === 'results' ? 'home' : view === 'photoadd' ? 'closet' : view === 'check' ? 'home' : view);
   let stripBumps = 0;
   // 지인 테스트(10-28 15:12): 본인은 '지인 초대', 초대 회원은 '내 계정'(React 메뉴의 RoleLink와 같음).
   function roleLink() {
