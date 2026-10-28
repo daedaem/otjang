@@ -52,6 +52,7 @@ flowchart LR
 | 사용자 등록 D1 | `crowd_items`, `crowd_submission_usage` | 개인 옷장 전체 동기화 DB가 아님. 사진을 받지 않음 |
 | OPF D1 | `open_product_snapshots`, `open_product_facts`에 별도 ODbL 스냅샷 194건 | 애드픽·Rakuten·개인 행과 섞지 않음. 가격·재고·사진·구매 링크를 채워 만들지 않음 |
 | 외부 검색 D1 | `external_source_usage`의 단기 호출 카운터 | 애드픽·Rakuten 상품 목록·검색어의 장기 복제 없음 |
+| 코디 공유 D1 (10-28, **기본 꺼짐**) | `community_members`(이름·규칙 동의), `community_posts`(한마디·옷 종류·색·이름), `community_photos`(글에 동의한 사진, 이 기기에서 다시 그린 JPEG를 base64로), `community_reports`·`community_blocks`·`community_post_usage`·`community_log`(처리만, 글·작성자 없음) | 스위치 `COMMUNITY_MODE`가 `private`일 때만 쓴다. 없거나 `off`면 아무것도 읽거나 쓰지 않는다. `public`은 회원 로그인(C4) 전까지 열리지 않는다. 옷장 id·메모·구매 링크·사진 위치 정보는 받지 않는다. 사진 전체 상한 `COMMUNITY_MAX_MB`(기본 300MB) |
 
 직접 등록의 현재 기본 집계는 서로 다른 무작위 **기기 ID 3개**다. 실제 사람 3명이나 인증 계정 3개를 확인한 것이 아니며 기기 ID는 위조할 수 있다. 본인 전용 테스트의 임시 집계로 유지하고 공개 전에 계정 기반 중복·남용 방지를 설계해야 한다. [현재 구현](../app/lite/functions/api/catalog.js).
 
@@ -266,3 +267,15 @@ B5b #84는 head59361e30의 최종 CI11개·실제220개 두 작업/Node336개·�
 ## 26. 홈 질문/preview React 후보
 
 #88 최종241fabe를 CI11개·Node356개·실제274개 두 실행(10.8분/10.5분)·미해결0 확인 후 masterbc921ef에 병합했다. [홈 인계](log/2026-10/react-home-screen-20261027.md)는 늦은 날씨/날짜 변경 때 질문·초점·Back 메모리 보존과 예시의 개인 최근 검색 쓰기 제거를 설명한다. 새 저장 키/스키마는 없다. WeatherBridge/WeatherSlot·지역/공유 UI는 실제 React 이전 전이므로 홈 본문만의 완료와 구분한다. 기존 core/BK/Input/사진/등록·구매·인증·비용 한도와 legacy metadata 보호는 변경하지 않는다. 실물·persistence/Files·사진/옛 형식/교차 기기 복원을 확인하기 전 fallback을 제거하지 않는다.
+
+## 코디 공유(커뮤니티) 스위치 — 2026-10-28
+
+대표 결정 10-28 08:08(누구나 가입·직접 찍은 사진·코디 공유 먼저)과 09:39("끝까지")로 만들었다. 설계·남은 승인은 [커뮤니티 설계](log/2026-10/community-plan-20261028.md)를 따른다.
+
+- 코드: `app/lite/functions/api/community.js`(API), `src/domain/community.js`(글·이름 검사, 화면·서버 공용), `src/community/`(React 화면), `worker.js`(`/api/community/*`, 지금 로그인한 본인을 회원 `owner`·운영자로 넘김).
+- **기본은 꺼짐이다.** `wrangler.jsonc`에 변수를 넣지 않았다(`keep_vars: true`라 설정 파일 값이 대시보드 값을 덮어쓰지 않게). 꺼져 있으면 화면은 "아직 열지 않았어요"만 보이고 요청은 `503 community_off`다.
+- 혼자 써 보기: Cloudflare 대시보드 Worker `otjang` → 변수 `COMMUNITY_MODE=private`, 선택으로 `COMMUNITY_CONTACT`(규칙·신고 화면의 연락처), `COMMUNITY_REVIEW_DAYS`(기본 7), `COMMUNITY_MAX_MB`(기본 300). 새 비용·계정은 없다. 이 값을 넣으면 그때부터 동의한 사진이 기존 D1에 저장된다(사진 외부 전송 경계: 대표가 켤 때 판단).
+- `public`은 일부러 열리지 않는다(`503 public_not_ready`). 여러 회원 로그인(C4), 운영자 정보와 약관(C5), 공개 화면의 무신사 사진·자료 끄기가 먼저다.
+- 사진 저장을 R2로 옮기는 것(C3)은 R2 활성화(결제 수단 등록 가능성, 확인 필요)가 필요해 대표 승인 뒤에 한다.
+- 로그: 처리기는 오류에 글·이름·사진을 남기지 않는다. `community_log`에는 글 번호·처리·사유·신고 수·시각만 있다.
+- 검증: `checks/community.check.mjs`(Node 13개, SQLite로 같은 SQL), `e2e/community.spec.ts`(브라우저 8개, 요청을 실제 처리기로 돌림). 실제 D1·실기기에서는 아직 켜 보지 않았다.

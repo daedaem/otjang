@@ -115,6 +115,22 @@ export function OutfitCard({
           );
         })}
       </div>
+      {!trial && host.share && (
+        <button
+          type="button"
+          className="quiet of-share"
+          onClick={() =>
+            host.share!(
+              candidate.pieces
+                .map((p) => (p.garmentId ? garments.get(p.garmentId) : null))
+                .filter((g): g is ProfileGarment => !!g && !g.trial)
+                .map((g) => ({ kind: g.kind, color: g.color, label: g.label.slice(0, 30) })),
+            )
+          }
+        >
+          이 코디 공유
+        </button>
+      )}
       {!trial && (
         <div
           className="of-reactions"
