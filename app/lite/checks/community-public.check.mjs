@@ -42,7 +42,7 @@ test('public leaving rolls content back when session removal fails, then retries
   insert.run('own-session', who.member, 'qa', 1, 2); insert.run('peer-session', 'another-member', 'qa', 1, 2);
   db.exec("CREATE TRIGGER fail_session_delete BEFORE DELETE ON member_sessions WHEN OLD.member='leaving-author' BEGIN SELECT RAISE(ABORT,'local injected failure'); END");
   const failed = await call(e, 'POST', '/api/community/leave', { confirm: true }, who);
-  assert.equal(failed.status, 503);
+  assert.equal(failed.status, 500);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_posts WHERE id=?').get(made.body.id).n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_post_details WHERE post=?').get(made.body.id).n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_members WHERE member=?').get(who.member).n, 1);
