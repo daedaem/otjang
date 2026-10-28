@@ -35,3 +35,18 @@ K.start의 선택적 externalRoute에 **community 경로만** 연결한다. 기�
 전후 화면을 직접 검토해 앱 안의 상단 문맥이 여전히 '코디'로 남아 있던 것을 '커뮤니티'로 맞췄다. 첫 게시판 제목 '코디 공유'와 독립 `/c`의 행잇 표기는 유지한다. 320px 작성 시트는 기존 세로 스크롤을 유지하며 메뉴 글자/누르기 영역과 별개로 검토했다. 합성 글2개의 시각 순서도 고정 시각을 나눠 모든 전후 쌍에서 같도록 검증한다.
 
 넓힌 초기94개는93통과/1실패였고, trace에서 WebKit이 이전 community CSS 경로에404를 받은 것을 확인했다. 검사 중 빌드 출력을 다시 만든 실행 간섭이었다. 빌드 출력을 고정한 뒤 해당 React 진입2개가통과(8.6초)했고 별도 실측/보유 편집/프로필보호60개도통과(1.7분)했다. 이를 제품 오류/불안정으로 무시하거나 기존 실패를 성공으로 합산하지 않는다.
+
+## 최종 로컬 증거 — 2026-10-29
+
+- Node457/457·실패/skip0, TypeScript/Vite 빌드99파일 성공.
+- 초기 독립 진입8개/직접 주소4개 실패를 각각 재현했다. 수정 뒤 관련40개, 추가 주소/공유6개, 넓힌94개 중93통과/빌드 교체 간섭1실패, 출력을 고정한 실패 경로2개 통과, 별도 실측·프로필·편집 보호60개 통과를 분리해 기록한다. 상단 문맥까지 보완한 마지막 집중12개는 모두통과(22.4초)했다. 반복 실행을 서로 다른 검사/사람 수로 합산하지 않는다.
+- 기존 검사 삭제0·timeout/retry/skip 완화0. 신규는 Node3개와 커뮤니티 행동 각6개(두 엔진+12)다. 기존 커뮤니티12개/Chrome4개와 기존 등록·보호 검사는 유지한다.
+- 전후24장 총1,024,670바이트, source32004f0. 파일해시와 동일 합성 글 순서를 모두 확인했다. 320px·PC 전후와 어두운 공유/좁은 작성 시트를 직접 열어 검토했다. 실제 사용자/회원/글·외부 제공자는 이 캡처에 없다.
+
+| 320px 이전 | 320px 이후 |
+|---|---|
+| ![이전 피드](evidence/community-navigation/before-mobile320-feed.png) | ![독립 커뮤니티 피드](evidence/community-navigation/after-mobile320-feed.png) |
+
+[PC 이전](evidence/community-navigation/before-desktop-feed.png) · [PC 이후](evidence/community-navigation/after-desktop-feed.png) · [어두운 공유 초안](evidence/community-navigation/after-mobile-dark-share.png) · [전체 명세](evidence/community-navigation/manifest.json)
+
+아직 원격 최종 head CI/검토·병합·활성 배포 전인 후보 상태다. 통과 후 순서대로 확인해 마감한다.
