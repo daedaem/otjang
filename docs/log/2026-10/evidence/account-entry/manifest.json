@@ -1,0 +1,188 @@
+{
+  "source": "c18c0233ea96983d4a51f78123c6a1533e365b1c",
+  "capturedAt": "2026-10-28T23:03:58.401Z",
+  "synthetic": true,
+  "realAccountsCreated": 0,
+  "realPhotos": 0,
+  "paidCalls": 0,
+  "externalRequests": "blocked",
+  "baseline": "preserved invite-mode entry in the same code",
+  "captures": [
+    {
+      "file": "mobile320-before-shared-entry.png",
+      "state": "before-shared-entry",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "bytes": 25701,
+      "sha256": "b25207a946509d6e5514f790c8d5b0e46f9f2caaf934f43892d7ac33e1f9e875"
+    },
+    {
+      "file": "mobile320-after-account-login.png",
+      "state": "after-account-login",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "bytes": 21023,
+      "sha256": "4fe7b8ce372135a25542781143370da0a433cffa1f7dc66d7e85e8ef9f441e90"
+    },
+    {
+      "file": "mobile320-after-admin-setup.png",
+      "state": "after-admin-setup",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "bytes": 38224,
+      "sha256": "dc7e00310c34b3802568dc9384ba73ee3c4743db494258d00707f3d594d8f8ba"
+    },
+    {
+      "file": "mobile320-after-admin-account.png",
+      "state": "after-admin-account",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "bytes": 24370,
+      "sha256": "f758d9a6b43b8dce01b46e2f30386f048589156ce3b5c5be58beabd2827ffa87"
+    },
+    {
+      "file": "mobile390-before-shared-entry.png",
+      "state": "before-shared-entry",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "bytes": 26412,
+      "sha256": "251ae7d59473e4e4c6b42ab26d6b007c7e529827b3a1fae67b4a3f1075825219"
+    },
+    {
+      "file": "mobile390-after-account-login.png",
+      "state": "after-account-login",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "bytes": 21980,
+      "sha256": "c4e0fe1597213a8011ce5939bfcba0075e54266bce2d28b5fad7931479624e55"
+    },
+    {
+      "file": "mobile390-after-admin-setup.png",
+      "state": "after-admin-setup",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "bytes": 39151,
+      "sha256": "fa0a3e81465ada0bb24928581ffc8c01654c3c0386eeece7fa3868df78d4bca8"
+    },
+    {
+      "file": "mobile390-after-admin-account.png",
+      "state": "after-admin-account",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "bytes": 25443,
+      "sha256": "83d802514e2a01338904c22435de85b892beaf17f51cc81c63ed7a492827ef44"
+    },
+    {
+      "file": "mobile-dark-before-shared-entry.png",
+      "state": "before-shared-entry",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "bytes": 26412,
+      "sha256": "251ae7d59473e4e4c6b42ab26d6b007c7e529827b3a1fae67b4a3f1075825219"
+    },
+    {
+      "file": "mobile-dark-after-account-login.png",
+      "state": "after-account-login",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "bytes": 22090,
+      "sha256": "73b9dd0e6c5899dca3da0f9357da5de6ccd558509ff196622556a9370be2ac48"
+    },
+    {
+      "file": "mobile-dark-after-admin-setup.png",
+      "state": "after-admin-setup",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "bytes": 39389,
+      "sha256": "b850c75b221ec9f210555633f0e70d12e91d6c1ef592570313db0442be027776"
+    },
+    {
+      "file": "mobile-dark-after-admin-account.png",
+      "state": "after-admin-account",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "bytes": 25520,
+      "sha256": "5ad832b38da036b2fa673d17019c33f3b1d6c39e340ffdd25753f8ff970307cc"
+    },
+    {
+      "file": "desktop-before-shared-entry.png",
+      "state": "before-shared-entry",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "bytes": 33072,
+      "sha256": "27a921dc853650680569f832c26e3479d96a40dc018d21ff20fbf74fca04b770"
+    },
+    {
+      "file": "desktop-after-account-login.png",
+      "state": "after-account-login",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "bytes": 27857,
+      "sha256": "7a1492a0e17034c1803b892a17e2f0776e0d22443ecc5f97700b59d2e584391b"
+    },
+    {
+      "file": "desktop-after-admin-setup.png",
+      "state": "after-admin-setup",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "bytes": 47892,
+      "sha256": "d94976d113b0955d179c6a9b583d0c9229675cd798e07387905481399036a56a"
+    },
+    {
+      "file": "desktop-after-admin-account.png",
+      "state": "after-admin-account",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "bytes": 32810,
+      "sha256": "84baf6d852b89e4dc8d7ffaa54b40ef62d09e643dd6d831cce49912342d100c1"
+    }
+  ]
+}
