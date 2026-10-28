@@ -39,6 +39,7 @@ export function communityClient(): CommunityClient {
     review: () => call("review"),
     act: (id, action) => call(`review/${seg(id)}`, { method: "POST", body: { action } }),
     photoUrl: (id) => `/api/community/photos/${seg(id)}`,
+    reviewPhotoUrl: (id) => `/api/community/photos/${seg(id)}?review=1`,
     emailStart: (email) => member("email/start", { email }),
     emailVerify: (email, code) => member("email/verify", { email, code }),
   } as CommunityClient;

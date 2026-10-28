@@ -103,7 +103,7 @@ function Terms({ status, close }: { status: Status; close(): void }) {
         <h3>가입</h3>
         <p>규칙에 동의하고 이름을 정해 가입해요. 만 {status.minAge}세 미만은 가입할 수 없어요.</p>
         <h3>게시물</h3>
-        <p>직접 찍었거나 올릴 권리가 있는 사진만 올려요. 게시물의 권리는 올린 사람에게 있고, 운영자는 코디 공유 화면에 보여 주는 데만 써요. 언제든 지울 수 있고, 지우면 서버에서 바로 지워요.</p>
+        <p>직접 찍었거나 올릴 권리가 있는 사진만 올려요. 게시물의 권리는 올린 사람에게 있고, 커뮤니티 게시판에 보여 주는 데 써요. 운영자는 신고·숨김 확인에 필요한 글과 사진을 검토해요. 언제든 지울 수 있고, 지우면 서버에서 바로 지워요.</p>
         <h3>신고·숨김·차단</h3>
         <p>
           신고하면 그 글은 나에게 바로 안 보여요. 서로 다른 3명이 신고하면 운영자가 확인할 때까지 숨기고, {status.reviewDays}일 안에 확인해요. 차단하면 서로의 글이 안 보이고 상대에게 알리지 않아요.
@@ -285,7 +285,7 @@ export function PostCard({ post, status, client, onGone, notify, blocked, edit }
       {post.photos.length ? (
         <div className={`cm-photos n${Math.min(post.photos.length, 4)}`}>
           {post.photos.map((id, i) => (
-            <img key={id} src={client.photoUrl(id)} alt={`${post.author.name}님의 코디 사진 ${i + 1}`} loading="lazy" decoding="async" />
+            <img key={id} src={client.photoUrl(id)} alt={`${post.author.name}님의 ${!post.board || post.board === 'outfits' ? '코디 ' : ''}사진 ${i + 1}`} loading="lazy" decoding="async" />
           ))}
         </div>
       ) : null}
@@ -362,48 +362,82 @@ export function SaleFacts({ post }: { post: Pick<Post, 'sale' | 'createdAt' | 'u
     <p className="cm-sale-price">{sale.price !== null ? <strong>{sale.price.toLocaleString('ko-KR')}원</strong> : null}{sale.discount !== null ? <span>{sale.discount}% 할인 제보</span> : null}</p>
     {sale.endDate ? <p className="cm-small">기재한 종료일 {sale.endDate}</p> : null}
     {post.updatedAt && post.updatedAt > post.createdAt ? <p className="cm-small">제보 수정 {when(post.updatedAt)}</p> : null}
-    {source ? <a className="cm-source-link" href={source} target="_blank" rel="noopener noreferrer">출처 보기</a> : null}
+    {source ? <div className="cm-source"><a className="cm-source-link" href={source} target="_blank" rel="noopener noreferrer">출처 보기</a><span className="cm-source-host">{new URL(source).hostname}</span></div> : null}
   </div>;
 }
 
-export function Review({ client }: { client: CommunityClient }) {
+export function Review({ client, status, changed }: { client: CommunityClient; status: Status; changed?(): void }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const [confirm, setConfirm] = useState<string | null>(null);
+  const [openPhotos, setOpenPhotos] = useState<Record<string, boolean>>({});
+  const [photoErrors, setPhotoErrors] = useState<Record<string, boolean>>({});
+  const heading = useRef<HTMLHeadingElement>(null);
+  const boardNames = Object.fromEntries(COMMUNITY_BOARDS.map((b: { id: string; label: string }) => [b.id, b.label]));
   const load = useCallback(async () => {
-    const r = await client.review();
-    if (failed(r)) return setError(r.message || "불러오지 못했어요.");
-    setItems(r.items);
+    try {
+      const r = await client.review();
+      if (failed(r)) { if (r.code === 'operator_only' || r.code === 'unauthorized') setItems([]); return setError(r.message || "불러오지 못했어요."); }
+      setItems(r.items);
+    } catch { setError("신고 목록을 불러오지 못했어요. 다시 시도해 주세요."); }
   }, [client]);
   useEffect(() => {
     load();
   }, [load]);
   const act = async (id: string, action: "restore" | "hide" | "delete") => {
-    const r = await client.act(id, action);
-    if (failed(r)) return setError(r.message || "처리하지 못했어요.");
-    load();
+    if (pending.current) return;
+    if (action === 'delete' && confirm !== id) { setConfirm(id); return; }
+    pending.current = true; setBusy(true); setError(""); setNotice("");
+    try {
+      const r = await client.act(id, action);
+      if (failed(r)) return setError(r.message || "처리하지 못했어요.");
+      setConfirm(null); setOpenPhotos({}); setPhotoErrors({});
+      await load(); changed?.();
+      setNotice(action === 'delete' ? '글과 사진을 지웠어요.' : action === 'hide' ? '글을 숨겼어요.' : '글을 다시 보이게 했어요.');
+      if (action === 'delete') requestAnimationFrame(() => heading.current?.focus({ preventScroll: true }));
+    } catch { setError("처리하지 못했어요. 다시 시도해 주세요."); }
+    finally { pending.current = false; setBusy(false); }
   };
   return (
     <section className="cm-review" aria-label="신고·숨김 확인">
-      <h2>신고·숨김 확인 (운영자)</h2>
+      <h2 ref={heading} tabIndex={-1}>신고·숨김 확인 (운영자)</h2>
       {error ? <p role="alert">{error}</p> : null}
+      {notice ? <p role="status" className="cm-small">{notice}</p> : null}
+      <button type="button" className="quiet" disabled={busy} onClick={() => void load()}>신고 목록 새로고침</button>
       {items && !items.length ? <p className="cm-small">확인할 글이 없어요.</p> : null}
       {items?.map((p) => (
-        <div key={p.id} className="cm-review-item">
+        <div key={p.id} className="cm-review-item" data-community-review={p.id}>
+          <p className="cm-small">{boardNames[communityBoard(p.board)] || '게시판 확인 필요'}</p>
           <p>
             <b>{p.author.name}</b> · 신고 {p.reports}건{p.hidden ? " · 숨김" : ""}
             {p.firstReportAt ? ` · 첫 신고 ${when(p.firstReportAt)}` : ""}
           </p>
+          {p.title ? <h3 className="cm-post-title">{p.title}</h3> : null}
+          {p.board === 'sale' && p.sale ? <SaleFacts post={p} /> : null}
           {p.text ? <p className="cm-text">{p.text}</p> : null}
+          {Object.keys(p.reasons).length ? <ul className="cm-review-reasons" aria-label="신고 이유">{Object.entries(p.reasons).map(([reason, count]) => <li key={reason}>{status.reasons.find(item => item.id === reason)?.label || reason} · {count}건</li>)}</ul> : null}
+          {p.pieces.length ? <ul className="cm-pieces" aria-label="검토할 옷">{p.pieces.map((piece, i) => <li key={i}>{pieceName(piece)}</li>)}</ul> : null}
+          {p.photos.length ? <>
+            <button type="button" className="quiet" aria-expanded={!!openPhotos[p.id]} onClick={() => { setOpenPhotos(old => ({ ...old, [p.id]: !old[p.id] })); setPhotoErrors({}); }}>{openPhotos[p.id] ? '사진 접기' : `사진 확인 ${p.photos.length}장`}</button>
+            {openPhotos[p.id] ? <div className="cm-review-photos">{p.photos.map((id, i) => <div key={id}>
+              {client.reviewPhotoUrl ? <img src={client.reviewPhotoUrl(id)} alt={`검토할 사진 ${i + 1}`} loading="lazy" decoding="async" onError={() => setPhotoErrors(old => ({ ...old, [id]: true }))} /> : null}
+              {!client.reviewPhotoUrl || photoErrors[id] ? <p className="cm-small" role="status">사진을 불러오지 못했어요. 현재 계정을 확인하고 다시 열어 주세요.</p> : null}
+            </div>)}</div> : null}
+          </> : null}
           <div className="cm-actions">
-            <button type="button" className="quiet" onClick={() => act(p.id, "restore")}>
+            <button type="button" className="quiet" disabled={busy} onClick={() => void act(p.id, "restore")}>
               다시 보이기
             </button>
-            <button type="button" className="quiet" onClick={() => act(p.id, "hide")}>
+            <button type="button" className="quiet" disabled={busy} onClick={() => void act(p.id, "hide")}>
               숨기기
             </button>
-            <button type="button" className="quiet" onClick={() => act(p.id, "delete")}>
-              지우기
+            <button type="button" className="quiet" disabled={busy} onClick={() => void act(p.id, "delete")}>
+              {confirm === p.id ? '한 번 더 누르면 글과 사진을 지워요' : '지우기'}
             </button>
+            {confirm === p.id ? <button type="button" className="quiet" disabled={busy} onClick={() => setConfirm(null)}>삭제 취소</button> : null}
           </div>
         </div>
       ))}

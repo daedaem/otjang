@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { serveCommunity, communityCall } from "./community-fixture.mjs";
+import { serveCommunity, communityCall, communityRequest } from "./community-fixture.mjs";
 
 async function setup(page: Page, standalone = false) {
   const who = { member: "qa-board-a", operator: false };
@@ -166,4 +166,119 @@ test("the outfits entry returns through board Back/Forward to the original outfi
   await page.goBack(); await expect(page.getByRole("heading", { name: "코디 공유", exact: true })).toBeVisible();
   await page.goBack();
   await expect(page.locator('#tabs [data-tab="looks"]')).toHaveAttribute("aria-current", "page");
+});
+
+test("edits keep typed text on failure or conflict and only a successful save changes stored text", async ({ page }) => {
+  const f = await setup(page);
+  const created = await communityCall(f.env, "posts", { post: { board: "free", title: "수정할 글", text: "처음 본문", pieces: [], consent: false }, photos: [] }, f.who);
+  const { id } = await created.json();
+  await page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "자유게시판", exact: true }).click();
+  const article = page.locator(`[data-community-post="${id}"]`);
+  await article.getByRole("button", { name: "수정", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "자유게시판 글 수정", exact: true });
+  const text = editor.getByLabel("내용", { exact: true });
+  await text.fill("보존할 수정\n두번째 줄");
+  let release!: () => void, seen!: () => void, failed = false;
+  const gate = new Promise<void>(resolve => release = resolve), started = new Promise<void>(resolve => seen = resolve);
+  await page.route("**/api/community/posts/*", async route => {
+    if (route.request().method() === "PATCH" && !failed) {
+      failed = true; seen(); await gate;
+      return route.fulfill({ status: 503, contentType: "application/json", body: '{"code":"error","message":"잠시 뒤에 다시 해 주세요."}' });
+    }
+    return route.fallback();
+  });
+  try {
+    await editor.getByRole("button", { name: "수정 저장", exact: true }).click();
+    await started;
+    await expect(text).toBeDisabled();
+    await expect(editor.getByRole("button", { name: "취소", exact: true })).toBeDisabled();
+    release();
+    await expect(editor.getByRole("alert")).toContainText("잠시 뒤");
+    await expect(text).toHaveValue("보존할 수정\n두번째 줄");
+    const before = await communityRequest(f.env, "GET", "feed?board=free", undefined, f.who);
+    expect((await before.json()).items.find((p: any) => p.id === id).text).toBe("처음 본문");
+    await editor.getByRole("button", { name: "수정 저장", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    expect(await article.locator(".cm-text").textContent()).toBe("보존할 수정\n두번째 줄");
+    await page.reload(); await expect(article).toBeVisible();
+    expect(await article.locator(".cm-text").textContent()).toBe("보존할 수정\n두번째 줄");
+    await article.getByRole("button", { name: "수정", exact: true }).click();
+    await text.fill("내가 보관할 초안");
+    expect((await communityRequest(f.env, "PATCH", "posts/" + id, { post: { board: "free", title: "다른 창 제목", text: "서버 최신 본문", pieces: [], consent: false }, revision: 2 }, f.who)).status).toBe(200);
+    await editor.getByRole("button", { name: "수정 저장", exact: true }).click();
+    await expect(editor.getByRole("alert")).toContainText("다른 창");
+    await expect(text).toHaveValue("내가 보관할 초안");
+    const latest = await communityRequest(f.env, "GET", "feed?board=free", undefined, f.who);
+    expect((await latest.json()).items.find((p: any) => p.id === id).text).toBe("서버 최신 본문");
+  } finally { release?.(); }
+});
+
+test("cancelled close and browser Back retain the draft and the editor traps keyboard focus", async ({ page }) => {
+  await setup(page);
+  await page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "자유게시판", exact: true }).click();
+  await page.getByRole("button", { name: "글쓰기", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "자유게시판 글쓰기", exact: true });
+  await editor.getByLabel("제목", { exact: true }).fill("보관할 제목");
+  await editor.getByLabel("내용", { exact: true }).fill("보관할 본문");
+  page.once("dialog", dialog => dialog.dismiss());
+  await editor.getByRole("button", { name: "취소", exact: true }).click();
+  await expect(editor.getByLabel("내용", { exact: true })).toHaveValue("보관할 본문");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/community\?board=free$/);
+  await expect(editor.getByLabel("제목", { exact: true })).toHaveValue("보관할 제목");
+  await editor.getByRole("button", { name: "올리기", exact: true }).focus();
+  await page.keyboard.press("Tab");
+  await expect(editor.getByRole("button", { name: "닫기", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(editor.getByRole("button", { name: "올리기", exact: true })).toBeFocused();
+  page.once("dialog", dialog => dialog.accept());
+  await editor.getByRole("button", { name: "취소", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+});
+
+test("operator review shows a bodyless sale and only the operator can inspect queued photos", async ({ page, browser }) => {
+  const op = { member: "owner", operator: true };
+  const envReady = { MEMBER_SESSION_SECRET: "qa-only-".repeat(6), KAKAO_REST_KEY: "qa-not-a-live-key" };
+  const f = await serveCommunity(page, "public", envReady, op, { start: "/?photos=0#/community" });
+  await page.getByLabel("이름").fill("검토담당");
+  await page.getByRole("checkbox", { name: /규칙을 읽었고 따를게요/ }).check();
+  await page.getByRole("checkbox", { name: /만 14세 이상이에요/ }).check();
+  await page.getByRole("button", { name: "가입하기", exact: true }).click();
+  const author = { member: "qa-sale-author", operator: false };
+  await communityCall(f.env, "join", { name: "합성제보자", rules: 1, age14: true }, author);
+  const jpeg = await page.evaluate(() => { const c = document.createElement("canvas"); c.width = c.height = 2; c.getContext("2d")!.fillRect(0,0,2,2); return c.toDataURL("image/jpeg").split(",")[1]; });
+  const created = await communityCall(f.env, "posts", { post: { board: "sale", title: "검토할 가격 제보", text: "", pieces: [], consent: true, sale: { merchant: "예시 판매처", price: 39000, discount: 30, sourceUrl: "https://shop.example.com/review", endDate: "2026-11-03" } }, photos: [jpeg] }, author);
+  const { id } = await created.json();
+  await communityCall(f.env, "reports", { post: id, reason: "rights" }, op);
+  await communityCall(f.env, "review/" + id, { action: "hide" }, op);
+  const queue = page.getByRole("region", { name: "신고·숨김 확인", exact: true });
+  await queue.getByRole("button", { name: "신고 목록 새로고침", exact: true }).click();
+  const row = queue.locator(`[data-community-review="${id}"]`);
+  await expect(row).toContainText("세일 정보"); await expect(row).toContainText("검토할 가격 제보");
+  await expect(row).toContainText("예시 판매처"); await expect(row).toContainText("39,000원");
+  await expect(row).toContainText("30% 할인 제보"); await expect(row).toContainText("2026-11-03");
+  await expect(row.getByRole("list", { name: "신고 이유", exact: true })).toContainText("허락 없이");
+  await expect(row.getByRole("link", { name: "출처 보기", exact: true })).toHaveAttribute("href", "https://shop.example.com/review");
+  await row.getByRole("button", { name: "사진 확인 1장", exact: true }).click();
+  const image = row.getByRole("img", { name: "검토할 사진 1", exact: true });
+  await expect(image).toHaveJSProperty("naturalWidth", 2);
+  const imageUrl = await image.getAttribute("src");
+  expect(imageUrl).toContain("?review=1");
+  const secondContext = await browser.newContext({ viewport: page.viewportSize() || { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  try {
+    const other = await secondContext.newPage();
+    await serveCommunity(other, "public", { ...f.env }, author, { start: "/c#/community?board=sale", standalone: true });
+    await expect(other.locator(".cm-review")).toHaveCount(0);
+    expect(await other.evaluate(async url => (await fetch(url!)).status, imageUrl)).toBe(403);
+    await row.getByRole("button", { name: "지우기", exact: true }).click();
+    await expect(row).toBeVisible();
+    const notDeleted = await communityRequest(f.env, "GET", "review", undefined, op);
+    expect((await notDeleted.json()).items).toHaveLength(1);
+    await row.getByRole("button", { name: "한 번 더 누르면 글과 사진을 지워요", exact: true }).click();
+    await expect(row).toHaveCount(0);
+    expect((await communityRequest(f.env, "GET", imageUrl!.split('/api/community/')[1], undefined, op)).status).toBe(404);
+    await other.reload();
+    await expect(other.locator("[data-community-post]")).toHaveCount(0);
+  } finally { await secondContext.close(); }
 });

@@ -119,4 +119,10 @@
 .cm-editor .cm-pieces.edit li button { min-width: 36px; min-height: 44px; }
 .cm-editor-feedback { min-height: 46px; }
 .cm-editor button:disabled { opacity: .45; cursor: not-allowed; }
+.cm-source { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cm-source-host { font-size: 12px; color: var(--ink3); overflow-wrap: anywhere; }
+.cm-review h2 { outline: none; }
+.cm-review-reasons { padding-left: 18px; color: var(--ink2); line-height: 1.7; }
+.cm-review-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; max-width: 560px; }
+.cm-review-photos img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: var(--well); }
 @media (min-width: 760px) { .cm-boards a { flex: 0 1 160px; padding-inline: 20px; font-size: 15px; } }

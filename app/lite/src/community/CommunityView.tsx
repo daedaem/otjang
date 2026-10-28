@@ -83,8 +83,10 @@ export function CommunityView({ host }: { host: CommunityHost }) {
     try { rememberCommunityEntry(sessionStorage, activeRoute.current); } catch {}
   }, []);
   useEffect(() => {
-    heading.current?.focus({ preventScroll: true });
-  }, [route.board, route.mine]);
+    const active = document.activeElement;
+    const entryButton = active instanceof HTMLElement && active.closest('#tabs') && active.dataset.tab === 'community';
+    if (!active || active === document.body || host.element.contains(active) || entryButton) heading.current?.focus({ preventScroll: true });
+  }, [route.board, route.mine, host]);
   useEffect(() => {
     let active = true;
     if (client) client.status().then(result => {
@@ -190,7 +192,7 @@ export function CommunityView({ host }: { host: CommunityHost }) {
         }}>풀기</button></li>)}</ul> : null}
         <button type="button" className="quiet" disabled={memberBusy} onClick={() => void leave()}>{leaving ? "한 번 더 누르면 내 글·사진을 모두 지우고 나가요" : "커뮤니티 나가기"}</button>
       </footer>
-      {status.isOperator ? <Review client={client} /> : null}
+      {status.isOperator ? <Review client={client} status={status} changed={() => void load()} /> : null}
       {composer ? <PostEditor key={`${composer.board}:${composer.post?.id || "new"}`} host={host} client={client} board={composer.board} post={composer.post} initial={composer.pieces} guard={registerGuard} close={closeEditor} saved={saved} /> : null}
     </>}
   </section>;

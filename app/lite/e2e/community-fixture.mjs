@@ -49,11 +49,17 @@ export async function communityCall(
   who = { member: "owner", operator: true },
   options = {},
 ) {
+  return communityRequest(env, "POST", section, body, who, options);
+}
+export async function communityRequest(
+  env, method, section, body,
+  who = { member: "owner", operator: true }, options = {},
+) {
   return handleCommunity(
     new Request("https://qa.test/api/community/" + section, {
-      method: "POST",
+      method,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: method === "GET" || method === "HEAD" || body === undefined ? undefined : JSON.stringify(body),
     }),
     env,
     who,
