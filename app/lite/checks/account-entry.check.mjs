@@ -5,6 +5,9 @@ import { createWorker } from '../worker.js';
 import { handlePrivateSession } from '../functions/lib/private-session.js';
 import { handleCommunity } from '../functions/api/community.js';
 import { memberFromRequest } from '../functions/lib/member-session.js';
+import { handle as handleRank } from '../functions/api/rank.js';
+import { handleGarmentPhoto } from '../functions/api/garment-photo.js';
+import { PRODUCTS } from '../src/domain/data/products.js';
 const ORIGIN='https://app.test';
 const PASSWORD='qa-normal-admin-password';
 function d1() {
@@ -74,6 +77,21 @@ test('an invited normal member uses the app but never inherits owner data or adm
   for(const path of ['/_private/readiness','/_private/admin-setup','/_member/invites']) assert.equal((await f.call(path,'GET',undefined,friend)).status,403);
   assert.equal((await f.call('/api/rank','POST',{}, {...friend,'x-hangit-scope':'owner'})).status,409);assert.equal(f.rankCalls.length,0);
   assert.equal((await f.call('/api/rank','POST',{}, {...friend,'x-hangit-scope':scope})).status,200);assert.equal(f.rankCalls[0],await memberFromRequest(f.req('/', 'GET',undefined,friend),f.env));
+  assert.equal((await f.call('/api/open-products?q=shirt','GET',undefined,friend)).status,200);
+});
+
+test('the linked administrator uses real AI handler authorization without the old cookie and stale scopes cannot spend quota',async()=>{
+  const f=fixture(),old=await ownerCookie(f),made=await setup(f,old),p=PRODUCTS[0];let calls=0;
+  const client=answer=>({messages:{create:async()=>{calls++;return {id:'qa-local-message',model:'claude-haiku-5-5',stop_reason:'end_turn',usage:{input_tokens:1,output_tokens:1},content:[{type:'text',text:JSON.stringify(answer)}]};}}});
+  const worker=createWorker({rank:(request,env,options)=>handleRank(request,env,{...options,client:client({summary:'QA only',ranking:[{id:p.id,reason:'QA only',fit:'추천'}]})}),garmentPhoto:(request,env,options)=>handleGarmentPhoto(request,env,{...options,client:client({clothing:true,kind:'shirt',color:'white',label:'QA shirt',confidence:'high'})})});
+  const body={task:'rank',query:'QA shirt',closet:[],items:[{id:p.id,closet:'옷장 정보 없음'}]};
+  const invoke=(path,payload,extra={})=>worker.fetch(f.req(path,'POST',payload,{cookie:memberCookie(made),...extra}),f.env);
+  assert.equal((await invoke('/api/rank',body)).status,409);
+  assert.equal((await invoke('/api/rank',body,{'x-hangit-scope':'m-'+'a'.repeat(32)})).status,409);assert.equal(calls,0);
+  assert.equal((await invoke('/api/rank',body,{'x-hangit-scope':'owner'})).status,200);
+  const bytes=Buffer.alloc(200);bytes.set([255,216,255,224]);bytes[198]=255;bytes[199]=217;
+  assert.equal((await invoke('/api/garment-photo',{image:bytes.toString('base64')},{'x-hangit-scope':'owner'})).status,200);assert.equal(calls,2);
+  assert.equal((await worker.fetch(f.req('/api/open-products?q=shirt','GET',undefined,{cookie:memberCookie(made)}),f.env)).status,200);
 });
 test('administrator logout revokes the normal session and self-delete cannot orphan its role',async()=>{
   const f=fixture(), old=await ownerCookie(f), made=await setup(f,old), auth={cookie:memberCookie(made)};
