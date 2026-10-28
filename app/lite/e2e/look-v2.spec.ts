@@ -260,3 +260,60 @@ test("the closet rail leaves no tall gap under the clothes", async ({ page }) =>
   const track = await page.locator(".wr-track").first().boundingBox();
   expect(track!.y + track!.height - (name!.y + name!.height)).toBeLessThanOrEqual(40);
 });
+
+// Panel D+ step 3: on a product page the outfits made with my clothes are big
+// cards (2x2 pieces) that swipe sideways, and the item being bought is outlined
+// in walnut. The previous look keeps four small pieces in a row.
+async function looksOnDetail(page: Page, search: string) {
+  await open(page, search);
+  await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.go("detail", { id: K.M.readSearch("코트").products[0].id }); });
+  await page.locator("#hangbox").getByRole("button", { name: "없어요", exact: true }).click();
+  await expect(page.locator("#hangbox .looks2 .lk").first()).toBeVisible();
+}
+for (const [label, ui] of [["", ""], [" (vanilla)", "&ui=vanilla"]] as const)
+test(`the new look shows outfits on a product page as big swipe cards${label}`, async ({ page }) => {
+  await looksOnDetail(page, ui);
+  const row = page.locator("#hangbox .looks2");
+  expect(await css(row, "overflow-x")).toBe("auto");
+  expect(await css(row, "scroll-snap-type")).toContain("x");
+  const cards = row.locator(".lk");
+  const n = await cards.count();
+  const first = await cards.first().boundingBox();
+  if (n > 1) {
+    const second = await cards.nth(1).boundingBox();
+    expect(second!.x).toBeGreaterThan(first!.x + first!.width / 2); // side by side, not stacked
+  }
+  const pieces = cards.first().locator(".p1 .ph-box, .p1 [data-tile], .p1 img").first();
+  const cell = await cards.first().locator(".p1").first().boundingBox();
+  expect(cell!.width).toBeGreaterThanOrEqual(130);
+  await expect(pieces).toBeVisible();
+  const me = cards.first().locator(".p1.me").first();
+  await expect(me).toBeVisible();
+  // The mark sits on a layer above the photo (the photo is positioned and
+  // would cover a shadow or outline on the box itself).
+  const mark = await me.locator(".ph-box").first().evaluate((el) => { const c = getComputedStyle(el, "::after"); return { shadow: c.boxShadow, pos: c.position, z: c.zIndex }; });
+  expect(mark.shadow).toContain("rgb(91, 58, 36)");
+  expect(mark.pos).toBe("absolute");
+  expect(mark.z).toBe("1");
+});
+test("the previous look keeps the product page outfits as four small pieces", async ({ page }) => {
+  await looksOnDetail(page, "&look=v1");
+  const cell = await page.locator("#hangbox .looks2 .lk .p1").first().boundingBox();
+  expect(cell!.width).toBeLessThan(100);
+});
+
+// Panel D+ step 3: every hang gives a short pop on the 걸어 봄 strip's hanger
+// (200ms), not only the first one. The previous look keeps its behaviour.
+for (const [label, ui] of [["", ""], [" (vanilla)", "&ui=vanilla"]] as const)
+test(`each hang pops the strip hanger in the new look${label}`, async ({ page }) => {
+  await open(page, ui);
+  await page.evaluate(() => (window as any).K.go("results", { q: "출근용 셔츠 10만원 이하" }));
+  const hangs = page.locator(".grid .card .hangt");
+  await hangs.nth(0).click();
+  await expect(page.locator(".strip").first()).toBeVisible();
+  await hangs.nth(1).click();
+  await expect(page.locator(".strip").first()).toContainText("2");
+  const icon = page.locator(".strip .in > i").first();
+  expect(await css(icon, "animation-name")).toBe("pop");
+  expect(await css(icon, "animation-duration")).toBe("0.2s");
+});

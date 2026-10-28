@@ -21,7 +21,7 @@ export type Notice = {
 export type ChromeModel = {
   tabbed: boolean;
   current: string | null;
-  strip: { text: string; pop: boolean } | null;
+  strip: { text: string; pop: boolean; bump?: number } | null;
   notice: Notice | null;
 };
 export type ChromeHost = SheetHost & {
@@ -66,7 +66,7 @@ function Strip({ host, m }: { host: ChromeHost; m: ChromeModel }) {
   const s = m.strip;
   return (
     <button
-      className={`strip${s?.pop ? " pop" : ""}`}
+      className={`strip${s?.pop ? " pop" : ""}${s?.bump ? " bump" : ""}`}
       id="strip"
       hidden={!s}
       aria-label="옷걸이 열기"
@@ -75,7 +75,8 @@ function Strip({ host, m }: { host: ChromeHost; m: ChromeModel }) {
     >
       {s ? (
         <span className="in">
-          <i className="ph-fill ph-coat-hanger" aria-hidden="true" />
+          {/* key: a new hang remounts the icon so its pop plays again */}
+          <i key={s.bump || 0} className="ph-fill ph-coat-hanger" aria-hidden="true" />
           <span className="tx">{s.text}</span>
           <span className="go">
             옷장
