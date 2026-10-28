@@ -360,7 +360,8 @@ async function photo(db, who, id) {
   const row = await db.prepare(`SELECT ph.data FROM community_photos ph JOIN community_posts p ON p.id = ph.post
     WHERE ph.id = ?2 AND ${VISIBLE}`).bind(who.member, id).first();
   if (!row) return fail(404, 'not_found', '사진을 찾지 못했어요.');
-  return new Response(toBytes(row.data), { status: 200, headers: { 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=86400', 'x-content-type-options': 'nosniff' } });
+  // 사진에도 회원/규칙 경계가 있으므로 계정 전환 뒤 장기 HTTP 캐시를 재사용하지 않는다.
+  return new Response(toBytes(row.data), { status: 200, headers: { 'content-type': 'image/jpeg', 'cache-control': 'private, no-store', vary: 'Cookie', 'x-content-type-options': 'nosniff' } });
 }
 
 async function report(request, env, db, who, now) {
@@ -508,11 +509,11 @@ export async function handleCommunity(request, env = {}, who = {}, { now = Date.
     if (section === 'status' && method === 'GET') return await status(env, db, who);
     if (section === 'join' && method === 'POST') return await join(request, db, who, at);
     if (section === 'leave' && method === 'POST') return await leave(request, env, db, who, at);
-    if (section === 'photos' && method === 'GET' && rest) return await photo(db, who, rest);
     if (section === 'review') return await review(request, db, who, at, rest);
     // 아래는 가입한 회원만.
     const row = await memberRow(db, who.member);
     if (!row || row.rules !== COMMUNITY_RULES_VERSION) return fail(403, 'join_required', '규칙에 동의하고 이름을 정한 뒤에 쓸 수 있어요.');
+    if (section === 'photos' && method === 'GET' && rest) return await photo(db, who, rest);
     if (section === 'feed' && method === 'GET') return await feed(url, db, who);
     if (section === 'posts' && method === 'POST' && !rest) return await createPost(request, env, db, who, at);
     if (section === 'posts' && method === 'PATCH' && rest) return await editPost(request, db, who, rest, at);

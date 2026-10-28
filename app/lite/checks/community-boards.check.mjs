@@ -33,7 +33,7 @@ function fixture() {
     const res = await handleCommunity(new Request('https://qa.test/api/community/' + path, {
       method, headers: { 'content-type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     }), env, { member, operator: member === 'op' }, { now: () => now });
-    return { status: res.status, body: res.headers.get('content-type')?.includes('json') ? await res.json() : new Uint8Array(await res.arrayBuffer()) };
+    return { status: res.status, headers: res.headers, body: res.headers.get('content-type')?.includes('json') ? await res.json() : new Uint8Array(await res.arrayBuffer()) };
   };
   return { db, env, call, tick() { now++; }, async join() {
     for (const [member, name] of [['a', '에이'], ['b', '비이'], ['op', '운영']])
@@ -301,7 +301,10 @@ for (const audience of ['unjoined', 'old rules']) test(`public photos require th
   assert.equal((await f.call(reader, 'GET', 'feed')).status, 403);
   assert.equal((await f.call(reader, 'GET', 'photos/' + row.photos[0])).status, 403);
   assert.equal((await f.call(reader, 'POST', 'join', { name: '동의회원', rules: 1, age14: true })).status, 200);
-  assert.equal((await f.call(reader, 'GET', 'photos/' + row.photos[0])).status, 200);
+  const allowed = await f.call(reader, 'GET', 'photos/' + row.photos[0]);
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('cache-control'), 'private, no-store');
+  assert.equal(allowed.headers.get('vary'), 'Cookie');
   assert.equal((await f.call(reader, 'POST', 'reports', { post: row.id, reason: 'rights' })).status, 200);
   assert.equal((await f.call(reader, 'GET', 'photos/' + row.photos[0])).status, 404);
   assert.equal((await f.call('op', 'POST', 'review/' + row.id, { action: 'hide' })).status, 200);
