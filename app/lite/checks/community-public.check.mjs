@@ -42,7 +42,11 @@ test('public은 운영자 이름·연락처·회원 로그인 설정이 모두 �
   assert.equal(open.body.mode, 'public');
   assert.equal(open.body.member, null);
   assert.equal(open.body.signedIn, false);
-  assert.deepEqual(open.body.login, { kakao: true, google: false });
+  assert.deepEqual(open.body.login, { kakao: true, google: false, email: false });
+  // 이메일 인증만 있어도 로그인 준비로 친다.
+  const mailOnly = await call(ready({ KAKAO_REST_KEY: '', EMAIL_FROM: 'no-reply@hangit.test', RESEND_API_KEY: 're_x' }), 'GET', '/api/community/status');
+  assert.equal(mailOnly.status, 200);
+  assert.deepEqual(mailOnly.body.login, { kakao: false, google: false, email: true });
   assert.deepEqual(open.body.operator, { name: '운영자(예시)', contact: 'contact@example.test', privacyOfficer: '운영자(예시)' });
   assert.equal(open.body.minAge, 14);
 });

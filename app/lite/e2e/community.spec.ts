@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 // @ts-ignore -- plain JS Worker module
 import { handleCommunity } from "../functions/api/community.js";
+// @ts-ignore -- plain JS Worker module
+import { handleMemberAuth } from "../functions/lib/member-session.js";
 
 // 코디 공유(대표 10-28 08:08 누구나 가입·직접 찍은 사진·코디 공유 먼저, 09:39 "끝까지").
 // 브라우저의 /api/community/* 요청을 실제 Worker 처리기로 돌린다. DB는 메모리 SQLite(비용 0).
@@ -32,10 +34,16 @@ const PHOTO = fileURLToPath(new URL("../public/examples/m-blazer.webp", import.m
 async function serve(page: Page, mode: string | undefined, extra: Record<string, string> = {}, who: any = { member: "owner", operator: true }) {
   const env: any = { CROWD_DB: fakeD1(), COMMUNITY_DB: fakeD1(), COMMUNITY_MODE: mode, COMMUNITY_CONTACT: "contact@example.test", COMMUNITY_OPERATOR: "운영자(예시)", ...extra };
   const posted: any[] = [];
+  const mails: any[] = [];
   await page.route("**/*", async (route) => {
     const req = route.request();
     const u = new URL(req.url());
     if (u.origin !== "http://127.0.0.1:8792") return route.abort();
+    if (u.pathname.startsWith("/_member/")) {
+      const body = req.postDataBuffer();
+      const res: Response = await handleMemberAuth(new Request(u.href, { method: req.method(), headers: { "content-type": "application/json", origin: u.origin }, body: body && req.method() !== "GET" ? body : undefined }), env, { fetchImpl: async (_url: string, init: any) => { mails.push(JSON.parse(init.body)); return Response.json({ id: "m" }); } });
+      return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
+    }
     if (u.pathname.startsWith("/api/community/")) {
       const body = req.postDataBuffer();
       if (req.method() === "POST" && u.pathname.endsWith("/posts")) posted.push(JSON.parse(body!.toString()));
@@ -47,7 +55,7 @@ async function serve(page: Page, mode: string | undefined, extra: Record<string,
   });
   await page.goto("/?photos=0#/");
   await page.waitForFunction(() => !!(window as any).K?.M);
-  return { posted, env };
+  return { posted, env, mails };
 }
 // 다른 회원(b)의 글을 서버에 직접 넣는다. 화면 쪽 사용자는 owner다.
 async function otherPost(env: any, text: string) {
@@ -221,4 +229,17 @@ test("the public page /c is a standalone community shell without the app", async
   await expect(page.getByRole("heading", { name: "코디 공유" })).toBeVisible();
   await expect(page.locator("#tabs")).toHaveCount(0);
   expect(await page.evaluate(() => typeof (window as any).K)).toBe("undefined");
+});
+
+test("in public mode I can ask for an email code and enter it", async ({ page }) => {
+  const { mails } = await serve(page, "public", { MEMBER_SESSION_SECRET: "s".repeat(40), EMAIL_FROM: "no-reply@hangit.test", RESEND_API_KEY: "re_x" }, {});
+  await go(page);
+  await page.getByLabel("이메일").fill("me@example.com");
+  await page.getByRole("button", { name: "인증 코드 받기" }).click();
+  await expect(page.getByLabel("인증 코드")).toBeVisible();
+  expect(mails).toHaveLength(1);
+  const code = /(\d{6})/.exec(mails[0].text)![1];
+  await page.getByLabel("인증 코드").fill(code);
+  await page.getByRole("button", { name: "확인" }).click();
+  await expect(page.getByText(/로그인했어요/)).toBeVisible();
 });

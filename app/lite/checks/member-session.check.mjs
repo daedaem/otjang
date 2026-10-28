@@ -60,9 +60,9 @@ test('설정이 없으면 로그인 경로는 503, 커뮤니티가 public이 아
   assert.equal(bare.status, 503);
   assert.equal(await go(env({ COMMUNITY_MODE: 'private' }), '/_member/login/kakao'), null);
   assert.equal(await go(env({ COMMUNITY_MODE: undefined }), '/_member/login/kakao'), null);
-  assert.deepEqual(memberLoginOptions(env()), { kakao: true, google: true });
-  assert.deepEqual(memberLoginOptions(env({ GOOGLE_CLIENT_SECRET: '' })), { kakao: true, google: false });
-  assert.deepEqual(memberLoginOptions(env({ MEMBER_SESSION_SECRET: 'short' })), { kakao: false, google: false });
+  assert.deepEqual(memberLoginOptions(env()), { kakao: true, google: true, email: false });
+  assert.deepEqual(memberLoginOptions(env({ GOOGLE_CLIENT_SECRET: '' })), { kakao: true, google: false, email: false });
+  assert.deepEqual(memberLoginOptions(env({ MEMBER_SESSION_SECRET: 'short' })), { kakao: false, google: false, email: false });
 });
 
 test('카카오: 상태값을 맞춘 콜백만 회원 세션을 만들고, 공급자 id 원문은 저장하지 않는다', async () => {
@@ -160,4 +160,86 @@ test('로그아웃은 같은 출처 POST만, 세션을 지우고 쿠키를 비�
   const later = await loginFlow(e, 'kakao', provider());
   const c2 = pair(cookieOf(later.back, '__Host-hangit-member'));
   assert.equal(await memberFromRequest(new Request(ORIGIN, { headers: { cookie: c2 } }), e, { now: () => Date.now() + 31 * 86400_000 }), null);
+});
+
+// 이메일 인증 코드 가입·로그인(대표 10-28 12:25 "이메일·이름으로도 가입", 12:26 "인증 메일로 확인").
+// 비밀번호 없이 6자리 코드. 이메일 원문은 저장하지 않는다. 발송은 Resend(RESEND_API_KEY) 또는 Cloudflare EMAIL 바인딩.
+const emailEnv = (extra = {}) => env({ KAKAO_REST_KEY: '', GOOGLE_CLIENT_ID: '', EMAIL_FROM: 'Hangit <no-reply@hangit.test>', RESEND_API_KEY: 're_test', ...extra });
+function mailbox() {
+  const sent = [];
+  const fetchImpl = async (url, init = {}) => {
+    if (String(url) === 'https://api.resend.com/emails') { sent.push(JSON.parse(init.body)); return Response.json({ id: 'm1' }); }
+    return new Response('no', { status: 404 });
+  };
+  return { sent, fetchImpl, code: () => /(\d{6})/.exec(sent.at(-1)?.text || '')?.[1] };
+}
+const post = (e, path, body, opts = {}, headers = {}) => go(e, path, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, ...headers }, body: JSON.stringify(body) }, opts);
+
+test('이메일: 설정이 있어야 켜지고, 코드를 보내고, 맞는 코드면 회원 세션을 준다. 이메일 원문은 저장하지 않는다', async () => {
+  assert.deepEqual(memberLoginOptions(env({ KAKAO_REST_KEY: '', GOOGLE_CLIENT_ID: '' })), { kakao: false, google: false, email: false });
+  assert.equal(memberLoginOptions(emailEnv()).email, true);
+  assert.equal(memberLoginOptions(emailEnv({ RESEND_API_KEY: '', EMAIL: { send: async () => {} } })).email, true);
+  const e = emailEnv();
+  const box = mailbox();
+  const start = await post(e, '/_member/email/start', { email: ' Me@Example.COM ' }, { fetchImpl: box.fetchImpl });
+  assert.equal(start.status, 200);
+  assert.equal(box.sent.length, 1);
+  assert.deepEqual(box.sent[0].to, ['me@example.com']);
+  assert.equal(box.sent[0].from, 'Hangit <no-reply@hangit.test>');
+  assert.match(box.sent[0].text, /\d{6}/);
+  const wrong = await post(e, '/_member/email/verify', { email: 'me@example.com', code: '000000' === box.code() ? '111111' : '000000' });
+  assert.equal(wrong.status, 400);
+  const ok = await post(e, '/_member/email/verify', { email: 'ME@example.com', code: box.code() });
+  assert.equal(ok.status, 200);
+  const cookie = pair(cookieOf(ok, '__Host-hangit-member'));
+  const member = await memberFromRequest(new Request(ORIGIN, { headers: { cookie } }), e);
+  assert.match(member, /^[0-9a-f]{32}$/);
+  const dump = JSON.stringify(['member_sessions', 'member_email_codes'].map((t) => e.CROWD_DB.raw.prepare(`SELECT * FROM ${t}`).all()));
+  assert.equal(/example\.com/i.test(dump), false);
+  // 코드는 한 번만 쓴다.
+  assert.equal((await post(e, '/_member/email/verify', { email: 'me@example.com', code: box.code() })).status, 400);
+  // 같은 이메일로 다시 들어오면 같은 회원이다.
+  const box2 = mailbox();
+  await post(e, '/_member/email/start', { email: 'me@example.com' }, { fetchImpl: box2.fetchImpl });
+  const again = await post(e, '/_member/email/verify', { email: 'me@example.com', code: box2.code() });
+  assert.equal(await memberFromRequest(new Request(ORIGIN, { headers: { cookie: pair(cookieOf(again, '__Host-hangit-member')) } }), e), member);
+});
+
+test('이메일: 틀린 코드 5번이면 그 코드는 끝나고, 10분이 지나면 만료된다. 다른 출처 요청은 막는다', async () => {
+  const e = emailEnv();
+  const box = mailbox();
+  await post(e, '/_member/email/start', { email: 'a@b.test' }, { fetchImpl: box.fetchImpl });
+  const right = box.code();
+  const bad = right === '123456' ? '654321' : '123456';
+  for (let i = 0; i < 5; i++) assert.equal((await post(e, '/_member/email/verify', { email: 'a@b.test', code: bad })).status, 400);
+  assert.equal((await post(e, '/_member/email/verify', { email: 'a@b.test', code: right })).status, 400, '5번 틀리면 맞는 코드도 거절');
+  const box2 = mailbox();
+  await post(e, '/_member/email/start', { email: 'a@b.test' }, { fetchImpl: box2.fetchImpl });
+  const late = await post(e, '/_member/email/verify', { email: 'a@b.test', code: box2.code() }, { now: () => Date.now() + 11 * 60_000 });
+  assert.equal(late.status, 400);
+  assert.equal((await post(e, '/_member/email/start', { email: 'a@b.test' }, { fetchImpl: box.fetchImpl }, { origin: 'https://evil.test' })).status, 403);
+  assert.equal((await post(e, '/_member/email/start', { email: 'not-an-email' }, { fetchImpl: box.fetchImpl })).status, 400);
+});
+
+test('이메일: 한 주소에 한 시간 5통, 서버 전체 하루 상한(EMAIL_DAILY_MAX)을 넘기면 보내지 않는다. 발송 실패는 502', async () => {
+  const e = emailEnv({ EMAIL_DAILY_MAX: '7' });
+  const box = mailbox();
+  for (let i = 0; i < 5; i++) assert.equal((await post(e, '/_member/email/start', { email: 'x@y.test' }, { fetchImpl: box.fetchImpl })).status, 200);
+  const sixth = await post(e, '/_member/email/start', { email: 'x@y.test' }, { fetchImpl: box.fetchImpl });
+  assert.equal(sixth.status, 429);
+  assert.equal(box.sent.length, 5);
+  assert.equal((await post(e, '/_member/email/start', { email: 'z1@y.test' }, { fetchImpl: box.fetchImpl })).status, 200);
+  assert.equal((await post(e, '/_member/email/start', { email: 'z2@y.test' }, { fetchImpl: box.fetchImpl })).status, 200);
+  assert.equal((await post(e, '/_member/email/start', { email: 'z3@y.test' }, { fetchImpl: box.fetchImpl })).status, 429);
+  const broken = await post(emailEnv(), '/_member/email/start', { email: 'q@y.test' }, { fetchImpl: async () => new Response('down', { status: 500 }) });
+  assert.equal(broken.status, 502);
+});
+
+test('이메일: Cloudflare EMAIL 바인딩이 있으면 그것으로 보낸다', async () => {
+  const sent = [];
+  const e = emailEnv({ RESEND_API_KEY: '', EMAIL: { send: async (m) => { sent.push(m); } } });
+  assert.equal((await post(e, '/_member/email/start', { email: 'cf@y.test' })).status, 200);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'cf@y.test');
+  assert.match(sent[0].text, /\d{6}/);
 });
