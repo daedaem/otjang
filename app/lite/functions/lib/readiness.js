@@ -125,6 +125,7 @@ export async function handleReadiness(request, env) {
   <a href="/">← 앱으로 돌아가기</a><h1>운영 점검</h1><p>본인만 볼 수 있어요. 키·연락처·개인 옷장은 표시하지 않아요. 설정이 있다는 것과 실제 서비스 성공은 따로 확인해요.</p>
   <p>배포 코드 <code>${snapshot.commit || "확인하지 못함"}</code><small>현재 커뮤니티: ${snapshot.community.mode}. 이 화면에서 공개 설정은 바꾸지 않아요.</small></p>
   <h2>서비스 설정</h2><dl>${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("")}</dl><p>Claude 모델: ${MODEL}. 이 점검은 AI·메일·상품 API를 호출하지 않아요. 토큰·잔액·실제 응답은 확인하지 않았어요.</p>
+  <p><a class="button" href="/_private/ai-check">개인 자료 없이 실제 AI 연결 시험</a></p>
   <h2>데이터베이스</h2><p>버튼을 누르면 기존 DB에서 SELECT 1만 읽어요. 테이블 생성·변경이나 실제 사용자 자료 조회는 하지 않아요.</p><button id="probe" type="button">DB 연결 확인</button><p id="database" role="status" aria-live="polite">아직 연결 검사를 하지 않았어요.</p>
   <h2>공개 전에 남은 것</h2><ul><li>전용 커뮤니티 DB·운영자/연락처·회원 로그인: <span id="public-missing"></span></li><li>상품의 표시·DB 보관·외부 AI 처리·사진 권리는 각각 확인해야 해요. API 키가 있어도 권한 확인 완료로 표시하지 않아요.</li><li>현재 Open-Meteo 무료 경로는 비상업 시험용이에요. 상업용 조건을 확인하기 전에는 출시 완료가 아니에요.</li><li>실제 가입·메일·소셜 로그인과 실제 폰의 복원은 자동검사로 대신하지 않아요.</li></ul>
   <h2>이 기기의 확인</h2><p>아래 자동 정보는 브라우저 기능 유무예요. 실제 휴대폰 검증 여부는 직접 확인한 항목만 체크해 주세요. 이 화면에서는 기록을 서버나 기기에 저장하지 않아요.</p><button id="device" type="button">기기 기능 확인</button><p id="device-result" role="status" aria-live="polite">아직 확인하지 않았어요.</p>
