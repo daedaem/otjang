@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { handleCommunity } from '../functions/api/community.js';
 import { validateCommunityPost } from '../src/domain/community.js';
+import { createWorker } from '../worker.js';
+import { ACCOUNT_HEADER } from '../src/domain/account-scope.js';
 
 function fixture() {
   const raw = new DatabaseSync(':memory:');
@@ -61,6 +63,7 @@ test('sale facts are explicit bounded author input, including source URL, percen
     assert.equal(validateCommunityPost({ ...p, sale: { ...p.sale, ...change } }).ok, false);
   for (const sourceUrl of ['javascript:alert(1)', 'data:text/html,bad', 'http://shop.example.com', 'https://user:pass@shop.example.com', 'https://localhost/a', 'https://127.0.0.1/a', 'https://[::1]/a', 'https://shop.local/a'])
     assert.equal(validateCommunityPost({ ...p, sale: { ...p.sale, sourceUrl } }).ok, false, sourceUrl);
+  assert.equal(validateCommunityPost({ ...p, sale: { ...p.sale, sourceUrl: 'https://shop.example.com/' + '한'.repeat(300) } }).ok, false, 'encoded source is also bounded');
   assert.equal(validateCommunityPost({ ...p, wardrobeId: 'PRIVATE' }).ok, false);
   assert.equal(validateCommunityPost({ ...p, text: '본문 https://shop.example.com' }).ok, false);
 });
@@ -176,4 +179,62 @@ test('failed transactions do not leave orphan metadata/photos or consume the pos
   assert.equal((await post(f, 'a', sale())).status, 500);
   assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts').get().n, 0);
   assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage').get().n, 0);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_details').get().n, 0);
+});
+
+test('two author edits of the same version commit only one change and one usage reservation', async () => {
+  const f = fixture(); await f.join();
+  const made = await post(f, 'a', talk()); assert.equal(made.status, 200);
+  const results = await Promise.all(['첫 창', '다른 창'].map(title => f.call('a', 'PATCH', 'posts/' + made.body.id, { post: { ...talk(), title }, revision: 1 })));
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 409]);
+  const row = (await f.call('a', 'GET', 'feed?board=free')).body.items[0];
+  assert.equal(row.revision, 2);
+  assert.ok(['첫 창', '다른 창'].includes(row.title));
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage WHERE member=?').get('a').n, 2);
+});
+
+test('simultaneous photo posts in different boards and accounts cannot exceed the shared byte cap', async () => {
+  const f = fixture(); await f.join();
+  f.env.COMMUNITY_MAX_MB = jpeg.length / 1024 / 1024;
+  const results = await Promise.all([post(f, 'a', { ...talk(), consent: true }, [jpeg.toString('base64')]), post(f, 'b', { ...sale(), consent: true }, [jpeg.toString('base64')])]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 507]);
+  assert.equal(f.db.raw.prepare('SELECT SUM(size) n FROM community_photos').get().n, jpeg.length);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_details').get().n, 1);
+});
+
+test('author deletion, operator deletion and leaving remove board metadata with the existing content', async () => {
+  const f = fixture(); await f.join();
+  const a = await post(f, 'a', sale()), b = await post(f, 'b', talk());
+  assert.equal((await f.call('a', 'DELETE', 'posts/' + b.body.id)).status, 404);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_details').get().n, 2);
+  assert.equal((await f.call('a', 'DELETE', 'posts/' + a.body.id)).status, 200);
+  assert.equal((await f.call('op', 'POST', 'review/' + b.body.id, { action: 'delete' })).status, 200);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_details').get().n, 0);
+  assert.equal((await post(f, 'a', sale())).status, 200);
+  assert.equal((await f.call('a', 'POST', 'leave', { confirm: true })).status, 200);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_details').get().n, 0);
+});
+
+test('new edit requests still cross the existing authentication and stale-account gates before reaching handlers', async () => {
+  let reached = false;
+  const handler = async () => { reached = true; return Response.json({ ok: true }); };
+  const request = headers => new Request('https://qa.test/api/community/posts/' + crypto.randomUUID(), { method: 'PATCH', headers: { 'content-type': 'application/json', ...headers }, body: '{}' });
+  const locked = createWorker({ authorize: async () => ({ ok: false, status: 401 }), community: handler });
+  assert.equal((await locked.fetch(request({}), { PRIVATE_AUTH_MODE: 'session' })).status, 401);
+  assert.equal(reached, false);
+  const owner = createWorker({ authorize: async () => ({ ok: true }), community: handler });
+  assert.equal((await owner.fetch(request({ [ACCOUNT_HEADER]: 'm-' + 'a'.repeat(32) }), { PRIVATE_AUTH_MODE: 'session' })).status, 409);
+  assert.equal(reached, false);
+  assert.equal((await owner.fetch(request({ [ACCOUNT_HEADER]: 'owner' }), { PRIVATE_AUTH_MODE: 'session' })).status, 200);
+  assert.equal(reached, true);
+});
+
+test('an edit transaction failure preserves the old title, text, revision and posting allowance', async () => {
+  const f = fixture(); await f.join();
+  const made = await post(f, 'a', talk());
+  const before = (await f.call('a', 'GET', 'feed?board=free')).body.items[0];
+  f.db.raw.exec("CREATE TRIGGER qa_fail_edit BEFORE UPDATE ON community_posts BEGIN SELECT RAISE(ABORT,'QA failure'); END");
+  assert.equal((await f.call('a', 'PATCH', 'posts/' + made.body.id, { post: { ...talk(), title: '보존되어야 할 실패 초안', text: '새 본문' }, revision: 1 })).status, 500);
+  assert.deepEqual((await f.call('a', 'GET', 'feed?board=free')).body.items[0], before);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage WHERE member=?').get('a').n, 1);
 });

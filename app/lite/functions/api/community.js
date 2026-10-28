@@ -14,8 +14,9 @@
 //
 //   GET    /api/community/status            → {mode, member:{name}|null, rules, reasons, contact, reviewDays, operator, limits}
 //   POST   /api/community/join              {name, rules}
-//   GET    /api/community/feed?cursor=&limit=&mine=1 → {items, next}
-//   POST   /api/community/posts             {post:{text, pieces, consent}, photos:[base64 JPEG]}
+//   GET    /api/community/feed?board=outfits|sale|free&cursor=&limit=&mine=1 → {items, next}
+//   POST   /api/community/posts             {post:{board?,title?,sale?,text,pieces,consent},photos:[base64 JPEG]}
+//   PATCH  /api/community/posts/:id         {post,revision} (작성자, 글자만·충돌 거절, 사진/게시판 고정)
 //   DELETE /api/community/posts/:id         (작성자만)
 //   GET    /api/community/photos/:id        → image/jpeg (보이는 글의 사진만)
 //   POST   /api/community/reports           {post, reason}
@@ -27,7 +28,7 @@
 //   POST   /api/community/review/:id        (운영자) {action: restore|hide|delete, reason?}
 import {
   COMMUNITY_LIMITS, COMMUNITY_RULES, COMMUNITY_RULES_VERSION, REPORT_REASONS,
-  validateCommunityPost, validateNickname, isCommunityJpeg, reportReasonIds,
+  validateCommunityPost, validateNickname, isCommunityJpeg, reportReasonIds, communityBoard, COMMUNITY_BOARDS,
 } from '../../src/domain/community.js';
 import { memberLoginOptions, endMemberSessions } from '../lib/member-session.js';
 
@@ -49,6 +50,11 @@ const SCHEMA = [
     created_at INTEGER NOT NULL, hidden TEXT, hidden_at INTEGER, reports_since INTEGER NOT NULL DEFAULT 0)`,
   'CREATE INDEX IF NOT EXISTS community_posts_time ON community_posts (created_at DESC, id DESC)',
   'CREATE INDEX IF NOT EXISTS community_posts_member ON community_posts (member, created_at)',
+  // 부가 정보만 새 테이블에 둔다. 옛 글/사진의 스키마·바이트를 수정하지 않는다.
+  `CREATE TABLE IF NOT EXISTS community_post_details (
+    post TEXT PRIMARY KEY, board TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', sale TEXT,
+    revision INTEGER NOT NULL, updated_at INTEGER NOT NULL, edit_token TEXT)`,
+  'CREATE INDEX IF NOT EXISTS community_details_board ON community_post_details (board, post)',
   `CREATE TABLE IF NOT EXISTS community_photos (
     id TEXT PRIMARY KEY, post TEXT NOT NULL, member TEXT NOT NULL, idx INTEGER NOT NULL, data TEXT NOT NULL, size INTEGER NOT NULL, created_at INTEGER NOT NULL)`,
   'CREATE INDEX IF NOT EXISTS community_photos_post ON community_photos (post, idx)',
@@ -149,6 +155,7 @@ async function status(env, db, who) {
     contact: env.COMMUNITY_CONTACT || null,
     reviewDays: reviewDays(env),
     isOperator: who.operator === true,
+    boards: COMMUNITY_BOARDS,
     limits: { textMax: COMMUNITY_LIMITS.textMax, piecesMax: COMMUNITY_LIMITS.piecesMax, photosMax: COMMUNITY_LIMITS.photosMax, photoBytesMax: COMMUNITY_LIMITS.photoBytesMax },
   });
 }
@@ -174,17 +181,23 @@ async function feed(url, db, who) {
   const limit = Math.max(1, Math.min(50, Number(url.searchParams.get('limit')) || 20));
   const mine = url.searchParams.get('mine') === '1';
   const cursor = url.searchParams.get('cursor') || '';
-  const args = [who.member, limit + 1];
-  let where = VISIBLE;
+  const board = communityBoard(url.searchParams.has('board') ? url.searchParams.get('board') : undefined);
+  if (!board) return fail(400, 'invalid_board', '게시판을 목록에서 골라 주세요.');
+  const args = [who.member, limit + 1, board];
+  let where = VISIBLE + " AND COALESCE(d.board, 'outfits') = ?3";
   if (mine) where += ' AND p.member = ?1';
   if (cursor) {
-    const m = /^(\d{1,16})\.([0-9a-f-]{36})$/.exec(cursor);
+    const legacy = board === 'outfits' && /^(\d{1,16})\.([0-9a-f-]{36})$/.exec(cursor);
+    const scoped = /^(outfits|sale|free)\.(\d{1,16})\.([0-9a-f-]{36})$/.exec(cursor);
+    const m = legacy || (scoped?.[1] === board ? [scoped[0], scoped[2], scoped[3]] : null);
     if (!m) return fail(400, 'bad_request', '목록 위치가 올바르지 않아요.');
     args.push(Number(m[1]), m[2]);
-    where += ' AND (p.created_at < ?3 OR (p.created_at = ?3 AND p.id < ?4))';
+    where += ' AND (p.created_at < ?4 OR (p.created_at = ?4 AND p.id < ?5))';
   }
-  const { results } = await db.prepare(`SELECT p.id, p.member, p.text, p.pieces, p.created_at, p.hidden, m.name
+  const { results } = await db.prepare(`SELECT p.id, p.member, p.text, p.pieces, p.created_at, p.hidden, m.name,
+      d.board, d.title, d.sale, d.revision, d.updated_at
     FROM community_posts p JOIN community_members m ON m.member = p.member
+    LEFT JOIN community_post_details d ON d.post = p.id
     WHERE ${where} ORDER BY p.created_at DESC, p.id DESC LIMIT ?2`).bind(...args).all();
   const rows = results.slice(0, limit);
   const photos = new Map(rows.map((r) => [r.id, []]));
@@ -204,10 +217,24 @@ async function feed(url, db, who) {
       photos: photos.get(r.id),
       createdAt: Number(r.created_at),
       hidden: r.member === who.member ? r.hidden ?? null : null,
+      ...postDetails(r),
     })),
-    next: results.length > limit && last ? `${last.created_at}.${last.id}` : null,
+    next: results.length > limit && last ? `${board}.${last.created_at}.${last.id}` : null,
   });
 }
+
+function postDetails(row) {
+  return {
+    board: row.board ?? 'outfits', title: row.title || '', sale: row.sale ? JSON.parse(row.sale) : null,
+    revision: row.revision == null ? 0 : Number(row.revision), updatedAt: row.updated_at == null ? null : Number(row.updated_at),
+  };
+}
+
+async function postingLimit(db, member, now) {
+  const recent = await db.prepare('SELECT COUNT(*) AS n FROM community_post_usage WHERE member = ?1 AND created_at > ?2').bind(member, now - HOUR).first();
+  return Number(recent?.n) >= POSTS_PER_HOUR;
+}
+const limited = () => fail(429, 'hourly_limit', `글 작성·수정은 한 시간에 합쳐 ${POSTS_PER_HOUR}번까지 할 수 있어요.`);
 
 async function createPost(request, env, db, who, now) {
   const { body, error } = await readJson(request);
@@ -223,10 +250,9 @@ async function createPost(request, env, db, who, now) {
   }
   const checked = validateCommunityPost(body.post, { photos: photos.length });
   if (!checked.ok) return fail(400, 'invalid', checked.message);
-  const recent = await db.prepare('SELECT COUNT(*) AS n FROM community_post_usage WHERE member = ?1 AND created_at > ?2').bind(who.member, now - HOUR).first();
-  if (Number(recent?.n) >= POSTS_PER_HOUR) return fail(429, 'hourly_limit', `한 시간에 ${POSTS_PER_HOUR}개까지 올릴 수 있어요. 조금 뒤에 다시 올려 주세요.`);
+  if (await postingLimit(db, who.member, now)) return limited();
+  const adding = photos.reduce((n, p) => n + p.size, 0);
   if (photos.length) {
-    const adding = photos.reduce((n, p) => n + p.size, 0);
     const total = await db.prepare('SELECT COALESCE(SUM(size), 0) AS bytes FROM community_photos').first();
     if (Number(total?.bytes) + adding > maxBytes(env)) return fail(507, 'storage_full', '사진 저장 공간이 다 찼어요. 사진 없이 올리거나 운영자에게 알려 주세요.');
     const mine = await db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM community_photos WHERE member = ?1').bind(who.member).first();
@@ -235,20 +261,75 @@ async function createPost(request, env, db, who, now) {
   const id = crypto.randomUUID();
   const statements = [
     db.prepare('DELETE FROM community_post_usage WHERE created_at <= ?1').bind(now - HOUR),
-    db.prepare('INSERT INTO community_post_usage (id, member, created_at) VALUES (?1, ?2, ?3)').bind(crypto.randomUUID(), who.member, now),
-    db.prepare('INSERT INTO community_posts (id, member, text, pieces, photos, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
-      .bind(id, who.member, checked.post.text, JSON.stringify(checked.post.pieces), photos.length, now),
-    ...photos.map((p, i) => db.prepare('INSERT INTO community_photos (id, post, member, idx, data, size, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+    // 한도 확인·예약·삽입을 같은 트랜잭션 안에 둬 동시 제출도 전 게시판의 상한을 지킨다.
+    db.prepare(`INSERT INTO community_posts (id, member, text, pieces, photos, created_at)
+      SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE
+      (SELECT COUNT(*) FROM community_post_usage WHERE member = ?2 AND created_at > ?7) < ?8
+      AND (?5 = 0 OR (
+        (SELECT COALESCE(SUM(size),0) FROM community_photos) + ?9 <= ?10
+        AND (SELECT COUNT(*) FROM community_photos WHERE member = ?2) + ?5 <= ?11
+        AND (SELECT COALESCE(SUM(size),0) FROM community_photos WHERE member = ?2) + ?9 <= ?12))`)
+      .bind(id, who.member, checked.post.text, JSON.stringify(checked.post.pieces), photos.length, now, now - HOUR, POSTS_PER_HOUR, adding, maxBytes(env), MEMBER_PHOTOS_MAX, MEMBER_BYTES_MAX),
+    db.prepare(`INSERT INTO community_post_details (post, board, title, sale, revision, updated_at)
+      SELECT ?1, ?2, ?3, ?4, 1, ?5 WHERE EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?6)`)
+      .bind(id, checked.post.board ?? 'outfits', checked.post.title || '', checked.post.sale ? JSON.stringify(checked.post.sale) : null, now, who.member),
+    db.prepare(`INSERT INTO community_post_usage (id, member, created_at)
+      SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM community_posts WHERE id = ?4 AND member = ?2)`)
+      .bind(crypto.randomUUID(), who.member, now, id),
+    ...photos.map((p, i) => db.prepare(`INSERT INTO community_photos (id, post, member, idx, data, size, created_at)
+      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7 WHERE EXISTS (SELECT 1 FROM community_posts WHERE id = ?2 AND member = ?3)`)
       .bind(crypto.randomUUID(), id, who.member, i, p.data, p.size, now)),
   ];
-  await db.batch(statements);
+  const [, inserted] = await db.batch(statements);
+  if (!inserted.meta?.changes) {
+    if (await postingLimit(db, who.member, now)) return limited();
+    return fail(507, 'storage_full', '사진 저장 한도에 닿았어요. 사진 없이 올리거나 잠시 뒤에 다시 해 주세요.');
+  }
   return reply(200, { id });
 }
 
+async function editPost(request, db, who, id, now) {
+  const { body, error } = await readJson(request);
+  if (error) return error;
+  if (!body || Object.keys(body).some(k => !['post', 'revision'].includes(k)) || !Number.isSafeInteger(body.revision) || body.revision < 0)
+    return fail(400, 'invalid', '수정할 글과 목록에서 읽은 버전이 필요해요.');
+  const row = await db.prepare(`SELECT p.id, p.pieces, p.photos, d.board, d.revision
+    FROM community_posts p LEFT JOIN community_post_details d ON d.post = p.id WHERE p.id = ?1 AND p.member = ?2`).bind(id, who.member).first();
+  if (!row) return fail(404, 'not_found', '내 글을 찾지 못했어요.');
+  const checked = validateCommunityPost(body.post, { photos: Number(row.photos) });
+  if (!checked.ok) return fail(400, 'invalid', checked.message);
+  const board = row.board ?? 'outfits';
+  if ((checked.post.board ?? 'outfits') !== board || JSON.stringify(checked.post.pieces) !== JSON.stringify(JSON.parse(row.pieces)))
+    return fail(400, 'immutable', '수정할 때는 게시판·옷 조각·사진을 바꿀 수 없어요.');
+  if (await postingLimit(db, who.member, now)) return limited();
+  const token = crypto.randomUUID();
+  const [, saved] = await db.batch([
+    db.prepare('DELETE FROM community_post_usage WHERE created_at <= ?1').bind(now - HOUR),
+    db.prepare(`INSERT INTO community_post_details (post, board, title, sale, revision, updated_at, edit_token)
+      SELECT p.id, ?4, ?5, ?6, 1, ?7, ?8 FROM community_posts p
+      WHERE p.id = ?1 AND p.member = ?2
+        AND COALESCE((SELECT revision FROM community_post_details WHERE post = p.id),0) = ?3
+        AND (SELECT COUNT(*) FROM community_post_usage WHERE member = ?2 AND created_at > ?9) < ?10
+      ON CONFLICT(post) DO UPDATE SET title = excluded.title, sale = excluded.sale,
+        revision = community_post_details.revision + 1, updated_at = excluded.updated_at, edit_token = excluded.edit_token
+      WHERE community_post_details.board = excluded.board AND community_post_details.revision = ?3`)
+      .bind(id, who.member, body.revision, board, checked.post.title || '', checked.post.sale ? JSON.stringify(checked.post.sale) : null, now, token, now - HOUR, POSTS_PER_HOUR),
+    db.prepare(`UPDATE community_posts SET text = ?1 WHERE id = ?2 AND member = ?3
+      AND EXISTS (SELECT 1 FROM community_post_details WHERE post = ?2 AND edit_token = ?4)`)
+      .bind(checked.post.text, id, who.member, token),
+    db.prepare(`INSERT INTO community_post_usage (id, member, created_at) SELECT ?1, ?2, ?3
+      WHERE EXISTS (SELECT 1 FROM community_post_details WHERE post = ?4 AND edit_token = ?1)`)
+      .bind(token, who.member, now, id),
+  ]);
+  if (!saved.meta?.changes) return await postingLimit(db, who.member, now) ? limited() : fail(409, 'conflict', '다른 창에서 글이 바뀌었어요. 작성한 내용을 보관하고 목록을 새로 읽어 주세요.');
+  return reply(200, { ok: true, revision: body.revision + 1 });
+}
+
 async function deletePost(db, who, id) {
-  const [, , gone] = await db.batch([
+  const [, , , gone] = await db.batch([
     db.prepare('DELETE FROM community_photos WHERE post = ?1 AND EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?2)').bind(id, who.member),
     db.prepare('DELETE FROM community_reports WHERE post = ?1 AND EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?2)').bind(id, who.member),
+    db.prepare('DELETE FROM community_post_details WHERE post = ?1 AND EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?2)').bind(id, who.member),
     db.prepare('DELETE FROM community_posts WHERE id = ?1 AND member = ?2').bind(id, who.member),
   ]);
   if (!gone.meta?.changes) return fail(404, 'not_found', '글을 찾지 못했어요.');
@@ -321,6 +402,7 @@ async function leave(request, env, db, who) {
   await db.batch([
     db.prepare('DELETE FROM community_photos WHERE member = ?1').bind(who.member),
     db.prepare('DELETE FROM community_reports WHERE member = ?1 OR post IN (SELECT id FROM community_posts WHERE member = ?1)').bind(who.member),
+    db.prepare('DELETE FROM community_post_details WHERE post IN (SELECT id FROM community_posts WHERE member = ?1)').bind(who.member),
     db.prepare('DELETE FROM community_posts WHERE member = ?1').bind(who.member),
     db.prepare('DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1').bind(who.member),
     db.prepare('DELETE FROM community_members WHERE member = ?1').bind(who.member),
@@ -332,11 +414,13 @@ async function leave(request, env, db, who) {
 async function review(request, db, who, now, rest) {
   if (who.operator !== true) return fail(403, 'operator_only', '운영자만 볼 수 있어요.');
   if (request.method === 'GET' && !rest) {
-    const { results } = await db.prepare(`SELECT p.id, p.text, p.pieces, p.hidden, m.name,
+    const { results } = await db.prepare(`SELECT p.id, p.text, p.pieces, p.hidden, p.created_at, m.name,
+        d.board, d.title, d.sale, d.revision, d.updated_at,
         (SELECT COUNT(*) FROM community_reports r WHERE r.post = p.id AND r.created_at >= p.reports_since) AS reports,
         (SELECT MIN(created_at) FROM community_reports r WHERE r.post = p.id AND r.created_at >= p.reports_since) AS first,
         (SELECT group_concat(reason) FROM community_reports r WHERE r.post = p.id AND r.created_at >= p.reports_since) AS reasons
       FROM community_posts p JOIN community_members m ON m.member = p.member
+      LEFT JOIN community_post_details d ON d.post = p.id
       WHERE p.hidden IS NOT NULL OR EXISTS (SELECT 1 FROM community_reports r WHERE r.post = p.id AND r.created_at >= p.reports_since)
       ORDER BY first IS NULL, first`).all();
     const ids = results.map((r) => r.id);
@@ -348,6 +432,7 @@ async function review(request, db, who, now, rest) {
     return reply(200, {
       items: results.map((r) => ({
         id: r.id, author: { name: r.name }, text: r.text, pieces: JSON.parse(r.pieces), photos: photos.get(r.id),
+        ...postDetails(r), createdAt: Number(r.created_at),
         hidden: r.hidden ?? null, reports: Number(r.reports), firstReportAt: r.first === null ? null : Number(r.first),
         reasons: String(r.reasons || '').split(',').filter(Boolean).reduce((o, k) => ({ ...o, [k]: (o[k] || 0) + 1 }), {}),
       })),
@@ -369,6 +454,7 @@ async function review(request, db, who, now, rest) {
       await db.batch([
         db.prepare('DELETE FROM community_photos WHERE post = ?1').bind(post.id),
         db.prepare('DELETE FROM community_reports WHERE post = ?1').bind(post.id),
+        db.prepare('DELETE FROM community_post_details WHERE post = ?1').bind(post.id),
         db.prepare('DELETE FROM community_posts WHERE id = ?1').bind(post.id),
         log('delete'),
       ]);
@@ -407,6 +493,7 @@ export async function handleCommunity(request, env = {}, who = {}, { now = Date.
     if (!row || row.rules !== COMMUNITY_RULES_VERSION) return fail(403, 'join_required', '규칙에 동의하고 이름을 정한 뒤에 쓸 수 있어요.');
     if (section === 'feed' && method === 'GET') return await feed(url, db, who);
     if (section === 'posts' && method === 'POST' && !rest) return await createPost(request, env, db, who, at);
+    if (section === 'posts' && method === 'PATCH' && rest) return await editPost(request, db, who, rest, at);
     if (section === 'posts' && method === 'DELETE' && rest) return await deletePost(db, who, rest);
     if (section === 'reports' && method === 'POST') return await report(request, env, db, who, at);
     if (section === 'blocks') return await blocks(request, url, db, who, at, rest);
