@@ -66,7 +66,7 @@ async function setup(separate, schema) {
     const names = db.raw.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r => r.name);
     return Object.fromEntries(names.map(name => [name, db.raw.prepare(`SELECT * FROM "${name}" ORDER BY 1`).all()]));
   };
-  return { db, privateDb, account, code, remove, count, snapshot };
+  return { db, privateDb, env, account, code, remove, count, snapshot };
 }
 
 for (const separate of [false, true]) for (const entry of ['account', 'invite']) {
@@ -97,7 +97,7 @@ for (const separate of [false, true]) for (const entry of ['account', 'invite'])
     f.db.raw.exec(`CREATE TRIGGER qa_delete_failure BEFORE DELETE ON ${table} WHEN OLD.member='${A}' BEGIN SELECT RAISE(ABORT,'QA transient failure'); END`);
     const before = f.snapshot();
     const failed = await f.remove(entry);
-    assert.ok(failed.status >= 500);
+    assert.equal(failed.status, 503);
     assert.equal(failed.headers.get('set-cookie'), null);
     assert.deepEqual(f.snapshot(), before);
     f.db.raw.exec('DROP TRIGGER qa_delete_failure');
@@ -112,9 +112,33 @@ for (const separate of [false, true]) test(`owner invitation revocation is in th
   const f = await setup(separate, 'current');
   f.db.raw.exec("CREATE TRIGGER qa_revoke_failure BEFORE UPDATE ON member_invites BEGIN SELECT RAISE(ABORT,'QA transient failure'); END");
   const before = f.snapshot();
-  assert.ok((await f.remove('invite')).status >= 500);
+  assert.equal((await f.remove('invite')).status, 503);
   assert.deepEqual(f.snapshot(), before);
   f.db.raw.exec('DROP TRIGGER qa_revoke_failure');
   assert.equal((await f.remove('invite')).status, 200);
   assert.equal(f.count('member_accounts'), 0);
 });
+
+test('identical COMMUNITY_DB and CROWD_DB bindings preserve the same scoped removal', async () => {
+  const f = await setup(false, 'current');
+  f.env.COMMUNITY_DB = f.db;
+  assert.equal((await f.remove('account')).status, 200);
+  assert.equal(f.count('member_accounts'), 0);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_details').get().n, 1);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts WHERE member=?').get(B).n, 1);
+});
+
+for (const separate of [false, true]) for (const remains of ['photo', 'reservation'])
+  test(`retry repairs identifiable details left by an old partial deletion (${remains}, ${separate ? 'separate' : 'fallback'})`, async () => {
+    const f = await setup(separate, 'current');
+    // Reproduce the old partial state only in this synthetic in-memory database.
+    f.db.raw.prepare('DELETE FROM community_posts WHERE member=?').run(A);
+    f.db.raw.prepare('DELETE FROM member_accounts WHERE member=?').run(A);
+    f.db.raw.prepare('DELETE FROM member_sessions WHERE member=?').run(A);
+    if (remains === 'reservation') f.db.raw.prepare('DELETE FROM community_photos WHERE member=?').run(A);
+    else f.db.raw.prepare('DELETE FROM community_post_usage WHERE member=?').run(A);
+    assert.equal((await f.remove('invite')).status, 200);
+    assert.equal(f.count('community_photos'), 0);
+    assert.deepEqual(f.db.raw.prepare('SELECT title FROM community_post_details').all().map(r => r.title), ['합성 세일 ' + B]);
+    assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts WHERE member=?').get(B).n, 1);
+  });
