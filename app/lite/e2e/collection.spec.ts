@@ -45,6 +45,8 @@ async function own(page: Page) {
 }
 async function shelves(page: Page) {
   await page.evaluate(() => (window as any).K.tab("closet"));
+  const tools = page.getByRole("button", { name: "옷장 관리", exact: true });
+  if (await tools.getAttribute("aria-expanded") !== "true") await tools.click();
   await page.getByRole("button", { name: "내 진열장", exact: true }).click();
   await expect(page.locator("[data-collection-screen]")).toBeVisible();
 }

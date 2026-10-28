@@ -69,6 +69,33 @@ test("empty React rails start without a wardrobe and trial clothes never become 
   ).toBe(0);
 });
 
+test("wardrobe tools open by keyboard, retain an explicit brand filter and never write clothes", async ({ page }) => {
+  await load(page);
+  await own(page);
+  const before = await page.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())));
+  const tools = page.getByRole("button", { name: "옷장 관리", exact: true });
+  await expect(tools).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("옷 정렬")).toBeHidden();
+  await expect(page.locator('[data-rail-item]').first()).toBeVisible();
+  await tools.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("옷 정렬")).toBeVisible();
+  await page.getByLabel("브랜드 필터").selectOption("합성 브랜드");
+  await tools.click();
+  await expect(page.locator(".wr-filter-status")).toContainText("합성 브랜드 · 1벌");
+  await page.getByRole("button", { name: "모든 브랜드 보기", exact: true }).click();
+  await expect(page.locator(".wr-filter-status")).toHaveCount(0);
+  await expect(page.locator('[data-rail-item]')).toHaveCount(3);
+  expect(await page.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())))).toBe(before);
+});
+
+test("the previous look keeps its wardrobe controls directly available", async ({ page }) => {
+  await load(page, "&look=v1");
+  await own(page);
+  await expect(page.getByLabel("옷 정렬")).toBeVisible();
+  await expect(page.getByRole("button", { name: "옷장 관리", exact: true })).toBeHidden();
+});
+
 test("rails use measured lengths, keep unknown lengths explicit, and assemble own layers without changing saved bytes", async ({
   page,
 }) => {
@@ -102,6 +129,7 @@ test("rails use measured lengths, keep unknown lengths explicit, and assemble ow
       ),
     );
   expect(Number(z.outer)).toBeGreaterThan(Number(z.top));
+  await page.getByRole("button", { name: "옷장 관리", exact: true }).click();
   await page.getByLabel("옷 정렬").selectOption("brand");
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(raw);
   await page.locator(".wr-mobile-assembly").click();
@@ -306,6 +334,7 @@ test("desktop rails with verified twofold component text stay inside the page wi
   const before = await page.evaluate(() =>
     JSON.stringify(Object.fromEntries(Object.entries(localStorage).sort())),
   );
+  await page.getByRole("button", { name: "옷장 관리", exact: true }).click();
   await page.getByLabel("옷 정렬").selectOption("worn");
   await page.getByLabel("브랜드 필터").selectOption("합성 브랜드");
   const scale = await page.evaluate(() => {

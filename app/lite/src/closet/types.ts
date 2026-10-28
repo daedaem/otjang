@@ -14,7 +14,12 @@ export type Garment = {
   photoId?: string | null;
   // The core's picture for this garment: a bundled example photo of a trial
   // garment, or a labelled similar store photo while store photos are on.
-  photo?: { src: string; alt: string; similar?: boolean; example?: boolean } | null;
+  photo?: {
+    src: string;
+    alt: string;
+    similar?: boolean;
+    example?: boolean;
+  } | null;
   profile?: {
     v: 1;
     measures?: { length?: { cm: number; source: string } };
@@ -55,6 +60,7 @@ export interface ClosetCore {
 export type Session = {
   sort: string;
   brand: string;
+  toolsOpen?: boolean;
   selected: string[];
   scroll: Record<string, number>;
 };
