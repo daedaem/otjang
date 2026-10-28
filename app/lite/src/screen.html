@@ -1608,6 +1608,11 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   const outfitSession={query:'내 옷으로 코디',context:{query:'내 옷으로 코디',occasion:null,season:null,styles:[]}};
   let profileClose = null, profileEpoch = 0;
   const closetSession = { sort: 'recent', brand: '', selected: [], scroll: {} };
+  function communityParams(params = {}) {
+    const mine = params.mine === true ? '1' : params.mine === false ? undefined : params.mine;
+    return { board: params.board == null ? 'outfits' : String(params.board), mine: mine == null || mine === '' || mine === '0' ? undefined : String(mine) };
+  }
+  const communityKey = params => { const p = communityParams(params); return p.board + ':' + (p.mine || ''); };
   function render(view, params, dir) {
     if(view==='home'&&curView==='home'&&homeUnmount&&dir==='none'){$('#react-home')?.dispatchEvent(new Event('eoul-home-refresh'));renderStrip();return;}
     if(view==='add'&&curView==='add'&&addUnmount&&dir==='none'){drawShelf();renderStrip();return;}
@@ -1686,7 +1691,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       window.EOUL_PHOTOADD_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;photoAddUnmount=mount({element:$('#react-photo-add'),core:M,namespace:window.EOUL_MOCK_KEY,storage:localStorage,analyse:window.EOUL_GARMENT_PHOTO||null,back:()=>K.back({view:'closet',params:{}}),closet:()=>K.tab('closet')});}).catch(()=>{if(epoch===inputEpoch)$('#react-photo-add').innerHTML='<p role="alert">사진으로 넣기 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if(reactCommunity){
       // 코디 공유(대표 10-28 08:08·09:39). 서버 스위치가 꺼져 있으면 화면이 열지 않았다고만 말한다.
-      window.EOUL_COMMUNITY_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;communityUnmount=mount({element:$('#react-community'),core:M,client:window.EOUL_COMMUNITY||null,share:params.share||null,info:disclose,menu});}).catch(()=>{if(epoch===inputEpoch)$('#react-community').innerHTML='<p role="alert">코디 공유 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
+      window.EOUL_COMMUNITY_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;const p=communityParams(params);communityUnmount=mount({element:$('#react-community'),core:M,client:window.EOUL_COMMUNITY||null,share:params.share||null,board:p.mine&&p.mine!=='1'?null:p.board,mine:p.mine==='1',restoreScroll:dir==='back'?K.current()?.scroll||0:null,navigate:(board,mine)=>K.go('community',{...(board==='outfits'?{}:{board}),...(mine?{mine:'1'}:{})}),navigationGuard:check=>K.setNavigationGuard(check),consumeShare:()=>{const cur=K.current();if(cur?.view==='community')delete cur.params.share;},info:disclose,menu});}).catch(()=>{if(epoch===inputEpoch)$('#react-community').innerHTML='<p role="alert">코디 공유 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if(reactMirror){
       window.EOUL_MIRROR_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;const p=params.id?M.product(params.id):null;mirrorUnmount=mount({element:$('#react-mirror'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,candidate:p?{id:p.id,brand:p.brand,name:p.name,image:M.photo({id:p.id})}:null,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),closet:()=>K.tab('closet'),backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-mirror').innerHTML='<p role="alert">거울을 열지 못했어요. 저장된 자료는 그대로예요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if(reactOutfits){
@@ -1720,7 +1725,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       }).catch(() => { if (epoch === inputEpoch) $('#react-input').innerHTML = '<p role="alert">입력 화면을 불러오지 못했어요. 연결을 확인한 뒤 다시 열어 주세요.</p><button class="btn" data-back>돌아가기</button>'; });
     } else (A[view] || (() => {}))(params);
     // 주소는 보기용으로만 따라간다(#/p/<id> 등). 이동 자체는 K 라우터의 쌓기식 기록이 맡는다.
-    const hash = view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'mirror' ? M.route.href('/mirror',params.id?{id:params.id}:{}) : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
+    const cp = view === 'community' ? communityParams(params) : null;
+    const hash = view === 'community' ? M.route.href('/community',{board:cp.board==='outfits'?null:cp.board,mine:cp.mine}) : view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'mirror' ? M.route.href('/mirror',params.id?{id:params.id}:{}) : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
     try { if (location.hash !== hash) history.replaceState(history.state, '', hash); } catch {}
     if(keepHomeFocus)requestAnimationFrame(()=>{const target=$('#q');if(epoch===inputEpoch&&curView==='home'&&target&&(!document.activeElement||document.activeElement===document.body||document.activeElement===target)){target.focus({preventScroll:true});target.setSelectionRange(keepHomeFocus.start,keepHomeFocus.end)}});
   }
@@ -3256,8 +3262,9 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
-    externalRoute: () => M.route.current().path === '/community' ? { view: 'community', params: {} } : null,
+  K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/community' ? communityParams(r0.params) : ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
+    externalRoute: () => { const route=M.route.current();return route.path === '/community' ? { view:'community',params:communityParams(route.params) } : null; },
+    sameExternalRoute: (a,b) => a.view === b.view && communityKey(a.params) === communityKey(b.params),
   });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   // 안내 내용은 부를 때의 상태로 고정한다(원문도 그때 값). 바닐라와 React가 같은 모델을 쓴다.

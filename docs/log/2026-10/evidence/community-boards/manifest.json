@@ -1,0 +1,368 @@
+{
+  "baselineSource": "c26695bb6d86391eedd8528623dec50218ac2c1d",
+  "afterSource": "14e62c4b6a2abf8c6095a236dc15005cf1879d01",
+  "capturedAt": "2026-10-28T20:28:30.279Z",
+  "fixtureTime": "2026-10-29T03:00:00.000Z",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "realPosts": 0,
+  "note": "Only outfits is a before/after comparison. Other states are newly implemented views.",
+  "captures": [
+    {
+      "file": "before-mobile320-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 36776,
+      "sha256": "d25d6aa8353db4506609dc62e4cbd0a9bdc740abcadfb38f371e70f741210715"
+    },
+    {
+      "file": "before-mobile390-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 43153,
+      "sha256": "f6b78ca3dafc558eb5ed0b6fe4c582613b690be3e945d597afce016a38773f4d"
+    },
+    {
+      "file": "before-mobile-dark-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 43335,
+      "sha256": "88e35186d95f49e699985e6e7f3d18ddb1de90413b07d912caefe46d4b1c21dc"
+    },
+    {
+      "file": "before-desktop-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 49704,
+      "sha256": "dc42f48a6aa5b16d360c8b289f0875468cad24fb3fad956046ecbeaaa97cddf0"
+    },
+    {
+      "file": "after-mobile320-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 38865,
+      "sha256": "6f373283292ad057620f0ec85c039e85b64074fd0aa780e71def0c39704089f9"
+    },
+    {
+      "file": "after-mobile320-sale.png",
+      "state": "sale",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시"
+      ],
+      "bytes": 47209,
+      "sha256": "afa2dfcea4448146670f99e72df5648d6715c2273ff6880652a9564f18a5be2f"
+    },
+    {
+      "file": "after-mobile320-free.png",
+      "state": "free",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 43276,
+      "sha256": "f01cecb40466473a2c6d76e5aaa4cf42214d57dc636e362d8818d136d2b5e22b"
+    },
+    {
+      "file": "after-mobile320-editor.png",
+      "state": "editor",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 35119,
+      "sha256": "eae9acea1e46ced7f183b8fa3d39041c0921622ccf46a04aa71d74cce0e20900"
+    },
+    {
+      "file": "after-mobile320-review.png",
+      "state": "review",
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 47220,
+      "sha256": "fe8fb447b5c0330c21a673ed6f74a6d8e99ebe0a9c5801dad7444f349eeed2b1"
+    },
+    {
+      "file": "after-mobile390-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 41483,
+      "sha256": "33716cd3b196523db7e483696bcf72099be76dcfb7c369e93caac381cb77e979"
+    },
+    {
+      "file": "after-mobile390-sale.png",
+      "state": "sale",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시"
+      ],
+      "bytes": 51419,
+      "sha256": "af4bdbbf77f2efcb5b508827f17b25ac34810abbf46a5d23009805dea0cacb05"
+    },
+    {
+      "file": "after-mobile390-free.png",
+      "state": "free",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 47228,
+      "sha256": "88eb3c29042b42bbf6a1c266fd23fe0175730b8bed7bfc872451abb1d03dd117"
+    },
+    {
+      "file": "after-mobile390-editor.png",
+      "state": "editor",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 37685,
+      "sha256": "c1d6bc470699ac26d0ece741e9d2c400912f0ac4b5c56c026d353bc4a84c09ef"
+    },
+    {
+      "file": "after-mobile390-review.png",
+      "state": "review",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 53740,
+      "sha256": "77276f7f57fc844e888e261dd1885620095cb087cee6115a4455917c32bc7f8f"
+    },
+    {
+      "file": "after-mobile-dark-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 41554,
+      "sha256": "2c56832b856a31347860a30c8c3882320173b34421a98c587e4985400d68e9a6"
+    },
+    {
+      "file": "after-mobile-dark-sale.png",
+      "state": "sale",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "postOrder": [
+        "코디예시"
+      ],
+      "bytes": 51487,
+      "sha256": "8e561f4f35652deca14c015240347c0478496cc12087a7a5895f87f2a2d0e8b2"
+    },
+    {
+      "file": "after-mobile-dark-free.png",
+      "state": "free",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "bytes": 47403,
+      "sha256": "cdde4009aa33a04034760ced93193ee7396fc80698f31a4baff6666515f48a00"
+    },
+    {
+      "file": "after-mobile-dark-editor.png",
+      "state": "editor",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "bytes": 38311,
+      "sha256": "aac599ef2b4fbc17389401e1eb0601ad25b0c2c21a84d4db2210e20261bbe803"
+    },
+    {
+      "file": "after-mobile-dark-review.png",
+      "state": "review",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "bytes": 57732,
+      "sha256": "91fc1b4b641ddb7ee0e5ee81178c78872008f2edb7d3cf1ae3377cbc1215d446"
+    },
+    {
+      "file": "after-desktop-outfits.png",
+      "state": "outfits",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시",
+        "합성회원"
+      ],
+      "bytes": 55645,
+      "sha256": "e207c3753e7b5cd8d50939ffd32534914256b8ae9ffc47ec68b802de04deabdc"
+    },
+    {
+      "file": "after-desktop-sale.png",
+      "state": "sale",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "코디예시"
+      ],
+      "bytes": 68533,
+      "sha256": "bf1ca7edc983d5eeb61cc2f119770140ed0cca93be7b8510c4f744779541964a"
+    },
+    {
+      "file": "after-desktop-free.png",
+      "state": "free",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "bytes": 63188,
+      "sha256": "1f824731f01706d767674b7246b6190d839c6adc4e2f44ddb0fbec23327e5722"
+    },
+    {
+      "file": "after-desktop-editor.png",
+      "state": "editor",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "bytes": 92449,
+      "sha256": "993066d72fe1bffff4bd688dc33ad0cc0580a2267c61f9ca993def81c596dab3"
+    },
+    {
+      "file": "after-desktop-review.png",
+      "state": "review",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "bytes": 74529,
+      "sha256": "99c93af247670a8862d5d0af0525565e93ea1cab1a821bc05e6104de362179a5"
+    }
+  ]
+}

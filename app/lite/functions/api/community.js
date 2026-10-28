@@ -30,7 +30,7 @@ import {
   COMMUNITY_LIMITS, COMMUNITY_RULES, COMMUNITY_RULES_VERSION, REPORT_REASONS,
   validateCommunityPost, validateNickname, isCommunityJpeg, reportReasonIds, communityBoard, COMMUNITY_BOARDS,
 } from '../../src/domain/community.js';
-import { memberLoginOptions, endMemberSessions } from '../lib/member-session.js';
+import { memberLoginOptions, memberSessionRemovalStatement } from '../lib/member-session.js';
 
 const HOUR = 60 * 60 * 1000;
 const POSTS_PER_HOUR = 10;
@@ -356,9 +356,14 @@ async function deletePost(db, who, id, now) {
   return reply(200, { ok: true });
 }
 
-async function photo(db, who, id) {
-  const row = await db.prepare(`SELECT ph.data FROM community_photos ph JOIN community_posts p ON p.id = ph.post
-    WHERE ph.id = ?2 AND ${VISIBLE}`).bind(who.member, id).first();
+async function photo(db, who, id, review = false) {
+  if (review && who.operator !== true) return fail(403, 'operator_only', '운영자만 신고 검토 사진을 볼 수 있어요.');
+  const row = review
+    ? await db.prepare(`SELECT ph.data FROM community_photos ph JOIN community_posts p ON p.id = ph.post
+        JOIN community_members m ON m.member = p.member WHERE ph.id = ?1
+        AND (p.hidden IS NOT NULL OR EXISTS (SELECT 1 FROM community_reports r WHERE r.post = p.id AND r.created_at >= p.reports_since))`).bind(id).first()
+    : await db.prepare(`SELECT ph.data FROM community_photos ph JOIN community_posts p ON p.id = ph.post
+        WHERE ph.id = ?2 AND ${VISIBLE}`).bind(who.member, id).first();
   if (!row) return fail(404, 'not_found', '사진을 찾지 못했어요.');
   // 사진에도 회원/규칙 경계가 있으므로 계정 전환 뒤 장기 HTTP 캐시를 재사용하지 않는다.
   return new Response(toBytes(row.data), { status: 200, headers: { 'content-type': 'image/jpeg', 'cache-control': 'private, no-store', vary: 'Cookie', 'x-content-type-options': 'nosniff' } });
@@ -420,6 +425,9 @@ async function leave(request, env, db, who, now) {
   const { body, error } = await readJson(request);
   if (error) return error;
   if (body?.confirm !== true) return fail(400, 'confirm_required', '나가기를 한 번 더 확인해 주세요.');
+  // Session and content use the same COMMUNITY_DB || CROWD_DB binding.
+  // Prepare optional tables before the batch, then delete all rows atomically.
+  const session = env.COMMUNITY_MODE === 'public' ? await memberSessionRemovalStatement(env, who.member) : null;
   await db.batch([
     legacyReservations(db, who.member, now),
     db.prepare('DELETE FROM community_photos WHERE member = ?1').bind(who.member),
@@ -428,8 +436,8 @@ async function leave(request, env, db, who, now) {
     db.prepare('DELETE FROM community_posts WHERE member = ?1').bind(who.member),
     db.prepare('DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1').bind(who.member),
     db.prepare('DELETE FROM community_members WHERE member = ?1').bind(who.member),
+    ...(session ? [session] : []),
   ]);
-  if (env.COMMUNITY_MODE === 'public') await endMemberSessions(env, who.member);
   return reply(200, { ok: true });
 }
 
@@ -513,7 +521,11 @@ export async function handleCommunity(request, env = {}, who = {}, { now = Date.
     // 아래는 가입한 회원만.
     const row = await memberRow(db, who.member);
     if (!row || row.rules !== COMMUNITY_RULES_VERSION) return fail(403, 'join_required', '규칙에 동의하고 이름을 정한 뒤에 쓸 수 있어요.');
-    if (section === 'photos' && method === 'GET' && rest) return await photo(db, who, rest);
+    if (section === 'photos' && method === 'GET' && rest) {
+      const review = url.searchParams.get('review');
+      if (review !== null && review !== '1') return fail(400, 'invalid', '사진 확인 방식을 확인해 주세요.');
+      return await photo(db, who, rest, review === '1');
+    }
     if (section === 'feed' && method === 'GET') return await feed(url, db, who);
     if (section === 'posts' && method === 'POST' && !rest) return await createPost(request, env, db, who, at);
     if (section === 'posts' && method === 'PATCH' && rest) return await editPost(request, db, who, rest, at);

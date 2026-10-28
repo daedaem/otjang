@@ -310,3 +310,38 @@ for (const audience of ['unjoined', 'old rules']) test(`public photos require th
   assert.equal((await f.call('op', 'POST', 'review/' + row.id, { action: 'hide' })).status, 200);
   assert.deepEqual((await f.call('a', 'GET', 'photos/' + row.photos[0])).body, new Uint8Array(jpeg));
 });
+
+test('review photo mode is never granted to regular, unjoined or old-rule identities', async () => {
+  const f = fixture(); await f.join();
+  const made = await post(f, 'a', { ...sale(), text: '', consent: true }, [jpeg.toString('base64')]);
+  const item = (await f.call('b', 'GET', 'feed?board=sale')).body.items.find(p => p.id === made.body.id);
+  const url = 'photos/' + item.photos[0];
+  assert.equal((await f.call('b', 'GET', url)).status, 200);
+  assert.equal((await f.call('b', 'GET', url + '?review=1')).status, 403);
+  assert.equal((await f.call('', 'GET', url + '?review=1')).status, 401);
+  assert.equal((await f.call('op', 'GET', url + '?review=1')).status, 404, 'unreported posts are outside the review queue');
+  f.db.raw.prepare('UPDATE community_members SET rules=0 WHERE member=?').run('op');
+  assert.equal((await f.call('op', 'GET', url + '?review=1')).status, 403);
+});
+
+test('a current operator can inspect only queued report/hidden photos while normal visibility stays unchanged', async () => {
+  const f = fixture(); await f.join();
+  const made = await post(f, 'a', { ...sale(), text: '', consent: true }, [jpeg.toString('base64')]);
+  const item = (await f.call('b', 'GET', 'feed?board=sale')).body.items.find(p => p.id === made.body.id);
+  const url = 'photos/' + item.photos[0];
+  assert.equal((await f.call('b', 'POST', 'reports', { post: item.id, reason: 'rights' })).status, 200);
+  assert.equal((await f.call('op', 'POST', 'review/' + item.id, { action: 'hide' })).status, 200);
+  const queue = (await f.call('op', 'GET', 'review')).body.items[0];
+  assert.equal(queue.title, sale().title); assert.equal(queue.photos.length, 1);
+  assert.equal((await f.call('op', 'GET', url)).status, 404);
+  const review = await f.call('op', 'GET', url + '?review=1');
+  assert.equal(review.status, 200);
+  assert.deepEqual(review.body, new Uint8Array(jpeg));
+  assert.equal(review.headers.get('cache-control'), 'private, no-store');
+  assert.equal(review.headers.get('vary'), 'Cookie');
+  assert.equal((await f.call('b', 'GET', url + '?review=1')).status, 403);
+  assert.equal((await f.call('a', 'GET', url)).status, 200);
+  f.tick(); assert.equal((await f.call('op', 'POST', 'review/' + item.id, { action: 'restore' })).status, 200);
+  assert.equal((await f.call('op', 'GET', url + '?review=1')).status, 404);
+  assert.equal((await f.call('op', 'GET', url)).status, 200);
+});

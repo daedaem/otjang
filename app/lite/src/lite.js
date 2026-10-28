@@ -168,8 +168,9 @@
   window.EOUL_COMMUNITY = {
     status: () => community('status'),
     join: (name, rules, age14) => community('join', { method: 'POST', body: { name, rules, age14: age14 === true } }),
-    feed: ({ cursor, mine } = {}) => community(`feed?${new URLSearchParams({ ...(cursor ? { cursor } : {}), ...(mine ? { mine: '1' } : {}) })}`),
+    feed: ({ board, cursor, mine } = {}) => community(`feed?${new URLSearchParams({ ...(board ? { board } : {}), ...(cursor ? { cursor } : {}), ...(mine ? { mine: '1' } : {}) })}`),
     post: (body) => community('posts', { method: 'POST', body }),
+    update: (id, post, revision) => community(`posts/${seg(id)}`, { method: 'PATCH', body: { post, revision } }),
     remove: (id) => community(`posts/${seg(id)}`, { method: 'DELETE' }),
     report: (post, reason) => community('reports', { method: 'POST', body: { post, reason } }),
     block: (post) => community('blocks', { method: 'POST', body: { post } }),
@@ -179,6 +180,7 @@
     review: () => community('review'),
     act: (id, action) => community(`review/${seg(id)}`, { method: 'POST', body: { action } }),
     photoUrl: (id) => `/api/community/photos/${seg(id)}`,
+    reviewPhotoUrl: (id) => `/api/community/photos/${seg(id)}?review=1`,
     // 이메일 인증 로그인(public 모드의 회원용). 앱 안에서는 본인 로그인이라 보통 쓰지 않는다.
     emailStart: async (email) => { try { const r = await fetch('/_member/email/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) }); const o = await r.json().catch(() => null); return r.ok && o ? o : { code: o?.code || 'error', message: o?.message }; } catch { return { code: 'offline' }; } },
     emailVerify: async (email, code) => { try { const r = await fetch('/_member/email/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, code }) }); const o = await r.json().catch(() => null); return r.ok && o ? o : { code: o?.code || 'error', message: o?.message }; } catch { return { code: 'offline' }; } },

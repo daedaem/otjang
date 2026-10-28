@@ -198,6 +198,10 @@ test("the join screen shows the terms and privacy notice with the operator's nam
   await expect(terms).toContainText("contact@example.test");
   await expect(terms).toContainText("만 14세 미만은 가입할 수 없어요");
   await expect(terms).toContainText("옷장 기록·메모·구매 링크");
+  await expect(terms).toContainText("기기에서 자동 전송하지 않고");
+  await expect(terms).toContainText("게시판·제목·내용");
+  await expect(terms).toContainText("판매처·가격·할인·종료일·출처");
+  await expect(terms).toContainText("작성자가 직접 입력한 것만 공유해요");
   await terms.getByRole("button", { name: "닫기" }).click();
   await expect(terms).toBeHidden();
 });
