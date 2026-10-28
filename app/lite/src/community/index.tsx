@@ -100,7 +100,7 @@ function Top({ host, status }: { host: CommunityHost; status: Status | null }) {
     );
   return (
     <header className="cm-top">
-      <span className="mark">코디</span>
+      <span className="mark">커뮤니티</span>
       <span className="sp" />
       <button type="button" className="icon" onClick={host.info} aria-label="가격·사진·판단 기준 보기">
         ⓘ

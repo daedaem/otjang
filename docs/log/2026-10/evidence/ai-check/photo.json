@@ -1,0 +1,17 @@
+{
+  "http": 200,
+  "clothing": true,
+  "kind": "shirt",
+  "color": "white",
+  "label": "화이트 버튼다운 셔츠",
+  "confidence": "high",
+  "ai": {
+    "model": "claude-haiku-5-5",
+    "inputTokens": 950,
+    "outputTokens": 50,
+    "cacheCreationInputTokens": 0,
+    "cacheReadInputTokens": 0,
+    "responseIdReturned": true,
+    "providerRequestIdReturned": true
+  }
+}

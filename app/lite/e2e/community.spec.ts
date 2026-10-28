@@ -1,69 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-// @ts-ignore -- plain JS Worker module
-import { handleCommunity } from "../functions/api/community.js";
-// @ts-ignore -- plain JS Worker module
-import { handleMemberAuth } from "../functions/lib/member-session.js";
-
-// 코디 공유(대표 10-28 08:08 누구나 가입·직접 찍은 사진·코디 공유 먼저, 09:39 "끝까지").
-// 브라우저의 /api/community/* 요청을 실제 Worker 처리기로 돌린다. DB는 메모리 SQLite(비용 0).
-function fakeD1() {
-  const db = new DatabaseSync(":memory:");
-  return {
-    prepare(sql: string) {
-      let args: any[] = [];
-      const st: any = {
-        bind(...a: any[]) { args = a; return st; },
-        async first() { return db.prepare(sql).get(...args) ?? null; },
-        async all() { return { results: db.prepare(sql).all(...args) }; },
-        execute() { const r = db.prepare(sql).run(...args); return { success: true, meta: { changes: Number(r.changes) } }; },
-        async run() { return st.execute(); },
-      };
-      return st;
-    },
-    async batch(statements: any[]) {
-      db.exec("BEGIN IMMEDIATE");
-      try { const out = statements.map((s) => s.execute()); db.exec("COMMIT"); return out; }
-      catch (e) { db.exec("ROLLBACK"); throw e; }
-    },
-  };
-}
-const PHOTO = fileURLToPath(new URL("../public/examples/m-blazer.webp", import.meta.url));
-async function serve(page: Page, mode: string | undefined, extra: Record<string, string> = {}, who: any = { member: "owner", operator: true }) {
-  const env: any = { CROWD_DB: fakeD1(), COMMUNITY_DB: fakeD1(), COMMUNITY_MODE: mode, COMMUNITY_CONTACT: "contact@example.test", COMMUNITY_OPERATOR: "운영자(예시)", ...extra };
-  const posted: any[] = [];
-  const mails: any[] = [];
-  await page.route("**/*", async (route) => {
-    const req = route.request();
-    const u = new URL(req.url());
-    if (u.origin !== "http://127.0.0.1:8792") return route.abort();
-    if (u.pathname.startsWith("/_member/")) {
-      const body = req.postDataBuffer();
-      const res: Response = await handleMemberAuth(new Request(u.href, { method: req.method(), headers: { "content-type": "application/json", origin: u.origin }, body: body && req.method() !== "GET" ? body : undefined }), env, { fetchImpl: async (_url: string, init: any) => { mails.push(JSON.parse(init.body)); return Response.json({ id: "m" }); } });
-      return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
-    }
-    if (u.pathname.startsWith("/api/community/")) {
-      const body = req.postDataBuffer();
-      if (req.method() === "POST" && u.pathname.endsWith("/posts")) posted.push(JSON.parse(body!.toString()));
-      const res: Response = await handleCommunity(new Request(u.href, { method: req.method(), headers: { "content-type": "application/json" }, body: body && req.method() !== "GET" ? body : undefined }), env, who);
-      return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
-    }
-    if (u.pathname.startsWith("/api/")) return route.fulfill({ status: 503, contentType: "application/json", body: '{"code":"not_configured"}' });
-    return route.continue();
-  });
-  await page.goto("/?photos=0#/");
-  await page.waitForFunction(() => !!(window as any).K?.M);
-  return { posted, env, mails };
-}
-// 다른 회원(b)의 글을 서버에 직접 넣는다. 화면 쪽 사용자는 owner다.
-async function otherPost(env: any, text: string) {
-  const call = (path: string, body: any) => handleCommunity(new Request(`https://x.test/api/community/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }), env, { member: "b", operator: false });
-  await call("join", { name: "비회원", rules: 1, age14: true });
-  await call("posts", { post: { text, pieces: [{ kind: "coat", color: "beige", label: "베이지 코트" }, { kind: "jeans", color: "indigo", label: "청바지" }], consent: false }, photos: [] });
-}
-const go = (page: Page) => page.evaluate(() => (window as any).K.go("community", {}));
+import {
+  serveCommunity as serve,
+  otherPost,
+  communityCall,
+} from "./community-fixture.mjs";
+// Real Worker handlers, isolated in-memory SQLite; no actual users/posts/providers.
+const PHOTO = fileURLToPath(
+  new URL("../public/examples/m-blazer.webp", import.meta.url),
+);
+const go = (page: Page) =>
+  page.evaluate(() => (window as any).K.go("community", {}));
 async function joinAs(page: Page, name = "대담") {
   await go(page);
   await expect(page.getByRole("heading", { name: "코디 공유" })).toBeVisible();
@@ -82,11 +30,15 @@ test("the outfits tab opens coordination sharing", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "코디 공유" })).toBeVisible();
 });
 
-test("while the switch is off the page says sharing is not open and sends nothing", async ({ page }) => {
+test("while the switch is off the page says sharing is not open and sends nothing", async ({
+  page,
+}) => {
   const { posted } = await serve(page, undefined);
   await go(page);
   await expect(page.getByText("코디 공유는 아직 열지 않았어요")).toBeVisible();
-  await expect(page.getByRole("button", { name: "코디 올리기" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "코디 올리기" })).toHaveCount(
+    0,
+  );
   expect(posted).toHaveLength(0);
 });
 
@@ -96,10 +48,14 @@ test("public mode stays closed until member login exists", async ({ page }) => {
   await expect(page.getByText(/공개 준비가 끝나면 열어요/)).toBeVisible();
 });
 
-test("joining shows the rules first and needs a name and agreement", async ({ page }) => {
+test("joining shows the rules first and needs a name and agreement", async ({
+  page,
+}) => {
   await serve(page, "private");
   await go(page);
-  await expect(page.getByText("직접 찍었거나 올려도 되는 사진만 올려 주세요.")).toBeVisible();
+  await expect(
+    page.getByText("직접 찍었거나 올려도 되는 사진만 올려 주세요."),
+  ).toBeVisible();
   const join = page.getByRole("button", { name: "가입하기" });
   await page.getByLabel("이름").fill("대담");
   await expect(join).toBeDisabled();
@@ -111,7 +67,9 @@ test("joining shows the rules first and needs a name and agreement", async ({ pa
   await expect(page.getByText("아직 올라온 코디가 없어요")).toBeVisible();
 });
 
-test("posting my own photo needs consent, sends a small JPEG and no closet ids, and shows in the feed", async ({ page }) => {
+test("posting my own photo needs consent, sends a small JPEG and no closet ids, and shows in the feed", async ({
+  page,
+}) => {
   const { posted } = await serve(page, "private");
   await joinAs(page);
   await page.getByRole("button", { name: "코디 올리기" }).click();
@@ -122,7 +80,9 @@ test("posting my own photo needs consent, sends a small JPEG and no closet ids, 
   await expect(dialog.getByText("보내지 않는 것")).toBeVisible();
   const send = dialog.getByRole("button", { name: "올리기", exact: true });
   await expect(send).toBeDisabled();
-  await dialog.getByRole("checkbox", { name: /사진을 회원들에게 보여 주는 데 동의해요/ }).check();
+  await dialog
+    .getByRole("checkbox", { name: /사진을 회원들에게 보여 주는 데 동의해요/ })
+    .check();
   await expect(send).toBeEnabled();
   await send.click();
   await expect(dialog).toBeHidden();
@@ -131,7 +91,9 @@ test("posting my own photo needs consent, sends a small JPEG and no closet ids, 
   await expect(card).toContainText("대담");
   const img = card.locator("img").first();
   await expect(img).toHaveAttribute("src", /\/api\/community\/photos\//);
-  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+  await expect
+    .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .toBeGreaterThan(0);
   expect(posted).toHaveLength(1);
   const sent = posted[0];
   expect(Object.keys(sent).sort()).toEqual(["photos", "post"]);
@@ -141,11 +103,17 @@ test("posting my own photo needs consent, sends a small JPEG and no closet ids, 
   expect(bytes.length).toBeLessThan(600 * 1024);
 });
 
-test("an outfit made with my clothes can be shared with its pieces filled in", async ({ page }) => {
+test("an outfit made with my clothes can be shared with its pieces filled in", async ({
+  page,
+}) => {
   const { posted } = await serve(page, "private");
   await page.evaluate(() => {
     const m = (window as any).K.M;
-    for (const [kind, slot, color, label] of [["shirt", "m-oxford", "white", "내 셔츠"], ["pants", "m-chino", "beige", "내 바지"], ["sneaker", "m-white-sneaker", "white", "내 신발"]])
+    for (const [kind, slot, color, label] of [
+      ["shirt", "m-oxford", "white", "내 셔츠"],
+      ["pants", "m-chino", "beige", "내 바지"],
+      ["sneaker", "m-white-sneaker", "white", "내 신발"],
+    ])
       m.addGarment({ kind, slot, color, label });
   });
   await joinAs(page);
@@ -159,11 +127,14 @@ test("an outfit made with my clothes can be shared with its pieces filled in", a
   await expect(dialog).toBeHidden();
   const pieces = posted[0].post.pieces;
   expect(pieces.length).toBeGreaterThan(1);
-  for (const p of pieces) expect(Object.keys(p).sort()).toEqual(["color", "kind", "label"]);
+  for (const p of pieces)
+    expect(Object.keys(p).sort()).toEqual(["color", "kind", "label"]);
   expect(JSON.stringify(posted[0])).not.toMatch(/"(id|garmentId|photoId)"/);
 });
 
-test("I can report or block someone else's post and delete my own with a second tap", async ({ page }) => {
+test("I can report or block someone else's post and delete my own with a second tap", async ({
+  page,
+}) => {
   const { env } = await serve(page, "private");
   await otherPost(env, "남의 글 하나");
   await otherPost(env, "남의 글 둘");
@@ -174,13 +145,23 @@ test("I can report or block someone else's post and delete my own with a second 
   await first.getByRole("button", { name: "신고" }).click();
   await first.getByLabel("신고 이유").selectOption("ad");
   await first.getByRole("button", { name: "신고하기" }).click();
-  await expect(page.getByText(/신고했어요\. 운영자가 7일 안에 확인해요/)).toBeVisible();
-  await expect(page.locator("[data-community-post]", { hasText: "남의 글 둘" })).toHaveCount(0);
-  const second = page.locator("[data-community-post]", { hasText: "남의 글 하나" });
+  await expect(
+    page.getByText(/신고했어요\. 운영자가 7일 안에 확인해요/),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-community-post]", { hasText: "남의 글 둘" }),
+  ).toHaveCount(0);
+  const second = page.locator("[data-community-post]", {
+    hasText: "남의 글 하나",
+  });
   await second.getByRole("button", { name: "이 회원 차단" }).click();
-  await second.getByRole("button", { name: "한 번 더 누르면 차단해요" }).click();
+  await second
+    .getByRole("button", { name: "한 번 더 누르면 차단해요" })
+    .click();
   await expect(page.locator("[data-community-post]")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /차단한 회원 1명/ })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /차단한 회원 1명/ }),
+  ).toBeVisible();
   // 내 글: 신고·차단 없이 두 번 눌러 지운다.
   await page.getByRole("button", { name: "코디 올리기" }).click();
   const dialog = page.getByRole("dialog", { name: "코디 올리기" });
@@ -195,14 +176,20 @@ test("I can report or block someone else's post and delete my own with a second 
   await expect(page.locator("[data-community-post]")).toHaveCount(0);
 });
 
-test("the new look keeps the community page achromatic with walnut only on hung things", async ({ page }) => {
+test("the new look keeps the community page achromatic with walnut only on hung things", async ({
+  page,
+}) => {
   await serve(page, "private");
   await joinAs(page);
   const btn = page.getByRole("button", { name: "코디 올리기" });
-  expect(await btn.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(32, 32, 37)");
+  expect(await btn.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
+    "rgb(32, 32, 37)",
+  );
 });
 
-test("the join screen shows the terms and privacy notice with the operator's name", async ({ page }) => {
+test("the join screen shows the terms and privacy notice with the operator's name", async ({
+  page,
+}) => {
   await serve(page, "private");
   await go(page);
   await page.getByRole("button", { name: "이용약관·개인정보처리방침" }).click();
@@ -215,16 +202,46 @@ test("the join screen shows the terms and privacy notice with the operator's nam
   await expect(terms).toBeHidden();
 });
 
-test("in public mode a visitor who is not signed in sees Kakao and Google sign-in", async ({ page }) => {
-  await serve(page, "public", { MEMBER_SESSION_SECRET: "s".repeat(40), KAKAO_REST_KEY: "k", GOOGLE_CLIENT_ID: "g", GOOGLE_CLIENT_SECRET: "gs" }, {});
+test("in public mode a visitor who is not signed in sees Kakao and Google sign-in", async ({
+  page,
+}) => {
+  await serve(
+    page,
+    "public",
+    {
+      MEMBER_SESSION_SECRET: "s".repeat(40),
+      KAKAO_REST_KEY: "k",
+      GOOGLE_CLIENT_ID: "g",
+      GOOGLE_CLIENT_SECRET: "gs",
+    },
+    {},
+  );
   await go(page);
-  await expect(page.getByRole("link", { name: "카카오 로그인" })).toHaveAttribute("href", "/_member/login/kakao");
-  await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/_member/login/google");
-  await expect.poll(()=>page.locator('.cm-provider img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth>0))).toBe(true);
+  await expect(
+    page.getByRole("link", { name: "카카오 로그인" }),
+  ).toHaveAttribute("href", "/_member/login/kakao");
+  await expect(
+    page.getByRole("link", { name: "Sign in with Google" }),
+  ).toHaveAttribute("href", "/_member/login/google");
+  await expect
+    .poll(() =>
+      page
+        .locator(".cm-provider img")
+        .evaluateAll((images) =>
+          images.every(
+            (image) =>
+              (image as HTMLImageElement).complete &&
+              (image as HTMLImageElement).naturalWidth > 0,
+          ),
+        ),
+    )
+    .toBe(true);
   await expect(page.getByRole("button", { name: "가입하기" })).toHaveCount(0);
 });
 
-test("the public page /c is a standalone community shell without the app", async ({ page }) => {
+test("the public page /c is a standalone community shell without the app", async ({
+  page,
+}) => {
   await serve(page, "private");
   await page.goto("/community-shell.html");
   await expect(page.getByRole("heading", { name: "코디 공유" })).toBeVisible();
@@ -232,8 +249,19 @@ test("the public page /c is a standalone community shell without the app", async
   expect(await page.evaluate(() => typeof (window as any).K)).toBe("undefined");
 });
 
-test("in public mode I can ask for an email code and enter it", async ({ page }) => {
-  const { mails } = await serve(page, "public", { MEMBER_SESSION_SECRET: "s".repeat(40), EMAIL_FROM: "no-reply@hangit.test", RESEND_API_KEY: "re_x" }, {});
+test("in public mode I can ask for an email code and enter it", async ({
+  page,
+}) => {
+  const { mails } = await serve(
+    page,
+    "public",
+    {
+      MEMBER_SESSION_SECRET: "s".repeat(40),
+      EMAIL_FROM: "no-reply@hangit.test",
+      RESEND_API_KEY: "re_x",
+    },
+    {},
+  );
   await go(page);
   await page.getByLabel("이메일").fill("me@example.com");
   await page.getByRole("button", { name: "인증 코드 받기" }).click();
@@ -244,3 +272,184 @@ test("in public mode I can ask for an email code and enter it", async ({ page })
   await page.getByRole("button", { name: "확인" }).click();
   await expect(page.getByText(/로그인했어요/)).toBeVisible();
 });
+
+for (const [label, options] of [
+  ["React", {}],
+  ["vanilla", { start: "/?photos=0&ui=vanilla#/closet" }],
+  ["failed chrome", { blockChrome: true, start: "/?photos=0#/closet" }],
+] as const)
+  test(`empty wardrobe has an independent community entry and six usable tabs (${label})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 780 });
+    const { env, posted } = await serve(page, "private", {}, undefined, {
+      start: "/?photos=0#/closet",
+      ...options,
+    });
+    await communityCall(env, "join", {
+      name: "테스트회원",
+      rules: 1,
+      age14: true,
+    });
+    const nav = page.getByRole("navigation", { name: "메뉴" }),
+      entry = nav.getByRole("button", { name: "커뮤니티", exact: true });
+    await expect(entry).toHaveCount(1);
+    await expect(nav.getByRole("button")).toHaveText([
+      "찾기",
+      "코디",
+      "옷장",
+      "커뮤니티",
+      "상담",
+      "기록",
+    ]);
+    expect(
+      await page.evaluate(() => (window as any).K.M.getState().mineCount),
+    ).toBe(0);
+    for (const button of await nav.getByRole("button").all()) {
+      const box = await button.boundingBox();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(320.5);
+      expect(
+        await button.evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true);
+    }
+    await entry.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/#\/community$/);
+    await expect(
+      page.getByRole("heading", { name: "코디 공유", exact: true }),
+    ).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
+    await expect(page.locator(".cm-top .mark")).toHaveText("커뮤니티");
+    await expect(
+      page.getByRole("button", { name: "코디 올리기", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "내 글", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "내 글", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page
+      .getByRole("button", { name: "코디 올리기", exact: true })
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "코디 올리기" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "취소", exact: true }).click();
+    expect(posted).toHaveLength(0);
+    expect(
+      await page.evaluate(() => (window as any).K.M.getState().mineCount),
+    ).toBe(0);
+    await page.reload();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
+    await expect(
+      page.getByRole("heading", { name: "코디 공유", exact: true }),
+    ).toBeVisible();
+    await nav.getByRole("button", { name: "상담", exact: true }).click();
+    await expect(page).toHaveURL(/#\/consult$/);
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("상담");
+    await nav.getByRole("button", { name: "기록", exact: true }).click();
+    await expect(page).toHaveURL(/#\/records$/);
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("기록");
+  });
+test("outfit share keeps its pieces and browser Back restores the outfit tab without posting", async ({
+  page,
+}) => {
+  const { posted } = await serve(page, "private");
+  await page.evaluate(() => {
+    const m = (window as any).K.M;
+    for (const [kind, slot, color, label] of [
+      ["shirt", "m-oxford", "white", "QA 셔츠"],
+      ["pants", "m-chino", "beige", "QA 바지"],
+      ["sneaker", "m-white-sneaker", "white", "QA 신발"],
+    ])
+      m.addGarment({ kind, slot, color, label });
+  });
+  await joinAs(page, "공유시험");
+  await page.evaluate(() => (window as any).K.tab("looks"));
+  const raw = await page.evaluate(() =>
+    localStorage.getItem("eoul-d12-hang:v1"),
+  );
+  await page
+    .locator("[data-outfit-card]")
+    .first()
+    .getByRole("button", { name: "이 코디 공유", exact: true })
+    .click();
+  await expect(page.getByRole("dialog", { name: "코디 올리기" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "메뉴" })
+      .locator('[aria-current="page"]'),
+  ).toHaveText("커뮤니티");
+  await expect(page.locator("[data-community-piece]")).toHaveCount(3);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/looks$/);
+  await expect(page.getByRole("dialog", { name: "코디 올리기" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page
+      .getByRole("navigation", { name: "메뉴" })
+      .locator('[aria-current="page"]'),
+  ).toHaveText("코디");
+  expect(posted).toHaveLength(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
+  ).toBe(raw);
+  await page.goForward();
+  await expect(page.getByRole("dialog", { name: "코디 올리기" })).toBeVisible();
+  await expect(page.locator("[data-community-piece]")).toHaveCount(3);
+  expect(posted).toHaveLength(0);
+});
+
+for (const [name, start] of [
+  ["root", "/?photos=0#/closet"],
+  ["stacked detail", "/?photos=0#/closet"],
+] as const)
+  test(`same-document community address and Back/Forward stay aligned (${name})`, async ({
+    page,
+  }) => {
+    const { env, posted } = await serve(page, "private", {}, undefined, {
+      start,
+    });
+    await communityCall(env, "join", {
+      name: "주소시험",
+      rules: 1,
+      age14: true,
+    });
+    if (name === "stacked detail") {
+      await page.evaluate(() =>
+        (window as any).K.go("detail", { id: "ms-728000" }),
+      );
+      await expect(page.locator("#react-detail")).toBeVisible();
+    }
+    const previous = page.url(),
+      raw = await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1"));
+    await page.goto("http://127.0.0.1:8792/?photos=0#/community");
+    const nav = page.getByRole("navigation", { name: "메뉴" });
+    await expect(
+      page.getByRole("heading", { name: "코디 공유", exact: true }),
+    ).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
+    await page.goBack();
+    await expect(page).toHaveURL(previous);
+    if (name === "root")
+      await expect(nav.locator('[aria-current="page"]')).toHaveText("옷장");
+    else await expect(nav).toBeHidden();
+    if (name === "root")
+      await expect(
+        page.getByRole("heading", { name: "내 옷장", exact: true }),
+      ).toBeVisible();
+    else await expect(page.locator("#react-detail")).toBeVisible();
+    await page.goForward();
+    await expect(page).toHaveURL(/#\/community$/);
+    await expect(
+      page.getByRole("heading", { name: "코디 공유", exact: true }),
+    ).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
+    expect(posted).toHaveLength(0);
+    expect(
+      await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
+    ).toBe(raw);
+  });
