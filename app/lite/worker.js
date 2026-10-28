@@ -94,7 +94,7 @@ async function publicCommunity(request, env, url, { authorize, community, member
   if (path.startsWith('/api/community/')) {
     let access = null;
     try { access = await authorize(request, env); } catch {}
-    if (access?.ok === true) return await scopeMismatch(request, 'owner') || community(request, env, { member: 'owner', operator: true });
+    if (access?.ok === true) return await scopeMismatch(request, 'owner', env.MEMBER_APP_MODE==='accounts') || community(request, env, { member: 'owner', operator: true });
     // 회원 쿠키는 SameSite=Lax지만, 쓰기 요청은 같은 출처에서 온 것만 받는다.
     if (!['GET', 'HEAD'].includes(request.method) && request.headers.get('origin') !== url.origin) {
       return Response.json({ code: 'invalid_origin' }, { status: 403, headers: privateHeaders });
@@ -136,7 +136,7 @@ async function memberApp(request, env, url, id, h) {
   if (path.startsWith('/api/catalog/')) return h.catalog(request, env);
   if (path === '/api/rakuten') return h.rakuten(request, env);
   if (path === '/api/adpick' || path.startsWith('/api/adpick/')) return h.adpick(request, env);
-  if (path === '/api/open-products' || path.startsWith('/api/open-products/')) return h.openProducts(request, env);
+  if (path === '/api/open-products' || path.startsWith('/api/open-products/')) return h.openProducts(request, env, {authorize:async()=>({ok:true})});
   if (path === '/api/weather') {
     if (request.method !== 'GET') return new Response('GET만 받아요.', { status: 405, headers: privateHeaders });
     return h.weather(request, env);
@@ -237,17 +237,17 @@ export function createWorker({
       if (membersEnabled && url.pathname.startsWith('/_member/')) return accounts(request, env, { owner: true, ...(accountActor ? {member:accountActor.sessionMember} : {}) });
       if (url.pathname === '/_private/readiness') return handleReadiness(request, env);
       if (url.pathname === '/_private/ai-check') return handlePrivateAiCheck(request);
-      if (url.pathname.startsWith('/api/')) { const mismatch = await scopeMismatch(request, 'owner'); if (mismatch) return mismatch; }
+      if (url.pathname.startsWith('/api/')) { const mismatch = await scopeMismatch(request, 'owner', !!accountActor); if (mismatch) return mismatch; }
 
       if (url.pathname === '/api/rank') {
         if (request.method !== 'POST') return new Response('POST만 받아요.', { status: 405, headers: privateHeaders });
-        return rank(request, env);
+        return accountActor ? rank(request, env, {authorize:async()=>({ok:true})}) : rank(request, env);
       }
-      if (url.pathname === '/api/garment-photo') return garmentPhoto(request, env);
+      if (url.pathname === '/api/garment-photo') return accountActor ? garmentPhoto(request, env, {authorize:async()=>({ok:true})}) : garmentPhoto(request, env);
       if (url.pathname.startsWith('/api/catalog/')) return catalog(request, env);
       if (url.pathname === '/api/rakuten') return rakuten(request, env);
       if (url.pathname === '/api/adpick' || url.pathname.startsWith('/api/adpick/')) return adpick(request, env);
-      if (url.pathname === '/api/open-products' || url.pathname.startsWith('/api/open-products/')) return openProducts(request, env);
+      if (url.pathname === '/api/open-products' || url.pathname.startsWith('/api/open-products/')) return accountActor ? openProducts(request, env, {authorize:async()=>({ok:true})}) : openProducts(request, env);
       // 코디 공유: 지금 로그인은 본인 한 사람(비밀번호 세션)뿐이라 그 사람을 회원 'owner'이자 운영자로 넘긴다.
       // 여러 회원 로그인(C4)이 생기기 전에는 community.js가 public 모드를 열지 않는다.
       if (url.pathname.startsWith('/api/community/')) return community(request, env, { member: 'owner', operator: true });

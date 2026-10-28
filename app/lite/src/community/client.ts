@@ -1,12 +1,14 @@
 // /c 공개 화면의 코디 공유 요청(앱 안에서는 lite.js의 window.EOUL_COMMUNITY가 같은 일을 한다).
 import type { CommunityClient } from "./index";
-import { ACCOUNT_ACTIVE_KEY, validAccountScope } from "../domain/account-scope.js";
+import { ACCOUNT_ACTIVE_KEY, ACCOUNT_HEADER, validAccountScope } from "../domain/account-scope.js";
 export function communityClient(): CommunityClient {
   const call = async (path: string, init: { method?: string; body?: unknown } = {}) => {
     const method = init.method || "GET";
+    const scope=document.querySelector<HTMLMetaElement>('meta[name="hangit-storage-scope"]')?.content;
+    const scopeHeaders=method!=='GET' && validAccountScope(scope) ? {[ACCOUNT_HEADER]:scope!} : {};
     let res: Response;
     try {
-      res = await fetch(`/api/community/${path}`, method === "GET" || method === "DELETE" ? { method, credentials: "same-origin" } : { method, credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(init.body ?? {}) });
+      res = await fetch(`/api/community/${path}`, method === "GET" || method === "DELETE" ? { method, credentials: "same-origin", headers:scopeHeaders } : { method, credentials: "same-origin", headers: { "content-type": "application/json", ...scopeHeaders }, body: JSON.stringify(init.body ?? {}) });
     } catch {
       return { code: "offline", message: "연결을 확인하고 다시 해 주세요." };
     }

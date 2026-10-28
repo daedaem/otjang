@@ -1,6 +1,10 @@
 import {test,expect,type Page} from '@playwright/test';
 import {serveAccounts,ACCOUNT_ORIGIN,ADMIN_PASSWORD} from './account-fixture.mjs';
-test.afterEach(async({context})=>{await context.unrouteAll({behavior:'wait'});});
+test.afterEach(async({context})=>{
+  // Finish same-origin fonts/icons before removing the synthetic HTTPS transport.
+  await Promise.all(context.pages().filter(p=>!p.isClosed()).map(p=>p.waitForLoadState('networkidle')));
+  await context.unrouteAll({behavior:'wait'});
+});
 async function seedOwner(page:Page,f:any) {
   f.env.MEMBER_APP_MODE='invite';await f.legacy();
   await page.goto(ACCOUNT_ORIGIN+'/?photos=0#/closet');await page.waitForFunction(()=>!!(window as any).K?.M);
