@@ -400,6 +400,24 @@ function AddSearch({ host }: { host: AddHost }) {
           onExample={choose}
         />
       </div>
+      {host.photoAdd ? (
+        <button
+          className="row as-manual"
+          data-photo-add
+          type="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            host.photoAdd?.();
+          }}
+        >
+          <span className="grow">
+            <span className="t5">사진으로 넣기</span>
+            <span className="t6">옷 사진을 고르면 AI가 종류·색을 알아봐요</span>
+          </span>
+          <i className="ph ph-camera" aria-hidden="true" />
+        </button>
+      ) : null}
       <button
         className="row as-manual"
         data-reg-open

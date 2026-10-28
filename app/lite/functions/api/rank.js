@@ -211,7 +211,7 @@ export function clipAnswer(text) {
   return end >= CONSULT_MAX / 2 ? head.slice(0, end + 1) : `${head.slice(0, CONSULT_MAX - 1)}…`;
 }
 
-function providerMetadata(res, secret) {
+export function providerMetadata(res, secret) {
   const count = (n) => Number.isSafeInteger(n) && n >= 0 && n <= 10_000_000;
   const containsSecret = (s) => typeof secret === 'string' && secret.length > 0 && s.includes(secret);
   if (typeof res?.model !== 'string' || !/^claude-[a-z0-9][a-z0-9.-]{0,119}$/.test(res.model) || containsSecret(res.model) ||

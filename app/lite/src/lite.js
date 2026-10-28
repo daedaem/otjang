@@ -184,6 +184,17 @@
     emailVerify: async (email, code) => { try { const r = await fetch('/_member/email/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, code }) }); const o = await r.json().catch(() => null); return r.ok && o ? o : { code: o?.code || 'error', message: o?.message }; } catch { return { code: 'offline' }; } },
   };
 
+  // 사진으로 옷 넣기(대표 10-28 16:46): 화면이 동의를 받은 뒤 작게 줄인 JPEG 한 장을 보낸다. 미리보기에서는 보내지 않는다.
+  window.EOUL_GARMENT_PHOTO = async (image) => {
+    if (preview()) return { code: 'preview' };
+    let res;
+    try { res = await fetch('/api/garment-photo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ image }), signal: AbortSignal.timeout(25000) }); }
+    catch { return { code: 'offline' }; }
+    const out = await res.json().catch(() => null);
+    resumeLogin(res, out);
+    return res.ok && out ? out : { code: out?.code || ERR[res.status] || 'error', message: out?.message };
+  };
+
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }
