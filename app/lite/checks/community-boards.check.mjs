@@ -289,3 +289,21 @@ test('first legacy edits share the upgraded allowance and cannot be mistaken for
   assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage').get().n, 10);
   assert.equal(f.db.raw.prepare("SELECT COUNT(*) n FROM community_post_usage WHERE id LIKE 'edit:%'").get().n, 1);
 });
+
+for (const audience of ['unjoined', 'old rules']) test(`public photos require the same current membership as the feed (${audience})`, async () => {
+  const f = fixture(); await f.join();
+  const made = await post(f, 'a', { ...outfit(), consent: true }, [jpeg.toString('base64')]);
+  const row = (await f.call('a', 'GET', 'feed')).body.items.find(p => p.id === made.body.id);
+  Object.assign(f.env, { COMMUNITY_DB: f.db, CROWD_DB: {}, COMMUNITY_MODE: 'public', COMMUNITY_OPERATOR: '운영(예시)', COMMUNITY_CONTACT: 'contact@example.test', MEMBER_SESSION_SECRET: 'qa-only-'.repeat(6), KAKAO_REST_KEY: 'qa-not-a-live-key' });
+  const reader = audience === 'unjoined' ? 'new' : 'b';
+  if (audience === 'old rules') f.db.raw.prepare('UPDATE community_members SET rules=0 WHERE member=?').run(reader);
+  assert.equal((await f.call('', 'GET', 'photos/' + row.photos[0])).status, 401);
+  assert.equal((await f.call(reader, 'GET', 'feed')).status, 403);
+  assert.equal((await f.call(reader, 'GET', 'photos/' + row.photos[0])).status, 403);
+  assert.equal((await f.call(reader, 'POST', 'join', { name: '동의회원', rules: 1, age14: true })).status, 200);
+  assert.equal((await f.call(reader, 'GET', 'photos/' + row.photos[0])).status, 200);
+  assert.equal((await f.call(reader, 'POST', 'reports', { post: row.id, reason: 'rights' })).status, 200);
+  assert.equal((await f.call(reader, 'GET', 'photos/' + row.photos[0])).status, 404);
+  assert.equal((await f.call('op', 'POST', 'review/' + row.id, { action: 'hide' })).status, 200);
+  assert.deepEqual((await f.call('a', 'GET', 'photos/' + row.photos[0])).body, new Uint8Array(jpeg));
+});
