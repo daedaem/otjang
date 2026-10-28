@@ -127,7 +127,7 @@ export function publicMissing(env) {
   if (!env.COMMUNITY_OPERATOR) missing.push('operator');
   if (!env.COMMUNITY_CONTACT) missing.push('contact');
   const login = memberLoginOptions(env);
-  if (!login.kakao && !login.google) missing.push('login');
+  if (!login.kakao && !login.google && !login.email) missing.push('login');
   return missing;
 }
 const operatorInfo = (env) => (env.COMMUNITY_OPERATOR || env.COMMUNITY_CONTACT ? {

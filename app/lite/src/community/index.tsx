@@ -33,7 +33,7 @@ type Status = {
   reviewDays: number;
   isOperator: boolean;
   signedIn: boolean;
-  login: { kakao: boolean; google: boolean } | null;
+  login: { kakao: boolean; google: boolean; email?: boolean } | null;
   operator: { name: string | null; contact: string | null; privacyOfficer: string | null } | null;
   minAge: number;
 };
@@ -53,6 +53,8 @@ export type CommunityClient = {
   review(): Promise<{ items: ReviewItem[] } | Fail>;
   act(id: string, action: "restore" | "hide" | "delete"): Promise<{ ok: true } | Fail>;
   photoUrl(id: string): string;
+  emailStart?(email: string): Promise<{ ok: true } | Fail>;
+  emailVerify?(email: string, code: string): Promise<{ ok: true } | Fail>;
 };
 type Garment = { id: string; label: string; kind: string; color: string | null; trial: boolean };
 export type CommunityHost = {
@@ -170,7 +172,7 @@ function Terms({ status, close }: { status: Status; close(): void }) {
         </p>
         <h3>모으는 개인정보</h3>
         <p>
-          회원 확인값(카카오·구글 회원번호를 알아볼 수 없게 바꾼 값), 활동 이름, 올린 사진·한마디·옷 종류·색·이름, 게시·신고·차단 시각. 이메일·전화번호·프로필은 받지 않아요. 옷장 기록·메모·구매 링크와 사진의 위치·기기 정보는 받지 않아요.
+          회원 확인값(카카오·구글 회원번호나 이메일을 알아볼 수 없게 바꾼 값), 활동 이름, 올린 사진·한마디·옷 종류·색·이름, 게시·신고·차단 시각. 이메일로 가입하면 이메일은 인증 코드를 보낼 때만 쓰고 원문은 저장하지 않아요(메일은 발송 서비스를 거쳐요). 전화번호·프로필은 받지 않아요. 옷장 기록·메모·구매 링크와 사진의 위치·기기 정보는 받지 않아요.
         </p>
         <h3>보관과 삭제</h3>
         <p>지우거나 커뮤니티를 나갈 때까지 보관하고, 나가면 이름·글·사진·신고·차단을 바로 지워요. 제3자에게 주지 않아요. 서버와 저장소는 Cloudflare를 써요.</p>
@@ -185,10 +187,67 @@ function Terms({ status, close }: { status: Status; close(): void }) {
   );
 }
 
-function SignIn({ status }: { status: Status }) {
+function EmailSignIn({ client, done }: { client: CommunityClient; done(): void }) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const ask = async () => {
+    if (!client.emailStart) return;
+    setBusy(true);
+    setMessage("");
+    const r = await client.emailStart(email);
+    setBusy(false);
+    if (failed(r)) return setMessage(r.message || "코드를 보내지 못했어요.");
+    setSent(true);
+    setMessage("메일로 6자리 코드를 보냈어요. 10분 안에 넣어 주세요.");
+  };
+  const check = async () => {
+    if (!client.emailVerify) return;
+    setBusy(true);
+    setMessage("");
+    const r = await client.emailVerify(email, code);
+    setBusy(false);
+    if (failed(r)) return setMessage(r.message || "코드가 맞지 않아요.");
+    done();
+  };
+  return (
+    <div className="cm-email">
+      <label className="cm-field">
+        <span>이메일</span>
+        <input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={sent} />
+        <small>코드를 보낼 때만 쓰고 저장하지 않아요.</small>
+      </label>
+      {!sent ? (
+        <button type="button" className="btn line" disabled={busy || !/@/.test(email)} onClick={ask}>
+          인증 코드 받기
+        </button>
+      ) : (
+        <>
+          <label className="cm-field">
+            <span>인증 코드</span>
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+          </label>
+          <div className="cm-email-actions">
+            <button type="button" className="btn go" disabled={busy || code.length !== 6} onClick={check}>
+              확인
+            </button>
+            <button type="button" className="quiet" onClick={() => { setSent(false); setCode(""); setMessage(""); }}>
+              다른 이메일
+            </button>
+          </div>
+        </>
+      )}
+      {message ? <p className="cm-small" role="status">{message}</p> : null}
+    </div>
+  );
+}
+
+function SignIn({ status, client, signedIn }: { status: Status; client: CommunityClient; signedIn(): void }) {
   return (
     <div className="cm-join">
-      <p className="cm-lead">다른 사람의 코디를 보고, 내 코디 사진을 올려요. 카카오나 구글로 시작해 주세요. 이메일·프로필은 받지 않아요.</p>
+      <p className="cm-lead">다른 사람의 코디를 보고, 내 코디 사진을 올려요. 카카오·구글이나 이메일 인증으로 시작해 주세요. 프로필은 받지 않아요.</p>
       <div className="cm-login">
         {status.login?.kakao ? (
           <a className="btn cm-kakao" href="/_member/login/kakao">
@@ -201,6 +260,7 @@ function SignIn({ status }: { status: Status }) {
           </a>
         ) : null}
       </div>
+      {status.login?.email ? <EmailSignIn client={client} done={signedIn} /> : null}
     </div>
   );
 }
@@ -607,7 +667,14 @@ function Community({ host }: { host: CommunityHost }) {
           불러오는 중이에요…
         </p>
       ) : !status.signedIn ? (
-        <SignIn status={status} />
+        <SignIn
+          status={status}
+          client={client}
+          signedIn={() => {
+            setNotice("로그인했어요. 이제 이름을 정해 가입해 주세요.");
+            client.status().then((s) => (failed(s) ? setFail(s) : setStatus(s)));
+          }}
+        />
       ) : !status.member ? (
         <Join status={status} client={client} done={setStatus} />
       ) : (

@@ -11,7 +11,7 @@
 | C1 화면·글 형식 | 병합(#109, master `0d2a3aa`) | 코디 탭 위 '코디 공유' → `#/community`. 가입(규칙·이름), 피드(전체/내 글, 더 보기), 코디 올리기(사진 4장·한마디·내 옷에서 고르기·보이는 것/보내지 않는 것·사진 동의), 코디 카드의 '이 코디 공유', 신고(이유 5가지)·차단(두 번 누름)·지우기(두 번 누름)·나가기, 운영자 확인 목록. 처음 설계의 '기기 안 가짜 저장소'는 만들지 않고 바로 서버에 붙였다(C2와 같이 해서 같은 일을 두 번 하지 않음) |
 | C2 서버 저장 | 병합(#109)·**꺼짐** | `/api/community/*`, 기존 D1(`CROWD_DB`)에 표 7개. 스위치 `COMMUNITY_MODE` 기본 꺼짐, `private`이면 지금 로그인한 본인 한 사람(운영자)만, `public`은 C4 전까지 거절. 신고 3명 자동 숨김, 한 시간 글 10개, 사진 전체 상한 300MB·회원 200장/60MB |
 | C3 사진 R2 | 대표 승인 필요 | **바뀐 점:** R2 전까지는 사진을 D1에 base64로 둔다(새 서비스·비용 없음, 상한으로 무료 범위 안에 둠[추론: D1 무료 저장 5GB, 확인 필요]). 회원이 늘면 R2로 옮긴다 |
-| C4 회원 로그인 | 만듦(키는 대표) | 10-28 11:47 대표: 카카오+구글 둘 다. `/_member/login/kakao·google`, 회원 세션 30일, 이메일·프로필 요청 없음. 공개 화면 `/c`(앱 없이 코디 공유만). 공급자 앱 등록과 키 입력은 대표 |
+| C4 회원 로그인 | 만듦(키는 대표) | 10-28 11:47 대표: 카카오+구글 둘 다. 12:26 이메일 인증 코드 가입 추가(메일 서비스·도메인은 대표). `/_member/login/kakao·google`, 회원 세션 30일, 이메일·프로필 요청 없음. 공개 화면 `/c`(앱 없이 코디 공유만). 공급자 앱 등록과 키 입력은 대표 |
 | C5 공개 전 준비 | 대부분 | 규칙·신고 이유·신고 처리 기간·연락처 칸·차단·운영자 확인·처리 기록은 만들었다. 이용약관·개인정보처리방침·신고 절차는 [초안](community-legal-draft-20261028.md)을 썼다(법률 검토 전). 만 14세 미만 가입 막기(11:47 대표), 앱 안 약관·처리방침 요약 화면, 운영자 정보 변수(`COMMUNITY_OPERATOR`·`COMMUNITY_CONTACT`, 값은 대표가 Cloudflare에 입력)를 만들었다. 공개 화면 `/c`에는 상품 자료가 없다. 남은 것: 법률 검토, 로그인 버튼 디자인 가이드 확인 |
 
 화면(Pixel 7, 합성 자료): [꺼짐·가입·피드·올리기·어두운 화면](evidence/community/screens-mobile.png). 사진은 체험용 예시 사진이다.
@@ -91,6 +91,7 @@ Claude 추천 순위:
 
 1. 카카오 개발자에서 앱을 만들고 '카카오 로그인'을 켠다. 동의 항목은 고르지 않는다. 리디렉션 URI `<사이트>/_member/callback/kakao`. REST API 키(선택: 클라이언트 시크릿)를 Cloudflare Secret `KAKAO_REST_KEY`(`KAKAO_CLIENT_SECRET`)에 넣는다.
 2. Google Cloud에서 OAuth 클라이언트(웹)를 만든다. 리디렉션 URI `<사이트>/_member/callback/google`. `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`을 넣는다.
+2-1. (선택) 이메일 인증 가입(10-28 12:26): 메일 발송 서비스를 고른다. Resend 무료(하루 100통·월 3,000통, 발신 도메인 인증 필요) 또는 Cloudflare Email Sending(Workers 유료 플랜, 공개 베타). 발신 도메인(예: hangit.kr)을 인증한 뒤 `EMAIL_FROM`(예: `행잇 <no-reply@hangit.kr>`)과 `RESEND_API_KEY`를 넣는다(Cloudflare를 쓰면 바인딩 `EMAIL`은 Claude가 설정 파일에 더한다). 도메인 없이 workers.dev 주소로는 발송이 안 될 가능성이 높다(추론, 확인 필요).
 3. `MEMBER_SESSION_SECRET`에 32자 이상 무작위 값을 넣는다. **한 번 정하면 바꾸지 않는다**(바꾸면 회원 id가 모두 바뀌어 기존 회원이 글·이름과 끊긴다).
 3-1. Cloudflare에서 커뮤니티 전용 D1을 하나 더 만든다(예: `otjang-community`, 무료 범위). database_id를 알려 주면 Claude가 `wrangler.jsonc`에 바인딩 `COMMUNITY_DB`를 더한다(id는 비밀값이 아니다). 개인 앱 DB와 같은 DB면 public이 열리지 않는다(누구나 가입하면 개인 자료와 같은 DB를 채울 수 있어서).
 4. 변수 `COMMUNITY_OPERATOR`(운영자 이름), `COMMUNITY_CONTACT`(문의 이메일), 선택 `COMMUNITY_PRIVACY_OFFICER`·`COMMUNITY_REVIEW_DAYS`를 넣는다.

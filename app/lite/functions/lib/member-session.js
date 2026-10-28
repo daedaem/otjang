@@ -14,6 +14,7 @@
 //   GET  /_member/login/kakao|google   → 공급자 로그인으로 302
 //   GET  /_member/callback/kakao|google → 세션 쿠키를 주고 /c로 303
 //   POST /_member/logout               → 세션 삭제(같은 출처만)
+//   POST /_member/email/start {email}  → 6자리 코드 메일, POST /_member/email/verify {email, code} → 세션(같은 출처만)
 const STATE_COOKIE = '__Host-hangit-login';
 const SESSION_COOKIE = '__Host-hangit-member';
 const STATE_TTL = 10 * 60;
@@ -28,7 +29,11 @@ const dbOf = (env) => env?.COMMUNITY_DB || env?.CROWD_DB;
 const secretOf = (env) => (typeof env?.MEMBER_SESSION_SECRET === 'string' && env.MEMBER_SESSION_SECRET.length >= 32 ? env.MEMBER_SESSION_SECRET : null);
 export function memberLoginOptions(env) {
   const ok = !!secretOf(env) && !!dbOf(env);
-  return { kakao: ok && !!env.KAKAO_REST_KEY, google: ok && !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET };
+  return {
+    kakao: ok && !!env.KAKAO_REST_KEY,
+    google: ok && !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET,
+    email: ok && !!env.EMAIL_FROM && (!!env.RESEND_API_KEY || typeof env.EMAIL?.send === 'function'),
+  };
 }
 
 const b64u = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -70,6 +75,11 @@ const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS member_sessions (token_hash TEXT PRIMARY KEY, member TEXT NOT NULL, provider TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS member_sessions_member ON member_sessions (member)',
   'CREATE INDEX IF NOT EXISTS member_sessions_expiry ON member_sessions (expires_at)',
+  // 이메일 인증 코드: 이메일은 비밀값으로 HMAC한 값만, 코드는 해시만 둔다.
+  'CREATE TABLE IF NOT EXISTS member_email_codes (email_hash TEXT PRIMARY KEY, code_hash TEXT NOT NULL, attempts INTEGER NOT NULL, expires_at INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS member_email_sends (id TEXT PRIMARY KEY, email_hash TEXT NOT NULL, created_at INTEGER NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS member_email_sends_email ON member_email_sends (email_hash, created_at)',
+  'CREATE INDEX IF NOT EXISTS member_email_sends_time ON member_email_sends (created_at)',
 ];
 const ready = new WeakSet();
 async function ensureSchema(db) {
@@ -158,6 +168,10 @@ async function callback(request, env, provider, { fetchImpl, now }) {
   catch { return fail(502, 'provider_unavailable', [clear]); }
   if (found.error) return fail(found.error === 'id_token' ? 400 : 502, found.error === 'id_token' ? 'invalid_token' : 'provider_error', [clear]);
   const member = hex(await hmac(secret, 'member', `${provider}|${found.subject}`)).slice(0, 32);
+  return redirect(303, HOME, [clear, await newSession(env, member, provider, nowMs)]);
+}
+
+async function newSession(env, member, provider, nowMs) {
   const token = random(32);
   const db = dbOf(env);
   await db.batch([
@@ -165,7 +179,100 @@ async function callback(request, env, provider, { fetchImpl, now }) {
     db.prepare('INSERT INTO member_sessions (token_hash, member, provider, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)')
       .bind(await sha256(token), member, provider, nowMs, nowMs + SESSION_TTL * 1000),
   ]);
-  return redirect(303, HOME, [clear, setCookie(SESSION_COOKIE, token, SESSION_TTL)]);
+  return setCookie(SESSION_COOKIE, token, SESSION_TTL);
+}
+
+// ── 이메일 인증 코드(대표 10-28 12:25·12:26). 비밀번호 없이 6자리 코드로 가입·로그인한다.
+// 설정: EMAIL_FROM(보내는 주소, 인증된 내 도메인) + RESEND_API_KEY 또는 Cloudflare 바인딩 EMAIL(Email Sending, Workers 유료·베타).
+// 이메일 원문은 저장하지 않는다(HMAC 값만). 한 주소 한 시간 5통, 서버 전체 하루 EMAIL_DAILY_MAX(기본 90, Resend 무료 하루 100통 아래).
+const CODE_TTL = 10 * 60 * 1000;
+const CODE_ATTEMPTS = 5;
+const SENDS_PER_EMAIL_HOUR = 5;
+const json = (status, body, cookies = []) => {
+  const headers = new Headers({ ...HEADERS, 'content-type': 'application/json; charset=utf-8' });
+  for (const c of cookies) headers.append('set-cookie', c);
+  return new Response(JSON.stringify(body), { status, headers });
+};
+function normalEmail(raw) {
+  if (typeof raw !== 'string') return null;
+  const email = raw.normalize('NFKC').trim().toLowerCase();
+  return email.length <= 254 && /^[^\s@"<>(),;:]{1,64}@[a-z0-9.-]{1,252}\.[a-z]{2,24}$/.test(email) && !email.includes('..') ? email : null;
+}
+function sixDigits() {
+  const max = 4_294_000_000; // 10^6의 배수 아래만 써서 치우침을 없앤다
+  for (;;) {
+    const n = crypto.getRandomValues(new Uint32Array(1))[0];
+    if (n < max) return String(n % 1_000_000).padStart(6, '0');
+  }
+}
+async function readBody(request, keys) {
+  try {
+    const text = await request.text();
+    if (text.length > 1024) return null;
+    const body = JSON.parse(text);
+    return body && typeof body === 'object' && !Array.isArray(body) && Object.keys(body).every((k) => keys.includes(k)) ? body : null;
+  } catch { return null; }
+}
+async function sendMail(env, fetchImpl, to, code) {
+  const subject = '[행잇] 인증 코드';
+  const text = `행잇 코디 공유 인증 코드: ${code}\n\n10분 안에 입력해 주세요. 직접 요청하지 않았다면 이 메일은 무시해 주세요.`;
+  if (typeof env.EMAIL?.send === 'function') {
+    await env.EMAIL.send({ to, from: env.EMAIL_FROM, subject, text });
+    return true;
+  }
+  const res = await fetchImpl('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ from: env.EMAIL_FROM, to: [to], subject, text }),
+  });
+  return res.ok;
+}
+async function emailStart(request, env, { fetchImpl, now }) {
+  const body = await readBody(request, ['email']);
+  const email = normalEmail(body?.email);
+  if (!email) return json(400, { code: 'invalid_email', message: '이메일 주소를 확인해 주세요.' });
+  const secret = secretOf(env), db = dbOf(env), at = now();
+  await ensureSchema(db);
+  const key = hex(await hmac(secret, 'email', email));
+  const hour = await db.prepare('SELECT COUNT(*) AS n FROM member_email_sends WHERE email_hash = ?1 AND created_at > ?2').bind(key, at - 3_600_000).first();
+  if (Number(hour?.n) >= SENDS_PER_EMAIL_HOUR) return json(429, { code: 'email_limit', message: '코드를 너무 자주 요청했어요. 한 시간 뒤에 다시 해 주세요.' });
+  const day = await db.prepare('SELECT COUNT(*) AS n FROM member_email_sends WHERE created_at > ?1').bind(at - 86_400_000).first();
+  if (Number(day?.n) >= Math.max(1, Number(env.EMAIL_DAILY_MAX) || 90)) return json(429, { code: 'daily_limit', message: '오늘 보낼 수 있는 인증 메일을 다 썼어요. 내일 다시 해 주세요.' });
+  const code = sixDigits();
+  await db.batch([
+    db.prepare('DELETE FROM member_email_sends WHERE created_at <= ?1').bind(at - 86_400_000),
+    db.prepare('INSERT INTO member_email_sends (id, email_hash, created_at) VALUES (?1, ?2, ?3)').bind(crypto.randomUUID(), key, at),
+    db.prepare(`INSERT INTO member_email_codes (email_hash, code_hash, attempts, expires_at) VALUES (?1, ?2, 0, ?3)
+      ON CONFLICT (email_hash) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at`)
+      .bind(key, hex(await hmac(secret, 'email-code', `${key}|${code}`)), at + CODE_TTL),
+  ]);
+  let sent = false;
+  try { sent = await sendMail(env, fetchImpl, email, code); } catch {}
+  if (!sent) {
+    await db.prepare('DELETE FROM member_email_codes WHERE email_hash = ?1').bind(key).run();
+    return json(502, { code: 'mail_unavailable', message: '메일을 보내지 못했어요. 잠시 뒤에 다시 해 주세요.' });
+  }
+  return json(200, { ok: true });
+}
+async function emailVerify(request, env, { now }) {
+  const body = await readBody(request, ['email', 'code']);
+  const email = normalEmail(body?.email);
+  const code = typeof body?.code === 'string' ? body.code.trim() : '';
+  const no = () => json(400, { code: 'invalid_code', message: '코드가 맞지 않거나 시간이 지났어요. 다시 받아 주세요.' });
+  if (!email || !/^\d{6}$/.test(code)) return no();
+  const secret = secretOf(env), db = dbOf(env), at = now();
+  await ensureSchema(db);
+  const key = hex(await hmac(secret, 'email', email));
+  const row = await db.prepare('SELECT code_hash, attempts, expires_at FROM member_email_codes WHERE email_hash = ?1').bind(key).first();
+  if (!row || Number(row.expires_at) <= at || Number(row.attempts) >= CODE_ATTEMPTS) return no();
+  if (!same(hex(await hmac(secret, 'email-code', `${key}|${code}`)), row.code_hash)) {
+    await db.prepare('UPDATE member_email_codes SET attempts = attempts + 1 WHERE email_hash = ?1').bind(key).run();
+    return no();
+  }
+  const used = await db.prepare('DELETE FROM member_email_codes WHERE email_hash = ?1 AND code_hash = ?2').bind(key, row.code_hash).run();
+  if (!used.meta?.changes) return no();
+  const member = hex(await hmac(secret, 'member', `email|${email}`)).slice(0, 32);
+  return json(200, { ok: true }, [await newSession(env, member, 'email', at)]);
 }
 
 // 요청의 회원 쿠키 → 회원 id(32자 hex) 또는 null.
@@ -191,6 +298,14 @@ export async function endMemberSessions(env, member) {
 export async function handleMemberAuth(request, env = {}, { fetchImpl = fetch, now = Date.now } = {}) {
   if (env.COMMUNITY_MODE !== 'public') return null;
   const url = new URL(request.url);
+  const mail = /^\/_member\/email\/(start|verify)$/.exec(url.pathname);
+  if (mail) {
+    if (request.method !== 'POST') return fail(405, 'method_not_allowed');
+    if (request.headers.get('origin') !== url.origin) return fail(403, 'invalid_origin');
+    if (!memberLoginOptions(env).email) return fail(503, 'not_configured');
+    try { return mail[1] === 'start' ? await emailStart(request, env, { fetchImpl, now }) : await emailVerify(request, env, { now }); }
+    catch { return fail(503, 'login_unavailable'); }
+  }
   const m = /^\/_member\/(login|callback)\/(kakao|google)$/.exec(url.pathname);
   if (url.pathname === '/_member/logout') {
     if (request.method !== 'POST') return fail(405, 'method_not_allowed');
