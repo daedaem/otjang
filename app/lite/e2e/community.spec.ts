@@ -30,7 +30,7 @@ function fakeD1() {
 }
 const PHOTO = fileURLToPath(new URL("../public/examples/m-blazer.webp", import.meta.url));
 async function serve(page: Page, mode: string | undefined, extra: Record<string, string> = {}, who: any = { member: "owner", operator: true }) {
-  const env: any = { CROWD_DB: fakeD1(), COMMUNITY_MODE: mode, COMMUNITY_CONTACT: "contact@example.test", COMMUNITY_OPERATOR: "운영자(예시)", ...extra };
+  const env: any = { CROWD_DB: fakeD1(), COMMUNITY_DB: fakeD1(), COMMUNITY_MODE: mode, COMMUNITY_CONTACT: "contact@example.test", COMMUNITY_OPERATOR: "운영자(예시)", ...extra };
   const posted: any[] = [];
   await page.route("**/*", async (route) => {
     const req = route.request();

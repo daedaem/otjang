@@ -23,7 +23,7 @@ function fakeD1() {
   };
 }
 const ready = (extra = {}) => ({
-  CROWD_DB: fakeD1(), COMMUNITY_MODE: 'public', COMMUNITY_OPERATOR: '운영자(예시)', COMMUNITY_CONTACT: 'contact@example.test',
+  CROWD_DB: fakeD1(), COMMUNITY_DB: fakeD1(), COMMUNITY_MODE: 'public', COMMUNITY_OPERATOR: '운영자(예시)', COMMUNITY_CONTACT: 'contact@example.test',
   MEMBER_SESSION_SECRET: 's'.repeat(40), KAKAO_REST_KEY: 'k', ...extra,
 });
 const call = async (e, method, path, body, who = {}) => {
@@ -34,7 +34,7 @@ const call = async (e, method, path, body, who = {}) => {
 test('public은 운영자 이름·연락처·회원 로그인 설정이 모두 있어야 열리고, 빠진 것을 알려 준다', async () => {
   const none = await call({ CROWD_DB: fakeD1(), COMMUNITY_MODE: 'public' }, 'GET', '/api/community/status');
   assert.deepEqual([none.status, none.body.code], [503, 'public_not_ready']);
-  assert.deepEqual(none.body.missing.sort(), ['contact', 'login', 'operator']);
+  assert.deepEqual(none.body.missing.sort(), ['contact', 'database', 'login', 'operator']);
   const noLogin = await call(ready({ KAKAO_REST_KEY: '' }), 'GET', '/api/community/status');
   assert.deepEqual(noLogin.body.missing, ['login']);
   const open = await call(ready(), 'GET', '/api/community/status');
@@ -142,4 +142,57 @@ test('public이어도 준비가 덜 되면(운영자 정보·로그인 없음) /
     const r = await get(w, env, path);
     assert.ok([303, 401].includes(r.status), `${path} ${r.status}`);
   }
+});
+
+// 보안 검토(10-28, 별도 에이전트) 반영.
+test('public은 개인 앱 DB와 다른 커뮤니티 전용 DB(COMMUNITY_DB)가 있어야 열리고, 글은 그 DB에만 들어간다', async () => {
+  const shared = ready({ COMMUNITY_DB: undefined });
+  const r = await call(shared, 'GET', '/api/community/status');
+  assert.deepEqual([r.status, r.body.missing], [503, ['database']]);
+  const same = ready();
+  same.COMMUNITY_DB = same.CROWD_DB;
+  assert.deepEqual((await call(same, 'GET', '/api/community/status')).body.missing, ['database']);
+  const e = ready();
+  const who = { member: 'm1', operator: false };
+  await call(e, 'POST', '/api/community/join', { name: '대담', rules: 1, age14: true }, who);
+  await call(e, 'POST', '/api/community/posts', { post: { text: '글', pieces: [{ kind: 'coat', color: 'navy', label: '코트' }], consent: false }, photos: [] }, who);
+  assert.equal(e.COMMUNITY_DB.raw.prepare('SELECT COUNT(*) AS n FROM community_posts').get().n, 1);
+  assert.equal(e.CROWD_DB.raw.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'community_posts'").get().n, 0);
+});
+
+test('public 자동 숨김은 가입한 지 3일이 지난 회원의 신고만 센다(새 계정 여러 개로 남의 글을 숨기지 못하게)', async () => {
+  const e = ready();
+  const DAY = 86400_000;
+  let t = 1_000 * DAY;
+  const at = { now: () => t };
+  const req = (who, path, body) => handleCommunity(new Request(`https://x.test/api/community/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), e, who, at).then((r) => r.json());
+  const author = { member: 'author', operator: false };
+  await req(author, 'join', { name: '작성자', rules: 1, age14: true });
+  const old = ['o1', 'o2', 'o3'].map((m) => ({ member: m, operator: false }));
+  for (const [i, w] of old.entries()) await req(w, 'join', { name: `오래${i}`, rules: 1, age14: true });
+  const { id } = await req(author, 'posts', { post: { text: '내 코디', pieces: [{ kind: 'coat', color: 'navy', label: '코트' }], consent: false }, photos: [] });
+  t += 4 * DAY;
+  const fresh = ['n1', 'n2', 'n3'].map((m) => ({ member: m, operator: false }));
+  for (const [i, w] of fresh.entries()) { await req(w, 'join', { name: `새${i}`, rules: 1, age14: true }); await req(w, 'reports', { post: id, reason: 'ad' }); }
+  const hidden = () => e.COMMUNITY_DB.raw.prepare('SELECT hidden FROM community_posts WHERE id = ?').get(id).hidden;
+  assert.equal(hidden(), null, '새 계정 3개의 신고로는 숨겨지지 않는다');
+  for (const w of old) await req(w, 'reports', { post: id, reason: 'ad' });
+  assert.equal(hidden(), 'reports');
+});
+
+test('/c는 정적 파일이 주소를 바꿔 답해도(307) 따라가서 연다. 해시 없는 아이콘은 오래 묶어 두지 않는다', async () => {
+  const files = { '/community-shell': '<!doctype html><title>c</title>', '/community-public.json': JSON.stringify({ files: ['/icons/icon.svg'] }), '/icons/icon.svg': '<svg/>' };
+  const ASSETS = { fetch: async (req) => {
+    const p = new URL(req.url).pathname;
+    if (p === '/community-shell.html') return new Response(null, { status: 307, headers: { location: '/community-shell' } });
+    return Object.hasOwn(files, p) ? new Response(files[p]) : new Response('nf', { status: 404 });
+  } };
+  const w = createWorker({ authorize: async () => ({ ok: false, status: 401 }) });
+  const env = { ...ready(), ASSETS, PRIVATE_AUTH_MODE: 'session' };
+  const shell = await w.fetch(new Request('https://hangit.test/c'), env);
+  assert.equal(shell.status, 200);
+  assert.match(await shell.text(), /<title>c<\/title>/);
+  const icon = await w.fetch(new Request('https://hangit.test/icons/icon.svg'), env);
+  assert.equal(icon.status, 200);
+  assert.doesNotMatch(icon.headers.get('cache-control') || '', /immutable/);
 });
