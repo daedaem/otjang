@@ -36,8 +36,22 @@ test("an outside link asks kind and colour and shows overlap or new outfits", as
   await page.getByLabel("색").selectOption("white");
   await expect(page.locator("[data-check-verdict]")).toContainText("비슷한 옷이 이미 있어요");
   await expect(page.locator("[data-check-verdict]")).toContainText("흰 셔츠");
-  await page.getByLabel("종류").selectOption("blazer");
-  await page.getByLabel("색").selectOption("navy");
+  await page.getByLabel("종류").selectOption("jeans");
+  await page.getByLabel("색").selectOption("indigo");
   await expect(page.locator("[data-check-verdict]")).toContainText(/새 코디 \d+개/);
   await expect(page.getByRole("link", { name: /판매처에서 보기/ })).toHaveAttribute("href", "https://shop.example.com/item/123");
+});
+test("a non-https or broken link is refused with a message", async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window as any).K.go("check", {}));
+  await page.getByLabel("상품 링크").fill("그냥 글자");
+  await page.getByRole("button", { name: "판단하기" }).click();
+  await expect(page.getByRole("alert")).toContainText(/링크/);
+  await expect(page.locator("[data-check-verdict]")).toHaveCount(0);
+});
+test("the plain (fallback) home offers it too", async ({ page }) => {
+  await page.goto("/?photos=0&ui=vanilla#/");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await page.getByRole("button", { name: /링크로 사도 될지 보기/ }).click();
+  await expect(page.getByRole("heading", { name: "이거 사도 될까?" })).toBeVisible();
 });

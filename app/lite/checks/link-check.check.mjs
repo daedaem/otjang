@@ -22,7 +22,7 @@ test('같은 종류·색이 있으면 겹친다고, 그 옷 이름과 함께 알
 test('없는 종류면 새 코디가 몇 개 생기는지 센다(옷장은 바꾸지 않는다)', () => {
   const M = closet();
   const before = M.getState().closet.length;
-  const r = M.checkCandidate({ kind: 'blazer', color: 'navy' });
+  const r = M.checkCandidate({ kind: 'jeans', color: 'indigo' });
   assert.equal(r.verdict, 'new');
   assert.ok(r.newOutfits > 0);
   assert.match(r.title, /새 코디 \d+개/);
@@ -56,4 +56,11 @@ test('링크 읽기: 목록에 있는 무신사 상품, 목록 밖 무신사, �
   assert.equal(M.readCandidateLink('https://www.musinsa.com/products/999999999').kind, 'external');
   assert.equal(M.readCandidateLink('https://shop.example.com/item/1').kind, 'external');
   assert.equal(M.readCandidateLink('그냥 글').ok, false);
+});
+
+test('겉옷은 코디 수 계산에 넣지 않는다고 밝힌다(새 코디 0을 "같이 입을 옷이 부족"으로 오해하지 않게)', () => {
+  const M = closet();
+  const r = M.checkCandidate({ kind: 'blazer', color: 'navy' });
+  assert.equal(r.verdict, 'new');
+  assert.match(r.lines.join(' '), /겉옷/);
 });
