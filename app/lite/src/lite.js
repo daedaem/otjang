@@ -152,6 +152,35 @@
     status: (keys) => api(`status?keys=${keys.map(encodeURIComponent).join(',')}`),
   };
 
+  // 코디 공유(/api/community/*, 대표 10-28 08:08·09:39). 서버 스위치가 꺼져 있으면 {code:'community_off'}만 돌아온다.
+  // 보내는 것은 화면이 고른 사진(JPEG로 다시 그림)·한마디·옷 종류·색·이름뿐이다. 미리보기에서는 보내지 않는다.
+  const community = async (path, { method = 'GET', body } = {}) => {
+    if (preview()) return { code: 'preview', message: '미리보기에서는 코디 공유를 쓰지 않아요.' };
+    let res;
+    try {
+      res = await fetch(`/api/community/${path}`, method === 'GET' || method === 'DELETE' ? { method } : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+    } catch { return { code: 'offline', message: '연결을 확인하고 다시 해 주세요.' }; }
+    const out = await res.json().catch(() => null);
+    resumeLogin(res, out);
+    return res.ok && out ? out : { code: out?.code || ERR[res.status] || 'error', message: out?.message || '잠시 뒤에 다시 해 주세요.' };
+  };
+  const seg = (s) => encodeURIComponent(String(s));
+  window.EOUL_COMMUNITY = {
+    status: () => community('status'),
+    join: (name, rules) => community('join', { method: 'POST', body: { name, rules } }),
+    feed: ({ cursor, mine } = {}) => community(`feed?${new URLSearchParams({ ...(cursor ? { cursor } : {}), ...(mine ? { mine: '1' } : {}) })}`),
+    post: (body) => community('posts', { method: 'POST', body }),
+    remove: (id) => community(`posts/${seg(id)}`, { method: 'DELETE' }),
+    report: (post, reason) => community('reports', { method: 'POST', body: { post, reason } }),
+    block: (post) => community('blocks', { method: 'POST', body: { post } }),
+    blocks: () => community('blocks'),
+    unblock: (key) => community(`blocks/${seg(key)}`, { method: 'DELETE' }),
+    leave: () => community('leave', { method: 'POST', body: { confirm: true } }),
+    review: () => community('review'),
+    act: (id, action) => community(`review/${seg(id)}`, { method: 'POST', body: { action } }),
+    photoUrl: (id) => `/api/community/photos/${seg(id)}`,
+  };
+
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }

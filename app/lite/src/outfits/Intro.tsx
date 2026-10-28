@@ -17,6 +17,11 @@ export function OutfitIntro({
       <header className="of-top">
         <span className="mark">내 옷으로</span>
         <span className="sp" />
+        {host.community ? (
+          <button type="button" className="quiet of-community" onClick={host.community}>
+            코디 공유
+          </button>
+        ) : null}
         <button
           type="button"
           className="icon"

@@ -521,3 +521,6 @@
 :root[data-look="v2"] .of-photo { border-radius: 2px; background: var(--ptile); }
 :root[data-look="v2"] .of-ai-summary { border-radius: 0; background: transparent; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px 0; }
 :root[data-look="v2"] .of-notice, :root[data-look="v2"] .of-hang { border-radius: 6px; }
+/* 코디 공유 입구(10-28). */
+.of-top .of-community { font-size: 14px; font-weight: 600; min-height: 44px; padding: 0 10px; }
+.of-card .of-share { font-size: 13px; min-height: 36px; margin-top: 4px; }

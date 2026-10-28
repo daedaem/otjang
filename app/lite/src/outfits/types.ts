@@ -139,6 +139,9 @@ export type OutfitHost = {
   product(id: string): void;
   compared(id: string, added: boolean): void;
   query(q: string): void;
+  // 코디 공유(대표 10-28 08:08). 없으면 버튼을 보이지 않는다.
+  community?(): void;
+  share?(pieces: { kind: string; color: string | null; label: string }[]): void;
   scene(label: string): Scene | null;
   weather: WeatherHost;
   request(value: OutfitRequest): Promise<unknown>;

@@ -7,6 +7,7 @@ import { handleWeather } from './functions/api/weather.js';
 import { handleRakuten } from './functions/api/rakuten.js';
 import { handleAdpick } from './functions/api/adpick.js';
 import { handleOpenProducts } from './functions/api/open-products.js';
+import { handleCommunity } from './functions/api/community.js';
 import { authorizePrivateRequest } from './functions/lib/private-access.js';
 import { handlePrivateSession } from './functions/lib/private-session.js';
 
@@ -46,6 +47,7 @@ export function createWorker({
   rakuten = handleRakuten,
   adpick = handleAdpick,
   openProducts = handleOpenProducts,
+  community = handleCommunity,
   privateSession = handlePrivateSession,
 } = {}) {
   return {
@@ -73,6 +75,9 @@ export function createWorker({
       if (url.pathname === '/api/rakuten') return rakuten(request, env);
       if (url.pathname === '/api/adpick' || url.pathname.startsWith('/api/adpick/')) return adpick(request, env);
       if (url.pathname === '/api/open-products' || url.pathname.startsWith('/api/open-products/')) return openProducts(request, env);
+      // 코디 공유: 지금 로그인은 본인 한 사람(비밀번호 세션)뿐이라 그 사람을 회원 'owner'이자 운영자로 넘긴다.
+      // 여러 회원 로그인(C4)이 생기기 전에는 community.js가 public 모드를 열지 않는다.
+      if (url.pathname.startsWith('/api/community/')) return community(request, env, { member: 'owner', operator: true });
       if (url.pathname === '/api/weather') {
         if (request.method !== 'GET') return new Response('GET만 받아요.', { status: 405, headers: privateHeaders });
         return weather(request, env);
