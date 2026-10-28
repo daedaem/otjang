@@ -17,9 +17,10 @@
     // 키·전용 D1·운영자 정보를 넣은 뒤 대표가 정한다. 운영자 이름·연락처·키는 여기 넣지 않고 대시보드 변수·Secret에 둔다.
     // keep_vars라도 이 파일의 값이 배포 때 대시보드 값을 덮는다. 끄려면 이 줄을 "off"로 바꾼다.
     "COMMUNITY_MODE": "private",
-    // 지인 테스트(대표 10-28 15:11~15:12): 초대 코드가 있는 사람만 이메일·비밀번호로 가입. 대표 외 Claude AI 하루 10번.
-    // 전체 AI 한도(DAILY/MONTHLY/MINUTE_LIMIT)는 본인과 회원이 함께 쓴다. 끄려면 MEMBER_APP_MODE를 "off"로 바꾼다.
-    "MEMBER_APP_MODE": "invite",
+    // 10-29: email/password is the normal entry. One administrator links using the existing owner proof once.
+    // Signup remains invitation-only; community public exposure and provider/rights gates are unchanged.
+    // Preserve the dedicated account DB and old owner signing secrets; do not reset data during migration.
+    "MEMBER_APP_MODE": "accounts",
     "MEMBER_AI_DAILY": "10"
   },
   "d1_databases": [

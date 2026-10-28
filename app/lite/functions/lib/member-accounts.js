@@ -11,6 +11,7 @@
 import { newSession, SESSION_COOKIE } from './member-session.js';
 import { clearOwnerCookie } from './auth-cookies.js';
 import { ACCOUNT_ACTIVE_KEY, memberStorageScope } from '../../src/domain/account-scope.js';
+import { appActor, primaryAdmin, bindPrimaryAdmin } from './primary-admin.js';
 
 const encoder = new TextEncoder();
 const ITERATIONS = 100_000;
@@ -97,7 +98,7 @@ function page(title, inner, script = '') {
   return new Response(html, { headers: { ...HEADERS, 'content-type': 'text/html; charset=utf-8',
     'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'` } });
 }
-const POST = `const post=async(p,b)=>{const r=await fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let o=null;try{o=await r.json()}catch{}if(r.ok){try{if(/^m-[a-f0-9]{32}$/.test(o?.scope||''))localStorage.setItem('${ACCOUNT_ACTIVE_KEY}',o.scope);if(p==='/_member/account/logout'||p==='/_member/account/delete')localStorage.setItem('${ACCOUNT_ACTIVE_KEY}','signed-out')}catch{}}return{ok:r.ok,status:r.status,body:o}};const notice=t=>{document.querySelector('#notice').textContent=t};`;
+const POST = `const post=async(p,b)=>{const r=await fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let o=null;try{o=await r.json()}catch{}if(r.ok){try{if(o?.scope==='owner'||/^m-[a-f0-9]{32}$/.test(o?.scope||''))localStorage.setItem('${ACCOUNT_ACTIVE_KEY}',o.scope);if(p==='/_member/account/logout'||p==='/_member/account/delete')localStorage.setItem('${ACCOUNT_ACTIVE_KEY}','signed-out')}catch{}}return{ok:r.ok,status:r.status,body:o}};const notice=t=>{document.querySelector('#notice').textContent=t};`;
 
 function signupPage(url) {
   const code = normalCode(url.searchParams.get('code') || '');
@@ -109,17 +110,39 @@ function signupPage(url) {
 <button type="submit">가입하기</button></form><p class="small">이미 가입했나요? <a href="/_member/signin">로그인</a></p>`,
   `${POST}document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();notice('확인하고 있어요.');const r=await post('/_member/password/signup',{code:document.querySelector('#code').value,email:document.querySelector('#email').value,password:document.querySelector('#password').value,age14:document.querySelector('#age').checked});if(r.ok){location.replace('/');return}notice(r.body?.message||'가입하지 못했어요.')});`);
 }
-function signinPage() {
-  return page('로그인', `<h1>로그인</h1><p>초대받아 가입한 이메일로 들어와요. 비밀번호를 잊으면 초대해 준 사람에게 알려 주세요.</p>
+function signinPage(accounts = false, setup = false) {
+  return page('로그인', `<h1>로그인</h1><p>${accounts ? '가입한 이메일과 비밀번호로 들어와요. 별도 앱 접속 비밀번호는 필요 없어요.' : '초대받아 가입한 이메일로 들어와요. 비밀번호를 잊으면 초대해 준 사람에게 알려 주세요.'}</p>
 <form id="f"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" required>
 <label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" required>
-<button type="submit">들어가기</button></form><p class="small">초대 코드가 있나요? <a href="/_member/signup">가입하기</a></p>`,
+<button type="submit">들어가기</button></form><p class="small">초대 코드가 있나요? <a href="/_member/signup">가입하기</a></p>${setup ? '<p class="small"><a href="/_private/admin-setup">관리자 계정 처음 연결하기</a></p>' : ''}`,
   `${POST}document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();notice('확인하고 있어요.');const r=await post('/_member/password/signin',{email:document.querySelector('#email').value,password:document.querySelector('#password').value});if(r.ok){location.replace('/');return}notice(r.body?.message||'로그인하지 못했어요.')});`);
 }
-function accountPage() {
-  return page('내 계정', `<h1>내 계정</h1><p>옷장·기록은 이 휴대폰에만 있어요. 계정마다 자료를 따로 보관해요. 삭제 전 앱 메뉴의 백업·복원으로 자료를 내보내 주세요. 삭제해도 이 기기 원본은 남지만 새 계정에 자동으로 연결되지 않아요.</p>
-<button id="out" class="line" type="button">로그아웃</button><button id="del" type="button">계정 지우기</button><p class="small"><a href="/">앱으로 돌아가기</a></p>`,
-  `${POST}let armed=false;document.querySelector('#out').onclick=async()=>{const r=await post('/_member/account/logout',{});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'로그아웃하지 못했어요.')};document.querySelector('#del').onclick=async()=>{if(!armed){armed=true;document.querySelector('#del').textContent='한 번 더 누르면 계정과 코디 공유 글이 지워져요';return}const r=await post('/_member/account/delete',{confirm:true});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'지우지 못했어요.')};`);
+function adminSetupPage() {
+  return page('관리자 계정 연결', `<h1>관리자 계정 만들기</h1><p>처음 한 번만 연결해요. 이후에는 아래 이메일로 로그인하면 관리 기능까지 사용할 수 있어요. 기존 이 기기의 본인 옷장·사진·기록은 그대로 이어집니다.</p><p class="small">이메일은 로그인 ID로 사용해요. 메일 발송·이메일 소유 인증은 아직 제공하지 않아요. 비밀번호는 안전한 곳에 보관해 주세요.</p>
+<form id="f"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" required>
+<label for="password">비밀번호 (8자 이상)</label><input id="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+<label for="confirm">비밀번호 확인</label><input id="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+<button type="submit">이 계정으로 관리자 연결</button></form>`,
+`${POST}let busy=false;document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget,fields=[...form.querySelectorAll('input,button')],payload={email:document.querySelector('#email').value,password:document.querySelector('#password').value,confirm:document.querySelector('#confirm').value};busy=true;fields.forEach(f=>f.disabled=true);notice('연결하고 있어요.');try{const r=await post('/_private/admin-setup',payload);if(r.ok){location.replace(r.body?.loginRequired?'/_member/signin':'/');return}notice(r.body?.message||'계정을 연결하지 못했어요. 다시 확인해 주세요.')}catch{notice('연결을 확인하고 다시 시도해 주세요.')}finally{busy=false;fields.forEach(f=>f.disabled=false)}});`);
+}
+async function adminSetup(request, env, db, now) {
+  const b=await body(request,['email','password','confirm']);
+  const email=normalEmail(b?.email);
+  if (!email || typeof b?.password !== 'string' || b.password.length<8 || b.password.length>128 || b.confirm!==b.password) return fail(400,'invalid_setup','이메일과 8자 이상 비밀번호·확인을 다시 확인해 주세요.');
+  if (await primaryAdmin(env)) return fail(409,'admin_already_linked','이미 관리자 계정이 연결됐어요. 이메일로 로그인해 주세요.');
+  const key=await emailKey(db,email);
+  if (await db.prepare('SELECT 1 FROM member_accounts WHERE email_key=?1').bind(key).first()) return fail(409,'email_taken','이미 가입한 이메일이에요. 다른 로그인 ID를 사용해 주세요.');
+  const member=hex(crypto.getRandomValues(new Uint8Array(16))), salt=crypto.getRandomValues(new Uint8Array(16));
+  const hash=await passwordHash(b.password,salt);
+  const result=await bindPrimaryAdmin(request,env,member,{now:()=>now,statements:[db.prepare("INSERT INTO member_accounts (member,email_key,salt,hash,iterations,invite,created_at) VALUES (?1,?2,?3,?4,?5,'primary-admin',?6)").bind(member,key,hex(salt),hash,ITERATIONS,now)]});
+  if (!result.ok) { const out=await result.json(); return fail(result.status,out.code,'관리자 연결을 마치지 못했어요. 이미 연결했다면 이메일로 로그인해 주세요.'); }
+  try { return json(200,{ok:true,scope:'owner'},[await newSession(env,member,'password',now),clearOwnerCookie()]); }
+  catch { return json(201,{ok:true,loginRequired:true}); } // Account and role exist; retry only the normal login.
+}
+function accountPage(admin = false) {
+  return page('내 계정', `<h1>내 계정</h1>${admin ? '<p>관리자 계정으로 로그인했어요. 본인 옷장·사진·기록과 관리 기능을 함께 사용해요.</p><p class="small">마지막 관리자 계정은 여기서 삭제하지 않아요. 계정 복구가 필요하면 운영 인수 문서의 복구 절차를 확인해 주세요.</p>' : '<p>옷장·기록은 이 휴대폰에만 있어요. 계정마다 자료를 따로 보관해요. 삭제 전 앱 메뉴의 백업·복원으로 자료를 내보내 주세요. 삭제해도 이 기기 원본은 남지만 새 계정에 자동으로 연결되지 않아요.</p>'}
+<button id="out" class="line" type="button">로그아웃</button>${admin ? '' : '<button id="del" type="button">계정 지우기</button>'}<p class="small"><a href="/">앱으로 돌아가기</a></p>`,
+  `${POST}let armed=false;document.querySelector('#out').onclick=async()=>{const r=await post('/_member/account/logout',{});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'로그아웃하지 못했어요.')};const removeButton=document.querySelector('#del');if(removeButton)removeButton.onclick=async()=>{if(!armed){armed=true;removeButton.textContent='한 번 더 누르면 계정과 코디 공유 글이 지워져요';return}const r=await post('/_member/account/delete',{confirm:true});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'지우지 못했어요.')};`);
 }
 async function listInvites(db, origin) {
   const { results } = await db.prepare('SELECT code, label, created_at, used_at, revoked_at FROM member_invites ORDER BY created_at DESC').all();
@@ -191,7 +214,8 @@ async function signin(request, env, db, now) {
   const hash = await passwordHash(b.password, salt, row ? Number(row.iterations) : ITERATIONS); // 없는 계정도 같은 시간을 쓴다
   if (!row || !same(hash, row.hash)) return fail(401, 'invalid_login', '이메일이나 비밀번호가 맞지 않아요.');
   await db.prepare('DELETE FROM member_login_attempts WHERE id = ?1').bind(attempt).run();
-  return json(200, { ok: true, scope: await memberStorageScope(row.member) }, [await newSession(env, row.member, 'password', now), clearOwnerCookie()]);
+  const actor=env.MEMBER_APP_MODE==='accounts' ? await appActor(env,row.member) : null;
+  return json(200, { ok: true, scope: actor?.role==='owner' ? 'owner' : await memberStorageScope(row.member) }, [await newSession(env, row.member, 'password', now), clearOwnerCookie()]);
 }
 
 function sessionToken(request) {
@@ -247,7 +271,7 @@ async function removeMember(db, member, after = []) {
 
 // who: {} 로그인 전, {member} 초대 회원, {owner:true} 본인. Worker가 정한다.
 export async function handleMemberAccounts(request, env = {}, who = {}, { now = Date.now } = {}) {
-  if (env.MEMBER_APP_MODE !== 'invite') return null;
+  if (!['invite','accounts'].includes(env.MEMBER_APP_MODE)) return null;
   const db = dbOf(env);
   if (!db) return fail(503, 'not_configured', '저장소가 연결되지 않았어요.');
   const url = new URL(request.url);
@@ -257,18 +281,27 @@ export async function handleMemberAccounts(request, env = {}, who = {}, { now = 
     await ensureSchema(db);
     const at = now();
     if (path === '/_member/signup' && method === 'GET') return signupPage(url);
-    if (path === '/_member/signin' && method === 'GET') return signinPage();
+    if (path === '/_member/signin' && method === 'GET') return signinPage(env.MEMBER_APP_MODE==='accounts',env.MEMBER_APP_MODE==='accounts' && !(await primaryAdmin(env)));
+    if (path === '/_private/admin-setup' && env.MEMBER_APP_MODE==='accounts') {
+      if (who.owner!==true) return fail(403,'owner_only','본인 인증 후 최초 관리자 계정을 연결할 수 있어요.');
+      if (method==='GET') return (await primaryAdmin(env)) ? new Response(null,{status:303,headers:{...HEADERS,location:'/_member/signin'}}) : adminSetupPage();
+      if (method==='POST') return await adminSetup(request,env,db,at);
+      return fail(405,'method_not_allowed','지원하지 않는 요청이에요.');
+    }
     if (path === '/_member/password/signup' && method === 'POST') return await signup(request, env, db, at);
     if (path === '/_member/password/signin' && method === 'POST') return await signin(request, env, db, at);
     if (path.startsWith('/_member/account')) {
       if (!who.member) return fail(401, 'unauthorized', '로그인이 필요해요.');
-      if (path === '/_member/account' && method === 'GET') return accountPage();
+      if (path === '/_member/account' && method === 'GET') return accountPage(who.owner===true && env.MEMBER_APP_MODE==='accounts');
       if (path === '/_member/account/logout' && method === 'POST') {
         const token = sessionToken(request);
         if (token) await db.prepare('DELETE FROM member_sessions WHERE token_hash = ?1').bind(await sha256(token)).run();
         return json(200, { ok: true }, [clearCookie, clearOwnerCookie()]);
       }
-      if (path === '/_member/account/delete' && method === 'POST') return await deleteAccount(request, db, who.member);
+      if (path === '/_member/account/delete' && method === 'POST') {
+        if (env.COMMUNITY_DB && (await primaryAdmin(env,{create:false}))===who.member) return fail(409,'primary_admin','관리자 계정은 여기서 삭제할 수 없어요. 운영 복구 절차를 사용해 주세요.');
+        return await deleteAccount(request, db, who.member);
+      }
     }
     if (path.startsWith('/_member/invites')) {
       if (who.owner !== true) return fail(403, 'owner_only', '초대는 운영자만 만들 수 있어요.');

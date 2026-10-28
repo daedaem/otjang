@@ -6,6 +6,12 @@ import {
 } from "../functions/lib/readiness.js";
 import { createWorker } from "../worker.js";
 const url = "https://app.test/_private/readiness";
+test("password account setup is configuration, not a claim of real login or role ownership",async()=>{
+  const db={prepare(){throw Error('no account rows may be read');}};
+  const snapshot=await readinessSnapshot(new Request(url),{MEMBER_APP_MODE:'accounts',COMMUNITY_DB:db,ASSETS:{fetch:async()=>Response.json({commit:'a'.repeat(40)})}});
+  assert.deepEqual(snapshot.accountLogin,{enabled:true,configured:true,realSignin:'not_checked'});
+  assert.equal(snapshot.invite.configured,true);
+});
 function fixture() {
   const statements = [];
   const db = {
