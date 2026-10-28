@@ -98,7 +98,21 @@ export function Menu({
         ? row("data-look", look ? "이전 디자인으로 보기" : "새 디자인으로 보기", "ph-sparkle", onLook)
         : null}
       {row("data-reset", "처음부터 다시", "ph-arrow-counter-clockwise", onReset)}
+      <RoleLink />
     </div>
+  );
+}
+// 지인 테스트(10-28 15:12): Worker가 붙인 역할 표시로 본인에게는 '지인 초대', 초대 회원에게는 '내 계정'을 보여 준다.
+// 서버가 그리는 화면으로 넘어가는 링크다(앱 화면 밖).
+function RoleLink() {
+  const role = document.querySelector<HTMLMetaElement>('meta[name="hangit-role"]')?.content;
+  if (role !== "owner" && role !== "member") return null;
+  const [href, label, icon] = role === "owner" ? ["/_member/invites", "지인 초대", "ph-user-plus"] : ["/_member/account", "내 계정", "ph-user"];
+  return (
+    <a className="row" href={href} data-role-link="">
+      <span className="grow t5">{label}</span>
+      <i className={`ph ${icon} arr`} />
+    </a>
   );
 }
 export function Confirm({

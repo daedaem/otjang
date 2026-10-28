@@ -84,6 +84,7 @@ JSON 하나로만 답하세요. 예: {"summary":"한 문장 총평","ranking":[{
     sampling_disabled: '이 계정에서는 AI를 쓸 수 없어서 기본 순서예요.',
     not_configured: 'AI 순위가 아직 설정되지 않아 기본 순서로 보여 드려요.',
     daily_limit: '오늘 AI 순위 사용량을 다 써서 기본 순서로 보여 드려요.',
+    member_daily_limit: '오늘 쓸 수 있는 AI 10번을 다 써서 기본 순서로 보여 드려요.',
     monthly_limit: '이번 달 AI 사용 한도에 도달해 기본 순서로 보여 드려요.',
     budget_unavailable: 'AI 사용량을 확인할 수 없어 기본 순서로 보여 드려요.',
     unauthorized: 'AI 사용 권한을 확인할 수 없어 기본 순서로 보여 드려요.',

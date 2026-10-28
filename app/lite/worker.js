@@ -9,6 +9,8 @@ import { handleAdpick } from './functions/api/adpick.js';
 import { handleOpenProducts } from './functions/api/open-products.js';
 import { handleCommunity, publicMissing } from './functions/api/community.js';
 import { handleMemberAuth, memberFromRequest } from './functions/lib/member-session.js';
+import { handleMemberAccounts } from './functions/lib/member-accounts.js';
+import { reserveRankBudget } from './functions/lib/rank-budget.js';
 import { authorizePrivateRequest } from './functions/lib/private-access.js';
 import { handlePrivateSession } from './functions/lib/private-session.js';
 
@@ -79,6 +81,43 @@ async function publicCommunity(request, env, url, { authorize, community, member
   return null;
 }
 
+const INVITE_PUBLIC = new Set(['/_member/signup', '/_member/signin', '/_member/password/signup', '/_member/password/signin']);
+// 화면(HTML)에 역할 표시를 붙인다. 회원에게는 바깥 사진(무신사 등)을 막는 CSP를 더한다.
+async function withRole(asset, role) {
+  const type = asset.headers.get('content-type') || '';
+  let response;
+  if (asset.ok && type.includes('text/html')) {
+    const html = (await asset.text()).replace('<head>', `<head><meta name="hangit-role" content="${role}">`);
+    response = new Response(html, { status: asset.status, headers: asset.headers });
+  } else response = new Response(asset.body, asset);
+  for (const [name, value] of Object.entries(privateHeaders)) response.headers.set(name, value);
+  if (role === 'member' && type.includes('text/html')) response.headers.set('Content-Security-Policy', "img-src 'self' data: blob:");
+  return response;
+}
+async function memberApp(request, env, url, id, h) {
+  const path = url.pathname;
+  const write = !['GET', 'HEAD'].includes(request.method);
+  if (write && request.headers.get('origin') !== url.origin) return Response.json({ code: 'invalid_origin' }, { status: 403, headers: privateHeaders });
+  if (path.startsWith('/_member/invites')) return Response.json({ code: 'owner_only' }, { status: 403, headers: privateHeaders });
+  if (path.startsWith('/_member/')) return h.accounts(request, env, { member: id });
+  if (path.startsWith('/_private/')) return Response.json({ code: 'owner_only' }, { status: 403, headers: privateHeaders });
+  if (path === '/api/rank') {
+    if (request.method !== 'POST') return new Response('POST만 받아요.', { status: 405, headers: privateHeaders });
+    return h.rank(request, env, { member: id, authorize: async () => ({ ok: true }), reserve: (e) => reserveRankBudget(e, { member: id }) });
+  }
+  if (path.startsWith('/api/community/')) return h.community(request, env, { member: id, operator: false });
+  if (path.startsWith('/api/catalog/')) return h.catalog(request, env);
+  if (path === '/api/rakuten') return h.rakuten(request, env);
+  if (path === '/api/adpick' || path.startsWith('/api/adpick/')) return h.adpick(request, env);
+  if (path === '/api/open-products' || path.startsWith('/api/open-products/')) return h.openProducts(request, env);
+  if (path === '/api/weather') {
+    if (request.method !== 'GET') return new Response('GET만 받아요.', { status: 405, headers: privateHeaders });
+    return h.weather(request, env);
+  }
+  if (path.startsWith('/api/')) return Response.json({ code: 'not_found' }, { status: 404, headers: privateHeaders });
+  return withRole(await env.ASSETS.fetch(request), 'member');
+}
+
 // Dependencies can only be supplied by code/tests. HTTP input and environment variables
 // cannot replace or bypass authentication in the deployed default export.
 export function createWorker({
@@ -92,6 +131,7 @@ export function createWorker({
   community = handleCommunity,
   member = memberFromRequest,
   memberAuth = handleMemberAuth,
+  accounts = handleMemberAccounts,
   privateSession = handlePrivateSession,
 } = {}) {
   return {
@@ -104,6 +144,9 @@ export function createWorker({
         const open = await publicCommunity(request, env, url, { authorize, community, member, memberAuth });
         if (open) return open;
       }
+      const invite = env?.MEMBER_APP_MODE === 'invite';
+      // 초대 회원 가입·로그인 화면(대표 10-28 15:12). 로그인 없이 열린다. 초대 코드가 있어야 가입된다.
+      if (invite && INVITE_PUBLIC.has(url.pathname)) return accounts(request, env, {});
       // Only these exact authentication endpoints may answer before the private gate.
       // Their handler owns method/origin/credential validation. Access/default and
       // unknown modes retain their existing gate even on the login paths.
@@ -116,7 +159,15 @@ export function createWorker({
       let access;
       try { access = await authorize(request, env); }
       catch { return denied(null, request, env); }
-      if (access?.ok !== true) return denied(access, request, env);
+      if (access?.ok !== true) {
+        // 본인이 아니면 초대 회원 세션을 본다. 회원은 앱을 쓰되 AI는 하루 한도, 무신사 사진은 막고, 초대 관리는 못 한다.
+        if (invite) {
+          const id = await member(request, env).catch(() => null);
+          if (id) return memberApp(request, env, url, id, { rank, catalog, weather, rakuten, adpick, openProducts, community, accounts });
+        }
+        return denied(access, request, env);
+      }
+      if (invite && url.pathname.startsWith('/_member/')) return accounts(request, env, { owner: true });
 
       if (url.pathname === '/api/rank') {
         if (request.method !== 'POST') return new Response('POST만 받아요.', { status: 405, headers: privateHeaders });
@@ -136,6 +187,7 @@ export function createWorker({
       // The internal assets cache may serve bytes only after verification above.
       // Also prevent a downstream shared cache from replaying private responses.
       const asset = await env.ASSETS.fetch(request);
+      if (invite) return withRole(asset, 'owner');
       const response = new Response(asset.body, asset);
       for (const [name, value] of Object.entries(privateHeaders)) response.headers.set(name, value);
       return response;

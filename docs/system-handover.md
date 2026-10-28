@@ -284,3 +284,16 @@ B5b #84는 head59361e30의 최종 CI11개·실제220개 두 작업/Node336개·�
 - 이메일 인증 로그인(10-28 12:26): `POST /_member/email/start`(6자리 코드 메일), `POST /_member/email/verify`(세션). 설정 `EMAIL_FROM`(인증된 내 도메인 주소) + `RESEND_API_KEY` 또는 Cloudflare 바인딩 `EMAIL`(Email Sending). 이메일은 HMAC 값만, 코드는 해시만 저장(10분, 5번 틀리면 끝). 한 주소 한 시간 5통, 서버 하루 `EMAIL_DAILY_MAX`(기본 90). 이메일만 설정해도 public의 로그인 조건을 채운다.
 - `MEMBER_SESSION_SECRET`은 바꾸지 않는다(회원 id가 이 값에서 나온다). public 자동 숨김은 가입 3일 지난 회원의 신고만 센다(`COMMUNITY_REPORTER_MIN_DAYS`).
 - 검증: `checks/community.check.mjs`(13개), `checks/community-public.check.mjs`(12개, 이메일 준비 포함, 공개 경로·준비 조건·출처 검사), `checks/member-session.check.mjs`(10개, 가짜 공급자·가짜 메일), `e2e/community.spec.ts`(브라우저 12개). 실제 D1, 실제 카카오·구글, 실기기에서는 아직 켜 보지 않았다.
+
+## 지인 테스트 초대 회원 — 2026-10-28
+
+대표 10-28 15:11~15:12에 "가입·로그인을 만들면 되잖아요", 초대 코드 있는 사람만, 대표 외 AI 하루 10번, 무신사 사진은 다른 회원에게 끔(추천대로)이라고 정했다.
+
+- 켜는 곳: `wrangler.jsonc` vars `MEMBER_APP_MODE=invite`, `MEMBER_AI_DAILY=10`. 끄려면 `MEMBER_APP_MODE`를 `off`로 바꾼다. 대표가 넣을 Secret은 없다(이메일을 바꿀 비밀값은 서버가 D1에 만들어 둔다).
+- 대표: 앱 메뉴(⋯) → **지인 초대**(`/_member/invites`)에서 이름 메모를 넣고 초대 코드를 만든다. 가입 링크가 복사된다. 코드는 한 번만 쓰고, 쓰기 전에는 취소할 수 있다.
+- 지인: 링크(`/_member/signup?code=…`)에서 이메일·비밀번호(8자 이상)·만 14세 확인으로 가입한다. 다음부터는 `/_member/signin`에서 들어온다. 본인 로그인 화면에도 이 두 링크가 보인다. 메뉴 **내 계정**에서 로그아웃·계정 지우기를 한다.
+- 저장: `member_accounts`(무작위 회원 id, 이메일 HMAC, PBKDF2-SHA256 10만 회 해시·소금), `member_invites`, `member_login_attempts`(15분에 이메일당 10번, 전체 200번), `member_ai_usage`(회원 id·날짜), 세션은 `member_sessions`(토큰 해시, 30일). 이메일·비밀번호 원문은 저장하지 않는다. 비밀번호를 잊으면 초대한 사람에게 알리고, 대표가 새 초대를 보낸다(재설정 메일은 없음).
+- 회원이 쓰는 것: 앱 전체(옷장·기록은 각자 휴대폰), 상품 검색, Claude AI(하루 10번, 전체 한도 안), 날씨, 코디 공유(각자 다른 회원, 운영자 아님).
+- 회원에게 막는 것: 무신사 상품 사진(화면은 `<meta name="hangit-role" content="member">`로 색 칸, 응답 CSP `img-src 'self' data: blob:`로 바깥 사진 차단 — 라쿠텐 등 다른 바깥 사진도 같이 막힌다), 초대 관리, `/_private/*`.
+- 대표는 그대로다. 화면에 `hangit-role=owner`가 붙어 메뉴에 '지인 초대'가 생길 뿐이다.
+- 검증: `checks/member-accounts.check.mjs`(12개), `checks/community-config.check.mjs`, `e2e/member-role.spec.ts`(5개). 실제 배포에서 가입해 본 적은 아직 없다.

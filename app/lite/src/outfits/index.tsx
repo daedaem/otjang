@@ -28,6 +28,7 @@ const whyText = (code: string) =>
     not_configured: "AI 연결을 확인하지 못했어요.",
     provider_access_denied: "AI 제공자가 이 요청을 허용하지 않았어요.",
     daily_limit: "오늘 AI 사용 한도에 도달했어요.",
+    member_daily_limit: "오늘 쓸 수 있는 AI 10번을 다 썼어요. 내일 다시 해 주세요.",
     monthly_limit: "이번 달 AI 사용 한도에 도달했어요.",
     rate_limited: "AI 요청이 많아 잠시 뒤에 다시 시도해 주세요.",
     budget_unavailable: "AI 사용 한도를 확인하지 못했어요.",
