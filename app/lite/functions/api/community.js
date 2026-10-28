@@ -156,7 +156,7 @@ async function status(env, db, who) {
     reviewDays: reviewDays(env),
     isOperator: who.operator === true,
     boards: COMMUNITY_BOARDS,
-    limits: { textMax: COMMUNITY_LIMITS.textMax, piecesMax: COMMUNITY_LIMITS.piecesMax, photosMax: COMMUNITY_LIMITS.photosMax, photoBytesMax: COMMUNITY_LIMITS.photoBytesMax },
+    limits: { textMax: COMMUNITY_LIMITS.textMax, piecesMax: COMMUNITY_LIMITS.piecesMax, photosMax: COMMUNITY_LIMITS.photosMax, photoBytesMax: COMMUNITY_LIMITS.photoBytesMax, writesPerHour: POSTS_PER_HOUR },
   });
 }
 
@@ -236,6 +236,21 @@ async function postingLimit(db, member, now) {
 }
 const limited = () => fail(429, 'hourly_limit', `글 작성·수정은 한 시간에 합쳐 ${POSTS_PER_HOUR}번까지 할 수 있어요.`);
 
+// 옛 DB에서 빠진 게시 예약만 보충한다. 이전 예약은 게시 시각과 회원으로 짝을 맞춘다.
+// 같은 시각의 여러 글/기존 예약을 함께 세며, 수정 예약은 게시 예약과 구분한다.
+// MATERIALIZED가 INSERT 전 스냅샷을 고정하고, 이 문장도 실제 쓰기와 같은 batch에 넣는다.
+function legacyReservations(db, member, now) {
+  return db.prepare(`WITH recent AS MATERIALIZED (
+    SELECT p.id, p.member, p.created_at,
+      ROW_NUMBER() OVER (PARTITION BY p.member, p.created_at ORDER BY p.id) AS position,
+      (SELECT COUNT(*) FROM community_post_usage u WHERE u.member = p.member
+        AND u.created_at = p.created_at AND u.id NOT LIKE 'edit:%') AS reserved
+    FROM community_posts p WHERE p.member = ?1 AND p.created_at > ?2)
+    INSERT OR IGNORE INTO community_post_usage (id, member, created_at)
+    SELECT 'legacy:' || id, member, created_at FROM recent WHERE position > reserved`)
+    .bind(member, now - HOUR);
+}
+
 async function createPost(request, env, db, who, now) {
   const { body, error } = await readJson(request);
   if (error) return error;
@@ -261,6 +276,7 @@ async function createPost(request, env, db, who, now) {
   const id = crypto.randomUUID();
   const statements = [
     db.prepare('DELETE FROM community_post_usage WHERE created_at <= ?1').bind(now - HOUR),
+    legacyReservations(db, who.member, now),
     // 한도 확인·예약·삽입을 같은 트랜잭션 안에 둬 동시 제출도 전 게시판의 상한을 지킨다.
     db.prepare(`INSERT INTO community_posts (id, member, text, pieces, photos, created_at)
       SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE
@@ -275,12 +291,12 @@ async function createPost(request, env, db, who, now) {
       .bind(id, checked.post.board ?? 'outfits', checked.post.title || '', checked.post.sale ? JSON.stringify(checked.post.sale) : null, now, who.member),
     db.prepare(`INSERT INTO community_post_usage (id, member, created_at)
       SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM community_posts WHERE id = ?4 AND member = ?2)`)
-      .bind(crypto.randomUUID(), who.member, now, id),
+      .bind('post:' + id, who.member, now, id),
     ...photos.map((p, i) => db.prepare(`INSERT INTO community_photos (id, post, member, idx, data, size, created_at)
       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7 WHERE EXISTS (SELECT 1 FROM community_posts WHERE id = ?2 AND member = ?3)`)
       .bind(crypto.randomUUID(), id, who.member, i, p.data, p.size, now)),
   ];
-  const [, inserted] = await db.batch(statements);
+  const [, , inserted] = await db.batch(statements);
   if (!inserted.meta?.changes) {
     if (await postingLimit(db, who.member, now)) return limited();
     return fail(507, 'storage_full', '사진 저장 한도에 닿았어요. 사진 없이 올리거나 잠시 뒤에 다시 해 주세요.');
@@ -302,9 +318,10 @@ async function editPost(request, db, who, id, now) {
   if ((checked.post.board ?? 'outfits') !== board || JSON.stringify(checked.post.pieces) !== JSON.stringify(JSON.parse(row.pieces)))
     return fail(400, 'immutable', '수정할 때는 게시판·옷 조각·사진을 바꿀 수 없어요.');
   if (await postingLimit(db, who.member, now)) return limited();
-  const token = crypto.randomUUID();
-  const [, saved] = await db.batch([
+  const token = 'edit:' + crypto.randomUUID();
+  const [, , saved] = await db.batch([
     db.prepare('DELETE FROM community_post_usage WHERE created_at <= ?1').bind(now - HOUR),
+    legacyReservations(db, who.member, now),
     db.prepare(`INSERT INTO community_post_details (post, board, title, sale, revision, updated_at, edit_token)
       SELECT p.id, ?4, ?5, ?6, 1, ?7, ?8 FROM community_posts p
       WHERE p.id = ?1 AND p.member = ?2
@@ -325,8 +342,11 @@ async function editPost(request, db, who, id, now) {
   return reply(200, { ok: true, revision: body.revision + 1 });
 }
 
-async function deletePost(db, who, id) {
-  const [, , , gone] = await db.batch([
+async function deletePost(db, who, id, now) {
+  const own = await db.prepare('SELECT id FROM community_posts WHERE id = ?1 AND member = ?2').bind(id, who.member).first();
+  if (!own) return fail(404, 'not_found', '글을 찾지 못했어요.');
+  const [, , , , gone] = await db.batch([
+    legacyReservations(db, who.member, now),
     db.prepare('DELETE FROM community_photos WHERE post = ?1 AND EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?2)').bind(id, who.member),
     db.prepare('DELETE FROM community_reports WHERE post = ?1 AND EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?2)').bind(id, who.member),
     db.prepare('DELETE FROM community_post_details WHERE post = ?1 AND EXISTS (SELECT 1 FROM community_posts WHERE id = ?1 AND member = ?2)').bind(id, who.member),
@@ -395,11 +415,12 @@ async function blocks(request, url, db, who, now, rest) {
   return fail(405, 'method', '지원하지 않는 요청이에요.');
 }
 
-async function leave(request, env, db, who) {
+async function leave(request, env, db, who, now) {
   const { body, error } = await readJson(request);
   if (error) return error;
   if (body?.confirm !== true) return fail(400, 'confirm_required', '나가기를 한 번 더 확인해 주세요.');
   await db.batch([
+    legacyReservations(db, who.member, now),
     db.prepare('DELETE FROM community_photos WHERE member = ?1').bind(who.member),
     db.prepare('DELETE FROM community_reports WHERE member = ?1 OR post IN (SELECT id FROM community_posts WHERE member = ?1)').bind(who.member),
     db.prepare('DELETE FROM community_post_details WHERE post IN (SELECT id FROM community_posts WHERE member = ?1)').bind(who.member),
@@ -441,7 +462,7 @@ async function review(request, db, who, now, rest) {
   if (request.method === 'POST' && rest) {
     const { body, error } = await readJson(request);
     if (error) return error;
-    const post = await db.prepare('SELECT id FROM community_posts WHERE id = ?1').bind(rest).first();
+    const post = await db.prepare('SELECT id, member FROM community_posts WHERE id = ?1').bind(rest).first();
     if (!post) return fail(404, 'not_found', '글을 찾지 못했어요.');
     const reason = REASONS.has(body?.reason) ? body.reason : null;
     const log = (action) => db.prepare('INSERT INTO community_log (id, post, action, reason, reports, first_report_at, at) VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5)')
@@ -452,6 +473,7 @@ async function review(request, db, who, now, rest) {
       await db.batch([db.prepare('UPDATE community_posts SET hidden = ?2, hidden_at = ?3 WHERE id = ?1').bind(post.id, reason || 'operator', now), log('hide')]);
     } else if (body?.action === 'delete') {
       await db.batch([
+        legacyReservations(db, post.member, now),
         db.prepare('DELETE FROM community_photos WHERE post = ?1').bind(post.id),
         db.prepare('DELETE FROM community_reports WHERE post = ?1').bind(post.id),
         db.prepare('DELETE FROM community_post_details WHERE post = ?1').bind(post.id),
@@ -485,7 +507,7 @@ export async function handleCommunity(request, env = {}, who = {}, { now = Date.
     const method = request.method;
     if (section === 'status' && method === 'GET') return await status(env, db, who);
     if (section === 'join' && method === 'POST') return await join(request, db, who, at);
-    if (section === 'leave' && method === 'POST') return await leave(request, env, db, who);
+    if (section === 'leave' && method === 'POST') return await leave(request, env, db, who, at);
     if (section === 'photos' && method === 'GET' && rest) return await photo(db, who, rest);
     if (section === 'review') return await review(request, db, who, at, rest);
     // 아래는 가입한 회원만.
@@ -494,7 +516,7 @@ export async function handleCommunity(request, env = {}, who = {}, { now = Date.
     if (section === 'feed' && method === 'GET') return await feed(url, db, who);
     if (section === 'posts' && method === 'POST' && !rest) return await createPost(request, env, db, who, at);
     if (section === 'posts' && method === 'PATCH' && rest) return await editPost(request, db, who, rest, at);
-    if (section === 'posts' && method === 'DELETE' && rest) return await deletePost(db, who, rest);
+    if (section === 'posts' && method === 'DELETE' && rest) return await deletePost(db, who, rest, at);
     if (section === 'reports' && method === 'POST') return await report(request, env, db, who, at);
     if (section === 'blocks') return await blocks(request, url, db, who, at, rest);
     return fail(404, 'not_found', '없는 주소예요.');

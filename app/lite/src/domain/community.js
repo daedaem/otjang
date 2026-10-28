@@ -29,7 +29,7 @@ export const REPORT_REASONS = Object.freeze([
   ['rights', '내 사진이거나 남의 사진을 허락 없이 썼어요'],
   ['private', '얼굴·주소 등 개인 정보가 보여요'],
   ['abuse', '욕설·혐오·괴롭힘'],
-  ['ad', '광고·홍보'],
+  ['ad', '상업 광고·무단 홍보'],
 ]);
 export const COMMUNITY_RULES = Object.freeze([
   '직접 찍었거나 올려도 되는 사진만 올려 주세요.',

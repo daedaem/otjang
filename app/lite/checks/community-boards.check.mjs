@@ -70,6 +70,9 @@ test('sale facts are explicit bounded author input, including source URL, percen
 
 test('three boards have isolated feeds and mine filters, and invalid boards never silently fall back', async () => {
   const f = fixture(); await f.join();
+  const status = await f.call('a', 'GET', 'status');
+  assert.deepEqual(status.body.boards.map(b => b.id), ['outfits', 'sale', 'free']);
+  assert.equal(status.body.limits.writesPerHour, 10);
   for (const [member, value] of [['a', outfit()], ['a', sale()], ['b', talk()]]) {
     assert.equal((await post(f, member, value)).status, 200); f.tick();
   }
@@ -277,4 +280,12 @@ test('deleting a legacy post as the first upgrade action cannot erase its recent
   assert.equal((await f.call('a', 'DELETE', 'posts/' + ids[0])).status, 200);
   assert.equal((await post(f, 'a', sale())).status, 429);
   assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_posts').get().n, 9);
+});
+
+test('first legacy edits share the upgraded allowance and cannot be mistaken for old post reservations', async () => {
+  const f = fixture(); await f.join(); const ids = seedLegacy(f, 9, 4);
+  assert.equal((await f.call('a', 'PATCH', 'posts/' + ids[0], { post: outfit(), revision: 0 })).status, 200);
+  assert.equal((await post(f, 'a', sale())).status, 429);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM community_post_usage').get().n, 10);
+  assert.equal(f.db.raw.prepare("SELECT COUNT(*) n FROM community_post_usage WHERE id LIKE 'edit:%'").get().n, 1);
 });
