@@ -85,7 +85,9 @@ function GarmentCard({
         {!g.trial && !host.core.boot?.preview && (
           <label className={`wr-upload ${busy ? "wr-disabled" : ""}`}>
             <i className="ph ph-camera wr-act-icon" aria-hidden="true" />
-            <span className="wr-act-text">{g.photoId ? "사진 바꾸기" : "내 사진"}</span>
+            <span className="wr-act-text">
+              {g.photoId ? "사진 바꾸기" : "내 사진"}
+            </span>
             <input
               data-photo-input
               aria-label={`${g.label} 내 사진`}
@@ -216,6 +218,7 @@ function Closet({ host }: { host: ClosetHost }) {
   const state = host.core.getState();
   const [sort, setSort] = useState(host.session.sort);
   const [brand, setBrand] = useState(host.session.brand);
+  const [toolsOpen, setToolsOpen] = useState(!!host.session.toolsOpen);
   const [selected, setSelected] = useState(host.session.selected);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -240,8 +243,12 @@ function Closet({ host }: { host: ClosetHost }) {
   // lengths keep their ratio because only the tallest size changes.
   const tallestFor = (wide: boolean) =>
     document.documentElement.dataset.look === "v2"
-      ? wide ? 280 : 220
-      : wide ? 196 : 144;
+      ? wide
+        ? 280
+        : 220
+      : wide
+        ? 196
+        : 144;
   const [tallestPx, setTallestPx] = useState(() =>
     tallestFor(matchMedia("(min-width:760px)").matches),
   );
@@ -275,6 +282,7 @@ function Closet({ host }: { host: ClosetHost }) {
     ]),
   );
   const effectiveBrand = brands.includes(brand) ? brand : "";
+  const modern = document.documentElement.dataset.look === "v2";
   const filtered = garments.filter(
     (g) => !effectiveBrand || g.brand === effectiveBrand,
   );
@@ -364,9 +372,25 @@ function Closet({ host }: { host: ClosetHost }) {
             {state.trialCount ? ` · 체험용 ${state.trialCount}벌` : ""}
           </p>
         </div>
-        <button className="btn go" type="button" onClick={host.add}>
-          옷 넣기
-        </button>
+        <div className="wr-title-actions">
+          <button
+            className="quiet wr-tools-toggle"
+            type="button"
+            aria-expanded={toolsOpen}
+            aria-controls="wr-controls"
+            onClick={() => {
+              const next = !toolsOpen;
+              host.session.toolsOpen = next;
+              setToolsOpen(next);
+            }}
+          >
+            <i className="ph ph-sliders-horizontal" aria-hidden="true" />
+            옷장 관리
+          </button>
+          <button className="btn go" type="button" onClick={host.add}>
+            옷 넣기
+          </button>
+        </div>
       </div>
       {!!state.trialCount && (
         <div className="notice">
@@ -409,8 +433,31 @@ function Closet({ host }: { host: ClosetHost }) {
           </div>
         </div>
       )}
-      <div className="wr-controls">
-        <button type="button" className="quiet" onClick={host.collection}>내 진열장</button>
+      {modern && !toolsOpen && effectiveBrand && (
+        <div className="wr-filter-status" role="status">
+          <span>
+            {effectiveBrand} · {filtered.length}벌
+          </span>
+          <button
+            className="quiet"
+            type="button"
+            onClick={() => {
+              host.session.brand = "";
+              setBrand("");
+            }}
+          >
+            모든 브랜드 보기
+          </button>
+        </div>
+      )}
+      <div
+        id="wr-controls"
+        className="wr-controls"
+        hidden={modern && !toolsOpen}
+      >
+        <button type="button" className="quiet" onClick={host.collection}>
+          내 진열장
+        </button>
         <label>
           정렬
           <select

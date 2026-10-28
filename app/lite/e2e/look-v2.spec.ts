@@ -73,15 +73,23 @@ test(`the new look puts the search box above the weather card${label}`, async ({
   expect(await page.locator(".hero").first().evaluate((el) => !!el.previousElementSibling?.matches(".top, header"))).toBe(true);
 });
 
-test("a hung product keeps its filled hanger in the new look", async ({ page }) => {
-  await open(page, "&look=v2");
+for (const ui of ["", "&ui=vanilla"])
+test(`a result card explains hanging and removing while keeping its filled hanger${ui}`, async ({ page }) => {
+  await open(page, `&look=v2${ui}`);
   await page.evaluate(() => (window as any).K.go("results", { q: "출근용 셔츠 10만원 이하" }));
   const hang = page.locator(".grid .card .hangt").first();
+  const label = () => hang.locator("span").evaluate((el) => getComputedStyle(el, "::after").content);
+  await expect.poll(label).toBe('"걸어 보기"');
+  expect(await hang.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   await hang.click();
   await expect(hang).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(label).toBe('"내리기"');
   // The hanger animates its colour; wait for where it settles.
   await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(91, 58, 36)");
   await expect.poll(() => hang.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
+  await hang.click();
+  await expect(hang).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(label).toBe('"걸어 보기"');
 });
 
 // Flow: on a product page the verdict (내 옷에 걸어 보면) comes right after the
