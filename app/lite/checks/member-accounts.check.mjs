@@ -196,3 +196,59 @@ test('Worker 초대 모드: 본인은 그대로이고 화면에 본인 표시가
   await go(o.w, e, '/_member/invites');
   assert.deepEqual(o.seen.accounts.at(-1), { path: '/_member/invites', who: { owner: true } });
 });
+
+// 보안 검토(10-28, 별도 AI 에이전트, 읽기 전용) 반영.
+test('앱은 초대(비밀번호) 회원 세션만 연다. 카카오·구글·이메일 코드 세션으로는 앱에 못 들어온다', async () => {
+  const e = env();
+  const { code } = await invite(e);
+  const ok = await signup(e, code);
+  const cookie = pair(cookieOf(ok));
+  assert.ok(await memberFromRequest(new Request(ORIGIN, { headers: { cookie } }), e, { provider: 'password' }));
+  const { newSession } = await import('../functions/lib/member-session.js');
+  const kakao = pair(await newSession(e, 'k'.repeat(32), 'kakao', Date.now()));
+  assert.equal(await memberFromRequest(new Request(ORIGIN, { headers: { cookie: kakao } }), e, { provider: 'password' }), null);
+  assert.equal(await memberFromRequest(new Request(ORIGIN, { headers: { cookie: kakao } }), e), 'k'.repeat(32));
+});
+
+test('가입은 초대 코드를 먼저 본다(없는 코드로 이메일 가입 여부를 알 수 없음). 틀린 가입 시도는 15분에 30번까지', async () => {
+  const e = env();
+  const { code } = await invite(e);
+  await signup(e, code);
+  const probe = await signup(e, 'ZZZZ-ZZZZ');
+  assert.equal(probe.status, 400, '이미 가입한 이메일이어도 코드가 틀리면 같은 400');
+  for (let i = 0; i < 29; i++) await signup(e, 'ZZZZ-ZZZY', { email: `p${i}@x.test` });
+  assert.equal((await signup(e, 'ZZZZ-ZZZY', { email: 'last@x.test' })).status, 429);
+});
+
+test('로그인 시도는 확인 전에 먼저 기록해 동시에 여러 번 보내도 10번을 넘지 못한다. 전체 잠금은 없다', async () => {
+  const e = env();
+  const { code } = await invite(e);
+  await signup(e, code);
+  const tries = await Promise.all(Array.from({ length: 15 }, () => call(e, 'POST', '/_member/password/signin', { email: 'friend@example.com', password: 'wrong-password' })));
+  assert.ok(tries.filter((r) => r.status === 429).length >= 5);
+  // 다른 사람 이메일로 많이 틀려도 내 로그인은 막히지 않는다.
+  const e2 = env();
+  const c2 = await invite(e2);
+  await signup(e2, c2.code);
+  for (let i = 0; i < 40; i++) await call(e2, 'POST', '/_member/password/signin', { email: `x${i}@y.test`, password: 'wrong-pass' });
+  assert.equal((await call(e2, 'POST', '/_member/password/signin', { email: 'friend@example.com', password: 'correct-horse-1' })).status, 200);
+});
+
+test('대표는 가입한 회원을 끊을 수 있다(계정·세션 삭제)', async () => {
+  const e = env();
+  const { code } = await invite(e);
+  const ok = await signup(e, code);
+  const cookie = pair(cookieOf(ok));
+  assert.equal((await call(e, 'POST', '/_member/invites/remove', { code }, {})).status, 403);
+  assert.equal((await call(e, 'POST', '/_member/invites/remove', { code }, OWNER)).status, 200);
+  assert.equal(await memberFromRequest(new Request(ORIGIN, { headers: { cookie } }), e), null);
+  const list = await (await call(e, 'GET', '/_member/invites?format=json', null, OWNER)).json();
+  assert.equal(list.items[0].removed, true);
+});
+
+test('Worker: public 커뮤니티가 켜져 있어도 초대 가입·로그인 화면은 초대 처리기로 간다', async () => {
+  const e = { MEMBER_APP_MODE: 'invite', COMMUNITY_MODE: 'public', COMMUNITY_DB: fakeD1(), CROWD_DB: fakeD1(), COMMUNITY_OPERATOR: 'o', COMMUNITY_CONTACT: 'c@x.test', MEMBER_SESSION_SECRET: 's'.repeat(40), KAKAO_REST_KEY: 'k' };
+  const { w, seen } = worker();
+  await go(w, e, '/_member/signup');
+  assert.deepEqual(seen.accounts.map((x) => x.path), ['/_member/signup']);
+});
