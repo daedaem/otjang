@@ -14,7 +14,7 @@ const encoder = new TextEncoder();
 const ITERATIONS = 100_000;
 const ATTEMPT_WINDOW = 15 * 60 * 1000;
 const ATTEMPTS_PER_EMAIL = 10;
-const ATTEMPTS_ALL = 200;
+const SIGNUP_FAILS = 30;
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const HEADERS = { 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'x-frame-options': 'DENY' };
 const dbOf = (env) => env.COMMUNITY_DB || env.CROWD_DB;
@@ -121,15 +121,15 @@ function accountPage() {
 }
 async function listInvites(db, origin) {
   const { results } = await db.prepare('SELECT code, label, created_at, used_at, revoked_at FROM member_invites ORDER BY created_at DESC').all();
-  return results.map((r) => ({ code: showCode(r.code), label: r.label, createdAt: Number(r.created_at), used: r.used_at !== null, usedAt: r.used_at === null ? null : Number(r.used_at), revoked: r.revoked_at !== null, link: `${origin}/_member/signup?code=${showCode(r.code)}` }));
+  return results.map((r) => ({ code: showCode(r.code), label: r.label, createdAt: Number(r.created_at), used: r.used_at !== null, usedAt: r.used_at === null ? null : Number(r.used_at), revoked: r.revoked_at !== null, removed: r.used_at !== null && r.revoked_at !== null, link: `${origin}/_member/signup?code=${showCode(r.code)}` }));
 }
 async function invitesPage(db, origin) {
   const items = await listInvites(db, origin);
-  const rows = items.map((i) => `<tr><td>${esc(i.label)}<br><code>${esc(i.code)}</code></td><td>${i.revoked ? '취소함' : i.used ? '가입함' : `<button class="line" data-copy="${esc(i.link)}" type="button">링크 복사</button><button class="line" data-revoke="${esc(i.code)}" type="button">취소</button>`}</td></tr>`).join('');
+  const rows = items.map((i) => `<tr><td>${esc(i.label)}<br><code>${esc(i.code)}</code></td><td>${i.removed ? '끊음' : i.revoked ? '취소함' : i.used ? `가입함 <button class="line" data-remove="${esc(i.code)}" type="button">회원 끊기</button>` : `<button class="line" data-copy="${esc(i.link)}" type="button">링크 복사</button><button class="line" data-revoke="${esc(i.code)}" type="button">취소</button>`}</td></tr>`).join('');
   return page('지인 초대', `<h1>지인 초대</h1><p>한 사람에게 초대 코드 하나를 보내요. 코드는 한 번만 쓸 수 있어요. 초대받은 사람은 Claude AI를 하루 10번까지 쓰고, 무신사 상품 사진 대신 색 칸을 봐요.</p>
 <form id="f"><label for="label">누구에게 보낼지 (메모)</label><input id="label" type="text" maxlength="30" required placeholder="예: 민수"><button type="submit">초대 코드 만들기</button></form>
 <table>${rows || '<tr><td class="small">아직 만든 초대가 없어요.</td></tr>'}</table><p class="small"><a href="/">앱으로 돌아가기</a></p>`,
-  `${POST}document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();const r=await post('/_member/invites',{label:document.querySelector('#label').value});if(r.ok){try{await navigator.clipboard.writeText(r.body.link)}catch{}location.reload();return}notice(r.body?.message||'만들지 못했어요.')});document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);notice('가입 링크를 복사했어요.')}catch{notice(b.dataset.copy)}});document.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{await post('/_member/invites/revoke',{code:b.dataset.revoke});location.reload()});`);
+  `${POST}document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();const r=await post('/_member/invites',{label:document.querySelector('#label').value});if(r.ok){try{await navigator.clipboard.writeText(r.body.link)}catch{}location.reload();return}notice(r.body?.message||'만들지 못했어요.')});document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);notice('가입 링크를 복사했어요.')}catch{notice(b.dataset.copy)}});document.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{await post('/_member/invites/revoke',{code:b.dataset.revoke});location.reload()});document.querySelectorAll('[data-remove]').forEach(b=>{let armed=false;b.onclick=async()=>{if(!armed){armed=true;b.textContent='한 번 더 누르면 계정과 글이 지워져요';return}await post('/_member/invites/remove',{code:b.dataset.remove});location.reload()}});`);
 }
 
 async function signup(request, env, db, now) {
@@ -139,8 +139,16 @@ async function signup(request, env, db, now) {
   const email = normalEmail(b.email);
   if (!email) return fail(400, 'invalid_email', '이메일 주소를 확인해 주세요.');
   if (typeof b.password !== 'string' || b.password.length < 8 || b.password.length > 128) return fail(400, 'weak_password', '비밀번호는 8자 이상으로 정해 주세요.');
+  // 초대 코드를 먼저 본다. 맞는 코드 없이는 이메일 가입 여부를 알 수 없고, 비싼 해시도 돌리지 않는다(보안 검토 10-28).
+  const since = now - ATTEMPT_WINDOW;
+  const fails = await db.prepare("SELECT COUNT(*) AS n FROM member_login_attempts WHERE email_key = 'signup' AND created_at > ?1").bind(since).first();
+  if (Number(fails?.n) >= SIGNUP_FAILS) return fail(429, 'too_many', '잠시 뒤에 다시 해 주세요.');
   const code = normalCode(b.code);
-  if (code.length !== 8) return fail(400, 'invalid_invite', '초대 코드를 확인해 주세요.');
+  const open = code.length === 8 && await db.prepare('SELECT 1 FROM member_invites WHERE code = ?1 AND used_at IS NULL AND revoked_at IS NULL').bind(code).first();
+  if (!open) {
+    await db.prepare("INSERT INTO member_login_attempts (id, email_key, created_at) VALUES (?1, 'signup', ?2)").bind(crypto.randomUUID(), now).run();
+    return fail(400, 'invalid_invite', '쓸 수 없는 초대 코드예요. 초대해 준 사람에게 새 코드를 받아 주세요.');
+  }
   const key = await emailKey(db, email);
   if (await db.prepare('SELECT 1 FROM member_accounts WHERE email_key = ?1').bind(key).first()) return fail(409, 'email_taken', '이미 가입한 이메일이에요. 로그인해 주세요.');
   const member = hex(crypto.getRandomValues(new Uint8Array(16)));
@@ -153,7 +161,10 @@ async function signup(request, env, db, now) {
       db.prepare(`INSERT INTO member_accounts (member, email_key, salt, hash, iterations, invite, created_at)
         SELECT ?1, ?2, ?3, ?4, ?5, id, ?6 FROM member_invites WHERE code = ?7 AND used_by = ?1`).bind(member, key, hex(salt), hash, ITERATIONS, now, code),
     ]);
-  } catch { return fail(409, 'email_taken', '이미 가입한 이메일이에요. 로그인해 주세요.'); }
+  } catch {
+    const taken = await db.prepare('SELECT 1 FROM member_accounts WHERE email_key = ?1').bind(key).first().catch(() => null);
+    return taken ? fail(409, 'email_taken', '이미 가입한 이메일이에요. 로그인해 주세요.') : fail(503, 'error', '잠시 뒤에 다시 해 주세요.');
+  }
   if (results[0].meta?.changes !== 1 || results[1].meta?.changes !== 1) return fail(400, 'invalid_invite', '쓸 수 없는 초대 코드예요. 초대해 준 사람에게 새 코드를 받아 주세요.');
   return json(200, { ok: true }, [await newSession(env, member, 'password', now)]);
 }
@@ -164,19 +175,20 @@ async function signin(request, env, db, now) {
   if (!email || typeof b.password !== 'string' || b.password.length > 128) return fail(401, 'invalid_login', '이메일이나 비밀번호가 맞지 않아요.');
   const key = await emailKey(db, email);
   const since = now - ATTEMPT_WINDOW;
-  const tries = await db.prepare(`SELECT (SELECT COUNT(*) FROM member_login_attempts WHERE email_key = ?1 AND created_at > ?2) AS mine,
-    (SELECT COUNT(*) FROM member_login_attempts WHERE created_at > ?2) AS everyone`).bind(key, since).first();
-  if (Number(tries?.mine) >= ATTEMPTS_PER_EMAIL || Number(tries?.everyone) >= ATTEMPTS_ALL) return fail(429, 'too_many', '잠시 뒤에 다시 해 주세요.');
+  // 확인 전에 시도를 먼저 기록한다(동시에 여러 번 보내도 한도를 넘지 못하게). 맞으면 그 기록을 지운다.
+  // 전체 잠금은 두지 않는다(남이 틀려서 모두가 막히지 않게). 한 이메일당 15분 10번.
+  const attempt = crypto.randomUUID();
+  const [, reserved] = await db.batch([
+    db.prepare('DELETE FROM member_login_attempts WHERE created_at <= ?1').bind(since),
+    db.prepare(`INSERT INTO member_login_attempts (id, email_key, created_at) SELECT ?1, ?2, ?3
+      WHERE (SELECT COUNT(*) FROM member_login_attempts WHERE email_key = ?2 AND created_at > ?4) < ?5`).bind(attempt, key, now, since, ATTEMPTS_PER_EMAIL),
+  ]);
+  if (reserved.meta?.changes !== 1) return fail(429, 'too_many', '잠시 뒤에 다시 해 주세요.');
   const row = await db.prepare('SELECT member, salt, hash, iterations FROM member_accounts WHERE email_key = ?1').bind(key).first();
   const salt = row ? fromHex(row.salt) : crypto.getRandomValues(new Uint8Array(16));
   const hash = await passwordHash(b.password, salt, row ? Number(row.iterations) : ITERATIONS); // 없는 계정도 같은 시간을 쓴다
-  if (!row || !same(hash, row.hash)) {
-    await db.batch([
-      db.prepare('DELETE FROM member_login_attempts WHERE created_at <= ?1').bind(since),
-      db.prepare('INSERT INTO member_login_attempts (id, email_key, created_at) VALUES (?1, ?2, ?3)').bind(crypto.randomUUID(), key, now),
-    ]);
-    return fail(401, 'invalid_login', '이메일이나 비밀번호가 맞지 않아요.');
-  }
+  if (!row || !same(hash, row.hash)) return fail(401, 'invalid_login', '이메일이나 비밀번호가 맞지 않아요.');
+  await db.prepare('DELETE FROM member_login_attempts WHERE id = ?1').bind(attempt).run();
   return json(200, { ok: true }, [await newSession(env, row.member, 'password', now)]);
 }
 
@@ -192,6 +204,10 @@ const clearCookie = `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax;
 async function deleteAccount(request, db, member) {
   const b = await body(request, ['confirm']);
   if (b?.confirm !== true) return fail(400, 'confirm_required', '한 번 더 확인해 주세요.');
+  await removeMember(db, member);
+  return json(200, { ok: true }, [clearCookie]);
+}
+async function removeMember(db, member) {
   // 코디 공유 자료도 함께 지운다(표가 없으면 건너뛴다).
   for (const sql of [
     'DELETE FROM community_photos WHERE member = ?1',
@@ -200,11 +216,11 @@ async function deleteAccount(request, db, member) {
     'DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1',
     'DELETE FROM community_members WHERE member = ?1',
   ]) { try { await db.prepare(sql).bind(member).run(); } catch {} }
+  await db.prepare('CREATE TABLE IF NOT EXISTS member_sessions (token_hash TEXT PRIMARY KEY, member TEXT NOT NULL, provider TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)').run();
   await db.batch([
     db.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member),
     db.prepare('DELETE FROM member_accounts WHERE member = ?1').bind(member),
   ]);
-  return json(200, { ok: true }, [clearCookie]);
 }
 
 // who: {} 로그인 전, {member} 초대 회원, {owner:true} 본인. Worker가 정한다.
@@ -249,6 +265,15 @@ export async function handleMemberAccounts(request, env = {}, who = {}, { now = 
           } catch {}
         }
         return fail(503, 'error', '잠시 뒤에 다시 해 주세요.');
+      }
+      if (path === '/_member/invites/remove' && method === 'POST') {
+        // 가입한 회원 끊기: 계정·세션·코디 공유 글을 지운다(보안 검토 10-28: 대표가 회원을 끊을 방법이 없었음).
+        const b = await body(request, ['code']);
+        const inv = await db.prepare('SELECT used_by FROM member_invites WHERE code = ?1 AND used_by IS NOT NULL').bind(normalCode(b?.code)).first();
+        if (!inv) return fail(404, 'not_found', '가입한 회원이 없는 코드예요.');
+        await removeMember(db, inv.used_by);
+        await db.prepare('UPDATE member_invites SET revoked_at = ?2 WHERE code = ?1').bind(normalCode(b?.code), at).run();
+        return json(200, { ok: true });
       }
       if (path === '/_member/invites/revoke' && method === 'POST') {
         const b = await body(request, ['code']);

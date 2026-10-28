@@ -50,7 +50,8 @@ async function publicFiles(env, url) {
 }
 async function publicCommunity(request, env, url, { authorize, community, member, memberAuth }) {
   const path = url.pathname;
-  if (path.startsWith('/_member/')) return memberAuth(request, env);
+  // 공개 커뮤니티 로그인 경로만 받는다. 초대 회원 경로(/_member/account·invites 등)는 아래 일반 흐름으로 간다.
+  if (/^\/_member\/(login\/|callback\/|email\/|logout$)/.test(path)) return memberAuth(request, env);
   if ((path === '/c' || path === '/c/') && request.method === 'GET') {
     // 정적 파일의 HTML 주소 정리가 /community-shell.html을 다른 주소로 돌려 답할 수 있어 한 번 따라간다(보안 검토 10-28).
     let asset = await env.ASSETS.fetch(new Request(new URL('/community-shell.html', url)));
@@ -140,13 +141,14 @@ export function createWorker({
       // 코디 공유 공개(대표 10-28 08:08·11:47). COMMUNITY_MODE=public이고 운영자 정보·연락처·회원 로그인 설정이
       // 모두 있을 때만 /c 화면, 그 화면의 파일(빌드가 만든 허용 목록), 회원 로그인, 커뮤니티 API가 본인 로그인 없이 열린다.
       // 나머지 앱(상품 자료·옷장 화면·AI)은 그대로 본인 전용이다.
+      const invite = env?.MEMBER_APP_MODE === 'invite';
+      // 초대 회원 가입·로그인 화면(대표 10-28 15:12). 로그인 없이 열린다. 초대 코드가 있어야 가입된다.
+      // public 커뮤니티 로그인보다 먼저 본다(보안 검토 10-28).
+      if (invite && INVITE_PUBLIC.has(url.pathname)) return accounts(request, env, {});
       if (env?.COMMUNITY_MODE === 'public' && publicMissing(env).length === 0) {
         const open = await publicCommunity(request, env, url, { authorize, community, member, memberAuth });
         if (open) return open;
       }
-      const invite = env?.MEMBER_APP_MODE === 'invite';
-      // 초대 회원 가입·로그인 화면(대표 10-28 15:12). 로그인 없이 열린다. 초대 코드가 있어야 가입된다.
-      if (invite && INVITE_PUBLIC.has(url.pathname)) return accounts(request, env, {});
       // Only these exact authentication endpoints may answer before the private gate.
       // Their handler owns method/origin/credential validation. Access/default and
       // unknown modes retain their existing gate even on the login paths.
@@ -162,7 +164,8 @@ export function createWorker({
       if (access?.ok !== true) {
         // 본인이 아니면 초대 회원 세션을 본다. 회원은 앱을 쓰되 AI는 하루 한도, 무신사 사진은 막고, 초대 관리는 못 한다.
         if (invite) {
-          const id = await member(request, env).catch(() => null);
+          // 앱은 초대(비밀번호) 회원 세션만 연다. 공개 커뮤니티의 카카오·구글·이메일 코드 회원은 앱에 못 들어온다(보안 검토 10-28).
+          const id = await member(request, env, { provider: 'password' }).catch(() => null);
           if (id) return memberApp(request, env, url, id, { rank, catalog, weather, rakuten, adpick, openProducts, community, accounts });
         }
         return denied(access, request, env);

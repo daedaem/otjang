@@ -277,14 +277,16 @@ async function emailVerify(request, env, { now }) {
 }
 
 // 요청의 회원 쿠키 → 회원 id(32자 hex) 또는 null.
-export async function memberFromRequest(request, env, { now = Date.now } = {}) {
+// provider를 주면 그 로그인 방식의 세션만 받는다(앱은 초대 회원 'password'만, 보안 검토 10-28).
+export async function memberFromRequest(request, env, { now = Date.now, provider = null } = {}) {
   const token = cookies(request)[SESSION_COOKIE];
   const db = dbOf(env);
   // 세션 토큰은 무작위 값이고 해시로만 찾으므로 비밀값이 없어도 된다(초대 회원은 MEMBER_SESSION_SECRET 없이 쓴다).
   if (!token || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !db) return null;
   try {
     await ensureSchema(db);
-    const row = await db.prepare('SELECT member FROM member_sessions WHERE token_hash = ?1 AND expires_at > ?2').bind(await sha256(token), now()).first();
+    const row = await db.prepare('SELECT member, provider FROM member_sessions WHERE token_hash = ?1 AND expires_at > ?2').bind(await sha256(token), now()).first();
+    if (provider && row?.provider !== provider) return null;
     return row?.member || null;
   } catch { return null; }
 }
