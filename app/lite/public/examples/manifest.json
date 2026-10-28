@@ -1,0 +1,176 @@
+{
+  "generator": "OpenAI image_gen",
+  "files": [
+    {
+      "number": 1,
+      "title": "흰색 옥스퍼드 버튼다운 셔츠",
+      "file": "m-oxford.webp",
+      "source_file": "01-white-oxford-buttondown.png",
+      "source_sha256": "3eb408f6568358ba27320a8aa2f9a6727841b1a21ea4b1271856dc38554544f6",
+      "sha256": "66cd7c6eb7b7c9d5ebe3b630da56a03651cb9077c5c5c53ee18565934663983c",
+      "bytes": 9122,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 2,
+      "title": "흰색 무지 반팔 티셔츠",
+      "file": "m-tee.webp",
+      "source_file": "02-white-plain-tshirt.png",
+      "source_sha256": "377065539707c300e2d092b44e0a141ea8edb1b6f9e58a669ae8d95f9ff2e57d",
+      "sha256": "396755574cded66a984412c6729e4316f0dbffe6deac6273d8a5bb55d306c85a",
+      "bytes": 6946,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 3,
+      "title": "네이비 크루넥 니트",
+      "file": "m-knit.webp",
+      "source_file": "03-navy-crewneck-knit.png",
+      "source_sha256": "0e95cf0fe67befe7071d1e6bb097b8383df04cf5a0f342bc8723c7418c501e93",
+      "sha256": "de86598a12be2c2113623bf7a30a66aad582f841d3b72621f1098b4541eb18f2",
+      "bytes": 26302,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 4,
+      "title": "네이비 싱글 블레이저",
+      "file": "m-blazer.webp",
+      "source_file": "04-navy-single-blazer.png",
+      "source_sha256": "e498f5700762615f3db859409cbdcfe28e0ef4f6ca3b5a7ce24634991894fab3",
+      "sha256": "e77284e6661dd99d49749bd3c6ff35cf18fb54e10300e144756d910ba770cd52",
+      "bytes": 13796,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 5,
+      "title": "베이지 치노 팬츠",
+      "file": "m-chino.webp",
+      "source_file": "05-beige-chino-pants.png",
+      "source_sha256": "93b277133b71d30cfdabf1ac0355e877493d2544bdebf7b2d377faa1735c1bb2",
+      "sha256": "91c6347ad9ed3dd186fec0c43551c5137ef03d96cee81a0229725d005ad3fbc2",
+      "bytes": 9140,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 6,
+      "title": "인디고 워시드 데님 팬츠",
+      "file": "m-denim.webp",
+      "source_file": "06-indigo-washed-denim-pants.png",
+      "source_sha256": "368be60cc9b438607175b43ef178bf15bb1e0cca25ab1cfbc9289c876e598e9c",
+      "sha256": "c91cf148bfeeff4c9a5bac7a0c2f83ee1142d0fa9d1e64983c636cedd51349e1",
+      "bytes": 21322,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 7,
+      "title": "브라운 페니 로퍼",
+      "file": "m-loafer.webp",
+      "source_file": "07-brown-penny-loafers.png",
+      "source_sha256": "dd6f8a1ab03ac25b1ce7d6b7070052219152aabbbb036309265e5f70a957e399",
+      "sha256": "6033473f405deb91b76cc11295fe6e5fe65a90efd71637e9f883d8b083e213cc",
+      "bytes": 22184,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 8,
+      "title": "흰색 가죽 스니커즈",
+      "file": "m-white-sneaker.webp",
+      "source_file": "08-white-leather-sneakers.png",
+      "source_sha256": "f02b69e089b21768904289a29417dca227f19582a3dcef26a7c44de3ecc8e2c6",
+      "sha256": "58bce17d53c165e6ecd639a3bbfc67160cf682f14a1cae9b6215bd46f4308a47",
+      "bytes": 10844,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 9,
+      "title": "여성 흰색 반팔 티셔츠",
+      "file": "f-tee.webp",
+      "source_file": "09-womens-white-tshirt.png",
+      "source_sha256": "1354fae9d5bbaf6f0c45cf8660fbc82750482fad1a11c474ea5cd866867ce671",
+      "sha256": "60f64b39cdf86f87df41673ee56fbcc57bb223b55c66a88ea7121f118be4f2ac",
+      "bytes": 5746,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 10,
+      "title": "여성 베이지 니트",
+      "file": "f-knit.webp",
+      "source_file": "10-womens-beige-knit.png",
+      "source_sha256": "ca24b2615dc8115b0387a5a2d57485e842761192d63ba6e92c44f4331aa78e07",
+      "sha256": "85fc01243cdcd657a26a05432c09b4d790c1b3abe63c7435a1cdcdec7f97877c",
+      "bytes": 50962,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 11,
+      "title": "여성 베이지 트렌치 코트",
+      "file": "f-trench.webp",
+      "source_file": "11-womens-beige-trench-coat.png",
+      "source_sha256": "a057d3733f8cfc3ed8d70b345b940f322157fc17b076b521461ec2373e292399",
+      "sha256": "437747610a4cf096f78525e9c922e77b18bfcc858ab043a52439e425fbf2f5d5",
+      "bytes": 13508,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 12,
+      "title": "여성 블랙 슬랙스",
+      "file": "f-slacks.webp",
+      "source_file": "12-womens-black-slacks.png",
+      "source_sha256": "6054c2f83a583ed797386e2fe8406772ae69fbf1ffc5e253406f679c94549a1a",
+      "sha256": "aded7b4649e8b757c5e6c47b53c41d9d8b8cc97d5794dfd938bbd91bd2487fe7",
+      "bytes": 5350,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 13,
+      "title": "여성 라이트 블루 데님 팬츠",
+      "file": "f-denim.webp",
+      "source_file": "13-womens-light-blue-denim.png",
+      "source_sha256": "043ed4744837a07e54d6f94e2622cde19513a873ef2fd7c1d1c72564c5c232df",
+      "sha256": "889dbbeeb2b29745158f86ff2772d919f1e75022ad0b2084aa2d4c191803d596",
+      "bytes": 18862,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    },
+    {
+      "number": 14,
+      "title": "여성 블랙 로퍼",
+      "file": "f-loafer.webp",
+      "source_file": "14-womens-black-loafers.png",
+      "source_sha256": "1bfe54159e8eec625c5e4a03e8b68b6b777ed378c2b5b6c76eb2efb589a4d837",
+      "sha256": "1f04819f5bbf1941289bd63ed0b75bd796ff60a621733cfad01c9864a389c288",
+      "bytes": 18064,
+      "width": 720,
+      "height": 900,
+      "type": "AI-generated example; not an owned garment or a real product photograph"
+    }
+  ],
+  "shared": {
+    "f-sneaker|white": "m-white-sneaker.webp"
+  }
+}

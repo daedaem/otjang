@@ -73,10 +73,17 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     F: [['f-tee', 'white', '흰 티셔츠'], ['f-knit', 'beige', '베이지 니트'], ['f-trench', 'beige', '베이지 트렌치 코트'], ['f-slacks', 'black', '블랙 슬랙스'],
       ['f-denim', 'blue', '라이트 블루 데님'], ['f-loafer', 'black', '블랙 로퍼'], ['f-sneaker', 'white', '흰 스니커즈']],
   };
-  // 체험용 옷 예시 사진(2026-10-27 대표가 ChatGPT로 만듦, public/examples/README.md). 앱과 함께 묶은
+  // 체험용 옷 예시 사진(2026-10-27~28 대표 요청으로 생성, public/examples/README.md). 앱과 함께 묶은
   // 파일이라 외부 요청이 없어 상품 사진을 꺼도 보인다. 세부 종류|색이 맞을 때만 쓴다.
   const EXAMPLE_BASE = 'examples/';
-  const TRIAL_PHOTOS = { 'm-oxford|white': 'm-oxford.webp', 'm-tee|white': 'm-tee.webp', 'm-knit|navy': 'm-knit.webp', 'm-blazer|navy': 'm-blazer.webp', 'm-chino|beige': 'm-chino.webp' };
+  const TRIAL_PHOTOS = {
+    'm-oxford|white': 'm-oxford.webp', 'm-tee|white': 'm-tee.webp', 'm-knit|navy': 'm-knit.webp',
+    'm-blazer|navy': 'm-blazer.webp', 'm-chino|beige': 'm-chino.webp', 'm-denim|indigo': 'm-denim.webp',
+    'm-loafer|brown': 'm-loafer.webp', 'm-white-sneaker|white': 'm-white-sneaker.webp',
+    'f-tee|white': 'f-tee.webp', 'f-knit|beige': 'f-knit.webp', 'f-trench|beige': 'f-trench.webp',
+    'f-slacks|black': 'f-slacks.webp', 'f-denim|blue': 'f-denim.webp', 'f-loafer|black': 'f-loafer.webp',
+    'f-sneaker|white': 'm-white-sneaker.webp',
+  };
   const EXAMPLES = {
     M: ['출근용 셔츠 10만원 이하', '겨울 데이트 코트', '검정 말고 주말에 입을 편한 바지', '흰 스니커즈 10만원 이하', '하객룩 셔츠', '아메카지 재킷'],
     F: ['출근용 셔츠 10만원 이하', '원피스 10만원 이하', '겨울 코트 20만원 이하', '데이트 스커트', '가성비 니트', '흰 스니커즈'],
