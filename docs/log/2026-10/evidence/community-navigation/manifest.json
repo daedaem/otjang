@@ -1,0 +1,599 @@
+{
+  "baselineCommunitySource": "573eaf711e4abe2c5f3e84e048ef36b40c9f111b (same community UI as fecbb60)",
+  "afterSource": "32004f084480384e0f524eaff90cacb10e0cb68d",
+  "capturedAt": "2026-10-28T15:40:23.223Z",
+  "synthetic": true,
+  "externalRequests": "blocked",
+  "realPosts": 0,
+  "fixtureTime": "2026-10-28T12:00:00.000Z",
+  "captures": [
+    {
+      "file": "before-mobile320-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "state": "closet",
+      "sha256": "4f66d42801ee0bfb47b92fd5571c8b561331f30ec344a547d38903700b000a88",
+      "bytes": 34802,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "before-mobile320-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "state": "feed",
+      "sha256": "b4dd0213f426103e71cfedb83e147b5dedc4b6db8d21ff4cacfd0212e87b6a0a",
+      "bytes": 35378,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-mobile320-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "state": "share",
+      "sha256": "a869f3f266205700d13c35cb5d2d5ac61feb4351e444ba76b1da57829390461a",
+      "bytes": 33818,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-mobile390-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "state": "closet",
+      "sha256": "9daf9f83327af0fdc2012f9714d7df8b8a5bc4202928980e6984d97b2e32b734",
+      "bytes": 36884,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "before-mobile390-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "state": "feed",
+      "sha256": "71f6ded140f9f1e4623cd8749478f7696dca444a5e721ebf027d24a090bc02df",
+      "bytes": 41654,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-mobile390-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "state": "share",
+      "sha256": "bd57736a53158fade124499924d2821a66b7f9d1fdec111d9595cc4df87d2145",
+      "bytes": 36316,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-mobile-dark-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "state": "closet",
+      "sha256": "853de42e89b523170fa3525beb160465f7952540a57dfea4332d7e5d7ddb078a",
+      "bytes": 37108,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "before-mobile-dark-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "state": "feed",
+      "sha256": "7a478b909de5b9657f172084ac7de6fa3cb9c9009d344789237caee804f01462",
+      "bytes": 41821,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-mobile-dark-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "state": "share",
+      "sha256": "afc255ca8508f80499e7c65cf8ec6f370014bba0b71598fe7175aa62dd6f4f2e",
+      "bytes": 36562,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-desktop-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "state": "closet",
+      "sha256": "915ffd7b8ad9937c3601e13d6211982124f4a6448d1b2233630c81dbf306a347",
+      "bytes": 54020,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "before-desktop-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "state": "feed",
+      "sha256": "ff9ef441cd7df6d546f5b47e48580b402a209d05fbc46d9e140c12894487bc9a",
+      "bytes": 47973,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "before-desktop-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "state": "share",
+      "sha256": "197ee599500b7f336bfefedf2c7f5fd16614b8eae89e214864d583392b988cb1",
+      "bytes": 69336,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "코디"
+      ]
+    },
+    {
+      "file": "after-mobile320-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "state": "closet",
+      "sha256": "d391155c4d7dc5ac50fb3915337ba10ec89aa271715bf0120009d01083364a87",
+      "bytes": 35770,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "after-mobile320-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "state": "feed",
+      "sha256": "eb738cfdd9fc00b31aa0b821bdf0501f8775a3f1a679c50a309f4717e3a84169",
+      "bytes": 36774,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-mobile320-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 780
+      },
+      "colorScheme": "light",
+      "state": "share",
+      "sha256": "695c057f6edea8c336adc29025f2a2ec59312a598322f37c862cc46e65ca42d6",
+      "bytes": 34265,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-mobile390-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "state": "closet",
+      "sha256": "d4fa0bba997e4d2d70ea29426392355561f3e3e6b86a29d2eb52383bf5160528",
+      "bytes": 37920,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "after-mobile390-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "state": "feed",
+      "sha256": "a8b2600e52a1bbf1ce3e31f889f23d9e5648d4a90c9e8b4f20b7567702f18f8b",
+      "bytes": 43157,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-mobile390-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "state": "share",
+      "sha256": "33cf8e156294d7322ed0e38a798f52961f4969591bb2bdb284a65bb8c24f6981",
+      "bytes": 36781,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-mobile-dark-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "state": "closet",
+      "sha256": "7ffd44011a56b944eaa3d84ee5b93079423c21df14ca7b01a3088a240635d1c3",
+      "bytes": 38075,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "after-mobile-dark-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "state": "feed",
+      "sha256": "4ecd21c238075c17cbec7cd8070027d7157e40ee29fba9f431fba5bcac162d70",
+      "bytes": 43345,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-mobile-dark-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "dark",
+      "state": "share",
+      "sha256": "9964354b45de8e7f74221c160223fa47d1eb24b850a2708c53c9d1fe362b8d80",
+      "bytes": 37020,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-desktop-closet.png",
+      "postOrder": [],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "state": "closet",
+      "sha256": "4e6794ebc5db0b883d259ee729f909137fea4ae8b8a2cc3020c046a7c844df8f",
+      "bytes": 55253,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "옷장"
+      ]
+    },
+    {
+      "file": "after-desktop-feed.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "state": "feed",
+      "sha256": "27b1dc5717ce96a77937732f871a799209ef3a2abad363af5749a4fb4d6e7ebd",
+      "bytes": 49722,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    },
+    {
+      "file": "after-desktop-share.png",
+      "postOrder": [
+        "합성회원",
+        "코디예시"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "colorScheme": "light",
+      "state": "share",
+      "sha256": "ed2126641a5475f19c550ef08f1189f2190a95cae2cc7a96b6e527b867df434c",
+      "bytes": 70916,
+      "tabLabels": [
+        "찾기",
+        "코디",
+        "옷장",
+        "커뮤니티",
+        "상담",
+        "기록"
+      ],
+      "activeTab": [
+        "커뮤니티"
+      ]
+    }
+  ]
+}
