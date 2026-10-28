@@ -147,30 +147,47 @@ function PhotoAdd({ host }: { host: PhotoAddHost }) {
       }
     })();
     let done = 0,
-      photoFailed = 0;
-    const mod = await import("../photos/index.js");
-    for (const item of ready) {
-      const g = host.core.addGarment({ kind: item.kind, color: item.color || null, slot: host.core.slotChoices(item.kind)[0]?.id || null, label: item.label.trim().slice(0, 40) });
-      done++;
-      if (item.suggested?.kind || item.suggested?.color) {
-        stats.suggested++;
-        stats.saved++;
-        if (item.suggested.kind !== item.kind) stats.kindChanged++;
-        if ((item.suggested.color || "") !== item.color) stats.colorChanged++;
+      photoFailed = 0,
+      saveFailed = 0,
+      reason = "";
+    const savedKeys = new Set<string>();
+    try {
+      const mod = await import("../photos/index.js").catch(() => null);
+      for (const item of ready) {
+        let g: { id: string };
+        try {
+          g = host.core.addGarment({ kind: item.kind, color: item.color || null, slot: host.core.slotChoices(item.kind)[0]?.id || null, label: item.label.trim().slice(0, 40) });
+        } catch (e) {
+          saveFailed++;
+          reason ||= (e as Error)?.message || "";
+          continue;
+        }
+        done++;
+        savedKeys.add(item.key);
+        if (item.suggested?.kind || item.suggested?.color) {
+          stats.suggested++;
+          stats.saved++;
+          if (item.suggested.kind !== item.kind) stats.kindChanged++;
+          if ((item.suggested.color || "") !== item.color) stats.colorChanged++;
+        }
+        try {
+          if (preview || !mod) throw Error("photo");
+          const dims = await mod.imageDimensions(item.file);
+          await mod.saveGarmentPhoto({ namespace: host.namespace, core: host.core, garmentId: g.id, file: item.file, ...dims });
+        } catch {
+          photoFailed++;
+        }
       }
-      try {
-        if (preview) throw Error("preview");
-        const dims = await mod.imageDimensions(item.file);
-        await mod.saveGarmentPhoto({ namespace: host.namespace, core: host.core, garmentId: g.id, file: item.file, ...dims });
-      } catch {
-        photoFailed++;
-      }
+    } finally {
+      if (!preview && done) write(host.storage, STATS, JSON.stringify(stats));
+      ready.forEach((i) => savedKeys.has(i.key) && URL.revokeObjectURL(i.url));
+      setItems((list) => list.filter((i) => !savedKeys.has(i.key)));
+      setBusy(false);
     }
-    if (!preview) write(host.storage, STATS, JSON.stringify(stats));
-    ready.forEach((i) => URL.revokeObjectURL(i.url));
-    setItems((list) => list.filter((i) => !ready.includes(i)));
-    setBusy(false);
-    setNotice(`옷장에 ${done}벌 넣었어요.${photoFailed ? ` 사진 ${photoFailed}장은 보관하지 못했어요(옷은 넣었어요).` : " 사진은 이 기기에만 보관해요."}`);
+    const parts = [];
+    if (done) parts.push(`옷장에 ${done}벌 넣었어요.${photoFailed ? ` 사진 ${photoFailed}장은 보관하지 못했어요(옷은 넣었어요).` : " 사진은 이 기기에만 보관해요."}`);
+    if (saveFailed) parts.push(`${saveFailed}벌은 넣지 못했어요${reason ? `: ${reason}` : "."} 목록에 남겨 두었으니 다시 눌러 주세요.`);
+    setNotice(parts.join(" "));
   };
   const stats = (() => {
     try {
@@ -204,7 +221,7 @@ function PhotoAdd({ host }: { host: PhotoAddHost }) {
       </label>
       <p className="pa-small">작게 줄인 사진만 보내고 서버에 저장하지 않아요. 분석은 Anthropic(Claude)이 정책에 따라 처리해요. 동의하지 않으면 종류·색을 직접 골라요. AI는 하루 사용 횟수에 들어가요.</p>
       <label className="btn line pa-pick">
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
         <i className="ph ph-camera" aria-hidden="true" /> 사진 고르기 (최대 10장)
       </label>
       {notice ? (
@@ -225,7 +242,7 @@ function PhotoAdd({ host }: { host: PhotoAddHost }) {
               </p>
               <label>
                 <span>종류</span>
-                <select value={i.kind} onChange={(e) => patch(i.key, { kind: e.target.value })}>
+                <select value={i.kind} disabled={busy} onChange={(e) => patch(i.key, { kind: e.target.value })}>
                   <option value="">골라 주세요</option>
                   {kinds.map((k) => (
                     <option key={k.id} value={k.id}>
@@ -236,7 +253,7 @@ function PhotoAdd({ host }: { host: PhotoAddHost }) {
               </label>
               <label>
                 <span>색</span>
-                <select value={i.color} onChange={(e) => patch(i.key, { color: e.target.value })}>
+                <select value={i.color} disabled={busy} onChange={(e) => patch(i.key, { color: e.target.value })}>
                   <option value="">모르겠어요</option>
                   {colors.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -247,15 +264,15 @@ function PhotoAdd({ host }: { host: PhotoAddHost }) {
               </label>
               <label>
                 <span>이름</span>
-                <input value={i.label} maxLength={40} placeholder="예: 네이비 울 블레이저" onChange={(e) => patch(i.key, { label: e.target.value })} />
+                <input value={i.label} disabled={busy} maxLength={40} placeholder="예: 네이비 울 블레이저" onChange={(e) => patch(i.key, { label: e.target.value })} />
               </label>
               <div className="pa-row">
                 {consent && i.state === "manual" && host.analyse ? (
-                  <button type="button" className="quiet" onClick={() => void ask(i)}>
+                  <button type="button" className="quiet" disabled={busy} onClick={() => void ask(i)}>
                     AI에게 다시 묻기
                   </button>
                 ) : null}
-                <button type="button" className="quiet" onClick={() => { URL.revokeObjectURL(i.url); setItems((l) => l.filter((x) => x.key !== i.key)); }}>
+                <button type="button" className="quiet" disabled={busy} onClick={() => { URL.revokeObjectURL(i.url); setItems((l) => l.filter((x) => x.key !== i.key)); }}>
                   빼기
                 </button>
               </div>
