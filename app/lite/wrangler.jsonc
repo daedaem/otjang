@@ -24,7 +24,9 @@
   },
   "d1_databases": [
     { "binding": "RANK_DB", "database_name": "otjang-private", "database_id": "e3b0965b-a661-4ef0-b6a0-2ed1c12eed99" },
-    { "binding": "CROWD_DB", "database_name": "otjang-private", "database_id": "e3b0965b-a661-4ef0-b6a0-2ed1c12eed99" }
+    { "binding": "CROWD_DB", "database_name": "otjang-private", "database_id": "e3b0965b-a661-4ef0-b6a0-2ed1c12eed99" },
+    // Empty dedicated member/community DB. Keep private auth, AI budget and catalog bindings unchanged.
+    { "binding": "COMMUNITY_DB", "database_name": "otjang-community", "database_id": "859930e1-1cb2-42d7-a333-556a5d4fb34e" }
   ],
   "assets": {
     "directory": "./dist",
