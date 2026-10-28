@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { serveCommunity, communityCall, communityRequest } from "./community-fixture.mjs";
 
-async function setup(page: Page, standalone = false) {
-  const who = { member: "qa-board-a", operator: false };
+async function setup(page: Page, standalone = false, operator = false) {
+  const who = { member: operator ? "owner" : "qa-board-a", operator };
   const f = await serveCommunity(page, standalone ? "public" : "private", standalone ? {
     MEMBER_SESSION_SECRET: "qa-only-".repeat(6), KAKAO_REST_KEY: "qa-not-a-live-key",
   } : {}, who, { start: standalone ? "/c#/community?board=free" : "/?photos=0#/community", standalone });
@@ -116,6 +116,17 @@ test("leaving the public community returns to sign-in instead of an expired memb
   await expect(page.getByRole("link", { name: "카카오 로그인", exact: true })).toBeVisible();
   await expect(page.getByLabel("이름", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "자유게시판", exact: true })).toHaveAttribute("aria-current", "page");
+});
+
+test("the private owner keeps the authenticated join form after leaving a public community", async ({ page }) => {
+  await setup(page, true, true);
+  await page.getByRole("button", { name: "커뮤니티 나가기", exact: true }).click();
+  await page.getByRole("button", { name: "한 번 더 누르면 내 글·사진을 모두 지우고 나가요", exact: true }).click();
+  await expect(page.getByLabel("이름")).toBeVisible();
+  await expect(page.getByRole("link", { name: "카카오 로그인", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
+  const actualStatus = await page.evaluate(async () => (await fetch('/api/community/status')).json());
+  expect(actualStatus).toMatchObject({ signedIn: true, isOperator: true, member: null });
 });
 
 test("a late community chunk does not steal focus from another footer control", async ({ page }) => {
