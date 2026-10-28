@@ -108,3 +108,62 @@ test("the standalone community can open the free board without loading a private
   expect(posted[0].post.pieces).toEqual([]);
   expect(await page.evaluate(() => typeof (window as any).K)).toBe("undefined");
 });
+
+test("a late community chunk does not steal focus from another footer control", async ({ page }) => {
+  let release!: () => void, seen!: () => void;
+  const gate = new Promise<void>(resolve => release = resolve);
+  const requested = new Promise<void>(resolve => seen = resolve);
+  try {
+    await serveCommunity(page, "private", {}, { member: "qa-focus", operator: false }, {
+      start: "/?photos=0#/", communityChunkGate: () => { seen(); return gate; },
+    });
+    await expect(page.locator("#tabs[data-react-chrome]")).toBeVisible();
+    await page.getByRole("button", { name: "커뮤니티", exact: true }).click();
+    await requested;
+    const other = page.getByRole("button", { name: "상담", exact: true });
+    await other.focus();
+    release();
+    await expect(page.getByRole("heading", { name: "코디 공유", exact: true })).toBeVisible();
+    await expect(other).toBeFocused();
+  } finally { release?.(); }
+});
+
+test("an already open community follows same-document board and mine hashes without a fallback feed", async ({ page }) => {
+  const f = await setup(page);
+  await communityCall(f.env, "posts", { post: { board: "free", title: "내 직접 주소 글", text: "내용", pieces: [], consent: false }, photos: [] }, f.who);
+  const b = { member: "qa-board-b", operator: false };
+  await communityCall(f.env, "join", { name: "다른회원", rules: 1, age14: true }, b);
+  await communityCall(f.env, "posts", { post: { board: "free", title: "다른 직접 주소 글", text: "내용", pieces: [], consent: false }, photos: [] }, b);
+  await page.evaluate(() => { location.hash = "/community?board=free"; });
+  await expect(page.locator("[data-community-post]")).toHaveCount(2);
+  await page.evaluate(() => { location.hash = "/community?board=free&mine=1"; });
+  await expect(page.getByRole("button", { name: "내 글", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-community-post]")).toHaveCount(1);
+  await expect(page.locator("[data-community-post]")).toContainText("내 직접 주소 글");
+  await page.goBack();
+  await expect(page.locator("[data-community-post]")).toHaveCount(2);
+  await page.goForward();
+  await expect(page.locator("[data-community-post]")).toHaveCount(1);
+  await page.evaluate(() => { location.hash = "/community?board=unsupported"; });
+  await expect(page.getByRole("heading", { name: "게시판을 찾지 못했어요", exact: true })).toBeVisible();
+  await expect(page.locator("[data-community-post]")).toHaveCount(0);
+});
+
+test("the outfits entry returns through board Back/Forward to the original outfits tab", async ({ page }) => {
+  await serveCommunity(page, "private");
+  await page.evaluate(() => (window as any).K.tab("looks"));
+  await page.getByRole("button", { name: "코디 공유", exact: true }).click();
+  await page.getByLabel("이름").fill("합성진입회원");
+  await page.getByRole("checkbox", { name: /규칙을 읽었고 따를게요/ }).check();
+  await page.getByRole("checkbox", { name: /만 14세 이상이에요/ }).check();
+  await page.getByRole("button", { name: "가입하기", exact: true }).click();
+  await page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "세일 정보", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "세일 정보", exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "코디 공유", exact: true })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole("heading", { name: "세일 정보", exact: true })).toBeVisible();
+  await page.goBack(); await expect(page.getByRole("heading", { name: "코디 공유", exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('#tabs [data-tab="looks"]')).toHaveAttribute("aria-current", "page");
+});

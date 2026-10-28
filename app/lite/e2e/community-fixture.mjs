@@ -83,6 +83,7 @@ export async function serveCommunity(
     const req = route.request(),
       u = new URL(req.url());
     if (u.origin !== origin) return route.abort();
+    if (options.communityChunkGate && /^\/react\/community-[^/]+\.js$/.test(u.pathname)) await options.communityChunkGate();
     if (options.blockChrome && /^\/react\/chrome-.*\.js$/.test(u.pathname))
       return route.abort();
     if (standalone) {
