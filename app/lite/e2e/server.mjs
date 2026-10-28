@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
-const types = { '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.html':'text/html', '.json':'application/json', '.webmanifest':'application/manifest+json', '.woff2':'font/woff2' };
+const types = { '.svg':'image/svg+xml', '.png':'image/png', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.html':'text/html', '.json':'application/json', '.webmanifest':'application/manifest+json', '.woff2':'font/woff2' };
 const app=http.createServer((req,res)=>{
   const url = new URL(req.url,'http://localhost');
   const pathname = decodeURIComponent(url.pathname);

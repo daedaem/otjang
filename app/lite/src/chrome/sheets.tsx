@@ -106,13 +106,14 @@ export function Menu({
 // 서버가 그리는 화면으로 넘어가는 링크다(앱 화면 밖).
 function RoleLink() {
   const role = document.querySelector<HTMLMetaElement>('meta[name="hangit-role"]')?.content;
-  if (role !== "owner" && role !== "member") return null;
+  const owner = document.querySelector<HTMLMetaElement>('meta[name="hangit-storage-scope"]')?.content === "owner";
+  if (role !== "owner" && role !== "member") return owner ? <a className="row" href="/_private/readiness"><span className="grow t5">운영 점검</span><i className="ph ph-check-circle arr" /></a> : null;
   const [href, label, icon] = role === "owner" ? ["/_member/invites", "지인 초대", "ph-user-plus"] : ["/_member/account", "내 계정", "ph-user"];
   return (
-    <a className="row" href={href} data-role-link="">
+    <><a className="row" href={href} data-role-link="">
       <span className="grow t5">{label}</span>
       <i className={`ph ${icon} arr`} />
-    </a>
+    </a>{owner ? <a className="row" href="/_private/readiness"><span className="grow t5">운영 점검</span><i className="ph ph-check-circle arr" /></a> : null}</>
   );
 }
 export function Confirm({

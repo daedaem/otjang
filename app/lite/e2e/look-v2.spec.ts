@@ -17,7 +17,9 @@ async function open(page: Page, search = "") {
   await page.waitForFunction(() => !!(window as any).K?.M);
 }
 const look = (page: Page) => page.evaluate(() => document.documentElement.dataset.look || "");
-const askButton = (page: Page) => page.getByRole("button", { name: "찾기", exact: true }).first();
+// The bottom navigation is also named 찾기 and exists before the lazy home.
+// Scope colour checks to the real search form, which waits for its submit.
+const askButton = (page: Page) => page.getByRole("search").getByRole("button", { name: "찾기", exact: true });
 const bg = (page: Page) => askButton(page).evaluate((el) => getComputedStyle(el).backgroundColor);
 const top = (page: Page, sel: string) => page.locator(sel).first().evaluate((el) => el.getBoundingClientRect().top);
 
@@ -179,7 +181,7 @@ test("walnut marks what is hung: the hung hanger and the 걸어 봄 strip", asyn
   expect(await css(hang.locator("span"), "box-shadow")).toContain("rgb(255, 255, 255)");
   await expect(page.locator(".strip").first()).toBeVisible();
   await expect.poll(() => css(page.locator(".strip").first(), "background-color")).toBe(WALNUT);
-  expect(await bg(page).catch(() => "")).not.toBe(WALNUT);
+  expect(await page.locator('#tabs [data-tab="home"]').evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(WALNUT);
 });
 
 test("the closet rod is a 4px walnut line with walnut hangers", async ({ page }) => {
@@ -324,4 +326,23 @@ test(`each hang pops the strip hanger in the new look${label}`, async ({ page })
   const icon = page.locator(".strip .in > i").first();
   expect(await css(icon, "animation-name")).toBe("pop");
   expect(await css(icon, "animation-duration")).toBe("0.2s");
+});
+
+test("colour checks wait for the search submit button instead of measuring the navigation tab during lazy home loading", async ({ page }) => {
+  let release!: () => void, loaded!: () => void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  const requested=new Promise<void>(resolve=>{loaded=resolve;});
+  await page.route("**/react/home-*.js",async route=>{loaded();await gate;await route.continue();});
+  try {
+    await page.goto("/?photos=0#/",{waitUntil:"domcontentloaded"});
+    await requested;
+    await page.waitForFunction(()=>!!(window as any).K?.M);
+    const tab=page.getByRole("button",{name:"찾기",exact:true}).first();
+    await expect(tab).toHaveAttribute("data-tab","home");
+    expect(await tab.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    expect(await askButton(page).count()).toBe(0);
+    release();
+    await expect(askButton(page)).toHaveAttribute("type","submit");
+    expect(await bg(page)).toBe("rgb(32, 32, 37)");
+  } finally {release();}
 });

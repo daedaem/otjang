@@ -77,10 +77,10 @@
 .cm-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cm-terms p { font-size: 14px; line-height: 1.7; margin: 0 0 8px; }
 .cm-terms h3 { margin-top: 18px; }
-/* 로그인 버튼은 무채색 규칙의 예외로 공급자 안내 색을 따른다(카카오 #FEE500 바탕·검정 85% 글자, 구글 흰 바탕·회색 선).
-   공급자 로고 표기 등 세부 디자인 가이드는 공개 전에 다시 확인한다. */
-.cm-login .cm-kakao { background: #fee500; color: rgba(0, 0, 0, .85); }
-.cm-login .cm-google { background: #ffffff; color: #1f1f1f; border: 1px solid #747775; }
+/* 공식 완성형 버튼 원본: 색·심볼·문구·비율 유지. 공급자마다 같은 시각 높이/누르기 영역. */
+.cm-login .cm-provider { display: flex; align-items: center; justify-content: flex-start; min-height: 48px; width: fit-content; max-width: 100%; text-decoration: none; }
+.cm-provider img { display: block; width: auto; height: 46px; max-width: 100%; object-fit: contain; }
+.cm-provider:focus-visible { outline: 3px solid var(--brand, #5b3a24); outline-offset: 3px; border-radius: 4px; }
 .cm-email { max-width: 360px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 .cm-email .btn { width: 100%; }
 .cm-email-actions { display: grid; gap: 4px; justify-items: start; }

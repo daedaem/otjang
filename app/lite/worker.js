@@ -15,6 +15,7 @@ import { reserveRankBudget } from './functions/lib/rank-budget.js';
 import { authorizePrivateRequest } from './functions/lib/private-access.js';
 import { handlePrivateSession } from './functions/lib/private-session.js';
 import { ACCOUNT_HEADER, memberStorageScope } from './src/domain/account-scope.js';
+import { handleReadiness } from './functions/lib/readiness.js';
 
 const privateHeaders = {
   'Cache-Control': 'private, no-store',
@@ -194,6 +195,7 @@ export function createWorker({
         return denied(access, request, env);
       }
       if (invite && url.pathname.startsWith('/_member/')) return accounts(request, env, { owner: true });
+      if (url.pathname === '/_private/readiness') return handleReadiness(request, env);
       if (url.pathname.startsWith('/api/')) { const mismatch = await scopeMismatch(request, 'owner'); if (mismatch) return mismatch; }
 
       if (url.pathname === '/api/rank') {

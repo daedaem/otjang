@@ -218,8 +218,9 @@ test("the join screen shows the terms and privacy notice with the operator's nam
 test("in public mode a visitor who is not signed in sees Kakao and Google sign-in", async ({ page }) => {
   await serve(page, "public", { MEMBER_SESSION_SECRET: "s".repeat(40), KAKAO_REST_KEY: "k", GOOGLE_CLIENT_ID: "g", GOOGLE_CLIENT_SECRET: "gs" }, {});
   await go(page);
-  await expect(page.getByRole("link", { name: "카카오로 시작하기" })).toHaveAttribute("href", "/_member/login/kakao");
-  await expect(page.getByRole("link", { name: "구글로 시작하기" })).toHaveAttribute("href", "/_member/login/google");
+  await expect(page.getByRole("link", { name: "카카오 로그인" })).toHaveAttribute("href", "/_member/login/kakao");
+  await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/_member/login/google");
+  await expect.poll(()=>page.locator('.cm-provider img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth>0))).toBe(true);
   await expect(page.getByRole("button", { name: "가입하기" })).toHaveCount(0);
 });
 

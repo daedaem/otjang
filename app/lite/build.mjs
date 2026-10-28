@@ -9,6 +9,7 @@ import { build as buildInput } from 'vite';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 assertBuildAllowed();
 
@@ -28,6 +29,10 @@ const put = (rel, data) => {
 const copy = (from, rel) => put(rel, fs.readFileSync(from));
 
 fs.rmSync(OUT, { recursive: true, force: true });
+// Source revision only; no environment/secrets or machine paths in the artifact.
+let sourceCommit = null;
+try { sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: HERE, encoding: 'utf8' }).trim(); } catch {}
+put('build-info.json', JSON.stringify({ commit: sourceCommit && /^[a-f0-9]{40}$/.test(sourceCommit) ? sourceCommit : null }));
 
 // 1) 공통 코어·화면 보조 파일(시안과 같은 파일)
 buildCore();
@@ -61,6 +66,8 @@ const ICONS = ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'maskable
 for (const f of ICONS) copy(path.join(HERE, 'public/icons', f), `icons/${f}`);
 // 체험용 옷 예시 사진(public/examples/README.md)
 for (const f of fs.readdirSync(path.join(HERE, 'public/examples')).filter((f) => f.endsWith('.webp'))) copy(path.join(HERE, 'public/examples', f), `examples/${f}`);
+
+for (const f of ['google-signin.png', 'kakao-login.svg']) copy(path.join(HERE, 'public/login', f), `login/${f}`);
 
 // 4) 화면: 시안 본문 조각을 완전한 문서로 감싼다. 링크 페이지 전용 줄(사진 폴더, claude 메타, 제목)은 뺀다.
 //    저장 키(EOUL_MOCK_KEY)는 남겨서 링크 시안과 같은 이름으로 이 기기에 저장한다.
@@ -213,7 +220,7 @@ ${shellGraph.css.map((href) => `<link rel="stylesheet" href="${href}">`).join('\
 </body>
 </html>
 `);
-put('community-public.json', JSON.stringify({ files: [...shellGraph.files, '/icons/icon.svg'].sort() }, null, 2));
+put('community-public.json', JSON.stringify({ files: [...shellGraph.files, '/icons/icon.svg', '/login/google-signin.png', '/login/kakao-login.svg'].sort() }, null, 2));
 
 // 5) 설치 정보, Pages 헤더
 put('manifest.webmanifest', JSON.stringify({
