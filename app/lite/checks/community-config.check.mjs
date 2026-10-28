@@ -13,7 +13,10 @@ test('배포 설정은 코디 공유를 본인 전용(private)으로 켜고 publ
     assert.equal(Object.hasOwn(config.vars, key), false, `${key}는 저장소에 넣지 않는다`);
 });
 
-test('배포 설정은 지인 초대 회원(MEMBER_APP_MODE=invite)을 켠다(대표 10-28 15:12)', () => {
-  assert.equal(config.vars.MEMBER_APP_MODE, 'invite');
+test('배포 설정은 일반 계정 로그인(accounts)을 쓰고 초대 회원 한도·전용 DB를 유지한다(대표 10-29)', () => {
+  assert.equal(config.vars.MEMBER_APP_MODE, 'accounts');
   assert.equal(config.vars.MEMBER_AI_DAILY, '10');
+  const community=config.d1_databases.find(x=>x.binding==='COMMUNITY_DB');
+  assert.ok(community?.database_id);
+  for(const binding of ['RANK_DB','CROWD_DB']) assert.notEqual(community.database_id,config.d1_databases.find(x=>x.binding===binding)?.database_id);
 });

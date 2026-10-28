@@ -17,6 +17,7 @@ import { handlePrivateSession } from './functions/lib/private-session.js';
 import { ACCOUNT_HEADER, memberStorageScope } from './src/domain/account-scope.js';
 import { handleReadiness } from './functions/lib/readiness.js';
 import { handlePrivateAiCheck } from './functions/lib/private-ai-check.js';
+import { appActor, primaryAdmin } from './functions/lib/primary-admin.js';
 
 const privateHeaders = {
   'Cache-Control': 'private, no-store',
@@ -40,6 +41,7 @@ async function scopeMismatch(request, member, required = false) {
 function denied(access, request, env) {
   const status = access?.status === 401 ? 401 : 503;
   const session = env?.PRIVATE_AUTH_MODE === 'session';
+  const login = env?.MEMBER_APP_MODE === 'accounts' ? '/_member/signin' : '/_private/login';
   const url = new URL(request.url);
   const documentPath = url.pathname === '/' || /\.html?$/i.test(url.pathname) ||
     (!url.pathname.startsWith('/api/') && !/\.[^/]+$/.test(url.pathname));
@@ -47,12 +49,12 @@ function denied(access, request, env) {
     (url.pathname === '/' || request.headers.get('sec-fetch-mode') === 'navigate' ||
       request.headers.get('accept')?.toLowerCase().includes('text/html'));
   if (session && status === 401 && htmlNavigation) {
-    return new Response(null, { status: 303, headers: { ...privateHeaders, Location: '/_private/login' } });
+    return new Response(null, { status: 303, headers: { ...privateHeaders, Location: login } });
   }
   return Response.json({
     error: status === 401 ? 'unauthorized' : 'not_configured',
-    message: status === 401 ? '본인 전용 로그인이 필요해요.' : '비공개 접속 설정을 확인하고 있어요.',
-    ...(session && status === 401 ? { login: '/_private/login' } : {}),
+    message: status === 401 ? (env?.MEMBER_APP_MODE === 'accounts' ? '계정 로그인이 필요해요.' : '본인 전용 로그인이 필요해요.') : '비공개 접속 설정을 확인하고 있어요.',
+    ...(session && status === 401 ? { login } : {}),
   }, { status, headers: privateHeaders });
 }
 
@@ -105,12 +107,12 @@ async function publicCommunity(request, env, url, { authorize, community, member
 
 const INVITE_PUBLIC = new Set(['/_member/signup', '/_member/signin', '/_member/password/signup', '/_member/password/signin']);
 // 화면(HTML)에 역할 표시를 붙인다. 회원에게는 바깥 사진(무신사 등)을 막는 CSP를 더한다.
-async function withRole(asset, role, member, showRole = true) {
+async function withRole(asset, role, member, showRole = true, accountLogin = false) {
   const type = asset.headers.get('content-type') || '';
   let response;
   if (asset.ok && type.includes('text/html')) {
     const tags = await identityTags(role, member);
-    const html = (await asset.text()).replace('<head>', '<head>' + (showRole ? tags : tags.replace(/<meta name="hangit-role"[^>]*>/, '')));
+    const html = (await asset.text()).replace('<head>', '<head>' + (showRole ? tags : tags.replace(/<meta name="hangit-role"[^>]*>/, '')) + (accountLogin ? '<meta name="hangit-account-login" content="password">' : ''));
     response = new Response(html, { status: asset.status, headers: asset.headers });
   } else response = new Response(asset.body, asset);
   for (const [name, value] of Object.entries(privateHeaders)) response.headers.set(name, value);
@@ -140,7 +142,7 @@ async function memberApp(request, env, url, id, h) {
     return h.weather(request, env);
   }
   if (path.startsWith('/api/')) return Response.json({ code: 'not_found' }, { status: 404, headers: privateHeaders });
-  return withRole(await env.ASSETS.fetch(request), 'member', id);
+  return withRole(await env.ASSETS.fetch(request), 'member', id, true, env.MEMBER_APP_MODE==='accounts');
 }
 
 // Dependencies can only be supplied by code/tests. HTTP input and environment variables
@@ -167,24 +169,61 @@ export function createWorker({
       // 모두 있을 때만 /c 화면, 그 화면의 파일(빌드가 만든 허용 목록), 회원 로그인, 커뮤니티 API가 본인 로그인 없이 열린다.
       // 나머지 앱(상품 자료·옷장 화면·AI)은 그대로 본인 전용이다.
       const invite = env?.MEMBER_APP_MODE === 'invite';
+      const accountsMode = env?.MEMBER_APP_MODE === 'accounts';
+      const membersEnabled = invite || accountsMode;
       // 초대 회원 가입·로그인 화면(대표 10-28 15:12). 로그인 없이 열린다. 초대 코드가 있어야 가입된다.
       // public 커뮤니티 로그인보다 먼저 본다(보안 검토 10-28).
-      if (invite && INVITE_PUBLIC.has(url.pathname)) return accounts(request, env, {});
+      if (membersEnabled && INVITE_PUBLIC.has(url.pathname)) return accounts(request, env, {});
       if (env?.COMMUNITY_MODE === 'public' && publicMissing(env).length === 0) {
-        const open = await publicCommunity(request, env, url, { authorize, community, member, memberAuth });
+        const publicOwner = accountsMode ? async (req,e) => {
+          const id=await member(req,e,{provider:'password'});
+          return id && (await appActor(e,id)).role==='owner' ? {ok:true} : {ok:false,status:401};
+        } : authorize;
+        const open = await publicCommunity(request, env, url, { authorize:publicOwner, community, member, memberAuth });
         if (open) return open;
+      }
+      let accountActor=null, bootstrapOwner=false;
+      if (accountsMode) {
+        try {
+          const id=await member(request,env,{provider:'password'});
+          if (id) {
+            accountActor=await appActor(env,id);
+            if (accountActor.role==='member') return memberApp(request,env,url,id,{rank,catalog,weather,rakuten,adpick,openProducts,community,accounts,garmentPhoto});
+            if (url.pathname==='/_private/logout') return accounts(new Request(new URL('/_member/account/logout',url),request),env,{owner:true,member:id});
+            if (url.pathname==='/_private/status') return request.method==='GET' ? Response.json({authenticated:true},{headers:privateHeaders}) : Response.json({code:'method_not_allowed'},{status:405,headers:{...privateHeaders,allow:'GET'}});
+            if (url.pathname==='/_private/login' || url.pathname==='/_private/admin-setup') return request.method==='GET' ? new Response(null,{status:303,headers:{...privateHeaders,location:'/'}}) : Response.json({code:'admin_already_linked'},{status:409,headers:privateHeaders});
+            if (url.pathname==='/_private/session') return Response.json({code:'use_account_login',login:'/_member/signin'},{status:403,headers:privateHeaders});
+          } else {
+            const legacy=await authorize(request,env);
+            if (legacy?.ok && !(await primaryAdmin(env))) {
+              bootstrapOwner=true;
+              if (url.pathname==='/_private/admin-setup') return accounts(request,env,{owner:true});
+              if (sessionPaths.has(url.pathname)) return privateSession(request,env);
+              if (request.method==='GET' && (url.pathname==='/' || url.pathname==='/index.html')) return new Response(null,{status:303,headers:{...privateHeaders,location:'/_private/admin-setup'}});
+            } else {
+              // Existing owner authentication is a one-time bootstrap, never a second administrator login.
+              if (sessionPaths.has(url.pathname) || url.pathname==='/_private/admin-setup') {
+                if (!(await primaryAdmin(env))) {
+                  if (sessionPaths.has(url.pathname)) return privateSession(request,env);
+                  if (request.method==='GET') return new Response(null,{status:303,headers:{...privateHeaders,location:'/_private/login'}});
+                }
+              }
+              return denied({status:401},request,env);
+            }
+          }
+        } catch { return denied(null,request,env); }
       }
       // Only these exact authentication endpoints may answer before the private gate.
       // Their handler owns method/origin/credential validation. Access/default and
       // unknown modes retain their existing gate even on the login paths.
-      if (env?.PRIVATE_AUTH_MODE === 'session' && sessionPaths.has(url.pathname)) {
+      if (!accountsMode && env?.PRIVATE_AUTH_MODE === 'session' && sessionPaths.has(url.pathname)) {
         try {
           const response = await privateSession(request, env);
           if (response) return response;
         } catch { return denied(null, request, env); }
       }
       let access;
-      try { access = await authorize(request, env); }
+      try { access = accountActor?.role==='owner' || bootstrapOwner ? {ok:true} : await authorize(request, env); }
       catch { return denied(null, request, env); }
       if (access?.ok !== true) {
         // 본인이 아니면 초대 회원 세션을 본다. 회원은 앱을 쓰되 AI는 하루 한도, 무신사 사진은 막고, 초대 관리는 못 한다.
@@ -195,7 +234,7 @@ export function createWorker({
         }
         return denied(access, request, env);
       }
-      if (invite && url.pathname.startsWith('/_member/')) return accounts(request, env, { owner: true });
+      if (membersEnabled && url.pathname.startsWith('/_member/')) return accounts(request, env, { owner: true, ...(accountActor ? {member:accountActor.sessionMember} : {}) });
       if (url.pathname === '/_private/readiness') return handleReadiness(request, env);
       if (url.pathname === '/_private/ai-check') return handlePrivateAiCheck(request);
       if (url.pathname.startsWith('/api/')) { const mismatch = await scopeMismatch(request, 'owner'); if (mismatch) return mismatch; }
@@ -219,7 +258,7 @@ export function createWorker({
       // The internal assets cache may serve bytes only after verification above.
       // Also prevent a downstream shared cache from replaying private responses.
       const asset = await env.ASSETS.fetch(request);
-      return withRole(asset, 'owner', undefined, invite);
+      return withRole(asset, 'owner', undefined, membersEnabled, !!accountActor);
     },
   };
 }

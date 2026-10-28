@@ -190,12 +190,16 @@ async function passwordBody(request) {
   } catch { throw failure(400, 'invalid_request'); }
 }
 
-function loginPage(invite = false) {
+function loginPage(invite = false, setup = false) {
   const nonce = encode(crypto.getRandomValues(new Uint8Array(16)));
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>본인 전용 접속</title>
 <style nonce="${nonce}">*{box-sizing:border-box}body{margin:0;padding:24px;min-height:100svh;display:grid;place-items:center;background:#f6f6f8;color:#17171c;font:16px system-ui,sans-serif}main{width:min(100%,390px);padding:32px;background:white;border-radius:24px}h1{margin:0 0 12px;font-size:25px}p{line-height:1.6;color:#606068}label{display:block;margin:24px 0 8px}input,button{width:100%;min-height:48px;border:1px solid #d3d3da;border-radius:12px;padding:12px;font:inherit}button{margin-top:16px;background:#17171c;color:white;cursor:pointer}button:disabled{opacity:.5}#notice{min-height:24px;font-size:14px}</style></head><body><main><h1>본인 전용 접속</h1><p>앱 비밀번호로 시험 앱을 열어요.<br>한 번 로그인하면 이 기기에서 7일 동안 유지돼요.<br>결제나 별도 가입은 필요 없어요.</p><form id="login"><label for="password">앱 비밀번호</label><input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"><button type="submit">들어가기</button><p id="notice" role="status" aria-live="polite"></p></form>${invite ? '<p>초대받으셨나요? <a href="/_member/signin">이메일로 로그인</a> · <a href="/_member/signup">가입하기</a></p>' : ''}</main>
 <script nonce="${nonce}">const form=document.querySelector('#login'),field=document.querySelector('#password'),button=form.querySelector('button'),notice=document.querySelector('#notice');form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;notice.textContent='확인하고 있어요.';try{const response=await fetch('/_private/session',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:field.value})});if(response.ok){location.replace('/');return}notice.textContent=response.status===429?'시도가 많아요. 잠시 후 다시 해주세요.':response.status===503?'접속 설정을 준비하고 있어요.':'앱 비밀번호를 다시 확인해 주세요.'}catch{notice.textContent='연결을 확인하고 다시 시도해 주세요.'}finally{field.value='';button.disabled=false}});</script></body></html>`;
-  return new Response(html, { headers: {
+  const display = setup ? html.replaceAll('본인 전용 접속','관리자 최초 설정 확인')
+    .replace('앱 비밀번호로 시험 앱을 열어요.<br>한 번 로그인하면 이 기기에서 7일 동안 유지돼요.<br>결제나 별도 가입은 필요 없어요.','처음 관리자 계정을 연결할 때만 기존 본인 인증을 확인해요. 계정을 만든 뒤에는 일반 이메일 로그인만 사용합니다.')
+    .replace('<label for="password">앱 비밀번호</label>','<label for="password">기존 앱 비밀번호</label>')
+    .replace('</main>','<p><a href="/_member/signin">일반 계정 로그인으로</a></p></main>') : html;
+  return new Response(display, { headers: {
     ...baseHeaders, 'Content-Type': 'text/html; charset=utf-8',
     'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
   } });
@@ -206,7 +210,7 @@ export async function handlePrivateSession(request, env, { now = Date.now } = {}
   const expected = { '/_private/login': 'GET', '/_private/session': 'POST', '/_private/status': 'GET', '/_private/logout': 'POST' }[path];
   if (!expected) return null;
   if (request.method !== expected) return json({ error: 'method_not_allowed' }, 405, { Allow: expected });
-  if (path === '/_private/login') return loginPage(env?.MEMBER_APP_MODE === 'invite');
+  if (path === '/_private/login') return loginPage(env?.MEMBER_APP_MODE === 'invite', env?.MEMBER_APP_MODE === 'accounts');
   const secret = configuration(env);
   if (!secret) return errorResponse(unconfigured());
   if (path === '/_private/status') {

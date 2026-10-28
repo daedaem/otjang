@@ -84,9 +84,14 @@ export async function readinessSnapshot(request, env) {
       rights: "not_confirmed",
     },
     invite: {
-      enabled: env.MEMBER_APP_MODE === "invite",
-      configured: env.MEMBER_APP_MODE === "invite" && dbReady(dbs.members),
+      enabled: ["invite","accounts"].includes(env.MEMBER_APP_MODE),
+      configured: ["invite","accounts"].includes(env.MEMBER_APP_MODE) && dbReady(dbs.members),
       realSignup: "not_checked",
+    },
+    accountLogin: {
+      enabled: env.MEMBER_APP_MODE === "accounts",
+      configured: env.MEMBER_APP_MODE === "accounts" && dbReady(env.COMMUNITY_DB),
+      realSignin: "not_checked",
     },
     login: { ...login, provider: "not_checked" },
     community: {
@@ -116,6 +121,7 @@ export async function handleReadiness(request, env) {
     ["애드픽 상품 검색", yes(snapshot.catalog.adpick)],
     ["라쿠텐 상품 검색", yes(snapshot.catalog.rakuten)],
     ["초대 회원", yes(snapshot.invite.configured)],
+    ...(snapshot.accountLogin.enabled ? [["이메일·비밀번호 계정 로그인",yes(snapshot.accountLogin.configured)]] : []),
     ["카카오 로그인", yes(snapshot.login.kakao)],
     ["Google 로그인", yes(snapshot.login.google)],
     ["이메일 코드 발송", yes(snapshot.login.email)],
