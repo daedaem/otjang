@@ -108,6 +108,8 @@ if(!addSearchEntry)throw new Error('React add-search entry missing');
 const mirrorEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/mirror/index.tsx');
 if(!mirrorEntry)throw new Error('React mirror entry missing');
 const communityEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/community/index.tsx');
+const photoAddEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/photo-add/index.tsx');
+if(!photoAddEntry)throw new Error('React photo-add entry missing');
 if(!communityEntry)throw new Error('React community entry missing');
 if (!closetEntry) throw new Error('React closet entry missing');
 if (!photoEntry) throw new Error('Photo backup entry missing');
@@ -143,6 +145,7 @@ const consultAssets = islandAssets('EOUL_CONSULT_LOAD', consultEntry);
 const backupAssets = islandAssets('EOUL_BACKUP_LOAD', backupEntry);
 const chromeAssets = islandAssets('EOUL_CHROME_LOAD', chromeEntry);
 const communityAssets = islandAssets('EOUL_COMMUNITY_LOAD', communityEntry);
+const photoAddAssets = islandAssets('EOUL_PHOTOADD_LOAD', photoAddEntry);
 const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -167,6 +170,7 @@ ${consultAssets}
 ${backupAssets}
 ${chromeAssets}
 ${communityAssets}
+${photoAddAssets}
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">

@@ -12,7 +12,7 @@ function claude(answer, calls = []) {
 }
 const ok = { authorize: async () => ({ ok: true }), reserve: async () => ({ ok: true }) };
 const call = async (body, opts = {}, init = {}) => {
-  const res = await handleGarmentPhoto(new Request('https://x.test/api/garment-photo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), ...init }), { ANTHROPIC_API_KEY: 'k' }, { ...ok, ...opts });
+  const res = await handleGarmentPhoto(new Request('https://x.test/api/garment-photo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), ...init }), { ANTHROPIC_API_KEY: 'sk-test-placeholder-0000' }, { ...ok, ...opts });
   return { status: res.status, body: await res.json() };
 };
 

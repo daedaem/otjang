@@ -54,6 +54,8 @@ export type AddHost = {
   requiredCount: number;
   legacyIssue(): string | null;
   manual(q: string): void;
+  // 사진으로 옷 넣기(10-28 16:46). 없으면 버튼을 보이지 않는다.
+  photoAdd?(): void;
   examples(): string[];
   shelf(): void;
   toast(text: string): void;

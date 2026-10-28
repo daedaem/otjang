@@ -1,0 +1,24 @@
+/* 사진으로 옷 넣기. 새 디자인 규칙: 무채색, 사진 2px, 상자 8px. */
+.pa { max-width: 720px; margin: auto; padding-bottom: 40px; }
+.pa button, .pa input, .pa select { font: inherit; }
+.pa-top { display: flex; align-items: center; min-height: 56px; }
+.pa h1 { font-size: 26px; line-height: 1.35; margin: 16px 0 8px; outline: none; font-weight: 700; }
+.pa-lead { color: var(--ink2); line-height: 1.65; margin: 0 0 12px; }
+.pa-small { font-size: 13px; color: var(--ink3); line-height: 1.6; margin: 6px 0 12px; }
+.pa-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+.pa-check input { width: 20px; height: 20px; accent-color: var(--ink); }
+.pa-pick { position: relative; width: 100%; cursor: pointer; }
+.pa-pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.pa-pick:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pa-notice { margin: 12px 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pa-notice p { margin: 0; }
+.pa-list { list-style: none; padding: 0; margin: 16px 0; display: grid; gap: 16px; }
+.pa-item { display: grid; grid-template-columns: 120px 1fr; align-items: start; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.pa-item img { width: 120px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 2px; background: var(--ptile); }
+.pa-fields { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.pa-fields label { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 8px; font-size: 14px; }
+.pa-fields select, .pa-fields input { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--surface); color: var(--ink); min-width: 0; }
+.pa-state { font-size: 13px; color: var(--ink2); margin: 0; min-height: 20px; }
+.pa-state b { color: var(--ink); }
+.pa-row { display: flex; gap: 16px; }
+.pa-save { width: 100%; position: sticky; bottom: calc(var(--tabs, 48px) + 12px + env(safe-area-inset-bottom, 0px)); }
