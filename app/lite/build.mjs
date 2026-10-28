@@ -257,8 +257,10 @@ const walk = (dir) => {
   }
 };
 walk(OUT);
-const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && f !== 'community-shell.html' && f !== 'community-public.json' && !f.startsWith('react/') && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
+// 지연 화면도 같은 버전으로 열리도록 실행 파일을 함께 보관한다. 개인 자료/API는 포함하지 않는다.
+const shell = ['/', ...files.filter((f) => f !== '_headers' && f !== 'index.html' && f !== 'community-shell.html' && f !== 'community-public.json' && !scriptPaths.has(f)).map((f) => `/${f}`)].sort();
 const hash = crypto.createHash('sha256');
+hash.update(read(path.join(HERE, 'src/sw.js')));
 for (const f of files.sort()) hash.update(f).update(fs.readFileSync(path.join(OUT, f)));
 const version = hash.digest('hex').slice(0, 12);
 const sw = read(path.join(HERE, 'src/sw.js')).replace("'lite-__VERSION__'", `'lite-${version}'`).replace('= __SHELL__;', `= ${JSON.stringify(shell)};`);
