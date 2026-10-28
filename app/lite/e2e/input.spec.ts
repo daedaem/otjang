@@ -301,11 +301,13 @@ test('input assets load only on entering the React input screen',async({page})=>
 test.describe('input runtime caching',()=>{
   test.use({serviceWorkers:'allow'});
   test.afterEach(async({request})=>{const response=await request.post('http://127.0.0.1:8793/start');expect(response.ok()).toBe(true);});
-  test('worker downloads React assets on first visit and keeps visited input available offline',async({page,request})=>{
+  test('worker preloads screen runtimes and keeps input available offline',async({page,request})=>{
     await page.goto('/?photos=0');
     await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready; if(!navigator.serviceWorker.controller)await new Promise<void>(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true}));});
     const cachedInput=()=>page.evaluate(async()=>{const paths=[];for(const key of await caches.keys()){if(!key.startsWith('lite-'))continue;const c=await caches.open(key);for(const r of await c.keys())if(new URL(r.url).pathname.startsWith('/react/input-'))paths.push(new URL(r.url).pathname);}return paths;});
-    expect(await cachedInput()).toEqual([]);
+    const preloaded = await cachedInput();
+    expect(preloaded.some(p=>p.endsWith('.js'))).toBe(true);
+    expect(preloaded.some(p=>p.endsWith('.css'))).toBe(true);
     await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
   await page.locator('[data-reg-open]').click();
     await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
