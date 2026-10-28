@@ -72,3 +72,12 @@
 .cm-send-info p { margin: 2px 0; }
 .cm-send-info b { color: var(--ink); font-weight: 600; margin-right: 6px; }
 .cm-sheet-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 12px; }
+.cm-login { display: grid; gap: 8px; margin: 20px 0; max-width: 360px; }
+.cm-login .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.cm-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cm-terms p { font-size: 14px; line-height: 1.7; margin: 0 0 8px; }
+.cm-terms h3 { margin-top: 18px; }
+/* 로그인 버튼은 무채색 규칙의 예외로 공급자 안내 색을 따른다(카카오 #FEE500 바탕·검정 85% 글자, 구글 흰 바탕·회색 선).
+   공급자 로고 표기 등 세부 디자인 가이드는 공개 전에 다시 확인한다. */
+.cm-login .cm-kakao { background: #fee500; color: rgba(0, 0, 0, .85); }
+.cm-login .cm-google { background: #ffffff; color: #1f1f1f; border: 1px solid #747775; }

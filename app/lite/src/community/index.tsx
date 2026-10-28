@@ -31,13 +31,17 @@ type Status = {
   reasons: { id: string; label: string }[];
   contact: string | null;
   reviewDays: number;
-  operator: boolean;
+  isOperator: boolean;
+  signedIn: boolean;
+  login: { kakao: boolean; google: boolean } | null;
+  operator: { name: string | null; contact: string | null; privacyOfficer: string | null } | null;
+  minAge: number;
 };
 type Fail = { code: string; message?: string };
 type ReviewItem = Post & { reports: number; firstReportAt: number | null; reasons: Record<string, number> };
 export type CommunityClient = {
   status(): Promise<Status | Fail>;
-  join(name: string, rules: number): Promise<{ member: { name: string } } | Fail>;
+  join(name: string, rules: number, age14: boolean): Promise<{ member: { name: string } } | Fail>;
   feed(options: { cursor?: string; mine?: boolean }): Promise<{ items: Post[]; next: string | null } | Fail>;
   post(body: { post: { text: string; pieces: Piece[]; consent: boolean }; photos: string[] }): Promise<{ id: string } | Fail>;
   remove(id: string): Promise<{ ok: true } | Fail>;
@@ -58,6 +62,9 @@ export type CommunityHost = {
   share?: Piece[] | null;
   info(): void;
   menu(): void;
+  // /c 공개 화면: 앱의 탭·메뉴 없이 코디 공유만 띄운다.
+  standalone?: boolean;
+  logout?(): void;
 };
 
 const failed = (x: unknown): x is Fail => !!x && typeof x === "object" && "code" in x;
@@ -76,7 +83,19 @@ const HIDDEN_NOTE: Record<string, string> = {
   reports: "신고가 쌓여 운영자 확인을 기다려요. 지금은 나만 볼 수 있어요.",
 };
 
-function Top({ host }: { host: CommunityHost }) {
+function Top({ host, status }: { host: CommunityHost; status: Status | null }) {
+  if (host.standalone)
+    return (
+      <header className="cm-top">
+        <span className="mark">행잇</span>
+        <span className="sp" />
+        {status?.signedIn && host.logout ? (
+          <button type="button" className="quiet" onClick={host.logout}>
+            로그아웃
+          </button>
+        ) : null}
+      </header>
+    );
   return (
     <header className="cm-top">
       <span className="mark">코디</span>
@@ -96,7 +115,7 @@ function Closed({ fail }: { fail: Fail }) {
     fail.code === "community_off"
       ? "코디 공유는 아직 열지 않았어요"
       : fail.code === "public_not_ready"
-        ? "코디 공유는 회원 로그인을 준비한 뒤에 열어요"
+        ? "코디 공유는 공개 준비가 끝나면 열어요"
         : fail.code === "preview"
           ? "미리보기에서는 코디 공유를 쓰지 않아요"
           : fail.code === "offline"
@@ -106,7 +125,7 @@ function Closed({ fail }: { fail: Fail }) {
     fail.code === "community_off"
       ? "운영자가 켜면 여기서 다른 사람의 코디를 보고 내 코디 사진을 올릴 수 있어요. 지금은 아무것도 보내지 않아요."
       : fail.code === "public_not_ready"
-        ? "누구나 가입하려면 회원 로그인이 먼저 있어야 해요. 지금은 아무것도 보내지 않아요."
+        ? "운영자 정보·연락처와 회원 로그인이 준비되면 열려요. 지금은 아무것도 보내지 않아요."
         : fail.message || "잠시 뒤에 다시 열어 주세요.";
   return (
     <div className="cm-closed" role="status">
@@ -116,15 +135,87 @@ function Closed({ fail }: { fail: Fail }) {
   );
 }
 
+// 이용약관·개인정보처리방침 요약(공개 전 초안: docs/log/2026-10/community-legal-draft-20261028.md). 운영자 정보는 서버 설정에서 온다.
+function Terms({ status, close }: { status: Status; close(): void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    box.current?.querySelector<HTMLElement>("button")?.focus();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, []);
+  const op = status.operator;
+  const who = op?.name || "운영자(정보 준비 중)";
+  const contact = op?.contact || status.contact || "준비 중";
+  return createPortal(
+    <div className="cm-veil" onClick={(e) => e.target === e.currentTarget && close()}>
+      <div className="cm-sheet cm-terms" role="dialog" aria-modal="true" aria-label="이용약관·개인정보처리방침" ref={box}>
+        <div className="cm-sheet-head">
+          <h2>이용약관·개인정보처리방침</h2>
+          <button type="button" className="quiet" onClick={close}>
+            닫기
+          </button>
+        </div>
+        <h3>운영자</h3>
+        <p>
+          {who} · 문의·신고·권리 침해: {contact}
+        </p>
+        <h3>가입</h3>
+        <p>규칙에 동의하고 이름을 정해 가입해요. 만 {status.minAge}세 미만은 가입할 수 없어요.</p>
+        <h3>게시물</h3>
+        <p>직접 찍었거나 올릴 권리가 있는 사진만 올려요. 게시물의 권리는 올린 사람에게 있고, 운영자는 코디 공유 화면에 보여 주는 데만 써요. 언제든 지울 수 있고, 지우면 서버에서 바로 지워요.</p>
+        <h3>신고·숨김·차단</h3>
+        <p>
+          신고하면 그 글은 나에게 바로 안 보여요. 서로 다른 3명이 신고하면 운영자가 확인할 때까지 숨기고, {status.reviewDays}일 안에 확인해요. 차단하면 서로의 글이 안 보이고 상대에게 알리지 않아요.
+        </p>
+        <h3>모으는 개인정보</h3>
+        <p>
+          회원 확인값(카카오·구글 회원번호를 알아볼 수 없게 바꾼 값), 활동 이름, 올린 사진·한마디·옷 종류·색·이름, 게시·신고·차단 시각. 이메일·전화번호·프로필은 받지 않아요. 옷장 기록·메모·구매 링크와 사진의 위치·기기 정보는 받지 않아요.
+        </p>
+        <h3>보관과 삭제</h3>
+        <p>지우거나 커뮤니티를 나갈 때까지 보관하고, 나가면 이름·글·사진·신고·차단을 바로 지워요. 제3자에게 주지 않아요. 서버와 저장소는 Cloudflare를 써요.</p>
+        <h3>개인정보 보호책임자</h3>
+        <p>
+          {op?.privacyOfficer || who} · {contact}
+        </p>
+        <p className="cm-small">이 내용은 공개 전 초안이며 법률 검토 전이에요.</p>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function SignIn({ status }: { status: Status }) {
+  return (
+    <div className="cm-join">
+      <p className="cm-lead">다른 사람의 코디를 보고, 내 코디 사진을 올려요. 카카오나 구글로 시작해 주세요. 이메일·프로필은 받지 않아요.</p>
+      <div className="cm-login">
+        {status.login?.kakao ? (
+          <a className="btn cm-kakao" href="/_member/login/kakao">
+            카카오로 시작하기
+          </a>
+        ) : null}
+        {status.login?.google ? (
+          <a className="btn cm-google" href="/_member/login/google">
+            구글로 시작하기
+          </a>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function Join({ status, client, done }: { status: Status; client: CommunityClient; done(s: Status): void }) {
   const [name, setName] = useState("");
   const [agree, setAgree] = useState(false);
+  const [age, setAge] = useState(false);
+  const [terms, setTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submit = async () => {
     setBusy(true);
     setError("");
-    const r = await client.join(name, status.rules.version);
+    const r = await client.join(name, status.rules.version, age);
     setBusy(false);
     if (failed(r)) return setError(r.message || "가입하지 못했어요.");
     done({ ...status, member: r.member });
@@ -137,7 +228,15 @@ function Join({ status, client, done }: { status: Status; client: CommunityClien
           <li key={r}>{r}</li>
         ))}
       </ol>
-      {status.contact ? <p className="cm-small">권리 침해·신고 연락처: {status.contact} · 신고는 {status.reviewDays}일 안에 확인해요.</p> : null}
+      {status.operator?.contact || status.contact ? (
+        <p className="cm-small">
+          권리 침해·신고 연락처: {status.operator?.contact || status.contact} · 신고는 {status.reviewDays}일 안에 확인해요.
+        </p>
+      ) : null}
+      <button type="button" className="quiet" onClick={() => setTerms(true)}>
+        이용약관·개인정보처리방침
+      </button>
+      {terms ? <Terms status={status} close={() => setTerms(false)} /> : null}
       <label className="cm-field">
         <span>이름</span>
         <input value={name} maxLength={COMMUNITY_LIMITS.nicknameMax} onChange={(e) => setName(e.target.value)} autoComplete="nickname" />
@@ -147,8 +246,12 @@ function Join({ status, client, done }: { status: Status; client: CommunityClien
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
         <span>규칙을 읽었고 따를게요</span>
       </label>
+      <label className="cm-check">
+        <input type="checkbox" checked={age} onChange={(e) => setAge(e.target.checked)} />
+        <span>만 {status.minAge}세 이상이에요</span>
+      </label>
       {error ? <p role="alert" className="cm-error">{error}</p> : null}
-      <button type="button" className="btn go" disabled={!agree || name.trim().length < 2 || busy} onClick={submit}>
+      <button type="button" className="btn go" disabled={!agree || !age || name.trim().length < 2 || busy} onClick={submit}>
         가입하기
       </button>
     </div>
@@ -488,7 +591,7 @@ function Community({ host }: { host: CommunityHost }) {
   };
   return (
     <section className="cm" data-react-community>
-      <Top host={host} />
+      <Top host={host} status={status} />
       <h1 tabIndex={-1} ref={heading}>
         코디 공유
       </h1>
@@ -503,6 +606,8 @@ function Community({ host }: { host: CommunityHost }) {
         <p role="status" className="cm-small">
           불러오는 중이에요…
         </p>
+      ) : !status.signedIn ? (
+        <SignIn status={status} />
       ) : !status.member ? (
         <Join status={status} client={client} done={setStatus} />
       ) : (
@@ -573,7 +678,7 @@ function Community({ host }: { host: CommunityHost }) {
               {leaving ? "한 번 더 누르면 내 글·사진을 모두 지우고 나가요" : "커뮤니티 나가기"}
             </button>
           </footer>
-          {status.operator ? <Review client={client} /> : null}
+          {status.isOperator ? <Review client={client} /> : null}
           {compose ? (
             <Compose
               host={host}

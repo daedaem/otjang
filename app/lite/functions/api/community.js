@@ -4,7 +4,9 @@
 // 스위치 COMMUNITY_MODE (Cloudflare 변수, 기본 없음 = 꺼짐)
 //   없음·off·그 밖의 값 → 503 community_off. 아무것도 읽거나 쓰지 않는다.
 //   private → 지금의 본인 전용 로그인으로 들어온 한 사람(member 'owner', 운영자)만 쓴다. 혼자 시험하는 단계.
-//   public  → 503 public_not_ready. 회원 로그인(카카오 등, C4)이 생기기 전에는 열리지 않는다.
+//   public  → 누구나 가입(대표 10-28 08:08). 운영자 이름(COMMUNITY_OPERATOR)·연락처(COMMUNITY_CONTACT)·회원 로그인 설정
+//             (MEMBER_SESSION_SECRET + 카카오 또는 구글 키)이 모두 있어야 열리고, 하나라도 없으면 503 public_not_ready와 빠진 것을 알린다.
+//             로그인하지 않은 사람은 상태만 볼 수 있다. 회원은 worker.js가 회원 세션으로 확인해 넘긴다.
 //
 // 사진은 화면이 긴 변 1080px JPEG로 다시 그려(위치 정보 등 메타데이터 없음) 보낸다. 글에 동의가 있어야만 받는다.
 // 지금은 D1에 base64로 둔다(새 서비스·비용 없음). 서버 전체 상한 COMMUNITY_MAX_MB(기본 300MB)를 넘으면 사진 글만 막는다.
@@ -27,6 +29,7 @@ import {
   COMMUNITY_LIMITS, COMMUNITY_RULES, COMMUNITY_RULES_VERSION, REPORT_REASONS,
   validateCommunityPost, validateNickname, isCommunityJpeg, reportReasonIds,
 } from '../../src/domain/community.js';
+import { memberLoginOptions, endMemberSessions } from '../lib/member-session.js';
 
 const HOUR = 60 * 60 * 1000;
 const POSTS_PER_HOUR = 10;
@@ -35,6 +38,7 @@ const MEMBER_PHOTOS_MAX = 200;
 const MEMBER_BYTES_MAX = 60 * 1024 * 1024;
 const BLOCKS_MAX = 500;
 const BODY_MAX = 4 * 1024 * 1024;
+const COMMUNITY_MIN_AGE = 14; // 대표 10-28 11:47: 만 14세 미만은 받지 않는다(법정대리인 동의 절차 없음)
 const REASONS = new Set(reportReasonIds());
 
 const SCHEMA = [
@@ -114,16 +118,33 @@ async function memberRow(db, member) {
   return db.prepare('SELECT name, rules FROM community_members WHERE member = ?1').bind(member).first();
 }
 
+export function publicMissing(env) {
+  const missing = [];
+  if (!env.COMMUNITY_OPERATOR) missing.push('operator');
+  if (!env.COMMUNITY_CONTACT) missing.push('contact');
+  const login = memberLoginOptions(env);
+  if (!login.kakao && !login.google) missing.push('login');
+  return missing;
+}
+const operatorInfo = (env) => (env.COMMUNITY_OPERATOR || env.COMMUNITY_CONTACT ? {
+  name: env.COMMUNITY_OPERATOR || null, contact: env.COMMUNITY_CONTACT || null, privacyOfficer: env.COMMUNITY_PRIVACY_OFFICER || env.COMMUNITY_OPERATOR || null,
+} : null);
+
 async function status(env, db, who) {
-  const row = await memberRow(db, who.member);
+  const signedIn = typeof who.member === 'string' && !!who.member;
+  const row = signedIn ? await memberRow(db, who.member) : null;
   return reply(200, {
-    mode: 'private',
+    mode: env.COMMUNITY_MODE,
+    signedIn,
+    login: env.COMMUNITY_MODE === 'public' ? memberLoginOptions(env) : null,
+    operator: operatorInfo(env),
+    minAge: COMMUNITY_MIN_AGE,
     member: row && row.rules === COMMUNITY_RULES_VERSION ? { name: row.name } : null,
     rules: { version: COMMUNITY_RULES_VERSION, items: COMMUNITY_RULES },
     reasons: REPORT_REASONS.map(([id, label]) => ({ id, label })),
     contact: env.COMMUNITY_CONTACT || null,
     reviewDays: reviewDays(env),
-    operator: who.operator === true,
+    isOperator: who.operator === true,
     limits: { textMax: COMMUNITY_LIMITS.textMax, piecesMax: COMMUNITY_LIMITS.piecesMax, photosMax: COMMUNITY_LIMITS.photosMax, photoBytesMax: COMMUNITY_LIMITS.photoBytesMax },
   });
 }
@@ -132,6 +153,7 @@ async function join(request, db, who, now) {
   const { body, error } = await readJson(request);
   if (error) return error;
   if (body?.rules !== COMMUNITY_RULES_VERSION) return fail(400, 'rules_required', '규칙을 읽고 동의해 주세요.');
+  if (body?.age14 !== true) return fail(400, 'age_required', '만 14세 이상만 가입할 수 있어요.');
   const name = validateNickname(body?.name);
   if (!name.ok) return fail(400, 'invalid', name.message);
   const taken = await db.prepare('SELECT member FROM community_members WHERE name_key = ?1 AND member <> ?2').bind(name.key, who.member).first();
@@ -285,7 +307,7 @@ async function blocks(request, url, db, who, now, rest) {
   return fail(405, 'method', '지원하지 않는 요청이에요.');
 }
 
-async function leave(request, db, who) {
+async function leave(request, env, db, who) {
   const { body, error } = await readJson(request);
   if (error) return error;
   if (body?.confirm !== true) return fail(400, 'confirm_required', '나가기를 한 번 더 확인해 주세요.');
@@ -296,6 +318,7 @@ async function leave(request, db, who) {
     db.prepare('DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1').bind(who.member),
     db.prepare('DELETE FROM community_members WHERE member = ?1').bind(who.member),
   ]);
+  if (env.COMMUNITY_MODE === 'public') await endMemberSessions(env, who.member);
   return reply(200, { ok: true });
 }
 
@@ -350,21 +373,26 @@ async function review(request, db, who, now, rest) {
 
 export async function handleCommunity(request, env = {}, who = {}, { now = Date.now } = {}) {
   const mode = env.COMMUNITY_MODE;
-  if (mode === 'public') return fail(503, 'public_not_ready', '코디 공유는 회원 로그인을 준비한 뒤에 열어요.');
-  if (mode !== 'private') return fail(503, 'community_off', '코디 공유는 아직 열지 않았어요.');
+  if (mode !== 'private' && mode !== 'public') return fail(503, 'community_off', '코디 공유는 아직 열지 않았어요.');
+  if (mode === 'public') {
+    const missing = publicMissing(env);
+    if (missing.length) return reply(503, { code: 'public_not_ready', message: '코디 공유는 공개 준비가 끝나면 열어요.', missing });
+  }
   const db = env.CROWD_DB;
   if (!db) return fail(503, 'not_configured', '코디 공유 저장소가 연결되지 않았어요.');
-  if (typeof who?.member !== 'string' || !who.member) return fail(401, 'unauthorized', '로그인이 필요해요.');
   const url = new URL(request.url);
   const [, , , section = '', rest = '', extra] = url.pathname.split('/');
   if (extra !== undefined) return fail(404, 'not_found', '없는 주소예요.');
+  const signedIn = typeof who?.member === 'string' && !!who.member;
+  // public에서는 로그인 전에도 상태(로그인 방법·규칙·운영자 정보)만 볼 수 있다.
+  if (!signedIn && !(mode === 'public' && section === 'status' && request.method === 'GET')) return fail(401, 'unauthorized', '로그인이 필요해요.');
   const at = now();
   try {
     await ensureSchema(db);
     const method = request.method;
     if (section === 'status' && method === 'GET') return await status(env, db, who);
     if (section === 'join' && method === 'POST') return await join(request, db, who, at);
-    if (section === 'leave' && method === 'POST') return await leave(request, db, who);
+    if (section === 'leave' && method === 'POST') return await leave(request, env, db, who);
     if (section === 'photos' && method === 'GET' && rest) return await photo(db, who, rest);
     if (section === 'review') return await review(request, db, who, at, rest);
     // 아래는 가입한 회원만.

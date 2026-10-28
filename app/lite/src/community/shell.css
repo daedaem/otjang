@@ -1,0 +1,27 @@
+/* /c 공개 화면의 바탕. 앱(screen.html)의 새 디자인 토큰과 버튼 규칙 중 코디 공유에 필요한 것만 옮겼다. */
+:root {
+  --bg: #ffffff; --surface: #ffffff; --well: #f7f7f8; --tile: #f4f4f5; --ptile: #f4f4f5;
+  --ink: #202025; --ink2: #555560; --ink3: #6a6a74; --line: #e6e6ea;
+  --brand: #5b3a24; --wood: #5b3a24; --wood-line: #5b3a24; --leaf: #4d6b4f;
+  --acc: #202025; --acc-text: #b3261e; --btn-bg: #202025; --btn-fg: #ffffff; --r: 8px;
+  --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #151519; --surface: #1c1c21; --well: #202025; --tile: #232327; --ptile: #e9e9ec;
+  --ink: #f7f7f8; --ink2: #c4c4cb; --ink3: #9898a3; --line: #33333b;
+  --brand: #c4996b; --wood-line: #c4996b; --leaf: #8fb592;
+  --acc: #f7f7f8; --acc-text: #ff9a8f; --btn-bg: #f7f7f8; --btn-fg: #151519; color-scheme: dark; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); }
+body { color: var(--ink); font: 400 16px/1.55 var(--font); letter-spacing: -.01em; word-break: keep-all; overflow-wrap: anywhere; -webkit-font-smoothing: antialiased; }
+#community { padding: 0 max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.mark { display: inline-flex; align-items: center; font-weight: 700; font-size: 18px; letter-spacing: -.02em; color: var(--brand); }
+.icon { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; color: var(--ink); }
+.btn { min-height: 50px; padding: 0 18px; border-radius: 8px; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; border: 0; }
+.btn.go { background: var(--btn-bg); color: var(--btn-fg); }
+.btn.line { border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+.btn:disabled { opacity: .45; cursor: default; }
+.quiet { min-height: 44px; min-width: 44px; padding: 0 4px; margin: 0 -4px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--ink2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); white-space: nowrap; }

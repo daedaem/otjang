@@ -275,7 +275,10 @@ B5b #84는 head59361e30의 최종 CI11개·실제220개 두 작업/Node336개·�
 - 코드: `app/lite/functions/api/community.js`(API), `src/domain/community.js`(글·이름 검사, 화면·서버 공용), `src/community/`(React 화면), `worker.js`(`/api/community/*`, 지금 로그인한 본인을 회원 `owner`·운영자로 넘김).
 - **기본은 꺼짐이다.** `wrangler.jsonc`에 변수를 넣지 않았다(`keep_vars: true`라 설정 파일 값이 대시보드 값을 덮어쓰지 않게). 꺼져 있으면 화면은 "아직 열지 않았어요"만 보이고 요청은 `503 community_off`다.
 - 혼자 써 보기: Cloudflare 대시보드 Worker `otjang` → 변수 `COMMUNITY_MODE=private`, 선택으로 `COMMUNITY_CONTACT`(규칙·신고 화면의 연락처), `COMMUNITY_REVIEW_DAYS`(기본 7), `COMMUNITY_MAX_MB`(기본 300). 새 비용·계정은 없다. 이 값을 넣으면 그때부터 동의한 사진이 기존 D1에 저장된다(사진 외부 전송 경계: 대표가 켤 때 판단).
-- `public`은 일부러 열리지 않는다(`503 public_not_ready`). 여러 회원 로그인(C4), 운영자 정보와 약관(C5), 공개 화면의 무신사 사진·자료 끄기가 먼저다.
+- `public`(10-28 C4·C5): 운영자 이름 `COMMUNITY_OPERATOR`, 연락처 `COMMUNITY_CONTACT`, 회원 로그인(`MEMBER_SESSION_SECRET` 32자 이상 + 카카오 `KAKAO_REST_KEY`(선택 `KAKAO_CLIENT_SECRET`) 또는 구글 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`)이 모두 있어야 열린다. 하나라도 없으면 `503 public_not_ready`와 빠진 항목(`operator`·`contact`·`login`)을 알리고, Worker도 아무것도 새로 공개하지 않는다.
+- 준비가 끝난 `public`에서 로그인 없이 열리는 것은 `/c`(코디 공유만 있는 화면, `community-shell.html`), 빌드가 만든 허용 목록 `community-public.json`의 파일(코디 공유 화면 코드·CSS·아이콘), `/_member/*`(카카오·구글 로그인), `/api/community/*`(회원 세션 확인, 쓰기는 같은 출처만)뿐이다. 앱 화면·상품 자료(무신사 포함)·AI·옷장은 그대로 본인 전용이다.
+- 회원 로그인(`functions/lib/member-session.js`): 이메일·프로필을 요청하지 않는다(카카오는 동의 항목 없이 회원번호, 구글은 `openid`). 회원 id는 공급자 번호를 `MEMBER_SESSION_SECRET`으로 HMAC한 값이고, 세션은 D1 `member_sessions`에 토큰 해시만 둔다(30일, `__Host-hangit-member`, HttpOnly·Secure·SameSite=Lax). 공급자 리디렉션 주소는 `<사이트>/_member/callback/kakao`, `<사이트>/_member/callback/google`.
+- 공개 전에 남은 것: 공급자 앱 등록·키 입력(대표), 약관·처리방침 법률 검토, 카카오·구글 로그인 버튼 디자인 가이드 확인, 사진 R2 이전 여부(회원이 늘 때).
 - 사진 저장을 R2로 옮기는 것(C3)은 R2 활성화(결제 수단 등록 가능성, 확인 필요)가 필요해 대표 승인 뒤에 한다.
 - 로그: 처리기는 오류에 글·이름·사진을 남기지 않는다. `community_log`에는 글 번호·처리·사유·신고 수·시각만 있다.
-- 검증: `checks/community.check.mjs`(Node 13개, SQLite로 같은 SQL), `e2e/community.spec.ts`(브라우저 8개, 요청을 실제 처리기로 돌림). 실제 D1·실기기에서는 아직 켜 보지 않았다.
+- 검증: `checks/community.check.mjs`(13개), `checks/community-public.check.mjs`(9개, 공개 경로·준비 조건·출처 검사), `checks/member-session.check.mjs`(6개, 가짜 공급자), `e2e/community.spec.ts`(브라우저 11개). 실제 D1, 실제 카카오·구글, 실기기에서는 아직 켜 보지 않았다.
