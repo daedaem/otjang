@@ -209,20 +209,40 @@ async function deleteAccount(request, db, member) {
   await removeMember(db, member);
   return json(200, { ok: true }, [clearCookie, clearOwnerCookie()]);
 }
-async function removeMember(db, member) {
-  // 코디 공유 자료도 함께 지운다(표가 없으면 건너뛴다).
-  for (const sql of [
-    'DELETE FROM community_photos WHERE member = ?1',
-    'DELETE FROM community_reports WHERE member = ?1 OR post IN (SELECT id FROM community_posts WHERE member = ?1)',
-    'DELETE FROM community_posts WHERE member = ?1',
-    'DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1',
-    'DELETE FROM community_members WHERE member = ?1',
-  ]) { try { await db.prepare(sql).bind(member).run(); } catch {} }
-  await db.prepare('CREATE TABLE IF NOT EXISTS member_sessions (token_hash TEXT PRIMARY KEY, member TEXT NOT NULL, provider TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)').run();
-  await db.batch([
-    db.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member),
-    db.prepare('DELETE FROM member_accounts WHERE member = ?1').bind(member),
-  ]);
+async function removeMember(db, member, after = []) {
+  // 커뮤니티/세션을 아직 쓰지 않았다면 표가 없을 수 있다. 실제 삭제 오류는 삼키지 않는다.
+  const { results } = await db.prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table','view')").all();
+  const optional = new Set(['community_post_details', 'community_photos', 'community_reports', 'community_posts', 'community_post_usage', 'community_blocks', 'community_members', 'member_sessions']);
+  const tables = new Set();
+  for (const row of results) {
+    const name = String(row.name).toLowerCase();
+    if (row.type === 'table') tables.add(name);
+    else if (optional.has(name) || name === 'member_accounts') throw Error('unsupported member storage');
+  }
+  if (!tables.has('member_accounts')) throw Error('incomplete member storage');
+  // Recover owned post references from photos/usage left by an older partial deletion.
+  const related = [];
+  if (tables.has('community_posts')) related.push('SELECT id FROM community_posts WHERE member = ?1');
+  if (tables.has('community_photos')) related.push('SELECT post FROM community_photos WHERE member = ?1');
+  if (tables.has('community_post_usage')) related.push("SELECT substr(id, 6) FROM community_post_usage WHERE member = ?1 AND id LIKE 'post:%'", "SELECT substr(id, 8) FROM community_post_usage WHERE member = ?1 AND id LIKE 'legacy:%'");
+  if (tables.has('community_post_details') && !related.length) throw Error('incomplete community storage');
+  const relatedIds = related.join(' UNION ');
+  const otherAuthor = column => tables.has('community_posts')
+    ? ` AND NOT EXISTS (SELECT 1 FROM community_posts p WHERE p.id = ${column} AND p.member <> ?1)` : '';
+  const sql = [];
+  if (tables.has('community_post_details')) sql.push(`DELETE FROM community_post_details WHERE post IN (${relatedIds})${otherAuthor('community_post_details.post')}`);
+  if (tables.has('community_reports')) sql.push(relatedIds
+    ? `DELETE FROM community_reports WHERE member = ?1 OR (post IN (${relatedIds})${otherAuthor('community_reports.post')})`
+    : 'DELETE FROM community_reports WHERE member = ?1');
+  if (tables.has('community_photos')) sql.push('DELETE FROM community_photos WHERE member = ?1');
+  if (tables.has('community_blocks')) sql.push('DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1');
+  if (tables.has('community_posts')) sql.push('DELETE FROM community_posts WHERE member = ?1');
+  if (tables.has('community_members')) sql.push('DELETE FROM community_members WHERE member = ?1');
+  if (tables.has('member_sessions')) sql.push('DELETE FROM member_sessions WHERE member = ?1');
+  sql.push('DELETE FROM member_accounts WHERE member = ?1');
+  // 새 부가 정보·사진·글·세션·계정과 초대 해제를 같은 DB 트랜잭션에서 마친다.
+  // 공용 설정, 다른 회원 자료, 기존 사용량 보존 정책은 바꾸지 않는다.
+  await db.batch([...sql.map(query => db.prepare(query).bind(member)), ...after]);
 }
 
 // who: {} 로그인 전, {member} 초대 회원, {owner:true} 본인. Worker가 정한다.
@@ -273,8 +293,7 @@ export async function handleMemberAccounts(request, env = {}, who = {}, { now = 
         const b = await body(request, ['code']);
         const inv = await db.prepare('SELECT used_by FROM member_invites WHERE code = ?1 AND used_by IS NOT NULL').bind(normalCode(b?.code)).first();
         if (!inv) return fail(404, 'not_found', '가입한 회원이 없는 코드예요.');
-        await removeMember(db, inv.used_by);
-        await db.prepare('UPDATE member_invites SET revoked_at = ?2 WHERE code = ?1').bind(normalCode(b?.code), at).run();
+        await removeMember(db, inv.used_by, [db.prepare('UPDATE member_invites SET revoked_at = ?2 WHERE code = ?1').bind(normalCode(b?.code), at)]);
         return json(200, { ok: true });
       }
       if (path === '/_member/invites/revoke' && method === 'POST') {

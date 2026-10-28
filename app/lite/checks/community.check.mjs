@@ -117,7 +117,8 @@ test('글과 사진: 동의한 사진만 저장하고, 피드에는 옷장 id �
   const feed = await call(e, 'GET', '/api/community/feed', null, B);
   assert.equal(feed.body.items.length, 1);
   const item = feed.body.items[0];
-  assert.deepEqual(Object.keys(item).sort(), ['author', 'createdAt', 'hidden', 'id', 'mine', 'photos', 'pieces', 'text'].sort());
+  assert.deepEqual(Object.keys(item).sort(), ['author', 'createdAt', 'hidden', 'id', 'mine', 'photos', 'pieces', 'text', 'board', 'title', 'sale', 'revision', 'updatedAt'].sort());
+  assert.deepEqual([item.board, item.title, item.sale, item.revision], ['outfits', '', null, 1]);
   assert.deepEqual(item.author, { name: '에이' });
   assert.equal(item.mine, false);
   assert.equal(JSON.stringify(item).includes('"a"'), false, '회원 내부 id를 내보내지 않는다');
