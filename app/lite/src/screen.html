@@ -1365,9 +1365,10 @@ a { color: inherit; text-decoration: none; }
   // 지인 테스트(10-28 15:12): 본인은 '지인 초대', 초대 회원은 '내 계정'(React 메뉴의 RoleLink와 같음).
   function roleLink() {
     const role = document.querySelector('meta[name="hangit-role"]')?.content;
-    if (role === 'owner') return '<a class="row" href="/_member/invites" data-role-link><span class="grow t5">지인 초대</span><i class="ph ph-user-plus arr"></i></a>';
+    const ops = document.querySelector('meta[name="hangit-storage-scope"]')?.content === 'owner' ? '<a class="row" href="/_private/readiness"><span class="grow t5">운영 점검</span><i class="ph ph-check-circle arr"></i></a>' : '';
+    if (role === 'owner') return '<a class="row" href="/_member/invites" data-role-link><span class="grow t5">지인 초대</span><i class="ph ph-user-plus arr"></i></a>' + ops;
     if (role === 'member') return '<a class="row" href="/_member/account" data-role-link><span class="grow t5">내 계정</span><i class="ph ph-user arr"></i></a>';
-    return '';
+    return ops;
   }
   function renderStrip({ pop = false, bump = false } = {}) {
     const on = ['home', 'results', 'records', 'looks'].includes(curView) && hung().length > 0;

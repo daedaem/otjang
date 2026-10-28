@@ -250,13 +250,13 @@ function SignIn({ status, client, signedIn }: { status: Status; client: Communit
       <p className="cm-lead">다른 사람의 코디를 보고, 내 코디 사진을 올려요. 카카오·구글이나 이메일 인증으로 시작해 주세요. 프로필은 받지 않아요.</p>
       <div className="cm-login">
         {status.login?.kakao ? (
-          <a className="btn cm-kakao" href="/_member/login/kakao">
-            카카오로 시작하기
+          <a className="cm-provider cm-kakao" href="/_member/login/kakao">
+            <img src="/login/kakao-login.svg" alt="카카오 로그인" width="224" height="46" />
           </a>
         ) : null}
         {status.login?.google ? (
-          <a className="btn cm-google" href="/_member/login/google">
-            구글로 시작하기
+          <a className="cm-provider cm-google" href="/_member/login/google">
+            <img src="/login/google-signin.png" alt="Sign in with Google" width="207" height="46" />
           </a>
         ) : null}
       </div>
