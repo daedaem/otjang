@@ -153,7 +153,7 @@ export function CommunityView({ host }: { host: CommunityHost }) {
     try {
       const result = await client.leave();
       if (failed(result)) { setNotice(result.message || "나가지 못했어요."); return; }
-      setLeaving(false); setPosts([]); setStatus(s => s ? { ...s, member: null } : s);
+      setLeaving(false); setPosts([]); setStatus(s => s ? { ...s, member: null, signedIn: s.mode === 'public' ? false : s.signedIn } : s);
       setNotice("커뮤니티에서 나갔어요. 내 글과 사진을 모두 지웠어요.");
     } catch { setNotice("나가지 못했어요. 다시 시도해 주세요."); }
     finally { memberPending.current = false; setMemberBusy(false); }

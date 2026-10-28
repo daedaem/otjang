@@ -30,7 +30,7 @@ import {
   COMMUNITY_LIMITS, COMMUNITY_RULES, COMMUNITY_RULES_VERSION, REPORT_REASONS,
   validateCommunityPost, validateNickname, isCommunityJpeg, reportReasonIds, communityBoard, COMMUNITY_BOARDS,
 } from '../../src/domain/community.js';
-import { memberLoginOptions, endMemberSessions } from '../lib/member-session.js';
+import { memberLoginOptions, memberSessionRemovalStatement } from '../lib/member-session.js';
 
 const HOUR = 60 * 60 * 1000;
 const POSTS_PER_HOUR = 10;
@@ -425,6 +425,9 @@ async function leave(request, env, db, who, now) {
   const { body, error } = await readJson(request);
   if (error) return error;
   if (body?.confirm !== true) return fail(400, 'confirm_required', '나가기를 한 번 더 확인해 주세요.');
+  // Session and content use the same COMMUNITY_DB || CROWD_DB binding.
+  // Prepare optional tables before the batch, then delete all rows atomically.
+  const session = env.COMMUNITY_MODE === 'public' ? await memberSessionRemovalStatement(env, who.member) : null;
   await db.batch([
     legacyReservations(db, who.member, now),
     db.prepare('DELETE FROM community_photos WHERE member = ?1').bind(who.member),
@@ -433,8 +436,8 @@ async function leave(request, env, db, who, now) {
     db.prepare('DELETE FROM community_posts WHERE member = ?1').bind(who.member),
     db.prepare('DELETE FROM community_blocks WHERE member = ?1 OR blocked = ?1').bind(who.member),
     db.prepare('DELETE FROM community_members WHERE member = ?1').bind(who.member),
+    ...(session ? [session] : []),
   ]);
-  if (env.COMMUNITY_MODE === 'public') await endMemberSessions(env, who.member);
   return reply(200, { ok: true });
 }
 

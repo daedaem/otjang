@@ -294,11 +294,15 @@ export async function memberFromRequest(request, env, { now = Date.now, provider
 }
 
 // 커뮤니티 '나가기' 뒤에는 그 회원의 모든 세션도 지운다.
-export async function endMemberSessions(env, member) {
+export async function memberSessionRemovalStatement(env, member) {
   const db = dbOf(env);
-  if (!db || !member) return;
+  if (!db || !member) return null;
   await ensureSchema(db);
-  await db.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member).run();
+  return db.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member);
+}
+export async function endMemberSessions(env, member) {
+  const statement = await memberSessionRemovalStatement(env, member);
+  if (statement) await statement.run();
 }
 
 export async function handleMemberAuth(request, env = {}, { fetchImpl = fetch, now = Date.now } = {}) {

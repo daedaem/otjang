@@ -35,7 +35,7 @@ test('public leaving rolls content back when session removal fails, then retries
   const e = ready(), db = e.COMMUNITY_DB.raw;
   const who = { member: 'leaving-author', operator: false };
   await call(e, 'POST', '/api/community/join', { name: '나가는회원', rules: 1, age14: true }, who);
-  const made = await call(e, 'POST', '/api/community/posts', { post: { board: 'free', title: '보존할 글', text: '실패하면 남아야 해요', pieces: [], consent: false }, photos: [] }, who);
+  const made = await call(e, 'POST', '/api/community/posts', { post: { board: 'free', title: '보존할 글', text: '실패하면 남아야 해요', pieces: [], consent: true }, photos: [Buffer.from([255, 216, 255, 224, 0, 255, 217]).toString('base64')] }, who);
   assert.equal(made.status, 200);
   db.exec('CREATE TABLE member_sessions (token_hash TEXT PRIMARY KEY, member TEXT NOT NULL, provider TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)');
   const insert = db.prepare('INSERT INTO member_sessions VALUES (?, ?, ?, ?, ?)');
@@ -46,6 +46,7 @@ test('public leaving rolls content back when session removal fails, then retries
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_posts WHERE id=?').get(made.body.id).n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_post_details WHERE post=?').get(made.body.id).n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_members WHERE member=?').get(who.member).n, 1);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_photos WHERE member=?').get(who.member).n, 1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM member_sessions').get().n, 2);
   db.exec('DROP TRIGGER fail_session_delete');
   const retried = await call(e, 'POST', '/api/community/leave', { confirm: true }, who);
@@ -53,6 +54,7 @@ test('public leaving rolls content back when session removal fails, then retries
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_posts WHERE id=?').get(made.body.id).n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_post_details WHERE post=?').get(made.body.id).n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_members WHERE member=?').get(who.member).n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM community_photos WHERE member=?').get(who.member).n, 0);
   assert.deepEqual(db.prepare('SELECT member FROM member_sessions').all().map(r => r.member), ['another-member']);
 });
 
