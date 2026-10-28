@@ -118,8 +118,12 @@ async function memberRow(db, member) {
   return db.prepare('SELECT name, rules FROM community_members WHERE member = ?1').bind(member).first();
 }
 
+// 공개 커뮤니티는 개인 앱 DB와 다른 D1(바인딩 COMMUNITY_DB)에 둔다(보안 검토 10-28: 누구나 가입하면 개인 자료와 같은 DB를 채울 수 있음).
+// private에서는 COMMUNITY_DB가 없으면 기존 CROWD_DB를 쓴다.
+export const communityDb = (env) => env.COMMUNITY_DB || env.CROWD_DB;
 export function publicMissing(env) {
   const missing = [];
+  if (!env.COMMUNITY_DB || env.COMMUNITY_DB === env.CROWD_DB || env.COMMUNITY_DB === env.RANK_DB) missing.push('database');
   if (!env.COMMUNITY_OPERATOR) missing.push('operator');
   if (!env.COMMUNITY_CONTACT) missing.push('contact');
   const login = memberLoginOptions(env);
@@ -266,7 +270,10 @@ async function report(request, env, db, who, now) {
   if (!post) return fail(404, 'not_found', '글을 찾지 못했어요.');
   if (post.member === who.member) return fail(400, 'invalid', '내 글은 신고할 수 없어요. 지우기를 써 주세요.');
   await db.prepare('INSERT OR IGNORE INTO community_reports (post, member, reason, created_at) VALUES (?1, ?2, ?3, ?4)').bind(post.id, who.member, body.reason, now).run();
-  const count = await db.prepare('SELECT COUNT(*) AS n, MIN(created_at) AS first FROM community_reports WHERE post = ?1 AND created_at >= ?2').bind(post.id, Number(post.reports_since) || 0).first();
+  // public에서는 가입한 지 COMMUNITY_REPORTER_MIN_DAYS(기본 3)일이 지난 회원의 신고만 자동 숨김에 센다. 신고 자체와 신고자에게 안 보이기는 그대로다.
+  const minDays = env.COMMUNITY_MODE === 'public' ? Math.max(0, Number(env.COMMUNITY_REPORTER_MIN_DAYS ?? 3) || 0) : 0;
+  const count = await db.prepare(`SELECT COUNT(*) AS n, MIN(r.created_at) AS first FROM community_reports r JOIN community_members m ON m.member = r.member
+    WHERE r.post = ?1 AND r.created_at >= ?2 AND m.joined_at <= ?3`).bind(post.id, Number(post.reports_since) || 0, now - minDays * 86400000).first();
   if (post.hidden === null && Number(count?.n) >= AUTO_HIDE_REPORTS) {
     await db.batch([
       db.prepare("UPDATE community_posts SET hidden = 'reports', hidden_at = ?2 WHERE id = ?1 AND hidden IS NULL").bind(post.id, now),
@@ -378,7 +385,7 @@ export async function handleCommunity(request, env = {}, who = {}, { now = Date.
     const missing = publicMissing(env);
     if (missing.length) return reply(503, { code: 'public_not_ready', message: '코디 공유는 공개 준비가 끝나면 열어요.', missing });
   }
-  const db = env.CROWD_DB;
+  const db = communityDb(env);
   if (!db) return fail(503, 'not_configured', '코디 공유 저장소가 연결되지 않았어요.');
   const url = new URL(request.url);
   const [, , , section = '', rest = '', extra] = url.pathname.split('/');

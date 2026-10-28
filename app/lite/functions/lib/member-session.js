@@ -9,6 +9,8 @@
 //
 // 공급자에게 이메일·이름·프로필을 요청하지 않는다(카카오: 동의 항목 없이 회원번호만, 구글: openid만).
 // 회원 id는 공급자 번호를 비밀값으로 HMAC한 값이다. 공급자 번호·세션 토큰 원문은 저장하지 않는다.
+// 주의: MEMBER_SESSION_SECRET을 바꾸면 회원 id가 모두 바뀌어 기존 회원이 글·이름과 끊긴다. 한 번 정하면 바꾸지 않는다.
+// 카카오 문서에 PKCE가 없어(10-28 확인) 카카오는 상태값과 클라이언트 시크릿만 쓴다. KAKAO_CLIENT_SECRET을 켜 두기를 권한다.
 //   GET  /_member/login/kakao|google   → 공급자 로그인으로 302
 //   GET  /_member/callback/kakao|google → 세션 쿠키를 주고 /c로 303
 //   POST /_member/logout               → 세션 삭제(같은 출처만)
@@ -22,9 +24,10 @@ const HEADERS = { 'cache-control': 'private, no-store', 'x-content-type-options'
 const KAKAO = { authorize: 'https://kauth.kakao.com/oauth/authorize', token: 'https://kauth.kakao.com/oauth/token', me: 'https://kapi.kakao.com/v2/user/me' };
 const GOOGLE = { authorize: 'https://accounts.google.com/o/oauth2/v2/auth', token: 'https://oauth2.googleapis.com/token', issuers: ['https://accounts.google.com', 'accounts.google.com'] };
 
+const dbOf = (env) => env?.COMMUNITY_DB || env?.CROWD_DB;
 const secretOf = (env) => (typeof env?.MEMBER_SESSION_SECRET === 'string' && env.MEMBER_SESSION_SECRET.length >= 32 ? env.MEMBER_SESSION_SECRET : null);
 export function memberLoginOptions(env) {
-  const ok = !!secretOf(env) && !!env?.CROWD_DB;
+  const ok = !!secretOf(env) && !!dbOf(env);
   return { kakao: ok && !!env.KAKAO_REST_KEY, google: ok && !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET };
 }
 
@@ -144,7 +147,7 @@ async function callback(request, env, provider, { fetchImpl, now }) {
   const url = new URL(request.url);
   const nowMs = now(), nowSec = Math.floor(nowMs / 1000);
   const clear = setCookie(STATE_COOKIE, '', 0);
-  await ensureSchema(env.CROWD_DB);
+  await ensureSchema(dbOf(env));
   const state = await readState(secret, cookies(request)[STATE_COOKIE], nowSec);
   if (!state || state.p !== provider || !same(String(url.searchParams.get('state') || ''), state.s)) return fail(400, 'invalid_state', [clear]);
   if (url.searchParams.get('error')) return redirect(303, HOME, [clear]); // 사용자가 취소함
@@ -156,7 +159,7 @@ async function callback(request, env, provider, { fetchImpl, now }) {
   if (found.error) return fail(found.error === 'id_token' ? 400 : 502, found.error === 'id_token' ? 'invalid_token' : 'provider_error', [clear]);
   const member = hex(await hmac(secret, 'member', `${provider}|${found.subject}`)).slice(0, 32);
   const token = random(32);
-  const db = env.CROWD_DB;
+  const db = dbOf(env);
   await db.batch([
     db.prepare('DELETE FROM member_sessions WHERE expires_at <= ?1').bind(nowMs),
     db.prepare('INSERT INTO member_sessions (token_hash, member, provider, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)')
@@ -168,19 +171,21 @@ async function callback(request, env, provider, { fetchImpl, now }) {
 // 요청의 회원 쿠키 → 회원 id(32자 hex) 또는 null.
 export async function memberFromRequest(request, env, { now = Date.now } = {}) {
   const token = cookies(request)[SESSION_COOKIE];
-  if (!token || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !secretOf(env) || !env?.CROWD_DB) return null;
+  const db = dbOf(env);
+  if (!token || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !secretOf(env) || !db) return null;
   try {
-    await ensureSchema(env.CROWD_DB);
-    const row = await env.CROWD_DB.prepare('SELECT member FROM member_sessions WHERE token_hash = ?1 AND expires_at > ?2').bind(await sha256(token), now()).first();
+    await ensureSchema(db);
+    const row = await db.prepare('SELECT member FROM member_sessions WHERE token_hash = ?1 AND expires_at > ?2').bind(await sha256(token), now()).first();
     return row?.member || null;
   } catch { return null; }
 }
 
 // 커뮤니티 '나가기' 뒤에는 그 회원의 모든 세션도 지운다.
 export async function endMemberSessions(env, member) {
-  if (!env?.CROWD_DB || !member) return;
-  await ensureSchema(env.CROWD_DB);
-  await env.CROWD_DB.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member).run();
+  const db = dbOf(env);
+  if (!db || !member) return;
+  await ensureSchema(db);
+  await db.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member).run();
 }
 
 export async function handleMemberAuth(request, env = {}, { fetchImpl = fetch, now = Date.now } = {}) {
@@ -191,8 +196,8 @@ export async function handleMemberAuth(request, env = {}, { fetchImpl = fetch, n
     if (request.method !== 'POST') return fail(405, 'method_not_allowed');
     if (request.headers.get('origin') !== url.origin) return fail(403, 'invalid_origin');
     const token = cookies(request)[SESSION_COOKIE];
-    if (token && env.CROWD_DB) {
-      try { await ensureSchema(env.CROWD_DB); await env.CROWD_DB.prepare('DELETE FROM member_sessions WHERE token_hash = ?1').bind(await sha256(token)).run(); } catch {}
+    if (token && dbOf(env)) {
+      try { await ensureSchema(dbOf(env)); await dbOf(env).prepare('DELETE FROM member_sessions WHERE token_hash = ?1').bind(await sha256(token)).run(); } catch {}
     }
     const headers = new Headers({ ...HEADERS, 'content-type': 'application/json; charset=utf-8' });
     headers.append('set-cookie', setCookie(SESSION_COOKIE, '', 0));

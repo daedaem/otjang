@@ -91,11 +91,14 @@ Claude 추천 순위:
 
 1. 카카오 개발자에서 앱을 만들고 '카카오 로그인'을 켠다. 동의 항목은 고르지 않는다. 리디렉션 URI `<사이트>/_member/callback/kakao`. REST API 키(선택: 클라이언트 시크릿)를 Cloudflare Secret `KAKAO_REST_KEY`(`KAKAO_CLIENT_SECRET`)에 넣는다.
 2. Google Cloud에서 OAuth 클라이언트(웹)를 만든다. 리디렉션 URI `<사이트>/_member/callback/google`. `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`을 넣는다.
-3. `MEMBER_SESSION_SECRET`에 32자 이상 무작위 값을 넣는다.
+3. `MEMBER_SESSION_SECRET`에 32자 이상 무작위 값을 넣는다. **한 번 정하면 바꾸지 않는다**(바꾸면 회원 id가 모두 바뀌어 기존 회원이 글·이름과 끊긴다).
+3-1. Cloudflare에서 커뮤니티 전용 D1을 하나 더 만든다(예: `otjang-community`, 무료 범위). database_id를 알려 주면 Claude가 `wrangler.jsonc`에 바인딩 `COMMUNITY_DB`를 더한다(id는 비밀값이 아니다). 개인 앱 DB와 같은 DB면 public이 열리지 않는다(누구나 가입하면 개인 자료와 같은 DB를 채울 수 있어서).
 4. 변수 `COMMUNITY_OPERATOR`(운영자 이름), `COMMUNITY_CONTACT`(문의 이메일), 선택 `COMMUNITY_PRIVACY_OFFICER`·`COMMUNITY_REVIEW_DAYS`를 넣는다.
 5. `COMMUNITY_MODE=public`. 주소 `<사이트>/c`를 알린다.
 
 키는 대표가 직접 넣는다. Claude는 키를 보거나 저장소에 넣지 않는다. 공개 전에는 약관 법률 검토를 권한다.
+
+보안 검토(10-28, 별도 AI 에이전트, 읽기 전용, 실제 보안 전문가 검토 아님): 심각한 문제는 없었다. 반영한 것: 공개 시 전용 DB 필수, 가입 3일이 지나지 않은 계정의 신고는 자동 숨김에 세지 않음(`COMMUNITY_REPORTER_MIN_DAYS`), `/c` 정적 파일 주소 바뀜 대응, 아이콘 캐시. 남은 한계: 카카오는 문서상 PKCE가 없어 상태값과 클라이언트 시크릿만 쓴다(`KAKAO_CLIENT_SECRET` 켜기 권장). 회원이 계정을 여러 개 만들어 글을 많이 올리는 것은 한 시간 10개·사진 상한으로만 막는다.
 
 ## 바로 할 수 있는 것
 

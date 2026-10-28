@@ -50,14 +50,18 @@ async function publicCommunity(request, env, url, { authorize, community, member
   const path = url.pathname;
   if (path.startsWith('/_member/')) return memberAuth(request, env);
   if ((path === '/c' || path === '/c/') && request.method === 'GET') {
-    const asset = await env.ASSETS.fetch(new Request(new URL('/community-shell.html', url)));
+    // 정적 파일의 HTML 주소 정리가 /community-shell.html을 다른 주소로 돌려 답할 수 있어 한 번 따라간다(보안 검토 10-28).
+    let asset = await env.ASSETS.fetch(new Request(new URL('/community-shell.html', url)));
+    const moved = asset.status >= 300 && asset.status < 400 && asset.headers.get('location');
+    if (moved) asset = await env.ASSETS.fetch(new Request(new URL(moved, url)));
     if (!asset.ok) return null;
     return new Response(asset.body, { status: 200, headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SHELL_CSP, 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
   }
   if (request.method === 'GET' && (await publicFiles(env, url)).has(path)) {
     const asset = await env.ASSETS.fetch(request);
     const response = new Response(asset.body, asset);
-    response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    // 이름에 해시가 있는 /react/ 파일만 오래 묶어 둔다.
+    response.headers.set('Cache-Control', path.startsWith('/react/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600');
     response.headers.set('X-Content-Type-Options', 'nosniff');
     return response;
   }
