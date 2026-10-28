@@ -38,7 +38,7 @@ const call = async (e, method, path, body, who = { member: 'owner', operator: tr
   const type = res.headers.get('content-type') || '';
   return { status: res.status, headers: res.headers, body: type.includes('json') ? await res.json() : new Uint8Array(await res.arrayBuffer()) };
 };
-const join = (e, who, name = '대담') => call(e, 'POST', '/api/community/join', { name, rules: 1 }, who);
+const join = (e, who, name = '대담') => call(e, 'POST', '/api/community/join', { name, rules: 1, age14: true }, who);
 const look = { text: '출근룩', pieces: [{ kind: 'blazer', color: 'navy', label: '네이비 블레이저' }, { kind: 'pants', color: 'beige', label: '베이지 치노' }], consent: false };
 const A = { member: 'a', operator: false }, B = { member: 'b', operator: false }, C = { member: 'c', operator: false }, D = { member: 'd', operator: false };
 
@@ -96,7 +96,7 @@ test('가입: 규칙에 동의하고 이름을 정해야 글을 쓴다. 이름�
   assert.equal(s0.body.contact, 'owner@example.test');
   const early = await call(e, 'POST', '/api/community/posts', { post: look, photos: [] }, A);
   assert.deepEqual([early.status, early.body.code], [403, 'join_required']);
-  assert.equal((await call(e, 'POST', '/api/community/join', { name: '대담', rules: 0 }, A)).status, 400);
+  assert.equal((await call(e, 'POST', '/api/community/join', { name: '대담', rules: 0, age14: true }, A)).status, 400);
   assert.equal((await join(e, A, '대담')).status, 200);
   const dup = await join(e, B, ' 대담 ');
   assert.deepEqual([dup.status, dup.body.code], [409, 'name_taken']);
