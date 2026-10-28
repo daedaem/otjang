@@ -27,7 +27,7 @@ import {
   productCriteria, criteriaLine, productReasons, scoreSlot, seasonOf, SEASON_LABEL, SAFE_PRODUCTS, lookalike, closetLooks, basicOutfits,
 } from './domain/engine.js';
 import { newWardrobeState, wardrobeView, makeGarment, garmentKindChoices, garmentKindName, garmentLabel, GARMENT_KINDS } from './domain/wardrobe.js';
-import { candidateFromProduct, compareCandidate, quickCompare } from './domain/purchase-candidate.js';
+import { candidateFromProduct, compareCandidate, quickCompare, parseCandidateLink } from './domain/purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney, JOURNEY_RETURN_REASONS } from './domain/purchase-journey.js';
 import { relatedReturnRecords } from './domain/related-returns.js';
 import { purchasePlanContext } from './domain/purchase-plan-context.js';
@@ -948,6 +948,35 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
     // 구매 추천이 아니다. 체험용 옷도 포함하므로 화면에서 '체험용 포함'을 밝힌다.
     // detail: true면 조합 목록(list)도 준다. key는 조합에 든 옷 id를 이은 값, baseKey는 겉옷을 뺀 값이다.
     // 기본 조합은 겉옷만 다른 조합을 하나로 묶으므로 '새로 생긴 조합'은 baseKey로 가린다.
+    // 링크로 바로 판단(10-28): 붙여 넣은 글에서 판매처 링크를 읽는다. 무신사 목록 상품이면 상세 판단으로 보낸다.
+    readCandidateLink(raw) {
+      const r = parseCandidateLink(String(raw ?? ''));
+      return r.ok ? { ok: true, kind: r.kind, productId: r.product ? r.product.id : null, url: r.canonicalUrl } : { ok: false, error: r.error };
+    },
+    // 목록에 없는 상품을 종류·색만으로 옷장과 비교한다. 옷장은 바꾸지 않는다(새 코디 수는 가상으로 한 벌을 더해 센다).
+    checkCandidate({ kind, color = null } = {}) {
+      if (!GARMENT_KINDS.some((k) => k.id === kind)) throw new Error('옷 종류를 골라 주세요.');
+      const st = engineState();
+      const g = S.gender === 'F' ? 'F' : 'M';
+      const c = COLORS[color] ? color : null;
+      const kindName = garmentKindName(kind);
+      const mine = st.closet.filter((x) => x.gender === g && ['user', 'legacy'].includes(x.source));
+      const trialN = mine.filter((x) => isTrial(x.id)).length, ownN = mine.length - trialN;
+      const basis = !mine.length ? '옷장 없이' : !ownN ? `체험용 옷 ${trialN}벌 기준` : !trialN ? `내 옷 ${ownN}벌 기준` : `내 옷 ${ownN}벌 · 체험용 ${trialN}벌 기준`;
+      const view = (rows) => rows.map((x) => ({ id: x.id, label: x.label || garmentLabel(x), trial: isTrial(x.id) }));
+      if (!mine.length) return { verdict: 'no_closet', basis, title: '옷장이 비어 있어 비교할 옷이 없어요', lines: ['내 옷을 몇 벌 넣으면 겹치는지, 새 코디가 몇 개 생기는지 알려 드려요.'], sameColor: [], otherColor: [], newOutfits: 0 };
+      const qc = quickCompare(st, { kind, color: c, gender: g });
+      const count = (state) => closetLooks(state, { limit: 200 }).ready.length + basicOutfits(state, { limit: 200 }).length;
+      const slot = SLOTS.find((x) => x.g === g && x.shape === kind)?.id || null;
+      const extra = makeGarment({ id: 'g_check_candidate', slot, kind, gender: g, color: c, label: '', source: 'user', createdAt: iso() });
+      const newOutfits = Math.max(0, count(buildState({ ...S, garments: [...S.garments, extra] })) - count(st));
+      const sameColor = view(qc.sameColor), otherColor = view(qc.otherColor);
+      if (sameColor.length) return { verdict: 'overlap', basis, title: `비슷한 옷이 이미 있어요 · 같은 색 ${kindName} ${sameColor.length}벌`, lines: [`${sameColor.map((x) => x.label).join(', ')}과(와) 겹쳐요.`, newOutfits ? `더해도 새 코디는 ${newOutfits}개예요.` : '더해도 새 코디가 거의 생기지 않아요.'], sameColor, otherColor, newOutfits };
+      if (!c && qc.unknownColor.length) return { verdict: 'color_unknown', basis, title: `${kindName}${josa(kindName, '이', '가')} 이미 ${qc.unknownColor.length}벌 있어요 · 색을 골라 주세요`, lines: ['색을 고르면 겹치는지 정확히 알려 드려요.'], sameColor, otherColor, newOutfits };
+      if (otherColor.length) return { verdict: 'other_color', basis, title: `색만 다른 ${kindName}${josa(kindName, '이', '가')} ${otherColor.length}벌 있어요${newOutfits ? ` · 새 코디 ${newOutfits}개` : ''}`, lines: [`${otherColor.map((x) => x.label).join(', ')}`], sameColor, otherColor, newOutfits };
+      const outer = ['blazer', 'jacket', 'coat', 'down', 'cardigan', 'vest'].includes(kind);
+      return { verdict: 'new', basis, title: newOutfits ? `새 코디 ${newOutfits}개가 생겨요` : `옷장에 없는 ${kindName}${josa(kindName, '이에요', '예요')}`, lines: [newOutfits ? '내 옷과 함께 입을 수 있는 조합이 늘어나요.' : outer ? '겉옷은 지금 코디 수 계산에 넣지 않아요. 가진 옷과 겹치지는 않아요.' : '아직 같이 입을 옷이 부족해 새 코디는 없어요.'], sameColor, otherColor, newOutfits };
+    },
     closetOutfits({ limit = 60, detail = false, ownedOnly = false } = {}) {
       const original = engineState();
       const st = ownedOnly ? {...original,garments:S.garments.filter(g=>!isTrial(g.id)),closet:original.closet.filter(g=>!isTrial(g.id))} : original;

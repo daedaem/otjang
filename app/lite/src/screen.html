@@ -150,6 +150,19 @@ a { color: inherit; text-decoration: none; }
 .ask { margin-top: 16px; display: flex; gap: 8px; }
 .ask input { flex: 1; min-width: 0; height: 56px; border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); padding: 0 16px; font-size: 17px; outline: none; }
 .ask input:focus { border-color: var(--acc); }
+/* 링크로 사도 될지 보기(10-28) */
+.ck-form { margin-top: 16px; display: grid; gap: 10px; }
+.ck-form input { height: 52px; border: 2px solid var(--ink); border-radius: var(--r); background: var(--surface); padding: 0 14px; font-size: 16px; color: var(--ink); }
+.ck-form label, .ck-sel label { font-size: 14px; font-weight: 600; }
+.ck-out { margin-top: 18px; display: grid; gap: 12px; }
+.ck-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ck-sel label { display: grid; gap: 6px; }
+.ck-sel select { height: 46px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--ink); padding: 0 10px; font-size: 15px; }
+.ck-verdict { border: 1px solid var(--line); border-radius: var(--r); padding: 14px; background: var(--surface); display: grid; gap: 6px; }
+.ck-verdict h2, .ck-verdict p { margin: 0; }
+.ck-verdict.overlap { border-color: var(--stop, #b4442f); }
+.ck-verdict.new { border-color: var(--leaf, #4d6b4f); }
+.hm-check { margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; }
 .ask input::placeholder { color: var(--ink3); }
 .ask button { width: 56px; height: 56px; border-radius: var(--r); background: var(--btn-bg); color: var(--btn-fg); display: grid; place-items: center; font-size: 24px; flex: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -1342,7 +1355,7 @@ a { color: inherit; text-decoration: none; }
     subscribe(fn) { chromeCtl.subs.add(fn); return () => chromeCtl.subs.delete(fn); },
     changed() { chromeCtl.version++; chromeCtl.subs.forEach((fn) => fn()); },
   };
-  const tabFor = (view) => (view === 'results' ? 'home' : view === 'community' ? 'looks' : view === 'photoadd' ? 'closet' : view);
+  const tabFor = (view) => (view === 'results' ? 'home' : view === 'community' ? 'looks' : view === 'photoadd' ? 'closet' : view === 'check' ? 'home' : view);
   let stripBumps = 0;
   // 지인 테스트(10-28 15:12): 본인은 '지인 초대', 초대 회원은 '내 계정'(React 메뉴의 RoleLink와 같음).
   function roleLink() {
@@ -1658,7 +1671,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const restoreY=dir==='back'?(K.current()?.scroll||0):null;
       window.EOUL_RESULTS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;resultsUnmount=mount(resultsHost($('#react-results'),params,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-results').innerHTML='<p role="status">새 결과 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.results(params);A.results(params);});
     } else if(reactHome){
-      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
+      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),check:()=>K.go('check',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
     } else if(reactAdd){
       window.EOUL_ADD_SEARCH_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;addUnmount=mount({element:$('#react-add-search'),core:M,photoAdd:()=>K.go('photoadd',{}),namespace:window.EOUL_MOCK_KEY,query:params.q,info:disclose,requiredCount:NEED,legacyIssue:()=>regWriteIssue||(regRaw!==null?REG_UNREADABLE:null),back:()=>K.back({view:'closet',params:{}}),manual:q=>{try{Input.reset();K.go('reg',{q})}catch(error){K.toast(error.message,{bottom:110})}},examples:addExamples,shelf:()=>drawShelf(),toast:text=>K.toast(text,{bottom:110}),own:id=>reactOwnAdd(id),facts:(q,submitted)=>window.EOUL_OPEN_PRODUCTS?window.EOUL_OPEN_PRODUCTS.search(q,{server:submitted}):Promise.reject(Error('not ready')),fact:row=>{try{const draft=window.EOUL_OPEN_PRODUCTS?.draft(row);if(!draft)return;Input.reset();Input.enter(draft);K.go('reg',{})}catch(error){K.toast(error.message,{bottom:110})}},crowd:readCrowdCandidates,crowdKey:row=>normKey(row.brand,row.name),ownCrowd:commitCrowdEntry,pending:addPending,finishCrowd:reactCrowdFinished,retail:retailHost(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-add-search').innerHTML='<p role="status">새 검색 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.add(params);A.add(params);});
     } else if(reactPhotoAdd){
@@ -1904,8 +1917,19 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         ${v2 ? '' : wx}
         <h1 class="h1 hero${v2 ? '' : ' after-wx'}">뭐 사려고요?<br><span class="acc">걸어 보고</span> 사요.</h1>
         <form class="ask" id="sf" role="search"><input id="q" name="q" enterkeyhint="search" autocomplete="off" placeholder="대충 말해도 돼요" aria-label="찾는 옷" value="${esc(q)}"><button aria-label="찾기"><i class="ph ph-arrow-right"></i></button></form>
-        <div class="chips">${ex.map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>${v2 ? `\n        ${wx}` : ''}
+        <div class="chips">${ex.map((x) => `<button class="chip ex" data-q="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <button class="quiet hm-check" data-check-open><i class="ph ph-link" aria-hidden="true"></i> 링크로 사도 될지 보기</button>${v2 ? `\n        ${wx}` : ''}
         ${proofHtml()}`;
+    },
+
+    // 링크로 사도 될지 보기(10-28 차별점): 판매처 링크를 붙여 넣으면 목록 상품은 상세 판단으로, 그 밖의 링크는 종류·색을 골라 옷장 기준으로 판단한다.
+    // 링크 페이지는 서버로 가져오지 않는다(판매처 약관·비용 경계). 링크는 '판매처에서 보기'로만 연다.
+    check({ link = '' } = {}) {
+      return `${top({ info: false })}
+        <h1 class="h1">이거 사도 될까?</h1>
+        <p class="sub t5" style="margin-top:6px">사려는 옷의 링크를 붙여 넣으면 내 옷장과 겹치는지, 새 코디가 생기는지 알려 드려요.</p>
+        <form class="ck-form" id="ckf" novalidate><label for="cklink">상품 링크</label><input id="cklink" name="link" inputmode="url" autocomplete="off" placeholder="https://… (공유하기로 복사한 글도 돼요)" value="${esc(link)}"><button class="btn go" type="submit">판단하기</button></form>
+        <div class="ck-out" id="ckout"></div>`;
     },
 
     results({ q, drop = [] }) {
@@ -2103,6 +2127,35 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
 
   // ── 화면별 동작
   const A = {
+    check(params={}) {
+      const out=$('#ckout'),input=$('#cklink');
+      const kinds=M.kindChoices(),colors=M.colorChoices();
+      const verdict=()=>{
+        const box=$('[data-check-verdict]',out),kind=$('#ckkind',out).value,color=$('#ckcolor',out).value||null;
+        if(!kind){box.className='ck-verdict';box.innerHTML='<p class="t5">종류를 고르면 내 옷장과 비교해 드려요.</p>';return;}
+        try{
+          const v=M.checkCandidate({kind,color});
+          box.className=`ck-verdict ${v.verdict}`;
+          box.innerHTML=`<h2 class="h3">${esc(v.title)}</h2>${v.lines.map(l=>`<p class="t5">${esc(l)}</p>`).join('')}<p class="t6">${esc(v.basis)} · 종류·색만 따졌어요(핏·소재·가격은 판매처에서 확인해 주세요).</p>`;
+        }catch(e){box.className='ck-verdict';box.innerHTML=`<p class="t5" role="alert">${esc(e.message)}</p>`;}
+      };
+      const judge=()=>{
+        params.link=input.value;
+        const r=M.readCandidateLink(input.value);
+        if(!r.ok){out.innerHTML=`<p class="t5" role="alert">${esc(r.error)}</p>`;input.focus();return;}
+        if(r.kind==='catalog'&&r.productId){K.go('detail',{id:r.productId});return;}
+        let host='';try{host=new URL(r.url).hostname.replace(/^www\./,'')}catch{}
+        out.innerHTML=`<p class="t5">${esc(host)} 상품은 아직 자동으로 읽지 못해요. 종류와 색을 골라 주세요.</p>
+          <div class="ck-sel"><label>종류<select id="ckkind"><option value="">골라 주세요</option>${kinds.map(k=>`<option value="${esc(k.id)}">${esc(k.name)}</option>`).join('')}</select></label>
+          <label>색<select id="ckcolor"><option value="">모르겠어요</option>${colors.map(c=>`<option value="${esc(c.id)}">${esc(c.label)}</option>`).join('')}</select></label></div>
+          <div class="ck-verdict" data-check-verdict role="status"></div>
+          <a class="btn line" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">판매처에서 보기 <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a>`;
+        $('#ckkind',out).onchange=verdict;$('#ckcolor',out).onchange=verdict;verdict();
+      };
+      $('#ckf').onsubmit=e=>{e.preventDefault();judge();};
+      input.oninput=()=>{params.link=input.value};
+      if(params.link)judge();else input.focus({preventScroll:true});
+    },
     home(params={}) {
       $('#q').oninput=()=>{params.q=$('#q').value};
       $('#sf').onsubmit = (e) => { e.preventDefault(); const q = $('#q').value.trim(); if (q) K.go('results', { q }); else $('#q').focus(); };
@@ -2250,7 +2303,7 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-mirror],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-addphoto],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
+    const t = e.target.closest('[data-back],[data-mirror],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-addphoto],[data-check-open],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
     if (!t) return;
     if (t.hasAttribute('data-back')) K.back(curView==='add'?{view:'closet',params:{}}:curView==='mirror'?(curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}):curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
     else if(t.hasAttribute('data-mirror')) K.go('mirror',t.dataset.mirror?{id:t.dataset.mirror}:{});
@@ -2265,6 +2318,7 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
     else if (t.dataset.crowdAdd) crowdAdd(t.dataset.crowdAdd, t);
     else if (t.hasAttribute('data-addkind')) addFlow();
     else if (t.hasAttribute('data-addphoto')) K.go('photoadd', {});
+    else if (t.hasAttribute('data-check-open')) K.go('check', {});
     else if (t.dataset.ownAdd) ownAdd(t.dataset.ownAdd, t);
     else if (t.hasAttribute('data-trial')) { M.loadTrialCloset(); K.refresh(); }
     else if (t.hasAttribute('data-mine')) { M.clearTrialCloset(); K.refresh(); }
