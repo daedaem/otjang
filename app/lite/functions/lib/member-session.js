@@ -15,8 +15,10 @@
 //   GET  /_member/callback/kakao|google → 세션 쿠키를 주고 /c로 303
 //   POST /_member/logout               → 세션 삭제(같은 출처만)
 //   POST /_member/email/start {email}  → 6자리 코드 메일, POST /_member/email/verify {email, code} → 세션(같은 출처만)
+import { MEMBER_SESSION_COOKIE, clearOwnerCookie } from './auth-cookies.js';
+import { memberStorageScope } from '../../src/domain/account-scope.js';
 const STATE_COOKIE = '__Host-hangit-login';
-export const SESSION_COOKIE = '__Host-hangit-member';
+export const SESSION_COOKIE = MEMBER_SESSION_COOKIE;
 const STATE_TTL = 10 * 60;
 const SESSION_TTL = 30 * 24 * 60 * 60;
 const HOME = '/c';
@@ -168,7 +170,7 @@ async function callback(request, env, provider, { fetchImpl, now }) {
   catch { return fail(502, 'provider_unavailable', [clear]); }
   if (found.error) return fail(found.error === 'id_token' ? 400 : 502, found.error === 'id_token' ? 'invalid_token' : 'provider_error', [clear]);
   const member = hex(await hmac(secret, 'member', `${provider}|${found.subject}`)).slice(0, 32);
-  return redirect(303, HOME, [clear, await newSession(env, member, provider, nowMs)]);
+  return redirect(303, HOME, [clear, await newSession(env, member, provider, nowMs), clearOwnerCookie()]);
 }
 
 export async function newSession(env, member, provider, nowMs) {
@@ -273,7 +275,7 @@ async function emailVerify(request, env, { now }) {
   const used = await db.prepare('DELETE FROM member_email_codes WHERE email_hash = ?1 AND code_hash = ?2').bind(key, row.code_hash).run();
   if (!used.meta?.changes) return no();
   const member = hex(await hmac(secret, 'member', `email|${email}`)).slice(0, 32);
-  return json(200, { ok: true }, [await newSession(env, member, 'email', at)]);
+  return json(200, { ok: true, scope: await memberStorageScope(member) }, [await newSession(env, member, 'email', at), clearOwnerCookie()]);
 }
 
 // 요청의 회원 쿠키 → 회원 id(32자 hex) 또는 null.
@@ -320,6 +322,7 @@ export async function handleMemberAuth(request, env = {}, { fetchImpl = fetch, n
     }
     const headers = new Headers({ ...HEADERS, 'content-type': 'application/json; charset=utf-8' });
     headers.append('set-cookie', setCookie(SESSION_COOKIE, '', 0));
+    headers.append('set-cookie', clearOwnerCookie());
     return new Response('{"ok":true}', { status: 200, headers });
   }
   if (!m) return fail(404, 'not_found');

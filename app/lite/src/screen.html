@@ -14,7 +14,7 @@
 // WO-11: 새 디자인(v2)이 기본이다(10-27 21:55 대표 결정). ?look=v1이나 메뉴 '이전 디자인으로 보기'는
 // 이 기기에서 이전 디자인으로 되돌리고(hangit:look = v1), ?look=v2나 '새 디자인으로 보기'는 다시 기본으로.
 // 미리보기(?preview=1)는 이 기기 저장소를 읽거나 쓰지 않는다: ?look=v1은 그 페이지에만 적용한다.
-(function () { var v1 = false; try { var sp = new URLSearchParams(location.search), lq = sp.get('look'); if (sp.get('preview') === '1') v1 = lq === 'v1'; else { if (lq === 'v1') localStorage.setItem('hangit:look', 'v1'); else if (lq === 'v2') localStorage.removeItem('hangit:look'); v1 = localStorage.getItem('hangit:look') === 'v1'; } } catch (e) {} if (!v1) document.documentElement.dataset.look = 'v2'; })();
+(function () { var v1 = false; try { var sp = new URLSearchParams(location.search), lq = sp.get('look'), store = window.EOUL_UI_STORAGE; if (sp.get('preview') === '1') v1 = lq === 'v1'; else { if (lq === 'v1') store.setItem('hangit:look', 'v1'); else if (lq === 'v2') store.removeItem('hangit:look'); v1 = store.getItem('hangit:look') === 'v1'; } } catch (e) {} if (!v1) document.documentElement.dataset.look = 'v2'; })();
 </script>
 <style>
 /* 걸어 보고 사기(d12): 장바구니 대신 '걸어 보기'. 레일은 옷걸이 탭에만 있고, 다른 화면에는 걸린 옷이 있을 때만 한 줄 띠가 보인다.

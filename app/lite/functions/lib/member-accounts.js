@@ -9,6 +9,8 @@
 //   GET  /_member/account              내 계정(회원)       POST /_member/account/logout, /_member/account/delete {confirm}
 //   GET  /_member/invites[?format=json] 초대 관리(본인)    POST /_member/invites {label}, /_member/invites/revoke {code}
 import { newSession, SESSION_COOKIE } from './member-session.js';
+import { clearOwnerCookie } from './auth-cookies.js';
+import { ACCOUNT_ACTIVE_KEY, memberStorageScope } from '../../src/domain/account-scope.js';
 
 const encoder = new TextEncoder();
 const ITERATIONS = 100_000;
@@ -95,7 +97,7 @@ function page(title, inner, script = '') {
   return new Response(html, { headers: { ...HEADERS, 'content-type': 'text/html; charset=utf-8',
     'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'` } });
 }
-const POST = `const post=async(p,b)=>{const r=await fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let o=null;try{o=await r.json()}catch{}return{ok:r.ok,status:r.status,body:o}};const notice=t=>{document.querySelector('#notice').textContent=t};`;
+const POST = `const post=async(p,b)=>{const r=await fetch(p,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let o=null;try{o=await r.json()}catch{}if(r.ok){try{if(/^m-[a-f0-9]{32}$/.test(o?.scope||''))localStorage.setItem('${ACCOUNT_ACTIVE_KEY}',o.scope);if(p==='/_member/account/logout'||p==='/_member/account/delete')localStorage.setItem('${ACCOUNT_ACTIVE_KEY}','signed-out')}catch{}}return{ok:r.ok,status:r.status,body:o}};const notice=t=>{document.querySelector('#notice').textContent=t};`;
 
 function signupPage(url) {
   const code = normalCode(url.searchParams.get('code') || '');
@@ -115,9 +117,9 @@ function signinPage() {
   `${POST}document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();notice('확인하고 있어요.');const r=await post('/_member/password/signin',{email:document.querySelector('#email').value,password:document.querySelector('#password').value});if(r.ok){location.replace('/');return}notice(r.body?.message||'로그인하지 못했어요.')});`);
 }
 function accountPage() {
-  return page('내 계정', `<h1>내 계정</h1><p>옷장·기록은 이 휴대폰에만 있어요. 계정을 지워도 휴대폰 자료는 남아요(앱 메뉴의 백업·복원으로 관리해요).</p>
+  return page('내 계정', `<h1>내 계정</h1><p>옷장·기록은 이 휴대폰에만 있어요. 계정마다 자료를 따로 보관해요. 삭제 전 앱 메뉴의 백업·복원으로 자료를 내보내 주세요. 삭제해도 이 기기 원본은 남지만 새 계정에 자동으로 연결되지 않아요.</p>
 <button id="out" class="line" type="button">로그아웃</button><button id="del" type="button">계정 지우기</button><p class="small"><a href="/">앱으로 돌아가기</a></p>`,
-  `${POST}let armed=false;document.querySelector('#out').onclick=async()=>{await post('/_member/account/logout',{});location.replace('/_member/signin')};document.querySelector('#del').onclick=async()=>{if(!armed){armed=true;document.querySelector('#del').textContent='한 번 더 누르면 계정과 코디 공유 글이 지워져요';return}const r=await post('/_member/account/delete',{confirm:true});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'지우지 못했어요.')};`);
+  `${POST}let armed=false;document.querySelector('#out').onclick=async()=>{const r=await post('/_member/account/logout',{});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'로그아웃하지 못했어요.')};document.querySelector('#del').onclick=async()=>{if(!armed){armed=true;document.querySelector('#del').textContent='한 번 더 누르면 계정과 코디 공유 글이 지워져요';return}const r=await post('/_member/account/delete',{confirm:true});if(r.ok){location.replace('/_member/signin');return}notice(r.body?.message||'지우지 못했어요.')};`);
 }
 async function listInvites(db, origin) {
   const { results } = await db.prepare('SELECT code, label, created_at, used_at, revoked_at FROM member_invites ORDER BY created_at DESC').all();
@@ -166,7 +168,7 @@ async function signup(request, env, db, now) {
     return taken ? fail(409, 'email_taken', '이미 가입한 이메일이에요. 로그인해 주세요.') : fail(503, 'error', '잠시 뒤에 다시 해 주세요.');
   }
   if (results[0].meta?.changes !== 1 || results[1].meta?.changes !== 1) return fail(400, 'invalid_invite', '쓸 수 없는 초대 코드예요. 초대해 준 사람에게 새 코드를 받아 주세요.');
-  return json(200, { ok: true }, [await newSession(env, member, 'password', now)]);
+  return json(200, { ok: true, scope: await memberStorageScope(member) }, [await newSession(env, member, 'password', now), clearOwnerCookie()]);
 }
 
 async function signin(request, env, db, now) {
@@ -189,7 +191,7 @@ async function signin(request, env, db, now) {
   const hash = await passwordHash(b.password, salt, row ? Number(row.iterations) : ITERATIONS); // 없는 계정도 같은 시간을 쓴다
   if (!row || !same(hash, row.hash)) return fail(401, 'invalid_login', '이메일이나 비밀번호가 맞지 않아요.');
   await db.prepare('DELETE FROM member_login_attempts WHERE id = ?1').bind(attempt).run();
-  return json(200, { ok: true }, [await newSession(env, row.member, 'password', now)]);
+  return json(200, { ok: true, scope: await memberStorageScope(row.member) }, [await newSession(env, row.member, 'password', now), clearOwnerCookie()]);
 }
 
 function sessionToken(request) {
@@ -205,7 +207,7 @@ async function deleteAccount(request, db, member) {
   const b = await body(request, ['confirm']);
   if (b?.confirm !== true) return fail(400, 'confirm_required', '한 번 더 확인해 주세요.');
   await removeMember(db, member);
-  return json(200, { ok: true }, [clearCookie]);
+  return json(200, { ok: true }, [clearCookie, clearOwnerCookie()]);
 }
 async function removeMember(db, member) {
   // 코디 공유 자료도 함께 지운다(표가 없으면 건너뛴다).
@@ -244,7 +246,7 @@ export async function handleMemberAccounts(request, env = {}, who = {}, { now = 
       if (path === '/_member/account/logout' && method === 'POST') {
         const token = sessionToken(request);
         if (token) await db.prepare('DELETE FROM member_sessions WHERE token_hash = ?1').bind(await sha256(token)).run();
-        return json(200, { ok: true }, [clearCookie]);
+        return json(200, { ok: true }, [clearCookie, clearOwnerCookie()]);
       }
       if (path === '/_member/account/delete' && method === 'POST') return await deleteAccount(request, db, who.member);
     }

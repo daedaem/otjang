@@ -112,6 +112,7 @@ test('login sets a nonce-bearing HMAC cookie for seven days without returning a 
   assert.deepEqual(await response.json(), { ok: true });
   const set = response.headers.get('set-cookie');
   assert.match(set, /^__Host-otjang-session=v1\./);
+  assert.ok(response.headers.getSetCookie().some(value => value.startsWith('__Host-hangit-member=;') && value.includes('Max-Age=0')));
   for (const attribute of ['Path=/', 'HttpOnly', 'Secure', 'SameSite=Strict', 'Max-Age=604800']) assert.ok(set.includes(attribute));
   assert.ok(!set.includes(env.PRIVATE_APP_ACCESS_KEY));
   const cookie = cookieFrom(response);
@@ -208,11 +209,12 @@ test('global minute cap is sixty; minute change releases quota and removes recor
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM private_login_usage').get().n, 1);
 });
 
-test('logout deletes only the session cookie and requires current session and same Origin', async () => {
+test('logout clears role session cookies, never site data, and requires current session and same Origin', async () => {
   const env = environment(), cookie = cookieFrom(await login(env));
   const response = await handlePrivateSession(request('/_private/logout', { method: 'POST', cookie }), env, { now: () => NOW });
   assert.equal(response.status, 200);
   assert.match(response.headers.get('set-cookie'), /Max-Age=0/);
+  assert.ok(response.headers.getSetCookie().some(value => value.startsWith('__Host-hangit-member=;') && value.includes('Max-Age=0')));
   assert.equal(response.headers.get('Clear-Site-Data'), null);
   assert.doesNotMatch(await response.text(), /localStorage|wardrobe|password/);
   assert.equal((await handlePrivateSession(request('/_private/logout', { method: 'POST', cookie, origin: 'https://evil.example' }), env, { now: () => NOW })).status, 403);

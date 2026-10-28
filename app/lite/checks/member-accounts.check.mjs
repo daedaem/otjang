@@ -9,6 +9,7 @@ import { memberFromRequest } from '../functions/lib/member-session.js';
 import { reserveRankBudget } from '../functions/lib/rank-budget.js';
 import { handlePrivateSession } from '../functions/lib/private-session.js';
 import { createWorker } from '../worker.js';
+import { memberStorageScope } from '../src/domain/account-scope.js';
 
 function fakeD1() {
   const db = new DatabaseSync(':memory:');
@@ -59,6 +60,7 @@ test('초대 코드로 가입하면 회원 세션을 주고, 코드는 한 번�
   const { code } = await invite(e);
   const ok = await signup(e, code);
   assert.equal(ok.status, 200);
+  assert.ok(ok.headers.getSetCookie().some(value => value.startsWith('__Host-otjang-session=;') && value.includes('Max-Age=0')));
   const member = await memberFromRequest(new Request(ORIGIN, { headers: { cookie: pair(cookieOf(ok)) } }), e);
   assert.match(member, /^[0-9a-f]{32}$/);
   assert.equal((await signup(e, code, { email: 'other@example.com' })).status, 400, '같은 코드는 다시 못 쓴다');
@@ -173,7 +175,7 @@ test('Worker 초대 모드: 회원 화면에는 회원 표시와 외부 사진 �
   assert.match(await page.text(), /<meta name="hangit-role" content="member">/);
   assert.match(page.headers.get('content-security-policy') || '', /img-src 'self' data: blob:/);
   assert.equal((await go(m.w, e, '/app.js')).status, 200);
-  await go(m.w, e, '/api/rank', { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' }, body: '{}' });
+  await go(m.w, e, '/api/rank', { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json', 'x-hangit-scope': await memberStorageScope('m1') }, body: '{}' });
   assert.equal(m.seen.rank[0].member, 'm1');
   assert.equal((await m.seen.rank[0].authorize()).ok, true);
   await go(m.w, e, '/api/community/status');
