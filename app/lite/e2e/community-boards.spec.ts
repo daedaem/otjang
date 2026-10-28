@@ -109,6 +109,15 @@ test("the standalone community can open the free board without loading a private
   expect(await page.evaluate(() => typeof (window as any).K)).toBe("undefined");
 });
 
+test("leaving the public community returns to sign-in instead of an expired membership form", async ({ page }) => {
+  await setup(page, true);
+  await page.getByRole("button", { name: "커뮤니티 나가기", exact: true }).click();
+  await page.getByRole("button", { name: "한 번 더 누르면 내 글·사진을 모두 지우고 나가요", exact: true }).click();
+  await expect(page.getByRole("link", { name: "카카오 로그인", exact: true })).toBeVisible();
+  await expect(page.getByLabel("이름", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "자유게시판", exact: true })).toHaveAttribute("aria-current", "page");
+});
+
 test("a late community chunk does not steal focus from another footer control", async ({ page }) => {
   let release!: () => void, seen!: () => void;
   const gate = new Promise<void>(resolve => release = resolve);
