@@ -8,17 +8,29 @@ import { openPhotoRepository } from "./photo-repository.js";
 const libraries = new Map(),
   clients = new Map();
 export function photoLibrary(namespace = "eoul-d12-hang:v1") {
-  if (!libraries.has(namespace))
+  const account = globalThis.window?.EOUL_ACCOUNT;
+  account?.assertActive();
+  const physical = account?.photoNamespace ? account.photoNamespace(namespace) : namespace;
+  if (!libraries.has(physical))
     libraries.set(
-      namespace,
-      openPhotoRepository(namespace).catch((error) => {
-        libraries.delete(namespace);
+      physical,
+      openPhotoRepository(physical).then(repository => new Proxy(repository, {
+        get(target, key) {
+          const value = target[key];
+          if (typeof value !== "function") return value;
+          if (key === "close") return value.bind(target);
+          if (key === "withLock") return run => value.call(target, async () => { account?.assertActive(); return run(); });
+          return (...args) => { account?.assertActive(); return value.apply(target, args); };
+        },
+      })).catch((error) => {
+        libraries.delete(physical);
         throw error;
       }),
     );
-  return libraries.get(namespace);
+  return libraries.get(physical);
 }
 export function currentPhotoClient(namespace = "eoul-d12-hang:v1") {
+  globalThis.window?.EOUL_ACCOUNT?.assertActive();
   return clients.get(namespace) || null;
 }
 // WO-07: the React backup sheet uses the same repository and controller as

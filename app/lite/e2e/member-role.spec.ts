@@ -8,7 +8,8 @@ async function openAs(page: Page, role: "member" | "owner" | null, ui = "") {
     if (u.pathname.startsWith("/api/")) return route.fulfill({ status: 503, contentType: "application/json", body: '{"code":"not_configured"}' });
     if (route.request().resourceType() === "document" && role) {
       const res = await route.fetch();
-      const html = (await res.text()).replace("<head>", `<head><meta name="hangit-role" content="${role}">`);
+      const scope = role === "owner" ? "owner" : "m-" + "1".repeat(32);
+      const html = (await res.text()).replace("<head>", `<head><meta name="hangit-role" content="${role}"><meta name="hangit-storage-scope" content="${scope}">`);
       return route.fulfill({ response: res, body: html });
     }
     return route.continue();

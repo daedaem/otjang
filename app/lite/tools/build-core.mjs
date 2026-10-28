@@ -14,6 +14,7 @@ export const CORE_BUNDLE = path.join(lite, '.generated/core-bundle.js');
 export function buildCore(outFile = CORE_BUNDLE) {
 // 앱 빌드(app/tools/build.mjs)와 같은 순서. 묶을 모듈은 core.mjs의 import를 따라가며 고른다.
 const ORDER = [
+  'src/domain/account-scope.js',
   'src/domain/data/slots.js', 'src/domain/data/looks.js', 'src/domain/data/products.js', 'src/domain/catalog-policy.js', 'src/domain/legacy-wardrobe.js',
   'src/domain/legacy-purchase-v4.js', 'src/domain/purchase-journey.js', 'src/domain/wear-log.js', 'src/domain/wardrobe.js', 'src/domain/outfit-copy.js',
   'src/domain/search-follow-up.js', 'src/domain/query.js', 'src/domain/engine.js', 'src/domain/purchase-candidate.js',
@@ -24,6 +25,7 @@ const importsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^import[
 const need = new Set();
 const walk = (file) => { for (const dep of importsOf(file)) if (!need.has(dep)) { need.add(dep); walk(dep); } };
 walk(path.join(lite, 'src/core.mjs'));
+walk(path.join(lite, 'src/browser/account-storage.js'));
 const rel = [...need].map((file) => path.relative(lite, file));
 const missing = rel.filter((file) => !ORDER.includes(file));
 if (missing.length) throw new Error(`묶음 순서에 없는 모듈: ${missing.join(', ')}`);
@@ -35,6 +37,7 @@ const body = modules.map((file) => `// ── ${file}\n${strip(fs.readFileSync(p
 let commit = 'unknown';
 try { commit = execSync('git rev-parse --short HEAD', { cwd: lite }).toString().trim(); } catch { /* 저장소 밖 */ }
 const core = strip(fs.readFileSync(path.join(lite, 'src/core.mjs'), 'utf8'));
+const account = strip(fs.readFileSync(path.join(lite, 'src/browser/account-storage.js'), 'utf8'));
 const photoCount = (fs.readFileSync(path.join(lite, 'src/domain/data/products.js'), 'utf8').match(/"img":"https:\/\/image\.msscdn\.net\//g) || []).length;
 const out = `/* 자동 생성 파일: app/lite/tools/build-core.mjs 로 다시 만든다. 직접 고치지 않는다.
    내용: 어울 앱 엔진(app/lite/src/domain, 커밋 ${commit}) ${modules.length}개 모듈 + 운영 코어(app/lite/src/core.mjs).
@@ -45,11 +48,14 @@ const out = `/* 자동 생성 파일: app/lite/tools/build-core.mjs 로 다시 �
 ${body}
 // ── lite/src/core.mjs
 ${core}
+// ── account boundary (no storage access in preview)
+${account}
 const bootParams = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
 // Preview is isolated before even probing the private browser storage.
 const bootPreview = bootParams.get('preview') === '1';
+const bootAccount = installAccountBoundary({ preview: bootPreview });
 let bootStorage = null;
-if (!bootPreview) { try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; } }
+if (!bootPreview) { try { bootStorage = bootAccount.storage || window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; } }
 // 초대 회원(지인 테스트, 대표 10-28 15:12)에게는 무신사 상품 사진 대신 색 칸을 보여 준다. Worker가 <meta name="hangit-role" content="member">를 붙이고
 // 바깥 사진 주소도 CSP(img-src)로 막는다.
 const bootRole = (typeof document !== 'undefined' && document.querySelector('meta[name="hangit-role"]')?.content) || '';
@@ -62,7 +68,7 @@ window.EOUL_UI_STORAGE = bootPreview ? {
   getItem: (key) => previewValues.get(String(key)) ?? null,
   setItem: (key, value) => { previewValues.set(String(key), String(value)); },
   removeItem: (key) => { previewValues.delete(String(key)); },
-} : {
+} : bootAccount.storage || {
   get length() { return window.localStorage.length; },
   key: (index) => window.localStorage.key(index),
   getItem: (key) => window.localStorage.getItem(key),

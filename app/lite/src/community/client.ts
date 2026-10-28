@@ -1,5 +1,6 @@
 // /c 공개 화면의 코디 공유 요청(앱 안에서는 lite.js의 window.EOUL_COMMUNITY가 같은 일을 한다).
 import type { CommunityClient } from "./index";
+import { ACCOUNT_ACTIVE_KEY, validAccountScope } from "../domain/account-scope.js";
 export function communityClient(): CommunityClient {
   const call = async (path: string, init: { method?: string; body?: unknown } = {}) => {
     const method = init.method || "GET";
@@ -17,6 +18,7 @@ export function communityClient(): CommunityClient {
     try {
       const res = await fetch(`/_member/${path}`, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const out = await res.json().catch(() => null);
+      if (res.ok && validAccountScope(out?.scope)) try { localStorage.setItem(ACCOUNT_ACTIVE_KEY, out.scope); } catch {}
       return res.ok && out ? out : { code: out?.code || "error", message: out?.message || "잠시 뒤에 다시 해 주세요." };
     } catch {
       return { code: "offline", message: "연결을 확인하고 다시 해 주세요." };

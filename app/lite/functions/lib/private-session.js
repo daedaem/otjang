@@ -1,7 +1,7 @@
 // 카드·외부 인증 가입 없이 쓰는 본인 전용 접속. 앱 비밀번호는 서버 Secret에만 둔다.
 // 서명용 32바이트 난수는 서버 D1에 따로 둔다. 서로 다른 HMAC 문맥을 쓰며
 // 앱 비밀번호·공급자 키·IP 원문은 DB·로그·응답에 기록하지 않는다.
-const COOKIE = '__Host-otjang-session';
+import { OWNER_SESSION_COOKIE as COOKIE, clearMemberCookie } from './auth-cookies.js';
 const LIFETIME = 7 * 24 * 60 * 60;
 const MAX_BODY = 1024;
 const encoder = new TextEncoder();
@@ -216,7 +216,10 @@ export async function handlePrivateSession(request, env, { now = Date.now } = {}
   if (!sameOrigin(request)) return errorResponse(failure(403, 'invalid_origin'));
   if (path === '/_private/logout') {
     const access = await authorizeSession(request, env, { now });
-    return access.ok ? json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', true) }) : errorResponse(access);
+    if (!access.ok) return errorResponse(access);
+    const response = json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', true) });
+    response.headers.append('Set-Cookie', clearMemberCookie());
+    return response;
   }
   try {
     const password = await passwordBody(request);
@@ -232,7 +235,9 @@ export async function handlePrivateSession(request, env, { now = Date.now } = {}
       v: 1, iat: current, exp: current + LIFETIME, nonce: encode(crypto.getRandomValues(new Uint8Array(16))),
     })));
     const token = `v1.${payload}.${encode(await sign(generationKey, 'session', payload))}`;
-    return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
+    const response = json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
+    response.headers.append('Set-Cookie', clearMemberCookie());
+    return response;
   } catch (error) {
     return errorResponse(error?.ok === false ? error : failure(503, 'login_unavailable'));
   }

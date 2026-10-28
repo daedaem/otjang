@@ -14,6 +14,7 @@ import { handleMemberAccounts } from './functions/lib/member-accounts.js';
 import { reserveRankBudget } from './functions/lib/rank-budget.js';
 import { authorizePrivateRequest } from './functions/lib/private-access.js';
 import { handlePrivateSession } from './functions/lib/private-session.js';
+import { ACCOUNT_HEADER, memberStorageScope } from './src/domain/account-scope.js';
 
 const privateHeaders = {
   'Cache-Control': 'private, no-store',
@@ -21,6 +22,18 @@ const privateHeaders = {
 };
 
 const sessionPaths = new Set(['/_private/login', '/_private/session', '/_private/status', '/_private/logout']);
+async function identityTags(role, id) {
+  const scope = role === 'owner' ? 'owner' : await memberStorageScope(id);
+  return `<meta name="hangit-role" content="${role}"><meta name="hangit-storage-scope" content="${scope}">`;
+}
+async function scopeMismatch(request, member, required = false) {
+  if (['GET', 'HEAD'].includes(request.method)) return null;
+  const supplied = request.headers.get(ACCOUNT_HEADER);
+  if (!required && !supplied) return null; // existing owner clients remain usable
+  const expected = member === 'owner' ? 'owner' : await memberStorageScope(member);
+  if (supplied === expected) return null;
+  return Response.json({ code: 'account_changed', message: '계정이 바뀌었어요. 현재 계정으로 앱을 다시 열어 주세요.' }, { status: 409, headers: { ...privateHeaders, 'x-hangit-scope-mismatch': '1' } });
+}
 
 function denied(access, request, env) {
   const status = access?.status === 401 ? 401 : 503;
@@ -59,7 +72,12 @@ async function publicCommunity(request, env, url, { authorize, community, member
     const moved = asset.status >= 300 && asset.status < 400 && asset.headers.get('location');
     if (moved) asset = await env.ASSETS.fetch(new Request(new URL(moved, url)));
     if (!asset.ok) return null;
-    return new Response(asset.body, { status: 200, headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SHELL_CSP, 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
+    let html = await asset.text();
+    let access = null;
+    try { access = await authorize(request, env); } catch {}
+    const id = access?.ok ? 'owner' : await member(request, env).catch(() => null);
+    if (id) html = html.replace('<head>', '<head>' + await identityTags(id === 'owner' ? 'owner' : 'member', id));
+    return new Response(html, { status: 200, headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': SHELL_CSP, 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
   }
   if (request.method === 'GET' && (await publicFiles(env, url)).has(path)) {
     const asset = await env.ASSETS.fetch(request);
@@ -72,24 +90,25 @@ async function publicCommunity(request, env, url, { authorize, community, member
   if (path.startsWith('/api/community/')) {
     let access = null;
     try { access = await authorize(request, env); } catch {}
-    if (access?.ok === true) return community(request, env, { member: 'owner', operator: true });
+    if (access?.ok === true) return await scopeMismatch(request, 'owner') || community(request, env, { member: 'owner', operator: true });
     // 회원 쿠키는 SameSite=Lax지만, 쓰기 요청은 같은 출처에서 온 것만 받는다.
     if (!['GET', 'HEAD'].includes(request.method) && request.headers.get('origin') !== url.origin) {
       return Response.json({ code: 'invalid_origin' }, { status: 403, headers: privateHeaders });
     }
     const id = await member(request, env).catch(() => null);
-    return community(request, env, id ? { member: id, operator: false } : {});
+    return id && await scopeMismatch(request, id) || community(request, env, id ? { member: id, operator: false } : {});
   }
   return null;
 }
 
 const INVITE_PUBLIC = new Set(['/_member/signup', '/_member/signin', '/_member/password/signup', '/_member/password/signin']);
 // 화면(HTML)에 역할 표시를 붙인다. 회원에게는 바깥 사진(무신사 등)을 막는 CSP를 더한다.
-async function withRole(asset, role) {
+async function withRole(asset, role, member, showRole = true) {
   const type = asset.headers.get('content-type') || '';
   let response;
   if (asset.ok && type.includes('text/html')) {
-    const html = (await asset.text()).replace('<head>', `<head><meta name="hangit-role" content="${role}">`);
+    const tags = await identityTags(role, member);
+    const html = (await asset.text()).replace('<head>', '<head>' + (showRole ? tags : tags.replace(/<meta name="hangit-role"[^>]*>/, '')));
     response = new Response(html, { status: asset.status, headers: asset.headers });
   } else response = new Response(asset.body, asset);
   for (const [name, value] of Object.entries(privateHeaders)) response.headers.set(name, value);
@@ -100,6 +119,7 @@ async function memberApp(request, env, url, id, h) {
   const path = url.pathname;
   const write = !['GET', 'HEAD'].includes(request.method);
   if (write && request.headers.get('origin') !== url.origin) return Response.json({ code: 'invalid_origin' }, { status: 403, headers: privateHeaders });
+  if (path.startsWith('/api/')) { const mismatch = await scopeMismatch(request, id, true); if (mismatch) return mismatch; }
   if (path.startsWith('/_member/invites')) return Response.json({ code: 'owner_only' }, { status: 403, headers: privateHeaders });
   if (path.startsWith('/_member/')) return h.accounts(request, env, { member: id });
   if (path.startsWith('/_private/')) return Response.json({ code: 'owner_only' }, { status: 403, headers: privateHeaders });
@@ -118,7 +138,7 @@ async function memberApp(request, env, url, id, h) {
     return h.weather(request, env);
   }
   if (path.startsWith('/api/')) return Response.json({ code: 'not_found' }, { status: 404, headers: privateHeaders });
-  return withRole(await env.ASSETS.fetch(request), 'member');
+  return withRole(await env.ASSETS.fetch(request), 'member', id);
 }
 
 // Dependencies can only be supplied by code/tests. HTTP input and environment variables
@@ -174,6 +194,7 @@ export function createWorker({
         return denied(access, request, env);
       }
       if (invite && url.pathname.startsWith('/_member/')) return accounts(request, env, { owner: true });
+      if (url.pathname.startsWith('/api/')) { const mismatch = await scopeMismatch(request, 'owner'); if (mismatch) return mismatch; }
 
       if (url.pathname === '/api/rank') {
         if (request.method !== 'POST') return new Response('POST만 받아요.', { status: 405, headers: privateHeaders });
@@ -194,10 +215,7 @@ export function createWorker({
       // The internal assets cache may serve bytes only after verification above.
       // Also prevent a downstream shared cache from replaying private responses.
       const asset = await env.ASSETS.fetch(request);
-      if (invite) return withRole(asset, 'owner');
-      const response = new Response(asset.body, asset);
-      for (const [name, value] of Object.entries(privateHeaders)) response.headers.set(name, value);
-      return response;
+      return withRole(asset, 'owner', undefined, invite);
     },
   };
 }

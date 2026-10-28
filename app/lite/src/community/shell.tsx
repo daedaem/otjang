@@ -3,6 +3,9 @@
 import "./shell.css";
 import { mount } from "./index";
 import { communityClient } from "./client";
+import { installAccountBoundary } from "../browser/account-storage.js";
+import { ACCOUNT_ACTIVE_KEY } from "../domain/account-scope.js";
+installAccountBoundary();
 const element = document.getElementById("community");
 if (element)
   mount({
@@ -15,7 +18,9 @@ if (element)
     standalone: true,
     async logout() {
       try {
-        await fetch("/_member/logout", { method: "POST", credentials: "same-origin" });
+        const response = await fetch("/_member/logout", { method: "POST", credentials: "same-origin" });
+        if (!response.ok) return;
+        try { localStorage.setItem(ACCOUNT_ACTIVE_KEY, "signed-out"); } catch {}
       } catch {}
       location.reload();
     },

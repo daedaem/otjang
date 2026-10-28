@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleGarmentPhoto } from '../functions/api/garment-photo.js';
 import { createWorker } from '../worker.js';
+import { memberStorageScope } from '../src/domain/account-scope.js';
 
 const jpeg = (n = 200) => { const b = new Uint8Array(n); b.set([0xff, 0xd8, 0xff, 0xe0]); b[n - 2] = 0xff; b[n - 1] = 0xd9; return Buffer.from(b).toString('base64'); };
 function claude(answer, calls = []) {
@@ -62,10 +63,10 @@ test('Worker: 본인은 기존 한도, 초대 회원은 회원 한도로 사진 
     member: async () => member,
     garmentPhoto: async (_r, _e, opts) => { seen.push(opts || null); return Response.json({ ok: true }); },
   });
-  const req = () => new Request('https://hangit.test/api/garment-photo', { method: 'POST', headers: { origin: 'https://hangit.test', 'content-type': 'application/json' }, body: '{}' });
+  const req = (scope) => new Request('https://hangit.test/api/garment-photo', { method: 'POST', headers: { origin: 'https://hangit.test', 'content-type': 'application/json', ...(scope ? { 'x-hangit-scope': scope } : {}) }, body: '{}' });
   await make(true, null).fetch(req(), { PRIVATE_AUTH_MODE: 'session' });
   assert.equal(seen[0], null);
-  await make(false, 'm1').fetch(req(), { PRIVATE_AUTH_MODE: 'session', MEMBER_APP_MODE: 'invite' });
+  await make(false, 'm1').fetch(req(await memberStorageScope('m1')), { PRIVATE_AUTH_MODE: 'session', MEMBER_APP_MODE: 'invite' });
   assert.equal((await seen[1].authorize()).ok, true);
   assert.equal(typeof seen[1].reserve, 'function');
   const anon = await make(false, null).fetch(req(), { PRIVATE_AUTH_MODE: 'session', MEMBER_APP_MODE: 'invite' });

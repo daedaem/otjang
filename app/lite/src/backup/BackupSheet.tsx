@@ -258,7 +258,7 @@ export function BackupSheet({
       else setMsg(err.message);
       return;
     }
-    if (localStorage.getItem(bk.NEXT) !== null) {
+    if (host.storage.getItem(bk.NEXT) !== null) {
       host.reopen(
         "자료는 적용했지만 복구 지점 정리가 끝나지 않았어요. '복원 전으로 되돌리기'가 가능하며 새 복원은 잠시 막았어요.",
       );
