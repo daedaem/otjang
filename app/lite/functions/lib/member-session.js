@@ -16,7 +16,7 @@
 //   POST /_member/logout               → 세션 삭제(같은 출처만)
 //   POST /_member/email/start {email}  → 6자리 코드 메일, POST /_member/email/verify {email, code} → 세션(같은 출처만)
 const STATE_COOKIE = '__Host-hangit-login';
-const SESSION_COOKIE = '__Host-hangit-member';
+export const SESSION_COOKIE = '__Host-hangit-member';
 const STATE_TTL = 10 * 60;
 const SESSION_TTL = 30 * 24 * 60 * 60;
 const HOME = '/c';
@@ -171,9 +171,10 @@ async function callback(request, env, provider, { fetchImpl, now }) {
   return redirect(303, HOME, [clear, await newSession(env, member, provider, nowMs)]);
 }
 
-async function newSession(env, member, provider, nowMs) {
+export async function newSession(env, member, provider, nowMs) {
   const token = random(32);
   const db = dbOf(env);
+  await ensureSchema(db);
   await db.batch([
     db.prepare('DELETE FROM member_sessions WHERE expires_at <= ?1').bind(nowMs),
     db.prepare('INSERT INTO member_sessions (token_hash, member, provider, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)')
@@ -276,13 +277,16 @@ async function emailVerify(request, env, { now }) {
 }
 
 // 요청의 회원 쿠키 → 회원 id(32자 hex) 또는 null.
-export async function memberFromRequest(request, env, { now = Date.now } = {}) {
+// provider를 주면 그 로그인 방식의 세션만 받는다(앱은 초대 회원 'password'만, 보안 검토 10-28).
+export async function memberFromRequest(request, env, { now = Date.now, provider = null } = {}) {
   const token = cookies(request)[SESSION_COOKIE];
   const db = dbOf(env);
-  if (!token || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !secretOf(env) || !db) return null;
+  // 세션 토큰은 무작위 값이고 해시로만 찾으므로 비밀값이 없어도 된다(초대 회원은 MEMBER_SESSION_SECRET 없이 쓴다).
+  if (!token || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !db) return null;
   try {
     await ensureSchema(db);
-    const row = await db.prepare('SELECT member FROM member_sessions WHERE token_hash = ?1 AND expires_at > ?2').bind(await sha256(token), now()).first();
+    const row = await db.prepare('SELECT member, provider FROM member_sessions WHERE token_hash = ?1 AND expires_at > ?2').bind(await sha256(token), now()).first();
+    if (provider && row?.provider !== provider) return null;
     return row?.member || null;
   } catch { return null; }
 }

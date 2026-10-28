@@ -50,7 +50,10 @@ const bootParams = new URLSearchParams(typeof location !== 'undefined' ? locatio
 const bootPreview = bootParams.get('preview') === '1';
 let bootStorage = null;
 if (!bootPreview) { try { bootStorage = window.localStorage; bootStorage.getItem('eoul-mockup-ux10v2:probe'); } catch { bootStorage = null; } }
-const bootPhotos = bootParams.get('photos') !== '0';
+// 초대 회원(지인 테스트, 대표 10-28 15:12)에게는 무신사 상품 사진 대신 색 칸을 보여 준다. Worker가 <meta name="hangit-role" content="member">를 붙이고
+// 바깥 사진 주소도 CSP(img-src)로 막는다.
+const bootRole = (typeof document !== 'undefined' && document.querySelector('meta[name="hangit-role"]')?.content) || '';
+const bootPhotos = bootParams.get('photos') !== '0' && bootRole !== 'member';
 // ?preview=1: 갤러리 미리보기. 저장하지 않고 메모리에서만 동작해 다른 창의 기록과 섞이지 않는다.
 const previewValues = new Map();
 window.EOUL_UI_STORAGE = bootPreview ? {
@@ -90,7 +93,7 @@ if (typeof document !== 'undefined' && document.head && !document.querySelector(
 const bootGender = bootParams.get('g');
 if (bootGender === 'M' || bootGender === 'F') bootChange(() => mock.setGender(bootGender));
 if (bootParams.get('closet') === 'trial') bootChange(() => mock.loadTrialCloset(bootGender || undefined));
-mock.boot = { q: bootParams.get('q') || '', photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: ${JSON.stringify(commit)} };
+mock.boot = { q: bootParams.get('q') || '', role: bootRole, photos: bootPhotos, preview: bootPreview, reset: bootParams.get('reset') === '1', closet: bootParams.get('closet') || '', engineCommit: ${JSON.stringify(commit)} };
 window.EoulMock = mock;
 // 저장소를 쓸 수 없거나 저장된 원문을 읽지 못한 상태도 첫 화면에서 알린다(빈 옷장을 새 사용자로 오해하지 않게).
 mock.boot.storageError = bootStorageError || mock.storageIssue()?.message || null;

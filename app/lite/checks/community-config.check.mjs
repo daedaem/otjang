@@ -12,3 +12,8 @@ test('배포 설정은 코디 공유를 본인 전용(private)으로 켜고 publ
   for (const key of ['COMMUNITY_OPERATOR', 'COMMUNITY_CONTACT', 'MEMBER_SESSION_SECRET', 'KAKAO_REST_KEY', 'GOOGLE_CLIENT_SECRET', 'RESEND_API_KEY'])
     assert.equal(Object.hasOwn(config.vars, key), false, `${key}는 저장소에 넣지 않는다`);
 });
+
+test('배포 설정은 지인 초대 회원(MEMBER_APP_MODE=invite)을 켠다(대표 10-28 15:12)', () => {
+  assert.equal(config.vars.MEMBER_APP_MODE, 'invite');
+  assert.equal(config.vars.MEMBER_AI_DAILY, '10');
+});

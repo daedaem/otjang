@@ -14,6 +14,9 @@ const SCHEMA = [
   'CREATE INDEX IF NOT EXISTS rank_budget_day ON rank_budget_usage (utc_day)',
   'CREATE INDEX IF NOT EXISTS rank_budget_month ON rank_budget_usage (utc_month)',
   'CREATE INDEX IF NOT EXISTS rank_budget_minute ON rank_budget_usage (utc_minute)',
+  // 초대 회원(지인 테스트, 대표 10-28 15:11) 한 사람의 하루 사용량. 회원 id(무작위 값)와 날짜만 둔다.
+  'CREATE TABLE IF NOT EXISTS member_ai_usage (id TEXT PRIMARY KEY, member TEXT NOT NULL, utc_day TEXT NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS member_ai_usage_day ON member_ai_usage (member, utc_day)',
 ];
 
 function positiveLimit(value, fallback) {
@@ -32,7 +35,9 @@ async function ensureSchema(db) {
   try { await pending; } catch (error) { schemaReady.delete(db); throw error; }
 }
 
-export async function reserveRankBudget(env, { now = Date.now() } = {}) {
+// member가 있으면(초대 회원) 그 사람의 하루 한도 MEMBER_AI_DAILY(기본 10)를 먼저 예약하고, 전체 한도에 막히면 되돌린다.
+// 본인(member 없음)은 기존과 같다.
+export async function reserveRankBudget(env, { now = Date.now(), member = null } = {}) {
   const db = env?.RANK_DB || env?.CROWD_DB;
   if (!db || typeof db.prepare !== 'function') return unavailable('not_configured');
   const daily = positiveLimit(env.DAILY_LIMIT, DEFAULTS.DAILY_LIMIT);
@@ -45,6 +50,16 @@ export async function reserveRankBudget(env, { now = Date.now() } = {}) {
     const iso = new Date(now).toISOString();
     const day = iso.slice(0, 10), month = iso.slice(0, 7), minute = iso.slice(0, 16);
     await ensureSchema(db);
+    let memberSlot = null;
+    if (member) {
+      const memberDaily = positiveLimit(env.MEMBER_AI_DAILY, 10);
+      if (memberDaily === null) return unavailable('not_configured');
+      memberSlot = crypto.randomUUID();
+      const mine = await db.prepare(`INSERT INTO member_ai_usage (id, member, utc_day) SELECT ?1, ?2, ?3
+        WHERE (SELECT COUNT(*) FROM member_ai_usage WHERE member = ?2 AND utc_day = ?3) < ?4`).bind(memberSlot, String(member), day, memberDaily).run();
+      if (mine.meta?.changes !== 1) return limited('member_daily_limit');
+    }
+    const release = async () => { if (memberSlot) { try { await db.prepare('DELETE FROM member_ai_usage WHERE id = ?1').bind(memberSlot).run(); } catch {} } };
     // 먼저 읽고 나중에 늘리는 분리 처리를 피한다. 단일 INSERT가 모든 상한을 판단하고 원자적으로 예약한다.
     // 같은 D1을 공유하는 다른 Worker/isolate에서도 메모리나 KV의 값에 의존하지 않는다.
     const reserved = await db.prepare(`INSERT INTO rank_budget_usage (utc_day, utc_month, utc_minute, calls)
@@ -54,6 +69,7 @@ export async function reserveRankBudget(env, { now = Date.now() } = {}) {
         AND COALESCE((SELECT SUM(calls) FROM rank_budget_usage WHERE utc_minute = ?3), 0) < ?6`)
       .bind(day, month, minute, daily, monthly, perMinute).run();
     if (reserved.meta?.changes === 1) return { ok: true };
+    await release();
     if (reserved.meta?.changes !== 0) return unavailable();
 
     // 거절 이유는 예약 판단 뒤에만 읽는다. 읽기가 실패해도 API 호출을 허용하지 않는다.

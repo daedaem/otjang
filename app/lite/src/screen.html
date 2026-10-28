@@ -445,6 +445,7 @@ a { color: inherit; text-decoration: none; }
 .decs { display: grid; gap: 8px; }
 .decs .btn { min-height: 54px; }
 .menu .row { min-height: 52px; }
+.menu a.row { color: inherit; text-decoration: none; }
 /* 백업·복원 */
 .bk .decs .btn { justify-content: flex-start; }
 .bk-photo { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
@@ -1343,6 +1344,13 @@ a { color: inherit; text-decoration: none; }
   };
   const tabFor = (view) => (view === 'results' ? 'home' : view === 'community' ? 'looks' : view);
   let stripBumps = 0;
+  // 지인 테스트(10-28 15:12): 본인은 '지인 초대', 초대 회원은 '내 계정'(React 메뉴의 RoleLink와 같음).
+  function roleLink() {
+    const role = document.querySelector('meta[name="hangit-role"]')?.content;
+    if (role === 'owner') return '<a class="row" href="/_member/invites" data-role-link><span class="grow t5">지인 초대</span><i class="ph ph-user-plus arr"></i></a>';
+    if (role === 'member') return '<a class="row" href="/_member/account" data-role-link><span class="grow t5">내 계정</span><i class="ph ph-user arr"></i></a>';
+    return '';
+  }
   function renderStrip({ pop = false, bump = false } = {}) {
     const on = ['home', 'results', 'records', 'looks'].includes(curView) && hung().length > 0;
     if (chromeMounted) {
@@ -1409,6 +1417,7 @@ a { color: inherit; text-decoration: none; }
     unauthorized: 'AI 사용 권한을 확인할 수 없어 상담을 잠시 사용할 수 없어요.',
     not_configured: 'AI 상담이 아직 설정되지 않았어요.',
     daily_limit: '오늘 AI 사용 한도에 도달했어요. 내일 다시 물어봐 주세요.',
+    member_daily_limit: '오늘 쓸 수 있는 AI 상담 10번을 다 썼어요. 내일 다시 물어봐 주세요.',
     monthly_limit: '이번 달 AI 사용 한도에 도달했어요.',
     budget_unavailable: 'AI 사용량을 확인할 수 없어 상담을 잠시 멈췄어요.',
     provider_access_denied: 'AI 제공자가 연결을 거절했어요. 잠시 뒤 다시 물어봐 주세요.',
@@ -3165,7 +3174,7 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
     const lookOn = () => document.documentElement.dataset.look === 'v2';
     const look = () => { const r = document.documentElement; const on = !lookOn(); if (!M.boot?.preview) try { if (on) localStorage.removeItem('hangit:look'); else localStorage.setItem('hangit:look', 'v1'); } catch (e) {} if (on) r.dataset.look = 'v2'; else delete r.dataset.look; };
     chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, look: lookOn(), onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onLook: () => { look(); return () => K.refresh(); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
-    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '이전 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button></div>`);
+    const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '이전 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button>${roleLink()}</div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
     $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
     const pl = $('[data-place]', sh.s); if (pl) pl.onclick = async () => { await sh.close(); placeSheet(); };
