@@ -20,7 +20,7 @@
 5. 공유 단축 진입의3조각과 community 현재 표시·브라우저 Back 후 코디 표시를 확인했다. 게시0회·옷장 원문 바이트 동일이다.
 6. [캡처 명세](evidence/community-navigation/manifest.json)는 동일 합성 상태의320/390px·어두움·1440px, 옷장/피드/공유 초안 전후를 기록한다. 스크립트는 `app/lite/tools/capture-community-navigation.mjs`. 실제 개인 자료/회원 글·외부 요청은 없다. 캡처 생성/검토와 원격 CI/병합·실물 검증은 별도로 기록한다.
 
-현재는 코드/로컬 검사 후보다. 최종 PR/CI/병합/활성 배포를 확인한 뒤 최신 상태를 갱신한다. 메뉴 개선이 실제 다중 회원·소셜/메일·공개 커뮤니티 출시 완료는 아니다.
+이 문단까지는 초기 코드/로컬 검사 당시 기록이다. 아래 최종 PR/CI/병합/활성 배포 확인으로 갱신했다. 메뉴 개선이 실제 다중 회원·소셜/메일·공개 커뮤니티 출시 완료는 아니다.
 
 ## 직접 주소 보완 — 검증 갱신 2026-10-29
 
@@ -49,4 +49,12 @@ K.start의 선택적 externalRoute에 **community 경로만** 연결한다. 기�
 
 [PC 이전](evidence/community-navigation/before-desktop-feed.png) · [PC 이후](evidence/community-navigation/after-desktop-feed.png) · [어두운 공유 초안](evidence/community-navigation/after-mobile-dark-share.png) · [전체 명세](evidence/community-navigation/manifest.json)
 
-아직 원격 최종 head CI/검토·병합·활성 배포 전인 후보 상태다. 통과 후 순서대로 확인해 마감한다.
+## 최종 원격·실제 비공개 배포 — 2026-10-29
+
+- [PR #129](https://github.com/daedaem/otjang/pull/129) 최종 head `a9d2c674695c600bda4ddf4f5267784ebab6de3b`의 전체 CI15개 성공·미해결 리뷰0·기반 masterfecbb60을 확인한 뒤 병합했다. 병합 master는 `ef4eec07f161286801950421c0d10b8530e294a6`다.
+- PR CI run40720829781의 원본 로그에서 Chromium304개(8.6분)·WebKit304개(12.2분)를 대조했다. 예상 검사 수를 실제 통과 수로 대신 쓰지 않았다.
+- Cloudflare 기존 Worker `f18d7d75`에서 masteref4eec0·빌드48초·100% 활성 표시를 확인했다. 이전 #128도 masterfecbb60/Workerfbe75723·빌드1분23초로 표시됐다. Secrets/DB/공개 스위치는 바꾸지 않았다.
+- 배포 직전에 연 검증 탭은 구버전5탭이었다. 입력 없는 그 탭만 새로고침한 뒤 실제 앱 상단 **커뮤니티**, 게시판 **코디 공유**, 찾기·코디·옷장·커뮤니티·상담·기록의6개 메뉴, 커뮤니티 `aria-current=page`를 확인했다. 기존 사용자 앱 탭/저장소는 유지했다.
+- 실제 화면은 가입 전 규칙/이름 양식까지만 읽었다. 이름 입력·약관 동의·회원/게시/삭제는 실행하지 않았다. 전체 피드/공유 행동의 전후 증거는 위 합성24장과 자동검사이며 실제 다중 사용자 성공으로 확대하지 않는다.
+
+구현·검증·인수인계 완료로 진행 중 코드 표시를 해제한다. 다음은 실제 폰·OAuth/메일·전용 DB/운영자·공급 권리/공개 승인이다. 세일/자유게시판은 미구현 후속으로 유지한다.
