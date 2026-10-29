@@ -979,3 +979,34 @@ test.describe("outfit own-photo offline", () => {
     }
   });
 });
+
+// 10-29 실기기 제보: 체험용 옷장에서 출근·데이트 같은 상황 버튼을 눌러도 위쪽 조합이 그대로였다.
+test("choosing a situation changes the trial outfits or says none fit", async ({ page }) => {
+  await page.evaluate(() => (window as any).K.M.loadTrialCloset());
+  await open(page);
+  const demo = page.locator(".of-demo");
+  const situations = page.getByRole("group", { name: "코디 상황", exact: true });
+  await expect(demo.locator("[data-outfit-card]").first()).toBeVisible();
+  const all = await demo.innerText();
+  for (const label of ["출근", "데이트", "주말·여행", "격식·하객"]) {
+    await situations.getByRole("button", { name: label, exact: true }).click();
+    await expect(demo).toContainText(label);
+    await expect(demo).not.toContainText("가진 옷 기본 조합");
+    const text = await demo.innerText();
+    expect(text).not.toBe(all);
+    const cards = await demo.locator("[data-outfit-card]").count();
+    if (!cards) await expect(demo).toContainText(`${label}에 맞는 체험용 조합이 없어요`);
+  }
+  await situations.getByRole("button", { name: "내 옷 전체", exact: true }).click();
+  await expect(demo).toContainText("가진 옷 기본 조합");
+});
+
+test("with my own clothes a situation tells me the AI comparison will use it", async ({ page }) => {
+  await fixture(page);
+  await open(page);
+  const situations = page.getByRole("group", { name: "코디 상황", exact: true });
+  await situations.getByRole("button", { name: "출근", exact: true }).click();
+  await expect(page.locator("[data-outfit-situation-note]")).toContainText("출근");
+  await situations.getByRole("button", { name: "내 옷 전체", exact: true }).click();
+  await expect(page.locator("[data-outfit-situation-note]")).toHaveCount(0);
+});
