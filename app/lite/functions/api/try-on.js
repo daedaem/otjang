@@ -23,6 +23,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS tryon_jobs (member TEXT NOT NULL,id TEXT NOT NULL,payload_hash TEXT NOT NULL,
     state TEXT NOT NULL,provider_id TEXT,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,
     utc_day TEXT NOT NULL,utc_month TEXT NOT NULL,credits INTEGER NOT NULL,next_poll_at INTEGER NOT NULL DEFAULT 0,
+    consent_version TEXT NOT NULL,rights_attested INTEGER NOT NULL CHECK(rights_attested=1),
     PRIMARY KEY(member,id))`,
   "CREATE INDEX IF NOT EXISTS tryon_budget_day ON tryon_jobs(utc_day)",
   "CREATE INDEX IF NOT EXISTS tryon_budget_month ON tryon_jobs(utc_month)",
@@ -260,8 +261,8 @@ export async function handleTryOn(
         .run();
       const inserted = await s.db
         .prepare(
-          `INSERT OR IGNORE INTO tryon_jobs(member,id,payload_hash,state,created_at,expires_at,utc_day,utc_month,credits)
-        SELECT ?1,?2,?3,'reserved',?4,?5,?6,?7,?8 WHERE
+          `INSERT OR IGNORE INTO tryon_jobs(member,id,payload_hash,state,created_at,expires_at,utc_day,utc_month,credits,consent_version,rights_attested)
+        SELECT ?1,?2,?3,'reserved',?4,?5,?6,?7,?8,?13,1 WHERE
         COALESCE((SELECT SUM(credits) FROM tryon_jobs WHERE utc_day=?6),0)+?8<=?9 AND
         COALESCE((SELECT SUM(credits) FROM tryon_jobs WHERE utc_month=?7),0)+?8<=?10 AND
         COALESCE((SELECT SUM(credits) FROM tryon_jobs WHERE member=?1 AND utc_day=?6),0)+?8<=?11 AND
@@ -281,6 +282,7 @@ export async function handleTryOn(
           s.limits.monthly,
           s.limits.member,
           at - 10 * 60000,
+          TRYON_CONSENT,
         )
         .run();
       const row = await read(body.requestId);

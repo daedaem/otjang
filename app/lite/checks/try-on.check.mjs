@@ -164,6 +164,8 @@ test("try-on reserves exactly three quality credits, never stores images, and re
   assert.equal(request.inputs.generation_mode, "quality");
   const row = f.raw.prepare("SELECT * FROM tryon_jobs").get();
   assert.equal(row.credits, 3);
+  assert.equal(row.consent_version, TRYON_CONSENT);
+  assert.equal(row.rights_attested, 1);
   assert.ok(!JSON.stringify(row).includes(picture));
   assert.ok(!JSON.stringify(row).includes(f.env.FASHN_API_KEY));
   f.env.TRYON_MODE = "members";
