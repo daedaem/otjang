@@ -984,11 +984,12 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       const outer = ['blazer', 'jacket', 'coat', 'down', 'cardigan', 'vest'].includes(kind);
       return { verdict: 'new', basis, title: newOutfits ? `새 코디 ${newOutfits}개가 생겨요` : `옷장에 없는 ${kindName}${josa(kindName, '이에요', '예요')}`, lines: [newOutfits ? '내 옷과 함께 입을 수 있는 조합이 늘어나요.' : outer ? '겉옷은 지금 코디 수 계산에 넣지 않아요. 가진 옷과 겹치지는 않아요.' : '아직 같이 입을 옷이 부족해 새 코디는 없어요.'], sameColor, otherColor, newOutfits };
     },
-    closetOutfits({ limit = 60, detail = false, ownedOnly = false } = {}) {
+    // occasion을 주면 그 상황의 코디 공식만 준다. 기본 조합은 상황 구분이 없어 뺀다(10-29).
+    closetOutfits({ limit = 60, detail = false, ownedOnly = false, occasion = null } = {}) {
       const original = engineState();
       const st = ownedOnly ? {...original,garments:S.garments.filter(g=>!isTrial(g.id)),closet:original.closet.filter(g=>!isTrial(g.id))} : original;
-      const ready = closetLooks(st, { limit }).ready;
-      const basics = basicOutfits(st, { limit });
+      const ready = closetLooks(st, { limit, occasion }).ready;
+      const basics = occasion ? [] : basicOutfits(st, { limit });
       const out = { formulas: ready.length, basic: basics.length, total: ready.length + basics.length, note: '가진 옷으로 입을 수 있는 조합 수예요(종류·색 기준, 핏·소재는 따지지 않았어요).' };
       if (detail) {
         out.list = [...ready, ...basics].map((r) => {

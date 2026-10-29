@@ -615,9 +615,10 @@ export function recommendLooks(
 }
 
 // 내 옷장: 가진 옷만으로 되는 코디와, 하나만 사면 되는 코디
-export function closetLooks(state, { limit = 3 } = {}) {
+// occasion을 주면 그 상황 공식만 본다(코디 화면의 상황 버튼, 10-29).
+export function closetLooks(state, { limit = 3, occasion = null } = {}) {
   const c = ctx(state);
-  const looks = matchingLooks(c, { occasion: null });
+  const looks = matchingLooks(c, { occasion });
   const ready = rankLooks(
     looks.map((l) => fillLook(l, c, { ownedOnly: true })),
     c,

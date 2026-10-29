@@ -83,7 +83,11 @@ export interface ProfileCore {
   removeGarment(id: string): void;
   colorChoices(): { id: string; label: string; hex: string }[];
   storageIssue(): { code: string; message: string } | null;
-  closetOutfits(options: { detail: boolean; limit?: number }): {
+  closetOutfits(options: {
+    detail: boolean;
+    limit?: number;
+    occasion?: string | null;
+  }): {
     total: number;
     list: {
       key: string;
