@@ -163,14 +163,19 @@ function OutfitScreen({ host }: { host: OutfitHost }) {
         : [],
     [result, candidates, byId],
   );
+  const trialMode = !review.candidates.length && !!closet.trialCount;
   const demo = useMemo(
     () =>
-      !review.candidates.length && closet.trialCount
+      trialMode
         ? host.core
-            .closetOutfits({ detail: true, limit: 4 })
+            .closetOutfits({
+              detail: true,
+              limit: 4,
+              occasion: context.occasion,
+            })
             .list.map((o, i) => ({ ...o, id: `trial_${i}` }))
         : [],
-    [host.core, version, review.candidates.length, closet.trialCount],
+    [host.core, version, trialMode, context.occasion],
   );
   const sceneLabel =
     choices.occasions.find(([id]) => id === context.occasion)?.[1] || "";
@@ -320,6 +325,12 @@ function OutfitScreen({ host }: { host: OutfitHost }) {
         choices={choices}
         updateContext={updateContext}
       />
+      {sceneLabel && review.request && !result && (
+        <p className="of-note" role="status" data-outfit-situation-note>
+          ‘{sceneLabel}’은(는) AI로 비교할 때 순서와 이유에 반영돼요. 아래
+          조합 목록 자체는 그대로예요.
+        </p>
+      )}
       {!closet.closetCount && <EmptyWardrobe host={host} />}
       {computed.issue && (
         <p className="of-notice" role="alert">
@@ -426,20 +437,36 @@ function OutfitScreen({ host }: { host: OutfitHost }) {
               </button>
             </div>
           )}
-          {demo.length > 0 && (
+          {trialMode && (demo.length > 0 || sceneLabel) && (
             <details className="of-demo" open>
-              <summary>체험용 코디 · 가진 옷이 아니에요</summary>
+              <summary>
+                체험용 코디{sceneLabel ? ` · ${sceneLabel}` : ""} · 가진 옷이
+                아니에요
+              </summary>
               <p className="of-note">
                 이 예시는 AI 요청·내 반응·실제 보유 집계에 넣지 않아요.
               </p>
-              <OutfitGrid
-                candidates={demo.slice(0, 4)}
-                host={host}
-                garments={byId}
-                occasion={null}
-                disabled
-                trial
-              />
+              {sceneLabel && demo.length > 0 && (
+                <p className="of-note" role="status">
+                  체험용 옷 {closet.trialCount}벌로 {sceneLabel}에 맞는 조합{" "}
+                  {demo.length}개예요. 한 조합이 여러 상황에 맞기도 해요.
+                </p>
+              )}
+              {demo.length > 0 ? (
+                <OutfitGrid
+                  candidates={demo.slice(0, 4)}
+                  host={host}
+                  garments={byId}
+                  occasion={null}
+                  disabled
+                  trial
+                />
+              ) : (
+                <p className="of-note" role="status">
+                  {sceneLabel}에 맞는 체험용 조합이 없어요. 아래 ‘한 벌만 더’
+                  후보를 보거나 다른 상황을 골라 보세요.
+                </p>
+              )}
             </details>
           )}
           {result && (
