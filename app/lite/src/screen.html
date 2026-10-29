@@ -143,6 +143,8 @@ a { color: inherit; text-decoration: none; }
 .hslot > * { pointer-events: auto; }
 .strip[hidden], .tabs[hidden] { display: none; }
 .pdp-photo .zoomb { display: grid; place-items: center; }
+.pdp-tryon { position:absolute;left:12px;bottom:12px;z-index:1;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 15px;border-radius:8px;background:var(--btn-bg);color:var(--btn-fg);font-size:14px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.12); }
+.pdp-tryon:focus-visible {outline:2px solid var(--ink);outline-offset:3px;}
 .hangt.big span { width: 44px; height: 44px; font-size: 24px; }
 
 /* 홈 */
@@ -2000,7 +2002,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const v2 = document.documentElement.dataset.look === 'v2';
       const tools = `        <button class="btn line wide" data-measure="${id}" style="margin:14px 0"><i class="ph ph-ruler" aria-hidden="true"></i>내 기준 옷과 실측 비교</button>
         <button class="quiet" data-collection="${id}" style="margin-bottom:14px">활용·소장 가치 비교 →</button>
-        <button class="quiet" data-mirror="${id}" style="margin-bottom:14px">내 사진 거울 옆에 놓고 보기 →</button><button class="btn line wide" data-tryon="${id}" style="margin:14px 0"><i class="ph ph-sparkle" aria-hidden="true"></i> 내 사진에 입혀 보기</button>
+        <button class="quiet" data-mirror="${id}" style="margin-bottom:14px">내 사진 거울 옆에 놓고 보기 →</button>
         ${ai?.reason ? `<section class="box ai-why" aria-label="AI 이유"><div class="label"><i class="ph-fill ph-sparkle"></i>AI 순위 ${ai.rank}위${ai.fit ? ` · ${esc(ai.fit)}` : ''}</div><p class="h3">${esc(ai.reason)}</p></section>` : ''}
 `;
       const hang = `        <section class="box" id="hangbox" aria-label="내 옷에 걸어 보면"><div class="label"><i class="ph ph-coat-hanger"></i>내 옷에 걸어 보면 · ${esc(v.basisLabel)}</div>
@@ -2014,7 +2016,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         </section>
 `;
       return `${top()}
-        <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}</span></div>
+        <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}<button class="pdp-tryon" data-tryon="${id}"><i class="ph ph-sparkle" aria-hidden="true"></i> 내 사진에 입혀 보기</button></span></div>
         <div>
         <div class="pdp-head"><div class="b">${esc(m.brand)}</div><h1 class="h2" style="margin-top:2px">${esc(m.name)}</h1>
           <div class="pricetag num"><b>${esc(m.priceText)}</b><small>${esc(m.priceNote)}</small></div>

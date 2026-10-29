@@ -107,6 +107,9 @@ function Photo({
             <i className={`${m.hung ? "ph-fill" : "ph"} ph-coat-hanger`} />
           </span>
         </button>
+        <button type="button" className="pdp-tryon" onClick={host.tryOn}>
+          <i className="ph ph-sparkle" aria-hidden="true" /> 내 사진에 입혀 보기
+        </button>
       </span>
       {note ? (
         <div
@@ -366,9 +369,6 @@ export function Detail({ host }: { host: DetailHost }) {
         onClick={host.mirror}
       >
         내 사진 거울 옆에 놓고 보기 →
-      </button>
-      <button type="button" className="btn line wide" style={{ margin: "14px 0" }} onClick={host.tryOn}>
-        <i className="ph ph-sparkle" aria-hidden="true" /> 내 사진에 입혀 보기
       </button>
       {m.ai?.reason ? (
         <section className="box ai-why" aria-label="AI 이유">

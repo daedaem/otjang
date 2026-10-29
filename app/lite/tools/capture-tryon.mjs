@@ -96,7 +96,20 @@ try {
             });
           return route.continue();
         });
-      await page.goto(origin + "/?photos=0#/tryon");
+        if(device.name==='mobile') {
+          await page.goto(origin+'/?photos=0#/closet');
+          await page.waitForFunction(()=>!!window.K?.M);
+          await page.evaluate(()=>window.K.go('detail',{id:'ms-728000'}));
+          const entry=page.getByRole('button',{name:'내 사진에 입혀 보기',exact:true});
+          await entry.waitFor();
+          const box=await entry.boundingBox();
+          if(!box || box.y<0 || box.y+box.height>device.height)throw Error('Core entry is below the first viewport');
+          const file=engine+'-mobile-entry.png';
+          await page.screenshot({path:path.join(out,file),animations:'disabled'});
+          const bytes=fs.readFileSync(path.join(out,file));
+          manifest.captures.push({file,engine,viewport:{width:device.width,height:device.height},theme:device.colorScheme,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),note:'Local product entry placement with retailer photos disabled; no vendor image or generated try-on result.'});
+        }
+        await page.goto(origin + "/?photos=0#/tryon");
         await page.locator("[data-react-tryon]").waitFor();
         await page
           .getByLabel("내 사진 고르기", { exact: true })

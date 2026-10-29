@@ -97,9 +97,9 @@ async function setup(page: Page, mode = "ready", loseAcknowledgement = false) {
   await page.goto("/?photos=0#/closet");
   await page.waitForFunction(() => !!(window as any).K?.M);
   await page.evaluate((id) => (window as any).K.go("detail", { id }), ID);
-  await page
-    .getByRole("button", { name: "내 사진에 입혀 보기", exact: true })
-    .click();
+  const entry=page.getByRole("button", { name: "내 사진에 입혀 보기", exact: true });
+  await expect(entry).toBeInViewport({ratio:1});
+  await entry.click();
   await expect(page.locator("[data-react-tryon]")).toBeVisible();
   return { env, posts, provider };
 }
