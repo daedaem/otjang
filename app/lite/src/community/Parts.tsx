@@ -1,3 +1,4 @@
+import { Wordmark } from "../brand/Wordmark";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CommunityHost, CommunityClient, Status, Fail, Piece, Post, ReviewItem } from "./types";
@@ -27,7 +28,9 @@ export function Top({ host, status }: { host: CommunityHost; status: Status | nu
   if (host.standalone)
     return (
       <header className="cm-top">
-        <span className="mark">행잇</span>
+        <span className="mark">
+          <Wordmark />
+        </span>
         <span className="sp" />
         {status?.signedIn && host.logout ? (
           <button type="button" className="quiet" onClick={host.logout}>
@@ -38,7 +41,9 @@ export function Top({ host, status }: { host: CommunityHost; status: Status | nu
     );
   return (
     <header className="cm-top">
-      <span className="mark">커뮤니티</span>
+      <span className="mark">
+        <Wordmark />
+      </span>
       <span className="sp" />
       <button type="button" className="icon" onClick={host.info} aria-label="가격·사진·판단 기준 보기">
         ⓘ

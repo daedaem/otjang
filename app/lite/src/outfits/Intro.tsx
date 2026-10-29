@@ -1,3 +1,4 @@
+import { Wordmark } from "../brand/Wordmark";
 import type { RefObject } from "react";
 import type { OutfitHost } from "./types";
 import { WeatherSlot } from "./WeatherSlot";
@@ -15,7 +16,9 @@ export function OutfitIntro({
   return (
     <>
       <header className="of-top">
-        <span className="mark">내 옷으로</span>
+        <span className="mark">
+          <Wordmark />
+        </span>
         <span className="sp" />
         {host.community ? (
           <button type="button" className="quiet of-community" onClick={host.community}>
