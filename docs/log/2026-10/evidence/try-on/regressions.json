@@ -1,0 +1,61 @@
+{
+  "checkedAt": "2026-10-29",
+  "testedSource": "f54b5d6ec4e35af5ca83f92a824d932200ef573e",
+  "realProviderCalls": 0,
+  "photoData": "synthetic only",
+  "regressions": [
+    {
+      "case": "accepted consent version is missing from the job",
+      "before": {
+        "source": "89f0adf",
+        "nodeFailures": 1,
+        "actual": "consent_version undefined"
+      },
+      "after": {
+        "source": "5c0545b",
+        "apiTestsPassed": 9
+      }
+    },
+    {
+      "case": "same-tab direct try-on address returns to the preceding screen",
+      "before": {
+        "source": "ec576ca",
+        "chromiumFailures": 1
+      },
+      "after": {
+        "source": "f54b5d6",
+        "navigationAndCommunityTests": 38,
+        "engines": [
+          "Chromium",
+          "WebKit"
+        ],
+        "passed": 38
+      }
+    },
+    {
+      "case": "surrounding app refresh discards photos and explicit consent",
+      "before": {
+        "source": "ec576ca",
+        "chromiumFailures": 1
+      },
+      "after": {
+        "source": "f54b5d6",
+        "navigationAndCommunityTests": 38,
+        "passed": 38
+      }
+    },
+    {
+      "case": "core entry is below existing comparison tools",
+      "after": {
+        "source": "89f0adf",
+        "entry": "on product photo",
+        "entireButtonInInitialViewport": true,
+        "engines": [
+          "Chromium",
+          "WebKit"
+        ]
+      }
+    }
+  ],
+  "quality": "not tested against the real provider"
+}

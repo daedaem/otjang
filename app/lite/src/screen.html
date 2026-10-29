@@ -143,6 +143,8 @@ a { color: inherit; text-decoration: none; }
 .hslot > * { pointer-events: auto; }
 .strip[hidden], .tabs[hidden] { display: none; }
 .pdp-photo .zoomb { display: grid; place-items: center; }
+.pdp-tryon { position:absolute;left:12px;bottom:12px;z-index:1;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 15px;border-radius:8px;background:var(--btn-bg);color:var(--btn-fg);font-size:14px;font-weight:700;box-shadow:0 2px 12px rgba(0,0,0,.12); }
+.pdp-tryon:focus-visible {outline:2px solid var(--ink);outline-offset:3px;}
 .hangt.big span { width: 44px; height: 44px; font-size: 24px; }
 
 /* 홈 */
@@ -1271,6 +1273,7 @@ a { color: inherit; text-decoration: none; }
       measure: () => K.go('measure', { id }),
       collection: () => K.go('collection', { id }),
       mirror: () => K.go('mirror', { id }),
+      tryOn: () => K.go('tryon', { id }),
       decide: (dec) => decide(id, dec),
       change: () => decisionSheet(id, { title: '어떻게 할까요?' }),
       returned: () => returnSheet(id),
@@ -1601,6 +1604,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
   let collectionUnmount = null;
   let outfitsUnmount = null;
   let mirrorUnmount = null;
+  let tryOnUnmount = null;
   let communityUnmount = null;
   let photoAddUnmount = null;
   let resultsUnmount = null;
@@ -1617,6 +1621,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(view==='home'&&curView==='home'&&homeUnmount&&dir==='none'){$('#react-home')?.dispatchEvent(new Event('eoul-home-refresh'));renderStrip();return;}
     if(view==='add'&&curView==='add'&&addUnmount&&dir==='none'){drawShelf();renderStrip();return;}
     if(view==='mirror'&&curView==='mirror'&&mirrorUnmount&&dir==='none'){renderStrip();return;}
+    if(view==='tryon'&&curView==='tryon'&&tryOnUnmount&&dir==='none'&&params?.id===curParams.id){renderStrip();return;}
     if(view==='community'&&curView==='community'&&communityUnmount&&dir==='none'){return;}
     if(view==='photoadd'&&curView==='photoadd'&&photoAddUnmount&&dir==='none'){return;}
     if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){renderStrip();return;}
@@ -1637,6 +1642,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     collectionUnmount?.(); collectionUnmount = null;
     outfitsUnmount?.(); outfitsUnmount = null;
     mirrorUnmount?.(); mirrorUnmount = null;
+    tryOnUnmount?.(); tryOnUnmount = null;
     communityUnmount?.(); communityUnmount = null;
     photoAddUnmount?.(); photoAddUnmount = null;
     resultsUnmount?.(); resultsUnmount = null;
@@ -1654,6 +1660,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactCloset = view === 'closet' && window.EOUL_CLOSET_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla';
     const reactMeasure = view === 'measure' && window.EOUL_MEASURE_LOAD;
     const reactCollection = view === 'collection' && window.EOUL_COLLECTION_LOAD;
+    const reactTryOn=view==='tryon'&&window.EOUL_TRYON_LOAD;
     const reactMirror=view==='mirror'&&window.EOUL_MIRROR_LOAD;
     const reactCommunity=view==='community'&&window.EOUL_COMMUNITY_LOAD;
     const reactPhotoAdd=view==='photoadd'&&window.EOUL_PHOTOADD_LOAD;
@@ -1663,7 +1670,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const reactCompare=view==='compare'&&window.EOUL_DETAIL_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactRecords=view==='records'&&window.EOUL_RECORDS_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactConsult=view==='consult'&&window.EOUL_CONSULT_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
-    const html = reactConsult ? '<div id="react-consult"><p role="status">상담을 여는 중이에요…</p></div>' : reactRecords ? '<div id="react-records"><p role="status">기록을 여는 중이에요…</p></div>' : reactDetail ? '<div id="react-detail"><p role="status">상품을 여는 중이에요…</p></div>' : reactCompare ? '<div id="react-compare"><p role="status">비교를 여는 중이에요…</p></div>' : reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactPhotoAdd ? '<div id="react-photo-add"><p role="status">사진으로 넣기를 여는 중이에요…</p></div>' : view === 'photoadd' ? '<p role="alert">사진으로 넣기 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>' : reactCommunity ? '<div id="react-community"><p role="status">코디 공유를 여는 중이에요…</p></div>' : view === 'community' ? '<p role="alert">코디 공유 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
+    const html = reactTryOn ? '<div id="react-tryon"><p role="status">착용 화면을 여는 중이에요…</p></div>' : reactConsult ? '<div id="react-consult"><p role="status">상담을 여는 중이에요…</p></div>' : reactRecords ? '<div id="react-records"><p role="status">기록을 여는 중이에요…</p></div>' : reactDetail ? '<div id="react-detail"><p role="status">상품을 여는 중이에요…</p></div>' : reactCompare ? '<div id="react-compare"><p role="status">비교를 여는 중이에요…</p></div>' : reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactPhotoAdd ? '<div id="react-photo-add"><p role="status">사진으로 넣기를 여는 중이에요…</p></div>' : view === 'photoadd' ? '<p role="alert">사진으로 넣기 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>' : reactCommunity ? '<div id="react-community"><p role="status">코디 공유를 여는 중이에요…</p></div>' : view === 'community' ? '<p role="alert">코디 공유 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
     const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results', 'community'].includes(view);
@@ -1676,6 +1683,8 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     } else if(reactRecords){
       const restoreY=dir==='back'?(K.current()?.scroll||0):null;
       window.EOUL_RECORDS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;recordsUnmount=mount(recordsHost($('#react-records'),restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-records').innerHTML='<p role="status">새 기록 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.records(params);A.records(params);});
+    } else if(reactTryOn){
+      window.EOUL_TRYON_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;const p=params.id?M.product(params.id):null;tryOnUnmount=mount({element:$('#react-tryon'),core:M,namespace:window.EOUL_MOCK_KEY,candidate:p?{id:p.id,brand:p.brand,name:p.name,reason:detailModel(p.id)?.ai?.reason||'',photoId:M.getState().closet.find(g=>g.productId===p.id&&!g.trial&&g.photoId)?.photoId}:null,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),compare:()=>params.id?K.go('detail',{id:params.id}):K.tab('closet')});}).catch(()=>{if(epoch===inputEpoch)$('#react-tryon').innerHTML='<p role="alert">착용 화면을 열지 못했어요. 연결을 확인해 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if(reactDetail||reactCompare){
       const restoreY=dir==='back'?(K.current()?.scroll||0):null, el=$(reactDetail?'#react-detail':'#react-compare');
       window.EOUL_DETAIL_LOAD().then(({mount,mountCompare})=>{if(epoch!==inputEpoch)return;if(reactDetail)detailUnmount=mount(detailHost(el,params,restoreY));else compareUnmount=mountCompare(compareHost(el,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;if(reactDetail){el.innerHTML='<p role="status">새 상품 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.detail(params);A.detail(params);}else{el.innerHTML='<p role="status">새 비교 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.compare(params);A.compare(params);}});
@@ -1726,7 +1735,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     } else (A[view] || (() => {}))(params);
     // 주소는 보기용으로만 따라간다(#/p/<id> 등). 이동 자체는 K 라우터의 쌓기식 기록이 맡는다.
     const cp = view === 'community' ? communityParams(params) : null;
-    const hash = view === 'community' ? M.route.href('/community',{board:cp.board==='outfits'?null:cp.board,mine:cp.mine}) : view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'mirror' ? M.route.href('/mirror',params.id?{id:params.id}:{}) : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
+    const hash = view === 'community' ? M.route.href('/community',{board:cp.board==='outfits'?null:cp.board,mine:cp.mine}) : view === 'results' ? M.route.href('/search', { q: params.q }) : view === 'detail' ? `#/p/${params.id}` : view === 'tryon' ? M.route.href('/tryon',params.id?{id:params.id}:{}) : view === 'mirror' ? M.route.href('/mirror',params.id?{id:params.id}:{}) : view === 'measure' ? M.route.href('/measure',{id:params.id}) : view === 'collection' ? M.route.href('/collection',params.id?{id:params.id}:{}) : view === 'home' ? '#/' : `#/${view}`;
     try { if (location.hash !== hash) history.replaceState(history.state, '', hash); } catch {}
     if(keepHomeFocus)requestAnimationFrame(()=>{const target=$('#q');if(epoch===inputEpoch&&curView==='home'&&target&&(!document.activeElement||document.activeElement===document.body||document.activeElement===target)){target.focus({preventScroll:true});target.setSelectionRange(keepHomeFocus.start,keepHomeFocus.end)}});
   }
@@ -2008,7 +2017,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         </section>
 `;
       return `${top()}
-        <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}</span></div>
+        <div class="pdp"><div class="pdp-photo"><span class="ph-box" style="display:block"><button class="zoomb" data-zoom="${id}" aria-label="사진 크게 보기">${productPic(id).replace(/^<span class="ph-box">|<\/span>$/g, '')}</button>${hangToggle(id, 'big')}<button class="pdp-tryon" data-tryon="${id}"><i class="ph ph-sparkle" aria-hidden="true"></i> 내 사진에 입혀 보기</button></span></div>
         <div>
         <div class="pdp-head"><div class="b">${esc(m.brand)}</div><h1 class="h2" style="margin-top:2px">${esc(m.name)}</h1>
           <div class="pricetag num"><b>${esc(m.priceText)}</b><small>${esc(m.priceNote)}</small></div>
@@ -2316,9 +2325,10 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
 
   // ── 공통 이벤트(한 번만 건다)
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-back],[data-mirror],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-addphoto],[data-check-open],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
+    const t = e.target.closest('[data-back],[data-tryon],[data-mirror],[data-measure],[data-collection],[data-pid],[data-tabgo],[data-menu],[data-q],[data-hang],[data-unhang],[data-go-compare],[data-zoom],[data-addlike],[data-disclose],[data-own],[data-edit],[data-add-open],[data-add-q],[data-addkind],[data-addphoto],[data-check-open],[data-own-add],[data-trial],[data-mine],[data-reg-open],[data-crowd-add],[data-rakuten-search],[data-rakuten-plan],[data-adpick-search]');
     if (!t) return;
-    if (t.hasAttribute('data-back')) K.back(curView==='add'?{view:'closet',params:{}}:curView==='mirror'?(curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}):curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    if (t.hasAttribute('data-back')) K.back(curView==='add'?{view:'closet',params:{}}:(curView==='mirror'||curView==='tryon')?(curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}):curView === 'collection' ? (curParams.id?{view:'detail',params:{id:curParams.id}}:{view:'closet',params:{}}) : curView === 'measure' ? {view:'detail',params:{id:curParams.id}} : curView === 'detail' ? {view:'home',params:{}} : null);
+    else if(t.hasAttribute('data-tryon')) K.go('tryon',t.dataset.tryon?{id:t.dataset.tryon}:{});
     else if(t.hasAttribute('data-mirror')) K.go('mirror',t.dataset.mirror?{id:t.dataset.mirror}:{});
     else if (t.hasAttribute('data-collection')) K.go('collection',t.dataset.collection?{id:t.dataset.collection}:{});
     else if (t.hasAttribute('data-measure')) K.go('measure',{id:t.dataset.measure});
@@ -3262,9 +3272,9 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/community' ? communityParams(r0.params) : ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
-    externalRoute: () => { const route=M.route.current();return route.path === '/community' ? { view:'community',params:communityParams(route.params) } : null; },
-    sameExternalRoute: (a,b) => a.view === b.view && communityKey(a.params) === communityKey(b.params),
+  K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/tryon' ? 'tryon' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/community' ? communityParams(r0.params) : ['/measure','/collection','/mirror','/tryon'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
+    externalRoute: () => { const route=M.route.current();return route.path === '/tryon' ? {view:'tryon',params:route.params.id?{id:route.params.id}:{}} : route.path === '/community' ? { view:'community',params:communityParams(route.params) } : null; },
+    sameExternalRoute: (a,b) => a.view === b.view && (a.view==='tryon' ? String(a.params?.id||'')===String(b.params?.id||'') : communityKey(a.params) === communityKey(b.params)),
   });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   // 안내 내용은 부를 때의 상태로 고정한다(원문도 그때 값). 바닐라와 React가 같은 모델을 쓴다.

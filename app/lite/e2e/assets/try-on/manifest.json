@@ -1,0 +1,11 @@
+{
+  "kind": "fully fictional AI-generated adult model input; not an actual customer's photo",
+  "tool": "built-in image_gen",
+  "prompt": "Use case: photorealistic-natural. Asset type: fully fictional adult model input for testing a clothing virtual try-on app, not a real customer or an impersonation. A single fictional East Asian adult man around 30 years old standing front-facing in a softly lit pale gray photo studio, wearing a plain charcoal short sleeve crewneck T-shirt tucked into straight dark gray trousers and simple black low-profile shoes. Natural neutral expression, realistic everyday body proportions, arms relaxed slightly separated from torso, hands fully visible at sides, feet shoulder width apart. Full body from hair to both shoes completely inside frame with clear margins. Vertical 3:4 editorial studio photograph, diffuse realistic light, clean unobstructed clothing boundaries, realistic skin and cotton texture. No other people, no props, no text, no logos, no tags, no watermark. Do not reference or resemble any real specific person.",
+  "purpose": "UI rendering fixtures and future explicitly approved provider quality comparison; not a generated try-on result.",
+  "file": "fictional-person.jpg",
+  "sha256": "931b60c5dc5d43253585610af3c1c859ef260fc44906b2ba39081f4e9dc86ebf",
+  "bytes": 106116,
+  "width": 960,
+  "height": 1280
+}

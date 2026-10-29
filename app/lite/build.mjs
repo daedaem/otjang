@@ -142,6 +142,9 @@ const profileAssets = islandAssets('EOUL_PROFILE_LOAD', profileEntry);
 const measureAssets = islandAssets('EOUL_MEASURE_LOAD', measureEntry);
 const collectionAssets = islandAssets('EOUL_COLLECTION_LOAD', collectionEntry);
 const outfitsAssets = islandAssets('EOUL_OUTFITS_LOAD', outfitsEntry);
+const tryOnEntry=Object.values(inputManifest).find(entry=>entry.isEntry&&entry.src==='src/try-on/index.tsx');
+if(!tryOnEntry)throw new Error('React try-on entry missing');
+const tryOnAssets = islandAssets('EOUL_TRYON_LOAD', tryOnEntry);
 const mirrorAssets = islandAssets('EOUL_MIRROR_LOAD', mirrorEntry);
 const addSearchAssets = islandAssets('EOUL_ADD_SEARCH_LOAD', addSearchEntry);
 const homeAssets = islandAssets('EOUL_HOME_LOAD', homeEntry);
@@ -168,6 +171,7 @@ ${measureAssets}
 ${collectionAssets}
 ${outfitsAssets}
 ${mirrorAssets}
+${tryOnAssets}
 ${addSearchAssets}
 ${homeAssets}
 ${resultsAssets}

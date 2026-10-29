@@ -107,6 +107,9 @@ function Photo({
             <i className={`${m.hung ? "ph-fill" : "ph"} ph-coat-hanger`} />
           </span>
         </button>
+        <button type="button" className="pdp-tryon" onClick={host.tryOn}>
+          <i className="ph ph-sparkle" aria-hidden="true" /> 내 사진에 입혀 보기
+        </button>
       </span>
       {note ? (
         <div
