@@ -1010,3 +1010,9 @@ test("with my own clothes a situation tells me the AI comparison will use it", a
   await situations.getByRole("button", { name: "내 옷 전체", exact: true }).click();
   await expect(page.locator("[data-outfit-situation-note]")).toHaveCount(0);
 });
+
+test("the outfits top bar shows the Hangit wordmark in the logo slot", async ({ page }) => {
+  await open(page);
+  await expect(page.locator(".of-top .mark svg[aria-label='행잇']")).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "내 옷으로, 다른 조합" })).toBeVisible();
+});
