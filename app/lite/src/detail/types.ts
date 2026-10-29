@@ -72,6 +72,7 @@ export type DetailHost = {
   measure(): void;
   collection(): void;
   mirror(): void;
+  tryOn(): void;
   decide(dec: "hold" | "skip"): void;
   change(): void;
   returned(): void;

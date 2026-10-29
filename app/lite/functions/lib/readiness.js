@@ -3,6 +3,7 @@
 import { memberLoginOptions } from "./member-session.js";
 import { publicMissing } from "../api/community.js";
 import { MODEL } from "../api/rank.js";
+import { tryOnConfiguration } from "../api/try-on.js";
 
 const HEADERS = {
   "cache-control": "private, no-store",
@@ -76,6 +77,7 @@ export async function readinessSnapshot(request, env) {
       model: MODEL,
       provider: "not_checked",
     },
+    tryOn: { ...tryOnConfiguration(env, {member:'owner',owner:true}), providerStatus:'not_checked' },
     catalog: {
       adpick: present(env.ADPICK_API_KEY),
       rakuten:
@@ -118,6 +120,7 @@ export async function handleReadiness(request, env) {
   const yes = (value) => (value ? "설정 있음 · 실제 응답 미확인" : "설정 필요");
   const rows = [
     ["Claude 추천·상담·사진", yes(snapshot.ai.configured)],
+    ["내 사진 가상 착용", yes(snapshot.tryOn.available)],
     ["애드픽 상품 검색", yes(snapshot.catalog.adpick)],
     ["라쿠텐 상품 검색", yes(snapshot.catalog.rakuten)],
     ["초대 회원", yes(snapshot.invite.configured)],

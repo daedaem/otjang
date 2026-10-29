@@ -9,6 +9,7 @@ import { handleAdpick } from './functions/api/adpick.js';
 import { handleOpenProducts } from './functions/api/open-products.js';
 import { handleCommunity, publicMissing } from './functions/api/community.js';
 import { handleGarmentPhoto } from './functions/api/garment-photo.js';
+import { handleTryOn } from './functions/api/try-on.js';
 import { handleMemberAuth, memberFromRequest } from './functions/lib/member-session.js';
 import { handleMemberAccounts } from './functions/lib/member-accounts.js';
 import { reserveRankBudget } from './functions/lib/rank-budget.js';
@@ -132,6 +133,7 @@ async function memberApp(request, env, url, id, h) {
     return h.rank(request, env, { member: id, authorize: async () => ({ ok: true }), reserve: (e) => reserveRankBudget(e, { member: id }) });
   }
   if (path === '/api/garment-photo') return h.garmentPhoto(request, env, { member: id, authorize: async () => ({ ok: true }), reserve: (e) => reserveRankBudget(e, { member: id }) });
+  if (path.startsWith('/api/try-on/')) return h.tryOn(request, env, {member:id,owner:false});
   if (path.startsWith('/api/community/')) return h.community(request, env, { member: id, operator: false });
   if (path.startsWith('/api/catalog/')) return h.catalog(request, env);
   if (path === '/api/rakuten') return h.rakuten(request, env);
@@ -160,6 +162,7 @@ export function createWorker({
   memberAuth = handleMemberAuth,
   accounts = handleMemberAccounts,
   garmentPhoto = handleGarmentPhoto,
+  tryOn = handleTryOn,
   privateSession = handlePrivateSession,
 } = {}) {
   return {
@@ -188,7 +191,7 @@ export function createWorker({
           const id=await member(request,env,{provider:'password'});
           if (id) {
             accountActor=await appActor(env,id);
-            if (accountActor.role==='member') return memberApp(request,env,url,id,{rank,catalog,weather,rakuten,adpick,openProducts,community,accounts,garmentPhoto});
+            if (accountActor.role==='member') return memberApp(request,env,url,id,{rank,catalog,weather,rakuten,adpick,openProducts,community,accounts,garmentPhoto,tryOn});
             if (url.pathname==='/_private/logout') return accounts(new Request(new URL('/_member/account/logout',url),request),env,{owner:true,member:id});
             if (url.pathname==='/_private/status') return request.method==='GET' ? Response.json({authenticated:true},{headers:privateHeaders}) : Response.json({code:'method_not_allowed'},{status:405,headers:{...privateHeaders,allow:'GET'}});
             if (url.pathname==='/_private/login' || url.pathname==='/_private/admin-setup') return request.method==='GET' ? new Response(null,{status:303,headers:{...privateHeaders,location:'/'}}) : Response.json({code:'admin_already_linked'},{status:409,headers:privateHeaders});
@@ -230,7 +233,7 @@ export function createWorker({
         if (invite) {
           // 앱은 초대(비밀번호) 회원 세션만 연다. 공개 커뮤니티의 카카오·구글·이메일 코드 회원은 앱에 못 들어온다(보안 검토 10-28).
           const id = await member(request, env, { provider: 'password' }).catch(() => null);
-          if (id) return memberApp(request, env, url, id, { rank, catalog, weather, rakuten, adpick, openProducts, community, accounts, garmentPhoto });
+          if (id) return memberApp(request, env, url, id, { rank, catalog, weather, rakuten, adpick, openProducts, community, accounts, garmentPhoto, tryOn });
         }
         return denied(access, request, env);
       }
@@ -244,6 +247,7 @@ export function createWorker({
         return accountActor ? rank(request, env, {authorize:async()=>({ok:true})}) : rank(request, env);
       }
       if (url.pathname === '/api/garment-photo') return accountActor ? garmentPhoto(request, env, {authorize:async()=>({ok:true})}) : garmentPhoto(request, env);
+      if (url.pathname.startsWith('/api/try-on/')) return tryOn(request,env,{member:'owner',owner:true});
       if (url.pathname.startsWith('/api/catalog/')) return catalog(request, env);
       if (url.pathname === '/api/rakuten') return rakuten(request, env);
       if (url.pathname === '/api/adpick' || url.pathname.startsWith('/api/adpick/')) return adpick(request, env);
