@@ -985,15 +985,23 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       return { verdict: 'new', basis, title: newOutfits ? `새 코디 ${newOutfits}개가 생겨요` : `옷장에 없는 ${kindName}${josa(kindName, '이에요', '예요')}`, lines: [newOutfits ? '내 옷과 함께 입을 수 있는 조합이 늘어나요.' : outer ? '겉옷은 지금 코디 수 계산에 넣지 않아요. 가진 옷과 겹치지는 않아요.' : '아직 같이 입을 옷이 부족해 새 코디는 없어요.'], sameColor, otherColor, newOutfits };
     },
     // 옷장 재설계(10-29 대표 결정): 체험용 옷을 사면 '내 옷으로' 새 코디가 몇 개 생기는지 센다. 옷장은 바꾸지 않는다.
-    // 코디 = 상의+하의+신발(원피스+신발)의 서로 다른 조합(basicOutfits 규칙, 종류·색만 봄). 겉옷은 따로 '걸칠 수 있는 코디'로 센다.
+    // 코디 = 상의+하의+신발(원피스+신발)의 서로 다른 조합(종류만 봄). 겉옷은 따로 '걸칠 수 있는 코디'로 센다.
     // 내 옷과 같은 종류·색인 체험용 옷은 '비슷'이며 새 코디로 세지 않는다(대표 선택 "세지 않기").
     // ids의 체험용 옷만 본다. items는 한 벌씩 따로 산 경우, newOutfits·layerable은 함께 산 경우다.
     trialGain(ids = []) {
       const g = S.gender === 'F' ? 'F' : 'M';
-      const owned = S.garments.filter((x) => !isTrial(x.id) && x.gender === g);
-      const stateOf = (rows) => buildState({ ...S, garments: [...owned, ...rows] });
-      const bases = (rows) => basicOutfits(stateOf(rows), { limit: 1000 }).length;
-      const ownedState = stateOf([]);
+      const owned = S.garments.filter((x) => !isTrial(x.id) && x.gender === g && ['user', 'legacy'].includes(x.source));
+      // 코디 수 = 상의×하의×신발 + 원피스×신발(종류만 봄, 종류별 상한 없음). basicOutfits는 미리보기용이라
+      // 종류별 8벌 제한·원피스 생략이 있어 셈에 쓰지 않는다(Codex #145 검토).
+      const bases = (rows) => {
+        const n = { top: 0, bottom: 0, shoes: 0, dress: 0 };
+        for (const x of [...owned, ...rows]) {
+          const cat = garmentCategory(x);
+          if (cat in n) n[cat] += 1;
+        }
+        return n.top * n.bottom * n.shoes + n.dress * n.shoes;
+      };
+      const ownedState = buildState({ ...S, garments: owned });
       const before = bases([]);
       const outer = (x) => garmentCategory(x) === 'outer';
       const trials = [...new Set(Array.isArray(ids) ? ids : [])]
