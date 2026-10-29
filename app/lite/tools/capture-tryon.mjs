@@ -96,7 +96,7 @@ try {
             });
           return route.continue();
         });
-        await page.goto(origin + "/?photos=0#/tryon?id=ms-728000");
+      await page.goto(origin + "/?photos=0#/tryon");
         await page.locator("[data-react-tryon]").waitFor();
         await page
           .getByLabel("내 사진 고르기", { exact: true })

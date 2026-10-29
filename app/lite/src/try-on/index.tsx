@@ -97,8 +97,8 @@ function TryOn({ host }: { host: Host }) {
       .then((value) => {
         if (live.current) setConfig(value);
       })
-      .catch((error) => {
-        if (live.current) setNotice(error.message);
+      .catch(() => {
+        if (live.current) setConfig({available:false,creditsPerImage:3,consentVersion:CONSENT_VERSION,message:'연결 상태를 확인하지 못했어요. 온라인에서 이 화면을 다시 열어 주세요.'});
       });
     let resume: LocalJob | null = null;
     try {
@@ -440,12 +440,7 @@ function TryOn({ host }: { host: Host }) {
           {!job ? (
             <>
               <p className="to-note">
-                한 사람이 정면으로 서 있고 몸이 잘 보이는 사진이 좋아요. 옷은
-                전체 형태가 보이는 사진을 골라 주세요.
-              </p>
-              <p className="to-note">
-                판매처 사진은 자동으로 합성하지 않아요. 직접 찍었거나 합성에
-                사용할 권한이 있는 옷 사진을 골라 주세요.
+                정면으로 선 내 사진과 옷 전체가 보이는 사진이 좋아요.
               </p>
               <label className="to-check">
                 <input
@@ -458,6 +453,7 @@ function TryOn({ host }: { host: Host }) {
               </label>
               <details className="to-privacy">
                 <summary>사진은 어떻게 사용되나요?</summary>
+                <p>판매처 사진은 자동으로 합성하지 않아요. 직접 찍었거나 합성에 사용할 권한이 있는 옷 사진을 골라 주세요.</p>
                 <p>
                   사진을 고르기만 하면 전송하지 않아요. ‘입혀 보기’를 누르면
                   위치·촬영 정보를 제거한 내 사진과 옷 사진을 FASHN에 보냅니다.
@@ -510,7 +506,7 @@ function TryOn({ host }: { host: Host }) {
                   ? "생성을 요청하고 있어요…"
                   : selecting
                     ? "사진을 준비하고 있어요…"
-                    : "이 옷 입혀 보기"}
+                    : !config?.available ? "가상 착용 준비 중" : "이 옷 입혀 보기"}
               </button>
             </>
           ) : (

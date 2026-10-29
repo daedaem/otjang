@@ -132,7 +132,7 @@ test("try-on opens from the product, stays honest when disabled, and selected ph
   ).toBeVisible();
   await consent(page).check();
   await expect(
-    page.getByRole("button", { name: "이 옷 입혀 보기", exact: true }),
+    page.getByRole("button", { name: "가상 착용 준비 중", exact: true }),
   ).toBeDisabled();
   expect(f.posts).toHaveLength(0);
   expect(f.provider).toHaveLength(0);
