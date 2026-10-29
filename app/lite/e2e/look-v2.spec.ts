@@ -372,6 +372,6 @@ test.describe("dark lit closet", () => {
       if (!(await el.count())) continue;
       expect(light, sel).toContain(await css(el, "color"));
     }
-    expect(await page.locator(".wr-rail .wr-card-brand").count()).toBeGreaterThan(0);
+    expect(await page.locator(".wr-rail .wr-placeholder > span").count()).toBeGreaterThan(0);
   });
 });
