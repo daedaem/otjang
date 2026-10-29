@@ -1,10 +1,22 @@
 {
-  "source": "1bd1244e9504d55655580e36130a1b59e07c4088",
-  "capturedAt": "2026-10-29T04:49:28.410Z",
+  "source": "f54b5d6ec4e35af5ca83f92a824d932200ef573e",
+  "capturedAt": "2026-10-29T05:35:39.877Z",
   "realProviderCalls": 0,
   "syntheticPerson": true,
   "resultQuality": "not_tested",
   "captures": [
+    {
+      "file": "chromium-mobile-entry.png",
+      "engine": "chromium",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "bytes": 29245,
+      "sha256": "06eacd21ec62ca1f6a4a8d3ea58843e72fbe70b49edeb14fffeb4ca2ccca286b",
+      "note": "Local product entry placement with retailer photos disabled; no vendor image or generated try-on result."
+    },
     {
       "file": "chromium-mobile-inputs.png",
       "engine": "chromium",
@@ -40,6 +52,18 @@
       "bytes": 266619,
       "sha256": "21084bc36291d4f9040f44e090649f2901aef111bda9b04ec23104a717a6d733",
       "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    },
+    {
+      "file": "webkit-mobile-entry.png",
+      "engine": "webkit",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "bytes": 39021,
+      "sha256": "cb49bf750ff5c6be46f70f49de22a09eff10a19d0e566f004c47da61b84e0c76",
+      "note": "Local product entry placement with retailer photos disabled; no vendor image or generated try-on result."
     },
     {
       "file": "webkit-mobile-inputs.png",
