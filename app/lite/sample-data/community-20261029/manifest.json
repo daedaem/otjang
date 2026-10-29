@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "createdAt": 1793244780793,
+  "purpose": "Explicitly labelled synthetic examples requested by owner on 2026-10-29; not real users, brands, offers, prices, purchases or testimonials.",
+  "publisher": {
+    "member": "seed-community-20261029",
+    "name": "운영 샘플",
+    "nameKey": "운영샘플"
+  },
+  "generation": {
+    "tool": "built-in image_gen",
+    "externalPersonalPhoto": false
+  },
+  "images": [
+    {
+      "file": "smart-casual.jpg",
+      "prompt": "Use case: photorealistic-natural. Asset type: AI-generated example outfit photo for a Korean wardrobe community, not a real user's post or real brand. Primary request: a beautiful realistic top-down flat lay of an autumn smart-casual outfit on warm ivory linen: crisp pale blue Oxford button-down shirt, neatly folded navy crewneck knit, beige chino trousers, brown leather penny loafers arranged with generous breathing room. Vertical 4:5 composition, daylight from the left, subtle shadows, real cotton, wool and leather texture, restrained editorial clothing photography. No people, faces, body parts, logos, text, tags, watermarks, prices or recognizable branded details. Complete garments inside frame.",
+      "bytes": 49934,
+      "sha256": "388aa4ef72f50839413ac93e9dc53c9d355ec0d2fe86b5a0c95386438147b9f2",
+      "width": 640,
+      "height": 800,
+      "jpegQuality": 60,
+      "sourceSha256": "ade9406f7e1cf0b34b1a0ef37155d3239e8042cf907bb2240c507b5b3b738912"
+    },
+    {
+      "file": "weekend.jpg",
+      "prompt": "Use case: photorealistic-natural. Asset type: AI-generated community sample outfit photo, not a real customer or brand. A tasteful top-down flat lay of a relaxed weekend outfit: olive cotton field jacket, cream unprinted T-shirt, indigo straight jeans, white leather sneakers, on pale gray concrete. Vertical 4:5, generous spacing, complete clothing inside frame, soft natural morning sunlight, believable cotton twill and denim weave, elegant fashion editorial photograph. No person, face, skin, logo, letters, labels, watermark or product price.",
+      "bytes": 49737,
+      "sha256": "1a54197947786fddd1f4a6ccdf23fb6c09feda36591cbc6ddf103461e4050e52",
+      "width": 640,
+      "height": 800,
+      "jpegQuality": 40,
+      "sourceSha256": "868d3dfd60e45762207f2adccaa786c0fcad0f6ad8b9bb8197f6bfc50b1be53a"
+    },
+    {
+      "file": "loafers.jpg",
+      "prompt": "Use case: product-mockup. Asset type: AI-generated fictional clothing still-life for community sample sale-information posts. A single pair of beautiful unbranded brown suede loafers beside a neatly folded cream cable knit and a dark denim swatch, on a warm stone display plinth against a pale neutral background. Editorial studio clothing photography, vertical 4:5, three-quarter view, natural suede nap and knitted wool texture, soft light and subtle shadow, high-end but approachable. No person, body parts, logo, text, tags, sale signs, numbers, brand or watermark.",
+      "bytes": 52710,
+      "sha256": "a95c248e16d6bfe46e092f0c144145cb2936ce2cb408fc7ba42e3fd38bf29eac",
+      "width": 640,
+      "height": 800,
+      "jpegQuality": 65,
+      "sourceSha256": "d7de7dd397be198a17891821c07d6eb4e972eaedadc800e7ed472762fd7a4d87"
+    },
+    {
+      "file": "closet.jpg",
+      "prompt": "Use case: photorealistic-natural. Asset type: AI-generated sample image for a wardrobe discussion board. A serene compact open clothes rail in a bright apartment corner: five neatly hung garments in ivory, pale blue, navy, olive and camel; folded denim on a wooden stool, plain brown loafers below. Clear coherent garment construction, soft window light, pale plaster wall, warm oak floor, realistic uncluttered fashion editorial interior. Vertical 4:5 composition. No people, faces, reflections of people, logos, readable text, watermark, labels or branded details.",
+      "bytes": 50057,
+      "sha256": "cc7b2b1268ac34a1dd83d6dd29b2a6bddcab3d5ccd6065ee4ea05c4e4c35fdda",
+      "width": 640,
+      "height": 800,
+      "jpegQuality": 45,
+      "sourceSha256": "d7d953ee72c317a95f02c5cc93baa65aa2db342a1a4fbb9c80a1f5323b45731a"
+    }
+  ],
+  "posts": [
+    {
+      "image": "smart-casual.jpg",
+      "post": {
+        "board": "outfits",
+        "text": "[샘플 · AI 생성 이미지] 출근하는 날 떠올린 셔츠·네이비 니트·치노·로퍼 조합이에요. 실제 회원의 착용 사진이나 보유 옷이 아닌 화면 체험용 예시입니다.",
+        "pieces": [
+          {
+            "kind": "shirt",
+            "color": "blue",
+            "label": "라이트 블루 셔츠"
+          },
+          {
+            "kind": "knit",
+            "color": "navy",
+            "label": "네이비 니트"
+          },
+          {
+            "kind": "pants",
+            "color": "beige",
+            "label": "베이지 치노"
+          },
+          {
+            "kind": "loafer",
+            "color": "brown",
+            "label": "브라운 로퍼"
+          }
+        ],
+        "consent": true
+      },
+      "id": "6f202610-2900-4000-8000-000000000001",
+      "photoId": "6f202610-2901-4000-8000-000000000001"
+    },
+    {
+      "image": "weekend.jpg",
+      "post": {
+        "board": "outfits",
+        "text": "[샘플 · AI 생성 이미지] 주말에는 올리브 재킷에 크림 티셔츠, 데님, 흰 운동화. 배색과 옷 조합을 살펴보는 가상 코디이며 실제 착용·핏을 검증한 사진은 아닙니다.",
+        "pieces": [
+          {
+            "kind": "jacket",
+            "color": "olive",
+            "label": "올리브 필드 재킷"
+          },
+          {
+            "kind": "tee",
+            "color": "ivory",
+            "label": "크림 티셔츠"
+          },
+          {
+            "kind": "jeans",
+            "color": "indigo",
+            "label": "인디고 데님"
+          },
+          {
+            "kind": "sneaker",
+            "color": "white",
+            "label": "흰 스니커즈"
+          }
+        ],
+        "consent": true
+      },
+      "id": "6f202610-2900-4000-8000-000000000002",
+      "photoId": "6f202610-2901-4000-8000-000000000002"
+    },
+    {
+      "image": "loafers.jpg",
+      "post": {
+        "board": "sale",
+        "title": "[샘플] 로퍼 세일 제보 카드 예시",
+        "text": "[테스트 데이터 · AI 생성 이미지] 할인 정보를 나눌 때 보이는 카드예요. 20%는 화면 확인용 가상 수치로 실제 할인·판매 상품이 아닙니다. 구매 링크는 없습니다.",
+        "pieces": [],
+        "consent": true,
+        "sale": {
+          "merchant": "가상 매장 · 실제 판매 아님",
+          "price": null,
+          "discount": 20,
+          "currency": "KRW",
+          "endDate": "",
+          "sourceUrl": ""
+        }
+      },
+      "id": "6f202610-2900-4000-8000-000000000003",
+      "photoId": "6f202610-2901-4000-8000-000000000003"
+    },
+    {
+      "image": "smart-casual.jpg",
+      "post": {
+        "board": "sale",
+        "title": "[샘플] 니트 세일 정보는 이렇게 보여요",
+        "text": "[테스트 데이터 · AI 생성 이미지] 할인율·사진이 있는 게시글의 예시입니다. 10%는 테스트용 가상 수치예요. 실제 매장·행사·가격·재고 정보가 아니며 구매 링크도 없습니다.",
+        "pieces": [],
+        "consent": true,
+        "sale": {
+          "merchant": "샘플 판매처 · 실제 행사 아님",
+          "price": null,
+          "discount": 10,
+          "currency": "KRW",
+          "endDate": "",
+          "sourceUrl": ""
+        }
+      },
+      "id": "6f202610-2900-4000-8000-000000000004",
+      "photoId": "6f202610-2901-4000-8000-000000000004"
+    },
+    {
+      "image": "closet.jpg",
+      "post": {
+        "board": "free",
+        "title": "[샘플] 옷장 정리, 종류별로 하나요 색별로 하나요?",
+        "text": "[샘플 · AI 생성 이미지] 자주 입는 옷부터 한 줄에 모아 보는 옷장 이야기 예시예요. 여러분은 종류·색·계절 중 어떤 기준이 편한가요? 실제 회원이 작성한 글은 아닙니다.",
+        "pieces": [],
+        "consent": true
+      },
+      "id": "6f202610-2900-4000-8000-000000000005",
+      "photoId": "6f202610-2901-4000-8000-000000000005"
+    },
+    {
+      "image": "weekend.jpg",
+      "post": {
+        "board": "free",
+        "title": "[샘플] 비슷한 옷을 또 살까 고민될 때",
+        "text": "[샘플 · AI 생성 이미지] 새 재킷을 고르기 전에 가진 재킷·바지·신발과 나란히 살펴보는 대화 예시예요. 실제 구매 후기나 추천 판정이 아닌 게시판 체험용 콘텐츠입니다.",
+        "pieces": [],
+        "consent": true
+      },
+      "id": "6f202610-2900-4000-8000-000000000006",
+      "photoId": "6f202610-2901-4000-8000-000000000006"
+    }
+  ]
+}
