@@ -457,3 +457,28 @@ for (const [name, start] of [
       await page.evaluate(() => localStorage.getItem("eoul-d12-hang:v1")),
     ).toBe(raw);
   });
+
+// 10-29 실기기(아이폰) 제보: 피드 사진을 세로로 스크롤하면 사진 틀 안에서 사진이 내려갔다.
+// 가로 넘김용 틀(overflow-x: auto)이 세로로도 스크롤되면 안 된다.
+test("a feed photo frame never scrolls vertically inside the card", async ({ page }) => {
+  await serve(page, "private");
+  await joinAs(page);
+  await page.getByRole("button", { name: "코디 올리기" }).click();
+  const dialog = page.getByRole("dialog", { name: "코디 올리기" });
+  await dialog.locator('input[type="file"]').setInputFiles(PHOTO);
+  await expect(dialog.locator("[data-community-thumb]")).toHaveCount(1);
+  await dialog.getByRole("checkbox", { name: /사진을 회원들에게 보여 주는 데 동의해요/ }).check();
+  await dialog.getByRole("button", { name: "올리기", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  const frame = page.locator("[data-community-post] .cm-photos").first();
+  await expect(frame.locator("img")).toHaveCount(1);
+  await expect.poll(() => frame.locator("img").evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+  const m = await frame.evaluate((el) => {
+    el.scrollTop = 80;
+    const s = getComputedStyle(el);
+    return { overflowY: s.overflowY, scrollTop: el.scrollTop, extra: el.scrollHeight - el.clientHeight };
+  });
+  expect(m.overflowY).toBe("hidden");
+  expect(m.scrollTop).toBe(0);
+  expect(m.extra).toBeLessThanOrEqual(1);
+});
