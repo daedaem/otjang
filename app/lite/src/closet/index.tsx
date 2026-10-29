@@ -1,32 +1,73 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type KeyboardEvent,
 } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import { OwnedPhoto } from "../photos/OwnedPhoto";
-import type { ClosetHost, Garment, LayoutItem } from "./types";
+import type {
+  ClosetHost,
+  Garment,
+  LayoutItem,
+  TrialGain,
+  TrialVerdict,
+} from "./types";
 import "./closet.css";
 import { Wordmark } from "../brand/Wordmark";
+
+// Closet redesign (owner 10-29, AI role designers' v5/v6): category tabs over a
+// photo grid. My clothes first, then the trial group. Tapping the photo opens
+// the garment; the circle at the top right takes it out. Picked clothes gather
+// in a bottom sheet that counts new outfits with my own clothes (a trial piece
+// that duplicates mine is not counted, owner choice "세지 않기").
 const roleOf = (g: Garment, host: ClosetHost) => {
   const role = host.core.railCategory(g);
   return role === "dress" ? "top" : role || "accessory";
 };
+const TABS = [
+  ["all", "전체"],
+  ["outer", "아우터"],
+  ["top", "상의"],
+  ["bottom", "하의"],
+  ["shoes", "신발"],
+] as const;
+const TAB_JOSA: Record<string, string> = {
+  outer: "아우터는",
+  top: "상의는",
+  bottom: "하의는",
+  shoes: "신발은",
+};
+const PAGE = 60;
+// Measured garments share one scale: the longest measured piece fills the
+// tallest box. Others fit their category box (not true to size).
+const SCALE = 1000;
 const errorText = (e: unknown) =>
   e instanceof Error
     ? e.message
     : "사진을 연결하지 못했어요. 원본과 옷 정보는 그대로예요.";
 const Picture = ({ g, host }: { g: Garment; host: ClosetHost }) => (
-  <OwnedPhoto g={g} host={host} />
+  <OwnedPhoto g={g} host={host} cut />
 );
-function GarmentCard({
+const josaGwa = (word: string) => {
+  const c = word.charCodeAt(word.length - 1);
+  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? "과" : "와";
+};
+const josaNeun = (word: string) => {
+  const c = word.charCodeAt(word.length - 1);
+  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? "은" : "는";
+};
+
+function Tile({
   g,
   item,
   host,
-  picked,
+  order,
+  status,
   pick,
   onFile,
   busy,
@@ -34,183 +75,332 @@ function GarmentCard({
   g: Garment;
   item: LayoutItem;
   host: ClosetHost;
-  picked: boolean;
+  order: number;
+  status: TrialVerdict | null;
   pick(): void;
   onFile(g: Garment, f: File): void;
   busy: boolean;
 }) {
+  const role = roleOf(g, host);
+  const picked = order > 0;
+  const measured = !!item.measured && !!item.heightPx;
+  const style = measured
+    ? ({ "--wr-scale": (item.heightPx || SCALE) / SCALE } as CSSProperties)
+    : undefined;
+  const cm = g.profile?.measures?.length?.cm;
+  const said = [
+    g.label,
+    g.trial ? "체험용" : "내 옷",
+    status?.text || "",
+    "옷 정보",
+  ]
+    .filter(Boolean)
+    .join(", ");
   return (
     <article
-      className={`wr-card ${picked ? "wr-picked" : ""}`}
+      className={`wr-card wr-tile ${picked ? "wr-picked" : ""}`}
       data-rail-item={g.id}
+      data-role={role}
     >
+      <button
+        type="button"
+        className="wr-open"
+        data-g={g.id}
+        aria-label={said}
+        onClick={() => host.detail(g.id)}
+      >
+        <span className="wr-picture-tile">
+          <span
+            className={`wr-picture wr-box-${role} ${measured ? "wr-measured" : ""}`}
+            style={style}
+            data-garment-height={measured ? item.heightPx : 0}
+          >
+            <Picture g={g} host={host} />
+          </span>
+        </span>
+        <span className="wr-card-name">{g.label}</span>
+        {g.brand && <span className="wr-card-brand">{g.brand}</span>}
+        <span className="wr-tags">
+          <span className={`wr-chip ${g.trial ? "wr-chip-trial" : "wr-chip-mine"}`}>
+            {g.trial ? "체험용" : "내 옷"}
+          </span>
+          {status?.text ? (
+            <span className={`wr-st wr-st-${status.tone}`}>
+              {status.similarTo ? (
+                <>
+                  <b>{status.similarTo.label}</b>
+                  {status.text.slice(status.similarTo.label.length)}
+                </>
+              ) : (
+                status.text
+              )}
+            </span>
+          ) : null}
+          {measured && Number.isFinite(cm) ? (
+            <span className="wr-meta">총장 {cm}cm</span>
+          ) : null}
+        </span>
+      </button>
       <button
         type="button"
         className="wr-pick"
         data-pick
         aria-pressed={picked}
-        aria-label={`${g.label} ${picked ? "넣어두기" : "꺼내기"}`}
+        aria-label={`${g.label} ${picked ? `넣어두기, ${order}번째로 꺼냄` : "꺼내기"}`}
         onClick={pick}
       >
-        <svg className="wr-hanger" viewBox="0 0 80 25" aria-hidden="true">
-          <path d="M35 8C35-1 47-1 47 6C47 11 40 10 40 13L6 23H74L40 13" />
-        </svg>
-        <span
-          className="wr-picture"
-          style={{ height: item.heightPx ?? 110 }}
-          data-garment-height={item.heightPx ?? 110}
-        >
-          <Picture g={g} host={host} />
-          {g.trial ? <span className="wr-trial-chip">체험용</span> : null}
-        </span>
-        <span className="wr-card-name">{g.label}</span>
-        {g.brand && <span className="wr-card-brand">{g.brand}</span>}
-        <span className="wr-meta">
-          {item.measured
-            ? `총장 ${g.profile?.measures?.length?.cm}cm`
-            : "실측 없음"}
-          {g.trial ? " · 체험용" : ""}
-        </span>
+        <i aria-hidden="true">{picked ? order : ""}</i>
       </button>
-      <div className="wr-card-actions">
-        <button
-          type="button"
-          data-g={g.id}
-          onClick={() => host.detail(g.id)}
-          aria-label={`${g.label} 옷 정보`}
+      {!g.trial && !host.core.boot?.preview && (
+        <label
+          className={`wr-upload ${busy ? "wr-disabled" : ""}`}
+          title={g.photoId ? "사진 바꾸기" : "내 사진"}
         >
-          <i className="ph ph-info wr-act-icon" aria-hidden="true" />
-          <span className="wr-act-text">옷 정보</span>
-        </button>
-        {!g.trial && !host.core.boot?.preview && (
-          <label className={`wr-upload ${busy ? "wr-disabled" : ""}`}>
-            <i className="ph ph-camera wr-act-icon" aria-hidden="true" />
-            <span className="wr-act-text">
-              {g.photoId ? "사진 바꾸기" : "내 사진"}
-            </span>
-            <input
-              data-photo-input
-              aria-label={`${g.label} 내 사진`}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={busy}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) onFile(g, f);
-              }}
-            />
-          </label>
-        )}
-      </div>
+          <i className="ph ph-camera" aria-hidden="true" />
+          <input
+            data-photo-input
+            aria-label={`${g.label} 내 사진`}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={busy}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) onFile(g, f);
+            }}
+          />
+        </label>
+      )}
     </article>
   );
 }
-// Cards outside the horizontal viewport are not mounted. Their photos never
-// start decoding. Only the small visible set obtains thumbnail object URLs.
-function Rail({
-  id,
-  label,
+
+function Grid({
   items,
   byId,
   host,
   selected,
+  statuses,
   pick,
   onFile,
   busy,
 }: {
-  id: string;
-  label: string;
   items: LayoutItem[];
   byId: Map<string, Garment>;
   host: ClosetHost;
   selected: string[];
+  statuses: Map<string, TrialVerdict>;
   pick(g: Garment): void;
   onFile(g: Garment, f: File): void;
   busy: boolean;
 }) {
-  const rail = useRef<HTMLDivElement>(null);
-  const [range, setRange] = useState({ start: 0, end: 6 });
+  // Large closets mount one page at a time; photos load lazily as they scroll in.
+  const [shown, setShown] = useState(PAGE);
+  const visible = items.slice(0, shown);
+  return (
+    <>
+      <div className="wr-grid">
+        {visible.map((item) => {
+          const g = byId.get(item.id)!;
+          return (
+            <Tile
+              key={g.id}
+              g={g}
+              item={item}
+              host={host}
+              order={selected.indexOf(g.id) + 1}
+              status={statuses.get(g.id) || null}
+              pick={() => pick(g)}
+              onFile={onFile}
+              busy={busy}
+            />
+          );
+        })}
+      </div>
+      {items.length > shown && (
+        <button
+          type="button"
+          className="btn line wr-more"
+          onClick={() => setShown(shown + PAGE)}
+        >
+          {Math.min(PAGE, items.length - shown)}벌 더 보기
+          <span> · 남은 {items.length - shown}벌</span>
+        </button>
+      )}
+    </>
+  );
+}
+
+// "흰 옥스퍼드 셔츠" → "옥스퍼드 셔츠": the sheet line names pieces without the colour word.
+const shortName = (label: string) => {
+  const words = label.split(" ");
+  return words.length >= 3 ? words.slice(1).join(" ") : label;
+};
+// Each piece on its own, then what buying them together adds (v6 critic: +1 and +1 make +3).
+function eachLine(gain: TrialGain) {
+  const parts: string[] = [];
+  let sum = 0;
+  for (const x of gain.items) {
+    if (x.verdict === "similar") parts.push(`${shortName(x.label)} 0(비슷)`);
+    else if (x.verdict === "outer") parts.push(`${shortName(x.label)} 겉옷`);
+    else if (x.verdict !== "no_closet") {
+      parts.push(`${shortName(x.label)} +${x.gain}`);
+      sum += x.gain;
+    }
+  }
+  const together = gain.newOutfits - sum;
+  return `${parts.join(" · ")}${together > 0 ? ` · 같이 사면 서로 맞춰 +${together}` : ""}`;
+}
+function Sheet({
+  chosen,
+  host,
+  gain,
+  clear,
+}: {
+  chosen: Garment[];
+  host: ClosetHost;
+  gain: TrialGain | null;
+  clear(): void;
+}) {
+  const [explain, setExplain] = useState(false);
+  const [stage, setStage] = useState(false);
+  const box = useRef<HTMLElement>(null);
+  // The closet leaves room for the sheet so its last row ends above it.
   useEffect(() => {
-    const el = rail.current!;
-    const update = () => {
-      const cell =
-        parseFloat(getComputedStyle(el).getPropertyValue("--wr-cell")) || 136;
-      const start = Math.max(0, Math.floor(el.scrollLeft / cell) - 1);
-      setRange({
-        start,
-        end: Math.min(
-          items.length,
-          start + Math.ceil(el.clientWidth / cell) + 3,
-        ),
-      });
-      host.session.scroll[id] = el.scrollLeft;
-    };
-    el.scrollLeft = host.session.scroll[id] || 0;
+    const el = box.current!;
+    const root = document.documentElement.style;
+    const update = () => root.setProperty("--wr-sheet-h", `${el.offsetHeight}px`);
     update();
-    el.addEventListener("scroll", update, { passive: true });
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => {
-      el.removeEventListener("scroll", update);
       observer.disconnect();
+      root.removeProperty("--wr-sheet-h");
     };
-  }, [items.length, id, host.session]);
-  const visible = items.slice(range.start, range.end);
+  }, []);
+  const trials = chosen.filter((g) => g.trial);
+  const similar = gain?.items.filter((x) => x.verdict === "similar") || [];
+  const counted = trials.length - similar.length;
+  const buy =
+    trials.length === 1
+      ? "사면"
+      : trials.length === 2
+        ? "둘 다 사면"
+        : `${trials.length}벌 다 사면`;
+  const showGain = !!gain && trials.length > 0 && (gain.ownedCount > 0 || gain.newOutfits > 0);
   return (
-    <section className="wr-rail" data-rail={id} aria-label={`${label} 레일`}>
-      <div className="wr-rail-title">
-        <h2>{label}</h2>
-        <span>{items.length}벌</span>
+    <section className="wr-sheet" aria-label="고른 옷" ref={box}>
+      <div className="wr-picked-row">
+        <span className="wr-stack" aria-hidden="true">
+          {chosen.slice(0, 4).map((g) => (
+            <span key={g.id} className={`wr-mini ${g.trial ? "wr-mini-trial" : ""}`}>
+              <Picture g={g} host={host} />
+            </span>
+          ))}
+        </span>
+        <span className="wr-picked-text">
+          <b role="status" aria-live="polite">
+            고른 옷 {chosen.length}벌
+            {trials.length ? ` · 체험용 ${trials.length}` : ""}
+          </b>
+          <small>{chosen.map((g) => g.label).join(" · ")}</small>
+        </span>
+        <button
+          type="button"
+          className="wr-x"
+          aria-label="모두 넣어두기"
+          onClick={clear}
+        >
+          <i className="ph ph-x" aria-hidden="true" />
+        </button>
       </div>
-      <div
-        className="wr-rail-scroll"
-        data-rail-scroll
-        ref={rail}
-        tabIndex={0}
-        role="region"
-        aria-label={`${label} 옷 목록, 가로로 이동`}
-      >
-        {items.length ? (
-          <div
-            className="wr-track"
-            style={{ "--wr-count": items.length } as CSSProperties}
-          >
-            <span
-              className="wr-spacer"
-              style={{ width: `calc(var(--wr-cell) * ${range.start})` }}
-            />
-            {visible.map((item) => {
-              const g = byId.get(item.id)!;
-              return (
-                <GarmentCard
-                  key={g.id}
-                  g={g}
-                  item={item}
-                  host={host}
-                  picked={selected.includes(g.id)}
-                  pick={() => pick(g)}
-                  onFile={onFile}
-                  busy={busy}
-                />
-              );
-            })}
-            <span
-              className="wr-spacer"
-              style={{
-                width: `calc(var(--wr-cell) * ${Math.max(0, items.length - range.end)})`,
-              }}
-            />
+      {similar.map((x) => (
+        <p className="wr-judge" key={x.id}>
+          {x.label}
+          {josaNeun(x.label)}{" "}
+          {/^내 /.test(x.similarTo!.label) ? "" : "내 "}
+          <b>{x.similarTo!.label}</b>
+          {josaGwa(x.similarTo!.label)} 비슷해요
+        </p>
+      ))}
+      <div className="wr-sheet-foot">
+        <div className="wr-gain-box">
+          {showGain ? (
+            <>
+              <p className="wr-gain">
+                {buy} 새 코디 <strong>+{gain!.newOutfits}</strong>
+                <button
+                  type="button"
+                  className="wr-def"
+                  aria-expanded={explain}
+                  aria-controls="wr-def"
+                  aria-label="새 코디 세는 법"
+                  onClick={() => setExplain(!explain)}
+                >
+                  <i className="ph ph-info" aria-hidden="true" />
+                </button>
+              </p>
+              {trials.length > 1 && (
+                <p className="wr-gain-sub wr-gain-each">{eachLine(gain!)}</p>
+              )}
+              <p className="wr-gain-sub">
+                {gain!.layerable ? `걸칠 수 있는 코디 ${gain!.layerable}개 · ` : ""}
+                지금 내 옷으로 {gain!.before}개
+              </p>
+            </>
+          ) : (
+            <p className="wr-gain-sub">
+              {trials.length
+                ? "내 옷을 넣으면 새 코디가 몇 개 생기는지 알려 드려요"
+                : "꺼낸 옷을 겹쳐 볼 수 있어요"}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          className={`btn ${stage ? "line" : "go"} wr-stage-toggle`}
+          aria-expanded={stage}
+          aria-controls="wr-assembly"
+          onClick={() => setStage(!stage)}
+        >
+          겹쳐 보기
+          <i
+            className={`ph ${stage ? "ph-caret-up" : "ph-caret-down"}`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+      {explain && (
+        <div className="wr-def-text" id="wr-def" role="note">
+          <p>코디 = 상의+하의+신발, 겉옷은 따로 셌어요.</p>
+          <p>비슷한 옷이 이미 있는 조합은 새 코디로 세지 않아요.</p>
+          <p>종류와 색만 봤어요. 핏·소재는 따지지 않았어요.</p>
+        </div>
+      )}
+      {stage && (
+        <div id="wr-assembly" className="wr-assembly" tabIndex={-1}>
+          <div className="wr-stage">
+            {chosen.map((g) => (
+              <div
+                key={g.id}
+                data-assembly-layer={roleOf(g, host)}
+                className={`wr-layer wr-layer-${roleOf(g, host)}`}
+              >
+                <Picture g={g} host={host} />
+              </div>
+            ))}
           </div>
-        ) : (
-          <p className="wr-empty-rail">아직 걸린 옷이 없어요</p>
-        )}
-      </div>
+          <p className="wr-meta">
+            사진을 나란히 겹친 예시예요. 체형이나 착용감을 반영하지 않아요.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
+
 function Closet({ host }: { host: ClosetHost }) {
-  useSyncExternalStore(
+  const version = useSyncExternalStore(
     host.core.subscribe,
     host.core.version,
     host.core.version,
@@ -218,6 +408,7 @@ function Closet({ host }: { host: ClosetHost }) {
   const state = host.core.getState();
   const [sort, setSort] = useState(host.session.sort);
   const [brand, setBrand] = useState(host.session.brand);
+  const [cat, setCat] = useState(host.session.cat || "all");
   const [toolsOpen, setToolsOpen] = useState(!!host.session.toolsOpen);
   const [selected, setSelected] = useState(host.session.selected);
   const [notice, setNotice] = useState("");
@@ -226,38 +417,7 @@ function Closet({ host }: { host: ClosetHost }) {
   const alive = useRef(true),
     operation = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const assembly = useRef<HTMLElement>(null);
-  const [assemblyVisible, setAssemblyVisible] = useState(false);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) =>
-        setAssemblyVisible(
-          entries.some((entry) => entry.intersectionRatio >= 0.2),
-        ),
-      { threshold: 0.2 },
-    );
-    if (assembly.current) observer.observe(assembly.current);
-    return () => observer.disconnect();
-  }, []);
-  // WO-11 new look (panel D+ step 2): the clothes are about 1.5x taller;
-  // lengths keep their ratio because only the tallest size changes.
-  const tallestFor = (wide: boolean) =>
-    document.documentElement.dataset.look === "v2"
-      ? wide
-        ? 280
-        : 220
-      : wide
-        ? 196
-        : 144;
-  const [tallestPx, setTallestPx] = useState(() =>
-    tallestFor(matchMedia("(min-width:760px)").matches),
-  );
-  useEffect(() => {
-    const query = matchMedia("(min-width:760px)");
-    const update = () => setTallestPx(tallestFor(query.matches));
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   useEffect(() => {
     alive.current = true;
     heading.current?.focus({ preventScroll: true });
@@ -289,11 +449,45 @@ function Closet({ host }: { host: ClosetHost }) {
   const layout = host.core.railLayout(filtered, {
     sort,
     wearCounts: worn,
-    tallestPx,
+    tallestPx: SCALE,
   });
+  const ordered: LayoutItem[] = [
+    ...layout.rails.flatMap((r) => r.items),
+    ...layout.shelf,
+  ];
+  const inTab = (item: LayoutItem) => {
+    if (cat === "all") return true;
+    const role = roleOf(byId.get(item.id)!, host);
+    return role === cat;
+  };
+  const mineItems = ordered.filter((i) => !byId.get(i.id)!.trial && inTab(i));
+  const trialItems = ordered.filter((i) => byId.get(i.id)!.trial && inTab(i));
+  const trialIds = garments.filter((g) => g.trial).map((g) => g.id);
+  const statuses = useMemo(() => {
+    const map = new Map<string, TrialVerdict>();
+    if (!trialIds.length) return map;
+    try {
+      for (const v of host.core.trialGain(trialIds).items) map.set(v.id, v);
+    } catch {
+      /* a count is optional; the closet still shows */
+    }
+    return map;
+    // The core version covers every closet change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, trialIds.join("|")]);
   const chosen = selected
     .map((id) => byId.get(id))
     .filter((g): g is Garment => !!g);
+  const chosenTrials = chosen.filter((g) => g.trial).map((g) => g.id);
+  const gain = useMemo(() => {
+    if (!chosenTrials.length) return null;
+    try {
+      return host.core.trialGain(chosenTrials);
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, chosenTrials.join("|")]);
   const pick = (g: Garment) => {
     const next = selected.includes(g.id)
       ? selected.filter((id) => id !== g.id)
@@ -306,6 +500,32 @@ function Closet({ host }: { host: ClosetHost }) {
         ];
     host.session.selected = next;
     setSelected(next);
+  };
+  const clear = () => {
+    host.session.selected = [];
+    setSelected([]);
+  };
+  const chooseTab = (id: string, focus = false) => {
+    host.session.cat = id;
+    setCat(id);
+    if (focus)
+      tabRefs.current[TABS.findIndex(([t]) => t === id)]?.focus();
+  };
+  const tabKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    const at = TABS.findIndex(([t]) => t === cat);
+    const to =
+      e.key === "ArrowRight"
+        ? (at + 1) % TABS.length
+        : e.key === "ArrowLeft"
+          ? (at - 1 + TABS.length) % TABS.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? TABS.length - 1
+              : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    chooseTab(TABS[to][0], true);
   };
   const upload = async (g: Garment, file: File) => {
     if (operation.current) return;
@@ -338,8 +558,15 @@ function Closet({ host }: { host: ClosetHost }) {
       if (alive.current) setBusy(false);
     }
   };
+  const tabLabel = TABS.find(([t]) => t === cat)![1];
+  const ownedCount = state.mineCount;
+  const gridProps = { byId, host, selected, statuses, pick, onFile: upload, busy };
   return (
-    <section className="wr shelf" data-react-closet aria-label="내 옷장">
+    <section
+      className={`wr shelf ${chosen.length ? "wr-has-sheet" : ""}`}
+      data-react-closet
+      aria-label="내 옷장"
+    >
       <header className="wr-top">
         <span className="mark">
           <Wordmark />
@@ -363,16 +590,29 @@ function Closet({ host }: { host: ClosetHost }) {
         </button>
       </header>
       <div className="wr-title">
-        <div>
+        <div className="wr-title-text">
           <h1 ref={heading} tabIndex={-1}>
             내 옷장
           </h1>
-          <p>
-            {state.mineCount}벌의 내 옷
-            {state.trialCount ? ` · 체험용 ${state.trialCount}벌` : ""}
-          </p>
+          {!!garments.length && (
+            <p className="wr-sub">
+              <b>내 옷 {ownedCount}벌</b>
+              {state.trialCount ? ` · 체험용 ${state.trialCount}` : ""}
+            </p>
+          )}
+          {!!garments.length && !chosen.length && (
+            <p className="wr-hint">동그라미를 눌러 옷을 꺼내 코디해 보세요</p>
+          )}
         </div>
         <div className="wr-title-actions">
+          <button
+            className={`btn ${chosen.length ? "line" : "go"} wr-add`}
+            type="button"
+            onClick={host.add}
+          >
+            <i className="ph ph-plus" aria-hidden="true" />
+            옷 넣기
+          </button>
           <button
             className="quiet wr-tools-toggle"
             type="button"
@@ -387,28 +627,8 @@ function Closet({ host }: { host: ClosetHost }) {
             <i className="ph ph-sliders-horizontal" aria-hidden="true" />
             옷장 관리
           </button>
-          <button className="btn go" type="button" onClick={host.add}>
-            옷 넣기
-          </button>
         </div>
       </div>
-      {!!state.trialCount && (
-        <div className="notice">
-          <span>체험용 옷 · 가진 옷이 아니에요</span>
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                host.core.clearTrialCloset();
-              } catch (e) {
-                setError(errorText(e));
-              }
-            }}
-          >
-            체험용 내리기
-          </button>
-        </div>
-      )}
       {!garments.length && (
         <div className="wr-invite">
           <h2>한 벌부터 걸어 볼까요?</h2>
@@ -517,131 +737,137 @@ function Closet({ host }: { host: ClosetHost }) {
           </button>
         </div>
       )}
-      <div className="wr-workspace">
-        <div className="wr-rails">
-          {layout.rails.map((r) => (
-            <Rail
-              key={r.id}
-              {...r}
-              byId={byId}
-              host={host}
-              selected={selected}
-              pick={pick}
-              onFile={upload}
-              busy={busy}
-            />
-          ))}
-          {!!layout.shelf.length && (
-            <Rail
-              id="shelf"
-              label="신발·소품"
-              items={layout.shelf}
-              byId={byId}
-              host={host}
-              selected={selected}
-              pick={pick}
-              onFile={upload}
-              busy={busy}
-            />
+      {!!garments.length && (
+        <div className="wr-tabs-wrap">
+          <div
+            className="wr-tabs"
+            role="tablist"
+            aria-label="옷 종류"
+            onKeyDown={tabKeys}
+          >
+            {TABS.map(([id, label], n) => (
+              <button
+                key={id}
+                ref={(el) => {
+                  tabRefs.current[n] = el;
+                }}
+                type="button"
+                role="tab"
+                id={`wr-tab-${id}`}
+                aria-selected={cat === id}
+                aria-controls="wr-panel"
+                tabIndex={cat === id ? 0 : -1}
+                onClick={() => chooseTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!!garments.length && (
+        <div
+          id="wr-panel"
+          className="wr-panel"
+          role="tabpanel"
+          aria-labelledby={`wr-tab-${cat}`}
+        >
+          {(ownedCount > 0 || !state.trialCount) && (
+            <section className="wr-section" data-closet-section="mine">
+              <h2 className="wr-mine-h">
+                내 옷 {mineItems.length}
+              </h2>
+              {mineItems.length ? (
+                <Grid key={`mine-${cat}`} items={mineItems} {...gridProps} />
+              ) : (
+                <p className="wr-empty-tab">
+                  {cat === "all"
+                    ? "아직 넣은 옷이 없어요"
+                    : `${TAB_JOSA[cat]} 아직 없어요`}
+                  <button type="button" className="quiet" onClick={host.add}>
+                    옷 넣기
+                  </button>
+                </p>
+              )}
+            </section>
+          )}
+          {!!state.trialCount && (
+            <section className="wr-section" data-closet-section="trial">
+              <div className="wr-trial-h">
+                <span className="wr-trial-ic" aria-hidden="true">
+                  <i className="ph ph-tag" />
+                </span>
+                <div className="wr-trial-tx">
+                  <h2>
+                    <span className="wr-nw">체험용 {trialItems.length}</span>
+                    <span className="wr-sep"> · </span>
+                    <span className="wr-u">사기 전에 걸어 보기</span>
+                  </h2>
+                  <p>
+                    {ownedCount
+                      ? "가진 옷이 아니에요 · 점선 표시"
+                      : "가진 옷이 아니에요 · 내 옷을 넣으면 겹치는 옷과 새 코디 수를 알려 드려요"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="wr-tbtn"
+                  onClick={() => {
+                    try {
+                      clear();
+                      host.core.clearTrialCloset();
+                    } catch (e) {
+                      setError(errorText(e));
+                    }
+                  }}
+                >
+                  <span>체험용 내리기</span>
+                </button>
+              </div>
+              {trialItems.length ? (
+                <Grid key={`trial-${cat}`} items={trialItems} {...gridProps} />
+              ) : (
+                <p className="wr-empty-tab">체험용 {TAB_JOSA[cat] || `${tabLabel}는`} 없어요</p>
+              )}
+            </section>
           )}
         </div>
-        <aside
-          ref={assembly}
-          id="wr-assembly"
-          tabIndex={-1}
-          className={`wr-assembly ${chosen.length ? "wr-assembly-used" : ""}`}
-          aria-label="내 옷 조합대"
-        >
-          <h2>
-            꺼내서 함께 보기 <span>{chosen.length}벌</span>
-          </h2>
-          {chosen.length ? (
-            <>
-              <div className="wr-stage">
-                {chosen.map((g) => (
-                  <div
-                    key={g.id}
-                    data-assembly-layer={roleOf(g, host)}
-                    className={`wr-layer wr-layer-${roleOf(g, host)}`}
-                  >
-                    <Picture g={g} host={host} />
-                  </div>
-                ))}
-              </div>
-              <div className="wr-chosen">
-                {chosen.map((g) => (
-                  <button type="button" key={g.id} onClick={() => pick(g)}>
-                    {g.label}
-                    <span aria-hidden="true"> ×</span>
-                  </button>
-                ))}
-              </div>
-              <button
-                className="quiet"
-                type="button"
-                onClick={() => {
-                  host.session.selected = [];
-                  setSelected([]);
-                }}
-              >
-                모두 넣어두기
-              </button>
-            </>
-          ) : (
-            <div className="wr-stage wr-stage-empty">
-              <i className="ph ph-coat-hanger" aria-hidden="true" />
-              <p>옷을 누르면 여기에 꺼내요</p>
-            </div>
-          )}
-          <p className="wr-meta">
-            내 사진을 나란히 배치한 예시예요.
-            <br />
-            체형이나 착용감을 반영하지 않아요.
-          </p>
-          <button type="button" className="btn line wide" onClick={host.looks}>
-            내 옷 코디 보기
-          </button>
-          <button type="button" className="quiet" onClick={host.mirror}>
-            내 사진 거울 보기
-          </button>
-        </aside>
+      )}
+      <div className="wr-links">
+        <button type="button" className="btn line" onClick={host.looks}>
+          내 옷 코디 보기
+        </button>
+        <button type="button" className="quiet" onClick={host.mirror}>
+          내 사진 거울 보기
+        </button>
       </div>
-      {!!chosen.length &&
-        !assemblyVisible &&
-        createPortal(
-          <button
-            type="button"
-            className="wr-mobile-assembly"
-            aria-controls="wr-assembly"
-            onClick={() => {
-              assembly.current?.scrollIntoView({
-                block: "center",
-                behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-                  ? "instant"
-                  : "smooth",
-              });
-              assembly.current?.focus({ preventScroll: true });
-            }}
-          >
-            꺼낸 {chosen.length}벌 · 함께 보기{" "}
-            <i className="ph ph-caret-down" aria-hidden="true" />
-          </button>,
-          document.body,
-        )}
       <details className="wr-help">
         <summary>사진·표시 기준</summary>
         <p>
-          내가 찍은 내 옷 사진만 골라 주세요. iPhone 사진 앱에서 피사체를 들어
-          올려 저장한 투명 PNG도 그대로 쓸 수 있어요. PNG·JPEG·WebP, 한 장
-          8MB·1,200만 화소까지 보관해요. 자동으로 배경을 지우거나 상품을
-          식별하지 않아요.
+          내가 찍은 내 옷 사진만 골라 주세요. 옷걸이에 걸어 정면으로 찍으면
+          가장 잘 보여요(신발은 바닥에 두고 비스듬히 위에서). iPhone 사진 앱에서
+          피사체를 들어 올려 저장한 투명 PNG도 그대로 쓸 수 있어요.
+          PNG·JPEG·WebP, 한 장 8MB·1,200만 화소까지 보관해요. 아직 자동으로
+          배경을 지우거나 상품을 식별하지 않아요.
         </p>
         <p>
-          실측 총장은 같은 축척으로 표시해요. 길이가 없는 옷은 예시 크기이며
-          실제 핏을 뜻하지 않아요. 사진 원본은 가공하지 않고 이 기기에 보관하며
-          파일 백업에 포함돼요.
+          실측 총장이 있는 옷은 같은 축척으로 그려요. 길이가 없는 옷은 종류별
+          칸에 맞춘 크기이며 실제 핏을 뜻하지 않아요. 사진 원본은 가공하지 않고
+          이 기기에 보관하며 파일 백업에 포함돼요.
+        </p>
+        <p>
+          체험용의 '새 코디'는 그 옷을 샀다고 치고 내 옷으로 새로 생기는
+          상의+하의+신발 조합 수예요. 내 옷과 같은 종류·색이면 '비슷'으로
+          표시하고 세지 않아요. 겉옷은 따로 '걸칠 수 있는 코디'로 세요.
         </p>
       </details>
+      {!!chosen.length &&
+        createPortal(
+          <div className="wr-sheet-host">
+            <Sheet chosen={chosen} host={host} gain={gain} clear={clear} />
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

@@ -12,7 +12,16 @@ const roleOf = (g: Garment, host: PhotoHost) => {
   const role = host.core.railCategory(g);
   return role === "dress" ? "top" : role || "accessory";
 };
-export function OwnedPhoto({ g, host }: { g: Garment; host: PhotoHost }) {
+// cut: prefer the background-removed example (closet tiles, 10-30) when the core has one.
+export function OwnedPhoto({
+  g,
+  host,
+  cut = false,
+}: {
+  g: Garment;
+  host: PhotoHost;
+  cut?: boolean;
+}) {
   const node = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(false);
   const [src, setSrc] = useState("");
@@ -82,7 +91,7 @@ export function OwnedPhoto({ g, host }: { g: Garment; host: PhotoHost }) {
         data-photo={lent.example ? "example" : "similar"}
       >
         <img
-          src={lent.src}
+          src={cut && lent.cut ? lent.cut : lent.src}
           alt={lent.alt}
           loading="lazy"
           decoding="async"

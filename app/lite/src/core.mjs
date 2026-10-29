@@ -225,7 +225,7 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   const productPhoto = (p) => (photos && p?.img && PHOTO_HOST.test(p.img) ? { src: photoSrc(p), similar: false, alt: `${p.brand} ${p.name}`, caption: '' } : null);
   function garmentPhoto(g) {
     const file = g.id && isTrial(g.id) ? TRIAL_PHOTOS[`${g.slot}|${g.color}`] : null;
-    if (file) return { src: EXAMPLE_BASE + file, similar: false, example: true, alt: `예시 사진 · ${g.label || `${colorLabel(g.color)} ${SLOT_BY_ID[g.slot]?.name || ''}`.trim()}`, caption: '' };
+    if (file) return { src: EXAMPLE_BASE + file, cut: `${EXAMPLE_BASE}cut/${file}`, similar: false, example: true, alt: `예시 사진 · ${g.label || `${colorLabel(g.color)} ${SLOT_BY_ID[g.slot]?.name || ''}`.trim()}`, caption: '' };
     if (!photos) return null;
     if (g.productId && PRODUCT_BY_ID[g.productId]) return productPhoto(PRODUCT_BY_ID[g.productId]);
     if (!g.slot || !g.color) return null;
@@ -983,6 +983,43 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
       if (otherColor.length) return { verdict: 'other_color', basis, title: `색만 다른 ${kindName}${josa(kindName, '이', '가')} ${otherColor.length}벌 있어요${newOutfits ? ` · 새 코디 ${newOutfits}개` : ''}`, lines: [`${otherColor.map((x) => x.label).join(', ')}`], sameColor, otherColor, newOutfits };
       const outer = ['blazer', 'jacket', 'coat', 'down', 'cardigan', 'vest'].includes(kind);
       return { verdict: 'new', basis, title: newOutfits ? `새 코디 ${newOutfits}개가 생겨요` : `옷장에 없는 ${kindName}${josa(kindName, '이에요', '예요')}`, lines: [newOutfits ? '내 옷과 함께 입을 수 있는 조합이 늘어나요.' : outer ? '겉옷은 지금 코디 수 계산에 넣지 않아요. 가진 옷과 겹치지는 않아요.' : '아직 같이 입을 옷이 부족해 새 코디는 없어요.'], sameColor, otherColor, newOutfits };
+    },
+    // 옷장 재설계(10-29 대표 결정): 체험용 옷을 사면 '내 옷으로' 새 코디가 몇 개 생기는지 센다. 옷장은 바꾸지 않는다.
+    // 코디 = 상의+하의+신발(원피스+신발)의 서로 다른 조합(basicOutfits 규칙, 종류·색만 봄). 겉옷은 따로 '걸칠 수 있는 코디'로 센다.
+    // 내 옷과 같은 종류·색인 체험용 옷은 '비슷'이며 새 코디로 세지 않는다(대표 선택 "세지 않기").
+    // ids의 체험용 옷만 본다. items는 한 벌씩 따로 산 경우, newOutfits·layerable은 함께 산 경우다.
+    trialGain(ids = []) {
+      const g = S.gender === 'F' ? 'F' : 'M';
+      const owned = S.garments.filter((x) => !isTrial(x.id) && x.gender === g);
+      const stateOf = (rows) => buildState({ ...S, garments: [...owned, ...rows] });
+      const bases = (rows) => basicOutfits(stateOf(rows), { limit: 1000 }).length;
+      const ownedState = stateOf([]);
+      const before = bases([]);
+      const outer = (x) => garmentCategory(x) === 'outer';
+      const trials = [...new Set(Array.isArray(ids) ? ids : [])]
+        .map((id) => S.garments.find((x) => x.id === id && isTrial(x.id) && x.gender === g)).filter(Boolean);
+      const similarOf = (t) => {
+        const qc = quickCompare(ownedState, { kind: t.kind, color: t.color, gender: g });
+        const like = qc.sameColor[0];
+        return { like: like ? { id: like.id, label: like.label || garmentLabel(like) } : null, otherColor: qc.otherColor.length };
+      };
+      const items = trials.map((t) => {
+        const label = t.label || garmentLabel(t);
+        const base = { id: t.id, label, similarTo: null, gain: 0, layerable: 0 };
+        if (!owned.length) return { ...base, verdict: 'no_closet', text: '', tone: 'plain' };
+        const { like, otherColor } = similarOf(t);
+        if (like) return { ...base, similarTo: like, verdict: 'similar', text: `${like.label}${josa(like.label, '과', '와')} 비슷`, tone: 'dup' };
+        if (outer(t)) return { ...base, verdict: 'outer', layerable: before, text: before ? `걸칠 수 있는 코디 +${before}` : '겉옷 · 안 겹쳐요', tone: before ? 'good' : 'plain' };
+        const gain = Math.max(0, bases([t]) - before);
+        if (gain) return { ...base, verdict: 'new', gain, text: `새 코디 +${gain}`, tone: 'good' };
+        return otherColor ? { ...base, verdict: 'other_color', text: '색만 달라요', tone: 'plain' } : { ...base, verdict: 'none', text: '안 겹쳐요', tone: 'plain' };
+      });
+      const counted = trials.filter((t, n) => items[n].verdict !== 'similar');
+      const after = bases(counted);
+      return {
+        ownedCount: owned.length, before, newOutfits: Math.max(0, after - before),
+        layerable: counted.some(outer) ? after : 0, items,
+      };
     },
     // occasion을 주면 그 상황의 코디 공식만 준다. 기본 조합은 상황 구분이 없어 뺀다(10-29).
     closetOutfits({ limit = 60, detail = false, ownedOnly = false, occasion = null } = {}) {

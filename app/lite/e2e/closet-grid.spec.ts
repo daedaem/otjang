@@ -111,7 +111,7 @@ test("picking numbers the circles and the sheet counts new outfits without the s
   await tile(page, "네이비 크루넥 니트").locator("[data-pick]").click();
   await expect(sheet.locator(".wr-judge")).toHaveText("네이비 크루넥 니트는 내 니트와 비슷해요");
   await expect(sheet.locator(".wr-gain")).toContainText("둘 다 사면 새 코디 +1");
-  await expect(sheet.locator(".wr-gain-each")).toHaveText("크루넥 니트 0(비슷) · 치노 팬츠 +1");
+  await expect(sheet.locator(".wr-gain-each")).toHaveText("치노 팬츠 +1 · 크루넥 니트 0(비슷)");
   await sheet.getByRole("button", { name: "모두 넣어두기" }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.locator('[data-pick][aria-pressed="true"]')).toHaveCount(0);

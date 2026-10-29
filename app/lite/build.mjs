@@ -66,6 +66,8 @@ const ICONS = ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'maskable
 for (const f of ICONS) copy(path.join(HERE, 'public/icons', f), `icons/${f}`);
 // 체험용 옷 예시 사진(public/examples/README.md)
 for (const f of fs.readdirSync(path.join(HERE, 'public/examples')).filter((f) => f.endsWith('.webp'))) copy(path.join(HERE, 'public/examples', f), `examples/${f}`);
+// 옷장 칸용 배경을 지운 예시(public/examples/README.md, 10-30)
+for (const f of fs.readdirSync(path.join(HERE, 'public/examples/cut')).filter((f) => f.endsWith('.webp'))) copy(path.join(HERE, 'public/examples/cut', f), `examples/cut/${f}`);
 
 for (const f of ['google-signin.png', 'kakao-login.svg']) copy(path.join(HERE, 'public/login', f), `login/${f}`);
 
