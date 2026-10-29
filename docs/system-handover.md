@@ -409,4 +409,3 @@ Cloudflare 기존 비공개 Worker `f18d7d75`가 masteref4eec0에서 빌드48초
 - 코디 화면 상황 버튼: 체험용 옷장일 때 `closetOutfits({occasion})`로 그 상황의 코디 공식만 보여 주고(기본 조합은 상황 구분이 없어 뺌) 개수를 알린다. 맞는 조합이 없으면 그렇다고 말한다. 실제 내 옷이 있을 때는 목록이 바뀌지 않으므로 "AI로 비교할 때 반영"된다는 안내(`data-outfit-situation-note`)를 띄운다.
 - 커뮤니티 피드 사진 틀(`.cm-photos`): `overflow-x: auto`만 있으면 세로도 auto가 되어 iOS에서 사진이 틀 안에서 세로로 밀렸다. `overflow-y: hidden`, 행 높이 고정, 한 장짜리는 넘기지 않게 했다.
 - 검증: `e2e/outfits.spec.ts`(상황 2개), `e2e/community.spec.ts`(사진 틀 1개). WebKit은 CI에서만 확인하고, 실제 아이폰 재확인은 대표 몫이다.
-
