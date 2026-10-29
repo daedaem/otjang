@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-28T23:58:21.163570+00:00",
+  "pr": 135,
+  "head": "4f73d031b13f59b27fae1a1920205e33e45c4cba",
+  "master": "0ea23696af6df378ea77f2f2b1baac1c47f46c45",
+  "worker": "4e1d3c90",
+  "activePercent": 100,
+  "buildSeconds": 55,
+  "ci": {
+    "checks": 15,
+    "unresolvedThreads": 0,
+    "nodePassed": 533,
+    "chromiumPassed": 322,
+    "webkitPassed": 322,
+    "run": 40787450533
+  },
+  "liveGuest": {
+    "cookieSent": false,
+    "tlsVerification": true,
+    "status": 303,
+    "location": "/_member/signin",
+    "cache": "private,no-store"
+  },
+  "accountMode": "accounts",
+  "communityMode": "private",
+  "dbProbe": {
+    "budget": "ok",
+    "members": "ok",
+    "community": "ok",
+    "query": "SELECT 1"
+  },
+  "publicContact": {
+    "approvedValuesMatchAfterDeployment": true,
+    "rawValuesIncluded": false
+  },
+  "adminSetup": {
+    "formOpensWithExistingOwnerProof": true,
+    "additionalOldPasswordField": false,
+    "userResponse": "cannot_do_now",
+    "userCredentialSubmissionVerified": false,
+    "newAccountLoginVerified": false,
+    "actualAccountCreationByAgent": 0
+  },
+  "additionalPaidCalls": 0,
+  "realPrivatePhotoTransfers": 0,
+  "screenshot": {
+    "file": "live-account-login.png",
+    "bytes": 16369,
+    "sha256": "affb8ceeba46ecac09ff61fcd6230ce172225a0c9b3189b6bd8fe57d2a2d945a",
+    "enteredCredentials": false
+  }
+}
