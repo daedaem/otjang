@@ -110,6 +110,9 @@ try {
           manifest.captures.push({file,engine,viewport:{width:device.width,height:device.height},theme:device.colorScheme,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),note:'Local product entry placement with retailer photos disabled; no vendor image or generated try-on result.'});
         }
         await page.goto(origin + "/?photos=0#/tryon");
+        // The router owns same-document history. Start the manual input capture
+        // from a fresh document rather than carrying the prior detail state.
+        await page.reload();
         await page.locator("[data-react-tryon]").waitFor();
         await page
           .getByLabel("내 사진 고르기", { exact: true })
