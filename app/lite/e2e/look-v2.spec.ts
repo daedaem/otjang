@@ -328,4 +328,3 @@ test("colour checks wait for the search submit button instead of measuring the n
     expect(await bg(page)).toBe("rgb(32, 32, 37)");
   } finally {release();}
 });
-

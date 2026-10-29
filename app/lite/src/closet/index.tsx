@@ -757,7 +757,7 @@ function Closet({ host }: { host: ClosetHost }) {
                 aria-selected={cat === id}
                 aria-controls="wr-panel"
                 tabIndex={cat === id ? 0 : -1}
-                onClick={() => chooseTab(id)}
+                onClick={() => chooseTab(id, true)}
               >
                 {label}
               </button>
