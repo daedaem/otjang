@@ -783,3 +783,11 @@
     --wr-cell: 168px;
   }
 }
+/* 옷장 안은 다크 모드에서도 밝으므로 그 안의 보조 글자도 옷장 전용 색을 쓴다(#144 리뷰). */
+:root[data-look="v2"] .wr-rail .wr-card-brand,
+:root[data-look="v2"] .wr-rail .wr-meta,
+:root[data-look="v2"] .wr-rail .wr-placeholder,
+:root[data-look="v2"] .wr-rail .wr-placeholder > span,
+:root[data-look="v2"] .wr-rail .wr-empty-rail {
+  color: var(--closet-ink2);
+}
