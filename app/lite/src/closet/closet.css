@@ -287,11 +287,11 @@
     margin: 0;
   }
 }
+/* content-visibility: auto는 쓰지 않는다: WebKit에서 지연 로드 사진이 화면에 들어와도 불러지지 않았다(#145 CI).
+   큰 옷장은 60벌씩 그려 부담을 나눈다. */
 .wr-tile {
   position: relative;
   min-width: 0;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 210px;
 }
 .wr-open {
   display: flex;
