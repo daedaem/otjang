@@ -94,3 +94,32 @@ test('옷장 칸에는 배경을 지운 투명 예시 사진을 쓴다', () => {
     assert.ok(bytes[20] & 0x10, `${g.label} has alpha`);
   }
 });
+
+// Codex 검토(#145): 한 종류에 8벌이 넘어도 빠짐없이 센다(미리보기 도우미의 종류별 8벌 제한을 쓰지 않음).
+test('한 종류에 옷이 많아도 새 체험용 옷의 코디를 빠짐없이 센다', () => {
+  const M = createMock({ photos: false });
+  const tops = [['m-tee', 'black'], ['m-tee', 'grey'], ['m-tee', 'navy'], ['m-knit', 'grey'], ['m-knit', 'beige'], ['m-polo', 'navy'], ['m-sweat', 'grey'], ['m-hoodie', 'black'], ['m-longtee', 'white']];
+  for (const [slot, color] of tops) M.addGarment({ kind: slot === 'm-knit' ? 'knit' : slot === 'm-polo' || slot === 'm-rugby' ? 'polo' : slot === 'm-sweat' || slot === 'm-hoodie' ? 'sweat' : slot === 'm-longtee' ? 'longtee' : 'tee', slot, color, gender: 'M' });
+  M.addGarment({ kind: 'jeans', slot: 'm-denim', color: 'indigo', gender: 'M' });
+  M.addGarment({ kind: 'sneaker', slot: 'm-white-sneaker', color: 'white', gender: 'M' });
+  M.loadTrialCloset('M');
+  const oxford = M.getState().closet.find((g) => g.trial && g.label === '흰 옥스퍼드 셔츠');
+  const r = M.trialGain([oxford.id]);
+  assert.equal(r.before, 9);
+  assert.equal(r.items[0].gain, 1);
+  assert.equal(r.newOutfits, 1);
+});
+
+// Codex 검토(#145): 원피스+신발도 코디로 센다.
+test('원피스와 신발 조합도 코디로 센다', () => {
+  const M = createMock({ photos: false });
+  M.addGarment({ kind: 'dress', slot: 'f-dress', color: 'black', label: '내 원피스', gender: 'F' });
+  M.addGarment({ kind: 'loafer', slot: 'f-loafer', color: 'brown', label: '내 로퍼', gender: 'F' });
+  M.loadTrialCloset('F');
+  const sneaker = M.getState().closet.find((g) => g.trial && g.label === '흰 스니커즈');
+  const r = M.trialGain([sneaker.id]);
+  assert.equal(r.before, 1);
+  assert.equal(r.items[0].gain, 1);
+  const trench = M.getState().closet.find((g) => g.trial && g.label === '베이지 트렌치 코트');
+  assert.equal(M.trialGain([trench.id]).items[0].layerable, 1);
+});
