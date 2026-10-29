@@ -354,3 +354,24 @@ test("colour checks wait for the search submit button instead of measuring the n
     expect(await bg(page)).toBe("rgb(32, 32, 37)");
   } finally {release();}
 });
+test.describe("dark lit closet", () => {
+  test.use({ colorScheme: "dark" });
+  // Codex review #144: the closet interior stays light in dark mode, so every label in it uses dark closet ink.
+  test("labels inside the lit closet stay dark and readable in dark mode", async ({ page }) => {
+    await page.goto("/?photos=0#/closet");
+    await page.waitForFunction(() => !!(window as any).K?.M);
+    await page.evaluate(() => {
+      const K = (window as any).K;
+      K.M.addGarment({ kind: "shirt", color: "white", brand: "합성브랜드", label: "합성 셔츠" });
+      K.refresh();
+    });
+    await expect(page.locator(".wr-card").first()).toBeVisible();
+    const light = ["rgb(32, 32, 37)", "rgb(85, 85, 96)", "rgb(106, 106, 116)"];
+    for (const sel of [".wr-rail .wr-card-brand", ".wr-rail .wr-placeholder", ".wr-rail .wr-placeholder > span", ".wr-rail .wr-empty-rail"]) {
+      const el = page.locator(sel).first();
+      if (!(await el.count())) continue;
+      expect(light, sel).toContain(await css(el, "color"));
+    }
+    expect(await page.locator(".wr-rail .wr-card-brand").count()).toBeGreaterThan(0);
+  });
+});
