@@ -1,0 +1,81 @@
+{
+  "source": "1bd1244e9504d55655580e36130a1b59e07c4088",
+  "capturedAt": "2026-10-29T04:49:28.410Z",
+  "realProviderCalls": 0,
+  "syntheticPerson": true,
+  "resultQuality": "not_tested",
+  "captures": [
+    {
+      "file": "chromium-mobile-inputs.png",
+      "engine": "chromium",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "bytes": 108178,
+      "sha256": "4717376104427f51a2c19ed7491255b0f0afa2b900348a64ff635d5f0efd024a",
+      "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    },
+    {
+      "file": "chromium-dark-inputs.png",
+      "engine": "chromium",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "bytes": 108642,
+      "sha256": "8af888147a0da6ae244c91a78ca5c2b8cd32d855c6e2655b9084bc00ab1273de",
+      "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    },
+    {
+      "file": "chromium-desktop-inputs.png",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "theme": "light",
+      "bytes": 266619,
+      "sha256": "21084bc36291d4f9040f44e090649f2901aef111bda9b04ec23104a717a6d733",
+      "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    },
+    {
+      "file": "webkit-mobile-inputs.png",
+      "engine": "webkit",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "bytes": 122599,
+      "sha256": "c4b548503ee12e3799b334c7097630f9a5de1e1070ceadd9a62014f54fce4fd8",
+      "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    },
+    {
+      "file": "webkit-dark-inputs.png",
+      "engine": "webkit",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "bytes": 122446,
+      "sha256": "b8e7a75b37f697f1b7cbada5b8938166cc7118e99047182dabae64ad249ba94d",
+      "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    },
+    {
+      "file": "webkit-desktop-inputs.png",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "theme": "light",
+      "bytes": 297895,
+      "sha256": "daa89931a650bae11ba36375ede6e922c96ecb3a5dc2c203fe5eede8ee3b9a54",
+      "note": "Local input screen; fictional model and generated shirt; configured=false; no try-on result is represented."
+    }
+  ]
+}
