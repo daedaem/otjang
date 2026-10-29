@@ -1,8 +1,16 @@
+/* 옷장(2026-10-30 재설계, 대표 10-29 결정 · AI 역할 디자이너 시안 v5/v6).
+   종류 탭 + 사진 칸 그리드: 내 옷 → 체험용 묶음. 사진 칸은 다크 모드에서도 밝다(옷 누끼가 밝은 칸에 맞음).
+   버튼은 잉크, 월넛은 '내 옷', 잎 초록은 좋은 소식(새 코디)에만 쓴다. */
 .wr.shelf {
   display: block;
-  --wr-cell: 136px;
   margin: 0;
   min-width: 0;
+  --wr-tile: #ececee;
+  --wr-tile-ink: #202025;
+  --wr-tile-ink3: #6a6a74;
+  --wr-mine: var(--wood, #5b3a24);
+  --wr-good: var(--leaf, #4d6b4f);
+  --wr-dup: var(--brand, #5b3a24);
 }
 .wr button,
 .wr select {
@@ -18,47 +26,110 @@
   min-height: 56px;
   gap: 4px;
 }
+.wr-top .sp {
+  flex: 1;
+}
 .wr-title {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  margin: 20px 0;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+.wr-title-text {
+  min-width: 0;
 }
 .wr h1 {
-  font-size: 32px;
-  line-height: 1.2;
-  letter-spacing: -1px;
+  font-size: 28px;
+  line-height: 34px;
+  letter-spacing: -0.02em;
   margin: 0;
-  font-weight: 750;
+  font-weight: 700;
 }
 .wr h1:focus {
   outline: none;
 }
 .wr h2 {
-  font-size: 17px;
-  line-height: 1.4;
+  font-size: 15px;
+  line-height: 20px;
   margin: 0;
+  font-weight: 700;
 }
-.wr-title p {
+.wr-sub {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink3);
+  font-variant-numeric: tabular-nums;
+}
+.wr-sub b {
+  color: var(--wr-dup);
+  font-weight: 700;
+}
+.wr-hint {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 18px;
   color: var(--ink2);
-  margin: 8px 0 0;
 }
 .wr-title-actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.wr-title-actions .btn {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   flex: none;
+}
+.wr-add {
+  gap: 4px;
+  white-space: nowrap;
 }
 .wr .wr-tools-toggle {
   display: none;
 }
+:root[data-look="v2"] .wr-tools-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 8px 4px;
+  font-size: 13px;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+:root[data-look="v2"] .wr-tools-toggle[aria-expanded="true"] {
+  color: var(--ink);
+}
 .wr-controls[hidden] {
   display: none;
+}
+.wr-controls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 4px 0 16px;
+}
+.wr-controls label {
+  font-size: 12px;
+  color: var(--ink2);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.wr-controls select {
+  max-width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 24px 8px 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+}
+.wr-controls .quiet {
+  margin-left: auto;
+  min-height: 44px;
 }
 .wr-filter-status {
   display: flex;
@@ -83,229 +154,581 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.wr-controls {
-  display: flex;
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 12px 0 24px;
-}
-.wr-controls label {
-  font-size: 12px;
-  color: var(--ink2);
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-.wr-controls select {
-  max-width: 100%;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 8px 24px 8px 10px;
+
+/* 종류 탭: 스크롤해도 위에 붙는다. 숫자는 넣지 않는다(v6 비평: 탭 숫자가 '내 옷 기준'인지 헷갈림). */
+.wr-tabs-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   background: var(--bg);
-  color: var(--ink);
-  font-size: 14px;
+  margin: 0 calc(-1 * var(--gutR, 16px)) 0 calc(-1 * var(--gutL, 16px));
+  padding: 4px var(--gutR, 16px) 8px var(--gutL, 16px);
 }
-.wr-controls .quiet {
-  margin-left: auto;
+.wr-tabs {
+  display: flex;
+  background: var(--well);
+  border-radius: 12px;
+  padding: 2px;
+}
+.wr-tabs [role="tab"] {
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 44px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink2);
+  white-space: nowrap;
 }
-.wr-workspace {
+.wr-tabs [role="tab"][aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink3),
+    0 1px 3px rgba(32, 32, 37, 0.1);
+}
+
+/* 묶음 머리 */
+.wr-section + .wr-section {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.wr-mine-h {
+  padding: 6px 0;
+  color: var(--wr-dup);
+  font-variant-numeric: tabular-nums;
+}
+.wr-trial-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 8px;
+}
+.wr-trial-ic {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border: 1px dashed var(--ink3);
   display: grid;
-  gap: 24px;
-  min-width: 0;
+  place-items: center;
+  color: var(--ink2);
+  font-size: 15px;
 }
-.wr-rails {
+.wr-trial-tx {
+  flex: 1;
   min-width: 0;
+  container-type: inline-size;
 }
-.wr-rail {
-  margin-bottom: 24px;
-  min-width: 0;
+/* 좁아서 두 줄이 되면 가운뎃점 대신 줄바꿈(줄 끝에 '·'가 남지 않게) */
+@container (max-width: 230px) {
+  .wr-trial-tx .wr-sep {
+    display: none;
+  }
+  .wr-trial-tx .wr-u {
+    flex-basis: 100%;
+  }
 }
-.wr-rail-title {
+.wr-trial-tx h2 {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0;
+}
+.wr-trial-tx h2 span {
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+}
+.wr-trial-tx p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink2);
+}
+.wr-tbtn {
+  flex: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.wr-tbtn span {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--ink3);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wr-empty-tab {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin: 0;
+  padding: 8px 0 12px;
+  font-size: 14px;
+  color: var(--ink2);
 }
-.wr-rail-title > span {
-  color: var(--ink3);
-  font-size: 13px;
+.wr-empty-tab .quiet {
+  min-height: 44px;
 }
-.wr-rail-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-  border-top: 2px solid var(--line);
-  scrollbar-width: thin;
-  overscroll-behavior-inline: contain;
-  border-bottom: 1px solid var(--line);
+
+/* 그리드: 휴대폰 3칸, 화면 가장자리까지(칸 사이 2px) */
+.wr-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0 calc(-1 * var(--gutR, 16px)) 0 calc(-1 * var(--gutL, 16px));
 }
-.wr-track {
-  display: flex;
-  width: calc(var(--wr-cell) * var(--wr-count));
-  align-items: flex-start;
-  min-height: 308px;
+@media (min-width: 560px) {
+  .wr-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+  }
 }
-.wr-spacer {
-  flex: none;
-  display: block;
-}
-.wr-card {
-  box-sizing: border-box;
-  width: var(--wr-cell);
-  flex: 0 0 var(--wr-cell);
-  padding: 0 8px 14px;
+/* content-visibility: auto는 쓰지 않는다: WebKit에서 지연 로드 사진이 화면에 들어와도 불러지지 않았다(#145 CI).
+   큰 옷장은 60벌씩 그려 부담을 나눈다. */
+.wr-tile {
+  position: relative;
   min-width: 0;
 }
-.wr-pick {
-  border: 0;
-  background: none;
-  color: var(--ink);
+.wr-open {
   display: flex;
-  align-items: center;
   flex-direction: column;
-  text-align: center;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
   padding: 0;
-  width: 100%;
-  cursor: pointer;
+  text-align: left;
+  color: inherit;
 }
-.wr-hanger {
-  height: 26px;
-  width: 70px;
-  flex: none;
-  margin: 0 0 6px;
+.wr-picture-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  background: var(--wr-tile);
+  overflow: hidden;
 }
-.wr-hanger path {
-  fill: none;
-  stroke: var(--ink3);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.wr-picked .wr-picture-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--wr-tile-ink);
+  pointer-events: none;
 }
+/* 비율 규칙 하나(v5/v6): 옷의 윗선을 칸 8%에. 상의·아우터 높이 68%·너비 72%, 하의 88%/56%,
+   신발은 바닥선 72%. 실측 총장이 있는 옷은 같은 축척(가장 긴 옷 = 88%)으로 그린다. */
 .wr-picture {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  border-radius: 12px;
-  min-height: 0;
-  max-height: 196px;
-  margin-bottom: 10px;
+  position: absolute;
+  display: block;
+  top: 8%;
+  left: 14%;
+  width: 72%;
+  height: 68%;
+}
+.wr-box-top,
+.wr-box-outer {
+  left: 10%;
+}
+.wr-box-bottom {
+  left: 22%;
+  width: 56%;
+  height: 88%;
+}
+.wr-box-shoes {
+  top: auto;
+  bottom: 28%;
+  left: 24%;
+  width: 52%;
+  height: 26%;
+}
+.wr-box-accessory {
+  top: 22%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+}
+.wr-picture.wr-measured {
+  height: calc(88% * var(--wr-scale, 1));
 }
 .wr-picture img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: 50% 0;
+  filter: drop-shadow(0 1px 2px rgba(32, 32, 37, 0.12));
 }
-.wr-picked .wr-picture {
-  outline: 2px solid var(--acc);
-  outline-offset: 2px;
-  background: var(--acc-soft);
+.wr-box-shoes img {
+  object-position: 50% 100%;
+}
+.wr-picture .wr-placeholder > span {
+  color: var(--wr-tile-ink3);
+  font-size: 12px;
+}
+/* 사진이 없는 내 옷: 흰 옷 그림도 밝은 칸에서 윤곽이 보이게 */
+.wr-picture .wr-placeholder path {
+  stroke: #b4b4bc;
 }
 .wr-card-name {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: 13px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  min-height: 36px;
-}
-.wr-meta {
   display: block;
-  font-size: 12px;
-  color: var(--ink2);
-  line-height: 1.6;
-  margin-top: 4px;
+  padding: 6px 8px 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
-.wr-card-actions {
+.wr-card-brand {
+  display: block;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink2);
+  overflow-wrap: anywhere;
+}
+.wr-tags {
   display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 4px;
   flex-wrap: wrap;
-}
-.wr-card-actions > button,
-.wr-upload {
-  display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  background: none;
-  border: 0;
-  padding: 2px;
-  color: var(--ink2);
-  font-size: 12px;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  gap: 2px 4px;
+  padding: 3px 8px 10px;
 }
+.wr-chip {
+  flex: none;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 5px;
+}
+.wr-chip-mine {
+  color: #fff;
+  background: var(--wr-mine);
+}
+.wr-chip-trial {
+  color: var(--ink2);
+  border: 1px dashed var(--ink3);
+}
+.wr-st {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+.wr-st-good {
+  color: var(--wr-good);
+}
+.wr-st-dup {
+  font-weight: 500;
+}
+.wr-st-dup b {
+  color: var(--wr-dup);
+  font-weight: 600;
+}
+.wr-tile .wr-meta {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ink3);
+}
+
+/* 꺼내기: 사진 오른쪽 위 원(누르는 곳 44px) */
+.wr-pick {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: start end;
+  padding: 6px;
+  z-index: 2;
+}
+.wr-pick i {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1.5px solid var(--wr-tile-ink3);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.wr-picked .wr-pick i {
+  background: var(--wr-tile-ink);
+  border-color: var(--wr-tile-ink);
+  box-shadow: 0 0 0 1.5px #fff;
+}
+.wr-pick:focus-visible {
+  outline: none;
+}
+.wr-pick:focus-visible i {
+  outline: 2px solid var(--wr-tile-ink);
+  outline-offset: 2px;
+}
+/* 내 사진 넣기: 사진 왼쪽 위 작은 카메라(내 옷만) */
 .wr-upload {
-  position: relative;
-  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: start start;
+  padding: 6px;
+  z-index: 2;
+  cursor: pointer;
+  color: var(--wr-tile-ink3);
+}
+.wr-upload i {
+  font-size: 18px;
+  line-height: 24px;
 }
 .wr-upload input {
   position: absolute;
   inset: 0;
+  opacity: 0;
   width: 100%;
   height: 100%;
-  opacity: 0;
   cursor: pointer;
 }
 .wr-upload:focus-within {
-  outline: 2px solid var(--acc);
-  outline-offset: 2px;
+  outline: 2px solid var(--wr-tile-ink);
+  outline-offset: -4px;
 }
 .wr-disabled {
   opacity: 0.5;
   pointer-events: none;
 }
-.wr-empty-rail {
-  margin: 0;
-  padding: 24px 8px 32px;
-  color: var(--ink3);
-  font-size: 13px;
+.wr-more {
+  display: flex;
+  margin: 12px auto 4px;
 }
-.wr-assembly {
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 18px;
-  align-self: start;
-  min-width: 0;
-}
-.wr-assembly h2 > span {
-  font-size: 13px;
+.wr-more span {
   color: var(--ink3);
   font-weight: 500;
-  white-space: nowrap;
 }
-.wr-stage {
-  height: 330px;
-  max-width: 280px;
-  margin: 16px auto 12px;
-  position: relative;
-  border-radius: 12px;
-  background: var(--well);
-  overflow: hidden;
-  isolation: isolate;
+
+/* 아래 시트: 탭 바 바로 위. 목록은 시트 위에서 끝나도록 옷장 아래 여백을 시트 높이만큼 둔다. */
+.wr.wr-has-sheet {
+  padding-bottom: calc(var(--wr-sheet-h, 200px) + 8px);
 }
-.wr-stage-empty {
-  height: 170px;
+.wr-sheet-host {
+  position: fixed;
+  z-index: 29;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabs) + var(--sab));
+  pointer-events: none;
+}
+:root:has(.app.strip-on) .wr-sheet-host {
+  bottom: calc(var(--tabs) + var(--strip) + var(--sab));
+}
+.wr-sheet {
+  pointer-events: auto;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 16px 16px 0 0;
+  box-shadow:
+    0 -1px 0 var(--line),
+    0 -8px 24px rgba(32, 32, 37, 0.12);
+  padding: 12px var(--gutR) 12px var(--gutL);
+  max-height: 60vh;
+  max-height: 60dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.wr-sheet button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.wr-picked-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  min-height: 44px;
+}
+.wr-stack {
+  display: flex;
+  flex: none;
+}
+.wr-mini {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 45px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--wr-tile, #ececee);
+  box-shadow:
+    0 0 0 1.5px var(--surface),
+    0 1px 3px rgba(32, 32, 37, 0.14);
+}
+.wr-mini-trial {
+  outline: 1px dashed var(--ink3);
+  outline-offset: -1px;
+}
+.wr-mini + .wr-mini {
+  margin-left: -6px;
+}
+.wr-mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.wr-mini .wr-placeholder > span {
+  display: none;
+}
+.wr-picked-text {
+  flex: 1;
+  min-width: 0;
+}
+.wr-picked-text b {
+  display: block;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.wr-picked-text small {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink2);
+  overflow-wrap: anywhere;
+}
+.wr-sheet .wr-x {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-right: -8px;
+  display: grid;
+  place-items: center;
+  color: var(--ink2);
+}
+.wr-x i {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--well);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+.wr-judge {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 20px;
+}
+.wr-judge + .wr-judge {
+  margin-top: 4px;
+  padding-top: 0;
+  border-top: 0;
+}
+.wr-judge b {
+  color: var(--wr-dup);
+  font-weight: 700;
+}
+.wr-sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.wr-gain-box {
+  flex: 1;
+  min-width: 0;
+}
+.wr-gain {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  font-size: 15px;
+  line-height: 28px;
+  font-weight: 600;
+}
+.wr-gain strong {
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 700;
+  color: var(--wr-good);
+  font-variant-numeric: tabular-nums;
+}
+.wr-sheet .wr-def {
+  width: 44px;
+  height: 44px;
+  margin: -8px -12px;
+  display: grid;
+  place-items: center;
   color: var(--ink3);
+  font-size: 18px;
 }
-.wr-stage-empty i {
-  font-size: 32px;
-}
-.wr-stage-empty p {
+.wr-gain-sub {
   margin: 0;
   font-size: 13px;
+  line-height: 18px;
+  color: var(--ink2);
+}
+.wr-sheet .wr-stage-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 0 16px 0 18px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wr-sheet .wr-stage-toggle.line {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink3);
+}
+.wr-def-text {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--well);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 19px;
+}
+.wr-def-text p {
+  margin: 0;
+}
+.wr-assembly {
+  margin-top: 10px;
+}
+.wr-assembly:focus {
+  outline: none;
+}
+.wr-stage {
+  height: 300px;
+  max-width: 260px;
+  margin: 0 auto 8px;
+  position: relative;
+  border-radius: 8px;
+  background: var(--wr-tile, #ececee);
+  overflow: hidden;
+  isolation: isolate;
 }
 .wr-layer {
   position: absolute;
@@ -351,31 +774,26 @@
   width: 28%;
   height: 24%;
 }
-.wr-chosen {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.wr-chosen button {
-  max-width: 100%;
+.wr-sheet .wr-meta {
+  margin: 0;
+  text-align: center;
   font-size: 12px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
-  color: var(--ink);
-  overflow-wrap: anywhere;
-  min-height: 40px;
+  line-height: 17px;
+  color: var(--ink2);
 }
-.wr-assembly > .quiet {
-  margin: 8px 0;
-  min-height: 40px;
+
+.wr-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 0;
 }
-.wr-assembly > .btn {
-  margin-top: 12px;
+.wr-links .quiet {
+  min-height: 44px;
 }
 .wr-help {
-  margin: 24px 0;
+  margin: 16px 0 24px;
   color: var(--ink2);
   font-size: 13px;
   line-height: 1.7;
@@ -390,92 +808,8 @@
   color: var(--acc-text);
   padding: 12px;
   border: 1px solid currentColor;
-  border-radius: 12px;
+  border-radius: 6px;
   line-height: 1.6;
-}
-.wr-status {
-  color: var(--ink2);
-  line-height: 1.6;
-}
-.wr button:focus-visible,
-.wr select:focus-visible,
-.wr-rail-scroll:focus-visible {
-  outline: 2px solid var(--acc);
-  outline-offset: 3px;
-}
-.wr button:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-@media (min-width: 760px) {
-  .wr.shelf {
-    --wr-cell: 152px;
-  }
-  .wr-workspace {
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 24px;
-  }
-  .wr-assembly {
-    position: sticky;
-    top: 24px;
-  }
-  .wr-track {
-    min-height: 310px;
-  }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .wr-picked .wr-hanger {
-    animation: wr-sway 0.35s ease-out;
-  }
-  @keyframes wr-sway {
-    0%,
-    100% {
-      transform: rotate(0);
-    }
-    35% {
-      transform: rotate(7deg);
-    }
-    70% {
-      transform: rotate(-3deg);
-    }
-  }
-}
-.wr-card-brand {
-  font-size: 11px;
-  color: var(--ink2);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.wr-mobile-assembly {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  position: fixed;
-  z-index: 28;
-  left: var(--gutL);
-  right: var(--gutR);
-  bottom: calc(var(--tabs) + var(--sab) + 42px);
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  min-height: 48px;
-  padding: 12px 18px;
-  box-shadow: var(--shadow);
-  max-width: 480px;
-  margin: auto;
-  font-size: 14px !important;
-}
-.wr.shelf {
-  padding-bottom: 64px;
-}
-@media (min-width: 760px) {
-  .wr-mobile-assembly {
-    display: none;
-  }
-  .wr.shelf {
-    padding-bottom: 0;
-  }
 }
 .wr-feedback {
   position: sticky;
@@ -486,7 +820,7 @@
   gap: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 6px;
   box-shadow: var(--shadow);
   padding: 8px 12px;
   margin: 0 0 16px;
@@ -502,292 +836,30 @@
   min-height: 44px;
   font-size: 24px;
 }
-.wr-card-actions > button,
-.wr-upload {
-  min-height: 44px;
-}
-
-@media (max-width: 759px) {
-  .wr-track {
-    min-height: 244px;
-  }
-  .wr-assembly:not(.wr-assembly-used) {
-    display: none;
-  }
-}
-
-/* WO-11 새 디자인(v2) 미리 보기. :root[data-look="v2"]에만 적용한다.
-   옷이 먼저 보이게 칸과 사진을 키우고, 레일은 진한 한 줄(옷걸이 봉)로 둔다. */
-:root[data-look="v2"] .wr.shelf {
-  --wr-cell: 150px;
-}
-:root[data-look="v2"] .wr h1 {
-  font-size: 26px;
-  line-height: 34px;
-  letter-spacing: -0.03em;
-  font-weight: 700;
-}
-:root[data-look="v2"] .wr-title {
-  margin: 16px 0 20px;
-}
-:root[data-look="v2"] .wr h2 {
-  font-size: 16px;
-  font-weight: 650;
-}
-:root[data-look="v2"] .wr-controls select {
-  border-radius: 8px;
-}
-:root[data-look="v2"] .wr-tools-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 8px 4px;
-  font-size: 13px;
-  color: var(--ink2);
-  white-space: nowrap;
-}
-:root[data-look="v2"] .wr-tools-toggle[aria-expanded="true"] {
-  color: var(--ink);
-}
-:root[data-look="v2"] .wr-rail-title {
-  margin-bottom: 14px;
-}
-:root[data-look="v2"] .wr-rail-scroll {
-  border-top: 4px solid var(--wood-line);
-}
-:root[data-look="v2"] .wr-hanger path {
-  stroke: var(--wood-line);
-  stroke-width: 1.8;
-}
-:root[data-look="v2"] .wr-picture {
-  border-radius: 2px;
-  max-height: 216px;
-}
-:root[data-look="v2"] .wr-card-name {
-  font-size: 13px;
-  color: var(--ink);
-}
-:root[data-look="v2"] .wr-assembly {
-  border-radius: 8px;
-}
-:root[data-look="v2"] .wr-stage {
-  border-radius: 2px;
-}
-:root[data-look="v2"] .wr-chosen button,
-:root[data-look="v2"] .wr-feedback,
-:root[data-look="v2"] .wr-error {
-  border-radius: 6px;
-}
-:root[data-look="v2"] .wr-mobile-assembly {
-  border-radius: 8px;
-  font-weight: 600;
-}
-@media (min-width: 760px) {
-  :root[data-look="v2"] .wr.shelf {
-    --wr-cell: 168px;
-  }
-}
-
-/* Panel D+ step 2 (10-28): clothes first. Bigger photos (see tallestFor in
-   index.tsx), one-line name, 체험용 on the photo, icon buttons on the photo. */
-.wr-trial-chip,
-.wr-act-icon {
-  display: none;
-}
-:root[data-look="v2"] .wr.shelf {
-  --wr-cell: 164px;
-}
-:root[data-look="v2"] .wr-card {
-  position: relative;
-}
-:root[data-look="v2"] .wr-picture {
-  position: relative;
-  max-height: none;
-  margin-bottom: 8px;
-}
-:root[data-look="v2"] .wr-trial-chip {
-  display: block;
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  transform: translateX(-50%); /* the picture box is wider than the photo */
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #555560; /* photo tiles stay light in dark mode */
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 600;
-}
-:root[data-look="v2"] .wr-card-name {
-  -webkit-line-clamp: 1;
-  min-height: 0;
-  font-weight: 500;
-}
-:root[data-look="v2"] .wr-meta {
-  display: none;
-}
-:root[data-look="v2"] .wr-card-actions {
-  position: absolute;
-  top: 34px;
-  right: 12px;
-  margin: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-:root[data-look="v2"] .wr-card-actions > button,
-:root[data-look="v2"] .wr-card-actions .wr-upload {
-  width: 32px;
-  min-height: 32px;
-  height: 32px;
-  justify-content: center;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #202025; /* photo tiles stay light in dark mode */
-  text-decoration: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-:root[data-look="v2"] .wr-act-icon {
-  display: block;
-  font-size: 17px;
-}
-:root[data-look="v2"] .wr-act-text {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-@media (min-width: 760px) {
-  :root[data-look="v2"] .wr.shelf {
-    --wr-cell: 196px;
-  }
-}
-@media (max-width: 759px) {
-  :root[data-look="v2"] .wr-track {
-    min-height: 0;
-  }
-}
-
-/* 10-29 대표 "옷걸이 옷장 화면이 너무 구려요": 회색 사진 칸과 굵은 선·떠 있는 옷걸이 대신
-   불 켜진 옷장 안처럼 보이게 한다. 칸 배경을 체험용 사진 배경(#f2f2f3)과 맞춰 사진 테두리가
-   사라지게 하고, 옷걸이 고리가 봉에 걸리게 한다. 옷장 안은 다크 모드에서도 밝게 둔다. */
-:root[data-look="v2"] .wr.shelf {
-  --wr-cell: 128px;
-  --closet-in: #f2f2f3;
-  --closet-ink: #202025;
-  --closet-ink2: #6a6a74;
-  --closet-rod: #5b3a24;
-}
-:root[data-look="v2"] .wr-rail {
-  background: var(--closet-in);
-  color: var(--closet-ink);
-  border-radius: 10px;
-  padding: 14px 0 4px;
-  margin: 0 0 14px;
-  box-shadow: inset 0 10px 18px -12px rgba(0, 0, 0, 0.18);
-}
-:root[data-look="v2"] .wr-rail-title {
-  padding: 0 16px;
-  margin-bottom: 8px;
-}
-:root[data-look="v2"] .wr-rail-title h2 {
-  color: var(--closet-ink);
-}
-:root[data-look="v2"] .wr-rail-title > span {
-  color: var(--closet-ink2);
-}
-:root[data-look="v2"] .wr-rail-scroll {
-  border: 0;
-  padding: 0 8px;
-  scrollbar-width: none;
-}
-:root[data-look="v2"] .wr-rail-scroll::-webkit-scrollbar {
-  display: none;
-}
-/* 봉: 트랙 위쪽을 가로지르는 둥근 나무 봉과 그 아래 옅은 그림자 */
-:root[data-look="v2"] .wr-track {
-  background:
-    linear-gradient(var(--closet-rod), var(--closet-rod)) left 0 top 6px / 100% 6px no-repeat,
-    linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)) left 0 top 12px / 100% 6px no-repeat;
-  border-radius: 3px;
-  min-width: 100%;
-}
-:root[data-look="v2"] .wr-card {
-  padding: 0 4px 6px;
-}
-:root[data-look="v2"] .wr-pick {
-  color: var(--closet-ink);
-}
-:root[data-look="v2"] .wr-hanger {
-  width: 64px;
-  height: 24px;
-  margin: 0 0 -2px;
-  position: relative;
-  z-index: 1;
-}
-:root[data-look="v2"] .wr-hanger path {
-  stroke: var(--closet-rod);
-  stroke-width: 2.4;
-}
-:root[data-look="v2"] .wr-picture {
-  background: transparent;
-  border-radius: 0;
-  margin: -12px 0 6px; /* 사진 위 여백만큼 올려 옷걸이 어깨에 걸리게 */
-}
-:root[data-look="v2"] .wr-picture img {
-  mix-blend-mode: darken; /* 옷장 안보다 밝은 배경(흰 배경 내 사진·체험용 사진)을 옷장 안 색에 녹인다 */
-}
-:root[data-look="v2"] .wr-picked .wr-picture {
-  outline: 2px solid var(--closet-rod);
+.wr button:focus-visible,
+.wr select:focus-visible,
+.wr-sheet button:focus-visible {
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
-  background: rgba(91, 58, 36, 0.06);
-  border-radius: 6px;
 }
-:root[data-look="v2"] .wr-trial-chip {
-  background: rgba(242, 242, 243, 0.92); /* 옷장 안 색: 내 옷과 섞여 있어도 체험용을 알 수 있게 */
-  color: #555560;
-  font-weight: 500;
+.wr button:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
-:root[data-look="v2"] .wr-card-name {
-  color: var(--closet-ink);
-  font-size: 12.5px;
-}
-/* 사진 위 동그란 버튼 대신 이름 아래 작은 아이콘 줄 */
-:root[data-look="v2"] .wr-card-actions {
-  position: static;
-  flex-direction: row;
-  justify-content: center;
-  gap: 2px;
-  margin: 2px 0 0;
-}
-:root[data-look="v2"] .wr-card-actions > button,
-:root[data-look="v2"] .wr-card-actions .wr-upload {
-  width: 36px;
-  height: 28px;
-  min-height: 28px;
-  background: none;
-  box-shadow: none;
-  color: var(--closet-ink);
-  border-radius: 6px;
-}
-:root[data-look="v2"] .wr-act-icon {
-  font-size: 16px;
-}
-@media (min-width: 760px) {
-  :root[data-look="v2"] .wr.shelf {
-    --wr-cell: 168px;
+
+/* 움직임: 줄이기 설정이면 끔 */
+@media (prefers-reduced-motion: no-preference) {
+  .wr-open .wr-picture img,
+  .wr-pick i {
+    transition:
+      transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+      background-color 0.2s,
+      border-color 0.2s;
   }
-}
-/* 옷장 안은 다크 모드에서도 밝으므로 그 안의 보조 글자도 옷장 전용 색을 쓴다(#144 리뷰). */
-:root[data-look="v2"] .wr-rail .wr-card-brand,
-:root[data-look="v2"] .wr-rail .wr-meta,
-:root[data-look="v2"] .wr-rail .wr-placeholder,
-:root[data-look="v2"] .wr-rail .wr-placeholder > span,
-:root[data-look="v2"] .wr-rail .wr-empty-rail {
-  color: var(--closet-ink2);
+  .wr-open:active .wr-picture img {
+    transform: scale(0.97);
+  }
+  .wr-pick:active i {
+    transform: scale(0.9);
+  }
 }

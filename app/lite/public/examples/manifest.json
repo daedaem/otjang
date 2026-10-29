@@ -172,5 +172,133 @@
   ],
   "shared": {
     "f-sneaker|white": "m-white-sneaker.webp"
-  }
+  },
+  "cutouts": [
+    {
+      "file": "cut/f-denim.webp",
+      "from": "f-denim.webp",
+      "sha256": "dd636624f94d334d92675f44c9571a2ee0cc67044a3ce05810e7165969b1da85",
+      "bytes": 17826,
+      "width": 249,
+      "height": 722,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/f-knit.webp",
+      "from": "f-knit.webp",
+      "sha256": "e01421664f3676496757f070b22893e1b688017e7b02e5f43905ed7d0c556b9a",
+      "bytes": 56116,
+      "width": 638,
+      "height": 721,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/f-loafer.webp",
+      "from": "f-loafer.webp",
+      "sha256": "e8b123c736c256c68a5e98b1b8e4a42af6409a9f970ce428fc73b178d9907998",
+      "bytes": 18338,
+      "width": 673,
+      "height": 336,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/f-slacks.webp",
+      "from": "f-slacks.webp",
+      "sha256": "556b27b91c3ba6c3b33fa67e96243743d18cd9bc12cb2f87c0ecc40c490633ae",
+      "bytes": 4658,
+      "width": 234,
+      "height": 683,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/f-tee.webp",
+      "from": "f-tee.webp",
+      "sha256": "3894a2bd3abf633d904a0016923c14c9b06e39895e1fda434fb65a1d8fa5b903",
+      "bytes": 5606,
+      "width": 615,
+      "height": 698,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/f-trench.webp",
+      "from": "f-trench.webp",
+      "sha256": "7772fe3bd5a448684e01eb569e6cb491aeb7ccfe410727e31cad6b4454b3d6da",
+      "bytes": 13710,
+      "width": 373,
+      "height": 713,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-blazer.webp",
+      "from": "m-blazer.webp",
+      "sha256": "1817e5e06dbfa4e176561a07c7cbf6a1e6dc03745fc17418cf1eb1427c7672c1",
+      "bytes": 14034,
+      "width": 626,
+      "height": 733,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-chino.webp",
+      "from": "m-chino.webp",
+      "sha256": "7252d60f14ec92f96c15f8d5f173b37a56ade378653b4a8e2cdbbf0695e95010",
+      "bytes": 8998,
+      "width": 301,
+      "height": 804,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-denim.webp",
+      "from": "m-denim.webp",
+      "sha256": "b625ebe9fff99a4dde456e922f3d6dea6c409582db0442c28c0f66fb1ce41969",
+      "bytes": 23206,
+      "width": 262,
+      "height": 689,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-knit.webp",
+      "from": "m-knit.webp",
+      "sha256": "827784dfa0a498322d0679685f4208c9ac684dcbd37699d6ddc37d19a1ff22aa",
+      "bytes": 21340,
+      "width": 613,
+      "height": 683,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-loafer.webp",
+      "from": "m-loafer.webp",
+      "sha256": "5359e6c914396a079587b2e234f95c19868377a2f25503d655a0b49ce9883032",
+      "bytes": 21412,
+      "width": 669,
+      "height": 356,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-oxford.webp",
+      "from": "m-oxford.webp",
+      "sha256": "d8d57b59ba284ad4d44db51262251a0c04ec98e4bde4457af2075a6daaa7e332",
+      "bytes": 9160,
+      "width": 612,
+      "height": 722,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-tee.webp",
+      "from": "m-tee.webp",
+      "sha256": "c77eec58b4d9e6fe564981d9940b185c3c146b7b5e0048441b7c159d5325041f",
+      "bytes": 7032,
+      "width": 650,
+      "height": 719,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    },
+    {
+      "file": "cut/m-white-sneaker.webp",
+      "from": "m-white-sneaker.webp",
+      "sha256": "48a2ec33d24fd1e03cfd6f5d8b47331aeb9f4d3d9326efd4d74fe27bd153470e",
+      "bytes": 10746,
+      "width": 664,
+      "height": 338,
+      "type": "Background removed (rembg isnet-general-use, on the build machine), transparent, trimmed to the garment; derived from the example above"
+    }
+  ]
 }

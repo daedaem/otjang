@@ -184,25 +184,7 @@ test("walnut marks what is hung: the hung hanger and the 걸어 봄 strip", asyn
   expect(await page.locator('#tabs [data-tab="home"]').evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(WALNUT);
 });
 
-// 10-29 대표 "옷걸이 옷장 화면이 너무 구려요": 레일은 불 켜진 옷장 안(밝은 칸)에 걸린 호두나무 봉이고,
-// 옷걸이 고리가 봉에 걸린다. 사진 칸 배경은 옷장 안 색과 같아 테두리가 보이지 않는다.
-test("the closet is a lit wardrobe: a walnut rod the hangers hook onto, no photo boxes", async ({ page }) => {
-  await page.goto("/?photos=0#/closet");
-  await page.waitForFunction(() => !!(window as any).K?.M);
-  await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.refresh(); });
-  const rail = page.locator(".wr-rail").first();
-  await expect(rail).toBeVisible();
-  expect(await css(rail, "background-color")).toBe("rgb(242, 242, 243)");
-  expect(await css(page.locator(".wr-track").first(), "background-image")).toContain(WALNUT);
-  expect(await css(page.locator(".wr-rail-scroll").first(), "border-top-width")).toBe("0px");
-  expect(await css(page.locator(".wr-hanger path").first(), "stroke")).toBe(WALNUT);
-  expect(await css(page.locator(".wr-picture img").first(), "mix-blend-mode")).toBe("darken");
-  // The hanger hook reaches up to the rod line (top of the track).
-  const hanger = await page.locator(".wr-hanger").first().boundingBox();
-  const track = await page.locator(".wr-track").first().boundingBox();
-  expect(hanger!.y - track!.y).toBeLessThanOrEqual(6);
-});
-
+// 10-29 "불 켜진 옷장"(#144)은 10-30 옷장 재설계(종류 탭 + 사진 칸 그리드)로 바뀌었다. 그리드 검사는 closet-grid.spec.ts.
 test("leaf green marks only good news", async ({ page }) => {
   await page.goto("/?photos=0#/closet");
   await page.waitForFunction(() => !!(window as any).K?.M);
@@ -229,54 +211,46 @@ test("small grey text meets 4.5:1 in the new look", async ({ page }) => {
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink3").trim())).toBe("#6a6a74");
 });
 
-// Panel D+ step 2: the closet shows the clothes, not text. In the new look the
-// photos are about 1.5x taller (lengths keep their ratio), the name is one line,
-// 체험용 sits on the photo, and info / my photo are small icon buttons.
+// Panel D+ step 2 (clothes first) now lives in the 10-30 closet grid: big 4:5
+// photo tiles, a short name and one chip. The previous look keeps the same grid
+// with its own colours and its sort controls in view.
 async function closet(page: Page, search = "") {
   await page.goto(`/?photos=0${search}#/closet`);
   await page.waitForFunction(() => !!(window as any).K?.M);
   await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.refresh(); });
   await expect(page.locator(".wr-card").first()).toBeVisible();
 }
-test("the new look's closet shows bigger clothes with less text", async ({ page }) => {
+test("the new look's closet shows big photo tiles with little text", async ({ page }) => {
   await closet(page);
   const card = page.locator(".wr-card").first();
-  const pic = await card.locator("[data-garment-height]").boundingBox();
+  const pic = await card.locator(".wr-picture-tile").boundingBox();
   expect(pic!.height).toBeGreaterThanOrEqual(150);
-  await expect(card.locator(".wr-trial-chip")).toBeVisible();
-  await expect(card.locator(".wr-trial-chip")).toHaveText("체험용");
-  await expect(card.locator(".wr-meta")).toBeHidden();
-  const info = card.getByRole("button", { name: /옷 정보$/ });
-  await expect(info).toBeVisible();
-  const box = await info.boundingBox();
-  expect(box!.width).toBeLessThanOrEqual(48);
-  // The name stays on one line.
-  const name = await card.locator(".wr-card-name").boundingBox();
-  expect(name!.height).toBeLessThanOrEqual(22);
+  await expect(card.locator(".wr-chip")).toHaveText("체험용");
+  await expect(card.getByRole("button", { name: /옷 정보$/ })).toBeVisible();
+  await expect(page.getByLabel("옷 정렬")).toBeHidden();
 });
-test("the previous look keeps the closet as it was", async ({ page }) => {
+test("the previous look keeps the closet grid with its sort controls in view", async ({ page }) => {
   await closet(page, "&look=v1");
-  const card = page.locator(".wr-card").first();
-  const pic = await card.locator("[data-garment-height]").boundingBox();
-  expect(pic!.height).toBeLessThan(120);
-  await expect(card.locator(".wr-meta")).toBeVisible();
-  await expect(card.locator(".wr-trial-chip")).toBeHidden();
+  await expect(page.locator(".wr-card .wr-chip").first()).toHaveText("체험용");
+  await expect(page.getByLabel("옷 정렬")).toBeVisible();
 });
 test.describe("dark closet", () => {
   test.use({ colorScheme: "dark" });
   // Photo tiles stay light in dark mode, so what sits on the photo stays dark ink.
-  test("the closet photo chip and buttons stay readable in dark mode", async ({ page }) => {
-    await closet(page);
-    const card = page.locator(".wr-card").first();
-    expect(await css(card.locator(".wr-trial-chip"), "color")).toBe("rgb(85, 85, 96)");
-    expect(await css(card.getByRole("button", { name: /옷 정보$/ }), "color")).toBe("rgb(32, 32, 37)");
+  test("labels on the light photo tiles stay dark in dark mode", async ({ page }) => {
+    await page.goto("/?photos=0#/closet");
+    await page.waitForFunction(() => !!(window as any).K?.M);
+    await page.evaluate(() => {
+      const K = (window as any).K;
+      K.M.addGarment({ kind: "shirt", color: "white", brand: "합성브랜드", label: "합성 셔츠" });
+      K.refresh();
+    });
+    await expect(page.locator(".wr-card").first()).toBeVisible();
+    expect(await css(page.locator(".wr-picture .wr-placeholder > span").first(), "color")).toBe("rgb(106, 106, 116)");
+    expect(await css(page.locator(".wr-upload").first(), "color")).toBe("rgb(106, 106, 116)");
+    // Text under the tile sits on the dark page and uses the page ink.
+    expect(await css(page.locator(".wr-card-name").first(), "color")).not.toBe("rgb(32, 32, 37)");
   });
-});
-test("the closet rail leaves no tall gap under the clothes", async ({ page }) => {
-  await closet(page);
-  const name = await page.locator(".wr-card-name").first().boundingBox();
-  const track = await page.locator(".wr-track").first().boundingBox();
-  expect(track!.y + track!.height - (name!.y + name!.height)).toBeLessThanOrEqual(40);
 });
 
 // Panel D+ step 3: on a product page the outfits made with my clothes are big
@@ -353,25 +327,4 @@ test("colour checks wait for the search submit button instead of measuring the n
     await expect(askButton(page)).toHaveAttribute("type","submit");
     expect(await bg(page)).toBe("rgb(32, 32, 37)");
   } finally {release();}
-});
-test.describe("dark lit closet", () => {
-  test.use({ colorScheme: "dark" });
-  // Codex review #144: the closet interior stays light in dark mode, so every label in it uses dark closet ink.
-  test("labels inside the lit closet stay dark and readable in dark mode", async ({ page }) => {
-    await page.goto("/?photos=0#/closet");
-    await page.waitForFunction(() => !!(window as any).K?.M);
-    await page.evaluate(() => {
-      const K = (window as any).K;
-      K.M.addGarment({ kind: "shirt", color: "white", brand: "합성브랜드", label: "합성 셔츠" });
-      K.refresh();
-    });
-    await expect(page.locator(".wr-card").first()).toBeVisible();
-    const light = ["rgb(32, 32, 37)", "rgb(85, 85, 96)", "rgb(106, 106, 116)"];
-    for (const sel of [".wr-rail .wr-card-brand", ".wr-rail .wr-placeholder", ".wr-rail .wr-placeholder > span", ".wr-rail .wr-empty-rail"]) {
-      const el = page.locator(sel).first();
-      if (!(await el.count())) continue;
-      expect(light, sel).toContain(await css(el, "color"));
-    }
-    expect(await page.locator(".wr-rail .wr-placeholder > span").count()).toBeGreaterThan(0);
-  });
 });

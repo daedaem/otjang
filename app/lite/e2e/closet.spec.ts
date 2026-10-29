@@ -55,14 +55,14 @@ test("empty React rails start without a wardrobe and trial clothes never become 
   await expect(
     page.getByRole("heading", { name: "내 옷장", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("[data-rail]")).toHaveCount(3);
+  await expect(page.getByRole("tablist", { name: "옷 종류" })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "체험용 옷장", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "체험용 옷장", exact: true }).click();
-  await expect(
-    page.getByText("체험용 옷 · 가진 옷이 아니에요", { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator("[data-closet-section=trial]")).toContainText(
+    "가진 옷이 아니에요",
+  );
   await expect(page.locator("[data-photo-input]")).toHaveCount(0);
   expect(
     await page.evaluate(() => (window as any).K.M.getState().mineCount),
@@ -102,8 +102,11 @@ test("rails use measured lengths, keep unknown lengths explicit, and assemble ow
   await load(page);
   const ids = await own(page);
   const raw = await page.evaluate((k) => localStorage.getItem(k), KEY);
-  await expect(page.locator(`[data-rail-item="${ids.pants}"]`)).toContainText(
-    "실측 없음",
+  await expect(page.locator(`[data-rail-item="${ids.pants}"]`)).not.toContainText(
+    "총장",
+  );
+  await expect(page.locator(`[data-rail-item="${ids.shirt}"]`)).toContainText(
+    "총장 70cm",
   );
   const height = async (id: string) =>
     Number(
@@ -117,6 +120,8 @@ test("rails use measured lengths, keep unknown lengths explicit, and assemble ow
   );
   await page.locator(`[data-rail-item="${ids.shirt}"] [data-pick]`).click();
   await page.locator(`[data-rail-item="${ids.jacket}"] [data-pick]`).click();
+  const sheet = page.getByRole("region", { name: "고른 옷" });
+  await sheet.getByRole("button", { name: "겹쳐 보기", exact: true }).click();
   await expect(page.locator("[data-assembly-layer]")).toHaveCount(2);
   const z = await page
     .locator("[data-assembly-layer]")
@@ -132,8 +137,8 @@ test("rails use measured lengths, keep unknown lengths explicit, and assemble ow
   await page.getByRole("button", { name: "옷장 관리", exact: true }).click();
   await page.getByLabel("옷 정렬").selectOption("brand");
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(raw);
-  await page.locator(".wr-mobile-assembly").click();
-  await expect(page.locator(".wr-mobile-assembly")).toHaveCount(0);
+  await sheet.getByRole("button", { name: "모두 넣어두기" }).click();
+  await expect(sheet).toHaveCount(0);
   await page
     .getByRole("button", { name: "내 옷 코디 보기", exact: true })
     .click();
@@ -228,7 +233,7 @@ test("own PNG is attached locally, thumbnails are lazy, reload preserves bytes a
   expect(posts).toEqual([]);
 });
 
-test("large rail mounts only visible garment cards and scrolling exposes the actual last item", async ({
+test("a large closet mounts one page of tiles at a time and still reaches the last item", async ({
   page,
 }) => {
   await load(page);
@@ -246,14 +251,14 @@ test("large rail mounts only visible garment cards and scrolling exposes the act
     localStorage.setItem(k, JSON.stringify(snapshot));
     (window as any).K.M.reloadSaved();
   }, KEY);
-  await expect(page.locator("[data-rail-item]")).not.toHaveCount(0);
-  expect(await page.locator("[data-rail-item]").count()).toBeLessThan(20);
-  const rail = page.locator('[data-rail="top"] [data-rail-scroll]');
-  await rail.evaluate((e) => {
-    e.scrollLeft = e.scrollWidth;
-  });
+  await expect(page.locator("[data-rail-item]")).toHaveCount(60);
+  const more = page.getByRole("button", { name: /벌 더 보기/ });
+  await expect(more).toContainText("남은 140벌");
+  for (let i = 0; i < 3; i++) await more.click();
+  await expect(page.locator("[data-rail-item]")).toHaveCount(200);
+  await expect(more).toHaveCount(0);
+  await page.locator('[data-rail-item="rail-0"]').scrollIntoViewIfNeeded();
   await expect(page.locator('[data-rail-item="rail-0"]')).toBeVisible();
-  expect(await page.locator("[data-rail-item]").count()).toBeLessThan(20);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

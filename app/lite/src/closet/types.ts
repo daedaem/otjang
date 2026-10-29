@@ -19,6 +19,8 @@ export type Garment = {
     alt: string;
     similar?: boolean;
     example?: boolean;
+    // Background-removed copy of a bundled example, for closet tiles.
+    cut?: string;
   } | null;
   profile?: {
     v: 1;
@@ -56,11 +58,31 @@ export interface ClosetCore {
   };
   railCategory(garment: Garment): string | null;
   railSortChoices(): [string, string][];
+  trialGain(ids: string[]): TrialGain;
 }
+export type TrialVerdict = {
+  id: string;
+  label: string;
+  verdict: "similar" | "outer" | "new" | "other_color" | "none" | "no_closet";
+  similarTo: { id: string; label: string } | null;
+  gain: number;
+  layerable: number;
+  text: string;
+  tone: "good" | "dup" | "plain";
+};
+export type TrialGain = {
+  ownedCount: number;
+  before: number;
+  newOutfits: number;
+  layerable: number;
+  items: TrialVerdict[];
+};
 export type Session = {
   sort: string;
   brand: string;
   toolsOpen?: boolean;
+  // Closet category tab (10-30): all | outer | top | bottom | shoes. In memory only.
+  cat?: string;
   selected: string[];
   scroll: Record<string, number>;
 };
