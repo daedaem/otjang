@@ -1621,6 +1621,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     if(view==='home'&&curView==='home'&&homeUnmount&&dir==='none'){$('#react-home')?.dispatchEvent(new Event('eoul-home-refresh'));renderStrip();return;}
     if(view==='add'&&curView==='add'&&addUnmount&&dir==='none'){drawShelf();renderStrip();return;}
     if(view==='mirror'&&curView==='mirror'&&mirrorUnmount&&dir==='none'){renderStrip();return;}
+    if(view==='tryon'&&curView==='tryon'&&tryOnUnmount&&dir==='none'&&params?.id===curParams.id){renderStrip();return;}
     if(view==='community'&&curView==='community'&&communityUnmount&&dir==='none'){return;}
     if(view==='photoadd'&&curView==='photoadd'&&photoAddUnmount&&dir==='none'){return;}
     if(view==='looks'&&curView==='looks'&&outfitsUnmount&&dir==='none'){renderStrip();return;}
@@ -3272,8 +3273,8 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
   K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/tryon' ? 'tryon' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/community' ? communityParams(r0.params) : ['/measure','/collection','/mirror','/tryon'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
-    externalRoute: () => { const route=M.route.current();return route.path === '/community' ? { view:'community',params:communityParams(route.params) } : null; },
-    sameExternalRoute: (a,b) => a.view === b.view && communityKey(a.params) === communityKey(b.params),
+    externalRoute: () => { const route=M.route.current();return route.path === '/tryon' ? {view:'tryon',params:route.params.id?{id:route.params.id}:{}} : route.path === '/community' ? { view:'community',params:communityParams(route.params) } : null; },
+    sameExternalRoute: (a,b) => a.view === b.view && (a.view==='tryon' ? String(a.params?.id||'')===String(b.params?.id||'') : communityKey(a.params) === communityKey(b.params)),
   });
   // 저장소 문제는 잠깐 뜨는 안내가 아니라 해결될 때까지 남는 알림으로 보여 준다.
   // 안내 내용은 부를 때의 상태로 고정한다(원문도 그때 값). 바닐라와 React가 같은 모델을 쓴다.

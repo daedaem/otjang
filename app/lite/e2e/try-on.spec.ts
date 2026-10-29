@@ -97,8 +97,11 @@ async function setup(page: Page, mode = "ready", loseAcknowledgement = false) {
   await page.goto("/?photos=0#/closet");
   await page.waitForFunction(() => !!(window as any).K?.M);
   await page.evaluate((id) => (window as any).K.go("detail", { id }), ID);
-  const entry=page.getByRole("button", { name: "내 사진에 입혀 보기", exact: true });
-  await expect(entry).toBeInViewport({ratio:1});
+  const entry = page.getByRole("button", {
+    name: "내 사진에 입혀 보기",
+    exact: true,
+  });
+  await expect(entry).toBeInViewport({ ratio: 1 });
   await entry.click();
   await expect(page.locator("[data-react-tryon]")).toBeVisible();
   return { env, posts, provider };
@@ -234,7 +237,9 @@ test("a remembered body photo is reused locally and does not overwrite the exist
     await page.evaluate(() => JSON.stringify((window as any).K.M.getState())),
   ).toBe(before);
   await page.getByRole("button", { name: "상품으로 돌아가기" }).click();
-  await page.getByRole("button", { name: "내 사진에 입혀 보기", exact: true }).click();
+  await page
+    .getByRole("button", { name: "내 사진에 입혀 보기", exact: true })
+    .click();
   await expect(page.getByAltText("내 사진 선택한 사진")).toBeVisible();
   await expect(consent(page)).not.toBeChecked();
   expect(f.posts).toHaveLength(1);
@@ -270,4 +275,48 @@ test("a definite budget refusal keeps selected photos and never leaves a fake pe
     page.getByRole("button", { name: "같은 요청의 결과 확인", exact: true }),
   ).toHaveCount(0);
   expect(f.provider.filter((x) => x.url.endsWith("/run"))).toHaveLength(1);
+});
+test("same-tab direct try-on address and browser Back stay on the requested screen", async ({
+  page,
+}) => {
+  const f = await setup(page, "off");
+  await page.getByRole("button", { name: "상품으로 돌아가기" }).click();
+  await expect(page.locator("[data-react-detail]")).toBeVisible();
+  await page.evaluate(() => {
+    location.hash = "/tryon";
+  });
+  await expect(page.locator("[data-react-tryon]")).toBeVisible();
+  await expect(
+    page.getByText("입어 보고 싶은 옷과 내 사진을 골라 주세요.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(page.locator("[data-react-detail]")).toBeVisible();
+  expect(f.posts).toHaveLength(0);
+  expect(f.provider).toHaveLength(0);
+});
+test("refreshing surrounding app state preserves selected photos and explicit consent", async ({
+  page,
+}) => {
+  const f = await setup(page, "off");
+  await choose(page);
+  await consent(page).check();
+  const person = await page
+    .getByAltText("내 사진 선택한 사진")
+    .getAttribute("src");
+  const garment = await page
+    .getByAltText("입혀 볼 옷 선택한 사진")
+    .getAttribute("src");
+  await page.evaluate(() => (window as any).K.refresh());
+  await expect(page.getByAltText("내 사진 선택한 사진")).toHaveAttribute(
+    "src",
+    person!,
+  );
+  await expect(page.getByAltText("입혀 볼 옷 선택한 사진")).toHaveAttribute(
+    "src",
+    garment!,
+  );
+  await expect(consent(page)).toBeChecked();
+  expect(f.posts).toHaveLength(0);
 });
