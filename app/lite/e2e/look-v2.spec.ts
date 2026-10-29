@@ -184,15 +184,23 @@ test("walnut marks what is hung: the hung hanger and the 걸어 봄 strip", asyn
   expect(await page.locator('#tabs [data-tab="home"]').evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(WALNUT);
 });
 
-test("the closet rod is a 4px walnut line with walnut hangers", async ({ page }) => {
+// 10-29 대표 "옷걸이 옷장 화면이 너무 구려요": 레일은 불 켜진 옷장 안(밝은 칸)에 걸린 호두나무 봉이고,
+// 옷걸이 고리가 봉에 걸린다. 사진 칸 배경은 옷장 안 색과 같아 테두리가 보이지 않는다.
+test("the closet is a lit wardrobe: a walnut rod the hangers hook onto, no photo boxes", async ({ page }) => {
   await page.goto("/?photos=0#/closet");
   await page.waitForFunction(() => !!(window as any).K?.M);
   await page.evaluate(() => { const K = (window as any).K; K.M.loadTrialCloset("M"); K.refresh(); });
-  const rod = page.locator(".wr-rail-scroll").first();
-  await expect(rod).toBeVisible();
-  expect(await css(rod, "border-top-width")).toBe("4px");
-  expect(await css(rod, "border-top-color")).toBe(WALNUT);
+  const rail = page.locator(".wr-rail").first();
+  await expect(rail).toBeVisible();
+  expect(await css(rail, "background-color")).toBe("rgb(242, 242, 243)");
+  expect(await css(page.locator(".wr-track").first(), "background-image")).toContain(WALNUT);
+  expect(await css(page.locator(".wr-rail-scroll").first(), "border-top-width")).toBe("0px");
   expect(await css(page.locator(".wr-hanger path").first(), "stroke")).toBe(WALNUT);
+  expect(await css(page.locator(".wr-picture img").first(), "mix-blend-mode")).toBe("darken");
+  // The hanger hook reaches up to the rod line (top of the track).
+  const hanger = await page.locator(".wr-hanger").first().boundingBox();
+  const track = await page.locator(".wr-track").first().boundingBox();
+  expect(hanger!.y - track!.y).toBeLessThanOrEqual(6);
 });
 
 test("leaf green marks only good news", async ({ page }) => {
@@ -345,4 +353,25 @@ test("colour checks wait for the search submit button instead of measuring the n
     await expect(askButton(page)).toHaveAttribute("type","submit");
     expect(await bg(page)).toBe("rgb(32, 32, 37)");
   } finally {release();}
+});
+test.describe("dark lit closet", () => {
+  test.use({ colorScheme: "dark" });
+  // Codex review #144: the closet interior stays light in dark mode, so every label in it uses dark closet ink.
+  test("labels inside the lit closet stay dark and readable in dark mode", async ({ page }) => {
+    await page.goto("/?photos=0#/closet");
+    await page.waitForFunction(() => !!(window as any).K?.M);
+    await page.evaluate(() => {
+      const K = (window as any).K;
+      K.M.addGarment({ kind: "shirt", color: "white", brand: "합성브랜드", label: "합성 셔츠" });
+      K.refresh();
+    });
+    await expect(page.locator(".wr-card").first()).toBeVisible();
+    const light = ["rgb(32, 32, 37)", "rgb(85, 85, 96)", "rgb(106, 106, 116)"];
+    for (const sel of [".wr-rail .wr-card-brand", ".wr-rail .wr-placeholder", ".wr-rail .wr-placeholder > span", ".wr-rail .wr-empty-rail"]) {
+      const el = page.locator(sel).first();
+      if (!(await el.count())) continue;
+      expect(light, sel).toContain(await css(el, "color"));
+    }
+    expect(await page.locator(".wr-rail .wr-placeholder > span").count()).toBeGreaterThan(0);
+  });
 });

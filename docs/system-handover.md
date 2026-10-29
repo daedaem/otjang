@@ -409,3 +409,9 @@ Cloudflare 기존 비공개 Worker `f18d7d75`가 masteref4eec0에서 빌드48초
 - 코디 화면 상황 버튼: 체험용 옷장일 때 `closetOutfits({occasion})`로 그 상황의 코디 공식만 보여 주고(기본 조합은 상황 구분이 없어 뺌) 개수를 알린다. 맞는 조합이 없으면 그렇다고 말한다. 실제 내 옷이 있을 때는 목록이 바뀌지 않으므로 "AI로 비교할 때 반영"된다는 안내(`data-outfit-situation-note`)를 띄운다.
 - 커뮤니티 피드 사진 틀(`.cm-photos`): `overflow-x: auto`만 있으면 세로도 auto가 되어 iOS에서 사진이 틀 안에서 세로로 밀렸다. `overflow-y: hidden`, 행 높이 고정, 한 장짜리는 넘기지 않게 했다.
 - 검증: `e2e/outfits.spec.ts`(상황 2개), `e2e/community.spec.ts`(사진 틀 1개). WebKit은 CI에서만 확인하고, 실제 아이폰 재확인은 대표 몫이다.
+
+## 탭 로고 통일·옷장 화면 개선 — 2026-10-29 밤 (Claude)
+
+- 대표 결정(21:11): 로고 자리는 모든 탭에서 행잇 로고. 커뮤니티(`src/community/Parts.tsx`, 독립 화면 /c 포함)와 코디(`src/outfits/Intro.tsx`)의 글자 제목을 `Wordmark`로 바꿨다. 화면 이름은 그 아래 제목으로 남는다.
+- 옷장(대표 21:12 "너무 구려요"): `closet.css` 끝의 10-29 블록. 칸마다 밝은 옷장 안(`--closet-in` #f2f2f3, 다크 모드에서도 밝게)과 트랙 위 호두나무 봉(`--closet-rod`)을 두고, 옷걸이 고리가 봉을 지나며, 사진은 `mix-blend-mode: darken`으로 밝은 배경을 옷장 안 색에 녹인다. 직접 찍은 사진은 배경이 그대로 보인다. 배경 지우기는 별도 제안이며 대표 확정 전이다.
+- 검증: `e2e/look-v2.spec.ts`(옷장 시험을 새 디자인 기준으로 교체), `e2e/community.spec.ts`·`e2e/outfits.spec.ts`(로고).

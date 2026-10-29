@@ -326,7 +326,8 @@ for (const [label, options] of [
       page.getByRole("heading", { name: "코디 공유", exact: true }),
     ).toBeVisible();
     await expect(nav.locator('[aria-current="page"]')).toHaveText("커뮤니티");
-    await expect(page.locator(".cm-top .mark")).toHaveText("커뮤니티");
+    // 10-29 대표: 로고 자리는 모든 탭에서 행잇 로고(화면 이름은 아래 제목).
+    await expect(page.locator(".cm-top .mark svg[aria-label='행잇']")).toHaveCount(1);
     await expect(
       page.getByRole("button", { name: "코디 올리기", exact: true }),
     ).toBeVisible();
