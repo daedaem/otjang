@@ -73,7 +73,8 @@ test("category tabs filter both groups and move with arrow keys", async ({ page 
   await expect(tabs.getByRole("tab")).toHaveText(["전체", "아우터", "상의", "하의", "신발"]);
   await tabs.getByRole("tab", { name: "하의" }).click();
   await expect(tabs.getByRole("tab", { name: "하의" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("[data-rail-item] .wr-card-name")).toHaveText(["내 데님", "베이지 치노 팬츠", "인디고 워시드 데님"]);
+  await expect(page.locator("[data-rail-item]")).toHaveCount(3);
+  expect((await page.locator("[data-rail-item] .wr-card-name").allTextContents()).sort()).toEqual(["내 데님", "베이지 치노 팬츠", "인디고 워시드 데님"]);
   await page.keyboard.press("ArrowRight");
   await expect(tabs.getByRole("tab", { name: "신발" })).toBeFocused();
   await expect(tabs.getByRole("tab", { name: "신발" })).toHaveAttribute("aria-selected", "true");
@@ -98,6 +99,8 @@ test("picking numbers the circles and the sheet counts new outfits without the s
   await expect(sheet.getByRole("status")).toHaveText("고른 옷 2벌 · 체험용 2");
   await expect(sheet.locator(".wr-gain")).toContainText("둘 다 사면 새 코디 +3");
   await expect(sheet).toContainText("지금 내 옷으로 1개");
+  // Each piece alone, then what the pair adds together (+1, +1 → +3).
+  await expect(sheet.locator(".wr-gain-each")).toHaveText("옥스퍼드 셔츠 +1 · 치노 팬츠 +1 · 같이 사면 서로 맞춰 +1");
   // Only one filled dark button on the screen: 옷 넣기 steps back to an outline.
   expect(await css(add, "background-color")).not.toBe(ink);
   const info = sheet.getByRole("button", { name: "새 코디 세는 법" });
@@ -108,6 +111,7 @@ test("picking numbers the circles and the sheet counts new outfits without the s
   await tile(page, "네이비 크루넥 니트").locator("[data-pick]").click();
   await expect(sheet.locator(".wr-judge")).toHaveText("네이비 크루넥 니트는 내 니트와 비슷해요");
   await expect(sheet.locator(".wr-gain")).toContainText("둘 다 사면 새 코디 +1");
+  await expect(sheet.locator(".wr-gain-each")).toHaveText("크루넥 니트 0(비슷) · 치노 팬츠 +1");
   await sheet.getByRole("button", { name: "모두 넣어두기" }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.locator('[data-pick][aria-pressed="true"]')).toHaveCount(0);
@@ -118,11 +122,16 @@ test("tapping the photo opens the garment, the sheet shows the outfit stage", as
   await tile(page, "내 니트").locator("[data-pick]").click();
   await tile(page, "내 데님").locator("[data-pick]").click();
   const sheet = page.getByRole("region", { name: "고른 옷" });
-  await sheet.getByRole("button", { name: "코디 보기" }).click();
+  const stage = sheet.getByRole("button", { name: "겹쳐 보기" });
+  const filled = await css(stage, "background-color");
+  await stage.click();
   await expect(sheet.locator("[data-assembly-layer]")).toHaveCount(2);
+  // Opening the preview does not keep a fold toggle in the one filled-button slot.
+  await expect(stage).toHaveAttribute("aria-expanded", "true");
+  expect(await css(stage, "background-color")).not.toBe(filled);
   await expect(sheet).toContainText("체형이나 착용감을 반영하지 않아요");
   await tile(page, "내 니트").locator("[data-g]").click();
-  await expect(page.locator(".sheet").getByText("내 니트", { exact: true })).toBeVisible();
+  await expect(page.locator(".sheet").getByText("내 니트", { exact: true }).first()).toBeVisible();
 });
 
 test("the last row stops above the sheet and every target is at least 44px", async ({ page }) => {
