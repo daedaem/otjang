@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-29T03:00:51.058316+00:00",
+  "remoteMaster": "3d73791f49ee26a909e2b1708032b6fe0d991ef5",
+  "method": "D1 read-only SELECT aggregates",
+  "adminRecords": 1,
+  "linkedAdminAccounts": 1,
+  "activeAdminSessions": 1,
+  "activePasswordAdminSessions": 1,
+  "activeSessionsAfterInitialSetup": 0,
+  "privilegedUiInVerificationBrowser": "not_verified_browser_signed_out",
+  "personalValuesReturned": false,
+  "credentialsOrTokensRead": false,
+  "accountOrRoleWrites": 0,
+  "additionalPaidCalls": 0,
+  "realPrivatePhotoTransfers": 0
+}
