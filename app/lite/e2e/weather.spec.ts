@@ -172,3 +172,26 @@ test("the outfits weather slot renders the same React card and still honours the
   await expect(card(page)).toContainText("합성 지역");
   await expect(page.locator("[data-react-weather]")).toHaveCount(0);
 });
+
+// 10-29 UX 점검: 새 디자인에서 고른 예시 날씨 칩의 배경이 투명해져 흰 글자가 보이지 않았다.
+for (const scheme of ["light", "dark"] as const) {
+  test(`the chosen example weather chip stays readable (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await wardrobe(page);
+    await page.evaluate(() => {
+      (window as any).EOUL_WEATHER = async () => {
+        throw new Error("offline");
+      };
+    });
+    await home(page);
+    const chips = card(page).getByRole("group", { name: "예시 날씨 고르기", exact: true });
+    const on = chips.locator('[aria-pressed="true"]');
+    await expect(on).toHaveCount(1);
+    const style = await on.evaluate((e) => {
+      const s = getComputedStyle(e);
+      return { color: s.color, bg: s.backgroundColor };
+    });
+    expect(style.bg).not.toMatch(/rgba\(\d+, \d+, \d+, 0\)|transparent/);
+    expect(style.bg).not.toBe(style.color);
+  });
+}
