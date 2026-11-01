@@ -62,7 +62,9 @@
     if (!(k > 80) || (vv && vv.scale > 1.05)) k = 0;
     var open = k > 0 || (editing() && innerHeight < tall * 0.72);
     // --vvt: 보이는 영역의 위 끝(iOS는 키보드가 열리면 보이는 영역이 아래로 밀릴 수 있다).
-    if (open) { root.setAttribute('data-kb', ''); root.style.setProperty('--kb', k + 'px'); root.style.setProperty('--vvt', Math.max(0, Math.round(vv ? vv.offsetTop : 0)) + 'px'); }
+    // 키보드가 열려 있으면(iOS는 visualViewport만 줄어 resize가 없다) 되돌림 구간을 끝낸다. 배치가 바뀐 resize는 이
+    // 뒤에 구간을 새로 연다.
+    if (open) { holdUntil = 0; again = false; root.setAttribute('data-kb', ''); root.style.setProperty('--kb', k + 'px'); root.style.setProperty('--vvt', Math.max(0, Math.round(vv ? vv.offsetTop : 0)) + 'px'); }
     else { root.removeAttribute('data-kb'); root.style.removeProperty('--kb'); root.style.removeProperty('--vvt'); }
     root.style.setProperty('--vvh', Math.round(vv ? vv.height : innerHeight) + 'px');
     if (!open) { root.style.setProperty('--chrome-b', chrome() + 'px'); root.setAttribute('data-chrome', ''); }
@@ -76,6 +78,8 @@
     // 밀지 않게). 열쇠는 늘 새 값으로 둔다.
     var key = layout(), keyboard = innerWidth === lastWidth && editing(), changed = key !== lastLayout;
     lastLayout = key; lastWidth = innerWidth;
+    // 키보드가 열리면 앞선 배치 변화의 되돌림 구간도 끝낸다(막대 크기 변화로 다시 잴 때 위치를 되돌리지 않게).
+    if (keyboard) { holdUntil = 0; again = false; }
     if (changed && !keyboard) {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       apply();
