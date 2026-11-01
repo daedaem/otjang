@@ -208,7 +208,7 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
 // 사이에 한 스크롤도 기준으로 기억한다.
 test("a height-only change while scrolling (an address bar folding) does not pull the page back", async ({ page }) => {
   await start(page, 390, 844);
-  await open(page, "closet");
+  await open(page, "results");
   await page.evaluate(() => window.scrollTo(0, 300));
   await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
   await resizeTo(page, 390, 780);
@@ -216,6 +216,8 @@ test("a height-only change while scrolling (an address bar folding) does not pul
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const y = await page.evaluate(() => window.scrollY);
   expect(y).toBeGreaterThan(600);
+  // Far from the end, so the browser has no reason to move the page itself when the window grows back.
+  expect(y + 844).toBeLessThan(await page.evaluate(() => document.documentElement.scrollHeight) - 100);
   await resizeTo(page, 390, 844);
   expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "scroll stays where the person left it").toBeLessThanOrEqual(2);
 });

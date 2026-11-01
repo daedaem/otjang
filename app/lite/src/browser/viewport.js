@@ -4,13 +4,17 @@
      interactive-widget=resizes-content로 화면 자체가 줄어, 입력칸 초점 + 높이 72% 미만일 때 data-kb만 둔다. --vvh는 보이는 높이,
      --vvt는 보이는 영역의 위 끝(offsetTop).
    - 아래 막대: 화면 아래에 붙은 고정 막대가 차지한 높이를 --chrome-b·data-chrome으로 두어 본문 끝이 가리지 않게 한다.
-   - 스크롤 위치: 창 크기가 바뀌면(회전·펼치기·분할) 바뀌기 전 화면 위쪽에 보이던 요소를 같은 높이로 되돌린다.
-     연속으로 크기가 바뀌는 동안(0.5초)은 같은 기준 요소를 유지해 위치가 조금씩 밀리지 않게 한다. */
+   - 스크롤 위치: 창 폭이 바뀌면(회전·펼치기·분할) 바뀌기 전 화면 위쪽에 보이던 요소를 같은 높이로 되돌린다.
+     높이만 바뀔 때(휴대폰 주소창 접힘·키보드)는 배치가 그대로라 건드리지 않는다(내리던 화면을 끌어올리지 않게).
+     되돌린 직후 0.5초 동안은 그 위치에서 나는 스크롤 이벤트(되돌림 자신)와 내용이 짧아져 맨 끝으로 당겨진 스크롤로
+     기준을 바꾸지 않아 연속 크기 변화에도 조금씩 밀리지 않고, 사람이 그사이 다른 곳으로 스크롤하면 그 위치를 새
+     기준으로 삼는다. 폭이 바뀌었는데 resize 이벤트가 아직 오지 않은 동안의 스크롤 이벤트(브라우저가 늦게 보낼 때)도
+     기준을 바꾸지 않는다. */
 (function () {
   if (window.EOUL_VIEWPORT) return;
   var root = document.documentElement, vv = window.visualViewport, raf = 0, tall = 0, wide = 0;
   var BARS = '.tabs, .strip, .buybar, .chatbar, .pinbar, .shelfbar, .regbar, .wr-sheet, [data-fixed-bottom]';
-  var anchor = null, holdUntil = 0, lastW = innerWidth, lastH = innerHeight;
+  var anchor = null, holdUntil = 0, heldY = 0, lastW = innerWidth;
   function now() { return Date.now(); }
   function editing() {
     var el = document.activeElement;
@@ -60,13 +64,23 @@
   }
   function soon() { if (!raf) raf = requestAnimationFrame(apply); }
   addEventListener('resize', function () {
-    // 키보드만 열리고 닫히는 높이 변화(폭 같음, 입력 중)는 위치를 되돌리지 않는다.
-    var widthChanged = innerWidth !== lastW, keyboardOnly = !widthChanged && editing();
-    lastW = innerWidth; lastH = innerHeight;
-    if (!keyboardOnly) { keepAnchor(); holdUntil = now() + 500; }
+    // 높이만 바뀌는 변화(주소창·키보드)는 위치를 되돌리지 않는다. 폭이 바뀌면 아래 여백을 먼저 새 크기로 맞춘 뒤
+    // 되돌린다(옛 여백이면 맨 끝 근처에서 되돌림이 짧아진 문서에 걸려 덜 간다).
+    if (innerWidth !== lastW) {
+      lastW = innerWidth;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      apply();
+      keepAnchor();
+      holdUntil = now() + 500; heldY = window.scrollY;
+    }
     soon();
   });
-  addEventListener('scroll', function () { if (now() > holdUntil) pickAnchor(); }, { passive: true });
+  addEventListener('scroll', function () {
+    if (innerWidth !== lastW) return;
+    // 되돌린 위치 그대로이거나, 내용이 짧아져 브라우저가 맨 끝으로 당긴 경우는 사람이 한 스크롤이 아니다.
+    if (now() < holdUntil && (Math.abs(window.scrollY - heldY) <= 2 || window.scrollY >= document.documentElement.scrollHeight - innerHeight - 2)) return;
+    pickAnchor();
+  }, { passive: true });
   if (vv) { vv.addEventListener('resize', soon); vv.addEventListener('scroll', soon); }
   addEventListener('focusin', soon);
   addEventListener('focusout', function () { setTimeout(soon, 60); });
