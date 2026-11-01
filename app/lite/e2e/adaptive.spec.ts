@@ -247,11 +247,15 @@ test("a height change that switches the layout (the short-window menu rail) keep
   expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
 });
 
-// WebKit CI(#149 2188b88, push·PR 두 실행)에서는 위 검사가 고친 뒤에도 같은 78px로 실패했다. WebKit은 resize 이벤트
-// 처리 중 matchMedia(...).matches가 아직 이전 값이다(미디어 조건은 resize 다음 단계에서 다시 평가). 그래서 viewport.js가
-// 단계 변화를 못 보고 되돌리지 않았다(추정, 로컬 WebKit 없음). 여기서는 그 조건의 matches를 다음 프레임까지 이전 값으로
-// 두는 모형으로 Chromium에서 같은 상황을 만든다.
+// WebKit CI(#149 2188b88, push·PR 두 실행)에서는 위 검사가 고친 뒤에도 같은 78px로 실패했다. 추정(로컬 WebKit 없음):
+// WebKit은 resize 이벤트 처리 중 matchMedia(...).matches가 아직 이전 값이라(미디어 조건은 resize 다음 단계에서 다시
+// 평가) viewport.js가 단계 변화를 못 봤다. 여기서는 그 조건의 matches를 다음 프레임까지 이전 값으로 두는 모형으로
+// Chromium에서 같은 상황을 만든다. 모형은 진짜 MediaQueryList를 감싼 보통 객체다(첫 판은 Object.assign이 getter를
+// 옮기지 못해 matches를 읽을 때 예외가 났다 — 검토 11-01). 모형이 예외 없이 "resize 중 이전 값 → 다음 프레임 새 값"으로
+// 바뀌는지도 같이 본다.
 test("the layout switch is seen even when matchMedia still reports the old value during resize (as WebKit)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
     document.addEventListener("DOMContentLoaded", () => {
       const st = document.createElement("style");
@@ -265,8 +269,25 @@ test("the layout switch is seen even when matchMedia still reports the old value
       let seen = mql.matches;
       const next = () => { seen = mql.matches; requestAnimationFrame(next); };
       requestAnimationFrame(next);
-      return Object.assign(Object.create(mql), { get matches() { return seen; }, media: mql.media });
+      return {
+        get matches() { return seen; },
+        get media() { return mql.media; },
+        get onchange() { return mql.onchange; },
+        set onchange(v) { mql.onchange = v; },
+        addEventListener: mql.addEventListener.bind(mql),
+        removeEventListener: mql.removeEventListener.bind(mql),
+        addListener: mql.addListener.bind(mql),
+        removeListener: mql.removeListener.bind(mql),
+        dispatchEvent: mql.dispatchEvent.bind(mql),
+      } as unknown as MediaQueryList;
     }) as typeof window.matchMedia;
+    // Record what the model reports inside the resize event and one frame later.
+    const probe = window.matchMedia("(min-width: 600px) and (max-height: 500px)");
+    const log: string[] = ((window as any).__mqLog = []);
+    addEventListener("resize", () => {
+      log.push(`resize ${innerWidth}x${innerHeight} model=${probe.matches}`);
+      requestAnimationFrame(() => log.push(`frame model=${probe.matches}`));
+    });
   });
   await start(page, 690, 600);
   await open(page, "results");
@@ -277,9 +298,15 @@ test("the layout switch is seen even when matchMedia still reports the old value
   const at = () => page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().top));
   const before = await at();
   await resizeTo(page, 690, 480);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  // The model behaves as intended: old value inside the resize event, new value a frame later.
+  expect(await page.evaluate(() => (window as any).__mqLog.slice(-2))).toEqual(["resize 690x480 model=false", "frame model=true"]);
+  expect(errors, "no page errors (the model must not break the page or viewport.js)").toEqual([]);
+  expect(await page.evaluate(() => !!(window as any).EOUL_VIEWPORT), "viewport.js ran").toBe(true);
   expect(Math.abs((await at()) - before), "690×480 reference card kept in place").toBeLessThanOrEqual(48);
   await resizeTo(page, 690, 600);
   expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
+  expect(errors).toEqual([]);
 });
 
 // 같은 검토의 예외 유지: 안드로이드 키보드(resizes-content)처럼 입력 중에 높이만 줄어 짧은 창 단계로 넘어가도
