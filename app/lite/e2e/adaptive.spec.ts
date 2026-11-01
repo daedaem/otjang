@@ -203,6 +203,23 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   expect(Math.abs(end0 - start0), "reference garment back near its place").toBeLessThanOrEqual(48);
 });
 
+// 휴대폰 브라우저는 스크롤하는 동안 주소창이 접히고 펴지며 창 높이만 바뀐다(폭 같음). 그때 스크롤 위치를 되돌리면
+// 내리던 화면을 도로 끌어올리게 된다(추정 위험, 11-01). 높이만 바뀌는 크기 변화에서는 스크롤을 건드리지 않고,
+// 사이에 한 스크롤도 기준으로 기억한다.
+test("a height-only change while scrolling (an address bar folding) does not pull the page back", async ({ page }) => {
+  await start(page, 390, 844);
+  await open(page, "closet");
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  await resizeTo(page, 390, 780);
+  await page.evaluate(() => window.scrollBy(0, 400));
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(600);
+  await resizeTo(page, 390, 844);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "scroll stays where the person left it").toBeLessThanOrEqual(2);
+});
+
 // 검토(11-01): 높이 320px 안팎의 짧은 가로·분할 창에서도 메뉴 줄의 마지막 '기록'까지 가리거나 잘리지 않는다.
 for (const [w, h] of [[640, 320], [960, 320], [700, 280]] as const)
   test(`${w}×${h}: every rail item down to 기록 is fully reachable in a short window`, async ({ page }) => {
