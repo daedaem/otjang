@@ -14,7 +14,7 @@ async function open(page: Page, v: string) {
   await page.waitForFunction(() => !/여는 중이에요/.test(document.getElementById("app")?.textContent || ""));
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
-for (let rep = 0; rep < 20; rep++)
+for (let rep = 0; rep < 30; rep++)
   test(`diag rail ${rep}`, async ({ page }) => {
     await page.route("**/*", (r) => { const u = new URL(r.request().url()); if (u.origin !== "http://127.0.0.1:8792") return r.abort(); if (u.pathname.startsWith("/api/")) return r.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: "not_configured" }) }); return r.continue(); });
     await page.addInitScript(() => {
@@ -37,15 +37,16 @@ for (let rep = 0; rep < 20; rep++)
     const card = page.locator("[data-react-results] [data-card]").nth(7);
     const id = await card.getAttribute("data-card");
     const at = () => page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => +el.getBoundingClientRect().top.toFixed(1));
-    const t0 = await card.evaluate((el) => { (window as any).__log(`--- scrollBy fonts=${(document as any).fonts?.status} faces=${[...(document as any).fonts].filter((f: any) => f.status === "loaded").map((f: any) => f.family).join(",")}`); window.scrollBy(0, el.getBoundingClientRect().top - 150); return +el.getBoundingClientRect().top.toFixed(1); });
+    const t0 = await card.evaluate((el) => { (window as any).__log(`--- anim ${[...document.querySelectorAll(".view")].map((v) => v.getAnimations().map((a: any) => `${a.animationName}:${a.playState}@${Math.round(a.currentTime)}`).join(";") + " tf=" + getComputedStyle(v).transform).join(" | ")} cardTop=${el.getBoundingClientRect().top.toFixed(1)}`); (window as any).__log(`--- scrollBy fonts=${(document as any).fonts?.status} faces=${[...(document as any).fonts].filter((f: any) => f.status === "loaded").map((f: any) => f.family).join(",")}`); window.scrollBy(0, el.getBoundingClientRect().top - 150); return +el.getBoundingClientRect().top.toFixed(1); });
     await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
     const before = await at();
+    const animAfter = await page.evaluate(() => [...document.querySelectorAll(".view")].map((v) => v.getAnimations().map((a: any) => `${a.animationName}:${a.playState}@${Math.round(a.currentTime)}`).join(";") + " tf=" + getComputedStyle(v).transform).join(" | "));
     await page.evaluate(() => (window as any).__log("--- before measured"));
     await page.waitForTimeout(100); const p1 = await at();
     await page.waitForTimeout(200); const p2 = await at();
     await page.waitForTimeout(300); const p3 = await at();
     const ev: string[] = await page.evaluate(() => (window as any).__ev);
-    const from = Math.max(0, ev.findIndex((e) => e.includes("--- scrollBy")) - 25);
+    const from = Math.max(0, ev.findIndex((e) => e.includes("--- anim")) - 4);
     const dev = Math.abs(before - 150);
-    expect(`DIAG ${dev > 2 ? "DEVIATION" : "ok"} t0=${t0} before=${before} +100=${p1} +300=${p2} +600=${p3} fonts=${await page.evaluate(() => (document as any).fonts?.status)}\n${ev.slice(from).slice(0, 70).join("\n")}`).toBe("(diagnostic, always fails)");
+    expect(`DIAG ${dev > 2 ? "DEVIATION" : "ok"} t0=${t0} before=${before} animAtBefore=[${animAfter}] +100=${p1} +300=${p2} +600=${p3} fonts=${await page.evaluate(() => (document as any).fonts?.status)}\n${ev.slice(from).slice(0, 70).join("\n")}`).toBe("(diagnostic, always fails)");
   });
