@@ -171,7 +171,8 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.install }}-${{ hashFiles('app/lite/package-lock.json') }}
       - run: npx playwright install --with-deps ${{ matrix.install }}
-      - run: npm run test:e2e -- --project=${{ matrix.project }}
+      # 진단 브랜치 전용(병합하지 않음).
+      - run: npx playwright test e2e/zz-diag-rail.spec.ts --project=${{ matrix.project }}
 
   # Keeps the previous check name: it passes only when both browser jobs pass.
   lite-input:
