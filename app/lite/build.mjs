@@ -38,13 +38,13 @@ put('build-info.json', JSON.stringify({ commit: sourceCommit && /^[a-f0-9]{40}$/
 buildCore();
 copy(CORE_BUNDLE, 'shared/core-bundle.js');
 copy(path.join(SOURCE, 'browser/cutouts.js'), 'shared/cutouts.js');
-for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js']) copy(path.join(SOURCE, 'browser', f), `shared/${f}`);
+for (const f of ['kit.js', 'photo-kinds.js', 'ai-rank.js', 'viewport.js']) copy(path.join(SOURCE, 'browser', f), `shared/${f}`);
 copy(path.join(HERE, 'src/lite.js'), 'shared/lite.js');
 copy(path.join(HERE, 'src/input-session.js'), 'shared/input-session.js');
 copy(path.join(HERE, 'src/open-products.mjs'), 'shared/open-products.mjs');
 for (const f of ['clothing.json', 'README.md']) copy(path.join(HERE, 'data/open-products', f), `data/open-products/${f}`);
 const scriptPaths = new Map();
-for (const f of ['core-bundle.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'lite.js', 'input-session.js', 'open-products.mjs']) {
+for (const f of ['core-bundle.js', 'cutouts.js', 'kit.js', 'photo-kinds.js', 'ai-rank.js', 'viewport.js', 'lite.js', 'input-session.js', 'open-products.mjs']) {
   const rel = `shared/${f}`, bytes = fs.readFileSync(path.join(OUT, rel));
   const versioned = versionedAssetPath(rel, bytes);
   put(versioned, bytes);
@@ -216,13 +216,14 @@ put('community-shell.html', `<!doctype html>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 ${shellGraph.css.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
 <script type="module" src="/react/${communityShellEntry.file}"></script>
+<script src="/${scriptPaths.get('shared/viewport.js')}" defer></script>
 </head>
 <body>
 <main id="community"></main>
 </body>
 </html>
 `);
-put('community-public.json', JSON.stringify({ files: [...shellGraph.files, '/icons/icon.svg', '/login/google-signin.png', '/login/kakao-login.svg'].sort() }, null, 2));
+put('community-public.json', JSON.stringify({ files: [...shellGraph.files, `/${scriptPaths.get('shared/viewport.js')}`, '/icons/icon.svg', '/login/google-signin.png', '/login/kakao-login.svg'].sort() }, null, 2));
 
 // 5) 설치 정보, Pages 헤더
 put('manifest.webmanifest', JSON.stringify({
