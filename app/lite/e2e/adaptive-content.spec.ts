@@ -47,7 +47,7 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
   await input.fill("그럼 비 오는 날은 어떻게 입을까요");
   for (const [label, w, h] of SIZES) {
     await page.setViewportSize({ width: w, height: h });
-    await page.waitForTimeout(150);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     expect(await overflowX(page), label).toBeLessThanOrEqual(1);
     await expect(input).toHaveValue("그럼 비 오는 날은 어떻게 입을까요");
     const bar = await rect(page, ".chatbar");
@@ -81,7 +81,7 @@ test("many purchase records at every step stay readable with their step buttons 
   await expect(page.locator("[data-react-records]")).toHaveCount(1);
   for (const [label, w, h] of SIZES) {
     await page.setViewportSize({ width: w, height: h });
-    await page.waitForTimeout(150);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     expect(await overflowX(page), label).toBeLessThanOrEqual(1);
     expect(await covered(page), label).toEqual([]);
     const step = page.getByRole("button", { name: "주문했어요" }).first();
@@ -118,7 +118,6 @@ test("community posts with photos, long titles and sale sources, and the editor,
     for (const board of ["코디 공유", "세일 정보", "자유게시판"]) {
       await boards.getByRole("link", { name: board, exact: true }).click();
       await expect(page.locator("[data-community-post]").first()).toBeVisible();
-      await page.waitForTimeout(100);
       expect(await overflowX(page), `${label} ${board}`).toBeLessThanOrEqual(1);
       expect(await covered(page), `${label} ${board}`).toEqual([]);
       await shot(page, `community-${board === "코디 공유" ? "outfits" : board === "세일 정보" ? "sale" : "free"}-${w}x${h}`);

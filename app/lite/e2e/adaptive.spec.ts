@@ -38,7 +38,9 @@ async function open(page: Page, v: string) {
     else K.tab(v);
   }, v);
   await page.waitForFunction((v) => (window as any).K.current().view === (v === "detail" ? "detail" : v), v);
-  await page.waitForTimeout(250);
+  // Wait until the screen's island has replaced its "…여는 중이에요" placeholder and two frames have painted.
+  await page.waitForFunction(() => !/여는 중이에요/.test(document.getElementById("app")?.textContent || ""));
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 for (const [label, w, h] of SIZES)
   test(`${label} ${w}×${h}: every main screen fits, nothing hides under fixed bars, the menu is reachable`, async ({ page }) => {
@@ -48,14 +50,14 @@ for (const [label, w, h] of SIZES)
       expect(await overflowX(page), `${v} sideways overflow`).toBeLessThanOrEqual(1);
       expect(await covered(page), `${v} controls under fixed bars`).toEqual([]);
       if (v !== "detail") {
-        const tabs = page.locator("#tabs button");
-        await expect(tabs).toHaveCount(6);
-        for (const b of await tabs.all()) {
-          const r = await b.boundingBox();
-          expect(r!.x, `${v} tab inside`).toBeGreaterThanOrEqual(0);
-          expect(r!.x + r!.width).toBeLessThanOrEqual(w + 1);
-          expect(r!.y + r!.height).toBeLessThanOrEqual(h + 1);
-          expect(Math.min(r!.width, r!.height)).toBeGreaterThanOrEqual(44);
+        // All six menu buttons inside the window and at least 44px, read in one pass.
+        const tabs = await page.locator("#tabs button").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
+        expect(tabs, `${v} menu`).toHaveLength(6);
+        for (const r of tabs) {
+          expect(r.x, `${v} tab inside`).toBeGreaterThanOrEqual(0);
+          expect(r.right, `${v} tab inside`).toBeLessThanOrEqual(w + 1);
+          expect(r.bottom, `${v} tab inside`).toBeLessThanOrEqual(h + 1);
+          expect(Math.min(r.width, r.height), `${v} tab size`).toBeGreaterThanOrEqual(44);
         }
       }
     }
