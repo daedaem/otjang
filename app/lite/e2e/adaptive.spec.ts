@@ -247,6 +247,41 @@ test("a height change that switches the layout (the short-window menu rail) keep
   expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
 });
 
+// 같은 검토의 예외 유지: 안드로이드 키보드(resizes-content)처럼 입력 중에 높이만 줄어 짧은 창 단계로 넘어가도
+// (예: 690×800 → 690×420, 메뉴 줄이 켜짐) 키보드 때문이므로 스크롤을 되돌리지 않는다(입력칸을 키보드 뒤로 밀지 않게).
+test("a keyboard that shrinks the window into the short-window layout while typing does not move the page", async ({ page }) => {
+  // As above, without Chromium's own scroll anchoring, so any movement would come from viewport.js.
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => {
+    const st = document.createElement("style");
+    st.textContent = "html, body { overflow-anchor: none; }";
+    document.head.append(st);
+  }));
+  await start(page, 690, 800);
+  await page.evaluate(() => {
+    const w = window as any;
+    let n = 0;
+    w.EOUL_SERVER_AI = async () => ({ on_topic: true, answer: `${++n}. 네이비 니트에는 베이지·그레이·연청 바지가 무난해요. `.repeat(14), product_ids: ["ms-728000", "ms-1599217", "ms-1792946", "ms-389452"] });
+    w.K.tab("consult");
+  });
+  const input = page.getByLabel("코디 질문", { exact: true });
+  const asks = ["바지는?", "신발은?", "겉옷은?", "가방은?"];
+  for (const q of asks) {
+    await input.fill(q);
+    await input.press("Enter");
+    await expect(page.locator(".msg.bot")).toHaveCount(asks.indexOf(q) + 1);
+  }
+  await input.fill("비 오는 날은");
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  await expect(input).toBeFocused();
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(200);
+  await resizeTo(page, 690, 420);
+  expect(await page.evaluate(() => matchMedia("(min-width: 600px) and (max-height: 500px)").matches), "short-window layout").toBe(true);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "page not moved while typing").toBeLessThanOrEqual(2);
+  await expect(input).toHaveValue("비 오는 날은");
+});
+
 // 검토(11-01): 높이 320px 안팎의 짧은 가로·분할 창에서도 메뉴 줄의 마지막 '기록'까지 가리거나 잘리지 않는다.
 for (const [w, h] of [[640, 320], [960, 320], [700, 280]] as const)
   test(`${w}×${h}: every rail item down to 기록 is fully reachable in a short window`, async ({ page }) => {
