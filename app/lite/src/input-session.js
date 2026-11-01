@@ -27,7 +27,7 @@
     catch { return { type: 'blocked', message: UNREADABLE }; }
   }
   function create(storage, { readRecord = fallbackRead } = {}) {
-    let initial = {}, initialKey = '', active = false;
+    let initial = {}, initialKey = '', active = false, touched = false;
     let state = { values: fresh({}), step: 0, pending: null, notice: '' };
     const listeners = new Set();
     const publish = () => { state = { ...state }; for (const fn of listeners) fn(); };
@@ -51,30 +51,39 @@
         seed = seed ?? (active ? initial : {});
         const key = JSON.stringify(seed);
         if (!active || key !== initialKey) {
-          initial = { ...seed }; initialKey = key; active = true;
+          initial = { ...seed }; initialKey = key; active = true; touched = false;
           state = { values: fresh(seed), step: 0, pending: read(storage, readRecord), notice: '' };
-          if (!state.pending && (['brand', 'name', 'kind', 'color', 'url'].some(key => state.values[key]) || state.values.source)) persist();
+          if (!state.pending && (['brand', 'name', 'kind', 'color', 'url'].some(key => state.values[key]) || state.values.source)) { touched = true; persist(); }
         }
         if (!state.pending && Number.isInteger(step)) state.step = Math.max(0, Math.min(2, step));
         return state;
       },
       change(key, value) {
         if (state.pending) return;
-        state.values[key] = value; persist(); publish();
+        state.values[key] = value; touched = true; persist(); publish();
       },
-      changed() { persist(); publish(); },
-      setStep(step) { if (!state.pending) { state.step = step; persist(); publish(); } },
+      changed() { touched = true; persist(); publish(); },
+      // The React screen reports its step on every mount. For an untouched session (nothing typed, step 0) that report
+      // is not an edit: saving it wrote an empty draft for a visit where nothing was entered, and overwrote a draft
+      // written before the screen mounted (11-01). Any typed value, a later step or a step change still saves.
+      setStep(step) {
+        if (state.pending) return;
+        const changed = state.step !== step;
+        state.step = step;
+        if (touched || changed || step !== 0) { touched = true; persist(); }
+        publish();
+      },
       restore() {
         if (state.pending?.type !== 'ready') return 0;
         const stored = state.pending.value;
         state = { values: { ...stored.values }, step: stored.step, pending: null, notice: '' };
-        persist(); publish(); return state.step;
+        touched = true; persist(); publish(); return state.step;
       },
       restart() {
         try { assertWritable(); storage.removeItem(KEY); }
         catch (error) { state.notice = error?.code === 'storage_recovery_pending' ? error.message : CLEAR_FAILED; publish(); throw error; }
         state = { values: fresh(initial), step: 0, pending: null, notice: '' };
-        persist(); publish(); return state;
+        touched = true; persist(); publish(); return state;
       },
       finish() {
         // A completed registration does not keep an active in-memory input.
