@@ -181,20 +181,44 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   await open(page, "closet");
   const pick = page.locator("[data-closet-section=trial] [data-pick]").nth(1);
   await pick.click();
-  await page.evaluate(() => window.scrollTo(0, 600));
+  // A reference garment placed 200px below the top of the window (검토 11-01: a count and scrollY>0 would also
+  // pass after a jump to the wrong place). It must stay on screen at every size and come back near the same spot.
   const item = page.locator("[data-closet-section=trial] [data-rail-item]").nth(5);
   const id = await item.getAttribute("data-rail-item");
+  await item.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 200));
+  const start0 = await item.evaluate((el) => el.getBoundingClientRect().top);
+  expect(Math.abs(start0 - 200)).toBeLessThanOrEqual(2);
   for (const [w, h] of steps) {
     await page.setViewportSize({ width: w, height: h });
-    await page.waitForTimeout(120);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await expect(pick).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("region", { name: "고른 옷" })).toBeVisible();
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
+    const r = await page.locator(`[data-rail-item="${id}"]`).evaluate((el) => { const b = el.getBoundingClientRect(); return { t: b.top, b: b.bottom }; });
+    expect(r.b, `${w}×${h} reference garment on screen`).toBeGreaterThan(0);
+    expect(r.t, `${w}×${h} reference garment on screen`).toBeLessThan(h);
   }
-  // The same garment stays on screen after the round trip (scroll is kept relative to the content).
-  expect(await page.locator(`[data-rail-item="${id}"]`).count()).toBe(1);
-  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  // Back at the first size the reference garment is close to where it was (layout may shift it a little).
+  const end0 = await page.locator(`[data-rail-item="${id}"]`).evaluate((el) => el.getBoundingClientRect().top);
+  expect(Math.abs(end0 - start0), "reference garment back near its place").toBeLessThanOrEqual(48);
 });
+
+// 검토(11-01): 높이 320px 안팎의 짧은 가로·분할 창에서도 메뉴 줄의 마지막 '기록'까지 가리거나 잘리지 않는다.
+for (const [w, h] of [[640, 320], [960, 320], [700, 280]] as const)
+  test(`${w}×${h}: every rail item down to 기록 is fully reachable in a short window`, async ({ page }) => {
+    await start(page, w, h);
+    await open(page, "closet");
+    const last = page.locator('#tabs [data-tab="records"]');
+    await last.scrollIntoViewIfNeeded();
+    const b = (await last.boundingBox())!;
+    expect(b.y).toBeGreaterThanOrEqual(0);
+    expect(b.y + b.height, "기록 not cut off").toBeLessThanOrEqual(h + 0.5);
+    expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(44);
+    const hit = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-tab="records"]'), { x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    expect(hit, "기록 not covered").toBe(true);
+    await last.click();
+    await expect.poll(() => page.evaluate(() => (window as any).K.current().view)).toBe("records");
+  });
 
 // Codex 검토(#147) 3건: 메뉴 줄 옆 걸린 옷 띠의 폭, 넓은 화면 시트와 키보드, 아주 넓은 화면의 옷장 시트 여백.
 for (const [w, h] of [[1180, 820], [844, 390]] as const)
