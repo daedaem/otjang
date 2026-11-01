@@ -204,13 +204,15 @@ for (const [w, h] of [[1180, 820], [844, 390]] as const)
     await page.locator("#grid .card .hangt").first().click();
     const strip = page.locator(".strip").first();
     await expect(strip).toBeVisible();
+    // The strip slides up when it appears (.pop, 320ms); measure once it has settled.
+    // CI caught the end of that slide (the end of the strip 8–27px below the window) on slower runners.
+    await page.waitForFunction(() => document.querySelector(".strip")!.getAnimations({ subtree: true }).every((a) => a.playState !== "running"));
     const r = await rect(page, ".strip");
     const tabs = await rect(page, "#tabs");
     expect(r.x).toBeGreaterThanOrEqual(tabs.r - 1);
     expect(r.r).toBeLessThanOrEqual(w + 1);
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
-    // The strip's "옷장 >" end sits fully inside the window. Compared by its box with half-pixel slack:
-    // WebKit reports a subpixel visible ratio (0.9996) for a fully drawn element, so toBeInViewport({ratio:1}) is not usable.
+    // The strip's "옷장 >" end sits fully inside the window, compared by its box with half-pixel slack.
     const go = await rect(page, ".strip .go");
     expect(go.r, "strip end inside").toBeLessThanOrEqual(w + 0.5);
     expect(go.b, "strip end inside").toBeLessThanOrEqual(h + 0.5);
