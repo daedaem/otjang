@@ -344,6 +344,44 @@ test("a keyboard that shrinks the window into the short-window layout while typi
   await expect(input).toHaveValue("비 오는 날은");
 });
 
+// 같은 예외가 창 폭을 바꾼 직후(viewport.js가 위치를 되돌린 뒤 0.5초 안)에도 지켜지는지(검토 11-01: 아래 막대 크기
+// 변화로 다시 재는 쪽의 위치 되돌림은 resize 쪽 키보드 예외와 따로 돈다).
+test("right after a window change, a keyboard that shrinks the window while typing still does not move the page", async ({ page }) => {
+  // As above, without Chromium's own scroll anchoring, so any movement would come from viewport.js.
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => {
+    const st = document.createElement("style");
+    st.textContent = "html, body { overflow-anchor: none; }";
+    document.head.append(st);
+  }));
+  await start(page, 820, 800);
+  await page.evaluate(() => {
+    const w = window as any;
+    let n = 0;
+    w.EOUL_SERVER_AI = async () => ({ on_topic: true, answer: `${++n}. 네이비 니트에는 베이지·그레이·연청 바지가 무난해요. `.repeat(14), product_ids: ["ms-728000", "ms-1599217", "ms-1792946", "ms-389452"] });
+    w.K.tab("consult");
+  });
+  const input = page.getByLabel("코디 질문", { exact: true });
+  const asks = ["바지는?", "신발은?", "겉옷은?", "가방은?"];
+  for (const q of asks) {
+    await input.fill(q);
+    await input.press("Enter");
+    await expect(page.locator(".msg.bot")).toHaveCount(asks.indexOf(q) + 1);
+  }
+  await input.fill("비 오는 날은");
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  // A width change first (820 → 690): its position restore keeps a 0.5s window open in viewport.js, and the
+  // keyboard opens inside it (검토 11-01: the bar-size re-measure must not restore the position while typing).
+  await resizeTo(page, 690, 800);
+  await expect(input).toBeFocused();
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(200);
+  await resizeTo(page, 690, 420);
+  expect(await page.evaluate(() => matchMedia("(min-width: 600px) and (max-height: 500px)").matches), "short-window layout").toBe(true);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "page not moved while typing").toBeLessThanOrEqual(2);
+  await expect(input).toHaveValue("비 오는 날은");
+});
+
 // 검토(11-01): 높이 320px 안팎의 짧은 가로·분할 창에서도 메뉴 줄의 마지막 '기록'까지 가리거나 잘리지 않는다.
 for (const [w, h] of [[640, 320], [960, 320], [700, 280]] as const)
   test(`${w}×${h}: every rail item down to 기록 is fully reachable in a short window`, async ({ page }) => {
