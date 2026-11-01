@@ -247,6 +247,41 @@ test("a height change that switches the layout (the short-window menu rail) keep
   expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
 });
 
+// WebKit CI(#149 2188b88, push·PR 두 실행)에서는 위 검사가 고친 뒤에도 같은 78px로 실패했다. WebKit은 resize 이벤트
+// 처리 중 matchMedia(...).matches가 아직 이전 값이다(미디어 조건은 resize 다음 단계에서 다시 평가). 그래서 viewport.js가
+// 단계 변화를 못 보고 되돌리지 않았다(추정, 로컬 WebKit 없음). 여기서는 그 조건의 matches를 다음 프레임까지 이전 값으로
+// 두는 모형으로 Chromium에서 같은 상황을 만든다.
+test("the layout switch is seen even when matchMedia still reports the old value during resize (as WebKit)", async ({ page }) => {
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const st = document.createElement("style");
+      st.textContent = "html, body { overflow-anchor: none; }";
+      document.head.append(st);
+    });
+    const real = window.matchMedia.bind(window);
+    window.matchMedia = ((q: string) => {
+      const mql = real(q);
+      if (!/max-height:\s*500px/.test(q)) return mql;
+      let seen = mql.matches;
+      const next = () => { seen = mql.matches; requestAnimationFrame(next); };
+      requestAnimationFrame(next);
+      return Object.assign(Object.create(mql), { get matches() { return seen; }, media: mql.media });
+    }) as typeof window.matchMedia;
+  });
+  await start(page, 690, 600);
+  await open(page, "results");
+  const card = page.locator("[data-react-results] [data-card]").nth(7);
+  const id = await card.getAttribute("data-card");
+  await card.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 150));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  const at = () => page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await at();
+  await resizeTo(page, 690, 480);
+  expect(Math.abs((await at()) - before), "690×480 reference card kept in place").toBeLessThanOrEqual(48);
+  await resizeTo(page, 690, 600);
+  expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
+});
+
 // 같은 검토의 예외 유지: 안드로이드 키보드(resizes-content)처럼 입력 중에 높이만 줄어 짧은 창 단계로 넘어가도
 // (예: 690×800 → 690×420, 메뉴 줄이 켜짐) 키보드 때문이므로 스크롤을 되돌리지 않는다(입력칸을 키보드 뒤로 밀지 않게).
 test("a keyboard that shrinks the window into the short-window layout while typing does not move the page", async ({ page }) => {
