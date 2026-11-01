@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { covered, overflowX, rect } from "./adaptive-helpers";
+import { covered, overflowX, rect, resizeTo } from "./adaptive-helpers";
 // 다기기 대응(2026-11-01 대표 "그럼 만들어줘야죠", Codex 전달): 대표 창 크기(CSS px) 시험이다.
 // 실제 아이폰 듀오·폴드·플립·아이패드·갤럭시탭 기기 확인이 아니다(물리 픽셀을 환산하지 않는다).
 // 단계: 휴대폰(<600) · 중간(600~899, 세로 태블릿·펼친 폴더블·분할 창) · 넓음(≥900) · 낮은 가로 창(높이 ≤500).
@@ -100,7 +100,7 @@ test("wide closets show more columns and product pages lay out side by side from
   await open(page, "closet");
   const tops = await page.locator("[data-closet-section=trial] [data-rail-item]").evaluateAll((els) => els.slice(0, 6).map((e) => Math.round(e.getBoundingClientRect().top)));
   expect(tops[0]).toBe(tops[4]);
-  await page.setViewportSize({ width: 690, height: 840 });
+  await resizeTo(page, 690, 840);
   await open(page, "detail");
   const head = await rect(page, ".pdp-head");
   const photo = await rect(page, ".pdp-photo");
@@ -172,8 +172,7 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   await ask.fill("가을 아우터 20만원 이하");
   const steps = [[844, 390], [690, 840], [820, 1180], [1180, 820], [507, 820], [390, 844]];
   for (const [w, h] of steps) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.waitForTimeout(120);
+    await resizeTo(page, w, h);
     await expect(ask).toHaveValue("가을 아우터 20만원 이하");
     await expect(ask).toBeFocused();
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
@@ -191,8 +190,7 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   const start0 = await item.evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(start0 - 200)).toBeLessThanOrEqual(2);
   for (const [w, h] of steps) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await resizeTo(page, w, h);
     await expect(pick).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("region", { name: "고른 옷" })).toBeVisible();
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
@@ -203,6 +201,147 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   // Back at the first size the reference garment is close to where it was (layout may shift it a little).
   const end0 = await page.locator(`[data-rail-item="${id}"]`).evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(end0 - start0), "reference garment back near its place").toBeLessThanOrEqual(48);
+});
+
+// 휴대폰 브라우저는 스크롤하는 동안 주소창이 접히고 펴지며 창 높이만 바뀐다(폭 같음). 그때 스크롤 위치를 되돌리면
+// 내리던 화면을 도로 끌어올리게 된다(추정 위험, 11-01). 높이만 바뀌는 크기 변화에서는 스크롤을 건드리지 않고,
+// 사이에 한 스크롤도 기준으로 기억한다.
+test("a height-only change while scrolling (an address bar folding) does not pull the page back", async ({ page }) => {
+  await start(page, 390, 844);
+  await open(page, "results");
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  await resizeTo(page, 390, 780);
+  await page.evaluate(() => window.scrollBy(0, 400));
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(600);
+  // Far from the end, so the browser has no reason to move the page itself when the window grows back.
+  expect(y + 844).toBeLessThan(await page.evaluate(() => document.documentElement.scrollHeight) - 100);
+  await resizeTo(page, 390, 844);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "scroll stays where the person left it").toBeLessThanOrEqual(2);
+});
+
+// Codex #149 검토: 중간 폭 창의 높이가 500px을 넘나들면(예: 690×600 ↔ 690×480) 폭은 같아도 왼쪽 메뉴 줄이 생기고
+// 사라져 본문 폭·상품 칸 높이가 바뀐다. 높이만 바뀐 변화라도 배치 단계가 바뀌면 읽던 위치를 되돌린다.
+// Chromium은 스스로 위치를 지키므로(CSS scroll anchoring) 꺼서, viewport.js만으로 되돌리는지 본다(WebKit처럼).
+test("a height change that switches the layout (the short-window menu rail) keeps the reading position", async ({ page }) => {
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => {
+    const st = document.createElement("style");
+    st.textContent = "html, body { overflow-anchor: none; }";
+    document.head.append(st);
+  }));
+  await start(page, 690, 600);
+  await open(page, "results");
+  const card = page.locator("[data-react-results] [data-card]").nth(7);
+  const id = await card.getAttribute("data-card");
+  await card.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 150));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  const at = () => page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await at();
+  expect(Math.abs(before - 150)).toBeLessThanOrEqual(2);
+  await resizeTo(page, 690, 480);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--navL").trim()), "menu rail on").not.toBe("0px");
+  expect(Math.abs((await at()) - before), "690×480 reference card kept in place").toBeLessThanOrEqual(48);
+  await resizeTo(page, 690, 600);
+  expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
+});
+
+// WebKit CI(#149 2188b88, push·PR 두 실행)에서는 위 검사가 고친 뒤에도 같은 78px로 실패했다. 추정(로컬 WebKit 없음):
+// WebKit은 resize 이벤트 처리 중 matchMedia(...).matches가 아직 이전 값이라(미디어 조건은 resize 다음 단계에서 다시
+// 평가) viewport.js가 단계 변화를 못 봤다. 여기서는 그 조건의 matches를 다음 프레임까지 이전 값으로 두는 모형으로
+// Chromium에서 같은 상황을 만든다. 모형은 진짜 MediaQueryList를 감싼 보통 객체다(첫 판은 Object.assign이 getter를
+// 옮기지 못해 matches를 읽을 때 예외가 났다 — 검토 11-01). 모형이 예외 없이 "resize 중 이전 값 → 다음 프레임 새 값"으로
+// 바뀌는지도 같이 본다.
+test("the layout switch is seen even when matchMedia still reports the old value during resize (as WebKit)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const st = document.createElement("style");
+      st.textContent = "html, body { overflow-anchor: none; }";
+      document.head.append(st);
+    });
+    const real = window.matchMedia.bind(window);
+    window.matchMedia = ((q: string) => {
+      const mql = real(q);
+      if (!/max-height:\s*500px/.test(q)) return mql;
+      let seen = mql.matches;
+      const next = () => { seen = mql.matches; requestAnimationFrame(next); };
+      requestAnimationFrame(next);
+      return {
+        get matches() { return seen; },
+        get media() { return mql.media; },
+        get onchange() { return mql.onchange; },
+        set onchange(v) { mql.onchange = v; },
+        addEventListener: mql.addEventListener.bind(mql),
+        removeEventListener: mql.removeEventListener.bind(mql),
+        addListener: mql.addListener.bind(mql),
+        removeListener: mql.removeListener.bind(mql),
+        dispatchEvent: mql.dispatchEvent.bind(mql),
+      } as unknown as MediaQueryList;
+    }) as typeof window.matchMedia;
+    // Record what the model reports inside the resize event and one frame later.
+    const probe = window.matchMedia("(min-width: 600px) and (max-height: 500px)");
+    const log: string[] = ((window as any).__mqLog = []);
+    addEventListener("resize", () => {
+      log.push(`resize ${innerWidth}x${innerHeight} model=${probe.matches}`);
+      requestAnimationFrame(() => log.push(`frame model=${probe.matches}`));
+    });
+  });
+  await start(page, 690, 600);
+  await open(page, "results");
+  const card = page.locator("[data-react-results] [data-card]").nth(7);
+  const id = await card.getAttribute("data-card");
+  await card.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 150));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  const at = () => page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await at();
+  await resizeTo(page, 690, 480);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  // The model behaves as intended: old value inside the resize event, new value a frame later.
+  expect(await page.evaluate(() => (window as any).__mqLog.slice(-2))).toEqual(["resize 690x480 model=false", "frame model=true"]);
+  expect(errors, "no page errors (the model must not break the page or viewport.js)").toEqual([]);
+  expect(await page.evaluate(() => !!(window as any).EOUL_VIEWPORT), "viewport.js ran").toBe(true);
+  expect(Math.abs((await at()) - before), "690×480 reference card kept in place").toBeLessThanOrEqual(48);
+  await resizeTo(page, 690, 600);
+  expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
+  expect(errors).toEqual([]);
+});
+
+// 같은 검토의 예외 유지: 안드로이드 키보드(resizes-content)처럼 입력 중에 높이만 줄어 짧은 창 단계로 넘어가도
+// (예: 690×800 → 690×420, 메뉴 줄이 켜짐) 키보드 때문이므로 스크롤을 되돌리지 않는다(입력칸을 키보드 뒤로 밀지 않게).
+test("a keyboard that shrinks the window into the short-window layout while typing does not move the page", async ({ page }) => {
+  // As above, without Chromium's own scroll anchoring, so any movement would come from viewport.js.
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => {
+    const st = document.createElement("style");
+    st.textContent = "html, body { overflow-anchor: none; }";
+    document.head.append(st);
+  }));
+  await start(page, 690, 800);
+  await page.evaluate(() => {
+    const w = window as any;
+    let n = 0;
+    w.EOUL_SERVER_AI = async () => ({ on_topic: true, answer: `${++n}. 네이비 니트에는 베이지·그레이·연청 바지가 무난해요. `.repeat(14), product_ids: ["ms-728000", "ms-1599217", "ms-1792946", "ms-389452"] });
+    w.K.tab("consult");
+  });
+  const input = page.getByLabel("코디 질문", { exact: true });
+  const asks = ["바지는?", "신발은?", "겉옷은?", "가방은?"];
+  for (const q of asks) {
+    await input.fill(q);
+    await input.press("Enter");
+    await expect(page.locator(".msg.bot")).toHaveCount(asks.indexOf(q) + 1);
+  }
+  await input.fill("비 오는 날은");
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  await expect(input).toBeFocused();
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(200);
+  await resizeTo(page, 690, 420);
+  expect(await page.evaluate(() => matchMedia("(min-width: 600px) and (max-height: 500px)").matches), "short-window layout").toBe(true);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "page not moved while typing").toBeLessThanOrEqual(2);
+  await expect(input).toHaveValue("비 오는 날은");
 });
 
 // 검토(11-01): 높이 320px 안팎의 짧은 가로·분할 창에서도 메뉴 줄의 마지막 '기록'까지 가리거나 잘리지 않는다.
