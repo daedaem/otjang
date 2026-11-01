@@ -38,8 +38,12 @@ async function open(page: Page, v: string) {
     else K.tab(v);
   }, v);
   await page.waitForFunction((v) => (window as any).K.current().view === (v === "detail" ? "detail" : v), v);
-  // Wait until the screen's island has replaced its "…여는 중이에요" placeholder and two frames have painted.
+  // Wait until the screen's island has replaced its "…여는 중이에요" placeholder, then for the screen to settle.
   await page.waitForFunction(() => !/여는 중이에요/.test(document.getElementById("app")?.textContent || ""));
+  await viewSettled(page);
+}
+// Hand the screen to the checks once it has settled.
+async function viewSettled(page: Page) {
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 for (const [label, w, h] of SIZES)
@@ -220,6 +224,36 @@ test("a height-only change while scrolling (an address bar folding) does not pul
   expect(y + 844).toBeLessThan(await page.evaluate(() => document.documentElement.scrollHeight) - 100);
   await resizeTo(page, 390, 844);
   expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "scroll stays where the person left it").toBeLessThanOrEqual(2);
+});
+
+// master 8d9d5d1 push CI(run 41301808374)에서 아래 높이 전환 검사의 준비(결과 8번째 칸을 위 150px에 두기)가 3px 어긋났다.
+// 진단(브랜치 claude/rail-diag-20261101, CI Chromium): 스크롤 직후와 준비 측정 사이에 layout-shift·DOM 변경 없이 칸만 1px쯤
+// 올라갔다(149.9 → 148.8 등) — 변환(transform)만 바뀐 것으로, 화면 진입 애니메이션(.view, 240ms ease-out, translateY(8px)→없음)이
+// 아직 도는 중에 스크롤 위치를 잡았기 때문으로 본다. 여기서는 같은 실제 애니메이션을 처음부터 1/4 속도로 다시 돌려(CI처럼 검사
+// 진행에 비해 애니메이션이 늦게 끝나는 경우) viewSettled() 뒤 같은 준비를 한다. 준비는 애니메이션이 끝난 화면에서 해야 한다.
+test("the reference position is prepared only after the screen's entry animation has finished", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await start(page, 690, 600);
+  await open(page, "results");
+  const restarted = await page.evaluate(() => {
+    const view = document.querySelector<HTMLElement>(".view")!;
+    const a = view.getAnimations()[0] as CSSAnimation;
+    a.currentTime = 0;
+    a.playbackRate = 0.25;
+    a.play();
+    return `${a.animationName} ${a.playState} ${Math.round(Number(a.currentTime))}`;
+  });
+  expect(restarted, "the real entry animation runs again from the start").toMatch(/^in running ([0-9]|1[0-9])$/);
+  await viewSettled(page);
+  const card = page.locator("[data-react-results] [data-card]").nth(7);
+  const id = await card.getAttribute("data-card");
+  const atScroll = await card.evaluate((el) => { const a = document.querySelector(".view")!.getAnimations()[0]; const t = Math.round(Number(a?.currentTime)); window.scrollBy(0, el.getBoundingClientRect().top - 150); return t; });
+  // Read where the card ends up once the animation has played out.
+  await page.waitForFunction(() => document.querySelector(".view")!.getAnimations().every((a) => a.playState !== "running"));
+  const top = await page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  expect(errors).toEqual([]);
+  expect(Math.abs(top - 150), `reference card where it was placed (animation at ${atScroll}ms when placed)`).toBeLessThanOrEqual(2);
 });
 
 // Codex #149 검토: 중간 폭 창의 높이가 500px을 넘나들면(예: 690×600 ↔ 690×480) 폭은 같아도 왼쪽 메뉴 줄이 생기고
