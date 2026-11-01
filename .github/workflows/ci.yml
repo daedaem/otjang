@@ -125,13 +125,18 @@ jobs:
           The Cloudflare Tunnel connection and Litestream backup/restore are not exercised here; see `docs/deploy-kit-20261015.md` for the manual drill.
           SUMMARY
 
-  # One browser per job so each stays inside the 15-minute limit as the
-  # suite grows. Each job runs its own test server (the offline tests stop
-  # and restart it), so the browsers never share one origin.
+  # One browser per job so each stays inside its time limit as the suite
+  # grows. Each job runs its own test server (the offline tests stop and
+  # restart it), so the browsers never share one origin.
+  # Job limit per browser (2026-11-01, #147): WebKit 20 minutes, Chromium 15.
+  # The WebKit job already took 10.5-14.8 minutes before #147 and timed out at
+  # 15 minutes with the added adaptive checks (328/342 tests done). Only the
+  # whole-job limit changes; per-test timeouts, retries (0), skips and the
+  # check names stay the same.
   lite-input-browser:
     name: Lite input ${{ matrix.browser }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
@@ -139,9 +144,11 @@ jobs:
           - browser: Chromium
             install: chromium
             project: mobile-chromium
+            timeout: 15
           - browser: WebKit
             install: webkit
             project: mobile-webkit
+            timeout: 20
     defaults:
       run:
         working-directory: app/lite
