@@ -42,8 +42,11 @@ async function open(page: Page, v: string) {
   await page.waitForFunction(() => !/여는 중이에요/.test(document.getElementById("app")?.textContent || ""));
   await viewSettled(page);
 }
-// Hand the screen to the checks once it has settled.
+// Hand the screen to the checks once it has settled: its entry animation (.view, 240ms translateY(8px) → none) has
+// played out, then two frames. Positions read during the animation still carry part of the 8px shift (master 8d9d5d1
+// CI: a reference card placed mid-animation ended 3px off).
 async function viewSettled(page: Page) {
+  await page.waitForFunction(() => Array.from(document.querySelectorAll(".view")).every((v) => v.getAnimations().every((a) => a.playState !== "running")));
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 for (const [label, w, h] of SIZES)
