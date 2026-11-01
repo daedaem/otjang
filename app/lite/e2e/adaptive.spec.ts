@@ -209,7 +209,12 @@ for (const [w, h] of [[1180, 820], [844, 390]] as const)
     expect(r.x).toBeGreaterThanOrEqual(tabs.r - 1);
     expect(r.r).toBeLessThanOrEqual(w + 1);
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
-    await expect(strip.locator(".go")).toBeInViewport({ ratio: 1 });
+    // The strip's "옷장 >" end sits fully inside the window. Compared by its box with half-pixel slack:
+    // WebKit reports a subpixel visible ratio (0.9996) for a fully drawn element, so toBeInViewport({ratio:1}) is not usable.
+    const go = await rect(page, ".strip .go");
+    expect(go.r, "strip end inside").toBeLessThanOrEqual(w + 0.5);
+    expect(go.b, "strip end inside").toBeLessThanOrEqual(h + 0.5);
+    expect(go.x).toBeGreaterThanOrEqual(r.x);
   });
 
 test.describe("keyboard on a wide screen", () => {
