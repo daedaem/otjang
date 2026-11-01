@@ -53,3 +53,8 @@ export const rect = (page: Page, sel: string) =>
     const b = e.getBoundingClientRect();
     return { x: b.x, y: b.y, w: b.width, h: b.height, r: b.right, b: b.bottom };
   });
+// Change the window size before the checks measure anything at that size.
+export async function resizeTo(page: Page, width: number, height: number) {
+  await page.setViewportSize({ width, height });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
