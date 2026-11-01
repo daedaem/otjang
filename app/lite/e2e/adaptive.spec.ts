@@ -155,6 +155,7 @@ test.describe("keyboard", () => {
     await page.getByRole("button", { name: "더보기", exact: true }).first().click();
     await page.locator("[data-backup]").click();
     await page.evaluate(() => (window as any).__setKb(336));
+    await page.waitForFunction(() => document.querySelector(".sheet")?.getAnimations().length === 0);
     await expect.poll(() => rect(page, ".sheet").then((r) => r.b)).toBeLessThanOrEqual(844 - 336 + 1);
     const s = await rect(page, ".sheet");
     expect(s.y).toBeGreaterThanOrEqual(0);
@@ -191,4 +192,57 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   // The same garment stays on screen after the round trip (scroll is kept relative to the content).
   expect(await page.locator(`[data-rail-item="${id}"]`).count()).toBe(1);
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+});
+
+// Codex 검토(#147) 3건: 메뉴 줄 옆 걸린 옷 띠의 폭, 넓은 화면 시트와 키보드, 아주 넓은 화면의 옷장 시트 여백.
+for (const [w, h] of [[1180, 820], [844, 390]] as const)
+  test(`${w}×${h}: the hung strip fits beside the side rail`, async ({ page }) => {
+    await start(page, w, h);
+    await page.evaluate(() => (window as any).K.go("results", { q: "셔츠" }));
+    await page.locator("#grid .card .hangt").first().click();
+    const strip = page.locator(".strip").first();
+    await expect(strip).toBeVisible();
+    const r = await rect(page, ".strip");
+    const tabs = await rect(page, "#tabs");
+    expect(r.x).toBeGreaterThanOrEqual(tabs.r - 1);
+    expect(r.r).toBeLessThanOrEqual(w + 1);
+    expect(await overflowX(page)).toBeLessThanOrEqual(1);
+    await expect(strip.locator(".go")).toBeInViewport({ ratio: 1 });
+  });
+
+test.describe("keyboard on a wide screen", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const vv = new EventTarget() as any;
+      vv.offsetTop = 0; vv.offsetLeft = 0; vv.scale = 1;
+      Object.defineProperty(vv, "width", { get: () => innerWidth });
+      Object.defineProperty(vv, "height", { get: () => innerHeight - ((window as any).__kb || 0) });
+      Object.defineProperty(window, "visualViewport", { value: vv, configurable: true });
+      (window as any).__setKb = (px: number) => { (window as any).__kb = px; vv.dispatchEvent(new Event("resize")); };
+    });
+  });
+  test("a centred sheet moves into the area above the keyboard instead of past the top", async ({ page }) => {
+    await start(page, 1180, 820);
+    await open(page, "closet");
+    await page.getByRole("button", { name: "더보기", exact: true }).first().click();
+    await page.locator("[data-backup]").click();
+    await page.evaluate(() => (window as any).__setKb(336));
+    await page.waitForFunction(() => document.querySelector(".sheet")?.getAnimations().length === 0);
+    await expect.poll(() => rect(page, ".sheet").then((r) => r.b)).toBeLessThanOrEqual(820 - 336 + 1);
+    expect((await rect(page, ".sheet")).y).toBeGreaterThanOrEqual(0);
+  });
+});
+
+test("on a very wide window the picked-clothes sheet still leaves room for the last closet row", async ({ page }) => {
+  await start(page, 1920, 1000);
+  await open(page, "closet");
+  await page.locator("[data-closet-section=trial] [data-pick]").first().click();
+  const sheet = page.getByRole("region", { name: "고른 옷" });
+  await expect(sheet).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const top = (await sheet.boundingBox())!.y;
+  // The end of the closet content (whatever column it sits in) stops above the sheet.
+  const end = await page.evaluate(() => Math.max(...[...document.querySelectorAll<HTMLElement>("#app *")].filter((e) => e.offsetParent && e.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })).map((e) => e.getBoundingClientRect().bottom)));
+  expect(end).toBeLessThanOrEqual(top + 1);
+  expect(await covered(page)).toEqual([]);
 });
