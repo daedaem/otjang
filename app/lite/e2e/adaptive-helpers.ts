@@ -10,7 +10,7 @@ import type { Page } from "@playwright/test";
 export const covered = (page: Page) =>
   page.evaluate(() => {
     const sheet = document.querySelector<HTMLElement>(".sheet");
-    const scope = sheet || document.getElementById("app")!;
+    const scope = sheet || document.getElementById("app") || document.getElementById("community")!;
     scope.querySelectorAll("details").forEach((d) => ((d as HTMLDetailsElement).open = true));
     window.scrollTo(0, document.documentElement.scrollHeight);
     if (sheet) sheet.scrollTop = sheet.scrollHeight;
