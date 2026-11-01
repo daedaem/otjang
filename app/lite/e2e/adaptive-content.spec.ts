@@ -57,11 +57,12 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
     const bar = await rect(page, ".chatbar");
     expect(bar.b, `${label} chat bar inside`).toBeLessThanOrEqual(h + 1);
     expect(bar.x, `${label} chat bar beside the menu`).toBeGreaterThanOrEqual(await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--navL")) || 0) - 1);
-    // Scroll to the end and read the last answer against the bar, until the page has settled. WebKit CI twice
-    // measured the same wrong state at 690×840 right after the window change (last answer 745 > bar 722, #148
-    // 4f87232 and #149 9d18404) even after resizeTo waited for the resize to be handled, while every other run and
-    // Chromium passed; the cause is not confirmed (a re-render or scroll that lands after the first reading). The
-    // condition is unchanged and a page that stays wrong still fails, with its numbers in the message.
+    // Scroll to the end and read the last answer against the bar, until the page has settled. Cause of the WebKit
+    // failure (745 > 722 at 690×840, #148 4f87232 / #149 9d18404), found by measuring real WebKit (11-01): WebKit
+    // applies the media conditions about 0.1s after the resize event, so viewport.js measured the bottom bars in the
+    // old menu-rail layout and the space stayed 71px after the switch — a lasting product fault, fixed by
+    // re-measuring when a bar's box changes (test above). The polling only covers that short late-switch window; a
+    // page that stays wrong (as before the fix) still fails, with its numbers in the message.
     await expect.poll(() => page.evaluate(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
       const bar = document.querySelector(".chatbar")!.getBoundingClientRect();
