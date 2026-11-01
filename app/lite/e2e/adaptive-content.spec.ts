@@ -39,11 +39,16 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
     w.K.tab("consult");
   }, { LONG, ids });
   const input = page.getByLabel("코디 질문", { exact: true });
-  for (const q of ["네이비 니트에 어울리는 바지는?", "출근할 때는요? 너무 딱딱하지 않게", "주말에 입을 신발도 알려 줘요", "겉옷까지 맞추면?"]) {
+  // Wait for each new answer by its number (every answer has the same body, so "the last bot message contains the
+  // body" alone would also match the previous answer — 검토 11-01; in practice the "생각하는 중" bubble is the last
+  // .msg.bot until the answer lands, measured with a 400ms answer delay, and WebKit diagnostics saw 4 answers and no
+  // bubble at every step, so this was not the cause of the 690×840 failure).
+  for (const [i, q] of ["네이비 니트에 어울리는 바지는?", "출근할 때는요? 너무 딱딱하지 않게", "주말에 입을 신발도 알려 줘요", "겉옷까지 맞추면?"].entries()) {
     await input.fill(q);
     await input.press("Enter");
-    await expect(page.locator(".msg.bot").last()).toContainText(LONG.slice(0, 12));
+    await expect(page.locator(".msg.bot:not(.wait)").last()).toContainText(`${i + 1}. ${LONG.slice(0, 12)}`);
   }
+  await expect(page.locator(".msg.bot.wait")).toHaveCount(0);
   await input.fill("그럼 비 오는 날은 어떻게 입을까요");
   for (const [label, w, h] of SIZES) {
     await resizeTo(page, w, h);
