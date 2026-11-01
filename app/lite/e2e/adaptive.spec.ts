@@ -222,6 +222,31 @@ test("a height-only change while scrolling (an address bar folding) does not pul
   expect(Math.abs((await page.evaluate(() => window.scrollY)) - y), "scroll stays where the person left it").toBeLessThanOrEqual(2);
 });
 
+// Codex #149 검토: 중간 폭 창의 높이가 500px을 넘나들면(예: 690×600 ↔ 690×480) 폭은 같아도 왼쪽 메뉴 줄이 생기고
+// 사라져 본문 폭·상품 칸 높이가 바뀐다. 높이만 바뀐 변화라도 배치 단계가 바뀌면 읽던 위치를 되돌린다.
+// Chromium은 스스로 위치를 지키므로(CSS scroll anchoring) 꺼서, viewport.js만으로 되돌리는지 본다(WebKit처럼).
+test("a height change that switches the layout (the short-window menu rail) keeps the reading position", async ({ page }) => {
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => {
+    const st = document.createElement("style");
+    st.textContent = "html, body { overflow-anchor: none; }";
+    document.head.append(st);
+  }));
+  await start(page, 690, 600);
+  await open(page, "results");
+  const card = page.locator("[data-react-results] [data-card]").nth(7);
+  const id = await card.getAttribute("data-card");
+  await card.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 150));
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
+  const at = () => page.locator(`[data-react-results] [data-card="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await at();
+  expect(Math.abs(before - 150)).toBeLessThanOrEqual(2);
+  await resizeTo(page, 690, 480);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--navL").trim()), "menu rail on").not.toBe("0px");
+  expect(Math.abs((await at()) - before), "690×480 reference card kept in place").toBeLessThanOrEqual(48);
+  await resizeTo(page, 690, 600);
+  expect(Math.abs((await at()) - before), "back at 690×600").toBeLessThanOrEqual(48);
+});
+
 // 검토(11-01): 높이 320px 안팎의 짧은 가로·분할 창에서도 메뉴 줄의 마지막 '기록'까지 가리거나 잘리지 않는다.
 for (const [w, h] of [[640, 320], [960, 320], [700, 280]] as const)
   test(`${w}×${h}: every rail item down to 기록 is fully reachable in a short window`, async ({ page }) => {
