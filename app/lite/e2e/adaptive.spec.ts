@@ -186,6 +186,8 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   const item = page.locator("[data-closet-section=trial] [data-rail-item]").nth(5);
   const id = await item.getAttribute("data-rail-item");
   await item.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 200));
+  // Let the scroll settle for a few frames, as a person would before turning the device.
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 50)));
   const start0 = await item.evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(start0 - 200)).toBeLessThanOrEqual(2);
   for (const [w, h] of steps) {
@@ -275,7 +277,7 @@ test("on a very wide window the picked-clothes sheet still leaves room for the l
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const top = (await sheet.boundingBox())!.y;
   // The end of the closet content (whatever column it sits in) stops above the sheet.
-  const end = await page.evaluate(() => Math.max(...[...document.querySelectorAll<HTMLElement>("#app *")].filter((e) => e.offsetParent && e.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })).map((e) => e.getBoundingClientRect().bottom)));
-  expect(end).toBeLessThanOrEqual(top + 1);
+  const end = () => page.evaluate(() => { window.scrollTo(0, document.documentElement.scrollHeight); return Math.max(...[...document.querySelectorAll<HTMLElement>("#app *")].filter((e) => e.offsetParent && e.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })).map((e) => e.getBoundingClientRect().bottom)); });
+  await expect.poll(end, { timeout: 3000 }).toBeLessThanOrEqual(top + 1);
   expect(await covered(page)).toEqual([]);
 });
