@@ -311,6 +311,10 @@ test.describe('input runtime caching',()=>{
     await page.getByRole('button',{name:/브랜드로 찾아 넣기/}).click();
   await page.locator('[data-reg-open]').click();
     await expect(page.getByRole('heading',{name:'어떤 옷을 가지고 있나요?'})).toBeVisible();
+    // Type something so there is a draft to resume offline. An untouched visit no longer stores an empty draft
+    // (11-01, input-session's explicit-edit contract); this test used to resume that empty draft.
+    await page.getByLabel('브랜드',{exact:true}).fill('합성 브랜드');
+    await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('eoul-d12-hang:input-draft:v1')||'null')?.values?.brand)).toBe('합성 브랜드');
     await expect.poll(async()=>{const paths=await cachedInput();return paths.some(p=>p.endsWith('.js'))&&paths.some(p=>p.endsWith('.css'));}).toBe(true);
     // Stop the actual origin, leaving the browser's SW networking enabled.
     await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);

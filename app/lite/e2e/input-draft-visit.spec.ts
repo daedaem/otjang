@@ -41,3 +41,15 @@ test("a draft saved while the registration screen is still loading is not overwr
   await expect(page.getByRole("button", { name: "옷장에 넣기", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("typing on the React registration screen still keeps the draft (only the untouched visit stores nothing)", async ({ page }) => {
+  await page.goto("/?photos=0&input=react#/reg");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await expect(page.locator('[aria-label="직접 등록"]')).toBeVisible();
+  await page.getByLabel("브랜드", { exact: true }).fill("합성 브랜드");
+  await expect.poll(() => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || "null")?.values?.brand, KEY)).toBe("합성 브랜드");
+  await page.reload();
+  await expect(page.locator('[aria-label="입력 초안 복원"] p')).toContainText("합성 브랜드");
+  await page.getByRole("button", { name: "이어서 입력", exact: true }).click();
+  await expect(page.getByLabel("브랜드", { exact: true })).toHaveValue("합성 브랜드");
+});
