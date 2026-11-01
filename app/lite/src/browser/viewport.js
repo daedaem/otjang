@@ -97,8 +97,23 @@
   addEventListener('focusin', soon);
   addEventListener('focusout', function () { setTimeout(soon, 60); });
   // 화면이 바뀌면(시트가 열리는 등) 다음 그리기 전에 바로 잰다: 한 프레임 동안 마지막 줄이 막대에 가리지 않게.
-  var mo = new MutationObserver(function () { if (raf) { cancelAnimationFrame(raf); raf = 0; } apply(); });
-  function start() { mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] }); apply(); }
+  var mo = new MutationObserver(function () { if (raf) { cancelAnimationFrame(raf); raf = 0; } apply(); watch(); });
+  // 아래 막대 자체의 크기가 바뀌어도 다시 잰다. WebKit은 resize 이벤트를 보낸 뒤 약 0.1초 지나서야 미디어 조건을 배치에
+  // 적용해(11-01 실제 WebKit 계측: resize 때 입력 막대 위 769·메뉴 폭 88 → 나중에 721·0), resize·visualViewport·DOM
+  // 변경 어느 것도 없이 메뉴 줄이 하단 탭으로 바뀌었고 여백은 옛 값(71)으로 남았다. 탭·막대의 상자 크기 변화로 그 순간을
+  // 잡는다(막대는 고정 위치라 본문 여백을 바꿔도 다시 불리지 않는다). 배치가 바뀐 직후(0.5초)라면 기준 위치도 다시 맞춘다.
+  var watched = typeof WeakSet === 'function' ? new WeakSet() : null;
+  var ro = window.ResizeObserver && watched ? new ResizeObserver(function () {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    apply();
+    if (now() < holdUntil) { keepAnchor(); heldY = window.scrollY; }
+  }) : null;
+  function watch() {
+    if (!ro) return;
+    var list = document.querySelectorAll(BARS);
+    for (var i = 0; i < list.length; i++) if (!watched.has(list[i])) { watched.add(list[i]); ro.observe(list[i]); }
+  }
+  function start() { mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] }); apply(); watch(); }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
   window.EOUL_VIEWPORT = { refresh: soon };
 })();
