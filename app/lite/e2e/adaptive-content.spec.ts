@@ -52,9 +52,20 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
     const bar = await rect(page, ".chatbar");
     expect(bar.b, `${label} chat bar inside`).toBeLessThanOrEqual(h + 1);
     expect(bar.x, `${label} chat bar beside the menu`).toBeGreaterThanOrEqual(await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--navL")) || 0) - 1);
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const last = await rect(page, ".msg.bot >> nth=-1");
-    expect(last.b, `${label} last answer above the chat bar`).toBeLessThanOrEqual(bar.y + 1);
+    // Scroll to the end and read the last answer against the bar, until the page has settled. WebKit CI twice
+    // measured the same wrong state at 690×840 right after the window change (last answer 745 > bar 722, #148
+    // 4f87232 and #149 9d18404) even after resizeTo waited for the resize to be handled, while every other run and
+    // Chromium passed; the cause is not confirmed (a re-render or scroll that lands after the first reading). The
+    // condition is unchanged and a page that stays wrong still fails, with its numbers in the message.
+    await expect.poll(() => page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      const bar = document.querySelector(".chatbar")!.getBoundingClientRect();
+      const msgs = document.querySelectorAll(".msg.bot"), last = msgs[msgs.length - 1].getBoundingClientRect();
+      if (last.bottom <= bar.top + 1) return "above the bar";
+      const root = document.documentElement;
+      return `last ${Math.round(last.bottom)} bar ${Math.round(bar.top)} scroll ${Math.round(scrollY)}/${root.scrollHeight - innerHeight} ` +
+        `chrome-b ${getComputedStyle(root).getPropertyValue("--chrome-b")} kb ${root.hasAttribute("data-kb")}`;
+    }), { message: `${label} last answer above the chat bar` }).toBe("above the bar");
     expect(await covered(page), label).toEqual([]);
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await shot(page, `consult-${w}x${h}`);
