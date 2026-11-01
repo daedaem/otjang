@@ -5,8 +5,9 @@
      --vvt는 보이는 영역의 위 끝(offsetTop).
    - 아래 막대: 화면 아래에 붙은 고정 막대가 차지한 높이를 --chrome-b·data-chrome으로 두어 본문 끝이 가리지 않게 한다.
    - 스크롤 위치: 배치가 바뀌면(창 폭 변화 = 회전·펼치기·분할, 또는 높이 500px을 넘나들어 짧은 창 메뉴 줄이 켜지고
-     꺼짐) 바뀌기 전 화면 위쪽에 보이던 요소를 같은 높이로 되돌린다. 배치가 그대로인 높이 변화(휴대폰 주소창 접힘·
-     키보드)는 건드리지 않는다(내리던 화면을 끌어올리지 않게).
+     꺼짐) 바뀌기 전 화면 위쪽에 보이던 요소를 같은 높이로 되돌린다. 배치가 그대로인 높이 변화(휴대폰 주소창 접힘)와
+     입력 중 키보드로 높이만 줄어든 변화(단계가 바뀌어도)는 건드리지 않는다(내리던 화면을 끌어올리거나 입력칸을 키보드
+     뒤로 밀지 않게).
      되돌린 직후 0.5초 동안은 그 위치에서 나는 스크롤 이벤트(되돌림 자신)와 내용이 짧아져 맨 끝으로 당겨진 스크롤로
      기준을 바꾸지 않아 연속 크기 변화에도 조금씩 밀리지 않고, 사람이 그사이 다른 곳으로 스크롤하면 그 위치를 새
      기준으로 삼는다. 배치가 바뀌었는데 resize 이벤트가 아직 오지 않은 동안의 스크롤 이벤트(브라우저가 늦게 보낼 때)도
@@ -18,7 +19,7 @@
   // 높이로 배치가 바뀌는 단계: screen.html의 짧은 창(폭 600 이상·높이 500 이하) 메뉴 줄. 폭과 함께 배치 열쇠로 쓴다.
   var SHORT = window.matchMedia ? matchMedia('(min-width: 600px) and (max-height: 500px)') : null;
   function layout() { return innerWidth + (SHORT && SHORT.matches ? ':short' : ''); }
-  var anchor = null, holdUntil = 0, heldY = 0, lastLayout = layout();
+  var anchor = null, holdUntil = 0, heldY = 0, lastLayout = layout(), lastWidth = innerWidth;
   function now() { return Date.now(); }
   function editing() {
     var el = document.activeElement;
@@ -70,9 +71,11 @@
   addEventListener('resize', function () {
     // 배치가 그대로인 높이 변화(주소창·키보드)는 위치를 되돌리지 않는다. 배치가 바뀌면 아래 여백을 먼저 새 크기로
     // 맞춘 뒤 되돌린다(옛 여백이면 맨 끝 근처에서 되돌림이 짧아진 문서에 걸려 덜 간다).
-    var key = layout();
-    if (key !== lastLayout) {
-      lastLayout = key;
+    // 입력 중 폭은 그대로 높이만 줄어든 것(안드로이드 키보드)은 단계가 바뀌어도 되돌리지 않는다(입력칸을 키보드 뒤로
+    // 밀지 않게). 열쇠는 늘 새 값으로 둔다.
+    var key = layout(), keyboard = innerWidth === lastWidth && editing(), changed = key !== lastLayout;
+    lastLayout = key; lastWidth = innerWidth;
+    if (changed && !keyboard) {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       apply();
       keepAnchor();
