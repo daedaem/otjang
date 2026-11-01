@@ -88,6 +88,10 @@ export async function serveCommunity(
   await page.route("**/*", async (route) => {
     const req = route.request(),
       u = new URL(req.url());
+    // WebKit also hands blob: URLs (the editor's photo being shrunk, its thumbnail) to page.route; Chromium does not.
+    // They never leave the browser, so let them through instead of sending them to the worker (11-01: the /c photo
+    // editor never got past "사진을 줄이는 중" in WebKit CI only).
+    if (u.protocol === "blob:") return route.continue();
     if (u.origin !== origin) return route.abort();
     if (options.communityChunkGate && /^\/react\/community-[^/]+\.js$/.test(u.pathname)) await options.communityChunkGate();
     if (options.blockChrome && /^\/react\/chrome-.*\.js$/.test(u.pathname))

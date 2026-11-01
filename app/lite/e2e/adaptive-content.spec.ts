@@ -146,8 +146,7 @@ test("community posts with photos, long titles and sale sources, and the editor,
 
 // 독립 커뮤니티 /c(공개 셸, 자체 shell.css)의 게시판 목록도 같은 창 크기에서 옆으로 넘치거나 고정 막대에 가리지 않는다.
 // 11-01 마감 때 남은 범위로 적었던 검사다. 실제 처리기 + 메모리 SQLite 합성 자료만 쓴다(실제 회원·게시·사진 전송 0).
-test("the standalone /c board lists with photos, long titles and sale sources fit every window", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+async function joinStandalone(page: Page) {
   const f = await serveCommunity(page, "public", {
     MEMBER_SESSION_SECRET: "qa-only-".repeat(6), KAKAO_REST_KEY: "qa-not-a-live-key",
   }, { member: "qa-board-a", operator: false }, { start: "/c#/community?board=free", standalone: true });
@@ -155,17 +154,33 @@ test("the standalone /c board lists with photos, long titles and sale sources fi
   await page.getByRole("checkbox", { name: /규칙을 읽었고 따를게요/ }).check();
   await page.getByRole("checkbox", { name: /만 14세 이상이에요/ }).check();
   await page.getByRole("button", { name: "가입하기", exact: true }).click();
+  return f;
+}
+// A synthetic JPEG drawn in the page (no file leaves the machine), as the editor would send it.
+const syntheticJpeg = (page: Page) => page.evaluate(async () => {
+  const c = document.createElement("canvas");
+  c.width = 720; c.height = 900;
+  const x = c.getContext("2d")!;
+  const g = x.createLinearGradient(0, 0, 720, 900);
+  g.addColorStop(0, "#d9cfc0"); g.addColorStop(1, "#3a4a63");
+  x.fillStyle = g; x.fillRect(0, 0, 720, 900);
+  x.fillStyle = "#1f2a3d"; x.fillRect(220, 180, 280, 520);
+  const b: Blob = await new Promise((r) => c.toBlob((v) => r(v!), "image/jpeg", 0.8));
+  const u = new Uint8Array(await b.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  return btoa(bin);
+});
+
+test("the standalone /c board lists with photos, long titles and sale sources fit every window", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const f = await joinStandalone(page);
   const boards = page.getByRole("navigation", { name: "게시판", exact: true });
-  await boards.getByRole("link", { name: "코디 공유", exact: true }).click();
-  await page.getByRole("button", { name: "코디 올리기" }).click();
-  const dialog = page.getByRole("dialog", { name: "코디 올리기" });
-  await dialog.locator('input[type="file"]').setInputFiles(PHOTO);
-  await dialog.getByRole("checkbox", { name: /사진을 회원들에게 보여 주는 데 동의해요/ }).check();
-  await dialog.getByRole("button", { name: "올리기", exact: true }).click();
-  await expect(dialog).toBeHidden();
+  // Posts from a second synthetic member (otherPost signs it up): a photo outfit, a long outfit note, a sale tip
+  // with a long title and source, and a long free post. The editor's own photo path is checked separately below.
   await otherPost(f.env, "가을 출근룩 — 베이지 코트에 청바지, 흰 스니커즈로 가볍게 맞춰 봤어요. ".repeat(3));
-  // Sale and free posts from the same synthetic member otherPost signed up (public mode posts need a member).
   const other = { member: "b", operator: false };
+  await communityCall(f.env, "posts", { post: { text: "합성 사진 코디", pieces: [], consent: true }, photos: [await syntheticJpeg(page)] }, other);
   await communityCall(f.env, "posts", { post: { board: "sale", title: "아주 긴 제목의 합성 세일 제보: 네이비 울 블레이저 정가 대비 큰 폭 할인, 사이즈 M·L 남음, 오늘 자정까지", text: "합성 예시 글입니다. 실제 행사가 아니에요.", sale: { merchant: "예시 판매처 이름이 꽤 긴 편집숍", price: 129000, sourceUrl: "https://shop.example.com/deal/very/long/path/that/keeps/going" }, pieces: [], consent: false }, photos: [] }, other);
   await communityCall(f.env, "posts", { post: { board: "free", title: "긴 제목 자유글: 아메카지와 아메리칸 클래식 사이에서 옷장을 어떻게 채워야 할지 고민이에요", text: "줄바꿈 있는 본문\n둘째 줄\n셋째 줄", pieces: [], consent: false }, photos: [] }, other);
   for (const [label, w, h] of SIZES) {
@@ -173,9 +188,28 @@ test("the standalone /c board lists with photos, long titles and sale sources fi
     for (const board of ["코디 공유", "세일 정보", "자유게시판"]) {
       await boards.getByRole("link", { name: board, exact: true }).click();
       await expect(page.locator("[data-community-post]").first()).toBeVisible();
+      if (board === "코디 공유") await expect(page.locator("[data-community-post] img").first()).toBeVisible();
       expect(await overflowX(page), `/c ${label} ${board}`).toBeLessThanOrEqual(1);
       expect(await covered(page), `/c ${label} ${board}`).toEqual([]);
       await shot(page, `c-${board === "코디 공유" ? "outfits" : board === "세일 정보" ? "sale" : "free"}-${w}x${h}`);
     }
   }
+});
+
+// The editor's own photo path on /c: picking a photo turns it into a thumbnail and the consent box, then posts.
+// On failure the dialog's text is reported (an error message or the "줄이는 중" note) so the cause is visible.
+test("on the standalone /c a picked photo becomes a thumbnail with the consent box and posts", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await joinStandalone(page);
+  await page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "코디 공유", exact: true }).click();
+  await page.getByRole("button", { name: "코디 올리기" }).click();
+  const dialog = page.getByRole("dialog", { name: "코디 올리기" });
+  await dialog.locator('input[type="file"]').setInputFiles(PHOTO);
+  await expect.poll(async () => (await dialog.locator("[data-community-thumb]").count())
+    ? "thumbnail" : (await dialog.innerText()).replace(/\s+/g, " ").slice(0, 240), { timeout: 0 }).toBe("thumbnail");
+  await dialog.getByRole("checkbox", { name: /사진을 회원들에게 보여 주는 데 동의해요/ }).check();
+  await dialog.getByRole("button", { name: "올리기", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  const img = page.locator("[data-community-post] img").first();
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
 });
