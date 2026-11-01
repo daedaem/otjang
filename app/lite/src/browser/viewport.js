@@ -16,10 +16,10 @@
   if (window.EOUL_VIEWPORT) return;
   var root = document.documentElement, vv = window.visualViewport, raf = 0, tall = 0, wide = 0;
   var BARS = '.tabs, .strip, .buybar, .chatbar, .pinbar, .shelfbar, .regbar, .wr-sheet, [data-fixed-bottom]';
-  // 높이로 배치가 바뀌는 단계: screen.html의 짧은 창(폭 600 이상·높이 500 이하) 메뉴 줄. 폭과 함께 배치 열쇠로 쓴다.
-  var SHORT = window.matchMedia ? matchMedia('(min-width: 600px) and (max-height: 500px)') : null;
-  function layout() { return innerWidth + (SHORT && SHORT.matches ? ':short' : ''); }
-  var anchor = null, holdUntil = 0, heldY = 0, lastLayout = layout(), lastWidth = innerWidth;
+  // 높이로 배치가 바뀌는 단계: screen.html의 짧은 창 메뉴 줄 (min-width: 600px) and (max-height: 500px). 폭과 함께 배치
+  // 열쇠로 쓴다. matchMedia().matches는 WebKit에서 resize 처리 중 아직 이전 값이라 창 크기로 직접 잰다(#149 WebKit CI).
+  function layout() { return innerWidth + (innerWidth >= 600 && innerHeight <= 500 ? ':short' : ''); }
+  var anchor = null, holdUntil = 0, heldY = 0, again = false, lastLayout = layout(), lastWidth = innerWidth;
   function now() { return Date.now(); }
   function editing() {
     var el = document.activeElement;
@@ -66,6 +66,7 @@
     else { root.removeAttribute('data-kb'); root.style.removeProperty('--kb'); root.style.removeProperty('--vvt'); }
     root.style.setProperty('--vvh', Math.round(vv ? vv.height : innerHeight) + 'px');
     if (!open) { root.style.setProperty('--chrome-b', chrome() + 'px'); root.setAttribute('data-chrome', ''); }
+    if (again) { again = false; keepAnchor(); heldY = window.scrollY; }
   }
   function soon() { if (!raf) raf = requestAnimationFrame(apply); }
   addEventListener('resize', function () {
@@ -80,6 +81,9 @@
       apply();
       keepAnchor();
       holdUntil = now() + 500; heldY = window.scrollY;
+      // 다음 프레임에 한 번 더: resize 뒤 미디어 조건 변화로 다시 그려지는 화면(예: 열 수가 바뀌는 React 화면)이
+      // 기준을 또 밀면 바로잡는다. 이미 제자리면 아무것도 하지 않는다.
+      again = true;
     }
     soon();
   });
