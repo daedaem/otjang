@@ -249,11 +249,12 @@ test.describe("keyboard on a wide screen", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       const vv = new EventTarget() as any;
-      vv.offsetTop = 0; vv.offsetLeft = 0; vv.scale = 1;
+      vv.offsetLeft = 0; vv.scale = 1;
+      Object.defineProperty(vv, "offsetTop", { get: () => (window as any).__vvTop || 0 });
       Object.defineProperty(vv, "width", { get: () => innerWidth });
       Object.defineProperty(vv, "height", { get: () => innerHeight - ((window as any).__kb || 0) });
       Object.defineProperty(window, "visualViewport", { value: vv, configurable: true });
-      (window as any).__setKb = (px: number) => { (window as any).__kb = px; vv.dispatchEvent(new Event("resize")); };
+      (window as any).__setKb = (px: number, top = 0) => { (window as any).__kb = px; (window as any).__vvTop = top; vv.dispatchEvent(new Event("resize")); };
     });
   });
   test("a centred sheet moves into the area above the keyboard instead of past the top", async ({ page }) => {
@@ -265,6 +266,17 @@ test.describe("keyboard on a wide screen", () => {
     await page.waitForFunction(() => document.querySelector(".sheet")?.getAnimations().length === 0);
     await expect.poll(() => rect(page, ".sheet").then((r) => r.b)).toBeLessThanOrEqual(820 - 336 + 1);
     expect((await rect(page, ".sheet")).y).toBeGreaterThanOrEqual(0);
+  });
+  // iOS can push the visible area down while typing (offsetTop): the sheet stays inside offsetTop..offsetTop+height.
+  test("with the visible area pushed down 100px the sheet stays inside the visible band", async ({ page }) => {
+    await start(page, 1180, 820);
+    await open(page, "closet");
+    await page.getByRole("button", { name: "더보기", exact: true }).first().click();
+    await page.locator("[data-backup]").click();
+    await page.evaluate(() => (window as any).__setKb(336, 100));
+    await page.waitForFunction(() => document.querySelector(".sheet")?.getAnimations().length === 0);
+    await expect.poll(() => rect(page, ".sheet").then((r) => r.b)).toBeLessThanOrEqual(100 + 820 - 336 + 1);
+    expect((await rect(page, ".sheet")).y).toBeGreaterThanOrEqual(100 - 0.5);
   });
 });
 

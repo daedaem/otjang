@@ -1,7 +1,8 @@
 /* 다기기 대응(2026-11-01). 앱 화면(screen.html)과 독립 커뮤니티 /c가 함께 쓴다(/c는 CSP상 인라인 스크립트가 안 돼 파일로 둔다).
    화면을 다시 그리지 않으므로 작성 중인 글·선택·초점은 그대로이고, 아래 세 가지만 맞춘다.
    - 키보드: 보이는 영역(visualViewport)이 80px 넘게 줄면(확대 제외) data-kb·--kb(iOS). 안드로이드는 viewport의
-     interactive-widget=resizes-content로 화면 자체가 줄어, 입력칸 초점 + 높이 72% 미만일 때 data-kb만 둔다. --vvh는 보이는 높이.
+     interactive-widget=resizes-content로 화면 자체가 줄어, 입력칸 초점 + 높이 72% 미만일 때 data-kb만 둔다. --vvh는 보이는 높이,
+     --vvt는 보이는 영역의 위 끝(offsetTop).
    - 아래 막대: 화면 아래에 붙은 고정 막대가 차지한 높이를 --chrome-b·data-chrome으로 두어 본문 끝이 가리지 않게 한다.
    - 스크롤 위치: 창 크기가 바뀌면(회전·펼치기·분할) 바뀌기 전 화면 위쪽에 보이던 요소를 같은 높이로 되돌린다.
      연속으로 크기가 바뀌는 동안(0.5초)은 같은 기준 요소를 유지해 위치가 조금씩 밀리지 않게 한다. */
@@ -51,8 +52,9 @@
     var k = vv ? Math.round(innerHeight - vv.height - vv.offsetTop) : 0;
     if (!(k > 80) || (vv && vv.scale > 1.05)) k = 0;
     var open = k > 0 || (editing() && innerHeight < tall * 0.72);
-    if (open) { root.setAttribute('data-kb', ''); root.style.setProperty('--kb', k + 'px'); }
-    else { root.removeAttribute('data-kb'); root.style.removeProperty('--kb'); }
+    // --vvt: 보이는 영역의 위 끝(iOS는 키보드가 열리면 보이는 영역이 아래로 밀릴 수 있다).
+    if (open) { root.setAttribute('data-kb', ''); root.style.setProperty('--kb', k + 'px'); root.style.setProperty('--vvt', Math.max(0, Math.round(vv ? vv.offsetTop : 0)) + 'px'); }
+    else { root.removeAttribute('data-kb'); root.style.removeProperty('--kb'); root.style.removeProperty('--vvt'); }
     root.style.setProperty('--vvh', Math.round(vv ? vv.height : innerHeight) + 'px');
     if (!open) { root.style.setProperty('--chrome-b', chrome() + 'px'); root.setAttribute('data-chrome', ''); }
   }

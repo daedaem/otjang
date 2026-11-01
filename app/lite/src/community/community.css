@@ -62,9 +62,9 @@
 .cm-veil { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .38); display: flex; align-items: flex-end; justify-content: center; }
 .cm-sheet { background: var(--bg); color: var(--ink); width: 100%; max-width: 560px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; border-radius: 14px 14px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 760px) { .cm-veil { align-items: center; } .cm-sheet { border-radius: 14px; } }
-/* 키보드가 열리면(다기기 대응 11-01, shared/viewport.js가 data-kb·--kb·--vvh를 둠) 작성창 바탕을 키보드 위까지만 두고
+/* 키보드가 열리면(다기기 대응 11-01, shared/viewport.js가 data-kb·--kb·--vvh·--vvt를 둠) 작성창 바탕을 보이는 구간(위 끝~키보드 위)에만 두고
    작성창 높이를 보이는 영역에 맞춘다. 닫기·제목과 맨 아래 올리기 버튼은 작성창 안 스크롤로 닿는다. */
-:root[data-kb] .cm-veil { bottom: var(--kb, 0px); }
+:root[data-kb] .cm-veil { top: var(--vvt, 0px); bottom: var(--kb, 0px); }
 :root[data-kb] .cm-sheet { max-height: calc(var(--vvh, 100dvh) - 16px); }
 .cm-thumbs { display: flex; flex-wrap: wrap; gap: 6px; }
 .cm-thumb { position: relative; width: 84px; aspect-ratio: 4 / 5; background: var(--ptile); border-radius: 2px; overflow: hidden; }
