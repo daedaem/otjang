@@ -287,6 +287,18 @@
     margin: 0;
   }
 }
+/* 넓은 화면(11-01 다기기): 칸이 너무 커지지 않게 열을 늘린다. */
+@media (min-width: 900px) {
+  .wr-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+}
+@media (min-width: 1200px) {
+  .wr-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
 /* content-visibility: auto는 쓰지 않는다: WebKit에서 지연 로드 사진이 화면에 들어와도 불러지지 않았다(#145 CI).
    큰 옷장은 60벌씩 그려 부담을 나눈다. */
 .wr-tile {
@@ -516,13 +528,14 @@
 }
 
 /* 아래 시트: 탭 바 바로 위. 목록은 시트 위에서 끝나도록 옷장 아래 여백을 시트 높이만큼 둔다. */
-.wr.wr-has-sheet {
+/* 시트 높이만큼의 아래 여백은 화면 공통 규칙(--chrome-b, screen.html)이 맡는다. 그 규칙이 없을 때만 여기서 둔다. */
+:root:not([data-chrome]) .wr.wr-has-sheet {
   padding-bottom: calc(var(--wr-sheet-h, 200px) + 8px);
 }
 .wr-sheet-host {
   position: fixed;
   z-index: 29;
-  left: 0;
+  left: var(--navL, 0px);
   right: 0;
   bottom: calc(var(--tabs) + var(--sab));
   pointer-events: none;
