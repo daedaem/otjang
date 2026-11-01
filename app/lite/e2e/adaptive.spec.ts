@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { covered, overflowX, rect } from "./adaptive-helpers";
+import { covered, overflowX, rect, resizeTo } from "./adaptive-helpers";
 // 다기기 대응(2026-11-01 대표 "그럼 만들어줘야죠", Codex 전달): 대표 창 크기(CSS px) 시험이다.
 // 실제 아이폰 듀오·폴드·플립·아이패드·갤럭시탭 기기 확인이 아니다(물리 픽셀을 환산하지 않는다).
 // 단계: 휴대폰(<600) · 중간(600~899, 세로 태블릿·펼친 폴더블·분할 창) · 넓음(≥900) · 낮은 가로 창(높이 ≤500).
@@ -100,7 +100,7 @@ test("wide closets show more columns and product pages lay out side by side from
   await open(page, "closet");
   const tops = await page.locator("[data-closet-section=trial] [data-rail-item]").evaluateAll((els) => els.slice(0, 6).map((e) => Math.round(e.getBoundingClientRect().top)));
   expect(tops[0]).toBe(tops[4]);
-  await page.setViewportSize({ width: 690, height: 840 });
+  await resizeTo(page, 690, 840);
   await open(page, "detail");
   const head = await rect(page, ".pdp-head");
   const photo = await rect(page, ".pdp-photo");
@@ -172,8 +172,7 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   await ask.fill("가을 아우터 20만원 이하");
   const steps = [[844, 390], [690, 840], [820, 1180], [1180, 820], [507, 820], [390, 844]];
   for (const [w, h] of steps) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.waitForTimeout(120);
+    await resizeTo(page, w, h);
     await expect(ask).toHaveValue("가을 아우터 20만원 이하");
     await expect(ask).toBeFocused();
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
@@ -191,8 +190,7 @@ test("unfolding, rotating and resizing keep typing, focus, picks and scroll", as
   const start0 = await item.evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(start0 - 200)).toBeLessThanOrEqual(2);
   for (const [w, h] of steps) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await resizeTo(page, w, h);
     await expect(pick).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("region", { name: "고른 옷" })).toBeVisible();
     expect(await overflowX(page)).toBeLessThanOrEqual(1);

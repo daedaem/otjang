@@ -53,8 +53,24 @@ export const rect = (page: Page, sel: string) =>
     const b = e.getBoundingClientRect();
     return { x: b.x, y: b.y, w: b.width, h: b.height, r: b.right, b: b.bottom };
   });
-// Change the window size before the checks measure anything at that size.
+// Change the window size and hand the page to the checks only after the layout script (src/browser/viewport.js)
+// has handled that size. The browser can deliver the resize event a few frames after the new layout is already
+// measurable; WebKit did in CI run 41281268565 (#148), and the long consult check at 690×840 then measured before
+// the script had re-measured the bottom bars or put the scroll position back (추정, adaptive-resize.spec.ts
+// repeats it with resize held back 300ms). Two animation frames after setViewportSize were not enough. A resize
+// listener added here, after the script's own, records the size it was called for: listeners run in the order
+// they were added, so once it reports the new size the script's handler has run as well, and two more frames let
+// the measurement it schedules land. The checks that follow are unchanged.
 export async function resizeTo(page: Page, width: number, height: number) {
+  const same = await page.evaluate(([w, h]) => {
+    const g = window as any;
+    if (g.__adaptiveSeen === undefined) {
+      g.__adaptiveSeen = `${innerWidth}x${innerHeight}`;
+      addEventListener("resize", () => { g.__adaptiveSeen = `${innerWidth}x${innerHeight}`; });
+    }
+    return innerWidth === w && innerHeight === h;
+  }, [width, height]);
   await page.setViewportSize({ width, height });
+  if (!same) await page.waitForFunction((size) => (window as any).__adaptiveSeen === size, `${width}x${height}`);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }

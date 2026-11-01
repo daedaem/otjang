@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { covered, overflowX, rect } from "./adaptive-helpers";
+import { covered, overflowX, rect, resizeTo } from "./adaptive-helpers";
 import { serveCommunity, communityCall, otherPost } from "./community-fixture.mjs";
 import { fileURLToPath } from "node:url";
 // 다기기 대응(11-01) — 내용이 채워진 화면을 대표 창 크기(CSS px)에서 본다. 실기기 확인이 아니다.
@@ -46,8 +46,7 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
   }
   await input.fill("그럼 비 오는 날은 어떻게 입을까요");
   for (const [label, w, h] of SIZES) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await resizeTo(page, w, h);
     expect(await overflowX(page), label).toBeLessThanOrEqual(1);
     await expect(input).toHaveValue("그럼 비 오는 날은 어떻게 입을까요");
     const bar = await rect(page, ".chatbar");
@@ -80,8 +79,7 @@ test("many purchase records at every step stay readable with their step buttons 
   });
   await expect(page.locator("[data-react-records]")).toHaveCount(1);
   for (const [label, w, h] of SIZES) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await resizeTo(page, w, h);
     expect(await overflowX(page), label).toBeLessThanOrEqual(1);
     expect(await covered(page), label).toEqual([]);
     const step = page.getByRole("button", { name: "주문했어요" }).first();
@@ -114,7 +112,7 @@ test("community posts with photos, long titles and sale sources, and the editor,
   await communityCall(f.env, "posts", { post: { board: "free", title: "긴 제목 자유글: 아메카지와 아메리칸 클래식 사이에서 옷장을 어떻게 채워야 할지 고민이에요", text: "줄바꿈 있는 본문\n둘째 줄\n셋째 줄", pieces: [], consent: false }, photos: [] }, f.who);
   const boards = page.getByRole("navigation", { name: "게시판", exact: true });
   for (const [label, w, h] of SIZES) {
-    await page.setViewportSize({ width: w, height: h });
+    await resizeTo(page, w, h);
     for (const board of ["코디 공유", "세일 정보", "자유게시판"]) {
       await boards.getByRole("link", { name: board, exact: true }).click();
       await expect(page.locator("[data-community-post]").first()).toBeVisible();
@@ -136,9 +134,9 @@ test("community posts with photos, long titles and sale sources, and the editor,
     const pb = await post.boundingBox();
     expect(pb!.y + pb!.height, `${label} post button visible`).toBeLessThanOrEqual(h + 1);
     await shot(page, `community-editor-${w}x${h}`);
-    await page.setViewportSize({ width: h > w ? h : w, height: h > w ? w : h });
+    await resizeTo(page, h > w ? h : w, h > w ? w : h);
     await expect(editor.getByLabel("제목", { exact: true })).toHaveValue("작성 중인 합성 제보");
-    await page.setViewportSize({ width: w, height: h });
+    await resizeTo(page, w, h);
     // Closing a draft asks first (window.confirm); the synthetic draft is discarded.
     page.once("dialog", (d) => void d.accept());
     await editor.getByRole("button", { name: "닫기", exact: true }).click();
