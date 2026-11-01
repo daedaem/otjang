@@ -39,11 +39,16 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
     w.K.tab("consult");
   }, { LONG, ids });
   const input = page.getByLabel("코디 질문", { exact: true });
-  for (const q of ["네이비 니트에 어울리는 바지는?", "출근할 때는요? 너무 딱딱하지 않게", "주말에 입을 신발도 알려 줘요", "겉옷까지 맞추면?"]) {
+  // Wait for each new answer by its number (every answer has the same body, so "the last bot message contains the
+  // body" alone would also match the previous answer — 검토 11-01; in practice the "생각하는 중" bubble is the last
+  // .msg.bot until the answer lands, measured with a 400ms answer delay, and WebKit diagnostics saw 4 answers and no
+  // bubble at every step, so this was not the cause of the 690×840 failure).
+  for (const [i, q] of ["네이비 니트에 어울리는 바지는?", "출근할 때는요? 너무 딱딱하지 않게", "주말에 입을 신발도 알려 줘요", "겉옷까지 맞추면?"].entries()) {
     await input.fill(q);
     await input.press("Enter");
-    await expect(page.locator(".msg.bot").last()).toContainText(LONG.slice(0, 12));
+    await expect(page.locator(".msg.bot:not(.wait)").last()).toContainText(`${i + 1}. ${LONG.slice(0, 12)}`);
   }
+  await expect(page.locator(".msg.bot.wait")).toHaveCount(0);
   await input.fill("그럼 비 오는 날은 어떻게 입을까요");
   for (const [label, w, h] of SIZES) {
     await resizeTo(page, w, h);
@@ -52,11 +57,12 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
     const bar = await rect(page, ".chatbar");
     expect(bar.b, `${label} chat bar inside`).toBeLessThanOrEqual(h + 1);
     expect(bar.x, `${label} chat bar beside the menu`).toBeGreaterThanOrEqual(await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--navL")) || 0) - 1);
-    // Scroll to the end and read the last answer against the bar, until the page has settled. WebKit CI twice
-    // measured the same wrong state at 690×840 right after the window change (last answer 745 > bar 722, #148
-    // 4f87232 and #149 9d18404) even after resizeTo waited for the resize to be handled, while every other run and
-    // Chromium passed; the cause is not confirmed (a re-render or scroll that lands after the first reading). The
-    // condition is unchanged and a page that stays wrong still fails, with its numbers in the message.
+    // Scroll to the end and read the last answer against the bar, until the page has settled. Cause of the WebKit
+    // failure (745 > 722 at 690×840, #148 4f87232 / #149 9d18404), found by measuring real WebKit (11-01): WebKit
+    // applies the media conditions about 0.1s after the resize event, so viewport.js measured the bottom bars in the
+    // old menu-rail layout and the space stayed 71px after the switch — a lasting product fault, fixed by
+    // re-measuring when a bar's box changes (test above). The polling only covers that short late-switch window; a
+    // page that stays wrong (as before the fix) still fails, with its numbers in the message.
     await expect.poll(() => page.evaluate(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
       const bar = document.querySelector(".chatbar")!.getBoundingClientRect();
@@ -70,6 +76,86 @@ test("a long consult thread with a draft keeps the input clear of the bars and t
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await shot(page, `consult-${w}x${h}`);
   }
+});
+
+// 긴 상담 WebKit 간헐 실패(#148 41281268565, #149 9d18404: 690×840에서 마지막 답 아래 745 > 입력 막대 위 722)의 원인
+// (11-01 진단 브랜치 claude/consult-diag-20261101, 실제 WebKit 12회 × 2번 중 2·4회 재현): WebKit은 844×390 → 690×840 resize
+// 이벤트가 왔을 때 아직 이전(메뉴 줄) 배치였고(입력 막대 위 769, 메뉴 폭 88), viewport.js는 그 배치로 아래 여백을 71로 쟀다.
+// 약 0.1초 뒤 미디어 조건이 바뀌어 배치가 막대 위 721·메뉴 0으로 바뀌었지만 다시 재는 계기(resize·visualViewport·DOM 변경)가
+// 없어 여백 71(본문 아래 95px)이 그대로 남았다. 맨 끝까지 스크롤해도 마지막 답 24px이 입력 막대에 가린다(0.5초 뒤에도 같음).
+// 여기서는 메뉴 줄 규칙을 조건 없이 복사한 스타일로 "resize 때 이전 배치"를 만들고, 그 스타일을 빼서 resize 이벤트 없이 배치가
+// 바뀌게 해 같은 순서를 Chromium에서 재현한다. 모형이 그 상태(막대 769·메뉴 88 → 721·0, 그사이 resize 이벤트 0, 페이지 예외 0)를
+// 만드는지 먼저 확인한다.
+test("the bottom bar space is measured again when the layout switches after the resize event (as WebKit)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await local(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?photos=0#/closet");
+  await page.waitForFunction(() => !!(window as any).K?.M);
+  await page.evaluate((LONG) => {
+    const w = window as any;
+    let n = 0;
+    w.EOUL_SERVER_AI = async () => ({ on_topic: true, answer: `${++n}. ${LONG}`, product_ids: ["ms-728000", "ms-1599217"] });
+    w.K.tab("consult");
+  }, LONG);
+  const input = page.getByLabel("코디 질문", { exact: true });
+  for (const [i, q] of ["바지는?", "신발은?", "겉옷은?", "가방은?"].entries()) {
+    await input.fill(q);
+    await input.press("Enter");
+    await expect(page.locator(".msg.bot:not(.wait)").last()).toContainText(`${i + 1}. ${LONG.slice(0, 12)}`);
+  }
+  await expect(page.locator(".msg.bot.wait")).toHaveCount(0);
+  await input.fill("그럼 비 오는 날은 어떻게 입을까요");
+  await resizeTo(page, 844, 390);
+  const state = () => page.evaluate(() => {
+    const root = document.documentElement;
+    return {
+      cb: parseFloat(getComputedStyle(root).getPropertyValue("--chrome-b")),
+      bar: Math.round(document.querySelector(".chatbar")!.getBoundingClientRect().top),
+      nav: getComputedStyle(root).getPropertyValue("--navL").trim(),
+    };
+  });
+  // Keep the menu-rail layout applied whatever the window size (the rules copied without their media condition).
+  const copied = await page.evaluate(() => {
+    const rules: string[] = [];
+    for (const sheet of Array.from(document.styleSheets)) {
+      let list: CSSRuleList;
+      try { list = sheet.cssRules; } catch { continue; }
+      for (const r of Array.from(list))
+        if (r instanceof CSSMediaRule && r.conditionText.replace(/\s+/g, " ") === "(min-width: 900px), (min-width: 600px) and (max-height: 500px)")
+          for (const c of Array.from(r.cssRules)) rules.push(c.cssText);
+    }
+    const st = document.createElement("style");
+    st.id = "qa-old-layout";
+    st.textContent = rules.join("\n");
+    document.head.append(st);
+    return rules.length;
+  });
+  expect(copied, "menu rail rules copied").toBeGreaterThan(3);
+  await resizeTo(page, 690, 840);
+  const atResize = await state();
+  expect(atResize, "at the resize the old (menu rail) layout is still applied, as WebKit").toMatchObject({ bar: 769, cb: 71 });
+  expect(atResize.nav).not.toBe("0px");
+  // The switch then lands with no resize or visualViewport event.
+  await page.evaluate(() => {
+    const g = window as any;
+    g.__lateEvents = 0;
+    addEventListener("resize", () => g.__lateEvents++);
+    window.visualViewport?.addEventListener("resize", () => g.__lateEvents++);
+    document.getElementById("qa-old-layout")!.remove();
+  });
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--navL").trim() === "0px");
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const switched = await state();
+  expect(switched.bar, "the layout switched (bottom tabs back under the chat bar)").toBe(721);
+  expect(await page.evaluate(() => (window as any).__lateEvents), "no resize event for the switch").toBe(0);
+  expect(errors, "no page errors").toEqual([]);
+  // The same checks as the long consult test, once, right after the switch.
+  expect(switched.cb, "bottom space measured for the switched layout").toBe(840 - 721);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const last = await rect(page, ".msg.bot >> nth=-1");
+  expect(last.b, "last answer above the chat bar").toBeLessThanOrEqual(switched.bar + 1);
 });
 
 test("many purchase records at every step stay readable with their step buttons reachable", async ({ page }) => {
