@@ -10,7 +10,9 @@ const snap = (page: Page) => page.evaluate(() => {
   const bar = document.querySelector(".chatbar")!.getBoundingClientRect();
   const msgs = document.querySelectorAll(".msg.bot"), last = msgs[msgs.length - 1].getBoundingClientRect();
   const vv = window.visualViewport;
-  return `t${Math.round(performance.now())} last${Math.round(last.bottom)} bar${Math.round(bar.top)} sy${Math.round(scrollY)}/max${root.scrollHeight - innerHeight} sh${root.scrollHeight} win${innerWidth}x${innerHeight} vv${vv ? Math.round(vv.width) + "x" + Math.round(vv.height) + "@" + Math.round(vv.offsetTop) : "-"} cb${getComputedStyle(root).getPropertyValue("--chrome-b").trim() || "-"} kb${root.hasAttribute("data-kb") ? 1 : 0} pb${getComputedStyle(app).paddingBottom} nav${getComputedStyle(root).getPropertyValue("--navL").trim()} tabs${getComputedStyle(document.getElementById("tabs")!).display} appB${Math.round(app.getBoundingClientRect().bottom)} act${document.activeElement?.getAttribute("aria-label") || document.activeElement?.tagName}`;
+  const lastEl = msgs[msgs.length - 1] as HTMLElement;
+  const ans = `n${msgs.length} wait${document.querySelectorAll(".msg.bot.wait").length} no${(lastEl.textContent || "").match(/(\d+)\. 니트가/)?.[1] || "-"}`;
+  return `${ans} t${Math.round(performance.now())} last${Math.round(last.bottom)} bar${Math.round(bar.top)} sy${Math.round(scrollY)}/max${root.scrollHeight - innerHeight} sh${root.scrollHeight} win${innerWidth}x${innerHeight} vv${vv ? Math.round(vv.width) + "x" + Math.round(vv.height) + "@" + Math.round(vv.offsetTop) : "-"} cb${getComputedStyle(root).getPropertyValue("--chrome-b").trim() || "-"} kb${root.hasAttribute("data-kb") ? 1 : 0} pb${getComputedStyle(app).paddingBottom} nav${getComputedStyle(root).getPropertyValue("--navL").trim()} tabs${getComputedStyle(document.getElementById("tabs")!).display} appB${Math.round(app.getBoundingClientRect().bottom)} act${document.activeElement?.getAttribute("aria-label") || document.activeElement?.tagName}`;
 });
 for (let rep = 0; rep < 12; rep++)
   test(`diag consult ${rep}`, async ({ page }) => {
@@ -111,8 +113,9 @@ for (let rep = 0; rep < 12; rep++)
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     }
     const ev: string[] = await page.evaluate(() => (window as any).__ev);
-    const from = ev.findIndex((e) => e.includes("=== step 844x390"));
-    const to = ev.findIndex((e) => e.includes("=== step 820x1180"));
-    const win = ev.slice(Math.max(0, from), to > 0 ? to : undefined).slice(0, 220);
-    expect(`DIAG ${bad ? "VIOLATION at " + bad : "no violation"} errors=${JSON.stringify(errors)}\n${lines.join("\n")}\nEVENTS 844x390→690x840:\n${win.join("\n")}`).toBe("(diagnostic, always fails)");
+    const from = ev.findIndex((e) => e.includes("=== step 690x840"));
+    const to = ev.findIndex((e, i) => i > from && e.includes("--- measured"));
+    const win = ev.slice(Math.max(0, from), to > 0 ? to + 1 : undefined).slice(0, 60).map((e) => e.replace(/http:\/\/127\.0\.0\.1:8792\/shared\//, ""));
+    const step690 = lines.find((l) => l.startsWith("690x840")) || "";
+    expect(`DIAG ${bad ? "VIOLATION at " + bad : "no violation"} errors=${errors.length}\n${step690}\nEVENTS 690x840:\n${win.join("\n")}`).toBe("(diagnostic, always fails)");
   });
