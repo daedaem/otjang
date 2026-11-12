@@ -40,12 +40,11 @@ async function realWeather(page: Page) {
 }
 async function home(page: Page) {
   await page.evaluate(() => (window as any).K.tab("home"));
-  await expect(page.getByLabel("찾는 옷", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-react-home] [data-react-weather]")).toBeVisible();
 }
 const card = (page: Page) => page.getByRole("region", { name: "오늘 날씨 코디", exact: true });
 const edition = (page: Page) => page.evaluate(() => document.documentElement.dataset.edition || "");
 const stored = (page: Page) => page.evaluate(() => localStorage.getItem("hangit:look"));
-const top = (page: Page, sel: string) => page.locator(sel).first().evaluate((el) => el.getBoundingClientRect().top);
 
 test("the default home is unchanged while the new home is off", async ({ page }) => {
   await open(page);
@@ -57,7 +56,7 @@ test("the default home is unchanged while the new home is off", async ({ page })
   await expect(page.locator(".td-rail")).toHaveCount(0);
 });
 
-test("?look=v3 turns the today home on for this device: today's outfit hangs on the rail before the search", async ({ page }) => {
+test("?look=v3 turns the today home on for this device: today's outfit hangs on the rail", async ({ page }) => {
   await open(page, "&look=v3");
   expect(await edition(page)).toBe("today");
   expect(await page.evaluate(() => document.documentElement.dataset.look)).toBe("v2");
@@ -75,11 +74,8 @@ test("?look=v3 turns the today home on for this device: today's outfit hangs on 
   const bar = await rail.evaluate((el) => { const s = getComputedStyle(el, "::before"); return { h: s.height, bg: s.backgroundColor }; });
   expect(bar).toEqual({ h: "6px", bg: "rgb(91, 58, 36)" });
   expect(await rail.locator(".p1").first().evaluate((el) => getComputedStyle(el, "::before").height)).toBe("14px");
-  // 오늘 코디가 먼저, 옷 찾기는 그 아래에 그대로 있다.
-  expect(await top(page, ".td-rail")).toBeLessThan(await top(page, "#q"));
-  await page.getByLabel("찾는 옷", { exact: true }).fill("흰 셔츠");
-  await page.getByRole("search").getByRole("button", { name: "찾기", exact: true }).click();
-  await expect(page.locator("[data-react-results]")).toBeVisible();
+  // 2단계(11-13): 옷 찾기는 홈에서 빠져 찾기 탭으로 갔다(e2e/today-tabs.spec.ts).
+  await expect(page.getByLabel("찾는 옷", { exact: true })).toHaveCount(0);
 });
 
 test("another outfit and tomorrow keep working on the rail", async ({ page }) => {
@@ -96,14 +92,16 @@ test("another outfit and tomorrow keep working on the rail", async ({ page }) =>
   await expect(card(page)).toContainText("내일 · 아침 9° → 낮 17°");
 });
 
-test("an empty closet still has a way in: trial closet, add and search", async ({ page }) => {
+test("an empty closet still has a way in: trial closet, add and the search tab", async ({ page }) => {
   await open(page, "&look=v3");
   await realWeather(page);
   await home(page);
   await expect(card(page).getByRole("heading", { level: 1 })).toHaveText("옷장을 채우면 날씨에 맞춰 골라 드려요");
   await expect(card(page).getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(card(page).getByRole("button", { name: "브랜드로 찾아 넣기" })).toBeVisible();
+  await page.locator("[data-react-home]").getByRole("button", { name: "옷 찾으러 가기" }).click();
   await expect(page.getByLabel("찾는 옷", { exact: true })).toBeVisible();
+  await home(page);
   await card(page).getByRole("button", { name: "체험용 옷장", exact: true }).click();
   await expect(card(page).getByRole("heading", { level: 1 })).toHaveText("오늘은 이렇게 입어요");
   await expect(card(page).locator(".td-rail")).toContainText("체험용");
