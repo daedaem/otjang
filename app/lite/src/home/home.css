@@ -31,3 +31,18 @@
   min-height: 44px;
 }
 .hm .chips .chip {max-width:100%;white-space:normal;text-align:left}
+
+/* 개편 A "오늘의 옷장"(대표 11-12): 오늘 코디가 첫 화면 맨 위에, 옷은 옷걸이 봉에 걸린 모습. ?look=v3·메뉴로 켠다. */
+:root[data-edition="today"] .hm-today .wx.td { margin-top: 0; padding: 4px 0 20px; }
+.hm-today .td .td-temp { margin: 8px 0 0; font-size: 13px; line-height: 20px; color: var(--ink2); }
+.hm-today .td .td-h1 { margin: 2px 0 0; }
+:root[data-edition="today"] .hm-today .wx.td .td-rail { position: relative; gap: 10px; margin-top: 16px; padding-top: 20px; }
+.hm-today .td .td-rail::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; border-radius: 3px; background: var(--wood-line); }
+.hm-today .td .td-rail .p1 { position: relative; }
+.hm-today .td .td-rail .p1::before { content: ""; position: absolute; left: calc(50% - 1px); top: -14px; width: 2px; height: 14px; background: var(--wood-line); }
+:root[data-edition="today"] .hm-today .wx.td .td-rail .ph-box { border-radius: 12px; }
+:root[data-edition="today"] .hm-today .wx.td .td-rail .t6 { margin-top: 8px; text-align: center; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink); }
+.hm-today .td .wx-band { margin-top: 14px; }
+.hm-today .td .wx-invite { margin-top: 12px; }
+.hm-today .td-find { margin-top: 24px; }
+.hm-today .td-find .ask { margin-top: 12px; }

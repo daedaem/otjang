@@ -57,6 +57,8 @@ export function Menu({
   close,
   place,
   look = false,
+  edition = false,
+  onEdition,
   onInfo,
   onBackup,
   onPlace,
@@ -68,6 +70,9 @@ export function Menu({
   place: boolean;
   // WO-11: whether the new look (v2, the default) is on.
   look?: boolean;
+  // 개편 A(대표 11-12): whether the new today home is on for this device.
+  edition?: boolean;
+  onEdition?(): After;
   // Each returns what to run after the sheet closes (see finish()).
   onInfo(): After;
   onBackup(): After;
@@ -96,6 +101,9 @@ export function Menu({
       {row("data-theme", "밝게 · 어둡게", "ph-moon", onTheme)}
       {onLook
         ? row("data-look", look ? "이전 디자인으로 보기" : "새 디자인으로 보기", "ph-sparkle", onLook)
+        : null}
+      {onEdition
+        ? row("data-edition", edition ? "새 홈 화면 끄기" : "새 홈 화면 미리 보기", "ph-coat-hanger", onEdition)
         : null}
       {row("data-reset", "처음부터 다시", "ph-arrow-counter-clockwise", onReset)}
       <RoleLink />
