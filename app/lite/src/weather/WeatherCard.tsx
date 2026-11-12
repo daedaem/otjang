@@ -86,10 +86,13 @@ export function WeatherCard({
   host,
   core,
   where,
+  today = false,
 }: {
   host: WeatherHost;
   core: CoreSubscription;
   where: "home" | "looks";
+  // 개편 A "오늘의 옷장"(대표 11-12): 새 홈의 첫 구역. 같은 날씨 모델을 제목 먼저, 옷은 옷걸이 봉에 건 모습으로 그린다.
+  today?: boolean;
 }) {
   const version = useSyncExternalStore(
       host.ctl.subscribe,
@@ -125,9 +128,10 @@ export function WeatherCard({
       placeButton.current.focus({ preventScroll: true });
     }
   });
+  const box = today ? "wx td" : "wx";
   if (m.status === "loading")
     return (
-      <section className="wx" aria-label="오늘 날씨 코디" data-react-weather>
+      <section className={box} aria-label="오늘 날씨 코디" data-react-weather>
         <div className="wx-wait" role="status">
           <i className="ph ph-circle-notch" aria-hidden="true" />
           오늘 날씨를 불러오는 중이에요
@@ -175,12 +179,27 @@ export function WeatherCard({
           </span>
         )}
       </div>
-      <div className="wx-h">
-        <span className="wx-t num">
-          {/* one text node, like the vanilla template (same glyph run) */}
-          {`${m.day === "today" ? "오늘" : "내일"} · 아침 ${m.temp.min}° → 낮 ${m.temp.max}°${m.temp.rain ? " · 비" : ""}`}
-        </span>
-      </div>
+      {today ? (
+        <>
+          <p className="td-temp num">
+            {`${m.day === "today" ? "오늘" : "내일"} · 아침 ${m.temp.min}° → 낮 ${m.temp.max}°${m.temp.rain ? " · 비" : ""}`}
+          </p>
+          <h1 className="h1 td-h1">
+            {m.mode === "outfit"
+              ? `${m.day === "today" ? "오늘" : "내일"}은 이렇게 입어요`
+              : m.mode === "invite"
+                ? "옷장을 채우면 날씨에 맞춰 골라 드려요"
+                : `${m.day === "today" ? "오늘" : "내일"} 날씨 코디`}
+          </h1>
+        </>
+      ) : (
+        <div className="wx-h">
+          <span className="wx-t num">
+            {/* one text node, like the vanilla template (same glyph run) */}
+            {`${m.day === "today" ? "오늘" : "내일"} · 아침 ${m.temp.min}° → 낮 ${m.temp.max}°${m.temp.rain ? " · 비" : ""}`}
+          </span>
+        </div>
+      )}
     </>
   );
   const exRow = m.examples && (
@@ -194,10 +213,10 @@ export function WeatherCard({
   const place = placeOpen && <PlaceSheet host={host} onClose={closePlace} />;
   if (m.mode === "invite")
     return (
-      <section className="wx" aria-label="오늘 날씨 코디" data-react-weather>
+      <section className={box} aria-label="오늘 날씨 코디" data-react-weather>
         {head}
         <div className="wx-invite">
-          <h2 className="h3">옷장을 채우면 날씨에 맞춰 골라 드려요</h2>
+          {today ? null : <h2 className="h3">옷장을 채우면 날씨에 맞춰 골라 드려요</h2>}
           <div className="btns">
             <button type="button" className="btn go" onClick={host.add}>
               <i className="ph ph-magnifying-glass" aria-hidden="true" />
@@ -214,7 +233,7 @@ export function WeatherCard({
     );
   if (m.mode === "message")
     return (
-      <section className="wx" aria-label="오늘 날씨 코디" data-react-weather>
+      <section className={box} aria-label="오늘 날씨 코디" data-react-weather>
         {head}
         <p className="t5 sub" style={{ margin: "8px 0 0" }}>
           {m.message}
@@ -225,9 +244,9 @@ export function WeatherCard({
     );
   const count = m.count || 0,
     missing = m.missing;
-  return (
-    <section className="wx" aria-label="오늘 날씨 코디" data-react-weather>
-      {head}
+  const pieces = m.pieces || [];
+  const band = (
+    <>
       <div className="wx-band">
         <b>{m.band?.label}</b>
         {` · ${m.band?.advice ?? ""}`}
@@ -241,9 +260,18 @@ export function WeatherCard({
           <span>{m.notes}</span>
         </p>
       )}
+    </>
+  );
+  return (
+    <section className={box} aria-label="오늘 날씨 코디" data-react-weather>
+      {head}
+      {today ? null : band}
       {m.outfit && (
-        <div className="wx-ps">
-          {(m.pieces || []).map((x, i) => (
+        <div
+          className={today ? "wx-ps td-rail" : "wx-ps"}
+          style={today ? { gridTemplateColumns: `repeat(${Math.max(3, pieces.length)}, minmax(0, 1fr))` } : undefined}
+        >
+          {pieces.map((x, i) => (
             <div className="p1" key={`${i}:${x.label}`}>
               <Tile m={x.tile} />
               <div className="t6">
@@ -254,6 +282,7 @@ export function WeatherCard({
           ))}
         </div>
       )}
+      {today ? band : null}
       <p className={m.good ? "wx-why good" : "wx-why"}>
         <i className="ph-fill ph-check-circle" aria-hidden="true" />
         <span>

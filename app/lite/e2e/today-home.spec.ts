@@ -112,15 +112,15 @@ test("an empty closet still has a way in: trial closet, add and search", async (
 test("the menu turns the new home on and off and remembers it on this device", async ({ page }) => {
   await open(page);
   await home(page);
-  await page.getByRole("button", { name: "더보기", exact: true }).click();
-  await page.getByRole("button", { name: "새 홈 화면 미리 보기", exact: true }).click();
+  await page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
+  await page.getByRole("button", { name: "새 홈 화면 미리 보기" }).click();
   await expect(page.locator(".hm-today")).toBeVisible();
   expect(await edition(page)).toBe("today");
   expect(await stored(page)).toBe("v3");
   await page.reload();
   await expect(page.locator(".hm-today")).toBeVisible();
-  await page.getByRole("button", { name: "더보기", exact: true }).click();
-  await page.getByRole("button", { name: "새 홈 화면 끄기", exact: true }).click();
+  await page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
+  await page.getByRole("button", { name: "새 홈 화면 끄기" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
   expect(await edition(page)).toBe("");
   expect(await stored(page)).toBeNull();
@@ -129,8 +129,8 @@ test("the menu turns the new home on and off and remembers it on this device", a
 test("going back to the previous look also leaves the new home", async ({ page }) => {
   await open(page, "&look=v3");
   await home(page);
-  await page.getByRole("button", { name: "더보기", exact: true }).click();
-  await page.getByRole("button", { name: "이전 디자인으로 보기", exact: true }).click();
+  await page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
+  await page.getByRole("button", { name: "이전 디자인으로 보기" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
   expect(await edition(page)).toBe("");
   expect(await stored(page)).toBe("v1");

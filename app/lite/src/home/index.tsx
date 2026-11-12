@@ -151,38 +151,10 @@ function Home({ host }: { host: HomeHost }) {
   // 바꾸면 K.refresh()가 이 화면을 다시 그린다.
   const v2 = document.documentElement.dataset.look === "v2",
     weather = <WeatherCard host={host.weather} core={host.core} where="home" />;
-  return (
-    <section className="hm" data-react-home aria-label="옷 찾기 홈">
-      <header className="top">
-        <span className="mark">
-          <Wordmark />
-        </span>
-        <button
-          className="icon quiet-i"
-          type="button"
-          tabIndex={0}
-          aria-label="가격·사진·판단 기준 보기"
-          onClick={host.info}
-        >
-          <i className="ph ph-info" aria-hidden="true" />
-        </button>
-        <span className="sp" />
-        <button
-          className="icon"
-          type="button"
-          tabIndex={0}
-          aria-label="더보기"
-          onClick={host.menu}
-        >
-          <i className="ph ph-dots-three" aria-hidden="true" />
-        </button>
-      </header>
-      {v2 ? null : weather}
-      <h1 className={v2 ? "h1 hero" : "h1 hero after-wx"}>
-        뭐 사려고요?
-        <br />
-        <span className="acc">걸어 보고</span> 사요.
-      </h1>
+  // 개편 A "오늘의 옷장"(대표 11-12): 오늘 코디가 첫 화면 맨 위, 옷 찾기는 그 아래. ?look=v3·메뉴로 켠다.
+  const today = document.documentElement.dataset.edition === "today";
+  const ask = (
+    <>
       <form
         className="ask"
         id="sf"
@@ -229,6 +201,56 @@ function Home({ host }: { host: HomeHost }) {
           <i className="ph ph-link" aria-hidden="true" /> 링크로 사도 될지 보기
         </button>
       ) : null}
+    </>
+  );
+  const top = (
+    <header className="top">
+      <span className="mark">
+        <Wordmark />
+      </span>
+      <button
+        className="icon quiet-i"
+        type="button"
+        tabIndex={0}
+        aria-label="가격·사진·판단 기준 보기"
+        onClick={host.info}
+      >
+        <i className="ph ph-info" aria-hidden="true" />
+      </button>
+      <span className="sp" />
+      <button
+        className="icon"
+        type="button"
+        tabIndex={0}
+        aria-label="더보기"
+        onClick={host.menu}
+      >
+        <i className="ph ph-dots-three" aria-hidden="true" />
+      </button>
+    </header>
+  );
+  if (today)
+    return (
+      <section className="hm hm-today" data-react-home aria-label="옷 찾기 홈">
+        {top}
+        <WeatherCard host={host.weather} core={host.core} where="home" today />
+        <section className="td-find" aria-label="옷 찾기">
+          <h2 className="h2">찾는 옷이 있나요?</h2>
+          {ask}
+        </section>
+        <ProofCard host={host} model={proof} />
+      </section>
+    );
+  return (
+    <section className="hm" data-react-home aria-label="옷 찾기 홈">
+      {top}
+      {v2 ? null : weather}
+      <h1 className={v2 ? "h1 hero" : "h1 hero after-wx"}>
+        뭐 사려고요?
+        <br />
+        <span className="acc">걸어 보고</span> 사요.
+      </h1>
+      {ask}
       {v2 ? weather : null}
       <ProofCard host={host} model={proof} />
     </section>
