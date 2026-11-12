@@ -44,5 +44,9 @@
 :root[data-edition="today"] .hm-today .wx.td .td-rail .t6 { margin-top: 8px; text-align: center; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink); }
 .hm-today .td .wx-band { margin-top: 14px; }
 .hm-today .td .wx-invite { margin-top: 12px; }
-.hm-today .td-find { margin-top: 24px; }
-.hm-today .td-find .ask { margin-top: 12px; }
+.hm-today .hm-go-find { margin-top: 8px; text-decoration: none; }
+/* 개편 A 2단계: 찾기·나 탭의 줄 목록. */
+.hm-rows { margin-top: 20px; border-top: 1px solid var(--line); }
+.hm-rows .hm-row { width: 100%; min-height: 64px; text-align: left; }
+.hm-rows .hm-row .grow { min-width: 0; }
+.hm-rows .hm-row .t6 { display: block; color: var(--ink2); }
