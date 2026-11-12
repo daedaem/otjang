@@ -22,6 +22,11 @@ export interface HomeCore extends ClosetCore {
 export type HomeHost = {
   element: HTMLElement;
   core: HomeCore;
+  // 개편 A 2단계: 새 화면에서 이 묶음이 그리는 탭 — home(오늘)·find(찾기)·me(나).
+  mode?: string;
+  find?(): void;
+  consult?(): void;
+  records?(): void;
   query?: string;
   proof(): Proof;
   search(q: string): void;

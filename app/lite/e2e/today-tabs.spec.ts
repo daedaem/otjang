@@ -88,7 +88,8 @@ test("turning the new home off from 나 returns to the six tabs on the home", as
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("나");
   await page.locator("[data-react-home]").getByRole("button", { name: /^설정/ }).click();
   await page.getByRole("button", { name: "새 홈 화면 끄기" }).click();
-  expect(await labels(page)).toEqual(["찾기", "코디", "옷장", "커뮤니티", "상담", "기록"]);
+  // 메뉴가 닫힌 뒤에 화면과 탭이 바뀐다.
   await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
+  expect(await labels(page)).toEqual(["찾기", "코디", "옷장", "커뮤니티", "상담", "기록"]);
   await expect(current(page)).toHaveText("찾기");
 });

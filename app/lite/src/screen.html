@@ -109,6 +109,7 @@ a { color: inherit; text-decoration: none; }
 .tabs .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .tabs button { height: var(--tabs); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 12px; line-height: 14px; font-weight: 600; color: var(--ink3); white-space: nowrap; }
 .tabs button i { font-size: 22px; }
+:root[data-edition="today"] .tabs .in { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .tabs button[aria-current="page"] { color: var(--ink); }
 
 /* 걸린 옷 띠(34px): 걸린 옷이 있을 때만, 탭 위 한 줄. 누르면 옷걸이 탭. */
@@ -1305,7 +1306,7 @@ a { color: inherit; text-decoration: none; }
       },
       returned: (id) => returnSheet(id),
       product: (id) => K.go('detail', { id }),
-      home: () => K.tab('home'),
+      home: () => findTab(),
       info: () => disclose(),
     };
   }
@@ -1406,7 +1407,7 @@ a { color: inherit; text-decoration: none; }
       own: (id, yes) => answerOwn(id, yes),
       product: (id) => K.go('detail', { id }),
       back: () => K.back(null),
-      edit: (text) => K.tab('home', { q: text }),
+      edit: (text) => findTab({ q: text }),
       info: () => disclose(),
       removeCondition: (key) => K.go('results', { q, drop: [...drop, key] }, { replace: true }),
       relax: (next) => K.go('results', { q, drop: next }, { replace: true }),
@@ -1438,7 +1439,13 @@ a { color: inherit; text-decoration: none; }
     subscribe(fn) { chromeCtl.subs.add(fn); return () => chromeCtl.subs.delete(fn); },
     changed() { chromeCtl.version++; chromeCtl.subs.forEach((fn) => fn()); },
   };
-  const tabFor = (view) => (view === 'results' ? 'home' : view === 'photoadd' ? 'closet' : view === 'check' ? 'home' : view);
+  // 개편 A 2단계(대표 11-12·11-13): 새 화면(data-edition="today")은 탭이 오늘(home)·옷장·찾기(find)·둘러보기(community)·나(me)다.
+  // 찾기·나는 홈 묶음(src/home)이 mode로 그린다. 기본 화면에서는 두 화면이 없으므로 홈으로 본다.
+  const isToday = () => document.documentElement.dataset.edition === 'today';
+  const findTab = (params) => K.tab(isToday() ? 'find' : 'home', params || {});
+  const tabFor = (view) => (isToday()
+    ? (view === 'results' || view === 'check' || view === 'consult' ? 'find' : view === 'records' ? 'me' : view === 'looks' ? 'home' : view === 'photoadd' ? 'closet' : view)
+    : (view === 'results' || view === 'check' || view === 'find' || view === 'me' ? 'home' : view === 'photoadd' ? 'closet' : view));
   let stripBumps = 0;
   // 지인 테스트(10-28 15:12): 본인은 '지인 초대', 초대 회원은 '내 계정'(React 메뉴의 RoleLink와 같음).
   function roleLink() {
@@ -1725,7 +1732,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     curView = view; curParams = params || {};
     if (view === 'reg') Input.enter(params.q ? (() => { const [brand, ...name] = params.q.split(' '); return { brand, name: name.join(' ') }; })() : undefined, Number(params.step || 0));
     $('#bar').innerHTML = '';
-    const reactHome=view==='home'&&window.EOUL_HOME_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
+    const reactHome=(view==='home'||view==='find'||view==='me')&&window.EOUL_HOME_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactAdd=view==='add'&&window.EOUL_ADD_SEARCH_LOAD&&new URLSearchParams(location.search).get('ui')!=='vanilla';
     const reactInput = view === 'reg' && window.EOUL_INPUT_LOAD && new URLSearchParams(location.search).get('input') !== 'vanilla';
     const reactCloset = view === 'closet' && window.EOUL_CLOSET_LOAD && new URLSearchParams(location.search).get('ui') !== 'vanilla';
@@ -1743,7 +1750,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     const html = reactConsult ? '<div id="react-consult"><p role="status">상담을 여는 중이에요…</p></div>' : reactRecords ? '<div id="react-records"><p role="status">기록을 여는 중이에요…</p></div>' : reactDetail ? '<div id="react-detail"><p role="status">상품을 여는 중이에요…</p></div>' : reactCompare ? '<div id="react-compare"><p role="status">비교를 여는 중이에요…</p></div>' : reactResults ? '<div id="react-results"><p role="status">결과를 여는 중이에요…</p></div>' : reactHome ? '<div id="react-home"><p role="status">홈을 여는 중이에요…</p></div>' : reactAdd ? '<div id="react-add-search"><p role="status">상품 검색을 여는 중이에요…</p></div>' : reactMirror ? '<div id="react-mirror"><p role="status">거울을 여는 중이에요…</p></div>' : reactPhotoAdd ? '<div id="react-photo-add"><p role="status">사진으로 넣기를 여는 중이에요…</p></div>' : view === 'photoadd' ? '<p role="alert">사진으로 넣기 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>' : reactCommunity ? '<div id="react-community"><p role="status">코디 공유를 여는 중이에요…</p></div>' : view === 'community' ? '<p role="alert">코디 공유 화면을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>' : reactInput ? '<div id="react-input"><p role="status">입력 화면을 여는 중이에요…</p></div>' : reactCloset ? '<div id="react-closet"><p role="status">옷장을 여는 중이에요…</p></div>' : reactMeasure ? '<div id="react-measure"><p role="status">실측 비교를 여는 중이에요…</p></div>' : reactCollection ? '<div id="react-collection"><p role="status">진열장을 여는 중이에요…</p></div>' : reactOutfits ? '<div id="react-outfits"><p role="status">코디 화면을 여는 중이에요…</p></div>' : (V[view] || V.home)(params);
     const app = $('#app');
     app.innerHTML = `<div class="view ${dir === 'back' ? 'back' : ''}">${html}</div>`;
-    const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results', 'community'].includes(view);
+    const tabbed = ['home', 'looks', 'consult', 'closet', 'records', 'results', 'community', 'find', 'me'].includes(view);
     if (chromeMounted) { chromeState.tabbed = tabbed; chromeState.current = tabFor(view); } else $('#tabs').hidden = !tabbed;
     app.className = `app${view === 'detail' ? ' bar' : view === 'consult' ? ' chat' : view === 'closet' ? ' pin' : view === 'add' ? ' addv' : view === 'reg' ? ' regv' : ''}`;
     renderStrip();
@@ -1760,7 +1767,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const restoreY=dir==='back'?(K.current()?.scroll||0):null;
       window.EOUL_RESULTS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;resultsUnmount=mount(resultsHost($('#react-results'),params,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-results').innerHTML='<p role="status">새 결과 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.results(params);A.results(params);});
     } else if(reactHome){
-      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),check:()=>K.go('check',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
+      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,mode:view,find:()=>findTab(),consult:()=>K.go('consult',{}),records:()=>K.go('records',{}),query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),check:()=>K.go('check',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
     } else if(reactAdd){
       window.EOUL_ADD_SEARCH_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;addUnmount=mount({element:$('#react-add-search'),core:M,photoAdd:()=>K.go('photoadd',{}),namespace:window.EOUL_MOCK_KEY,query:params.q,info:disclose,requiredCount:NEED,legacyIssue:()=>regWriteIssue||(regRaw!==null?REG_UNREADABLE:null),back:()=>K.back({view:'closet',params:{}}),manual:q=>{try{Input.reset();K.go('reg',{q})}catch(error){K.toast(error.message,{bottom:110})}},examples:addExamples,shelf:()=>drawShelf(),toast:text=>K.toast(text,{bottom:110}),own:id=>reactOwnAdd(id),facts:(q,submitted)=>window.EOUL_OPEN_PRODUCTS?window.EOUL_OPEN_PRODUCTS.search(q,{server:submitted}):Promise.reject(Error('not ready')),fact:row=>{try{const draft=window.EOUL_OPEN_PRODUCTS?.draft(row);if(!draft)return;Input.reset();Input.enter(draft);K.go('reg',{})}catch(error){K.toast(error.message,{bottom:110})}},crowd:readCrowdCandidates,crowdKey:row=>normKey(row.brand,row.name),ownCrowd:commitCrowdEntry,pending:addPending,finishCrowd:reactCrowdFinished,retail:retailHost(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-add-search').innerHTML='<p role="status">새 검색 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.add(params);A.add(params);});
     } else if(reactPhotoAdd){
@@ -1772,7 +1779,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
     } else if(reactMirror){
       window.EOUL_MIRROR_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;const p=params.id?M.product(params.id):null;mirrorUnmount=mount({element:$('#react-mirror'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,candidate:p?{id:p.id,brand:p.brand,name:p.name,image:M.photo({id:p.id})}:null,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),closet:()=>K.tab('closet'),backup:()=>backupSheet(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-mirror').innerHTML='<p role="alert">거울을 열지 못했어요. 저장된 자료는 그대로예요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if(reactOutfits){
-      window.EOUL_OUTFITS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;outfitsUnmount=mount({element:$('#react-outfits'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,session:outfitSession,mood:params.mood,menu,info:disclose,find:()=>K.tab('home'),add:()=>K.go('add',{}),trial:()=>M.loadTrialCloset(),owned:id=>garmentSheet(id,{focusReturn:document.activeElement}),backup:()=>backupSheet(),product:id=>K.go('detail',{id}),compared:(id,added)=>{if(added&&needAsk(id))S.asking=id;else if(!added&&S.asking===id)S.asking=null;renderStrip({pop:added&&hung().length===1,bump:added});},query:q=>K.go('results',{q}),community:()=>K.go('community',{}),share:pieces=>K.go('community',{share:pieces}),scene:moodAsk,weather:weatherHost,request:body=>typeof window.EOUL_SERVER_AI==='function'?window.EOUL_SERVER_AI(body):Promise.reject(Object.assign(Error('AI unavailable'),{code:'not_configured'})),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-outfits').innerHTML='<p role="status">새 코디 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.looks(params);A.looks(params);});
+      window.EOUL_OUTFITS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;outfitsUnmount=mount({element:$('#react-outfits'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,session:outfitSession,mood:params.mood,menu,info:disclose,find:()=>findTab(),add:()=>K.go('add',{}),trial:()=>M.loadTrialCloset(),owned:id=>garmentSheet(id,{focusReturn:document.activeElement}),backup:()=>backupSheet(),product:id=>K.go('detail',{id}),compared:(id,added)=>{if(added&&needAsk(id))S.asking=id;else if(!added&&S.asking===id)S.asking=null;renderStrip({pop:added&&hung().length===1,bump:added});},query:q=>K.go('results',{q}),community:()=>K.go('community',{}),share:pieces=>K.go('community',{share:pieces}),scene:moodAsk,weather:weatherHost,request:body=>typeof window.EOUL_SERVER_AI==='function'?window.EOUL_SERVER_AI(body):Promise.reject(Object.assign(Error('AI unavailable'),{code:'not_configured'})),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-outfits').innerHTML='<p role="status">새 코디 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.looks(params);A.looks(params);});
     } else if (reactCollection) {
       window.EOUL_COLLECTION_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;collectionUnmount=mount({element:$('#react-collection'),core:M,storage:localStorage,namespace:window.EOUL_MOCK_KEY,productId:params.id,back:()=>K.back(params.id?{view:'detail',params:{id:params.id}}:{view:'closet',params:{}}),owned:garmentSheet,backup:()=>backupSheet(),shelves:()=>K.go('collection',{}),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch===inputEpoch)$('#react-collection').innerHTML='<p role="alert">진열장을 열지 못했어요. 연결을 확인하고 다시 열어 주세요.</p><button class="btn line" data-back>돌아가기</button>';});
     } else if (reactMeasure) {
@@ -2417,7 +2424,7 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
     else if (t.dataset.unhang) { M.compareRemove(t.dataset.unhang); K.refresh(); }
     else if (t.dataset.pid) K.go('detail', { id: t.dataset.pid });
     else if (t.dataset.tabgo) K.tab(t.dataset.tabgo);
-    else if (t.hasAttribute('data-edit')) K.tab('home', { q: t.dataset.edit });
+    else if (t.hasAttribute('data-edit')) findTab({ q: t.dataset.edit });
     else if (t.dataset.q) K.go('results', { q: t.dataset.q });
     else if (t.hasAttribute('data-go-compare')) K.go('compare', {});
     else if (t.dataset.zoom) zoom(t.dataset.zoom);
@@ -3328,7 +3335,7 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
     // 개편 A(대표 11-12): 새 홈 화면을 이 기기에서 켜고 끈다. 켜면 새 디자인(v2) 위에 얹는다.
     const editionOn = () => document.documentElement.dataset.edition === 'today';
     const edition = () => { const r = document.documentElement; const on = !editionOn(); if (!M.boot?.preview) try { if (on) localStorage.setItem('hangit:look', 'v3'); else localStorage.removeItem('hangit:look'); } catch (e) {} if (on) { r.dataset.look = 'v2'; r.dataset.edition = 'today'; } else delete r.dataset.edition; };
-    chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, look: lookOn(), edition: editionOn(), onEdition: () => { edition(); return () => K.refresh(); }, onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onLook: () => { look(); return () => K.refresh(); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
+    chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, look: lookOn(), edition: editionOn(), onEdition: () => { edition(); return () => (curView === 'find' || curView === 'me' ? K.tab('home') : K.refresh()); }, onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onLook: () => { look(); return () => (curView === 'find' || curView === 'me' ? K.tab('home') : K.refresh()); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
     const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '이전 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button>${roleLink()}</div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };
     $('[data-backup]', sh.s).onclick = async () => { await sh.close(); backupSheet(); };
@@ -3342,7 +3349,7 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
   const r0 = M.route.current();
   // Direct closet entry must not render the home example first: its M.ask
   // would otherwise persist an example query as a new personal recent search.
-  K.start(render, { view: !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/community' ? communityParams(r0.params) : ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
+  K.start(render, { view: !M.boot?.q && isToday() && r0.path === '/find' ? 'find' : !M.boot?.q && isToday() && r0.path === '/me' ? 'me' : !M.boot?.q && r0.path === '/add' ? 'add' : !M.boot?.q && r0.path === '/mirror' ? 'mirror' : !M.boot?.q && r0.path === '/looks' ? 'looks' : !M.boot?.q && r0.path === '/community' ? 'community' : !M.boot?.q && r0.path === '/photoadd' ? 'photoadd' : !M.boot?.q && r0.path === '/collection' ? 'collection' : !M.boot?.q && r0.path === '/measure' && r0.params.id ? 'measure' : r0.path === '/closet' && !M.boot?.q ? 'closet' : 'home', params: r0.path === '/community' ? communityParams(r0.params) : ['/measure','/collection','/mirror'].includes(r0.path) ? (r0.params.id?{id:r0.params.id}:{}) : {} }, {
     externalRoute: () => { const route=M.route.current();return route.path === '/community' ? { view:'community',params:communityParams(route.params) } : null; },
     sameExternalRoute: (a,b) => a.view === b.view && communityKey(a.params) === communityKey(b.params),
   });

@@ -229,15 +229,49 @@ function Home({ host }: { host: HomeHost }) {
       </button>
     </header>
   );
+  const row = (title: string, sub: string, run?: () => void) => (
+    <button className="row hm-row" type="button" tabIndex={0} onClick={run}>
+      <span className="grow">
+        <span className="h3">{title}</span>
+        <span className="t6">{sub}</span>
+      </span>
+      <i className="ph ph-caret-right arr" aria-hidden="true" />
+    </button>
+  );
+  // 2단계: 새 화면의 찾기 탭. 옷 찾기와 코디 상담이 여기 모인다.
+  if (today && host.mode === "find")
+    return (
+      <section className="hm hm-find" data-react-home aria-label="옷 찾기 홈">
+        {top}
+        <h1 className="h1 hero">찾는 옷이 있나요?</h1>
+        {ask}
+        <div className="hm-rows">{row("코디 상담에 물어보기", "가진 옷에 어울리는 옷을 물어볼 수 있어요", host.consult)}</div>
+        <ProofCard host={host} model={proof} />
+      </section>
+    );
+  // 2단계: 새 화면의 나 탭. 기록·내 코디·상담·설정으로 가는 길.
+  if (today && host.mode === "me")
+    return (
+      <section className="hm hm-me" data-react-home aria-label="나">
+        {top}
+        <h1 className="h1 hero">나</h1>
+        <div className="hm-rows">
+          {row("기록", "사기로 한 옷, 받은 옷, 돌려보낸 옷", host.records)}
+          {row("내 옷으로 코디", "가진 옷으로 만든 조합", host.looks)}
+          {row("코디 상담", "어울리는 옷 물어보기", host.consult)}
+          {row("설정", "백업, 날씨 지역, 화면", host.menu)}
+        </div>
+      </section>
+    );
   if (today)
     return (
-      <section className="hm hm-today" data-react-home aria-label="옷 찾기 홈">
+      <section className="hm hm-today" data-react-home aria-label="오늘 홈">
         {top}
         <WeatherCard host={host.weather} core={host.core} where="home" today />
-        <section className="td-find" aria-label="옷 찾기">
-          <h2 className="h2">찾는 옷이 있나요?</h2>
-          {ask}
-        </section>
+        <button className="quiet hm-go-find" type="button" tabIndex={0} onClick={host.find}>
+          옷 찾으러 가기
+          <i className="ph ph-caret-right" aria-hidden="true" />
+        </button>
         <ProofCard host={host} model={proof} />
       </section>
     );

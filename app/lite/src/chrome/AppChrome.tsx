@@ -41,11 +41,20 @@ const TABS: [string, string, string][] = [
   ["consult", "ph-chats-circle", "상담"],
   ["records", "ph-notebook", "기록"],
 ];
+// 개편 A 2단계(대표 11-12·11-13): 새 화면(data-edition="today")의 탭. 찾기(find)·나(me)는 홈 묶음이 그린다.
+const TODAY_TABS: [string, string, string][] = [
+  ["home", "ph-sun", "오늘"],
+  ["closet", "ph-coat-hanger", "옷장"],
+  ["find", "ph-magnifying-glass", "찾기"],
+  ["community", "ph-compass", "둘러보기"],
+  ["me", "ph-user", "나"],
+];
 function Tabs({ host, m }: { host: ChromeHost; m: ChromeModel }) {
+  const tabs = document.documentElement.dataset.edition === "today" ? TODAY_TABS : TABS;
   return (
     <nav className="tabs" id="tabs" aria-label="메뉴" hidden={!m.tabbed} data-react-chrome="">
       <div className="in">
-        {TABS.map(([id, icon, label]) => {
+        {tabs.map(([id, icon, label]) => {
           const on = m.current === id;
           return (
             <button
