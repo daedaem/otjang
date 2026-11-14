@@ -100,10 +100,12 @@ export function Menu({
       {place ? row("data-place", "날씨 지역", "ph-map-pin", onPlace) : null}
       {row("data-theme", "밝게 · 어둡게", "ph-moon", onTheme)}
       {onLook
-        ? row("data-look", look ? "이전 디자인으로 보기" : "새 디자인으로 보기", "ph-sparkle", onLook)
+        ? edition
+          ? null
+          : row("data-look", look ? "이전 디자인으로 보기" : "새 디자인으로 보기", "ph-sparkle", onLook)
         : null}
       {onEdition
-        ? row("data-edition", edition ? "새 홈 화면 끄기" : "새 홈 화면 미리 보기", "ph-coat-hanger", onEdition)
+        ? row("data-edition", edition ? "이전 화면으로 보기" : "새 화면으로 보기", "ph-coat-hanger", onEdition)
         : null}
       {row("data-reset", "처음부터 다시", "ph-arrow-counter-clockwise", onReset)}
       <RoleLink />
