@@ -143,7 +143,10 @@ export function CommunityView({ host }: { host: CommunityHost }) {
     host.consumeShare?.(); setComposer(null);
     requestAnimationFrame(() => (opener.current?.isConnected ? opener.current : heading.current)?.focus({ preventScroll: true }));
   }, [host]);
-  const saved = useCallback(() => {
+  const saved = useCallback((edited?: Post | null) => {
+    // Show a confirmed edit in the same render that closes the editor; the reload below only brings the server's copy.
+    // Waiting for it left "저장했어요." beside the old text, and left it there for good when the reload failed.
+    if (edited) setPosts(list => list.map(old => old.id === edited.id ? edited : old));
     closeEditor(); setNotice("저장했어요."); void load();
   }, [closeEditor, load]);
   const leave = async () => {
