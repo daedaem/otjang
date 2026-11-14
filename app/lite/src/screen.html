@@ -14,9 +14,10 @@
 // WO-11: 새 디자인(v2)이 기본이다(10-27 21:55 대표 결정). ?look=v1이나 메뉴 '이전 디자인으로 보기'는
 // 이 기기에서 이전 디자인으로 되돌리고(hangit:look = v1), ?look=v2나 '새 디자인으로 보기'는 다시 기본으로.
 // 미리보기(?preview=1)는 이 기기 저장소를 읽거나 쓰지 않는다: ?look=v1은 그 페이지에만 적용한다.
-// 개편 A "오늘의 옷장"(대표 11-12): ?look=v3이나 메뉴 '새 홈 화면 미리 보기'는 v2 위에 새 홈을 켠다(hangit:look = v3,
-// data-edition="today"). 대표가 써 본 뒤 기본으로 바꾼다. ?look=v2는 기본으로 되돌린다.
-(function () { var v1 = false, today = false; try { var sp = new URLSearchParams(location.search), lq = sp.get('look'), store = window.EOUL_UI_STORAGE; if (sp.get('preview') === '1') { v1 = lq === 'v1'; today = lq === 'v3'; } else { if (lq === 'v1' || lq === 'v3') store.setItem('hangit:look', lq); else if (lq === 'v2') store.removeItem('hangit:look'); var kept = store.getItem('hangit:look'); v1 = kept === 'v1'; today = kept === 'v3'; } } catch (e) {} if (!v1) document.documentElement.dataset.look = 'v2'; if (today) document.documentElement.dataset.edition = 'today'; })();
+// 개편 A "오늘의 옷장"(대표 11-12 선택, 11-14 "진행해서 완료지어주세요"): 새 화면이 기본이다(저장값 없음 또는 v3 →
+// data-look="v2" + data-edition="today"). 'v2'는 이전 화면(10-27 디자인), 'v1'은 그 전 디자인. ?look=v1|v2|v3으로 이 기기 설정을
+// 바꾸고, 메뉴 「이전 화면으로 보기 / 새 화면으로 보기」도 같은 값을 쓴다. 이전 화면 코드는 대표가 휴대폰에서 써 본 뒤 지운다.
+(function () { var kept = null; try { var sp = new URLSearchParams(location.search), lq = sp.get('look'), store = window.EOUL_UI_STORAGE; if (sp.get('preview') === '1') kept = lq; else { if (lq === 'v1' || lq === 'v2') store.setItem('hangit:look', lq); else if (lq === 'v3') store.removeItem('hangit:look'); kept = store.getItem('hangit:look'); } } catch (e) {} if (kept !== 'v1') document.documentElement.dataset.look = 'v2'; if (kept !== 'v1' && kept !== 'v2') document.documentElement.dataset.edition = 'today'; })();
 </script>
 <style>
 /* 걸어 보고 사기(d12): 장바구니 대신 '걸어 보기'. 레일은 옷걸이 탭에만 있고, 다른 화면에는 걸린 옷이 있을 때만 한 줄 띠가 보인다.
@@ -3373,10 +3374,10 @@ ${v2 ? `${hang}        <div class="pdp-more">\n${tools}        </div>\n` : tools
     const reset = () => { K.reset(); S.ai = {}; S.aiOrder = {}; S.asking = null; S.ui = { absent: {} }; saveUi(); REG.items = {}; REG.catalog = {}; saveReg(); WX.idx = {}; WX.day = 'today'; };
     // WO-11: the new look (v2) is the default; this row brings back the previous one.
     const lookOn = () => document.documentElement.dataset.look === 'v2';
-    const look = () => { const r = document.documentElement; const on = !lookOn(); if (!M.boot?.preview) try { if (on) localStorage.removeItem('hangit:look'); else localStorage.setItem('hangit:look', 'v1'); } catch (e) {} if (on) r.dataset.look = 'v2'; else { delete r.dataset.look; delete r.dataset.edition; } };
-    // 개편 A(대표 11-12): 새 홈 화면을 이 기기에서 켜고 끈다. 켜면 새 디자인(v2) 위에 얹는다.
+    const look = () => { const r = document.documentElement; const on = !lookOn(); if (!M.boot?.preview) try { localStorage.setItem('hangit:look', on ? 'v2' : 'v1'); } catch (e) {} if (on) r.dataset.look = 'v2'; else { delete r.dataset.look; delete r.dataset.edition; } };
+    // 개편 A(대표 11-12·11-14): 새 화면이 기본. 이 기기에서 이전 화면(v2)으로 돌아가거나 다시 새 화면으로 온다.
     const editionOn = () => document.documentElement.dataset.edition === 'today';
-    const edition = () => { const r = document.documentElement; const on = !editionOn(); if (!M.boot?.preview) try { if (on) localStorage.setItem('hangit:look', 'v3'); else localStorage.removeItem('hangit:look'); } catch (e) {} if (on) { r.dataset.look = 'v2'; r.dataset.edition = 'today'; } else delete r.dataset.edition; };
+    const edition = () => { const r = document.documentElement; const on = !editionOn(); if (!M.boot?.preview) try { if (on) localStorage.removeItem('hangit:look'); else localStorage.setItem('hangit:look', 'v2'); } catch (e) {} if (on) { r.dataset.look = 'v2'; r.dataset.edition = 'today'; } else delete r.dataset.edition; };
     chromeSheet('menu', { place: !!window.EOUL_WEATHER_PLACE, look: lookOn(), edition: editionOn(), onEdition: () => { edition(); return () => (curView === 'find' || curView === 'me' ? K.tab('home') : K.refresh()); }, onInfo: () => () => disclose(), onBackup: () => () => backupSheet(), onPlace: () => () => placeSheet(), onTheme: () => { theme(); }, onLook: () => { look(); return () => (curView === 'find' || curView === 'me' ? K.tab('home') : K.refresh()); }, onReset: () => { reset(); return () => K.tab('home'); } }, () => {
     const sh = sheet(`<div class="menu"><button class="row" data-info><span class="grow t5">이 시안에 대해</span><i class="ph ph-info arr"></i></button><button class="row" data-backup><span class="grow t5">백업 · 복원</span><i class="ph ph-floppy-disk arr"></i></button>${window.EOUL_WEATHER_PLACE ? '<button class="row" data-place><span class="grow t5">날씨 지역</span><i class="ph ph-map-pin arr"></i></button>' : ''}<button class="row" data-theme><span class="grow t5">밝게 · 어둡게</span><i class="ph ph-moon arr"></i></button><button class="row" data-look><span class="grow t5">${lookOn() ? '이전 디자인으로 보기' : '새 디자인으로 보기'}</span><i class="ph ph-sparkle arr"></i></button><button class="row" data-reset><span class="grow t5">처음부터 다시</span><i class="ph ph-arrow-counter-clockwise arr"></i></button>${roleLink()}</div>`);
     $('[data-info]', sh.s).onclick = async () => { await sh.close(); disclose(); };

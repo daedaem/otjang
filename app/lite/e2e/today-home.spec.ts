@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
-// 대표 11-12: 개편 방향 A "오늘의 옷장". 첫 단계는 새 홈 — 오늘 코디가 첫 화면 맨 위에 옷걸이 봉에 걸려 있고,
-// 옷 찾기는 그 아래에 남는다. 기본 화면은 그대로 두고 ?look=v3이나 메뉴 '새 홈 화면 미리 보기'로 이 기기에서 켠다
+// 대표 11-12: 개편 방향 A "오늘의 옷장". 11-14 6단계: 새 화면이 기본이고, 이전 화면은 hangit:look=v2(메뉴 「이전 화면으로 보기」)다.
+// 첫 단계는 새 홈 — 오늘 코디가 첫 화면 맨 위에 옷걸이 봉에 걸려 있고,
+// 옷 찾기는 찾기 탭에 있다. 처음에는 ?look=v3이나 메뉴로 켜는 미리 보기였고, 11-14부터 기본이다
 // (대표가 써 본 뒤 기본으로 바꾸고 옛 화면을 지운다).
 const weather = {
   place: "합성 지역",
@@ -46,7 +47,7 @@ const card = (page: Page) => page.getByRole("region", { name: "오늘 날씨 코
 const edition = (page: Page) => page.evaluate(() => document.documentElement.dataset.edition || "");
 const stored = (page: Page) => page.evaluate(() => localStorage.getItem("hangit:look"));
 
-test("the default home is unchanged while the new home is off", async ({ page }) => {
+test("the previous screen (v2) keeps its home", async ({ page }) => {
   await open(page);
   await wardrobe(page);
   await realWeather(page);
@@ -60,7 +61,7 @@ test("?look=v3 turns the today home on for this device: today's outfit hangs on 
   await open(page, "&look=v3");
   expect(await edition(page)).toBe("today");
   expect(await page.evaluate(() => document.documentElement.dataset.look)).toBe("v2");
-  expect(await stored(page)).toBe("v3");
+  expect(await stored(page)).toBeNull();
   await wardrobe(page);
   await realWeather(page);
   await home(page);
@@ -107,25 +108,42 @@ test("an empty closet still has a way in: trial closet, add and the search tab",
   await expect(card(page).locator(".td-rail")).toContainText("체험용");
 });
 
-test("the menu turns the new home on and off and remembers it on this device", async ({ page }) => {
-  await open(page);
-  await home(page);
-  await page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
-  await page.getByRole("button", { name: "새 홈 화면 미리 보기" }).click();
-  await expect(page.locator(".hm-today")).toBeVisible();
-  expect(await edition(page)).toBe("today");
-  expect(await stored(page)).toBe("v3");
-  await page.reload();
-  await expect(page.locator(".hm-today")).toBeVisible();
-  await page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
-  await page.getByRole("button", { name: "새 홈 화면 끄기" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
-  expect(await edition(page)).toBe("");
-  expect(await stored(page)).toBeNull();
+// 빈 저장소로 처음부터 연다(11-14 CI WebKit: 이전 화면으로 연 뒤 저장값을 지우고 다시 읽으면, 첫 화면의 날씨 요청이
+// 새로 읽기에 끊기며 WebKit이 그 취소를 페이지 오류로 남겼다 — 검사가 만든 순서라 다시 읽기 없이 연다).
+test.describe("with nothing stored", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test("the new screen is the default", async ({ page }) => {
+    await page.goto("/?photos=0#/");
+    await page.waitForFunction(() => !!(window as any).K?.M);
+    await expect(page.locator(".hm-today")).toBeVisible();
+    expect(await edition(page)).toBe("today");
+    expect(await stored(page)).toBeNull();
+  });
 });
 
-test("going back to the previous look also leaves the new home", async ({ page }) => {
-  await open(page, "&look=v3");
+test("the menu goes to the new screen and back to the previous one, and remembers it on this device", async ({ page }) => {
+  await open(page);
+  await home(page);
+  const menu = () => page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
+  await menu();
+  await page.getByRole("button", { name: "새 화면으로 보기" }).click();
+  await expect(page.locator(".hm-today")).toBeVisible();
+  expect(await edition(page)).toBe("today");
+  expect(await stored(page)).toBeNull();
+  await page.reload();
+  await expect(page.locator(".hm-today")).toBeVisible();
+  await menu();
+  await expect(page.getByRole("button", { name: "이전 디자인으로 보기" })).toHaveCount(0);
+  await page.getByRole("button", { name: "이전 화면으로 보기" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
+  expect(await edition(page)).toBe("");
+  expect(await stored(page)).toBe("v2");
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
+});
+
+test("from the previous screen the older design is still one menu row away", async ({ page }) => {
+  await open(page);
   await home(page);
   await page.locator("[data-react-home]").getByRole("button", { name: "더보기", exact: true }).click();
   await page.getByRole("button", { name: "이전 디자인으로 보기" }).click();
@@ -138,5 +156,5 @@ test("a preview page shows the new home without touching this device's setting",
   await page.goto("/?photos=0&preview=1&look=v3#/");
   await page.waitForFunction(() => !!(window as any).K?.M);
   await expect(page.locator(".hm-today")).toBeVisible();
-  expect(await stored(page)).toBeNull();
+  expect(await stored(page)).toBe("v2");
 });
