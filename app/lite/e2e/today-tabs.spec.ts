@@ -24,7 +24,7 @@ const nav = (page: Page) => page.locator('nav[aria-label="메뉴"]');
 const labels = (page: Page) => nav(page).getByRole("button").evaluateAll((els) => els.map((el) => el.textContent!.trim()));
 const current = (page: Page) => nav(page).locator('[aria-current="page"]');
 
-test("the default look keeps its six tabs", async ({ page }) => {
+test("the previous screen keeps its six tabs", async ({ page }) => {
   await open(page);
   expect(await labels(page)).toEqual(["찾기", "코디", "옷장", "커뮤니티", "상담", "기록"]);
 });
@@ -71,7 +71,7 @@ test("나 gathers records, my outfits, consult history and settings", async ({ p
   await page.goBack();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("나");
   await me.getByRole("button", { name: /^설정/ }).click();
-  await expect(page.getByRole("dialog")).toContainText("새 홈 화면 끄기");
+  await expect(page.getByRole("dialog")).toContainText("이전 화면으로 보기");
 });
 
 test("둘러보기 is the community and 코디 더 보기 stays under 오늘", async ({ page }) => {
@@ -83,11 +83,11 @@ test("둘러보기 is the community and 코디 더 보기 stays under 오늘", a
   await expect(current(page)).toHaveText("오늘");
 });
 
-test("turning the new home off from 나 returns to the six tabs on the home", async ({ page }) => {
+test("going to the previous screen from 나 returns to the six tabs on the home", async ({ page }) => {
   await open(page, "&look=v3", "#/me");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("나");
   await page.locator("[data-react-home]").getByRole("button", { name: /^설정/ }).click();
-  await page.getByRole("button", { name: "새 홈 화면 끄기" }).click();
+  await page.getByRole("button", { name: "이전 화면으로 보기" }).click();
   // 메뉴가 닫힌 뒤에 화면과 탭이 바뀐다.
   await expect(page.getByRole("heading", { level: 1 })).toContainText("뭐 사려고요?");
   expect(await labels(page)).toEqual(["찾기", "코디", "옷장", "커뮤니티", "상담", "기록"]);
