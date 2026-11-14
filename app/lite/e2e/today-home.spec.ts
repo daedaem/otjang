@@ -108,13 +108,17 @@ test("an empty closet still has a way in: trial closet, add and the search tab",
   await expect(card(page).locator(".td-rail")).toContainText("체험용");
 });
 
-test("with nothing stored the new screen is the default", async ({ page }) => {
-  await page.goto("/?photos=0#/");
-  await page.evaluate(() => localStorage.removeItem("hangit:look"));
-  await page.reload();
-  await page.waitForFunction(() => !!(window as any).K?.M);
-  await expect(page.locator(".hm-today")).toBeVisible();
-  expect(await edition(page)).toBe("today");
+// 빈 저장소로 처음부터 연다(11-14 CI WebKit: 이전 화면으로 연 뒤 저장값을 지우고 다시 읽으면, 첫 화면의 날씨 요청이
+// 새로 읽기에 끊기며 WebKit이 그 취소를 페이지 오류로 남겼다 — 검사가 만든 순서라 다시 읽기 없이 연다).
+test.describe("with nothing stored", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test("the new screen is the default", async ({ page }) => {
+    await page.goto("/?photos=0#/");
+    await page.waitForFunction(() => !!(window as any).K?.M);
+    await expect(page.locator(".hm-today")).toBeVisible();
+    expect(await edition(page)).toBe("today");
+    expect(await stored(page)).toBeNull();
+  });
 });
 
 test("the menu goes to the new screen and back to the previous one, and remembers it on this device", async ({ page }) => {
