@@ -705,6 +705,14 @@ a { color: inherit; text-decoration: none; }
 :root[data-look="v2"] .ownq button { border-radius: 8px; font-weight: 600; }
 :root[data-look="v2"] .pdp-head + #hangbox { margin-top: 16px; }
 :root[data-look="v2"] .pdp-more { margin-top: 20px; border-top: 1px solid var(--line); }
+/* 개편 A 3단계: 새 화면 상품 화면 「살까 말까」. */
+:root[data-edition="today"] .td-goal .td-goal-track { display: flex; height: 8px; margin: 8px 0 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+:root[data-edition="today"] .td-goal .td-goal-track span { display: block; height: 100%; background: var(--wood-line); }
+:root[data-edition="today"] .td-goal .td-goal-track span.add { background: var(--leaf); }
+:root[data-edition="today"] .td-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+:root[data-edition="today"] .td-acts .btn { flex: 1 1 160px; }
+:root[data-edition="today"] .td-where .links { margin-top: 8px; }
+:root[data-edition="today"] .td-more summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 :root[data-look="v2"] .pdp-more .quiet { display: flex; align-items: center; min-height: 44px; }
 :root[data-look="v2"] .lk .ps { gap: 4px; }
 :root[data-look="v2"] .lk .ps .ph-box, :root[data-look="v2"] .owned .o .ph-box { border-radius: 2px; }
@@ -1317,10 +1325,43 @@ a { color: inherit; text-decoration: none; }
     getVersion: () => detailCtl.version,
     changed() { detailCtl.version++; detailCtl.subs.forEach((fn) => fn()); },
   };
+  // 개편 A 4·5단계(대표 11-12·11-14): 목표 스타일은 이 기기의 화면 설정, 「찾는 중」은 옷장과 같은 개인 자료(백업 대상).
+  // 미리보기(?preview=1)는 둘 다 쓰지 않는다. 형식이 다른 찾는 중 원문은 덮어쓰지 않는다(readWatch가 던짐).
+  const WATCH_KEY = 'eoul-d12-hang:watch';
+  const goalStore = {
+    get() { try { return M.boot?.preview ? null : localStorage.getItem('hangit:style-goal'); } catch { return null; } },
+    set(id) { if (M.boot?.preview) return; try { localStorage.setItem('hangit:style-goal', id); } catch {} },
+  };
+  const watchRead = () => { try { return M.readWatch(localStorage.getItem(WATCH_KEY)); } catch { return null; } };
+  const watchWrite = (next) => { if (M.boot?.preview) throw new Error('미리보기에서는 저장하지 않아요.'); localStorage.setItem(WATCH_KEY, JSON.stringify(next)); };
+  const watchHost = {
+    list() {
+      const w = watchRead();
+      if (!w) return { error: '찾는 중 목록 형식을 읽지 못해 원문을 보호하고 있어요. 백업에서 보관해 주세요.', items: [] };
+      return { error: '', items: w.items.map((x) => {
+        const used = M.usedSearch(x.productId ? x.productId : { text: x.text });
+        return { id: x.id, text: x.text, productId: x.productId || null,
+          links: (used?.groups || []).flatMap((g) => g.links.map((l) => ({ url: l.url, label: `${g.region.replace(' 중고', '')} · ${l.label}` }))) };
+      }) };
+    },
+    add(input) {
+      const w = watchRead(); if (!w) return '찾는 중 목록 형식을 읽지 못해 저장하지 않았어요.';
+      try { watchWrite(M.addWatch(w, input)); return ''; } catch (e) { return e?.message || '저장하지 못했어요.'; }
+    },
+    remove(id) { const w = watchRead(); if (!w) return; try { watchWrite(M.removeWatch(w, id)); } catch {} },
+    has(productId) { return !!watchRead()?.items.some((x) => x.productId === productId); },
+  };
   function detailHost(element, params, restoreY) {
     const id = params.id;
     return {
       element, bar: $('#bar'), core: M, ctl: detailCtl, id, restoreY,
+      goal: () => M.goalFor(id, goalStore.get()),
+      watched: () => watchHost.has(id),
+      watch() {
+        if (watchHost.has(id)) { const w = watchRead(); const hit = w?.items.find((x) => x.productId === id); if (hit) watchHost.remove(hit.id); }
+        else { const p = M.product(id); watchHost.add({ productId: id, text: p ? `${p.brand} ${p.name}`.slice(0, 80) : id }); }
+        detailCtl.changed();
+      },
       model() {
         const m = detailModel(id); if (!m) return null;
         return {
@@ -1767,7 +1808,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
       const restoreY=dir==='back'?(K.current()?.scroll||0):null;
       window.EOUL_RESULTS_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;resultsUnmount=mount(resultsHost($('#react-results'),params,restoreY));}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-results').innerHTML='<p role="status">새 결과 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.results(params);A.results(params);});
     } else if(reactHome){
-      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,mode:view,find:()=>findTab(),consult:()=>K.go('consult',{}),records:()=>K.go('records',{}),query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),check:()=>K.go('check',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
+      window.EOUL_HOME_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;homeUnmount=mount({element:$('#react-home'),core:M,mode:view,watch:watchHost,find:()=>findTab(),consult:()=>K.go('consult',{}),records:()=>K.go('records',{}),query:params.q,proof:homeProofModel,remember:q=>{params.q=q},search:q=>K.go('results',{q}),product:id=>K.go('detail',{id}),closet:()=>K.tab('closet'),looks:()=>K.tab('looks'),add:()=>K.go('add',{}),check:()=>K.go('check',{}),compare:()=>K.go('compare',{}),clearTrial:()=>M.clearTrialCloset(),menu,info:disclose,weather:weatherHost});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-home').innerHTML='<p role="status">새 홈을 열지 못해 기존 화면으로 열었어요.</p>'+V.home(params);A.home(params);});
     } else if(reactAdd){
       window.EOUL_ADD_SEARCH_LOAD().then(({mount})=>{if(epoch!==inputEpoch)return;addUnmount=mount({element:$('#react-add-search'),core:M,photoAdd:()=>K.go('photoadd',{}),namespace:window.EOUL_MOCK_KEY,query:params.q,info:disclose,requiredCount:NEED,legacyIssue:()=>regWriteIssue||(regRaw!==null?REG_UNREADABLE:null),back:()=>K.back({view:'closet',params:{}}),manual:q=>{try{Input.reset();K.go('reg',{q})}catch(error){K.toast(error.message,{bottom:110})}},examples:addExamples,shelf:()=>drawShelf(),toast:text=>K.toast(text,{bottom:110}),own:id=>reactOwnAdd(id),facts:(q,submitted)=>window.EOUL_OPEN_PRODUCTS?window.EOUL_OPEN_PRODUCTS.search(q,{server:submitted}):Promise.reject(Error('not ready')),fact:row=>{try{const draft=window.EOUL_OPEN_PRODUCTS?.draft(row);if(!draft)return;Input.reset();Input.enter(draft);K.go('reg',{})}catch(error){K.toast(error.message,{bottom:110})}},crowd:readCrowdCandidates,crowdKey:row=>normKey(row.brand,row.name),ownCrowd:commitCrowdEntry,pending:addPending,finishCrowd:reactCrowdFinished,retail:retailHost(),navigationGuard:check=>K.setNavigationGuard(check)});}).catch(()=>{if(epoch!==inputEpoch)return;$('#react-add-search').innerHTML='<p role="status">새 검색 화면을 열지 못해 기존 화면으로 열었어요.</p>'+V.add(params);A.add(params);});
     } else if(reactPhotoAdd){
@@ -1790,6 +1831,7 @@ JSON 하나로만 답하세요: {"on_topic": true, "answer": "...", "product_ids
         closetUnmount = mount({ element: $('#react-closet'), core: M, namespace: window.EOUL_MOCK_KEY, session: closetSession,
           menu, info: disclose, add: () => K.go('add', {}), quickAdd: addFlow,
           detail: garmentSheet, looks: () => K.tab('looks'), registration: regOf,
+          goal: goalStore, product: (id) => K.go('detail', { id }), search: (q) => K.go('results', { q }),
           collection:()=>K.go('collection',{}), mirror:()=>K.go('mirror',{}),
         });
       }).catch(() => { if (epoch !== inputEpoch) return; $('#react-closet').innerHTML = '<p role="status">새 화면을 불러오지 못해 기존 옷장으로 열었어요. 연결되면 다시 열어 주세요.</p>' + V.closet(params); A.closet(params); });

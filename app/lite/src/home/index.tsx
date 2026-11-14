@@ -238,13 +238,14 @@ function Home({ host }: { host: HomeHost }) {
       <i className="ph ph-caret-right arr" aria-hidden="true" />
     </button>
   );
-  // 2단계: 새 화면의 찾기 탭. 옷 찾기와 코디 상담이 여기 모인다.
+  // 2단계: 새 화면의 찾기 탭. 옷 찾기와 코디 상담이 여기 모인다. 5단계: 찾는 중.
   if (today && host.mode === "find")
     return (
       <section className="hm hm-find" data-react-home aria-label="옷 찾기 홈">
         {top}
         <h1 className="h1 hero">찾는 옷이 있나요?</h1>
         {ask}
+        {host.watch ? <Watching host={host} /> : null}
         <div className="hm-rows">{row("코디 상담에 물어보기", "가진 옷에 어울리는 옷을 물어볼 수 있어요", host.consult)}</div>
         <ProofCard host={host} model={proof} />
       </section>
@@ -287,6 +288,89 @@ function Home({ host }: { host: HomeHost }) {
       {ask}
       {v2 ? weather : null}
       <ProofCard host={host} model={proof} />
+    </section>
+  );
+}
+// 개편 A 5단계(대표 11-12 "추천대로", 의도 2번): 커뮤니티·쇼핑에서 본 옷을 적어 두고 판매처·중고에서 다시 찾는다.
+// 매물이 올라오면 알려 주는 기능은 아직 없다(공식 경로·약관 확인 전) — 화면에도 그렇게 적는다.
+function Watching({ host }: { host: HomeHost }) {
+  const [, bump] = useState(0);
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const w = host.watch!.list();
+  const save = () => {
+    const err = host.watch!.add({ text });
+    setError(err);
+    if (!err) setText("");
+    bump((n) => n + 1);
+  };
+  return (
+    <section className="hm-watch" aria-label="찾는 중">
+      <h2 className="h2">찾는 중</h2>
+      <p className="t6 sub">본 옷을 적어 두면 새 상품·중고에서 다시 찾을 수 있어요. 매물이 올라와도 아직 알림은 가지 않아요.</p>
+      <form
+        className="hm-watch-add"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <input
+          id="watch-text"
+          value={text}
+          maxLength={80}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="예: 바라쿠타 G9 네이비 38"
+          aria-label="본 옷 적어 두기"
+          autoComplete="off"
+        />
+        <button type="submit" className="btn line">
+          적어 두기
+        </button>
+      </form>
+      {error || w.error ? (
+        <p className="t6 warn" role="alert">
+          {error || w.error}
+        </p>
+      ) : null}
+      {w.items.length ? (
+        <ul className="hm-watch-list">
+          {w.items.map((x) => (
+            <li key={x.id}>
+              <div className="hm-watch-head">
+                <span className="h3">{x.text}</span>
+                <button
+                  type="button"
+                  className="icon quiet-i"
+                  aria-label={`${x.text} 지우기`}
+                  onClick={() => {
+                    host.watch!.remove(x.id);
+                    bump((n) => n + 1);
+                  }}
+                >
+                  <i className="ph ph-x" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="hm-watch-links">
+                {x.productId ? (
+                  <button type="button" className="chip" onClick={() => host.product(x.productId!)}>
+                    상품 보기
+                  </button>
+                ) : (
+                  <button type="button" className="chip" onClick={() => host.search(x.text)}>
+                    새 상품 찾기
+                  </button>
+                )}
+                {x.links.map((l) => (
+                  <a key={l.url} className="chip" href={l.url} target="_blank" rel="noopener">
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

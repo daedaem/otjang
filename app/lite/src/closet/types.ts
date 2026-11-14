@@ -58,6 +58,8 @@ export interface ClosetCore {
   };
   railCategory(garment: Garment): string | null;
   railSortChoices(): [string, string][];
+  // 개편 A 4단계: 목표 스타일 대비 옷장 진단(core.styleGoal).
+  styleGoal?(style: string): StyleGoal;
   trialGain(ids: string[]): TrialGain;
 }
 export type TrialVerdict = {
@@ -100,5 +102,26 @@ export type ClosetHost = {
   collection(): void;
   mirror(): void;
   registration(id: string): { brand?: string } | null;
+  // 개편 A 4단계(새 화면): 목표 스타일 기억(이 기기), 상품 보기, 이름으로 찾기.
+  goal?: { get(): string | null; set(id: string): void };
+  product?(id: string): void;
+  search?(q: string): void;
+};
+export type StyleGoal = {
+  style: { id: string; label: string; desc: string };
+  choices: { id: string; label: string; desc: string }[];
+  total: number;
+  owned: number;
+  trial: number;
+  note: string;
+  items: {
+    slotId: string;
+    name: string;
+    cat: string;
+    state: "owned" | "trial" | "missing";
+    gain: number;
+    product: { id: string; brand: string; name: string; price: number; priceText: string } | null;
+  }[];
+  next: StyleGoal["items"][number] | null;
 };
 export type LayoutItem = { id: string; measured?: boolean; heightPx?: number };

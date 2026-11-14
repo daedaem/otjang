@@ -1,3 +1,4 @@
+import { GoalPanel } from "./Goal";
 import {
   useEffect,
   useMemo,
@@ -629,6 +630,9 @@ function Closet({ host }: { host: ClosetHost }) {
           </button>
         </div>
       </div>
+      {document.documentElement.dataset.edition === "today" ? (
+        <GoalPanel host={host} version={version} />
+      ) : null}
       {!garments.length && (
         <div className="wr-invite">
           <h2>한 벌부터 걸어 볼까요?</h2>

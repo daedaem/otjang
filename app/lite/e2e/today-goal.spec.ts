@@ -80,6 +80,8 @@ test("a product goes into 찾는 중 and comes back from the 찾기 tab", async 
   await page.evaluate((id) => (window as any).K.go("detail", { id }), first.product.id);
   await page.getByRole("button", { name: "찾는 중에 넣기" }).click();
   await expect(page.getByRole("button", { name: "찾는 중이에요" })).toBeVisible();
+  // 상품 화면에는 탭 줄이 없다: 뒤로 나와 찾기 탭으로 간다.
+  await page.goBack();
   await nav(page).getByRole("button", { name: "찾기", exact: true }).click();
   const watching = page.getByRole("region", { name: "찾는 중", exact: true });
   await expect(watching).toContainText(first.product.name.slice(0, 8));

@@ -50,3 +50,16 @@
 .hm-rows .hm-row { width: 100%; min-height: 64px; text-align: left; }
 .hm-rows .hm-row .grow { min-width: 0; }
 .hm-rows .hm-row .t6 { display: block; color: var(--ink2); }
+
+/* 개편 A 5단계: 찾기 탭의 찾는 중. */
+.hm-watch { margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+.hm-watch .h2, .hm-watch .sub { margin: 0; }
+.hm-watch .sub { color: var(--ink2); }
+.hm-watch-add { display: flex; gap: 8px; }
+.hm-watch-add input { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.hm-watch-list { list-style: none; margin: 4px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.hm-watch-list li { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.hm-watch-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hm-watch-head .h3 { min-width: 0; overflow-wrap: anywhere; }
+.hm-watch-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.hm-watch-links a.chip { text-decoration: none; }
