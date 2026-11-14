@@ -455,4 +455,3 @@ Cloudflare 기존 비공개 Worker `f18d7d75`가 masteref4eec0에서 빌드48초
 3. 새 이메일·비밀번호로 `/_member/signin`에서 로그인한 뒤, Cloudflare에서 `ADMIN_RECOVERY_KEY`를 지운다.
 
 비밀값이 없거나 24자 미만이거나 `MEMBER_APP_MODE`가 accounts가 아니면 주소는 404다. 시도는 15분에 5번(`member_login_attempts`의 `admin-recovery` 키), 다른 회원이 쓰는 이메일은 거절한다. 코드: `functions/lib/member-accounts.js`의 `adminRecovery`, 검사: `checks/admin-recovery.check.mjs`.
-
