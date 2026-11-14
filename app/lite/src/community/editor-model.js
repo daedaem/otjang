@@ -1,4 +1,4 @@
-import { communityBoard, COMMUNITY_LIMITS } from '../domain/community.js';
+import { communityBoard, COMMUNITY_LIMITS, validateCommunityPost } from '../domain/community.js';
 
 const string = value => typeof value === 'string' ? value : '';
 const pieces = (rows, clip) => (Array.isArray(rows) ? rows : []).slice(0, COMMUNITY_LIMITS.piecesMax).map(p => ({
@@ -36,6 +36,20 @@ export function communityPostInput(draft, consent = false) {
       merchant: string(draft.merchant), price: numericCommunityField(draft.price), discount: numericCommunityField(draft.discount, true),
       currency: 'KRW', endDate: string(draft.endDate), sourceUrl: string(draft.sourceUrl).trim(),
     } } : {}),
+  };
+}
+
+// The post to show the moment an edit is confirmed, without waiting for the list to be read again: the same
+// normalization the server stores (validateCommunityPost), the revision it answered, and nothing else changed.
+// Returns null unless the save is confirmed, so a failure or conflict never changes what the list shows.
+export function communityEditedPost(post, input, result, at) {
+  if (!post || result?.ok !== true || !Number.isSafeInteger(result.revision)) return null;
+  const checked = validateCommunityPost(input, { photos: Array.isArray(post.photos) ? post.photos.length : 0 });
+  if (!checked.ok) return null;
+  const board = communityBoard(post.board);
+  return {
+    ...post, text: checked.post.text, revision: result.revision, updatedAt: at,
+    ...(board === 'outfits' ? {} : { title: checked.post.title, sale: board === 'sale' ? checked.post.sale : null }),
   };
 }
 

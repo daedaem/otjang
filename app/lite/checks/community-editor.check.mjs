@@ -69,7 +69,7 @@ test('a saved edit yields the stored post at once: normalized text, next revisio
   assert.equal(typeof communityEditedPost, 'function');
   const post = { id: 'p1', author: { name: '작성자' }, mine: true, text: '처음 본문', pieces: [], photos: ['PHOTO'], createdAt: 10, hidden: null, board: 'free', title: '처음 제목', sale: null, revision: 3, updatedAt: null };
   const before = structuredClone(post);
-  const input = communityPostInput({ ...communityDraft('free', { post }), title: '  고친 제목 ', text: '고친 본문\n\n\n\n둘째 문단  ' });
+  const input = communityPostInput({ ...communityDraft('free', { post }), title: '  고친 제목 ', text: '고친 본문\n\n\n\n둘째 문단  ' }, true); // the editor sends consent for a post that already has photos
   const next = communityEditedPost(post, input, { ok: true, revision: 4 }, 99);
   const stored = validateCommunityPost(input, { photos: 1 }).post;
   assert.deepEqual(next, { ...post, title: stored.title, text: stored.text, sale: null, revision: 4, updatedAt: 99 });
