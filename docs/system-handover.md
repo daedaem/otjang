@@ -444,7 +444,11 @@ Cloudflare 기존 비공개 Worker `f18d7d75`가 masteref4eec0에서 빌드48초
 
 화면 디자인은 기기별 설정 `hangit:look`(화면 설정이라 백업 대상 아님)으로 고른다. 값이 없으면 기본(v2, 10-27 새 디자인), `v1`은 이전 디자인, `v3`은 v2 위에 개편 A 「오늘의 옷장」 새 화면을 켠 상태다. `screen.html` 맨 위 스크립트가 `<html>`에 `data-look="v2"`와, v3일 때 `data-edition="today"`를 붙인다. 주소의 `?look=v1|v2|v3`은 이 기기 설정을 바꾸고, 미리보기(`?preview=1`)에서는 그 페이지에만 적용하고 저장하지 않는다. 메뉴(더보기)의 「새 홈 화면 미리 보기 / 끄기」와 「이전 디자인으로 보기」가 같은 설정을 바꾼다.
 
-지금 v3이 바꾸는 것은 홈과 탭이다. 홈은 `src/home/index.tsx`의 `today` 분기, `WeatherCard`의 `today` 변형, `home.css`의 `.hm-today`. 탭은 오늘(`home`)·옷장(`closet`)·찾기(`find`)·둘러보기(`community`)·나(`me`) 5개(`src/chrome/AppChrome.tsx`의 `TODAY_TABS`)이고, `find`·`me` 화면은 홈 묶음이 `mode`로 그린다(주소 `#/find`·`#/me`). `screen.html`의 `tabFor`가 결과·링크 확인·상담을 찾기, 기록을 나, 코디를 오늘 탭 아래로 표시하고, `findTab()`이 "옷 찾으러 가기"류 이동을 새 화면에서는 찾기 탭으로 보낸다. 기본 화면(탭 6개)과 chrome 묶음 실패 때의 예비 탭은 그대로다. 날씨·코디·부족한 옷 계산은 기존 날씨 모델(`weatherModel`)을 그대로 쓴다. 저장 형식·서버·코어는 바꾸지 않았다. 단계와 남은 일은 [개발 계획](development-plan.md)의 「개편 A 단계」. 새 화면을 기본으로 바꾸고 옛 분기(v1·v2·vanilla)를 지우는 것은 대표가 휴대폰에서 써 본 뒤다(대표 11-12).
+지금 v3이 바꾸는 것은 홈과 탭이다. 홈은 `src/home/index.tsx`의 `today` 분기, `WeatherCard`의 `today` 변형, `home.css`의 `.hm-today`. 탭은 오늘(`home`)·옷장(`closet`)·찾기(`find`)·둘러보기(`community`)·나(`me`) 5개(`src/chrome/AppChrome.tsx`의 `TODAY_TABS`)이고, `find`·`me` 화면은 홈 묶음이 `mode`로 그린다(주소 `#/find`·`#/me`). `screen.html`의 `tabFor`가 결과·링크 확인·상담을 찾기, 기록을 나, 코디를 오늘 탭 아래로 표시하고, `findTab()`이 "옷 찾으러 가기"류 이동을 새 화면에서는 찾기 탭으로 보낸다. 기본 화면(탭 6개)과 chrome 묶음 실패 때의 예비 탭은 그대로다.
+
+3~5단계(11-14): 상품 화면은 `src/detail/Detail.tsx`의 `today` 분기(「살까 말까」·「이 옷을 넣으면」·「어디서 살까」), 옷장 탭의 「스타일 목표」는 `src/closet/Goal.tsx`, 찾기 탭의 「찾는 중」은 `src/home/index.tsx`의 `Watching`이다. 계산은 `core.styleGoal(style)`·`core.goalFor(productId, style)`(기존 편집 데이터 `slots.js`의 스타일 중요도 3인 종류, 소품 제외, 체험용은 보유 아님)이고, 목록 형식은 `src/domain/watch-list.js`(`{v:1, items:[{id,text,at,productId?}]}`, 50개). 저장 위치: 목표 스타일은 화면 설정 `hangit:style-goal`(백업 대상 아님), 찾는 중은 개인 자료 `eoul-d12-hang:watch`(백업 포함). 미리보기에서는 둘 다 쓰지 않는다. 형식이 다른 찾는 중 원문은 덮어쓰지 않는다. 코어에는 계산 함수만 더했고 저장 형식(core 스냅샷)·서버는 바꾸지 않았다.
+
+1·2단계의 날씨·코디·부족한 옷 계산은 기존 날씨 모델(`weatherModel`)을 그대로 쓴다. 단계와 남은 일은 [개발 계획](development-plan.md)의 「개편 A 단계」. 새 화면을 기본으로 바꾸고 옛 분기(v1·v2·vanilla)를 지우는 것은 대표가 휴대폰에서 써 본 뒤다(대표 11-12).
 
 ## 관리자 로그인 복구 (2026-11-14)
 

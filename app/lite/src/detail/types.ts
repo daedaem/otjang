@@ -80,6 +80,19 @@ export type DetailHost = {
   back(): void;
   info(): void;
   reduce(): boolean;
+  // 개편 A 3·5단계(새 화면): 목표 스타일 대비 이 상품, 찾는 중에 넣기.
+  goal?(): GoalFor | null;
+  watched?(): boolean;
+  watch?(): void;
+};
+export type GoalFor = {
+  style: { id: string; label: string };
+  total: number;
+  owned: number;
+  slotName: string;
+  inGoal: boolean;
+  fills: boolean;
+  gain: number;
 };
 export type CompareModel =
   | { few: true; count: number }

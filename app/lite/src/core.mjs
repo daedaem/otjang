@@ -26,6 +26,8 @@ import {
   search, recommendLooks, recommendItems, formatPrice, josa, PRODUCT_BY_ID, productsFor, meetsCriteria,
   productCriteria, criteriaLine, productReasons, scoreSlot, seasonOf, SEASON_LABEL, SAFE_PRODUCTS, lookalike, closetLooks, basicOutfits,
 } from './domain/engine.js';
+import { wardrobeSlotStatus } from './domain/wardrobe.js';
+import { readWatch, addWatch, removeWatch } from './domain/watch-list.js';
 import { newWardrobeState, wardrobeView, makeGarment, garmentKindChoices, garmentKindName, garmentLabel, GARMENT_KINDS } from './domain/wardrobe.js';
 import { candidateFromProduct, compareCandidate, quickCompare, parseCandidateLink } from './domain/purchase-candidate.js';
 import { createPurchaseJourney, transitionPurchaseJourney, JOURNEY_RETURN_REASONS } from './domain/purchase-journey.js';
@@ -1029,6 +1031,53 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
         layerable: counted.some(outer) ? after : 0, items,
       };
     },
+    // 개편 A 4단계(대표 11-12 "추천대로", 의도 3번): 원하는 스타일 기준으로 옷장의 빈자리를 짚는다.
+    // 기본 옷 = 기존 편집 데이터에서 그 스타일 중요도 3인 종류(engine.essentials와 같은 기준, 소품 제외).
+    // 체험용 옷은 보유로 세지 않는다(state 'trial'). gain = 그 종류 한 벌을 더하면 내 옷으로 새로 생기는
+    // 코디 수(trialGain과 같은 셈: 상의×하의×신발 + 원피스×신발, 겉옷은 걸칠 수 있는 코디 수).
+    styleGoal(styleId = null) {
+      const g = S.gender === 'F' ? 'F' : 'M';
+      const choices = Object.entries(STYLES).filter(([, x]) => x.g.includes(g))
+        .map(([id, x]) => ({ id, label: x.label, desc: x.desc?.[g] || '' }));
+      const pick = choices.find((c) => c.id === styleId) || choices.find((c) => c.id === 'classic') || choices[0];
+      const owned = S.garments.filter((x) => !isTrial(x.id) && x.gender === g && ['user', 'legacy'].includes(x.source));
+      const trials = S.garments.filter((x) => isTrial(x.id) && x.gender === g);
+      const count = { top: 0, bottom: 0, shoes: 0, dress: 0 };
+      for (const x of owned) { const cat = garmentCategory(x); if (cat in count) count[cat] += 1; }
+      const bases = (n) => n.top * n.bottom * n.shoes + n.dress * n.shoes;
+      const before = bases(count);
+      const gainOf = (cat) => cat === 'outer' ? before : cat in count ? bases({ ...count, [cat]: count[cat] + 1 }) - before : 0;
+      const slots = SLOTS.filter((sl) => sl.g === g && sl.cat !== 'acc' && (sl.style[pick.id] || 0) >= 3);
+      const items = slots.map((sl) => {
+        const state = wardrobeSlotStatus(owned, sl) === 'confirmed' ? 'owned' : wardrobeSlotStatus(trials, sl) === 'confirmed' ? 'trial' : 'missing';
+        const p = state === 'owned' ? null : productsFor(sl.id)[0] || null;
+        return {
+          slotId: sl.id, name: sl.name, cat: sl.cat, state, gain: state === 'owned' ? 0 : Math.max(0, gainOf(sl.cat)),
+          product: p ? { id: p.id, brand: p.brand, name: p.name, price: p.price, priceText: formatPrice(p.price) } : null,
+        };
+      });
+      const rank = { owned: 0, trial: 1, missing: 2 };
+      items.sort((a, b) => rank[a.state] - rank[b.state]);
+      const open = items.filter((i) => i.state !== 'owned');
+      const next = open.reduce((best, i) => (!best || i.gain > best.gain ? i : best), null);
+      return {
+        style: pick, choices, total: items.length, owned: items.filter((i) => i.state === 'owned').length,
+        trial: items.filter((i) => i.state === 'trial').length, items, next,
+        note: '스타일별 기본 옷은 편집 기준이에요. 핏·소재·색은 따지지 않았어요.',
+      };
+    },
+    // 상품 화면 「이 옷을 넣으면」(개편 A 3단계): 이 상품이 목표 스타일의 빈자리를 채우는지.
+    goalFor(productId, styleId = null) {
+      const p = PRODUCT_BY_ID[productId];
+      if (!p) return null;
+      const goal = api.styleGoal(styleId);
+      const row = goal.items.find((i) => i.slotId === p.slot) || null;
+      return {
+        style: goal.style, total: goal.total, owned: goal.owned, slotName: SLOT_BY_ID[p.slot]?.name || '',
+        inGoal: !!row, fills: !!row && row.state !== 'owned', gain: row && row.state !== 'owned' ? row.gain : 0,
+      };
+    },
+    readWatch, addWatch, removeWatch,
     // occasion을 주면 그 상황의 코디 공식만 준다. 기본 조합은 상황 구분이 없어 뺀다(10-29).
     closetOutfits({ limit = 60, detail = false, ownedOnly = false, occasion = null } = {}) {
       const original = engineState();

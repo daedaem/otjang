@@ -10,7 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { CorePhotoView, Tile } from "../tiles/Tile";
 import { Top } from "./parts";
-import type { DecisionModel, DetailHost, DetailModel } from "./types";
+import type { DecisionModel, DetailHost, DetailModel, GoalFor } from "./types";
 // Product detail (WO-04): same markup as the vanilla V.detail, rendered from
 // detailModel. Buttons call the host, never the data-* attributes of the
 // vanilla global click handler, so nothing runs twice.
@@ -120,12 +120,12 @@ function Photo({
     </div>
   );
 }
-function HangBox({ host, m }: { host: DetailHost; m: DetailModel }) {
+function HangBox({ host, m, today = false }: { host: DetailHost; m: DetailModel; today?: boolean }) {
   return (
-    <section className="box" id="hangbox" aria-label="내 옷에 걸어 보면">
+    <section className={today ? "box td-decide" : "box"} id="hangbox" aria-label={today ? "살까 말까" : "내 옷에 걸어 보면"}>
       <div className="label">
         <i className="ph ph-coat-hanger" />
-        {`내 옷에 걸어 보면 · ${m.basisLabel}`}
+        {today ? `살까 말까 · 내 옷장 기준 · ${m.basisLabel}` : `내 옷에 걸어 보면 · ${m.basisLabel}`}
       </div>
       <h2 className="h2">
         <HeadText m={m} />
@@ -220,6 +220,64 @@ function Used({ m }: { m: DetailModel }) {
         </Fragment>
       ))}
     </details>
+  );
+}
+// 개편 A 3단계: 이 옷을 넣으면 목표 스타일 옷장이 어떻게 바뀌는지.
+function GoalChange({ g }: { g: GoalFor }) {
+  const after = g.fills ? g.owned + 1 : g.owned;
+  return (
+    <section className="box td-goal" aria-label="이 옷을 넣으면">
+      <div className="label">
+        <i className="ph ph-target" aria-hidden="true" />
+        이 옷을 넣으면
+      </div>
+      <p className="h3 num">{`${g.style.label} 목표 ${g.owned} → ${after} / ${g.total}벌`}</p>
+      <div className="td-goal-track" role="img" aria-label={`기본 ${g.total}벌 중 ${after}벌`}>
+        <span style={{ width: `${(g.owned / g.total) * 100}%` }} />
+        {g.fills ? <span className="add" style={{ width: `${(1 / g.total) * 100}%` }} /> : null}
+      </div>
+      <p className="t6 sub">
+        {g.fills
+          ? `${g.slotName} 빈자리를 채워요.`
+          : g.inGoal
+            ? `${g.slotName}는 이미 있어요. 목표 옷장이 늘지는 않아요.`
+            : `${g.style.label} 기본 옷은 아니에요.`}
+      </p>
+    </section>
+  );
+}
+// 개편 A 3단계: 어디서 살까 — 새 상품 판매처와 중고 검색을 한 목록으로.
+function Where({ m, d, host }: { m: DetailModel; d: DecisionModel | null; host: DetailHost }) {
+  return (
+    <section className="box td-where" aria-label="어디서 살까">
+      <div className="label">
+        <i className="ph ph-storefront" aria-hidden="true" />
+        어디서 살까
+      </div>
+      <div className="links">
+        {d ? (
+          <a href={d.url} target="_blank" rel="noopener" onClick={host.seller}>
+            <span>
+              {`새 상품 · ${d.store}`}
+              <span className="t6 un">{` · ${d.priceText}`}</span>
+            </span>
+            <i className="ph ph-arrow-up-right" />
+          </a>
+        ) : null}
+        {m.used.flatMap((g) =>
+          g.links.map((l, j) => (
+            <a key={`${g.region}-${j}`} href={l.url} target="_blank" rel="noopener">
+              <span>
+                {`${g.region.replace(" 중고", "")} 중고 · ${l.label}`}
+                {l.note ? <span className="t6 un">{` · ${l.note}`}</span> : null}
+              </span>
+              <i className="ph ph-arrow-up-right" />
+            </a>
+          )),
+        )}
+      </div>
+      <p className="t6 sub">중고는 검색 결과로 이동해요. 매물·가격·상태는 확인하지 않았어요.</p>
+    </section>
   );
 }
 function Bar({ host, d }: { host: DetailHost; d: DecisionModel }) {
@@ -339,6 +397,7 @@ export function Detail({ host }: { host: DetailHost }) {
   // WO-11 새 디자인(v2): 판단(내 옷에 걸어 보면)을 가격 바로 아래에, 실측·가치·거울은
   // 그 뒤에 둔다. 메뉴로 바꾸면 K.refresh()가 이 화면을 다시 그린다.
   const v2 = document.documentElement.dataset.look === "v2";
+  const today = document.documentElement.dataset.edition === "today";
   const tools = (
     <>
       <button
@@ -397,7 +456,41 @@ export function Detail({ host }: { host: DetailHost }) {
               {m.facts}
             </p>
           </div>
-          {v2 ? (
+          {today ? (
+            <>
+              <HangBox host={host} m={m} today />
+              {(() => {
+                const g = host.goal?.();
+                return g ? <GoalChange g={g} /> : null;
+              })()}
+              <div className="td-acts">
+                <button type="button" className="btn line" onClick={host.mirror}>
+                  <i className="ph ph-user" aria-hidden="true" />
+                  내 사진 옆에 놓고 보기
+                </button>
+                <button
+                  type="button"
+                  className="btn line"
+                  aria-pressed={!!host.watched?.()}
+                  onClick={host.watch}
+                >
+                  <i className={`${host.watched?.() ? "ph-fill" : "ph"} ph-binoculars`} aria-hidden="true" />
+                  {host.watched?.() ? "찾는 중이에요" : "찾는 중에 넣기"}
+                </button>
+              </div>
+              <Where m={m} d={d} host={host} />
+              <details className="pdp-more td-more">
+                <summary>더 알아보기 · 실측·가치 비교</summary>
+                <button type="button" className="btn line wide" style={{ margin: "14px 0" }} onClick={host.measure}>
+                  <i className="ph ph-ruler" aria-hidden="true" />
+                  내 기준 옷과 실측 비교
+                </button>
+                <button type="button" className="quiet" style={{ marginBottom: 14 }} onClick={host.collection}>
+                  활용·소장 가치 비교 →
+                </button>
+              </details>
+            </>
+          ) : v2 ? (
             <>
               <HangBox host={host} m={m} />
               <div className="pdp-more">{tools}</div>
@@ -408,7 +501,7 @@ export function Detail({ host }: { host: DetailHost }) {
               <HangBox host={host} m={m} />
             </>
           )}
-          <Used m={m} />
+          {today ? null : <Used m={m} />}
         </div>
       </div>
       {d ? createPortal(<Bar host={host} d={d} />, host.bar) : null}
