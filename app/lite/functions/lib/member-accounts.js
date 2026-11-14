@@ -139,6 +139,47 @@ async function adminSetup(request, env, db, now) {
   try { return json(200,{ok:true,scope:'owner'},[await newSession(env,member,'password',now),clearOwnerCookie()]); }
   catch { return json(201,{ok:true,loginRequired:true}); } // Account and role exist; retry only the normal login.
 }
+// 대표 11-14 "어드민계정 기억이안나네요": 관리자 로그인 복구. 대표가 Cloudflare에 직접 넣은 ADMIN_RECOVERY_KEY(24자 이상)를
+// 아는 사람만 기존 관리자 계정의 로그인 이메일·비밀번호를 새로 정한다. 관리자 행·회원 id·옷장 범위는 그대로, 기존 세션은 모두 끊는다.
+// 비밀값이 없으면 없는 주소(404). 시도는 15분에 5번(맞으면 그 기록을 지운다). 값은 로그·응답에 남기지 않는다.
+const RECOVERY_ATTEMPTS = 5;
+const recoveryKey = (env) => env.MEMBER_APP_MODE === 'accounts' && typeof env.ADMIN_RECOVERY_KEY === 'string' && env.ADMIN_RECOVERY_KEY.length >= 24 ? env.ADMIN_RECOVERY_KEY : null;
+function recoveryPage() {
+  return page('관리자 로그인 복구', `<h1>관리자 로그인 복구</h1><p>Cloudflare에 넣어 둔 복구 비밀값을 아는 경우에만 관리자 계정의 로그인 이메일과 비밀번호를 새로 정해요. 옷장·기록·관리 권한은 그대로이고, 다른 기기의 로그인은 모두 끊겨요.</p>
+<form id="f"><label for="key">복구 비밀값</label><input id="key" type="password" autocomplete="off" required>
+<label for="email">새 로그인 이메일</label><input id="email" type="email" autocomplete="email" required>
+<label for="password">새 비밀번호 (8자 이상)</label><input id="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+<label for="confirm">새 비밀번호 확인</label><input id="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+<button type="submit">로그인 정보 바꾸기</button></form><p class="small">복구가 끝나면 Cloudflare에서 ADMIN_RECOVERY_KEY를 지워 두세요.</p>`,
+  `${POST}let busy=false;document.querySelector('#f').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;busy=true;notice('확인하고 있어요.');const v=id=>document.querySelector(id).value;const r=await post('/_member/admin-recovery',{key:v('#key'),email:v('#email'),password:v('#password'),confirm:v('#confirm')});busy=false;if(r.ok){document.querySelector('#key').value='';notice('바꿨어요. 새 이메일과 비밀번호로 로그인해 주세요.');setTimeout(()=>location.replace('/_member/signin'),1200);return}notice(r.body?.message||'바꾸지 못했어요.')});`);
+}
+async function adminRecovery(request, env, db, now) {
+  const since = now - ATTEMPT_WINDOW, attempt = crypto.randomUUID();
+  const [, reserved] = await db.batch([
+    db.prepare('DELETE FROM member_login_attempts WHERE created_at <= ?1').bind(since),
+    db.prepare(`INSERT INTO member_login_attempts (id, email_key, created_at) SELECT ?1, 'admin-recovery', ?2
+      WHERE (SELECT COUNT(*) FROM member_login_attempts WHERE email_key = 'admin-recovery' AND created_at > ?3) < ?4`).bind(attempt, now, since, RECOVERY_ATTEMPTS),
+  ]);
+  if (reserved.meta?.changes !== 1) return fail(429, 'too_many', '잠시 뒤에 다시 해 주세요.');
+  const b = await body(request, ['key', 'email', 'password', 'confirm']);
+  if (typeof b?.key !== 'string' || b.key.length > 256 || !same(await sha256(b.key), await sha256(recoveryKey(env)))) return fail(403, 'invalid_key', '복구 비밀값이 맞지 않아요.');
+  await db.prepare('DELETE FROM member_login_attempts WHERE id = ?1').bind(attempt).run();
+  const email = normalEmail(b.email);
+  if (!email || typeof b.password !== 'string' || b.password.length < 8 || b.password.length > 128 || b.confirm !== b.password) return fail(400, 'invalid_recovery', '이메일과 8자 이상 비밀번호·확인을 다시 확인해 주세요.');
+  const member = await primaryAdmin(env);
+  if (!member) return fail(409, 'no_admin', '아직 연결된 관리자 계정이 없어요. 최초 관리자 연결 화면을 사용해 주세요.');
+  const key = await emailKey(db, email);
+  const other = await db.prepare('SELECT member FROM member_accounts WHERE email_key = ?1').bind(key).first();
+  if (other && other.member !== member) return fail(409, 'email_taken', '다른 회원이 쓰는 이메일이에요. 다른 로그인 이메일을 써 주세요.');
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await passwordHash(b.password, salt);
+  const [changed] = await db.batch([
+    db.prepare('UPDATE member_accounts SET email_key = ?2, salt = ?3, hash = ?4, iterations = ?5 WHERE member = ?1').bind(member, key, hex(salt), hash, ITERATIONS),
+    db.prepare('DELETE FROM member_sessions WHERE member = ?1').bind(member),
+  ]);
+  if (changed.meta?.changes !== 1) return fail(409, 'no_admin', '관리자 계정 기록을 찾지 못했어요. 운영 기록을 확인해 주세요.');
+  return json(200, { ok: true, login: '/_member/signin' });
+}
 function accountPage(admin = false) {
   return page('내 계정', `<h1>내 계정</h1>${admin ? '<p>관리자 계정으로 로그인했어요. 본인 옷장·사진·기록과 관리 기능을 함께 사용해요.</p><p class="small">마지막 관리자 계정은 여기서 삭제하지 않아요. 계정 복구가 필요하면 운영 인수 문서의 복구 절차를 확인해 주세요.</p>' : '<p>옷장·기록은 이 휴대폰에만 있어요. 계정마다 자료를 따로 보관해요. 삭제 전 앱 메뉴의 백업·복원으로 자료를 내보내 주세요. 삭제해도 이 기기 원본은 남지만 새 계정에 자동으로 연결되지 않아요.</p>'}
 <button id="out" class="line" type="button">로그아웃</button>${admin ? '' : '<button id="del" type="button">계정 지우기</button>'}<p class="small"><a href="/">앱으로 돌아가기</a></p>`,
@@ -287,6 +328,12 @@ export async function handleMemberAccounts(request, env = {}, who = {}, { now = 
       if (method==='GET') return (await primaryAdmin(env)) ? new Response(null,{status:303,headers:{...HEADERS,location:'/_member/signin'}}) : adminSetupPage();
       if (method==='POST') return await adminSetup(request,env,db,at);
       return fail(405,'method_not_allowed','지원하지 않는 요청이에요.');
+    }
+    if (path === '/_member/admin-recovery') {
+      if (!recoveryKey(env)) return fail(404, 'not_found', '없는 주소예요.');
+      if (method === 'GET') return recoveryPage();
+      if (method === 'POST') return await adminRecovery(request, env, db, at);
+      return fail(405, 'method_not_allowed', '지원하지 않는 요청이에요.');
     }
     if (path === '/_member/password/signup' && method === 'POST') return await signup(request, env, db, at);
     if (path === '/_member/password/signin' && method === 'POST') return await signin(request, env, db, at);

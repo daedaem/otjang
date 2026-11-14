@@ -105,7 +105,8 @@ async function publicCommunity(request, env, url, { authorize, community, member
   return null;
 }
 
-const INVITE_PUBLIC = new Set(['/_member/signup', '/_member/signin', '/_member/password/signup', '/_member/password/signin']);
+// /_member/admin-recovery: 관리자 로그인 복구(대표 11-14). ADMIN_RECOVERY_KEY가 없으면 404다.
+const INVITE_PUBLIC = new Set(['/_member/signup', '/_member/signin', '/_member/password/signup', '/_member/password/signin', '/_member/admin-recovery']);
 // 화면(HTML)에 역할 표시를 붙인다. 회원에게는 바깥 사진(무신사 등)을 막는 CSP를 더한다.
 async function withRole(asset, role, member, showRole = true, accountLogin = false) {
   const type = asset.headers.get('content-type') || '';
