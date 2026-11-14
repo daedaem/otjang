@@ -5,7 +5,7 @@ import { preparePhoto, type ReadyPhoto } from "./photo";
 // @ts-ignore shared domain/model modules have Node contract checks
 import { COMMUNITY_LIMITS, validateCommunityPost } from "../domain/community.js";
 // @ts-ignore plain model
-import { communityDraft, communityPostInput, communityDraftChanged } from "./editor-model.js";
+import { communityDraft, communityPostInput, communityDraftChanged, communityEditedPost } from "./editor-model.js";
 // @ts-ignore plain routing helper
 import { communityHref } from "./navigation.js";
 // @ts-ignore plain data
@@ -16,7 +16,7 @@ import { GARMENT_KINDS } from "../domain/wardrobe.js";
 type Draft = { board: Board; title: string; text: string; pieces: Piece[]; merchant: string; price: string; discount: string; endDate: string; sourceUrl: string };
 type Props = {
   host: CommunityHost; client: CommunityClient; board: Board; initial?: Piece[]; post?: Post;
-  close(): void; saved(): void; guard(check: () => boolean): () => void;
+  close(): void; saved(edited?: Post | null): void; guard(check: () => boolean): () => void;
 };
 const NAMES = Object.fromEntries(GARMENT_KINDS.map((k: { id: string; name: string }) => [k.id, k.name]));
 const COLOR = COLORS as Record<string, { label: string; hex: string }>;
@@ -122,7 +122,7 @@ export function PostEditor({ host, client, board, initial, post, close, saved, g
       if ("code" in result) {
         setConflict(result.code === "conflict");
         setError(result.code === "offline" ? "연결이 끊겼어요. 내 글에서 등록 여부를 확인한 뒤 다시 시도해 주세요. 입력한 내용은 그대로예요." : result.message || "저장하지 못했어요. 입력한 내용은 그대로예요.");
-      } else { current.current.dirty = false; saved(); }
+      } else { current.current.dirty = false; saved(editing ? communityEditedPost(post, input, result, Date.now()) : null); }
     } catch { if (alive.current) setError("저장하지 못했어요. 입력한 내용은 그대로예요."); }
     finally { pending.current = false; if (alive.current) setBusy(""); }
   };

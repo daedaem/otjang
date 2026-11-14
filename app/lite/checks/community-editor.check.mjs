@@ -63,3 +63,28 @@ test('new text boards preserve paragraphs while the existing outfit single-line 
   assert.equal(validateCommunityPost({ board: 'free', title: '글', text: '첫 줄\n둘째 줄', pieces: [], consent: false }).post.text, '첫 줄\n둘째 줄');
   assert.equal(validateCommunityPost({ text: '첫 줄\n둘째 줄', pieces: [{ kind: 'shirt', color: 'white', label: '셔츠' }], consent: false }).post.text, '첫 줄 둘째 줄');
 });
+
+test('a saved edit yields the stored post at once: normalized text, next revision, untouched identity and photos', async () => {
+  const { communityEditedPost } = await import('../src/community/editor-model.js');
+  assert.equal(typeof communityEditedPost, 'function');
+  const post = { id: 'p1', author: { name: '작성자' }, mine: true, text: '처음 본문', pieces: [], photos: ['PHOTO'], createdAt: 10, hidden: null, board: 'free', title: '처음 제목', sale: null, revision: 3, updatedAt: null };
+  const before = structuredClone(post);
+  const input = communityPostInput({ ...communityDraft('free', { post }), title: '  고친 제목 ', text: '고친 본문\n\n\n\n둘째 문단  ' }, true); // the editor sends consent for a post that already has photos
+  const next = communityEditedPost(post, input, { ok: true, revision: 4 }, 99);
+  const stored = validateCommunityPost(input, { photos: 1 }).post;
+  assert.deepEqual(next, { ...post, title: stored.title, text: stored.text, sale: null, revision: 4, updatedAt: 99 });
+  assert.equal(next.title, '고친 제목');
+  assert.deepEqual(post, before);
+  const sale = { merchant: '판매처', price: 39000, discount: null, currency: 'KRW', endDate: '', sourceUrl: '' };
+  const salePost = { ...post, board: 'sale', sale };
+  const edited = communityEditedPost(salePost, communityPostInput({ ...communityDraft('sale', { post: salePost }), price: '29,000' }, true), { ok: true, revision: 4 }, 99);
+  assert.deepEqual(edited.sale, { ...sale, price: 29000 });
+  const outfit = { ...post, board: undefined, title: undefined, sale: undefined, pieces: [{ kind: 'shirt', color: 'white', label: '셔츠' }], photos: [] };
+  const line = communityEditedPost(outfit, communityPostInput({ ...communityDraft('outfits', { post: outfit }), text: '첫 줄\n둘째 줄' }), { ok: true, revision: 4 }, 99);
+  assert.equal(line.text, '첫 줄 둘째 줄');
+  assert.deepEqual(line.pieces, outfit.pieces);
+  assert.equal(line.title, undefined);
+  // Anything that is not a confirmed save changes nothing on screen.
+  assert.equal(communityEditedPost(post, input, { code: 'conflict' }, 99), null);
+  assert.equal(communityEditedPost(post, { ...input, title: '' }, { ok: true, revision: 4 }, 99), null);
+});
