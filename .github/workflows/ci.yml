@@ -133,8 +133,12 @@ jobs:
   # 15 minutes with the added adaptive checks (328/342 tests done). Only the
   # whole-job limit changes; per-test timeouts, retries (0), skips and the
   # check names stay the same.
+  # 2026-11-14 (owner consent "부탁합니다"): WebKit reached 19.0 of 20 minutes and
+  # Chromium ~13 of 15, so each browser now runs in two shards in parallel
+  # (Playwright --shard). Each shard is its own job with its own test server.
+  # Per-test timeouts, retries (0), skips and the combined check name stay the same.
   lite-input-browser:
-    name: Lite input ${{ matrix.browser }}
+    name: Lite input ${{ matrix.browser }} (${{ matrix.shard }})
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
@@ -145,10 +149,22 @@ jobs:
             install: chromium
             project: mobile-chromium
             timeout: 15
+            shard: 1/2
+          - browser: Chromium
+            install: chromium
+            project: mobile-chromium
+            timeout: 15
+            shard: 2/2
           - browser: WebKit
             install: webkit
             project: mobile-webkit
             timeout: 20
+            shard: 1/2
+          - browser: WebKit
+            install: webkit
+            project: mobile-webkit
+            timeout: 20
+            shard: 2/2
     defaults:
       run:
         working-directory: app/lite
@@ -171,9 +187,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.install }}-${{ hashFiles('app/lite/package-lock.json') }}
       - run: npx playwright install --with-deps ${{ matrix.install }}
-      - run: npm run test:e2e -- --project=${{ matrix.project }}
+      - run: npm run test:e2e -- --project=${{ matrix.project }} --shard=${{ matrix.shard }}
 
-  # Keeps the previous check name: it passes only when both browser jobs pass.
+  # Keeps the previous check name: it passes only when every browser shard job passes.
   lite-input:
     name: Lite input Chromium and WebKit
     needs: lite-input-browser
