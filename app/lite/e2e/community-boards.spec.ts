@@ -233,6 +233,61 @@ test("edits keep typed text on failure or conflict and only a successful save ch
   } finally { release?.(); }
 });
 
+test("a saved edit shows in the list as soon as the editor closes, even while or without the list reload", async ({ page }) => {
+  const f = await setup(page);
+  const created = await communityCall(f.env, "posts", { post: { board: "free", title: "처음 제목", text: "처음 본문", pieces: [], consent: false }, photos: [] }, f.who);
+  const { id } = await created.json();
+  await page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "자유게시판", exact: true }).click();
+  const article = page.locator(`[data-community-post="${id}"]`);
+  const editor = page.getByRole("dialog", { name: "자유게시판 글 수정", exact: true });
+  const shown = async () => [await article.locator(".cm-post-title").textContent(), await article.locator(".cm-text").textContent()];
+  await expect(article).toBeVisible();
+  // Hold every list read from here on: what the list shows after a save must not depend on how fast the reload answers.
+  let release!: () => void, held = 0, fail = false;
+  let gate = new Promise<void>(resolve => release = resolve);
+  await page.route("**/api/community/feed?*", async route => {
+    held++; await gate;
+    if (fail) return route.fulfill({ status: 503, contentType: "application/json", body: '{"code":"error","message":"잠시 뒤에 다시 해 주세요."}' });
+    return route.fallback();
+  });
+  try {
+    await article.getByRole("button", { name: "수정", exact: true }).click();
+    await editor.getByLabel("제목", { exact: true }).fill("  고친 제목  ");
+    await editor.getByLabel("내용", { exact: true }).fill("고친 본문\n\n\n\n둘째 문단  ");
+    await editor.getByRole("button", { name: "수정 저장", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    // No waiting here on purpose: the closed editor and the old text must never be on screen together.
+    const first = await shown();
+    const stored = (await (await communityRequest(f.env, "GET", "feed?board=free", undefined, f.who)).json()).items.find((p: any) => p.id === id);
+    expect(first).toEqual([stored.title, stored.text]);
+    expect(stored.title).toBe("고친 제목");
+    await expect(page.getByText("저장했어요.", { exact: true })).toBeVisible();
+    await expect.poll(() => held).toBe(1);
+    // A second edit before the reload answers must carry the saved revision, not report a conflict with my own save.
+    await article.getByRole("button", { name: "수정", exact: true }).click();
+    await expect(editor.getByLabel("내용", { exact: true })).toHaveValue(stored.text);
+    await editor.getByLabel("내용", { exact: true }).fill("두 번째로 고친 본문");
+    await editor.getByRole("button", { name: "수정 저장", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    expect(await shown()).toEqual(["고친 제목", "두 번째로 고친 본문"]);
+    await expect.poll(() => held).toBe(2);
+    const answered = page.waitForResponse(r => r.url().includes("/api/community/feed?") && r.status() === 200);
+    release(); await answered;
+    await expect(page.locator(".cm-list-error")).toHaveCount(0);
+    expect(await shown()).toEqual(["고친 제목", "두 번째로 고친 본문"]);
+    // The reload failing must not bring the old text back either.
+    gate = new Promise<void>(resolve => release = resolve); fail = true;
+    await article.getByRole("button", { name: "수정", exact: true }).click();
+    await editor.getByLabel("내용", { exact: true }).fill("세 번째로 고친 본문");
+    await editor.getByRole("button", { name: "수정 저장", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    expect(await shown()).toEqual(["고친 제목", "세 번째로 고친 본문"]);
+    release();
+    await expect(page.locator(".cm-list-error")).toBeVisible();
+    expect(await shown()).toEqual(["고친 제목", "세 번째로 고친 본문"]);
+  } finally { release?.(); }
+});
+
 test("cancelled close and browser Back retain the draft and the editor traps keyboard focus", async ({ page }) => {
   await setup(page);
   await page.getByRole("navigation", { name: "게시판", exact: true }).getByRole("link", { name: "자유게시판", exact: true }).click();
