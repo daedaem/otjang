@@ -2,7 +2,9 @@ import { test, expect, type Page } from "@playwright/test";
 // WO-11: the new look (v2) is the default (owner 10-27 21:55: Claude finishes
 // the design, then makes it the default). ?look=v1 or the menu row 이전 디자인으로
 // 보기 brings back the previous look on this device; ?look=v2 or 새 디자인으로
-// 보기 returns.
+// 보기 returns. 11-14 (개편 A 6단계): the new screen (today edition) is now the
+// default; these checks keep the previous screen, stored as hangit:look=v2
+// (playwright storageState), and the 10-27 look it uses.
 test.beforeEach(async ({ page }) => {
   await page.route("**/*", (r) => {
     const u = new URL(r.request().url());
@@ -23,11 +25,11 @@ const askButton = (page: Page) => page.getByRole("search").getByRole("button", {
 const bg = (page: Page) => askButton(page).evaluate((el) => getComputedStyle(el).backgroundColor);
 const top = (page: Page, sel: string) => page.locator(sel).first().evaluate((el) => el.getBoundingClientRect().top);
 
-test("the new look is the default", async ({ page }) => {
+test("the previous screen keeps the 10-27 look", async ({ page }) => {
   await open(page);
   expect(await look(page)).toBe("v2");
   expect(await bg(page)).toBe("rgb(32, 32, 37)");
-  expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBe("v2");
 });
 
 test("?look=v1 brings back the previous look, keeps it after a reload and ?look=v2 returns", async ({ page }) => {
@@ -40,7 +42,7 @@ test("?look=v1 brings back the previous look, keeps it after a reload and ?look=
   await open(page, "&look=v2");
   expect(await look(page)).toBe("v2");
   expect(await bg(page)).toBe("rgb(32, 32, 37)");
-  expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBe("v2");
 });
 
 for (const [label, ui] of [["", ""], [" (vanilla)", "&ui=vanilla"]] as const)
@@ -59,7 +61,7 @@ test(`the menu switches between the looks without reloading${label}`, async ({ p
   await expect(page.locator(".sheet")).toHaveCount(0);
   expect(await look(page)).toBe("v2");
   await expect.poll(async () => (await top(page, "#q")) < (await top(page, ".wx"))).toBe(true);
-  expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("hangit:look"))).toBe("v2");
 });
 
 // Flow: the search box is the first thing on the 찾기 tab in the new look; the
@@ -122,7 +124,8 @@ test("preview mode switches the look without touching storage", async ({ page })
     Storage.prototype.setItem = function (k, v) { if (k === "hangit:look") w.__looks.push("set"); return set.call(this, k, v); };
     Storage.prototype.removeItem = function (k) { if (k === "hangit:look") w.__looks.push("remove"); return del.call(this, k); };
   });
-  await page.goto("/?photos=0&preview=1#/");
+  // 11-14: preview without ?look opens the new screen; ?look=v2 opens the previous one for that page only.
+  await page.goto("/?photos=0&preview=1&look=v2#/");
   await page.waitForFunction(() => !!(window as any).K?.M);
   expect(await look(page)).toBe("v2");
   await page.getByRole("button", { name: "더보기" }).first().click();
