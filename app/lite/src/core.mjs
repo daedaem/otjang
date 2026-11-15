@@ -251,10 +251,13 @@ export function createMock({ storage = null, requireStorage = false, key = 'eoul
   // The same picture as data (WO-08c): React screens draw it with src/tiles,
   // the vanilla screens with the HTML below, so both keep one rule.
   function tileInfo(target) {
+    // 상품 id만 받은 칸(상품 카드·상품 화면)은 그 상품의 색·종류를 쓴다(대표 11-15: 회원에게 전부 회색 「옷」으로 보였다).
+    const product = PRODUCT_BY_ID[target?.id] || PRODUCT_BY_ID[target?.productId] || null;
     const slot = SLOT_BY_ID[target?.slot];
-    const hex = target?.colorHex || colorHex(target?.color) || '#e9e9e9';
-    const light = COLORS[target?.color]?.light ?? 80;
-    const name = target?.kindName || slot?.name || garmentKindName(target?.kind) || '옷';
+    const color = target?.color || (target?.colorHex ? null : product?.color);
+    const hex = target?.colorHex || colorHex(color) || '#e9e9e9';
+    const light = COLORS[color]?.light ?? 80;
+    const name = target?.kindName || slot?.name || garmentKindName(target?.kind || SLOT_BY_ID[product?.slot]?.shape) || '옷';
     return { hex, ink: light < 55 ? '#fff' : '#222', name };
   }
   function photoInfo(target, { fit = 'cover', caption = true, alt = null, eager = false } = {}) {

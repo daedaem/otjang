@@ -51,6 +51,14 @@
 .hm-rows .hm-row .grow { min-width: 0; }
 .hm-rows .hm-row .t6 { display: block; color: var(--ink2); }
 
+/* 11-15: 오늘 탭의 찾는 중 바로 가기. 긴 이름은 한 줄로 자른다. */
+.hm-watching .hm-row .t6 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 11-15: 빈 옷장 첫 화면의 처음 할 일. */
+.hm-start { margin-top: 20px; }
+.hm-start > h2 { margin: 0; color: var(--ink2); font-weight: 600; }
+.hm-start .hm-rows { margin-top: 8px; }
+
 /* 개편 A 5단계: 찾기 탭의 찾는 중. */
 .hm-watch { margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
 .hm-watch .h2, .hm-watch .sub { margin: 0; }

@@ -11,8 +11,14 @@ export function GoalPanel({ host, version }: { host: ClosetHost; version: number
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [host, style, version],
   );
+  // 11-15: 지도는 8칸(두 줄)만 펼쳐 두고 나머지는 접는다 — 16칸이면 내 옷이 한 화면 아래로 밀렸다.
+  const [all, setAll] = useState(false);
   if (!g) return null;
   const left = g.total - g.owned;
+  const FOLD = 8;
+  const shown = all ? g.items : g.items.slice(0, FOLD);
+  const rest = g.items.length - FOLD;
+  const next = g.next;
   const open = (i: StyleGoal["items"][number]) =>
     i.product ? host.product?.(i.product.id) : host.search?.(i.name);
   return (
@@ -48,8 +54,30 @@ export function GoalPanel({ host, version }: { host: ClosetHost; version: number
         </div>
         <span className="t6 num">{`기본 ${g.total}벌 중 ${g.owned}벌 있어요`}</span>
       </div>
+      {next ? (
+        <button
+          type="button"
+          className="wr-goal-next"
+          aria-label={`먼저 채우면 좋은 옷 · ${next.name}`}
+          onClick={() => open(next)}
+        >
+          <span className="grow">
+            <span className="t6 good">먼저 채우면 좋은 옷</span>
+            <span className="h3">{next.name}</span>
+            <span className="t6">
+              {next.gain
+                ? next.cat === "outer"
+                  ? `가진 코디 ${next.gain}개에 걸칠 수 있어요`
+                  : `가진 옷과 새 코디 ${next.gain}개가 생겨요`
+                : "목표의 빈자리예요"}
+              {next.product ? ` · 예: ${next.product.brand} ${next.product.priceText}` : ""}
+            </span>
+          </span>
+          <i className="ph ph-caret-right" aria-hidden="true" />
+        </button>
+      ) : null}
       <ul className="wr-goal-map">
-        {g.items.map((i) =>
+        {shown.map((i) =>
           i.state === "owned" ? (
             <li key={i.slotId} data-goal="owned">
               <span className="wr-goal-cell on">
@@ -75,19 +103,16 @@ export function GoalPanel({ host, version }: { host: ClosetHost; version: number
           ),
         )}
       </ul>
-      {g.next ? (
-        <div className="wr-goal-next">
-          <p className="t6 good">먼저 채우면 좋은 옷</p>
-          <p className="h3">{g.next.name}</p>
-          <p className="t6">
-            {g.next.gain
-              ? g.next.cat === "outer"
-                ? `가진 코디 ${g.next.gain}개에 걸칠 수 있어요`
-                : `가진 옷과 새 코디 ${g.next.gain}개가 생겨요`
-              : "목표의 빈자리예요"}
-            {g.next.product ? ` · 예: ${g.next.product.brand} ${g.next.product.priceText}` : ""}
-          </p>
-        </div>
+      {rest > 0 ? (
+        <button
+          type="button"
+          className="quiet wr-goal-more"
+          aria-expanded={all}
+          onClick={() => setAll((v) => !v)}
+        >
+          {all ? "접기" : `나머지 ${rest}벌 보기`}
+          <i className={`ph ph-caret-${all ? "up" : "down"}`} aria-hidden="true" />
+        </button>
       ) : null}
       <p className="t6 sub">{g.note}</p>
     </section>

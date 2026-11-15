@@ -313,6 +313,9 @@ a { color: inherit; text-decoration: none; }
 .pdp-photo { margin: 0 calc(-1 * var(--gutR)) 0 calc(-1 * var(--gutL)); border-radius: 0; aspect-ratio: 4 / 5; }
 .pdp-photo .ph-box { border-radius: 0; aspect-ratio: 4 / 5; }
 .pdp-photo img.flat { width: 74%; height: 74%; }
+/* 11-15: 새 화면에서 사진이 없는 상품(색 칸)은 낮은 칸으로 — 4:5 빈 칸이 「살까 말까」를 화면 아래로 밀었다. */
+:root[data-edition="today"] .pdp-photo:has(.eo-tile), :root[data-edition="today"] .pdp-photo:has(.eo-tile) .ph-box { aspect-ratio: 5 / 3; }
+:root[data-edition="today"] .pdp-photo .eo-tile { aspect-ratio: auto !important; font-size: 14px !important; padding: 12px var(--gutL, 16px) !important; }
 .pdp-photo .zoomb { position: absolute; left: 0; top: 0; width: 100%; height: 100%; cursor: zoom-in; }
 .pdp-head { margin-top: 16px; }
 .pdp-head .h2 { font-size: 20px; line-height: 28px; }
