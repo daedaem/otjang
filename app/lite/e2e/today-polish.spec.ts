@@ -90,3 +90,20 @@ test("an empty closet's first screen says what to do first", async ({ page }) =>
   await expect(page.locator(".hm-today")).toBeVisible();
   await expect(page.getByRole("region", { name: "처음이라면", exact: true })).toHaveCount(0);
 });
+
+test("what I wrote down in 찾는 중 is one tap away from the first screen", async ({ page }) => {
+  await open(page, "#/");
+  await mine(page);
+  await expect(page.getByRole("button", { name: /^찾는 중/ })).toHaveCount(0);
+  await page.evaluate(() => (window as any).K.tab("find"));
+  const watching = page.getByRole("region", { name: "찾는 중", exact: true });
+  await watching.getByLabel("본 옷 적어 두기").fill("바라쿠타 G9 네이비 38");
+  await watching.getByRole("button", { name: "적어 두기" }).click();
+  await expect(watching).toContainText("바라쿠타 G9 네이비 38");
+  await page.evaluate(() => (window as any).K.tab("home"));
+  await expect(page.locator(".hm-today")).toBeVisible();
+  const row = page.locator("[data-react-home]").getByRole("button", { name: /^찾는 중 1벌/ });
+  await expect(row).toContainText("바라쿠타 G9 네이비 38");
+  await row.click();
+  await expect(page.getByRole("region", { name: "찾는 중", exact: true })).toContainText("바라쿠타 G9 네이비 38");
+});
