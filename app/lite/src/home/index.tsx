@@ -273,6 +273,16 @@ function Home({ host }: { host: HomeHost }) {
           옷 찾으러 가기
           <i className="ph ph-caret-right" aria-hidden="true" />
         </button>
+        {/* 11-15: 옷이 하나도 없는 첫 화면이 비어 있었다 — 처음 할 일 두 가지로 가는 길. */}
+        {proof.kind === "empty" ? (
+          <section className="hm-start" aria-label="처음이라면">
+            <h2 className="t6">처음이라면</h2>
+            <div className="hm-rows">
+              {row("스타일 목표 고르기", "원하는 스타일의 기본 옷과 내 옷장의 빈자리를 봐요", host.closet)}
+              {row("사려는 옷 물어보기", "상품 링크를 넣으면 사도 될지 먼저 봐 드려요", host.check)}
+            </div>
+          </section>
+        ) : null}
         <ProofCard host={host} model={proof} />
       </section>
     );
