@@ -58,7 +58,7 @@ export function GoalPanel({ host, version }: { host: ClosetHost; version: number
         <button
           type="button"
           className="wr-goal-next"
-          aria-label={`먼저 채우면 좋은 옷 · ${next.name} 후보 보기`}
+          aria-label={`먼저 채우면 좋은 옷 · ${next.name}`}
           onClick={() => open(next)}
         >
           <span className="grow">

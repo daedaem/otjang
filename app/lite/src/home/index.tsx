@@ -229,6 +229,8 @@ function Home({ host }: { host: HomeHost }) {
       </button>
     </header>
   );
+  // 찾는 중 목록(형식이 깨져 있으면 빈 목록으로 본다 — 찾기 탭이 오류를 보인다).
+  const watched = today && host.mode !== "find" && host.mode !== "me" ? (host.watch?.list().items ?? []) : [];
   const row = (title: string, sub: string, run?: () => void) => (
     <button className="row hm-row" type="button" tabIndex={0} onClick={run}>
       <span className="grow">
@@ -273,6 +275,16 @@ function Home({ host }: { host: HomeHost }) {
           옷 찾으러 가기
           <i className="ph ph-caret-right" aria-hidden="true" />
         </button>
+        {/* 11-15: 적어 둔 옷은 첫 화면에서 한 번에 다시 찾는다(자동 알림은 공식 경로가 없어 아직 없다). */}
+        {watched.length ? (
+          <div className="hm-rows hm-watching">
+            {row(
+              `찾는 중 ${watched.length}벌`,
+              watched.length > 1 ? `${watched[0].text} 외 ${watched.length - 1}벌 · 다시 찾아보기` : `${watched[0].text} · 다시 찾아보기`,
+              host.find,
+            )}
+          </div>
+        ) : null}
         {/* 11-15: 옷이 하나도 없는 첫 화면이 비어 있었다 — 처음 할 일 두 가지로 가는 길. */}
         {proof.kind === "empty" ? (
           <section className="hm-start" aria-label="처음이라면">
